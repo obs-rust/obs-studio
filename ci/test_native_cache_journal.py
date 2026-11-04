@@ -4,6 +4,7 @@ import importlib.util
 import json
 import re
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -15,6 +16,51 @@ SPEC.loader.exec_module(journal)
 
 
 class NativeCacheJournalTest(unittest.TestCase):
+    def test_compiler_memory_and_termination_evidence_survive_sanitizing(self):
+        # #3379: the old artifact discarded measurements needed to test OOM.
+        raw = {"outcome": "error", "child_peak_rss_bytes": 123456,
+               "tree_peak_rss_bytes": 654321, "tree_peak_rss_source": "sampled",
+               "exit_code": -137, "termination_signal": 9, "stderr": "SECRET_TOKEN"}
+        row = journal.summarize(json.dumps(raw), Path("/repo"))["records"][0]
+        for key in raw.keys() - {"stderr"}:
+            self.assertEqual(row[key], raw[key])
+        self.assertNotIn("SECRET_TOKEN", json.dumps(row))
+
+    def test_missing_or_invalid_memory_is_unknown_not_zero(self):
+        for value in (None, True, -1, "SECRET_TOKEN", 1.5):
+            raw = {"outcome": "miss", "child_peak_rss_bytes": value,
+                   "tree_peak_rss_bytes": value, "tree_peak_rss_source": "SECRET_TOKEN"}
+            row = journal.summarize(json.dumps(raw), Path("/repo"))["records"][0]
+            self.assertNotIn("child_peak_rss_bytes", row)
+            self.assertNotIn("tree_peak_rss_bytes", row)
+            self.assertNotIn("tree_peak_rss_source", row)
+
+    def test_lifecycle_evidence_is_bounded_and_sanitized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            logs = cache / "v1.15.5/logs"
+            logs.mkdir(parents=True)
+            events = [
+                {"event": "spawn-attempt", "pid": 42, "ts_ms": 100,
+                 "reason": "initial-start", "client_binary_path": "SECRET_TOKEN"},
+                {"event": "wrapper-no-verdict", "pid": 43, "ts_ms": 200,
+                 "cause": "comm-error", "exit_code": 1, "endpoint": "SECRET_TOKEN"},
+                {"event": "SECRET_TOKEN", "pid": True, "reason": "SECRET_TOKEN"},
+            ]
+            (logs / "daemon-lifecycle.log").write_text(
+                '\n'.join(json.dumps(row) for row in events) + '\nnot JSON\n')
+            result = journal.lifecycle(cache)
+            self.assertEqual(result["records"][0],
+                             {"event": "spawn-attempt", "pid": 42, "ts_ms": 100,
+                              "reason": "initial-start"})
+            self.assertEqual(result["records"][1]["exit_code"], 1)
+            self.assertEqual(result["records"][2], {"event": "unclassified"})
+            self.assertEqual(result["malformed_lines"], 1)
+            self.assertEqual(result["status"], "partial")
+            self.assertNotIn("SECRET_TOKEN", json.dumps(result))
+            self.assertEqual(journal.lifecycle(cache, max_records=1)["status"], "partial")
+            self.assertEqual(journal.lifecycle(cache / "absent")["status"], "missing")
+
     def test_workflow_starts_after_restore_and_keeps_diagnostics_nonblocking(self):
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         block = workflow.split("  ubuntu-build:\n", 1)[1].split("\n  flatpak-build:", 1)[0]
