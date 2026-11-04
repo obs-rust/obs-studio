@@ -122,17 +122,60 @@ def sign(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def windows_powershell(
+    environ: dict[str, str] | None = None,
+) -> tuple[str, dict[str, str]]:
+    """Windows PowerShell 5.1 and a child environment its modules autoload in.
+
+    The workflow step shell is pwsh (PowerShell 7), which exports its own
+    PSModulePath (Documents\\PowerShell, Program Files\\PowerShell[\\7]). A
+    5.1 child inheriting it cannot autoload Microsoft.PowerShell.Security, so
+    Get-AuthenticodeSignature fails with CouldNotAutoloadMatchingModule. 5.1
+    ships with every Windows image, so it is kept (no dependency on pwsh);
+    only the PowerShell 7 module directories are dropped and the 5.1 ones
+    put first.
+    """
+
+    environ = dict(os.environ if environ is None else environ)
+    system_root = (
+        environ.get("SystemRoot") or environ.get("SYSTEMROOT") or r"C:\Windows"
+    )
+    program_files = environ.get("ProgramFiles") or r"C:\Program Files"
+    home = environ.get("USERPROFILE") or ""
+    shell_home = system_root + r"\System32\WindowsPowerShell\v1.0"
+    defaults = [
+        *([home + r"\Documents\WindowsPowerShell\Modules"] if home else []),
+        program_files + r"\WindowsPowerShell\Modules",
+        shell_home + r"\Modules",
+    ]
+    inherited = [
+        entry
+        for entry in environ.get("PSModulePath", "").split(";")
+        if entry and "\\powershell\\" not in entry.lower().replace("/", "\\") + "\\"
+    ]
+    paths: list[str] = []
+    for entry in defaults + inherited:
+        if entry.lower() not in (p.lower() for p in paths):
+            paths.append(entry)
+    environ["PSModulePath"] = ";".join(paths)
+    return shell_home + r"\powershell.exe", environ
+
+
 def signature_status(msi: Path) -> str:
     literal = str(msi).replace("'", "''")
+    shell, environ = windows_powershell()
     result = subprocess.run(
         [
-            "powershell",
+            shell,
             "-NoProfile",
+            "-NonInteractive",
             "-Command",
             "$ErrorActionPreference = 'Stop'; "
+            "Import-Module Microsoft.PowerShell.Security; "
             f"(Get-AuthenticodeSignature -LiteralPath '{literal}' -ErrorAction Stop)"
             ".Status.ToString()",
         ],
+        env=environ,
         capture_output=True,
         text=True,
         check=False,
