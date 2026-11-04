@@ -25,6 +25,10 @@
 //! their shims in [`ffi::source_audio_settings`], over
 //! `libobs/obs-source-audio-settings-seam.h`.
 //!
+//! `libobs/obs-source-audio-input-path.c.h`, the path that takes one audio packet
+//! from a source, has its shim in [`ffi::source_audio_input_path`], over
+//! `libobs/obs-source-audio-input-path-seam.h`.
+//!
 //! `libobs/obs-source-audio-output.c.h`, the path that puts one audio packet in
 //! a source's buffer, has its shims in [`ffi::source_audio_output`], over
 //! `libobs/obs-source-audio-output-seam.h`.
