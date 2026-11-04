@@ -227,8 +227,44 @@ def uninstall_entries() -> list[str]:
     return names
 
 
+def msi_log_tail(log: Path) -> None:
+    """Read a bounded tail even while Windows Installer still owns the log."""
+    print(f"--- {log} (last 80 lines) ---", flush=True)
+    try:
+        with log.open("rb") as stream:
+            bom = stream.read(2)
+            stream.seek(0, 2)
+            start = max(0, stream.tell() - 32768)
+            stream.seek(start - start % 2)
+            data = stream.read()
+        encoding = "utf-16-le" if bom == b"\xff\xfe" else "utf-8"
+        print("\n".join(data.decode(encoding, errors="replace").splitlines()[-80:]), flush=True)
+    except OSError as error:
+        print(f"MSI log unavailable: {error}", flush=True)
+
+
+def run_msi(command: list[str], log: Path) -> int:
+    print("+ " + subprocess.list2cmdline(command), flush=True)
+    try:
+        code = subprocess.run(command, check=False, timeout=300).returncode
+    except subprocess.TimeoutExpired:
+        # subprocess.run kills and reaps the direct client before raising.
+        # The service-side installer can still own its log; don't wait for it.
+        print("::error::msiexec timed out after 300 seconds", flush=True)
+        msi_log_tail(log)
+        return 124
+    if code == 0:
+        print("msiexec exit code 0: success", flush=True)
+    elif code == 3010:
+        print("msiexec exit code 3010: success; restart required (suppressed)", flush=True)
+    else:
+        print(f"::error::msiexec exit code {code}", flush=True)
+        msi_log_tail(log)
+    return 0 if code in (0, 3010) else code
+
+
 def _install(msi: Path, root: Path, logs: Path) -> int:
-    return run(
+    return run_msi(
         [
             "msiexec",
             "/i",
@@ -236,23 +272,25 @@ def _install(msi: Path, root: Path, logs: Path) -> int:
             "/qn",
             "/norestart",
             f"INSTALL_ROOT={root}",
-            "/l*v",
+            "/l*v!",
             str(logs / "install.log"),
-        ]
+        ],
+        logs / "install.log",
     )
 
 
 def _uninstall(msi: Path, logs: Path) -> int:
-    return run(
+    return run_msi(
         [
             "msiexec",
             "/x",
             str(msi),
             "/qn",
             "/norestart",
-            "/l*v",
+            "/l*v!",
             str(logs / "uninstall.log"),
-        ]
+        ],
+        logs / "uninstall.log",
     )
 
 
