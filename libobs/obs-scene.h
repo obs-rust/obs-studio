@@ -44,8 +44,8 @@ struct obs_scene_item {
 	volatile long active_refs;
 	volatile long defer_update;
 	volatile long defer_group_resize;
-	bool user_visible;
-	bool visible;
+	volatile bool user_visible;
+	volatile bool visible;
 	bool selected;
 	bool locked;
 

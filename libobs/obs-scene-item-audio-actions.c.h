@@ -36,7 +36,10 @@ void apply_scene_item_audio_actions(struct obs_scene_item *item, float *buf, uin
 	size_t deref_count;
 
 	pthread_mutex_lock(&item->actions_mutex);
-	deref_count = obs_scene_audio_actions_apply(&item->audio_actions, &item->visible, ts, sample_rate, buf);
+	/* Other threads read visible with no lock, so the core gets a copy. */
+	bool visible = os_atomic_load_bool(&item->visible);
+	deref_count = obs_scene_audio_actions_apply(&item->audio_actions, &visible, ts, sample_rate, buf);
+	os_atomic_set_bool(&item->visible, visible);
 	pthread_mutex_unlock(&item->actions_mutex);
 
 	while (deref_count--) {

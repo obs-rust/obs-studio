@@ -132,6 +132,23 @@ static inline void full_unlock(struct obs_scene *scene)
 	video_unlock(scene);
 }
 
+/* The transform fields of an item: the render path reads them under the
+ * parent's video lock, so a setter or getter on another thread takes it too.
+ * Hold it only for the fields: no signal, and no call into a plugin (#3569). */
+static inline obs_scene_t *item_fields_lock(const obs_sceneitem_t *item)
+{
+	obs_scene_t *scene = item->parent;
+	if (scene)
+		video_lock(scene);
+	return scene;
+}
+
+static inline void item_fields_unlock(obs_scene_t *scene)
+{
+	if (scene)
+		video_unlock(scene);
+}
+
 static void obs_sceneitem_remove_internal(obs_sceneitem_t *item);
 
 static void remove_all_items(struct obs_scene *scene)
@@ -588,7 +605,7 @@ static inline bool item_texture_enabled(const struct obs_scene_item *item)
  * the item is visible, and the hide transition only when it is not. */
 static inline enum obs_scene_render_child_id item_render_child(const struct obs_scene_item *item)
 {
-	const bool user_visible = item->user_visible;
+	const bool user_visible = os_atomic_load_bool(&item->user_visible);
 	const bool show_active = user_visible && scene_transition_active(item->show_transition);
 	const bool hide_active = !user_visible && scene_transition_active(item->hide_transition);
 	return obs_scene_render_child(user_visible, show_active, hide_active);
@@ -939,7 +956,7 @@ static void scene_video_render(void *data, gs_effect_t *effect)
 
 	item = scene->first_item;
 	while (item) {
-		if (item->user_visible || scene_transition_active(item->hide_transition))
+		if (os_atomic_load_bool(&item->user_visible) || scene_transition_active(item->hide_transition))
 			render_item(item);
 
 		item = item->next;
@@ -970,8 +987,8 @@ static void set_visibility(struct obs_scene_item *item, bool vis)
 	}
 
 	os_atomic_set_long(&item->active_refs, vis ? 1 : 0);
-	item->visible = vis;
-	item->user_visible = vis;
+	os_atomic_set_bool(&item->visible, vis);
+	os_atomic_set_bool(&item->user_visible, vis);
 
 	pthread_mutex_unlock(&item->actions_mutex);
 }
@@ -1170,7 +1187,7 @@ static void scene_save_item(obs_data_array_t *array, struct obs_scene_item *item
 
 	obs_data_set_string(item_data, "name", name);
 	obs_data_set_string(item_data, "source_uuid", src_uuid);
-	obs_data_set_bool(item_data, "visible", item->user_visible);
+	obs_data_set_bool(item_data, "visible", os_atomic_load_bool(&item->user_visible));
 	obs_data_set_bool(item_data, "locked", item->locked);
 	obs_data_set_double(item_data, "rot", (double)rot);
 	obs_data_set_vec2(item_data, "scale_ref", &item->scale_ref);
@@ -1343,14 +1360,14 @@ static uint32_t scene_getheight(void *data)
  * visible again and the hide transition when not visible. */
 static inline struct obs_source *audio_window_source(struct obs_scene_item *item)
 {
-	bool visible = item->visible;
+	bool visible = os_atomic_load_bool(&item->visible);
 	bool show_active = false;
 	bool hide_active = false;
 
 	if (visible)
 		show_active = scene_transition_active(item->show_transition);
 	if (!show_active) {
-		visible = item->visible;
+		visible = os_atomic_load_bool(&item->visible);
 		if (!visible)
 			hide_active = scene_transition_active(item->hide_transition);
 	}
@@ -1370,7 +1387,7 @@ static inline struct obs_source *audio_window_source(struct obs_scene_item *item
  * hide transition only when not visible. */
 static inline void audio_window_heard(const struct obs_scene_item *item, bool *visible, bool *hide_active)
 {
-	*visible = item->visible;
+	*visible = os_atomic_load_bool(&item->visible);
 	if (!*visible)
 		*hide_active = scene_transition_active(item->hide_transition);
 }
@@ -1606,7 +1623,7 @@ static inline void duplicate_item_data(struct obs_scene_item *dst, struct obs_sc
 {
 	struct obs_scene *dst_scene = dst->parent;
 
-	if (!src->user_visible)
+	if (!os_atomic_load_bool(&src->user_visible))
 		set_visibility(dst, false);
 
 	dst->selected = src->selected;
@@ -1968,7 +1985,7 @@ static bool hotkey_show_sceneitem(void *data, obs_hotkey_pair_id id, obs_hotkey_
 	UNUSED_PARAMETER(hotkey);
 
 	obs_sceneitem_t *si = sceneitem_get_ref(data);
-	if (pressed && si && !si->user_visible) {
+	if (pressed && si && !os_atomic_load_bool(&si->user_visible)) {
 		obs_sceneitem_set_visible(si, true);
 		obs_sceneitem_release(si);
 		return true;
@@ -1984,7 +2001,7 @@ static bool hotkey_hide_sceneitem(void *data, obs_hotkey_pair_id id, obs_hotkey_
 	UNUSED_PARAMETER(hotkey);
 
 	obs_sceneitem_t *si = sceneitem_get_ref(data);
-	if (pressed && si && si->user_visible) {
+	if (pressed && si && os_atomic_load_bool(&si->user_visible)) {
 		obs_sceneitem_set_visible(si, false);
 		obs_sceneitem_release(si);
 		return true;
@@ -2110,7 +2127,7 @@ static obs_sceneitem_t *obs_scene_add_internal(obs_scene_t *scene, obs_source_t 
 	item->ref = 1;
 	item->align = OBS_ALIGN_TOP | OBS_ALIGN_LEFT;
 	item->actions_mutex = mutex;
-	item->user_visible = true;
+	os_atomic_set_bool(&item->user_visible, true);
 	item->locked = false;
 	item->is_group = strcmp(source->info.id, group_info.id) == 0;
 	item->is_scene = strcmp(source->info.id, scene_info.id) == 0;
@@ -2128,10 +2145,10 @@ static obs_sceneitem_t *obs_scene_add_internal(obs_scene_t *scene, obs_source_t 
 		pos_from_absolute(&item->pos, &item->pos, item);
 
 	if (source_has_audio(source)) {
-		item->visible = false;
+		os_atomic_set_bool(&item->visible, false);
 		da_push_back(item->audio_actions, &action);
 	} else {
-		item->visible = true;
+		os_atomic_set_bool(&item->visible, true);
 	}
 
 	full_lock(scene);
@@ -2491,10 +2508,12 @@ bool obs_sceneitem_selected(const obs_sceneitem_t *item)
 void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		if (!item->absolute_coordinates)
 			pos_from_absolute(&item->pos, pos, item);
 		else
 			vec2_copy(&item->pos, pos);
+		item_fields_unlock(scene);
 
 		do_update_transform(item);
 	}
@@ -2503,7 +2522,9 @@ void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 void obs_sceneitem_set_rot(obs_sceneitem_t *item, float rot)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		item->rot = rot;
+		item_fields_unlock(scene);
 		do_update_transform(item);
 	}
 }
@@ -2511,10 +2532,12 @@ void obs_sceneitem_set_rot(obs_sceneitem_t *item, float rot)
 void obs_sceneitem_set_scale(obs_sceneitem_t *item, const struct vec2 *scale)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		if (!item->absolute_coordinates)
 			item_relative_scale(&item->scale, scale, item);
 		else
 			vec2_copy(&item->scale, scale);
+		item_fields_unlock(scene);
 
 		do_update_transform(item);
 	}
@@ -2523,7 +2546,9 @@ void obs_sceneitem_set_scale(obs_sceneitem_t *item, const struct vec2 *scale)
 void obs_sceneitem_set_alignment(obs_sceneitem_t *item, uint32_t alignment)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		item->align = alignment;
+		item_fields_unlock(scene);
 		do_update_transform(item);
 	}
 }
@@ -2674,7 +2699,9 @@ void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 void obs_sceneitem_set_bounds_type(obs_sceneitem_t *item, enum obs_bounds_type type)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		item->bounds_type = valid_bounds_type(type);
+		item_fields_unlock(scene);
 		do_update_transform(item);
 	}
 }
@@ -2682,7 +2709,9 @@ void obs_sceneitem_set_bounds_type(obs_sceneitem_t *item, enum obs_bounds_type t
 void obs_sceneitem_set_bounds_alignment(obs_sceneitem_t *item, uint32_t alignment)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		item->bounds_align = alignment;
+		item_fields_unlock(scene);
 		do_update_transform(item);
 	}
 }
@@ -2690,7 +2719,9 @@ void obs_sceneitem_set_bounds_alignment(obs_sceneitem_t *item, uint32_t alignmen
 void obs_sceneitem_set_bounds_crop(obs_sceneitem_t *item, bool crop)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		item->crop_to_bounds = crop;
+		item_fields_unlock(scene);
 		do_update_transform(item);
 	}
 }
@@ -2698,10 +2729,12 @@ void obs_sceneitem_set_bounds_crop(obs_sceneitem_t *item, bool crop)
 void obs_sceneitem_set_bounds(obs_sceneitem_t *item, const struct vec2 *bounds)
 {
 	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		if (!item->absolute_coordinates)
 			size_from_absolute(&item->bounds, bounds, item);
 		else
 			vec2_copy(&item->bounds, bounds);
+		item_fields_unlock(scene);
 
 		do_update_transform(item);
 	}
@@ -2712,15 +2745,23 @@ void obs_sceneitem_get_pos(const obs_sceneitem_t *item, struct vec2 *pos)
 	if (!item)
 		return;
 
+	obs_scene_t *scene = item_fields_lock(item);
 	if (!item->absolute_coordinates)
 		pos_to_absolute(pos, &item->pos, item);
 	else
 		vec2_copy(pos, &item->pos);
+	item_fields_unlock(scene);
 }
 
 float obs_sceneitem_get_rot(const obs_sceneitem_t *item)
 {
-	return item ? item->rot : 0.0f;
+	if (!item)
+		return 0.0f;
+
+	obs_scene_t *scene = item_fields_lock(item);
+	float value = item->rot;
+	item_fields_unlock(scene);
+	return value;
 }
 
 void obs_sceneitem_get_scale(const obs_sceneitem_t *item, struct vec2 *scale)
@@ -2728,30 +2769,56 @@ void obs_sceneitem_get_scale(const obs_sceneitem_t *item, struct vec2 *scale)
 	if (!item)
 		return;
 
+	obs_scene_t *scene = item_fields_lock(item);
 	if (!item->absolute_coordinates)
 		item_canvas_scale(scale, item);
 	else
 		vec2_copy(scale, &item->scale);
+	item_fields_unlock(scene);
 }
 
 uint32_t obs_sceneitem_get_alignment(const obs_sceneitem_t *item)
 {
-	return item ? item->align : 0;
+	if (!item)
+		return 0;
+
+	obs_scene_t *scene = item_fields_lock(item);
+	uint32_t value = item->align;
+	item_fields_unlock(scene);
+	return value;
 }
 
 enum obs_bounds_type obs_sceneitem_get_bounds_type(const obs_sceneitem_t *item)
 {
-	return item ? item->bounds_type : OBS_BOUNDS_NONE;
+	if (!item)
+		return OBS_BOUNDS_NONE;
+
+	obs_scene_t *scene = item_fields_lock(item);
+	enum obs_bounds_type value = item->bounds_type;
+	item_fields_unlock(scene);
+	return value;
 }
 
 uint32_t obs_sceneitem_get_bounds_alignment(const obs_sceneitem_t *item)
 {
-	return item ? item->bounds_align : 0;
+	if (!item)
+		return 0;
+
+	obs_scene_t *scene = item_fields_lock(item);
+	uint32_t value = item->bounds_align;
+	item_fields_unlock(scene);
+	return value;
 }
 
 bool obs_sceneitem_get_bounds_crop(const obs_sceneitem_t *item)
 {
-	return item ? item->crop_to_bounds : false;
+	if (!item)
+		return false;
+
+	obs_scene_t *scene = item_fields_lock(item);
+	bool value = item->crop_to_bounds;
+	item_fields_unlock(scene);
+	return value;
 }
 
 void obs_sceneitem_get_bounds(const obs_sceneitem_t *item, struct vec2 *bounds)
@@ -2759,10 +2826,12 @@ void obs_sceneitem_get_bounds(const obs_sceneitem_t *item, struct vec2 *bounds)
 	if (!item)
 		return;
 
+	obs_scene_t *scene = item_fields_lock(item);
 	if (!item->absolute_coordinates)
 		size_to_absolute(bounds, &item->bounds, item);
 	else
 		vec2_copy(bounds, &item->bounds);
+	item_fields_unlock(scene);
 }
 
 static inline void scene_item_get_info_internal(const obs_sceneitem_t *item, struct obs_transform_info *info)
@@ -2785,8 +2854,10 @@ static inline void scene_item_get_info_internal(const obs_sceneitem_t *item, str
 void obs_sceneitem_get_info2(const obs_sceneitem_t *item, struct obs_transform_info *info)
 {
 	if (item && info) {
+		obs_scene_t *scene = item_fields_lock(item);
 		scene_item_get_info_internal(item, info);
 		info->crop_to_bounds = item->crop_to_bounds;
+		item_fields_unlock(scene);
 	}
 }
 
@@ -2815,33 +2886,44 @@ static inline void scene_item_set_info_internal(obs_sceneitem_t *item, const str
 void obs_sceneitem_set_info2(obs_sceneitem_t *item, const struct obs_transform_info *info)
 {
 	if (item && info) {
+		obs_scene_t *scene = item_fields_lock(item);
 		scene_item_set_info_internal(item, info);
 		item->crop_to_bounds = info->crop_to_bounds;
+		item_fields_unlock(scene);
 		do_update_transform(item);
 	}
 }
 
 void obs_sceneitem_get_draw_transform(const obs_sceneitem_t *item, struct matrix4 *transform)
 {
-	if (item)
+	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		matrix4_copy(transform, &item->draw_transform);
+		item_fields_unlock(scene);
+	}
 }
 
 void obs_sceneitem_get_box_transform(const obs_sceneitem_t *item, struct matrix4 *transform)
 {
-	if (item)
+	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		matrix4_copy(transform, &item->box_transform);
+		item_fields_unlock(scene);
+	}
 }
 
 void obs_sceneitem_get_box_scale(const obs_sceneitem_t *item, struct vec2 *scale)
 {
-	if (item)
+	if (item) {
+		obs_scene_t *scene = item_fields_lock(item);
 		*scale = item->box_scale;
+		item_fields_unlock(scene);
+	}
 }
 
 bool obs_sceneitem_visible(const obs_sceneitem_t *item)
 {
-	return item ? item->user_visible : false;
+	return item ? os_atomic_load_bool(&item->user_visible) : false;
 }
 
 static bool group_item_transition(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
@@ -2864,7 +2946,7 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 	if (!item)
 		return false;
 
-	if (item->user_visible == visible)
+	if (os_atomic_load_bool(&item->user_visible) == visible)
 		return false;
 
 	if (!item->parent)
@@ -2874,7 +2956,7 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 	if (obs_sceneitem_is_group(item))
 		obs_sceneitem_group_enum_items(item, group_item_transition, &visible);
 
-	item->user_visible = visible;
+	os_atomic_set_bool(&item->user_visible, visible);
 
 	if (visible) {
 		if (os_atomic_inc_long(&item->active_refs) == 1) {
@@ -3012,15 +3094,21 @@ void obs_sceneitem_set_crop(obs_sceneitem_t *item, const struct obs_sceneitem_cr
 		return;
 	if (!obs_ptr_valid(crop, "obs_sceneitem_set_crop"))
 		return;
-	if (crop_equal(crop, &item->crop))
+
+	/* Clamp first: the render path must not see a value that is not clamped. */
+	struct obs_sceneitem_crop clamped = *crop;
+	clamped.left = obs_scene_clamp_crop(clamped.left);
+	clamped.right = obs_scene_clamp_crop(clamped.right);
+	clamped.top = obs_scene_clamp_crop(clamped.top);
+	clamped.bottom = obs_scene_clamp_crop(clamped.bottom);
+
+	obs_scene_t *scene = item_fields_lock(item);
+	if (crop_equal(crop, &item->crop)) {
+		item_fields_unlock(scene);
 		return;
-
-	memcpy(&item->crop, crop, sizeof(*crop));
-
-	item->crop.left = obs_scene_clamp_crop(item->crop.left);
-	item->crop.right = obs_scene_clamp_crop(item->crop.right);
-	item->crop.top = obs_scene_clamp_crop(item->crop.top);
-	item->crop.bottom = obs_scene_clamp_crop(item->crop.bottom);
+	}
+	item->crop = clamped;
+	item_fields_unlock(scene);
 
 	os_atomic_set_bool(&item->update_transform, true);
 }
@@ -3032,7 +3120,9 @@ void obs_sceneitem_get_crop(const obs_sceneitem_t *item, struct obs_sceneitem_cr
 	if (!obs_ptr_valid(crop, "obs_sceneitem_get_crop"))
 		return;
 
+	obs_scene_t *scene = item_fields_lock(item);
 	memcpy(crop, &item->crop, sizeof(*crop));
+	item_fields_unlock(scene);
 }
 
 void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type filter)
