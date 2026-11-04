@@ -46,6 +46,24 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
+    def test_core_batch_cannot_pass_with_native_tier2_skipped(self):
+        from ci_scope import scope
+
+        core = scope(["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"], event="merge_group").core
+        names = ["Build 🧱 / Rust Tier 2 (windows-2025-vs2026)", "Build 🧱 / Rust Tier 2 (macos-26)"]
+        for conclusion in ("skipped", "failure", "cancelled", None):
+            with self.subTest(conclusion=conclusion):
+                self.assertEqual(blocking([job(n, conclusion) for n in names], require_native=core), names)
+        self.assertEqual(blocking([], require_native=core), names)
+        self.assertEqual(blocking([job(n, "success") for n in names], require_native=core), [])
+        self.assertEqual(blocking([job(n, "skipped") for n in names]), [])
+
+    def test_gate_receives_core_scope_from_reusable_workflow(self):
+        build = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        self.assertIn("value: ${{ jobs.check-event.outputs.core }}", build)
+        gate = PULL.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:", 1)[0]
+        self.assertIn("CORE_SCOPE: ${{ needs.build-project.outputs.core }}", gate)
+
     def test_historical_cancelled_macos_jobs_block(self):
         self.assertEqual(blocking(RUN_39677084695), [
             "Build 🧱 / Rust Tests 🦀 (macos-26)",
