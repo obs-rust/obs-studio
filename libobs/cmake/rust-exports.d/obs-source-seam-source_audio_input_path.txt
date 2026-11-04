@@ -1,0 +1,3 @@
+# obs-source-audio-input-path.c (obs-source-seam): obs_source_output_audio() of
+# obs.h (EXPORT), called by audio sources in plugins.
+obs_source_output_audio

@@ -15,10 +15,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-audio-input-path.pch.h"
 
 /* The audio input path of a source: moved out of obs-source.c as it is (#3632).
- * filter_async_audio() stays in obs-source.c. */
+ * filter_async_audio() stays in obs-source.c.
+ * Hybrid libobs has it in Rust (obs_source::audio_input_path, shim in
+ * obs-source-seam). This file stays for the C reference and the oracle. */
 
 /* The audio input steps are obs-source-audio-input.c's: they get the
  * fields they read, and the stores happen here, in their order. */
