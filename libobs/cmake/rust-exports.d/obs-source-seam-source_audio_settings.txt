@@ -1,0 +1,14 @@
+# obs-source-audio-settings.c (obs-source-seam): the source audio settings of
+# obs.h (EXPORT), called by the frontend, plugins and scripts.
+obs_source_get_balance_value
+obs_source_get_monitoring_enabled
+obs_source_get_monitoring_type
+obs_source_get_sync_offset
+obs_source_get_volume
+obs_source_muted
+obs_source_set_balance_value
+obs_source_set_monitoring_enabled
+obs_source_set_monitoring_type
+obs_source_set_muted
+obs_source_set_sync_offset
+obs_source_set_volume

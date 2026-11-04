@@ -21,6 +21,10 @@
 //! libobs source calls (`obs_source_get_ref()`, `obs_source_release()`, the
 //! active-child add and remove, `obs_source_get_name()` and `blog()`).
 //!
+//! `libobs/obs-source-audio-settings.c.h`, the source audio settings, have
+//! their shims in [`ffi::source_audio_settings`], over
+//! `libobs/obs-source-audio-settings-seam.h`.
+//!
 //! These shims live apart from `obs-source` because they reference symbols
 //! only libobs has. The `*_steps_rust` C tests link libobs and the Rust
 //! staticlib alone and pull in the `obs-source` objects they test; a shim

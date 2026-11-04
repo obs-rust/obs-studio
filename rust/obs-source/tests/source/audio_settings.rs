@@ -512,9 +512,7 @@ fn type_monitor_only_mutes_first_and_marks_it() {
     let s = Fake::default();
     take_static_log();
     set_monitoring_type(Some(&s), TYPE_MONITOR_ONLY);
-    assert!(
-        take_static_log().contains(&format!("warn {}", SET_TYPE_DEPRECATED.to_str().unwrap()))
-    );
+    assert!(take_static_log().contains(&format!("warn {}", SET_TYPE_DEPRECATED.to_str().unwrap())));
     let log = s.take_log();
     let mute = log.iter().position(|e| e == "user_muted true").unwrap();
     let on = log

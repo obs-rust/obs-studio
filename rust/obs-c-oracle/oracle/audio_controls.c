@@ -90,24 +90,6 @@ signal_handler_t *obs_source_get_signal_handler(const obs_source_t *source)
 	return NULL;
 }
 
-float obs_source_get_volume(const obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
-	return 0.0f;
-}
-
-void obs_source_set_volume(obs_source_t *source, float volume)
-{
-	UNUSED_PARAMETER(source);
-	UNUSED_PARAMETER(volume);
-}
-
-bool obs_source_muted(const obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
-	return false;
-}
-
 enum speaker_layout obs_source_get_speaker_layout(obs_source_t *source)
 {
 	UNUSED_PARAMETER(source);
