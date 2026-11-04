@@ -659,7 +659,7 @@ jobs:
           uv run --no-project ci/windows_msi.py roundtrip --msi $Msi --log-dir msi-logs @SignatureArgs
           if ( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: failure()
+        if: always()
         with:
           name: msi-logs-${{ matrix.target }}
           path: msi-logs/
