@@ -31,20 +31,25 @@
 //! The `DEBUG_AUDIO` log line of `source_output_audio_place()` is compiled out
 //! on every C build and is not here.
 
-#![allow(clippy::todo, unused_variables)]
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
     clippy::as_conversions,
+    clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
     clippy::unimplemented,
     clippy::unreachable,
-    clippy::unwrap_used
+    clippy::todo
 )]
+
+use crate::audio_place;
+use crate::audio_timing::{self, Action, PreLockInput, UnderLockInput};
 
 /// `MAX_AUDIO_CHANNELS`: the buffers [`reset_audio_data`] empties.
 pub const MAX_CHANNELS: usize = 8;
+
+const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 /// One packet, as `struct audio_data` holds it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -150,26 +155,187 @@ pub trait Source {
 /// product fits.
 #[must_use]
 pub fn duration(sample_rate: u32, frames: u32) -> u64 {
-    todo!()
+    u64::from(frames)
+        .wrapping_mul(NSEC_PER_SEC)
+        .checked_div(u64::from(sample_rate))
+        .unwrap_or(0)
 }
 
 /// `reset_audio_timing()`. The caller holds `audio_buf_mutex`.
 pub fn reset_audio_timing<S: Source>(source: &S, timestamp: u64, os_time: u64) {
-    todo!()
+    source.set_timing_set(true);
+    source.set_timing_adjust(os_time.wrapping_sub(timestamp));
 }
 
 /// `reset_audio_data()`. The caller holds `audio_buf_mutex`.
 pub fn reset_audio_data<S: Source>(source: &S, os_time: u64) {
-    todo!()
+    for channel in 0..MAX_CHANNELS {
+        if source.buf_size(channel) != 0 {
+            source.pop_front(channel, source.buf_size(channel));
+        }
+    }
+    source.clear_last_buf_size();
+    source.set_audio_ts(os_time);
+    source.set_next_audio_sys_ts_min(os_time);
 }
 
 /// `reset_audio_data_at_sys_time()`: empties the buffer for packets that
 /// continue at system time `os_time`. The caller holds `audio_buf_mutex`.
 pub fn reset_audio_data_at_sys_time<S: Source>(source: &S, os_time: u64) {
-    todo!()
+    reset_audio_data(source, os_time);
+    source.set_audio_ts(audio_timing::buffer_start(
+        os_time,
+        source.sync_offset(),
+        source.resample_offset(),
+    ));
+}
+
+fn handle_ts_jump<S: Source>(source: &S, expected: u64, timestamp: u64, diff: u64, os_time: u64) {
+    source.log_ts_jump(diff, expected, timestamp);
+
+    source.lock_audio_buf();
+    reset_audio_timing(source, timestamp, os_time);
+    reset_audio_data_at_sys_time(source, os_time);
+    source.unlock_audio_buf();
+}
+
+/// `source_output_audio_place()`. `timestamp` is the system time of the packet.
+fn place<S: Source>(source: &S, data: S::Data, frames: u32, timestamp: u64) {
+    let channels = source.channels();
+    let size = audio_place::size(frames);
+
+    if !audio_place::started(source.audio_ts()) || audio_place::older(timestamp, source.audio_ts())
+    {
+        reset_audio_data(source, timestamp);
+    }
+
+    let audio_ts = source.audio_ts();
+    let placement = audio_place::offset(timestamp, audio_ts, source.sample_rate());
+
+    // do not allow the circular buffers to become too big
+    if !audio_place::fits(placement, size) {
+        return;
+    }
+
+    for channel in 0..channels {
+        source.place(channel, placement, data, size);
+        source.pop_back(
+            channel,
+            audio_place::pop_back(source.buf_size(channel), placement, size),
+        );
+    }
+
+    source.clear_last_buf_size();
+}
+
+/// `source_output_audio_push_back()`.
+fn push_back<S: Source>(source: &S, data: S::Data, frames: u32) {
+    let channels = source.channels();
+    let size = audio_place::size(frames);
+
+    // do not allow the circular buffers to become too big
+    if !audio_place::fits(source.buf_size(0), size) {
+        return;
+    }
+
+    for channel in 0..channels {
+        source.push_back(channel, data, size);
+    }
+
+    // reset audio input buffer size to ensure that audio doesn't get
+    // perpetually cut
+    source.clear_last_buf_size();
 }
 
 /// `source_output_audio_data()`. The caller holds `audio_mutex`.
 pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
-    todo!()
+    let sample_rate = source.sample_rate();
+    let os_time = source.now();
+
+    source.lock_audio_buf();
+
+    let pre = audio_timing::pre_lock(PreLockInput {
+        timestamp: packet.timestamp,
+        os_time,
+        duration: duration(sample_rate, packet.frames),
+        next_audio_ts_min: source.next_audio_ts_min(),
+        timing_set: source.timing_set(),
+        async_unbuffered: source.async_unbuffered(),
+        async_decoupled: source.async_decoupled(),
+    });
+
+    if pre.direct {
+        source.set_timing_adjust(0);
+        source.set_timing_set(true);
+    }
+
+    if pre.action == Action::Reset {
+        source.set_timing_set(true);
+        source.set_timing_adjust(pre.timing_adjust);
+    } else if pre.action == Action::Smooth && pre.reanchor {
+        source.set_timing_adjust(pre.timing_adjust);
+    }
+
+    source.unlock_audio_buf();
+
+    match pre.action {
+        Action::Keep | Action::Reset | Action::Smooth => {}
+        Action::Jump => handle_ts_jump(
+            source,
+            source.next_audio_ts_min(),
+            packet.timestamp,
+            pre.diff,
+            os_time,
+        ),
+        Action::Exceeded => {
+            source.log_ts_exceeded(pre.diff, source.next_audio_ts_min(), packet.timestamp);
+        }
+    }
+
+    // Feed the error to the resampler so that the samples keep pace with the
+    // timestamps instead of drifting until the threshold above is exceeded.
+    // After a resync the error is unknown, so hold.
+    if source.compensating() {
+        source.set_compensation_error(pre.drift_error);
+    }
+
+    source.set_next_audio_ts_min(pre.next_audio_ts_min);
+
+    source.lock_audio_buf();
+
+    let packet_timing_adjust = source.timing_adjust();
+
+    let under = audio_timing::under_lock(UnderLockInput {
+        timestamp: pre.timestamp,
+        packet_timing_adjust,
+        data_timestamp: packet.timestamp,
+        os_time,
+        next_audio_ts_min: source.next_audio_ts_min(),
+        resample_offset: source.resample_offset(),
+        sync_offset: source.sync_offset(),
+        timing_adjust: source.timing_adjust(),
+        next_audio_sys_ts_min: source.next_audio_sys_ts_min(),
+        last_sync_offset: source.last_sync_offset(),
+        continuous: pre.continuous,
+    });
+
+    if under.reset_timing {
+        source.set_timing_set(true);
+        source.set_timing_adjust(under.timing_adjust);
+    }
+    source.set_next_audio_sys_ts_min(under.next_audio_sys_ts_min);
+    source.set_last_sync_offset(under.last_sync_offset);
+
+    if audio_place::outputs(source.monitoring_type()) {
+        if under.push_back && audio_place::started(source.audio_ts()) {
+            push_back(source, packet.data, packet.frames);
+        } else {
+            place(source, packet.data, packet.frames, under.timestamp);
+        }
+    }
+
+    source.unlock_audio_buf();
+
+    let muted = source.muted(os_time);
+    source.signal_audio_data(packet.data, muted);
 }
