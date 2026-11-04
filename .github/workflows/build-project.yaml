@@ -3194,7 +3194,15 @@ jobs:
           ) >> $env:GITHUB_ENV
           & (Join-Path $CcacheHome 'ccache.exe') --zero-stats
 
-      # cmocka took 37 s to build from source through vcpkg every run.
+      # cmocka took 37 s to build from source through vcpkg every run. vcpkg
+      # reuses a package only for the same compiler, so the key names the runner
+      # image: an entry from an older image is never an exact hit (#3614).
+      - name: Read Runner Image 🏷️
+        id: runner-image
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"version=$env:ImageVersion" >> $env:GITHUB_OUTPUT'
+
       - name: Cache vcpkg Binaries 🗄️
         id: cmocka-cache
         if: runner.os == 'Windows'
@@ -3202,8 +3210,8 @@ jobs:
         with:
           mode: restore
           path: ${{ github.workspace }}/.vcpkg-bin
-          key: vcpkg-bin-cmocka-x64-windows-v1-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-          restore-keys: vcpkg-bin-cmocka-x64-windows-v1
+          key: vcpkg-bin-cmocka-x64-windows-v2-${{ steps.runner-image.outputs.version }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          restore-keys: vcpkg-bin-cmocka-x64-windows-v2-${{ steps.runner-image.outputs.version }}-
 
       - name: Validate Tier 2 on Windows (libobs C vs with Rust) 🪟
         if: runner.os == 'Windows'
@@ -3232,7 +3240,7 @@ jobs:
         with:
           mode: save
           path: ${{ github.workspace }}/.vcpkg-bin
-          key: vcpkg-bin-cmocka-x64-windows-v1-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          key: vcpkg-bin-cmocka-x64-windows-v2-${{ steps.runner-image.outputs.version }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
   # Manual candidate only. Existing application jobs keep read-only tokens.
   # Use the job GITHUB_TOKEN: its release/tag writes do not recursively trigger

@@ -245,6 +245,18 @@ class CacheWriterPolicyTest(unittest.TestCase):
         ]
         self.assertEqual(stale, [], "delete the CACHE-001 block for a converted path")
 
+    def test_vcpkg_cache_key_names_the_runner_image(self):
+        # vcpkg reuses a package only for the same compiler, and a key without
+        # the image keeps an entry vcpkg can no longer use: the exact hit also
+        # skips the save, so cmocka is rebuilt on every run (#3614).
+        workflow = (WORKFLOWS / "build-project.yaml").read_text()
+        job = workflow.split("\n  rust-tier2-windows:\n", 1)[1]
+        job = job[:re.search(r"(?m)^  [\w-]+:$", job).start()]
+        keys = re.findall(r"(?m)^\s+(?:key|restore-keys): (vcpkg-bin-cmocka-.*)$", job)
+        self.assertEqual(len(keys), 3, keys)
+        for key in keys:
+            self.assertIn("-${{ steps.runner-image.outputs.version }}-", key)
+
     def test_split_dependency_and_timestamp_caches_preserve_keys_and_paths(self):
         cases = [(WORKFLOWS / "build-project.yaml", key)
                  for key in ("libs-qt-", "libs-ffmpeg-", "vcpkg-bin-cmocka-")]
