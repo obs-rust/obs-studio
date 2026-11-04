@@ -1,8 +1,8 @@
 ---
 type: concept
 title: A PipeWire loop stopped right after its start can hang
-description: "pw_thread_loop_stop() can wait forever when the loop thread has not entered the loop yet (PipeWire 1.6.2). Wait for thread-loop.start-signal first; a blocking pw_loop_invoke does not help."
-sources: ["#3577", "#2431"]
+description: "pw_thread_loop_stop() can wait forever when the loop thread has not entered the loop yet (PipeWire 1.6.2). Wait for an event source's callback first (thread-loop.start-signal is ignored before PipeWire 0.3.77); a blocking pw_loop_invoke does not help."
+sources: ["#3577", "#3596", "#2431"]
 status: active
 stale_after: "a PipeWire release that fixes loop_queue_invoke's check of impl->thread"
 ---
@@ -37,22 +37,45 @@ that goes away when you attach to it can be this one.
 
 ## What to do instead
 
-Create the loop with `thread-loop.start-signal`, and wait for the signal, which
-the loop thread sends after it has entered the loop:
+Wait until the loop thread runs a callback of yours from inside the loop. Add an
+event source before the start, signal it after, and wait under the lock for the
+callback, which only runs on the loop thread once it has entered the loop:
 
 ```c
-struct pw_properties *props = pw_properties_new("thread-loop.start-signal", "true", NULL);
-struct pw_thread_loop *loop = pw_thread_loop_new("name", &props->dict);
-pw_properties_free(props);
+struct entered {
+	struct pw_thread_loop *thread_loop;
+	bool entered;
+};
 
-pw_thread_loop_lock(loop);
-pw_thread_loop_start(loop);
-pw_thread_loop_wait(loop);
-pw_thread_loop_unlock(loop);
+static void on_entered(void *data, uint64_t count)
+{
+	struct entered *e = data;
+
+	e->entered = true; /* loop thread, loop lock held */
+	pw_thread_loop_signal(e->thread_loop, false);
+}
+
+struct entered e = {.thread_loop = thread_loop};
+struct pw_loop *loop = pw_thread_loop_get_loop(thread_loop);
+struct spa_source *event = pw_loop_add_event(loop, on_entered, &e);
+
+pw_thread_loop_lock(thread_loop);
+pw_thread_loop_start(thread_loop);
+pw_loop_signal_event(loop, event);
+while (!e.entered)
+	pw_thread_loop_wait(thread_loop);
+pw_loop_destroy_source(loop, event);
+pw_thread_loop_unlock(thread_loop);
 ```
 
-Take the lock before the start, or the signal can come before the wait. The wait
-does not return on a PipeWire version that does not have this option.
+Take the lock before the start, or the signal can come before the wait. The
+loop thread sets `impl->thread` before it dispatches the event, and the lock it
+hands back orders that before a later `pw_thread_loop_stop()`.
+
+`thread-loop.start-signal` (the loop thread signals once it has entered) does
+the same, but only from PipeWire 0.3.77: older versions ignore the property, so
+an unconditional wait for it never returns (#3596; Debian 12 ships 0.3.65).
+Use it only where the build already requires 0.3.77.
 
 These do not help:
 
