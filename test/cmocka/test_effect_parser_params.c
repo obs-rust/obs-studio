@@ -12,10 +12,12 @@
 
 /*
  * Characterization of the effect parser's parameter value assignments
- * (#3610): ep_parse() on an effect's text, then the params it kept, written
- * out one line each, and compared whole:
+ * (#3610), its annotations and its parameter declaration (#3611): ep_parse()
+ * on an effect's text, then the params it kept, written out one line each,
+ * and compared whole:
  *
  *   param [const] [uniform] [property] <type> <name> [[<count>]] [= {<bytes>}]
+ *         [< <annotation>; ... >]
  *   func <return type> <name>
  *   error <row>:<column> <level> <text>
  *   leaked <allocations>
@@ -24,7 +26,8 @@
  * array_count when it is not 0, and every byte of default_val in hex when it
  * has any (an int or a float is its 4 bytes, little-endian: 1.0f is
  * 00 00 80 3f; a string or a texture path is its bytes and the terminating
- * zero). Then the functions (where the parser went on after a param), every
+ * zero). Each annotation is written the same way, from its type, in the
+ * order the parser pushed it. Then the functions (where the parser went on after a param), every
  * error in the order it was added (level 1 is a warning), and the
  * allocations still held after ep_free(). They pin the current C behaviour;
  * cases marked "characterized, not endorsed" are odd but real.
@@ -385,6 +388,152 @@ static void eof(void **state)
 
 /* ------------------------------------------------------------------------ */
 
+static const struct param_case annotation_cases[] = {
+	{"uniform float f<string name = \"x\"; float v = 1.0;> = 2.0;",
+	 "param uniform float f = {00 00 00 40} < string name = {78 00}; float v = {00 00 80 3f}; >\n" GUARD
+	 "leaked 0\n"},
+	{"uniform float4 c<int a = 1; bool b = false; float2 p = {1, 2};>;",
+	 "param uniform float4 c < int a = {01 00 00 00}; bool b = {00 00 00 00}; float2 p = {00 00 80 3f 00 00 00 40}; >\n" GUARD
+	 "leaked 0\n"},
+	{"uniform float f< >;", "param uniform float f\n" GUARD "leaked 0\n"},
+	{"uniform float f<>;", "param uniform float f\n" GUARD "leaked 0\n"},
+	{"uniform float f<;; float v;>;", "param uniform float f < float v; >\n" GUARD "leaked 0\n"},
+	{"uniform float f<int a = 1; int a = 2;>;",
+	 "param uniform float f < int a = {01 00 00 00}; int a = {02 00 00 00}; >\n" GUARD "leaked 0\n"},
+	{"uniform float f[2]<int a = 1;> = 1.0;",
+	 "param uniform float f [2] = {00 00 80 3f} < int a = {01 00 00 00}; >\n" GUARD "leaked 0\n"},
+	{"uniform texture2d image<string name = \"Image\";> = \"a.png\";",
+	 "param uniform texture2d image = {61 2e 70 6e 67 00} < string name = {49 6d 61 67 65 00}; >\n" GUARD
+	 "leaked 0\n"},
+	/* An entry with no name is dropped, and the list goes on. */
+	{"uniform float f<string = \"x\";>; uniform float g;",
+	 "param uniform float f\n"
+	 "param uniform float g\n" GUARD "error 2:24 0 Expected 'variable name'\n"
+	 "leaked 0\n"},
+	{"uniform float f<string>; uniform float g;",
+	 "param uniform float f\n"
+	 "param uniform float g\n" GUARD "error 2:23 0 Expected 'variable name'\n"
+	 "error 2:23 0 Syntax error\n"
+	 "leaked 0\n"},
+	/* A ':' mapping ends the list where it is, so the '>' check fails
+	 * and the param is dropped; the parser goes on from the ':', inside the
+	 * list (characterized, not endorsed). */
+	{"uniform float f<string name : POS;>; uniform float g;",
+	 "param uniform float g\n" GUARD "error 2:29 0 Expected '= or ;'\n"
+	 "error 2:29 0 Syntax error\n"
+	 "error 2:29 0 Expected '>'\n"
+	 "error 2:29 0 Expected 'type'\n"
+	 "error 2:35 0 Expected 'type'\n"
+	 "leaked 0\n"},
+	/* An entry that ends at '>' is dropped with a syntax error, and the
+	 * list ends there. */
+	{"uniform float f<string name>; uniform float g;",
+	 "param uniform float f\n"
+	 "param uniform float g\n" GUARD "error 2:28 0 Expected '= or ;'\n"
+	 "error 2:28 0 Syntax error\n"
+	 "leaked 0\n"},
+	/* A failed value is reported once by the value parser and again by the
+	 * entry, then the list ends at the ';' it skipped to, which is not '>':
+	 * the param is dropped (characterized, not endorsed). */
+	{"uniform float f<float v = x;>; uniform float g;",
+	 "param uniform float g\n" GUARD "error 2:27 0 Expected 'numeric value'\n"
+	 "error 2:28 0 Expected 'assignment value'\n"
+	 "error 2:28 0 Syntax error\n"
+	 "error 2:28 0 Expected '>'\n"
+	 "error 2:29 0 Expected 'type'\n"
+	 "leaked 0\n"},
+	/* No ';' after an entry's value drops it with no error, and the skip
+	 * to the next ';' takes the next entry too (characterized, not
+	 * endorsed). */
+	{"uniform float f<float v = 1.0 int w = 2;>; uniform float g;", "param uniform float f\n"
+									"param uniform float g\n" GUARD "leaked 0\n"},
+	{"uniform float f<float v 1.0; int w = 2;>; uniform float g;",
+	 "param uniform float f < int w = {02 00 00 00}; >\n"
+	 "param uniform float g\n" GUARD "leaked 0\n"},
+	{"uniform float f<1 v; int w = 2;>; uniform float g;",
+	 "param uniform float f < int w = {02 00 00 00}; >\n"
+	 "param uniform float g\n" GUARD "error 2:17 0 Expected 'type name'\n"
+	 "leaked 0\n"},
+	{"uniform float f<float 1; int w = 2;>; uniform float g;",
+	 "param uniform float f < int w = {02 00 00 00}; >\n"
+	 "param uniform float g\n" GUARD "error 2:23 0 Expected 'variable name'\n"
+	 "leaked 0\n"},
+	/* An annotation has no annotations: the skip stops at the inner ';',
+	 * the inner '>' ends the list, and the outer list's last entry is read
+	 * as a param of its own (characterized, not endorsed). */
+	{"uniform float f<float v<int a = 1;>; int w = 2;>; uniform float g;",
+	 "param uniform float f\n"
+	 "param int w = {02 00 00 00}\n"
+	 "param uniform float g\n" GUARD "error 2:48 0 Expected 'type'\n"
+	 "leaked 0\n"},
+	/* An invalid type is reported at the '=', with no skip, so every error
+	 * lands there and the parser goes on from it (characterized, not
+	 * endorsed). */
+	{"uniform float f<foo v = 1; int w = 2;>; uniform float g;",
+	 "param int w = {02 00 00 00}\n"
+	 "param uniform float g\n" GUARD "error 2:23 0 Invalid type 'foo' used for assignment\n"
+	 "error 2:23 0 Expected 'assignment value'\n"
+	 "error 2:23 0 Syntax error\n"
+	 "error 2:23 0 Expected '>'\n"
+	 "error 2:23 0 Expected 'type'\n"
+	 "error 2:38 0 Expected 'type'\n"
+	 "leaked 0\n"},
+	/* No ';' after the list drops the param with no error. */
+	{"uniform float f<int w = 2;> uniform float g;", "param uniform float g\n" GUARD "leaked 0\n"},
+	/* Annotations come before the value: after it, they are the token
+	 * where the ';' should be. */
+	{"uniform float f = 1.0<int a = 1;>; uniform float g;",
+	 "param uniform float g\n" GUARD "error 2:22 0 Expected 'type'\n"
+	 "error 2:33 0 Expected 'type'\n"
+	 "leaked 0\n"},
+	{"uniform float f<int a = 1;><int b = 2;>; uniform float g;",
+	 "param uniform float g\n" GUARD "error 2:28 0 Expected 'type'\n"
+	 "error 2:39 0 Expected 'type'\n"
+	 "leaked 0\n"},
+};
+
+static void annotations(void **state)
+{
+	(void)state;
+	CHECK_CASES(annotation_cases);
+}
+
+static const struct param_case annotation_eof_cases[] = {
+	{"uniform float f<", GUARD "error 2:17 0 Unexpected EOF\n"
+				   "leaked 0\n"},
+	{"uniform float f<float", GUARD "error 2:22 0 Unexpected EOF\n"
+					"leaked 0\n"},
+	{"uniform float f<float v", GUARD "error 2:24 0 Unexpected EOF\n"
+					  "leaked 0\n"},
+	/* End of text in an entry's value is reported four times
+	 * (characterized, not endorsed). */
+	{"uniform float f<float v =", GUARD "error 2:26 0 Unexpected EOF\n"
+					    "error 2:26 0 Expected 'assignment value'\n"
+					    "error 2:26 0 Syntax error\n"
+					    "error 2:26 0 Expected '>'\n"
+					    "leaked 0\n"},
+	{"uniform float f<float v = 1.0", GUARD "error 2:30 0 Unexpected EOF\n"
+						"error 2:30 0 Expected 'assignment value'\n"
+						"error 2:30 0 Syntax error\n"
+						"error 2:30 0 Expected '>'\n"
+						"leaked 0\n"},
+	{"uniform float f<float v = 1.0;", GUARD "error 2:31 0 Unexpected EOF\n"
+						 "leaked 0\n"},
+	{"uniform float f<float v = 1.0;>", GUARD "error 2:32 0 Unexpected EOF\n"
+						  "leaked 0\n"},
+	{"uniform float f<float v x", GUARD "error 2:26 0 Unexpected EOF\n"
+					    "error 2:26 0 Expected '; or >'\n"
+					    "leaked 0\n"},
+};
+
+static void annotation_eof(void **state)
+{
+	(void)state;
+	CHECK_CASES(annotation_eof_cases);
+}
+
+/* ------------------------------------------------------------------------ */
+
 static const struct param_case mixed_cases[] = {
 	{"uniform float4x4 ViewProj;\n"
 	 "uniform texture2d image;\n"
@@ -407,8 +556,9 @@ static void mixed(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(scalars), cmocka_unit_test(vectors), cmocka_unit_test(arrays),
-		cmocka_unit_test(eof),     cmocka_unit_test(mixed),
+		cmocka_unit_test(scalars), cmocka_unit_test(vectors),     cmocka_unit_test(arrays),
+		cmocka_unit_test(eof),     cmocka_unit_test(annotations), cmocka_unit_test(annotation_eof),
+		cmocka_unit_test(mixed),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
