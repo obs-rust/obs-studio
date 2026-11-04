@@ -1,6 +1,8 @@
-//! Safe core of `libobs/graphics/effect-parser-blocks.c.h` and
-//! `libobs/graphics/effect-parser-passes.c.h`: the effect parser's struct
-//! and sampler-state blocks, and its passes and techniques.
+//! Safe core of `libobs/graphics/effect-parser-blocks.c.h`,
+//! `libobs/graphics/effect-parser-passes.c.h` and
+//! `libobs/graphics/effect-parser-params.c.h`: the effect parser's struct
+//! and sampler-state blocks, its passes and techniques, and its parameter
+//! declarations.
 //!
 //! - [`parse_struct`] (`ep_parse_struct`, with `ep_parse_struct_var`):
 //!   `struct name { type name [: MAPPING]; ... };`;
@@ -11,7 +13,13 @@
 //!   [`parse_pass_command`] and `ep_parse_pass_command_call`): `technique
 //!   name { pass [name] { vertex_shader = <call>; pixel_shader = <call>; }
 //!   ... }`, with `vertex_program` and `pixel_program` for the commands and
-//!   an optional `compile` before a call, skipped with a warning.
+//!   an optional `compile` before a call, skipped with a warning;
+//! - [`parse_param_array`] (`ep_parse_param_array`): `[count]`, and
+//!   [`parse_param_assign`] (`ep_parse_param_assign`, with
+//!   [`parse_param_assignment_val`] and its value parsers): `= value`, by
+//!   the parser `obs_effect_param_route()` picks for the type (a texture
+//!   path or a string, an `int`, a `float`, a `bool`, or the `{ ... }` and
+//!   `type( ... )` forms of the vector and matrix types).
 //!
 //! `ep_parse()` calls each on the keyword token that starts it, and goes on
 //! from the token where it stopped. Both walk the parser's tokens in place
@@ -48,15 +56,34 @@
 //! appended after the first one's end token; a pass's name is any token;
 //! end of text after a command's name is reported twice.
 //!
+//! A parameter is a [`Param`], `struct ep_param` as the C fills it, with
+//! its default value as bytes: a string's and its NUL, or each `int` and
+//! `float` in the order the C pushes them. Beyond [`Tokens`], the value
+//! parsers read through [`ParamTokens`] what the C reads: the number
+//! token's text as the C string `strtol` and `os_strtod` read, running on
+//! past the token; libobs's `os_strtod`; `cf_literal_to_str` of the token.
+//! The type decisions and the `int` and count reads are
+//! [`crate::effect_param_types`]'s rules, the `float` read
+//! [`crate::shader_param_values`]'s, each called where the C calls it.
+//! Characterized, not endorsed, and kept (`test_effect_parser_params`): an
+//! `int` reads the leading digits of a number token; the `-` is stepped over
+//! with `cf_next_token`, so `- 1` reads as `-1` and the end of the text after
+//! it adds no error; a `bool` other than `true` or `false` and a type with
+//! no value parser do not skip to the `;`; a vector or matrix with a bad row
+//! or column digit adds its error and reads as many values as the digits
+//! say; a count that is not a number token fails with no error.
+//!
 //! No intentional differences. The C freed a dropped item's state name and
 //! value on every path already (#3550), and a dropped technique's name
 //! (#3598), each fixed in the C before its port.
 
+use crate::effect_param_types::{self, Route};
+use crate::shader_param_values;
 pub use crate::shader_parser::{BlockError, Sampler, SamplerText, Struct, StructVar, Tokens};
 use crate::shader_parser::{
-    PARSE_CONTINUE, PARSE_EOF, PARSE_SUCCESS, PARSE_UNEXPECTED_CONTINUE, first_byte, go_to_token,
-    go_to_valid_token, next_name, next_token, next_token_should_be, next_valid_token,
-    peek_valid_token_is, token_is,
+    CFTOKEN_NUM, CFTOKEN_STRING, PARSE_CONTINUE, PARSE_EOF, PARSE_SUCCESS,
+    PARSE_UNEXPECTED_CONTINUE, first_byte, go_to_token, go_to_valid_token, next_name, next_token,
+    next_token_should_be, next_valid_token, peek_valid_token_is, token_is, token_is_type,
 };
 
 /// `ep_parse_struct`, from the `struct` token: the struct `ep_parse()`
@@ -399,20 +426,197 @@ impl Param {
 /// `ep_parse_param_array`, from the `[` token: `[count]` into
 /// `param.array_count`, then past the `]`. `false` where the parameter is
 /// dropped.
-pub fn parse_param_array(_t: &mut impl ParamTokens, _param: &mut Param) -> bool {
-    todo!()
+pub fn parse_param_array(t: &mut impl ParamTokens, param: &mut Param) -> bool {
+    if !next_valid_token(t) {
+        return false;
+    }
+
+    if t.kind() != CFTOKEN_NUM {
+        return false;
+    }
+    let len = t.text().len();
+    let Some(count) = effect_param_types::array_count_by(|i| t.c_str_byte(i), len) else {
+        return false;
+    };
+    param.array_count = count;
+
+    if next_token_should_be(t, c"]", Some(c";"), None) == PARSE_EOF {
+        return false;
+    }
+    next_valid_token(t)
+}
+
+/// `ep_parse_param_assign_texture` and `ep_parse_param_assign_string`: a
+/// string token, its `cf_literal_to_str` copied into `default_val` with its
+/// NUL (`da_copy_array`). `expected` names it in the error.
+fn parse_param_assign_text(
+    t: &mut impl ParamTokens,
+    param: &mut Param,
+    expected: &'static core::ffi::CStr,
+) -> i32 {
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+
+    let code = token_is_type(t, CFTOKEN_STRING, expected, Some(c";"));
+    if code != PARSE_SUCCESS {
+        return code;
+    }
+
+    if let Some(mut text) = t.literal_to_str() {
+        text.push(0);
+        param.default_val = text;
+    }
+    PARSE_SUCCESS
+}
+
+/// `ep_parse_param_assign_intfloat`: `[-] number`, its `float`
+/// (`is_float`) or `int` pushed onto `default_val`. The `-` is stepped
+/// over with `cf_next_token`, so a space after it is allowed and the end
+/// of the text adds no error.
+fn parse_param_assign_intfloat(t: &mut impl ParamTokens, param: &mut Param, is_float: bool) -> i32 {
+    let mut is_negative = false;
+
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+
+    if token_is(t, c"-") {
+        is_negative = true;
+
+        if !next_token(t) {
+            return PARSE_EOF;
+        }
+    }
+
+    let code = token_is_type(t, CFTOKEN_NUM, c"numeric value", Some(c";"));
+    if code != PARSE_SUCCESS {
+        return code;
+    }
+
+    if is_float {
+        let f = shader_param_values::float_value_by(
+            |i| t.c_str_byte(i),
+            is_negative,
+            |copy| t.strtod(copy),
+        );
+        param.default_val.extend_from_slice(&f.to_ne_bytes());
+    } else {
+        let i = effect_param_types::int_value_by(|i| t.c_str_byte(i), is_negative);
+        param.default_val.extend_from_slice(&i.to_ne_bytes());
+    }
+    PARSE_SUCCESS
+}
+
+/// `ep_parse_param_assign_bool`: `true` or `false`, pushed as an `int`.
+/// Anything else is an error, and `PARSE_EOF` with no skip.
+fn parse_param_assign_bool(t: &mut impl ParamTokens, param: &mut Param) -> i32 {
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+
+    if token_is(t, c"true") {
+        param.default_val.extend_from_slice(&1_i32.to_ne_bytes());
+        return PARSE_SUCCESS;
+    } else if token_is(t, c"false") {
+        param.default_val.extend_from_slice(&0_i32.to_ne_bytes());
+        return PARSE_SUCCESS;
+    }
+
+    t.add_error(BlockError::Expecting(c"true or false"));
+    PARSE_EOF
+}
+
+/// `ep_parse_param_assign_intfloat_array`: the values of a `floatN`,
+/// `intN`, `floatNxM` or `intNxM`, as `{ v, ... }` or `type( v, ... )`,
+/// their count from the type's digits.
+fn parse_param_assign_intfloat_array(
+    t: &mut impl ParamTokens,
+    param: &mut Param,
+    is_float: bool,
+) -> i32 {
+    if effect_param_types::rows_bad(&param.type_name, is_float) {
+        t.add_error(BlockError::InvalidRowCount);
+    }
+
+    let mut intfloat_count = effect_param_types::rows(&param.type_name, is_float);
+
+    if effect_param_types::has_cols(&param.type_name, is_float) {
+        if effect_param_types::cols_bad(&param.type_name, is_float) {
+            t.add_error(BlockError::InvalidColumnCount);
+        }
+
+        intfloat_count = effect_param_types::cols(&param.type_name, is_float, intfloat_count);
+    }
+
+    if !next_token(t) {
+        t.add_error(BlockError::UnexpectedEof);
+        return PARSE_EOF;
+    }
+    let end_char = if token_is(t, c"{") {
+        c"}"
+    } else if t.text() == param.type_name.as_slice() {
+        let code = next_token_should_be(t, c"(", Some(c";"), None);
+        if code != PARSE_SUCCESS {
+            return code;
+        }
+        c")"
+    } else if !go_to_token(t, c";", None) {
+        return PARSE_EOF;
+    } else {
+        t.add_error(BlockError::Expecting(c"{"));
+        return PARSE_CONTINUE;
+    };
+
+    let mut i = 0_i32;
+    while i < intfloat_count {
+        // i < intfloat_count <= i32::MAX, so i + 1 does not overflow.
+        let next_i = i.saturating_add(1);
+        let next = if next_i < intfloat_count {
+            c","
+        } else {
+            end_char
+        };
+
+        let code = parse_param_assign_intfloat(t, param, is_float);
+        if code != PARSE_SUCCESS {
+            return code;
+        }
+
+        let code = next_token_should_be(t, next, Some(c";"), None);
+        if code != PARSE_SUCCESS {
+            return code;
+        }
+        i = next_i;
+    }
+    PARSE_SUCCESS
 }
 
 /// `ep_parse_param_assignment_val`, from the `=` token: the value of the
 /// parser `obs_effect_param_route()` picks for the parameter's type, into
 /// `param.default_val`. Returns that parser's code, or `PARSE_CONTINUE`
 /// after the invalid type error (no skip).
-pub fn parse_param_assignment_val(_t: &mut impl ParamTokens, _param: &mut Param) -> i32 {
-    todo!()
+pub fn parse_param_assignment_val(t: &mut impl ParamTokens, param: &mut Param) -> i32 {
+    match effect_param_types::route(&param.type_name, param.is_texture) {
+        Route::Texture => return parse_param_assign_text(t, param, c"texture path string"),
+        Route::Int => return parse_param_assign_intfloat(t, param, false),
+        Route::Float => return parse_param_assign_intfloat(t, param, true),
+        Route::IntArray => return parse_param_assign_intfloat_array(t, param, false),
+        Route::FloatArray => return parse_param_assign_intfloat_array(t, param, true),
+        Route::String => return parse_param_assign_text(t, param, c"string"),
+        Route::Bool => return parse_param_assign_bool(t, param),
+        Route::Invalid => {}
+    }
+
+    t.add_invalid_type_error(&param.type_name);
+    PARSE_CONTINUE
 }
 
 /// `ep_parse_param_assign`, from the `=` token: the value, then the next
 /// valid token. `false` where the parameter is dropped.
-pub fn parse_param_assign(_t: &mut impl ParamTokens, _param: &mut Param) -> bool {
-    todo!()
+pub fn parse_param_assign(t: &mut impl ParamTokens, param: &mut Param) -> bool {
+    if parse_param_assignment_val(t, param) != PARSE_SUCCESS {
+        return false;
+    }
+    next_valid_token(t)
 }
