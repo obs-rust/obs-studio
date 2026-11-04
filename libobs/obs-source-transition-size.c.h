@@ -70,7 +70,12 @@ static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
 	matrix4_identity(&mat);
 	matrix4_scale3f(&mat, &mat, scale.x, scale.y, 1.0f);
 	matrix4_translate3f(&mat, &mat, pos.x, pos.y, 0.0f);
+
+	/* The graphics thread and a caller of obs_transition_start() both get here,
+	 * and the render reads the matrices under this lock (#3570). */
+	lock_transition(tr);
 	matrix4_copy(&tr->transition_matrices[idx], &mat);
+	unlock_transition(tr);
 }
 
 void transition_recalculate_matrices(obs_source_t *transition)

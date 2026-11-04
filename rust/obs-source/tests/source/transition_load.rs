@@ -1282,7 +1282,9 @@ mod load {
             Ev::Width(2),
             Ev::Height(2),
             Ev::Unlock,
+            Ev::Lock,
             Ev::Matrix(0),
+            Ev::Unlock,
             Ev::Lock,
             Ev::Unlock,
         ]);

@@ -381,7 +381,8 @@ static inline void copy_transition_state(obs_source_t *transition, struct transi
 	state->transitioning_audio = transition->transitioning_audio;
 }
 
-static inline void render_child(obs_source_t *transition, obs_source_t *child, size_t idx, enum gs_color_space space)
+static inline void render_child(obs_source_t *transition, obs_source_t *child, size_t idx, const struct matrix4 *matrix,
+				enum gs_color_space space)
 {
 	uint32_t cx = transition_get_cx(transition);
 	uint32_t cy = transition_get_cy(transition);
@@ -401,7 +402,7 @@ static inline void render_child(obs_source_t *transition, obs_source_t *child, s
 		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
 
 		gs_matrix_push();
-		gs_matrix_mul(&transition->transition_matrices[idx]);
+		gs_matrix_mul(matrix);
 		obs_source_video_render(child);
 		gs_matrix_pop();
 
@@ -494,7 +495,7 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 		const enum gs_color_space source_space = obs_source_get_color_space(transition, 1, &current_space);
 		for (size_t i = 0; i < 2; i++) {
 			if (state.s[i]) {
-				render_child(transition, state.s[i], i, source_space);
+				render_child(transition, state.s[i], i, &matrices[i], source_space);
 				tex[i] = get_texture(transition, (enum obs_transition_target)i);
 				if (!tex[i])
 					tex[i] = placeholder_texture;
