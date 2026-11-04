@@ -121,7 +121,11 @@ class JobListCall(unittest.TestCase):
     """The jobs API is a network call: retry it, and say why it failed (#3124)."""
 
     def setUp(self):
-        patcher = mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "obs-rust/obs-studio", "GITHUB_RUN_ID": "1"})
+        # This fixture tests API errors, independently of the host workflow's event.
+        patcher = mock.patch.dict(os.environ, {
+            "GITHUB_REPOSITORY": "obs-rust/obs-studio", "GITHUB_RUN_ID": "1",
+            "GITHUB_EVENT_NAME": "pull_request",
+        })
         patcher.start()
         self.addCleanup(patcher.stop)
 
