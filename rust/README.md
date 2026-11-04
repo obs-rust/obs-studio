@@ -38,8 +38,13 @@ are in [docs/rust-port/naming.md](../docs/rust-port/naming.md#repository-layout-
 
 ## Running the tests
 
-PR CI is the merge gate, so opening a PR is enough. For faster feedback, the
-local gate runs the same checks as CI's Linux jobs (optional):
+PR CI is the merge gate, so opening a PR is enough.
+Core merge-queue batches also run Windows and macOS Rust tests and Tier 2
+before merging. `CI Gate ✅` requires both native Tier 2 jobs to succeed;
+a skipped native lane cannot validate a Rust/libobs batch. PR path selection
+stays unchanged, and the queue shares native validation across up to five PRs.
+
+For faster feedback, the optional local gate runs the same checks as CI's Linux jobs:
 
 ```sh
 ./lint          # clang-format, gersemi, rustfmt, clippy (~8 s)

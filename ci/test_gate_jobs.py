@@ -60,9 +60,26 @@ class GateJobs(unittest.TestCase):
 
     def test_gate_receives_core_scope_from_reusable_workflow(self):
         build = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        self.assertIn("value: ${{ jobs.check-event.outputs.core }}", build)
+        self.assertTrue("value: ${{ jobs.check-event.outputs.core }}" in build)
         gate = PULL.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:", 1)[0]
         self.assertIn("CORE_SCOPE: ${{ needs.build-project.outputs.core }}", gate)
+
+    def test_main_requires_native_success_only_for_core_merge_groups(self):
+        names = ["Build 🧱 / Rust Tier 2 (windows-2025-vs2026)", "Build 🧱 / Rust Tier 2 (macos-26)"]
+        for event, core, conclusion, expected in (
+            ("merge_group", "true", "skipped", 1),
+            ("merge_group", "true", "success", 0),
+            ("merge_group", "false", "skipped", 0),
+            ("pull_request", "true", "skipped", 0),
+            ("merge_group", "", "success", 1),
+        ):
+            with (
+                self.subTest(event=event, core=core, conclusion=conclusion),
+                mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": event, "CORE_SCOPE": core}),
+                mock.patch.object(gate_jobs, "run_jobs", return_value=[job(n, conclusion) for n in names]),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(gate_jobs.main(), expected)
 
     def test_historical_cancelled_macos_jobs_block(self):
         self.assertEqual(blocking(RUN_39677084695), [

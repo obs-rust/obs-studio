@@ -56,8 +56,8 @@ Platform is decided by path alone (#897, ci/platform_paths.py): a changed
 file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
 `rust/*/src/platform/windows/`, `libobs/build/source-sets.d/
 LIBOBS_WINDOWS_SOURCES.json` (#3235), ...) starts that platform's jobs. Core files
-carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR or a
-merge-queue run a core change is Linux only. A push to master is the
+carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR a
+core change is Linux only. Merge groups and pushes to master are the
 exception: core code selects the macOS and Windows Rust lanes too, because
 the platform builds read it and a Windows-only break in it otherwise lands
 unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
@@ -411,16 +411,16 @@ def cross_targets(files: list[str], read: Callable[[str], str]) -> str:
     return ",".join(sorted(CROSS_ALIASES[os] for os in oses))
 
 
-def core_master_push_lanes(core: bool, event: str, ref: str) -> bool:
-    """Core code on a push to master also needs both platform Rust lanes (#2916).
+def core_native_lanes(core: bool, event: str, ref: str) -> bool:
+    """Core queue batches and master pushes need both native lanes (#3606).
 
     A `libobs/` or `rust/` only diff selects no platform lane, so a Windows- or
     macOS-only break in core code reached master having never been compiled
     there (#2910: glibc tolerated the mutex destroy, the Windows pthread layer
     crashed, and the failure surfaced in an unrelated `shared/` PR's lane).
-    Master pushes only: a PR and a merge-queue run keep the path selection, so
-    the queue pays nothing for it."""
-    return core and event == "push" and ref == "master"
+    PRs retain path selection; the queue amortises native validation across
+    up to five PRs, catching native compiler/linker failures before merge."""
+    return core and (event == "merge_group" or (event == "push" and ref == "master"))
 
 
 def scope(
@@ -436,7 +436,7 @@ def scope(
     """`exists(path)` says whether a file exists in the checkout, `read(path)`
     returns its text ("" when missing). `submodules` is accepted for callers
     but no path escalates to a full run any more. `event`/`ref` are the
-    workflow's, and only change core code on a master push (`core_master_push_lanes`)."""
+    workflow's, and escalate core code on merge groups and master pushes."""
     core = macos = windows = qt = tier2 = qt_sdk = False
     targets: set[str] = set()
     linked = tuple(f"rust/{c}/**" for c in sorted(linked_crates(read)))
@@ -469,7 +469,7 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    if core_master_push_lanes(core, event, ref):
+    if core_native_lanes(core, event, ref):
         macos = windows = True
     docs_only = bool(files) and all(is_docs(path) for path in files)
     # #2923: the ratchet's blind spot is the configuration. A PR that changes a
