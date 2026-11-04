@@ -711,9 +711,9 @@ obs_source_t *obs_source_duplicate(obs_source_t *source, const char *new_name, b
 	}
 
 	new_source->audio_mixers = source->audio_mixers;
-	new_source->sync_offset = source->sync_offset;
+	new_source->sync_offset = obs_source_get_sync_offset(source);
 	new_source->user_volume = source->user_volume;
-	new_source->user_muted = source->user_muted;
+	os_atomic_set_bool(&new_source->user_muted, os_atomic_load_bool(&source->user_muted));
 	new_source->volume = source->volume;
 	new_source->muted = source->muted;
 	new_source->flags = source->flags;
@@ -1672,7 +1672,7 @@ static inline bool source_muted(obs_source_t *source, uint64_t os_time)
 	bool push_to_talk_active = source->user_push_to_talk_pressed ||
 				   obs_source_ptm_gate_held(os_time, source->push_to_talk_stop_time);
 
-	return !source->enabled || source->user_muted ||
+	return !source->enabled || os_atomic_load_bool(&source->user_muted) ||
 	       obs_source_ptm_gate_mutes(source->push_to_mute_enabled, push_to_mute_active) ||
 	       obs_source_ptm_gate_talk_mutes(source->push_to_talk_enabled, push_to_talk_active);
 }
@@ -3630,8 +3630,11 @@ static void process_audio(obs_source_t *source, const struct obs_source_audio *a
 
 	mono_output = audio_output_get_channels(obs->audio.audio) == 1;
 
-	if (obs_source_audio_input_balance_needed(mono_output, (int)source->sample_info.speakers, source->balance)) {
-		obs_source_audio_input_balance((float **)source->audio_data.data, frames, source->balance,
+	/* one value for the whole packet, the setter can run at any time */
+	const float balance = obs_source_get_balance_value(source);
+
+	if (obs_source_audio_input_balance_needed(mono_output, (int)source->sample_info.speakers, balance)) {
+		obs_source_audio_input_balance((float **)source->audio_data.data, frames, balance,
 					       OBS_BALANCE_TYPE_SINE_LAW);
 	}
 
@@ -4158,13 +4161,24 @@ void obs_source_set_sync_offset(obs_source_t *source, int64_t offset)
 
 		signal_handler_signal(source->context.signals, "audio_sync", &data);
 
-		source->sync_offset = calldata_int(&data, "offset");
+		const int64_t new_offset = calldata_int(&data, "offset");
+
+		pthread_mutex_lock(&source->audio_buf_mutex);
+		source->sync_offset = new_offset;
+		pthread_mutex_unlock(&source->audio_buf_mutex);
 	}
 }
 
 int64_t obs_source_get_sync_offset(const obs_source_t *source)
 {
-	return obs_source_valid(source, "obs_source_get_sync_offset") ? source->sync_offset : 0;
+	if (!obs_source_valid(source, "obs_source_get_sync_offset"))
+		return 0;
+	/* Locking synchronizes the read without changing the logical source. */
+	pthread_mutex_t *mutex = (pthread_mutex_t *)(uintptr_t)&source->audio_buf_mutex;
+	pthread_mutex_lock(mutex);
+	int64_t offset = source->sync_offset;
+	pthread_mutex_unlock(mutex);
+	return offset;
 }
 
 struct source_enum_data {
@@ -4661,7 +4675,7 @@ void obs_source_set_enabled(obs_source_t *source, bool enabled)
 
 bool obs_source_muted(const obs_source_t *source)
 {
-	return obs_source_valid(source, "obs_source_muted") ? source->user_muted : false;
+	return obs_source_valid(source, "obs_source_muted") ? os_atomic_load_bool(&source->user_muted) : false;
 }
 
 void obs_source_set_muted(obs_source_t *source, bool muted)
@@ -4673,7 +4687,7 @@ void obs_source_set_muted(obs_source_t *source, bool muted)
 	if (!obs_source_valid(source, "obs_source_set_muted"))
 		return;
 
-	source->user_muted = muted;
+	os_atomic_set_bool(&source->user_muted, muted);
 	/* a mute set by anything else is not Monitor Only's to undo (#2447) */
 	os_atomic_set_bool(&source->monitor_only_muted, false);
 
@@ -5240,14 +5254,15 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 	if (!obs_source_valid(source, "obs_source_set_monitoring_enabled"))
 		return;
 
-	if (!obs_source_monitoring_changes(source->monitoring_enabled, enabled))
+	if (!obs_source_monitoring_changes(os_atomic_load_bool(&source->monitoring_enabled), enabled))
 		return;
 
 	/* the deprecated type: a monitored source that is muted is monitor-only
 	 * (#2447); the stored type stays monitor and output */
 	compat_type = OBS_MONITORING_TYPE_NONE;
 	if (enabled)
-		compat_type = (enum obs_monitoring_type)obs_source_monitoring_on_type(source->user_muted);
+		compat_type = (enum obs_monitoring_type)obs_source_monitoring_on_type(
+			os_atomic_load_bool(&source->user_muted));
 
 	calldata_init_fixed(&data, stack, sizeof(stack));
 	calldata_set_ptr(&data, "source", source);
@@ -5261,9 +5276,11 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 
 	signal_handler_signal(source->context.signals, "audio_monitoring", &compat_data);
 
-	was_on = source->monitoring_enabled;
-	source->monitoring_enabled = enabled;
+	was_on = os_atomic_load_bool(&source->monitoring_enabled);
+	os_atomic_set_bool(&source->monitoring_enabled, enabled);
+	pthread_mutex_lock(&source->audio_buf_mutex);
 	source->monitoring_type = (enum obs_monitoring_type)obs_source_monitoring_stored_type(enabled);
+	pthread_mutex_unlock(&source->audio_buf_mutex);
 
 	switch (obs_source_monitoring_monitor(was_on, enabled)) {
 	case OBS_SOURCE_MONITORING_MONITOR_CREATE:
@@ -5280,7 +5297,9 @@ void obs_source_set_monitoring_enabled(obs_source_t *source, bool enabled)
 
 bool obs_source_get_monitoring_enabled(const obs_source_t *source)
 {
-	return obs_source_valid(source, "obs_source_get_monitoring_enabled") ? source->monitoring_enabled : false;
+	return obs_source_valid(source, "obs_source_get_monitoring_enabled")
+		       ? os_atomic_load_bool(&source->monitoring_enabled)
+		       : false;
 }
 
 void obs_source_set_monitoring_type(obs_source_t *source, enum obs_monitoring_type type)
@@ -5332,11 +5351,12 @@ enum obs_monitoring_type obs_source_get_monitoring_type(const obs_source_t *sour
 	blog(LOG_WARNING,
 	     "obs_source_get_monitoring_type is deprecated. Use obs_source_get_monitoring_enabled instead.");
 
-	if (!obs_source_valid(source, "obs_source_get_monitoring_type") || !source->monitoring_enabled)
+	if (!obs_source_valid(source, "obs_source_get_monitoring_type") ||
+	    !os_atomic_load_bool(&source->monitoring_enabled))
 		return OBS_MONITORING_TYPE_NONE;
 
 	/* monitoring on and muted is monitor-only (#2447) */
-	return (enum obs_monitoring_type)obs_source_monitoring_on_type(source->user_muted);
+	return (enum obs_monitoring_type)obs_source_monitoring_on_type(os_atomic_load_bool(&source->user_muted));
 }
 
 void obs_source_set_async_unbuffered(obs_source_t *source, bool unbuffered)
@@ -5436,13 +5456,24 @@ void obs_source_set_balance_value(obs_source_t *source, float balance)
 		signal_handler_signal(source->context.signals, "audio_balance", &data);
 
 		/* a handler may change it */
-		source->balance = clamp_balance((float)calldata_float(&data, "balance"));
+		const float new_balance = clamp_balance((float)calldata_float(&data, "balance"));
+
+		pthread_mutex_lock(&source->audio_buf_mutex);
+		source->balance = new_balance;
+		pthread_mutex_unlock(&source->audio_buf_mutex);
 	}
 }
 
 float obs_source_get_balance_value(const obs_source_t *source)
 {
-	return obs_source_valid(source, "obs_source_get_balance_value") ? source->balance : 0.5f;
+	if (!obs_source_valid(source, "obs_source_get_balance_value"))
+		return 0.5f;
+	/* Locking synchronizes the read without changing the logical source. */
+	pthread_mutex_t *mutex = (pthread_mutex_t *)(uintptr_t)&source->audio_buf_mutex;
+	pthread_mutex_lock(mutex);
+	float balance = source->balance;
+	pthread_mutex_unlock(mutex);
+	return balance;
 }
 
 void obs_source_set_audio_active(obs_source_t *source, bool active)

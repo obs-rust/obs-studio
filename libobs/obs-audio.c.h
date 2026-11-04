@@ -370,7 +370,7 @@ static inline struct obs_audio_monitor_dedup monitor_dedup(struct obs_core_audio
 static inline bool should_silence_monitored_source(obs_source_t *source, struct obs_core_audio *audio)
 {
 	struct obs_audio_monitor_dedup dedup = monitor_dedup(audio);
-	return obs_audio_render_silence(&dedup, source->monitoring_enabled,
+	return obs_audio_render_silence(&dedup, os_atomic_load_bool(&source->monitoring_enabled),
 					source == audio->monitoring_duplicating_source);
 }
 

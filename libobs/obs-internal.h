@@ -1178,7 +1178,7 @@ struct obs_source {
 	bool audio_pending;
 	bool pending_stop;
 	bool audio_active;
-	bool user_muted;
+	volatile bool user_muted;
 	bool muted;
 	struct obs_source *next_audio_source;
 	struct obs_source **prev_next_audio_source;
@@ -1200,8 +1200,10 @@ struct obs_source {
 	uint32_t audio_mixers;
 	float user_volume;
 	float volume;
+	/* written and read under audio_buf_mutex once the source runs */
 	int64_t sync_offset;
 	int64_t last_sync_offset;
+	/* written and read under audio_buf_mutex once the source runs */
 	float balance;
 	/* audio_is_duplicated: tracks whether a source appears multiple times in the audio tree during this tick */
 	bool audio_is_duplicated;
@@ -1313,8 +1315,9 @@ struct obs_source {
 
 	/* audio monitoring */
 	struct audio_monitor *monitor;
+	/* written and read under audio_buf_mutex once the source runs */
 	enum obs_monitoring_type monitoring_type;
-	bool monitoring_enabled;
+	volatile bool monitoring_enabled;
 	/* obs_source_set_monitoring_type(MONITOR_ONLY) set the mute, and nothing
 	 * has set it since (#2447) */
 	volatile bool monitor_only_muted;
