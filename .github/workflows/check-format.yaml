@@ -41,11 +41,14 @@ jobs:
           # when the PR closes (CACHE-013, #962).
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
       # swift-format needs a macOS runner, one of the 5 the plan allows; take it
-      # only when a Swift file changed (#427).
+      # only when a Swift file changed (#427). A push compares with its previous
+      # head: hosted macOS capacity drops a queued job after about 15 minutes
+      # ("not acquired by Runner of type hosted"), which turned master push runs
+      # with no Swift change red.
       - name: Check for Swift Changes 🔎
         id: diff
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: uv run --no-project ci/swift_changes.py
       - name: clang-format Check 🐉
         if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
