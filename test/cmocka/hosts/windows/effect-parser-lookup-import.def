@@ -1,0 +1,3 @@
+LIBRARY obs.dll
+EXPORTS
+    gs_effect_get_param_by_name DATA
