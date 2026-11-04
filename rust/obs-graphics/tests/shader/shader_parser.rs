@@ -23,10 +23,10 @@ use proptest::prelude::*;
 
 /// The lexed text as the C `cf_parser`, at its first token.
 pub(crate) struct LexTokens {
-    input: Vec<u8>,
-    lexed: CfLexed,
-    cur: usize,
-    errors: Vec<String>,
+    pub(crate) input: Vec<u8>,
+    pub(crate) lexed: CfLexed,
+    pub(crate) cur: usize,
+    pub(crate) errors: Vec<String>,
 }
 
 impl LexTokens {

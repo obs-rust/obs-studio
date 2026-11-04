@@ -326,3 +326,93 @@ pub fn parse_technique<T: Tokens>(t: &mut T) -> Option<Technique<T::Mark>> {
 
     Some(ept)
 }
+
+/// What the parameter parsers read of the `struct cf_parser` beyond
+/// [`Tokens`]: the number token's text as the C string `strtol` and
+/// `os_strtod` read, which runs on past the token into the lexer's text,
+/// libobs's `os_strtod`, `cf_literal_to_str` of the token, and the one
+/// error that names the parameter's type.
+pub trait ParamTokens: Tokens {
+    /// Byte `i` of `cur_token->str.array` read as a C string: the token's
+    /// text, then the lexer's text after it, 0 at its end. Asked only in
+    /// order, and never past a 0.
+    fn c_str_byte(&self, i: usize) -> u8;
+    /// `os_strtod` of `copy`, a NUL-terminated copy of at most 64 bytes.
+    fn strtod(&self, copy: &[u8]) -> f64;
+    /// `cf_literal_to_str(cur_token->str.array, cur_token->str.len)`: the
+    /// string's bytes up to its first NUL (what `strlen` sees), or `None`
+    /// where it returns `NULL`.
+    fn literal_to_str(&self) -> Option<Vec<u8>>;
+    /// `cf_adderror(p, INVALID_TYPE, LEX_ERROR, type, NULL, NULL)` at
+    /// `cur_token`.
+    fn add_invalid_type_error(&mut self, type_name: &[u8]);
+}
+
+/// The error `ep_parse_param_assignment_val` adds for a type with no value
+/// parser, with the type as `$1`.
+pub const INVALID_TYPE: &core::ffi::CStr = c"Invalid type '$1' used for assignment";
+
+/// `struct ep_param` as the parameter parsers fill it: a parameter of
+/// `ep->params`, or one of its annotations. `properties` stays empty,
+/// `written` false and `writeorder` 0, as `ep_param_init` leaves them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Param {
+    pub type_name: Vec<u8>,
+    pub name: Vec<u8>,
+    pub is_property: bool,
+    pub is_const: bool,
+    pub is_uniform: bool,
+    /// Set once, from the type `ep_param_init` was given.
+    pub is_texture: bool,
+    pub array_count: i32,
+    /// The bytes of `default_val`: a string's bytes and its NUL, or each
+    /// `int` or `float` value's bytes in the order they were pushed.
+    pub default_val: Vec<u8>,
+    pub annotations: Vec<Param>,
+}
+
+impl Param {
+    /// `ep_param_init`: `is_texture` when the type starts with `texture`
+    /// (`astrcmp_n(type, "texture", 7)`), everything else zero.
+    #[must_use]
+    pub fn new(
+        type_name: Vec<u8>,
+        name: Vec<u8>,
+        is_property: bool,
+        is_const: bool,
+        is_uniform: bool,
+    ) -> Self {
+        Self {
+            is_texture: type_name.starts_with(b"texture"),
+            type_name,
+            name,
+            is_property,
+            is_const,
+            is_uniform,
+            array_count: 0,
+            default_val: Vec::new(),
+            annotations: Vec::new(),
+        }
+    }
+}
+
+/// `ep_parse_param_array`, from the `[` token: `[count]` into
+/// `param.array_count`, then past the `]`. `false` where the parameter is
+/// dropped.
+pub fn parse_param_array(_t: &mut impl ParamTokens, _param: &mut Param) -> bool {
+    todo!()
+}
+
+/// `ep_parse_param_assignment_val`, from the `=` token: the value of the
+/// parser `obs_effect_param_route()` picks for the parameter's type, into
+/// `param.default_val`. Returns that parser's code, or `PARSE_CONTINUE`
+/// after the invalid type error (no skip).
+pub fn parse_param_assignment_val(_t: &mut impl ParamTokens, _param: &mut Param) -> i32 {
+    todo!()
+}
+
+/// `ep_parse_param_assign`, from the `=` token: the value, then the next
+/// valid token. `false` where the parameter is dropped.
+pub fn parse_param_assign(_t: &mut impl ParamTokens, _param: &mut Param) -> bool {
+    todo!()
+}
