@@ -30,10 +30,11 @@
 //! calls; only libobs-rust links it, so this crate calls nothing in libobs.
 //!
 //! The locks are the C's, taken where it takes them: `transition_mutex`
-//! around the child reads of the size and of each matrix, and a trylock of
-//! `transition_tex_mutex` around the render target resets of the tick. As in
-//! the C, the sizes, the scale type, the alignment, the matrices and the
-//! manual fields are read and written outside `transition_mutex`.
+//! around the child reads of the size and of each matrix and around the store
+//! of each matrix, and a trylock of `transition_tex_mutex` around the render
+//! target resets of the tick. As in the C, the sizes, the scale type, the
+//! alignment and the manual fields are read and written outside
+//! `transition_mutex`.
 //!
 //! Intentional difference from C: the two `(int)` casts of the room left
 //! for a child saturate when it is past `int`, which only a transition size
@@ -191,7 +192,11 @@ pub fn recalculate_matrix<T: Transition>(transition: &T, idx: usize) {
     let room = offset(tr_cx, tr_cy, source_cx, source_cy, scale.0, scale.1);
     let pos = transition.alignment_position(transition.alignment(), to_int(room.x), to_int(room.y));
 
+    // The graphics thread and a caller of obs_transition_start() both get here,
+    // and the render reads the matrices under this lock (#3570).
+    transition.lock();
     transition.set_matrix(idx, scale, pos);
+    transition.unlock();
 }
 
 /// `transition_recalculate_matrices()`: [`recalculate_matrix`] of slot A,
