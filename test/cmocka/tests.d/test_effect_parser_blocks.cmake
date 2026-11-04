@@ -28,13 +28,36 @@ if(TARGET libobs_rust-static)
     test_effect_parser_blocks_rust
     PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
   )
+  if(MSVC)
+    # Keep this public lookup in obs.dll. A plain call loads its import thunk
+    # before the private shims pull a Rust object defining the same symbol.
+    # The test-only bridge calls the import address instead (#3603).
+    target_sources(test_effect_parser_blocks_rust PRIVATE hosts/windows/effect-parser-lookup-import.c)
+    target_compile_definitions(
+      test_effect_parser_blocks_rust
+      PRIVATE gs_effect_get_param_by_name=obs_test_effect_get_param_by_name
+    )
+    # Import only the address slot, without obs.lib's function thunk. DATA
+    # describes the import library entry, not the DLL export's implementation.
+    set(lookup_import "${CMAKE_CURRENT_BINARY_DIR}/effect-parser-lookup-import.lib")
+    add_custom_command(
+      OUTPUT "${lookup_import}"
+      COMMAND
+        "${CMAKE_AR}" /nologo "/def:${CMAKE_CURRENT_SOURCE_DIR}/hosts/windows/effect-parser-lookup-import.def"
+        "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}" "/out:${lookup_import}"
+      DEPENDS hosts/windows/effect-parser-lookup-import.def
+      VERBATIM
+    )
+    target_sources(test_effect_parser_blocks_rust PRIVATE "${lookup_import}")
+    # Resolve the address slot before the ordinary libobs import library.
+    target_link_libraries(test_effect_parser_blocks_rust PRIVATE "${lookup_import}")
+  else()
+    target_link_libraries(test_effect_parser_blocks_rust PRIVATE m)
+  endif()
   target_link_libraries(
     test_effect_parser_blocks_rust
     PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES} libobs_rust-static
   )
-  if(NOT MSVC)
-    target_link_libraries(test_effect_parser_blocks_rust PRIVATE m)
-  endif()
   obs_test_sanitize(test_effect_parser_blocks_rust "address,undefined")
   add_dependencies(cmocka-tests test_effect_parser_blocks_rust)
   add_test(test_effect_parser_blocks_rust ${CMAKE_CURRENT_BINARY_DIR}/test_effect_parser_blocks_rust)

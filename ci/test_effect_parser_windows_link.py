@@ -63,11 +63,14 @@ class EffectParserWindowsLinkTest(unittest.TestCase):
                 run("clang", "--target=x86_64-pc-windows-msvc", "-c", BRIDGE,
                     "-I", root, *defines, "-o", "bridge.obj")
                 extra_objects = ["bridge.obj"]
+                run("llvm-lib", f"/def:{BRIDGE.with_suffix('.def')}",
+                    "/machine:x64", "/out:lookup-import.lib")
             compile_c("parser", header + "void ep_parse_struct(void);\n"
                       f"void mainCRTStartup(void) {{ {SYMBOL}(0, 0); ep_parse_struct(); }}\n", *defines)
             # obs.lib first, exactly as in the failing Tier 2 target. No /FORCE.
             run("lld-link", "/entry:mainCRTStartup", "/subsystem:console", "/nodefaultlib",
-                "/out:test.exe", "parser.obj", *extra_objects, "obs.lib", "libobs_rust.lib")
+                "/out:test.exe", "parser.obj", *extra_objects,
+                *(["lookup-import.lib"] if bridged else []), "obs.lib", "libobs_rust.lib")
             # LLD can prefer the static definition where link.exe reports
             # LNK2005. Verify ownership too: the public call must still go
             # through obs.dll, even with a static definition in the link.
