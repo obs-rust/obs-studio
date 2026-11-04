@@ -46,6 +46,41 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
+    def test_core_batch_cannot_pass_with_native_tier2_skipped(self):
+        from ci_scope import scope
+
+        core = scope(["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"], event="merge_group").core
+        names = ["Build 🧱 / Rust Tier 2 (windows-2025-vs2026)", "Build 🧱 / Rust Tier 2 (macos-26)"]
+        for conclusion in ("skipped", "failure", "cancelled", None):
+            with self.subTest(conclusion=conclusion):
+                self.assertEqual(blocking([job(n, conclusion) for n in names], require_native=core), names)
+        self.assertEqual(blocking([], require_native=core), names)
+        self.assertEqual(blocking([job(n, "success") for n in names], require_native=core), [])
+        self.assertEqual(blocking([job(n, "skipped") for n in names]), [])
+
+    def test_gate_receives_core_scope_from_reusable_workflow(self):
+        build = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        self.assertTrue("value: ${{ jobs.check-event.outputs.core }}" in build)
+        gate = PULL.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:", 1)[0]
+        self.assertIn("CORE_SCOPE: ${{ needs.build-project.outputs.core }}", gate)
+
+    def test_main_requires_native_success_only_for_core_merge_groups(self):
+        names = ["Build 🧱 / Rust Tier 2 (windows-2025-vs2026)", "Build 🧱 / Rust Tier 2 (macos-26)"]
+        for event, core, conclusion, expected in (
+            ("merge_group", "true", "skipped", 1),
+            ("merge_group", "true", "success", 0),
+            ("merge_group", "false", "skipped", 0),
+            ("pull_request", "true", "skipped", 0),
+            ("merge_group", "", "success", 1),
+        ):
+            with (
+                self.subTest(event=event, core=core, conclusion=conclusion),
+                mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": event, "CORE_SCOPE": core}),
+                mock.patch.object(gate_jobs, "run_jobs", return_value=[job(n, conclusion) for n in names]),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(gate_jobs.main(), expected)
+
     def test_historical_cancelled_macos_jobs_block(self):
         self.assertEqual(blocking(RUN_39677084695), [
             "Build 🧱 / Rust Tests 🦀 (macos-26)",
@@ -86,7 +121,11 @@ class JobListCall(unittest.TestCase):
     """The jobs API is a network call: retry it, and say why it failed (#3124)."""
 
     def setUp(self):
-        patcher = mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "obs-rust/obs-studio", "GITHUB_RUN_ID": "1"})
+        # This fixture tests API errors, independently of the host workflow's event.
+        patcher = mock.patch.dict(os.environ, {
+            "GITHUB_REPOSITORY": "obs-rust/obs-studio", "GITHUB_RUN_ID": "1",
+            "GITHUB_EVENT_NAME": "pull_request",
+        })
         patcher.start()
         self.addCleanup(patcher.stop)
 

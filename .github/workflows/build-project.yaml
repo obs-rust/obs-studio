@@ -62,6 +62,9 @@ on:
         required: false
         default: false
     outputs:
+      core:
+        description: Whether the batch changes libobs or the Rust workspace; CI Gate requires native Tier 2 on core merge groups
+        value: ${{ jobs.check-event.outputs.core }}
       tier2-linux-proof:
         description: Tier 2 Linux lane-proof name when this run built the lane; ci.yml publishes it after CI Gate (#3018)
         value: ${{ jobs.rust-linux-tier2-build.outputs.tier2-linux-proof }}

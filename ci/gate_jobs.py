@@ -33,20 +33,30 @@ EXEMPT_PREFIXES = ("CI Pre 🧹", "Cache Janitor 🧹", "CI Gate ✅")
 # momentary rate-limit without holding the gate's 30 s budget.
 ATTEMPTS = 3
 BACKOFF_SECONDS = 2.0
+NATIVE_TIER2 = (
+    "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
+    "Build 🧱 / Rust Tier 2 (macos-26)",
+)
 
 
 class JobListError(RuntimeError):
     """The run's job list could not be read: every attempt failed."""
 
 
-def blocking(jobs: list[dict]) -> list[str]:
+def blocking(jobs: list[dict], *, require_native: bool = False) -> list[str]:
     """Names of the finished jobs that should fail the gate."""
-    return [
+    bad = [
         j["name"] for j in jobs
         if j.get("status") == "completed"
         and j.get("conclusion") in UNSUCCESSFUL
         and not j["name"].startswith(EXEMPT_PREFIXES)
     ]
+    if require_native:
+        # Core queue batches must actually link with MSVC and Apple Clang.
+        # Missing, unfinished and skipped jobs are not evidence of coverage.
+        passed = {j["name"] for j in jobs if j.get("status") == "completed" and j.get("conclusion") == "success"}
+        bad.extend(name for name in NATIVE_TIER2 if name not in passed and name not in bad)
+    return bad
 
 
 def jobs_argv() -> list[str]:
@@ -74,12 +84,17 @@ def run_jobs(runner: Callable | None = None, sleep: Callable[[float], None] | No
 
 
 def main() -> int:
+    queue = os.environ.get("GITHUB_EVENT_NAME") == "merge_group"
+    core = os.environ.get("CORE_SCOPE", "")
+    if queue and core not in ("true", "false"):
+        print("::error::CI Gate did not receive the merge group's core scope")
+        return 1
     try:
         jobs = run_jobs()
     except JobListError as error:
         print(f"::error::CI Gate could not read this run's jobs: {error}")
         return 1
-    bad = blocking(jobs)
+    bad = blocking(jobs, require_native=queue and core == "true")
     for name in bad:
         print(f"::error::{name} did not succeed")
     if not bad:

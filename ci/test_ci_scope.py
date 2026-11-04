@@ -46,8 +46,8 @@ class CiScopeTest(unittest.TestCase):
         self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
         got = scope(["rust/obs-util/src/dstr.rs"], lambda path: path in CPP_TESTS, **master_push)
         self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
-        # A PR and a merge-queue run keep the path selection: the queue pays nothing.
-        for event in ("pull_request", "merge_group", "push"):
+        # PRs and non-master pushes retain path selection.
+        for event in ("pull_request", "push"):
             got = scope(["libobs/obs.c.h"], lambda path: path in CPP_TESTS, event=event, ref="fix/2910-x")
             self.assertEqual((got.core, got.macos, got.windows), (True, False, False), (event, got))
         # Not a platform job for a master push that changes no core code.
@@ -56,6 +56,23 @@ class CiScopeTest(unittest.TestCase):
         # And a platform file keeps its own selection.
         got = scope(["plugins/mac-capture/mac-display-capture.m"], lambda path: path in CPP_TESTS, **master_push)
         self.assertEqual((got.macos, got.windows), (True, False))
+
+    def test_core_merge_group_runs_native_tier2_before_merge(self):
+        # #3606: the effect parser batch passed with MSVC linking skipped.
+        for files in (
+            ["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"],
+            ["rust/obs-util/src/dstr.rs"],
+            ["libobs/obs.c.h"],
+            ["Cargo.lock"],
+        ):
+            with self.subTest(files=files):
+                got = scope(files, event="merge_group")
+                self.assertTrue(got.core)
+                self.assertTrue(got.windows)
+                self.assertTrue(got.macos)
+                self.assertFalse(got.full)
+        got = scope(["ci/ci_scope.py"], event="merge_group")
+        self.assertFalse(got.windows or got.macos)
 
     def test_core_file_content_is_not_read(self):
         # Core files carry no platform defines (the ratchet lint enforces

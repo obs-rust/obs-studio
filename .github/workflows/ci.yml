@@ -450,6 +450,7 @@ jobs:
       - name: Check Run Jobs ✅
         env:
           GH_TOKEN: ${{ github.token }}
+          CORE_SCOPE: ${{ needs.build-project.outputs.core }}
         run: uv run --no-project ci/gate_jobs.py
       - run: echo 'All required jobs passed or were skipped.'
   # Publish the Tier 2 Linux lane proof (ci/lane_proof.py) after the gate
