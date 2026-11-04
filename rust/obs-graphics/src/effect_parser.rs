@@ -14,7 +14,11 @@
 //!   name { pass [name] { vertex_shader = <call>; pixel_shader = <call>; }
 //!   ... }`, with `vertex_program` and `pixel_program` for the commands and
 //!   an optional `compile` before a call, skipped with a warning;
-//! - [`parse_param_array`] (`ep_parse_param_array`): `[count]`, and
+//! - [`parse_param`] (`ep_parse_param`): `[[count]] [<annotations>] [=
+//!   value];` after a declaration's type and name, with
+//!   [`parse_param_array`] (`ep_parse_param_array`), [`parse_annotations`]
+//!   (`ep_parse_annotations` and `ep_parse_param_annotations`, with
+//!   [`parse_param_annotation_var`]: `< type name [= value]; ... >`) and
 //!   [`parse_param_assign`] (`ep_parse_param_assign`, with
 //!   [`parse_param_assignment_val`] and its value parsers): `= value`, by
 //!   the parser `obs_effect_param_route()` picks for the type (a texture
@@ -65,25 +69,37 @@
 //! The type decisions and the `int` and count reads are
 //! [`crate::effect_param_types`]'s rules, the `float` read
 //! [`crate::shader_param_values`]'s, each called where the C calls it.
-//! Characterized, not endorsed, and kept (`test_effect_parser_params`): an
-//! `int` reads the leading digits of a number token; the `-` is stepped over
-//! with `cf_next_token`, so `- 1` reads as `-1` and the end of the text after
-//! it adds no error; a `bool` other than `true` or `false` and a type with
-//! no value parser do not skip to the `;`; a vector or matrix with a bad row
-//! or column digit adds its error and reads as many values as the digits
-//! say; a count that is not a number token fails with no error.
+//! A declaration that parses is returned whole; one that fails is `None`,
+//! as the C frees it and pushes nothing. Characterized, not endorsed, and
+//! kept (`test_effect_parser_params`): an `int` reads the leading digits of
+//! a number token; the `-` is stepped over with `cf_next_token`, so `- 1`
+//! reads as `-1` and the end of the text after it adds no error; a `bool`
+//! other than `true` or `false` and a type with no value parser do not skip
+//! to the `;`, so `ep_parse()` goes on from the bad token; a vector or
+//! matrix with a bad row or column digit adds its error and reads as many
+//! values as the digits say; a count that is not a number token drops the
+//! declaration with no error; no `;` after a value or an annotation list
+//! drops it with no error; a `:` mapping or a failed value in an annotation
+//! ends the list where it is and drops the declaration (a failed value is
+//! reported twice); an annotation's texture flag is set from the empty type
+//! its entry starts with, never from its own type, so a texture annotation's
+//! value is an invalid type.
 //!
 //! No intentional differences. The C freed a dropped item's state name and
 //! value on every path already (#3550), and a dropped technique's name
-//! (#3598), each fixed in the C before its port.
+//! (#3598), each fixed in the C before its port; the parameter
+//! declarations free a dropped declaration's type and name on every path.
+//! The `int` and count reads' own intentional difference (#3464) is
+//! [`crate::effect_param_types`]'s.
 
 use crate::effect_param_types::{self, Route};
 use crate::shader_param_values;
 pub use crate::shader_parser::{BlockError, Sampler, SamplerText, Struct, StructVar, Tokens};
 use crate::shader_parser::{
-    CFTOKEN_NUM, CFTOKEN_STRING, PARSE_CONTINUE, PARSE_EOF, PARSE_SUCCESS,
-    PARSE_UNEXPECTED_CONTINUE, first_byte, go_to_token, go_to_valid_token, next_name, next_token,
-    next_token_should_be, next_valid_token, peek_valid_token_is, token_is, token_is_type,
+    CFTOKEN_NAME, CFTOKEN_NUM, CFTOKEN_STRING, PARSE_BREAK, PARSE_CONTINUE, PARSE_EOF,
+    PARSE_SUCCESS, PARSE_UNEXPECTED_BREAK, PARSE_UNEXPECTED_CONTINUE, first_byte, go_to_token,
+    go_to_valid_token, next_name, next_token, next_token_should_be, next_valid_token,
+    peek_valid_token_is, token_is, token_is_type,
 };
 
 /// `ep_parse_struct`, from the `struct` token: the struct `ep_parse()`
@@ -626,16 +642,100 @@ pub fn parse_param_assign(t: &mut impl ParamTokens, param: &mut Param) -> bool {
 /// code: `PARSE_SUCCESS` (keep `var`), `PARSE_CONTINUE`, `PARSE_BREAK` at
 /// the `>`, `PARSE_UNEXPECTED_CONTINUE`, `PARSE_UNEXPECTED_BREAK` or
 /// `PARSE_EOF`.
-pub fn parse_param_annotation_var(_t: &mut impl ParamTokens, _var: &mut Param) -> i32 {
-    todo!()
+pub fn parse_param_annotation_var(t: &mut impl ParamTokens, var: &mut Param) -> i32 {
+    // variable type
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+    if token_is(t, c";") {
+        return PARSE_CONTINUE;
+    }
+    if token_is(t, c">") {
+        return PARSE_BREAK;
+    }
+    let code = token_is_type(t, CFTOKEN_NAME, c"type name", Some(c";"));
+    if code != PARSE_SUCCESS {
+        return code;
+    }
+    // bfree(var->type); cf_copy_token(): is_texture stays as it was.
+    var.type_name = t.text().to_vec();
+
+    // variable name
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+    if token_is(t, c";") {
+        t.add_error(BlockError::Expecting(c"variable name"));
+        return PARSE_UNEXPECTED_CONTINUE;
+    }
+    if token_is(t, c">") {
+        t.add_error(BlockError::Expecting(c"variable name"));
+        return PARSE_UNEXPECTED_BREAK;
+    }
+    let code = token_is_type(t, CFTOKEN_NAME, c"variable name", Some(c";"));
+    if code != PARSE_SUCCESS {
+        return code;
+    }
+    var.name = t.text().to_vec();
+
+    // variable mapping if any (POSITION, TEXCOORD, etc)
+    if !next_valid_token(t) {
+        return PARSE_EOF;
+    }
+    if token_is(t, c":") || token_is(t, c">") {
+        t.add_error(BlockError::Expecting(c"= or ;"));
+        return PARSE_UNEXPECTED_BREAK;
+    } else if token_is(t, c"=") && !parse_param_assign(t, var) {
+        t.add_error(BlockError::Expecting(c"assignment value"));
+        return PARSE_UNEXPECTED_BREAK;
+    }
+
+    if !token_is(t, c";") {
+        if !go_to_valid_token(t, c";", Some(c">")) {
+            t.add_error(BlockError::Expecting(c"; or >"));
+            return PARSE_EOF;
+        }
+        return PARSE_CONTINUE;
+    }
+    PARSE_SUCCESS
 }
 
 /// `ep_parse_annotations`, from the `<` token: the entries pushed into
 /// `annotations` in order, then past the `>`. `false` where the C's
 /// `goto error` drops the parameter (the entries pushed so far stay in
 /// `annotations`, which the parameter owns and frees).
-pub fn parse_annotations(_t: &mut impl ParamTokens, _annotations: &mut Vec<Param>) -> bool {
-    todo!()
+pub fn parse_annotations(t: &mut impl ParamTokens, annotations: &mut Vec<Param>) -> bool {
+    if !token_is(t, c"<") {
+        t.add_error(BlockError::Expecting(c"<"));
+        return false;
+    }
+
+    // get annotation variables
+    loop {
+        // ep_param_init(&var, bstrdup(""), bstrdup(""), false, false, false)
+        let mut var = Param::new(Vec::new(), Vec::new(), false, false, false);
+        match parse_param_annotation_var(t, &mut var) {
+            PARSE_UNEXPECTED_CONTINUE => {
+                t.add_error(BlockError::SyntaxError);
+                continue;
+            }
+            PARSE_CONTINUE => continue,
+            PARSE_UNEXPECTED_BREAK => {
+                t.add_error(BlockError::SyntaxError);
+                break;
+            }
+            PARSE_BREAK => break,
+            PARSE_EOF => return false,
+            // PARSE_SUCCESS, the only other code it returns.
+            _ => annotations.push(var),
+        }
+    }
+
+    if !token_is(t, c">") {
+        t.add_error(BlockError::Expecting(c">"));
+        return false;
+    }
+    next_valid_token(t)
 }
 
 /// `ep_parse_param`, from the token after the declaration's name:
@@ -643,12 +743,29 @@ pub fn parse_annotations(_t: &mut impl ParamTokens, _annotations: &mut Vec<Param
 /// pushes into `ep->params` (it keeps the type and name it was given), or
 /// `None` where the C frees it.
 pub fn parse_param(
-    _t: &mut impl ParamTokens,
-    _type_name: Vec<u8>,
-    _name: Vec<u8>,
-    _is_property: bool,
-    _is_const: bool,
-    _is_uniform: bool,
+    t: &mut impl ParamTokens,
+    type_name: Vec<u8>,
+    name: Vec<u8>,
+    is_property: bool,
+    is_const: bool,
+    is_uniform: bool,
 ) -> Option<Param> {
-    todo!()
+    let mut param = Param::new(type_name, name, is_property, is_const, is_uniform);
+
+    if token_is(t, c";") {
+        return Some(param);
+    }
+    if token_is(t, c"[") && !parse_param_array(t, &mut param) {
+        return None;
+    }
+    if token_is(t, c"<") && !parse_annotations(t, &mut param.annotations) {
+        return None;
+    }
+    if token_is(t, c"=") && !parse_param_assign(t, &mut param) {
+        return None;
+    }
+    if !token_is(t, c";") {
+        return None;
+    }
+    Some(param)
 }

@@ -95,7 +95,7 @@ unsafe extern "C" {
 }
 
 /// `os_strtod` of the core's NUL-terminated copy.
-fn libobs_strtod(copy: &[u8]) -> f64 {
+pub(crate) fn libobs_strtod(copy: &[u8]) -> f64 {
     // SAFETY: the core passes its copy with the NUL that ends it.
     unsafe { obs_graphics_os_strtod(copy.as_ptr().cast()) }
 }
