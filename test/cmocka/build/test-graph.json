@@ -1263,6 +1263,7 @@
         "libobs/graphics/effect-param-numbers.c.h",
         "libobs/graphics/effect-param-types.c.h",
         "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
