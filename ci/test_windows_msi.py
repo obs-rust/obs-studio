@@ -207,17 +207,27 @@ class MsiExecution(unittest.TestCase):
                 log = Path(directory) / "install.log"
                 if data is not None:
                     log.write_bytes(data)
-                with patch.object(windows_msi.subprocess, "run", side_effect=subprocess.TimeoutExpired("msiexec", 300)):
+                with patch.object(
+                    windows_msi.subprocess,
+                    "run",
+                    side_effect=subprocess.TimeoutExpired("msiexec", 300),
+                ):
                     output = io.StringIO()
                     with redirect_stdout(output):
                         code = windows_msi.run_msi(["msiexec"], log)
                 self.assertEqual(code, expected)
                 self.assertIn(f"TIMEOUT_LOG_{state}", output.getvalue())
-                self.assertIn(f"TIMEOUT_LOG_{state}", log.with_suffix(".diagnostic.txt").read_text(encoding="utf-8"))
+                self.assertIn(
+                    f"TIMEOUT_LOG_{state}",
+                    log.with_suffix(".diagnostic.txt").read_text(encoding="utf-8"),
+                )
 
     def test_bom_logs_are_safe_on_a_strict_windows_console(self):
         for encoding in ("utf-16", "utf-16-be", "utf-8-sig"):
-            with self.subTest(encoding=encoding), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(encoding=encoding),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 log = Path(directory) / "uninstall.log"
                 data = "Installer detail: camera \u6444\u50cf\u5934".encode(encoding)
                 if encoding == "utf-16-be":
@@ -237,12 +247,16 @@ class MsiExecution(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "install.log"
             log.write_text("failure", encoding="utf-16")
-            with patch.object(windows_msi.sys.stdout, "write", side_effect=OSError("closed pipe")):
+            with patch.object(
+                windows_msi.sys.stdout, "write", side_effect=OSError("closed pipe")
+            ):
                 windows_msi.msi_log_tail(log)
 
     def test_install_quotes_the_property_value_for_the_msi_parser(self):
         with patch.object(windows_msi, "run_msi", return_value=0) as run:
-            windows_msi._install(Path("signed package.msi"), Path("Chosen Dir"), Path("logs"))
+            windows_msi._install(
+                Path("signed package.msi"), Path("Chosen Dir"), Path("logs")
+            )
         command = run.call_args.args[0]
         self.assertIsInstance(command, str)
         self.assertIn('INSTALL_ROOT="Chosen Dir"', command)
@@ -256,17 +270,30 @@ class MsiExecution(unittest.TestCase):
             patch.object(windows_msi, "_uninstall", return_value=1605),
             redirect_stdout(io.StringIO()),
         ):
-            self.assertEqual(windows_msi.main(["roundtrip", "--msi", "signed.msi", "--log-dir", directory]), 121)
+            self.assertEqual(
+                windows_msi.main(
+                    ["roundtrip", "--msi", "signed.msi", "--log-dir", directory]
+                ),
+                121,
+            )
 
     def test_exit_codes_are_classified(self):
         for code, expected in ((0, 0), (3010, 0), (1603, 1603)):
             with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
                 logs = Path(directory)
-                (logs / "install.log").write_text("MSI failure detail", encoding="utf-16")
-                with patch.object(windows_msi.subprocess, "run", return_value=subprocess.CompletedProcess([], code)) as run:
+                (logs / "install.log").write_text(
+                    "MSI failure detail", encoding="utf-16"
+                )
+                with patch.object(
+                    windows_msi.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], code),
+                ) as run:
                     output = io.StringIO()
                     with redirect_stdout(output):
-                        result = windows_msi._install(Path("signed.msi"), Path("Chosen Dir"), logs)
+                        result = windows_msi._install(
+                            Path("signed.msi"), Path("Chosen Dir"), logs
+                        )
                     self.assertEqual(result, expected)
                     self.assertGreater(run.call_args.kwargs["timeout"], 0)
                     self.assertIn(f"exit code {code}", output.getvalue())
@@ -276,16 +303,31 @@ class MsiExecution(unittest.TestCase):
     def test_hang_is_bounded_and_prints_utf16_log_tail(self):
         with tempfile.TemporaryDirectory() as directory:
             logs = Path(directory)
-            (logs / "install.log").write_text("Action start: blocked custom action", encoding="utf-16")
-            with patch.object(windows_msi.subprocess, "run", side_effect=subprocess.TimeoutExpired("msiexec", 300)):
+            (logs / "install.log").write_text(
+                "Action start: blocked custom action", encoding="utf-16"
+            )
+            with patch.object(
+                windows_msi.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired("msiexec", 300),
+            ):
                 output = io.StringIO()
                 with redirect_stdout(output):
-                    self.assertNotEqual(windows_msi._install(Path("signed.msi"), Path("Chosen Dir"), logs), 0)
+                    self.assertNotEqual(
+                        windows_msi._install(
+                            Path("signed.msi"), Path("Chosen Dir"), logs
+                        ),
+                        0,
+                    )
                 self.assertIn("timed out", output.getvalue())
                 self.assertIn("Action start: blocked custom action", output.getvalue())
 
     def test_logs_are_uploaded_on_every_conclusion(self):
-        job = RELEASE.read_text().split("\n  windows_msi:\n", 1)[1].split("\n  macos_smoke:", 1)[0]
+        job = (
+            RELEASE.read_text()
+            .split("\n  windows_msi:\n", 1)[1]
+            .split("\n  macos_smoke:", 1)[0]
+        )
         upload = job.split("- uses: actions/upload-artifact@", 1)[1]
         self.assertIn("if: always()", upload)
 

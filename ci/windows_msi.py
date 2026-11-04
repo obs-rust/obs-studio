@@ -227,9 +227,28 @@ def uninstall_entries() -> list[str]:
     return names
 
 
+def diagnostic_print(message: str) -> None:
+    """Best effort even on a strict Windows codepage or a closed CI pipe."""
+    try:
+        encoding = sys.stdout.encoding or "utf-8"
+        safe = message.encode(encoding, errors="replace").decode(encoding)
+        print(safe, flush=True)
+    except (OSError, UnicodeError, ValueError):
+        pass
+
+
+def msi_log_state(log: Path) -> str:
+    try:
+        return "WRITTEN" if log.stat().st_size else "EMPTY"
+    except FileNotFoundError:
+        return "ABSENT"
+    except OSError:
+        return "UNREADABLE"
+
+
 def msi_log_tail(log: Path) -> None:
     """Read a bounded tail even while Windows Installer still owns the log."""
-    print(f"--- {log} (last 80 lines) ---", flush=True)
+    diagnostic_print(f"--- {log} (last 80 lines) ---")
     try:
         with log.open("rb") as stream:
             bom = stream.read(2)
@@ -237,44 +256,81 @@ def msi_log_tail(log: Path) -> None:
             start = max(0, stream.tell() - 32768)
             stream.seek(start - start % 2)
             data = stream.read()
-        encoding = "utf-16-le" if bom == b"\xff\xfe" else "utf-8"
-        print("\n".join(data.decode(encoding, errors="replace").splitlines()[-80:]), flush=True)
+        encoding = "utf-8-sig"
+        if bom in (b"\xff\xfe", b"\xfe\xff"):
+            encoding = (
+                "utf-16"
+                if start == 0
+                else ("utf-16-le" if bom == b"\xff\xfe" else "utf-16-be")
+            )
+        diagnostic_print(
+            "\n".join(data.decode(encoding, errors="replace").splitlines()[-80:])
+        )
     except OSError as error:
-        print(f"MSI log unavailable: {error}", flush=True)
+        diagnostic_print(f"MSI log unavailable: {error}")
 
 
-def run_msi(command: list[str], log: Path) -> int:
-    print("+ " + subprocess.list2cmdline(command), flush=True)
+def run_msi(command: list[str] | str, log: Path) -> int:
+    command_line = (
+        command if isinstance(command, str) else subprocess.list2cmdline(command)
+    )
+    diagnostic_print("+ " + command_line)
+    timed_out = False
     try:
         code = subprocess.run(command, check=False, timeout=300).returncode
     except subprocess.TimeoutExpired:
         # subprocess.run kills and reaps the direct client before raising.
         # The service-side installer can still own its log; don't wait for it.
-        print("::error::msiexec timed out after 300 seconds", flush=True)
-        msi_log_tail(log)
-        return 124
-    if code == 0:
-        print("msiexec exit code 0: success", flush=True)
-    elif code == 3010:
-        print("msiexec exit code 3010: success; restart required (suppressed)", flush=True)
+        timed_out = True
+        code = 124
+        diagnostic_print("::error::msiexec timed out after 300 seconds")
+    state = msi_log_state(log)
+    if timed_out:
+        code = {"ABSENT": 121, "EMPTY": 122, "WRITTEN": 124, "UNREADABLE": 125}[state]
+        result = f"TIMEOUT_LOG_{state}"
     else:
-        print(f"::error::msiexec exit code {code}", flush=True)
+        result = "SUCCESS" if code in (0, 3010) else "INSTALLER_ERROR"
+    summary = f"MSI result={result} log={state} exit={code} path={log}"
+    diagnostic_print(summary)
+    # The upload must contain evidence even when MSI never created its log.
+    try:
+        log.with_suffix(".diagnostic.txt").write_text(
+            f"+ {command_line}\n{summary}\n", encoding="utf-8"
+        )
+    except OSError as error:
+        diagnostic_print(f"MSI diagnostic artifact unavailable: {error}")
+    if code == 0:
+        diagnostic_print("msiexec exit code 0: success")
+    elif code == 3010:
+        diagnostic_print(
+            "msiexec exit code 3010: success; restart required (suppressed)"
+        )
+    else:
+        diagnostic_print(f"::error::msiexec exit code {code}")
         msi_log_tail(log)
     return 0 if code in (0, 3010) else code
 
 
 def _install(msi: Path, root: Path, logs: Path) -> int:
+    # msiexec parses PROPERTY="value", not the CRT-style "PROPERTY=value"
+    # produced by list2cmdline for a space-containing property argument.
+    # Pass the raw Windows command line; shell=False remains in effect.
+    command = (
+        subprocess.list2cmdline(
+            [
+                "msiexec",
+                "/i",
+                str(msi),
+                "/qn",
+                "/norestart",
+                "/l*v!",
+                str(logs / "install.log"),
+            ]
+        )
+        + f' INSTALL_ROOT="{root}"'
+    )
     return run_msi(
-        [
-            "msiexec",
-            "/i",
-            str(msi),
-            "/qn",
-            "/norestart",
-            f"INSTALL_ROOT={root}",
-            "/l*v!",
-            str(logs / "install.log"),
-        ],
+        command,
         logs / "install.log",
     )
 
@@ -337,12 +393,14 @@ def roundtrip(arguments: argparse.Namespace) -> int:
     logs.mkdir(parents=True, exist_ok=True)
 
     failures = []
-    if _install(msi, root, logs) != 0:
+    install_code = _install(msi, root, logs)
+    if install_code != 0:
         failures.append("silent MSI install failed")
     else:
         failures += _install_failures(root)
 
-    if _uninstall(msi, logs) != 0:
+    uninstall_code = _uninstall(msi, logs)
+    if uninstall_code != 0:
         failures.append("silent MSI uninstall failed")
     else:
         failures += _uninstall_failures(root)
@@ -351,7 +409,7 @@ def roundtrip(arguments: argparse.Namespace) -> int:
         print(f"::error::{failure}")
     if not failures:
         print(f"MSI install/uninstall round trip passed into {root}")
-    return 1 if failures else 0
+    return install_code or uninstall_code or (1 if failures else 0)
 
 
 def main(argv: list[str] | None = None) -> int:
