@@ -40,10 +40,12 @@
     clippy::todo
 )]
 
-use crate::audio_input::Format;
+use crate::audio_input::{self, Format};
 
 /// `MAX_AV_PLANES`, and `MAX_AUDIO_CHANNELS`, which the C clears up to.
 pub const MAX_PLANES: usize = 8;
+
+const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 /// The plane pointers of a packet, opaque here. `None` is NULL.
 pub type Planes<P> = [Option<P>; MAX_PLANES];
@@ -200,5 +202,161 @@ pub trait Source {
     fn output_audio_data(&self, output: Self::Output);
 }
 
-/// `obs_source_output_audio()`. Not ported yet.
-pub fn output_audio<S: Source>(_source: &S, _input: S::Input) {}
+fn packet_format<P>(audio: &Audio<P>) -> Format {
+    Format {
+        format: audio.format,
+        samples_per_sec: audio.samples_per_sec,
+        speakers: audio.speakers,
+    }
+}
+
+/// `reset_resampler()`.
+fn reset_resampler<S: Source>(source: &S, audio: &Audio<S::Plane>) {
+    let output = source.output_format();
+
+    source.set_sample_info(packet_format(audio));
+    source.set_last_async_compensation(source.async_compensation());
+
+    source.destroy_resampler();
+    source.lock_audio_buf();
+    source.set_resample_offset(0);
+    source.unlock_audio_buf();
+
+    if !audio_input::resampler_needed(
+        source.sample_info(),
+        output,
+        source.last_async_compensation(),
+    ) {
+        source.set_audio_failed(false);
+        return;
+    }
+
+    let created = source.create_resampler(output);
+
+    source.set_audio_failed(!created);
+    if !created {
+        source.log_resampler_failed();
+    }
+}
+
+/// `copy_audio_data()`.
+fn copy_audio_data<S: Source>(source: &S, data: &Planes<S::Plane>, frames: u32, timestamp: u64) {
+    let planes = source.planes();
+    let block_size = source.block_size();
+    let size = usize::try_from(frames)
+        .unwrap_or(usize::MAX)
+        .wrapping_mul(block_size);
+    let resize = source.audio_storage_size() < size;
+
+    source.set_data_frames(frames);
+    source.set_data_timestamp(timestamp);
+
+    for plane in 0..planes {
+        // ensure audio storage capacity
+        if resize {
+            source.free_storage(plane);
+            source.alloc_storage(plane, size);
+        }
+
+        source.copy_to_storage(plane, data.get(plane).copied().flatten(), size);
+    }
+
+    if resize {
+        source.set_audio_storage_size(size);
+    }
+}
+
+/// `process_audio()`: resamples or remixes new audio to the output's format.
+fn process_audio<S: Source>(source: &S, audio: &Audio<S::Plane>) {
+    let mut frames = audio.frames;
+
+    // A packet that does not continue the previous one restarts the resampler
+    // (#546).
+    let discontinuous = audio_input::discontinuous(
+        source.has_resampler(),
+        source.next_resample_in_ts(),
+        audio.timestamp,
+    );
+
+    if audio_input::reset_needed(
+        source.sample_info(),
+        packet_format(audio),
+        source.last_async_compensation(),
+        source.async_compensation(),
+        discontinuous,
+    ) {
+        reset_resampler(source, audio);
+    }
+
+    // `audio.frames` is 32 bits, so the product fits, as in `util_mul_div64()`.
+    if let Some(duration) = u64::from(audio.frames)
+        .wrapping_mul(NSEC_PER_SEC)
+        .checked_div(u64::from(audio.samples_per_sec))
+    {
+        source.set_next_resample_in_ts(audio.timestamp.wrapping_add(duration));
+    }
+
+    if source.audio_failed() {
+        return;
+    }
+
+    if source.has_resampler() {
+        // The audio path reads the offset under audio_buf_mutex. The resampler
+        // works on a copy, so it does not run with the mutex held.
+        source.lock_audio_buf();
+        let offset = source.resample_offset();
+        source.unlock_audio_buf();
+
+        let resampled = source.resample(&audio.data, audio.frames, offset);
+        frames = resampled.frames;
+
+        source.lock_audio_buf();
+        source.set_resample_offset(resampled.offset);
+        source.unlock_audio_buf();
+
+        copy_audio_data(source, &resampled.planes, frames, audio.timestamp);
+    } else {
+        copy_audio_data(source, &audio.data, audio.frames, audio.timestamp);
+    }
+
+    let mono_output = source.channels() == 1;
+
+    // one value for the whole packet, the setter can run at any time
+    let balance = source.balance_value();
+
+    if audio_input::balance_needed(mono_output, source.sample_speakers(), balance) {
+        source.apply_balance(frames, balance);
+    }
+
+    if audio_input::mono_needed(mono_output, source.flags()) {
+        source.downmix(source.channels(), frames);
+    }
+}
+
+/// `obs_source_output_audio()`.
+pub fn output_audio<S: Source>(source: &S, input: S::Input) {
+    if !source.valid() || source.destroying() || !source.input_valid(input) {
+        return;
+    }
+
+    // Sets unused data pointers to NULL automatically because apparently some
+    // filter plugins aren't checking the actual channel count, and instead are
+    // checking to see whether the pointer is non-zero.
+    let mut audio = source.read_input(input);
+    let channels = source.audio_planes(audio.format, audio.speakers);
+    for plane in audio.data.iter_mut().skip(channels) {
+        *plane = None;
+    }
+
+    process_audio(source, &audio);
+
+    source.lock_filter();
+
+    if let Some(output) = source.filter_audio() {
+        source.lock_audio();
+        source.output_audio_data(output);
+        source.unlock_audio();
+    }
+
+    source.unlock_filter();
+}
