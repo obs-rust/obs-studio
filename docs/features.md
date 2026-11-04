@@ -1918,6 +1918,13 @@ area.
   filter that is being destroyed, or set off a reorder of a source's filters
   with a movement that doesn't exist. *All*, 2026-10-30. Issue
   [#2981](https://github.com/obs-rust/obs-studio/issues/2981).
+- A shader effect (a plugin's shader filter or a custom `.effect` file)
+  whose pass names a vertex or pixel function the file doesn't define now
+  fails only that shader. The pass's other shader no longer leaves out the
+  parameters the bad call named, so the log shows no extra
+  undeclared-identifier errors pointing away from the typo, and loading the
+  effect no longer leaks a little memory each time. *All*, 2026-11-04.
+  Issue [#3625](https://github.com/obs-rust/obs-studio/issues/3625).
 
 ### Scenes and UI
 
