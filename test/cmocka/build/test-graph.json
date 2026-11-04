@@ -5031,6 +5031,17 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_audio_input": {
+      "sources": [
+        "test/cmocka/test_source_audio_input.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_audio_input_steps": {
       "sources": [
         "test/cmocka/test_source_audio_input_steps.c",
@@ -8764,6 +8775,19 @@
       "target": "test_source_audio_balance_mono",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_audio_input": {
+      "target": "test_source_audio_input",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_source_audio_input_steps": {
