@@ -5088,6 +5088,33 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_audio_settings": {
+      "sources": [
+        "test/cmocka/test_source_audio_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_audio_timing_steps": {
       "sources": [
         "test/cmocka/test_source_audio_timing_steps.c",
@@ -8718,6 +8745,23 @@
       "target": "test_source_audio_render_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_audio_settings": {
+      "target": "test_source_audio_settings",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_source_audio_timing_steps": {
