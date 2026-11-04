@@ -57,19 +57,22 @@ class CiScopeTest(unittest.TestCase):
         got = scope(["plugins/mac-capture/mac-display-capture.m"], lambda path: path in CPP_TESTS, **master_push)
         self.assertEqual((got.macos, got.windows), (True, False))
 
-    def test_core_merge_group_runs_native_tier2_before_merge(self):
+    def test_merge_group_is_linux_only_and_push_keeps_native_coverage(self):
         # #3606: the effect parser batch passed with MSVC linking skipped.
         for files in (
             ["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"],
             ["rust/obs-util/src/dstr.rs"],
             ["libobs/obs.c.h"],
             ["Cargo.lock"],
+            ["libobs/util/platform-cocoa.m.h", "libobs/util/platform-windows.c.h"],
         ):
             with self.subTest(files=files):
                 got = scope(files, event="merge_group")
                 self.assertTrue(got.core)
-                self.assertTrue(got.windows)
-                self.assertTrue(got.macos)
+                self.assertFalse(got.windows)
+                self.assertFalse(got.macos)
+                pushed = scope(files, event="push", ref="master")
+                self.assertTrue(pushed.windows and pushed.macos)
                 self.assertFalse(got.full)
         got = scope(["ci/ci_scope.py"], event="merge_group")
         self.assertFalse(got.windows or got.macos)
@@ -140,8 +143,10 @@ class CiScopeTest(unittest.TestCase):
             with self.subTest(path=path):
                 got = scope([path])
                 self.assertTrue(got.core)
-                self.assertTrue(got.windows)
-                self.assertTrue(got.macos)
+                self.assertFalse(got.windows)
+                self.assertFalse(got.macos)
+                pushed = scope(files, event="push", ref="master")
+                self.assertTrue(pushed.windows and pushed.macos)
                 self.assertFalse(got.full)
                 self.assertFalse(got.qt)
 

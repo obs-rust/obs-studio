@@ -46,6 +46,27 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
+    def test_runnerless_cancellation_is_diagnosed_even_without_scope(self):
+        jobs = [dict(job("Build / macOS", "cancelled"), runner_name="", runner_id=0, steps=[])]
+        out = io.StringIO()
+        with (
+            mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": "merge_group", "CORE_SCOPE": ""}),
+            mock.patch.object(gate_jobs, "run_jobs", return_value=jobs),
+            contextlib.redirect_stdout(out),
+        ):
+            self.assertEqual(gate_jobs.main(), 1)
+        self.assertIn("runner capacity", out.getvalue())
+        self.assertIn("Build / macOS", out.getvalue())
+
+    def test_queue_scope_is_independent_of_reusable_output(self):
+        with (
+            mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": "merge_group", "CORE_SCOPE": ""}),
+            mock.patch.object(gate_jobs, "queue_core_scope", return_value=True, create=True),
+            mock.patch.object(gate_jobs, "run_jobs", return_value=[job("Build 🧱 / Fast Gate ⚡", "success")]),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(gate_jobs.main(), 0)
+
     def test_core_batch_cannot_pass_with_native_tier2_skipped(self):
         from ci_scope import scope
 
