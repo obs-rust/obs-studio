@@ -1,11 +1,17 @@
-//! Safe core of `libobs/graphics/effect-parser-blocks.c.h`: the effect
-//! parser's struct and sampler-state blocks.
+//! Safe core of `libobs/graphics/effect-parser-blocks.c.h` and
+//! `libobs/graphics/effect-parser-passes.c.h`: the effect parser's struct
+//! and sampler-state blocks, and its passes and techniques.
 //!
 //! - [`parse_struct`] (`ep_parse_struct`, with `ep_parse_struct_var`):
 //!   `struct name { type name [: MAPPING]; ... };`;
 //! - [`parse_sampler_state`] (`ep_parse_sampler_state`, with
 //!   `ep_parse_sampler_state_item`): `sampler_state name { state = value;
-//!   ... };`.
+//!   ... };`;
+//! - [`parse_technique`] (`ep_parse_technique`, with [`parse_pass`],
+//!   [`parse_pass_command`] and `ep_parse_pass_command_call`): `technique
+//!   name { pass [name] { vertex_shader = <call>; pixel_shader = <call>; }
+//!   ... }`, with `vertex_program` and `pixel_program` for the commands and
+//!   an optional `compile` before a call, skipped with a warning.
 //!
 //! `ep_parse()` calls each on the keyword token that starts it, and goes on
 //! from the token where it stopped. Both walk the parser's tokens in place
@@ -30,8 +36,21 @@
 //! drops the variable with no error; a bad block name skips to a `;` past
 //! the braces.
 //!
+//! A technique's programs are not text: each is the list of the tokens the
+//! C copies into it ([`ProgramToken::Token`], a [`Tokens::Mark`]), each
+//! `;`-ended call followed by the end token ([`ProgramToken::End`]); the
+//! shim copies the C tokens at those marks. Characterized, not endorsed,
+//! and kept (`test_effect_parser_passes`): a missing `;` before a pass's
+//! `}` ends the call with no end token, and that `}` is not taken as the
+//! end of the pass, so the technique reads on and is dropped with what
+//! follows it; an entry other than a pass skips to the next `}`, which
+//! ends the technique, with no error; a second command for a program is
+//! appended after the first one's end token; a pass's name is any token;
+//! end of text after a command's name is reported twice.
+//!
 //! No intentional differences. The C freed a dropped item's state name and
-//! value on every path already (#3550, fixed in the C before this port).
+//! value on every path already (#3550), and a dropped technique's name
+//! (#3598), each fixed in the C before its port.
 
 pub use crate::shader_parser::{BlockError, Sampler, SamplerText, Struct, StructVar, Tokens};
 use crate::shader_parser::{
@@ -101,4 +120,66 @@ pub fn parse_sampler_state(t: &mut impl Tokens) -> Option<Sampler> {
         return None;
     }
     Some(eps)
+}
+
+/// One entry of a pass's `vertex_program` or `fragment_program`: a copy of
+/// the parser's token at a [`Tokens::Mark`] (`da_push_back(*call,
+/// ep->cfp.cur_token)`), or the zeroed end token (`cf_token_clear`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProgramToken<M> {
+    /// The token at this mark, copied whole.
+    Token(M),
+    /// The end token: all zero, so `CFTOKEN_NONE` with no text.
+    End,
+}
+
+/// `struct ep_pass` as the C fills it: its name (`NULL` when unnamed) and
+/// its two programs. `pass` stays `NULL`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Pass<M> {
+    pub name: Option<Vec<u8>>,
+    pub vertex_program: Vec<ProgramToken<M>>,
+    pub fragment_program: Vec<ProgramToken<M>>,
+}
+
+impl<M> Default for Pass<M> {
+    /// `ep_pass_init`: all zero.
+    fn default() -> Self {
+        Self {
+            name: None,
+            vertex_program: Vec::new(),
+            fragment_program: Vec::new(),
+        }
+    }
+}
+
+/// `struct ep_technique`: its name and its passes, in order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Technique<M> {
+    pub name: Vec<u8>,
+    pub passes: Vec<Pass<M>>,
+}
+
+/// `ep_parse_pass_command`, from the token before the command:
+/// `vertex_shader = <call>;` or `pixel_shader = <call>;` (or
+/// `vertex_program`, `pixel_program`), an optional `compile` skipped with a
+/// warning, the call's tokens appended to that program of `pass`. Returns
+/// the C's code: `PARSE_SUCCESS`, `PARSE_CONTINUE` or `PARSE_EOF`.
+pub fn parse_pass_command<T: Tokens>(_t: &mut T, _pass: &mut Pass<T::Mark>) -> i32 {
+    todo!("ep_parse_pass_command")
+}
+
+/// `ep_parse_pass`, from the technique's entry token: `pass [name] {
+/// <commands> }`, filling `pass`. Returns the C's code:
+/// `PARSE_UNEXPECTED_CONTINUE` when the entry is not `pass`, `PARSE_EOF`,
+/// or `PARSE_SUCCESS` past the `}`.
+pub fn parse_pass<T: Tokens>(_t: &mut T, _pass: &mut Pass<T::Mark>) -> i32 {
+    todo!("ep_parse_pass")
+}
+
+/// `ep_parse_technique`, from the `technique` token: `technique name {
+/// pass ... }`, the technique `ep_parse()` pushes into `ep->techniques`,
+/// or `None` where the C frees it.
+pub fn parse_technique<T: Tokens>(_t: &mut T) -> Option<Technique<T::Mark>> {
+    todo!("ep_parse_technique")
 }
