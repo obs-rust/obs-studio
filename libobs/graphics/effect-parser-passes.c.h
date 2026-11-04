@@ -116,12 +116,15 @@ void ep_parse_technique(struct effect_parser *ep)
 	if (cf_next_name(&ep->cfp, &ept.name, "name", ";") != PARSE_SUCCESS)
 		goto error;
 
-	if (!cf_next_valid_token(&ep->cfp))
+	if (!cf_next_valid_token(&ep->cfp)) {
+		ep_technique_free(&ept);
 		return;
+	}
 
 	if (!cf_token_is(&ep->cfp, "{")) {
 		if (!cf_go_to_token(&ep->cfp, ";", NULL)) {
 			cf_adderror_expecting(&ep->cfp, ";");
+			ep_technique_free(&ept);
 			return;
 		}
 
