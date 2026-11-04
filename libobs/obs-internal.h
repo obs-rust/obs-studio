@@ -1162,6 +1162,7 @@ struct obs_source {
 	bool texcoords_centered;
 
 	/* timing (if video is present, is based upon video) */
+	/* timing_set, timing_adjust: under audio_buf_mutex once the source runs */
 	volatile bool timing_set;
 	volatile uint64_t timing_adjust;
 	uint64_t resample_offset;
