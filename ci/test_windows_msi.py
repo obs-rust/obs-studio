@@ -196,6 +196,39 @@ class Signature(unittest.TestCase):
             self.assertIsNotNone(windows_msi.check_signature(status, required=False))
 
 
+class MsiExecution(unittest.TestCase):
+    def test_exit_codes_are_classified(self):
+        for code, expected in ((0, 0), (3010, 0), (1603, 1603)):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
+                logs = Path(directory)
+                (logs / "install.log").write_text("MSI failure detail", encoding="utf-16")
+                with patch.object(windows_msi.subprocess, "run", return_value=subprocess.CompletedProcess([], code)) as run:
+                    output = io.StringIO()
+                    with redirect_stdout(output):
+                        result = windows_msi._install(Path("signed.msi"), Path("Chosen Dir"), logs)
+                    self.assertEqual(result, expected)
+                    self.assertGreater(run.call_args.kwargs["timeout"], 0)
+                    self.assertIn(f"exit code {code}", output.getvalue())
+                    if code == 1603:
+                        self.assertIn("MSI failure detail", output.getvalue())
+
+    def test_hang_is_bounded_and_prints_utf16_log_tail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            logs = Path(directory)
+            (logs / "install.log").write_text("Action start: blocked custom action", encoding="utf-16")
+            with patch.object(windows_msi.subprocess, "run", side_effect=subprocess.TimeoutExpired("msiexec", 300)):
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    self.assertNotEqual(windows_msi._install(Path("signed.msi"), Path("Chosen Dir"), logs), 0)
+                self.assertIn("timed out", output.getvalue())
+                self.assertIn("Action start: blocked custom action", output.getvalue())
+
+    def test_logs_are_uploaded_on_every_conclusion(self):
+        job = RELEASE.read_text().split("\n  windows_msi:\n", 1)[1].split("\n  macos_smoke:", 1)[0]
+        upload = job.split("- uses: actions/upload-artifact@", 1)[1]
+        self.assertIn("if: always()", upload)
+
+
 class CommandLine(unittest.TestCase):
     """The release runs `windows_msi.py build|roundtrip`; a script that never
     dispatches them exits 0 having done nothing (release run 41509343216:
