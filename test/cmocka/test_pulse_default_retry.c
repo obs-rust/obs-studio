@@ -15,6 +15,67 @@ static unsigned retry_calls;
 static unsigned weak_refs;
 static bool source_alive;
 
+/* ASan retains the plugin registration globals and their callbacks. Keep
+ * those unrelated entry points linkable, but fail if this fixture reaches
+ * one instead of the event/restart path it is meant to exercise. */
+const char *obs_module_text(const char *text)
+{
+	return text;
+}
+int_fast32_t pulse_init(void)
+{
+	fail();
+	return -1;
+}
+void pulse_unref(void)
+{
+	fail();
+}
+int_fast32_t pulse_get_source_info_list(pa_source_info_cb_t cb, void *userdata)
+{
+	(void)cb;
+	(void)userdata;
+	fail();
+	return -1;
+}
+int_fast32_t pulse_get_sink_info_list(pa_sink_info_cb_t cb, void *userdata)
+{
+	(void)cb;
+	(void)userdata;
+	fail();
+	return -1;
+}
+void pulse_add_reconnected_callback(pulse_reconnected_cb cb, void *userdata)
+{
+	(void)cb;
+	(void)userdata;
+	fail();
+}
+void pulse_remove_reconnected_callback(pulse_reconnected_cb cb, void *userdata)
+{
+	(void)cb;
+	(void)userdata;
+	fail();
+}
+void pulse_add_source_event_callback(pulse_source_event_cb cb, void *userdata)
+{
+	(void)cb;
+	(void)userdata;
+	fail();
+}
+void pulse_remove_source_event_callback(pulse_source_event_cb cb, void *userdata)
+{
+	(void)cb;
+	(void)userdata;
+	fail();
+}
+void __wrap_obs_source_set_async_compensation(obs_source_t *source, bool enabled)
+{
+	(void)source;
+	(void)enabled;
+	fail();
+}
+
 void pulse_lock(void) {}
 void pulse_unlock(void) {}
 void pulse_signal(int wait_for_accept)
@@ -101,22 +162,37 @@ static void fire_retry(void)
 	cb(userdata);
 }
 
+static void queue_default_change(struct pulse_data *data)
+{
+	retry_data = data;
+	source_alive = true;
+	data->source = (obs_source_t *)data;
+	data->weak_source = (obs_weak_source_t *)data;
+	struct pulse_stream_task *event = bzalloc(sizeof(*event));
+	event->weak_source = data->weak_source;
+	event->event = PULSE_SERVER_CHANGED;
+	weak_refs = 1;
+	pulse_stream_event_task(event);
+	assert_string_equal(data->device, "new.monitor");
+	assert_non_null(retry_cb);
+	assert_int_equal(retry_calls, 1);
+}
+
+static int retry_setup(void **state)
+{
+	(void)state;
+	retry_cb = NULL;
+	retry_userdata = NULL;
+	retry_calls = 0;
+	weak_refs = 0;
+	return 0;
+}
+
 static void changed_default_retries_transient_source_info_error(void **state)
 {
 	(void)state;
 	struct pulse_data data = {.device = bstrdup("old.monitor"), .is_default = true};
-	retry_data = &data;
-	source_alive = true;
-	data.source = (obs_source_t *)&data;
-	data.weak_source = (obs_weak_source_t *)&data;
-	struct pulse_stream_task *event = bzalloc(sizeof(*event));
-	event->weak_source = data.weak_source;
-	event->event = PULSE_SERVER_CHANGED;
-	weak_refs = 1;
-	pulse_stream_event_task(event);
-	assert_string_equal(data.device, "new.monitor");
-	assert_non_null(retry_cb);
-	assert_int_equal(retry_calls, 1);
+	queue_default_change(&data);
 	/* A missing monitor is retried with the same finite budget as a
      * reconnect; it must not poll forever or leak a timer's weak ref. */
 	for (unsigned i = 1; i < PULSE_RESTART_MAX_ATTEMPTS; i++)
@@ -127,8 +203,44 @@ static void changed_default_retries_transient_source_info_error(void **state)
 	bfree(data.device);
 }
 
+static void destroyed_source_drops_pending_default_retry(void **state)
+{
+	(void)state;
+	struct pulse_data data = {.device = bstrdup("old.monitor"), .is_default = true};
+	queue_default_change(&data);
+	source_alive = false;
+	fire_retry();
+	assert_null(retry_cb);
+	assert_int_equal(retry_calls, 1);
+	assert_int_equal(weak_refs, 0);
+	bfree(data.device);
+}
+
+static void missing_named_device_still_waits_for_device_event(void **state)
+{
+	(void)state;
+	struct pulse_data data = {.device = bstrdup("new.monitor")};
+	retry_data = &data;
+	source_alive = true;
+	data.source = (obs_source_t *)&data;
+	data.weak_source = (obs_weak_source_t *)&data;
+	struct pulse_stream_task *event = bzalloc(sizeof(*event));
+	event->weak_source = data.weak_source;
+	event->event = PULSE_SOURCE_NEW;
+	weak_refs = 1;
+	pulse_stream_event_task(event);
+	assert_null(retry_cb);
+	assert_int_equal(retry_calls, 0);
+	assert_int_equal(weak_refs, 0);
+	bfree(data.device);
+}
+
 int main(void)
 {
-	const struct CMUnitTest tests[] = {cmocka_unit_test(changed_default_retries_transient_source_info_error)};
+	const struct CMUnitTest tests[] = {
+		cmocka_unit_test_setup(changed_default_retries_transient_source_info_error, retry_setup),
+		cmocka_unit_test_setup(destroyed_source_drops_pending_default_retry, retry_setup),
+		cmocka_unit_test_setup(missing_named_device_still_waits_for_device_event, retry_setup),
+	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

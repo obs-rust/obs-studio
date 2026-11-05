@@ -1210,7 +1210,10 @@ area.
 - Desktop Audio set to "Default" on PulseAudio no longer goes silent when the
   default output changes, and no longer records the microphone when the
   default output is unplugged: it follows the new default output. Saving its
-  properties unchanged no longer restarts it. *Linux*, pending merge. Issue
+  properties unchanged no longer restarts it. A transient monitor lookup error
+  while PipeWire changes the default output is retried, so capture resumes
+  without another device change. *Linux*, pending merge. Issues
+  [#3630](https://github.com/obs-rust/obs-studio/issues/3630),
   [#2260](https://github.com/obs-rust/obs-studio/issues/2260), PR
   [#2271](https://github.com/obs-rust/obs-studio/pull/2271), upstream
   [obsproject/obs-studio#4828](https://github.com/obsproject/obs-studio/issues/4828),

@@ -14,15 +14,12 @@ if(OS_LINUX AND TARGET OBS::pulseaudio)
     PRIVATE "${CMAKE_SOURCE_DIR}" "${_pulse_retry_dir}" ${CMOCKA_INCLUDE_DIR}
   )
   target_link_libraries(test_pulse_default_retry PRIVATE OBS::libobs PulseAudio::PulseAudio ${CMOCKA_LIBRARIES})
-  # Only the exercised event/restart path is linked; production create and
-  # property callbacks use the real wrapper and are covered by the live tests.
-  target_compile_options(test_pulse_default_retry PRIVATE -ffunction-sections -fdata-sections)
   target_link_options(
     test_pulse_default_retry
     PRIVATE
-      "LINKER:--gc-sections"
       "LINKER:--wrap=obs_weak_source_addref,--wrap=obs_weak_source_release,--wrap=obs_weak_source_get_source"
       "LINKER:--wrap=obs_obj_get_data,--wrap=obs_source_release,--wrap=obs_queue_task"
+      "LINKER:--wrap=obs_source_set_async_compensation"
   )
   add_dependencies(cmocka-tests test_pulse_default_retry)
   add_test(NAME test_pulse_default_retry COMMAND test_pulse_default_retry)
