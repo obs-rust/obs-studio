@@ -144,7 +144,7 @@ jobs:
             exit 0
           fi
           uv run --no-project --script ci/check_release_version.py check \
-            --version "$VERSION" --latest-stable "$latest"
+            --version "$VERSION" --newest-stable "$latest"
 
   build:
     timeout-minutes: 240

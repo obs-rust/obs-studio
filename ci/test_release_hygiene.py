@@ -10,13 +10,23 @@ directly under the stable one.
 
 from __future__ import annotations
 
-import sys
+import importlib.util
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "ci"))
-import release_hygiene as hygiene
+
+
+def load(name: str, path: Path):
+    """Import a ci/ script by path: nothing here edits sys.path (test_no_sys_path_edits)."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+hygiene = load("release_hygiene", ROOT / "ci/release_hygiene.py")
 
 
 def release(tag: str, *, pre: bool = False, draft: bool = False) -> dict[str, object]:

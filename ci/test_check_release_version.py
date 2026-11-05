@@ -10,6 +10,7 @@ stable shipped without the follow-up crate bump (a `1.0.1-beta.*` below `1.0.1`)
 
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 import sys
 import unittest
@@ -18,8 +19,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "ci/check_release_version.py"
 
-sys.path.insert(0, str(ROOT / "ci"))
-import check_release_version as guard
+
+def load(name: str, path: Path):
+    """Import a ci/ script by path: nothing here edits sys.path (test_no_sys_path_edits)."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+guard = load("check_release_version", SCRIPT)
 
 
 def run(*args: str) -> subprocess.CompletedProcess[str]:
@@ -99,14 +109,14 @@ class RefusalTests(unittest.TestCase):
 class CommandTests(unittest.TestCase):
     def test_exit_zero_when_the_version_is_ahead(self) -> None:
         result = run(
-            "check", "--version", "1.0.1-beta.20261105", "--latest-stable", "1.0.0"
+            "check", "--version", "1.0.1-beta.20261105", "--newest-stable", "1.0.0"
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("sorts after the newest stable", result.stdout)
 
     def test_exit_one_when_the_version_is_behind(self) -> None:
         result = run(
-            "check", "--version", "0.1.0-beta.20261101", "--latest-stable", "1.0.0"
+            "check", "--version", "0.1.0-beta.20261101", "--newest-stable", "1.0.0"
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn("does not sort after the newest stable", result.stderr)

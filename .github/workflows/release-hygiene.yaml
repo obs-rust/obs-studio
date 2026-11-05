@@ -26,6 +26,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   flag-stale-dailies:
+    # A fork's schedule fails there and mails its owner (ci/test_workflow_schedule_guard.py).
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
@@ -33,6 +35,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Flag unflagged daily betas 🏷️
         env:
           GH_TOKEN: ${{ github.token }}

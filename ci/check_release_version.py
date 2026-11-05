@@ -17,7 +17,7 @@ releases sit below the stable release. This check makes the mistake a red gate
 instead of a Discord question:
 
     uv run --no-project --script ci/check_release_version.py check \\
-        --version 1.0.1-beta.20261105 --latest-stable 1.0.0
+        --version 1.0.1-beta.20261105 --newest-stable 1.0.0
 
 Exit 0 when `version` sorts strictly after `latest-stable`; exit 1 (with what to
 do about it) when it does not, when a nightly is malformed, or when either side
@@ -124,7 +124,7 @@ def main(argv: list[str]) -> int:
         help="Version this run would publish (e.g. 1.0.1-beta.20261105)",
     )
     check.add_argument(
-        "--latest-stable",
+        "--newest-stable",
         required=True,
         help="Newest stable release version (e.g. 1.0.0)",
     )
@@ -153,12 +153,12 @@ def main(argv: list[str]) -> int:
         return 0
 
     nightly = {"yes": True, "no": False}.get(args.nightly or "", None)
-    problem = ordering_problem(args.version, args.latest_stable, nightly=nightly)
+    problem = ordering_problem(args.version, args.newest_stable, nightly=nightly)
     if problem is not None:
         print(f"check_release_version: {problem}", file=sys.stderr)
         return 1
     print(
-        f"check_release_version: {args.version} sorts after the newest stable {args.latest_stable}"
+        print(f"check_release_version: {args.version} sorts after the newest stable {args.newest_stable}")
     )
     return 0
 
