@@ -30,11 +30,11 @@
 //! calls; only libobs-rust links it, so this crate calls nothing in libobs.
 //!
 //! The locks are the C's, taken where it takes them: `transition_mutex`
-//! around the child reads of the size and of each matrix and around the store
-//! of each matrix, and a trylock of `transition_tex_mutex` around the render
-//! target resets of the tick. As in the C, the sizes, the scale type, the
-//! alignment and the manual fields are read and written outside
-//! `transition_mutex`.
+//! around the child reads of the size and of each matrix, around the store
+//! of each matrix and around the manual step of the tick, and a trylock of
+//! `transition_tex_mutex` around the render target resets of the tick. As in
+//! the C, the sizes, the scale type and the alignment are read and written
+//! outside `transition_mutex`.
 //!
 //! Intentional difference from C: the two `(int)` casts of the room left
 //! for a child saturate when it is past `int`, which only a transition size
@@ -231,15 +231,16 @@ pub fn recalculate_size<T: Transition>(transition: &T) {
 }
 
 /// `obs_transition_tick()`: [`recalculate_size`], [`recalculate_matrices`],
-/// then the manual value for the mode and torque
+/// then, under the lock, the manual value for the mode and torque
 /// ([`crate::transition_clock::manual`]): the target for a snap,
 /// `calc_torquef(value, target, torque, clamp, t)` for a step, left as it is
-/// otherwise. Last, when the texture trylock takes the lock, resets both
+/// otherwise (#3570). Last, when the texture trylock takes the lock, resets both
 /// render targets (slot A's first) and unlocks it.
 pub fn tick<T: Transition>(transition: &T, t: f32) {
     recalculate_size(transition);
     recalculate_matrices(transition);
 
+    transition.lock();
     match manual(transition.mode(), transition.manual_torque()) {
         Step::Snap => transition.set_manual_val(transition.manual_target()),
         Step::Step => {
@@ -254,6 +255,7 @@ pub fn tick<T: Transition>(transition: &T, t: f32) {
         }
         Step::Hold => {}
     }
+    transition.unlock();
 
     if transition.trylock_textures() == 0 {
         for idx in SLOTS {

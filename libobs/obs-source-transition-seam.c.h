@@ -157,22 +157,22 @@ void obs_source_transition_seam_set_duration(obs_source_t *transition, uint64_t 
 
 uint32_t obs_source_transition_seam_get_cx(const obs_source_t *transition)
 {
-	return transition->transition_cx;
+	return (uint32_t)os_atomic_load_long(&transition->transition_cx);
 }
 
 void obs_source_transition_seam_set_cx(obs_source_t *transition, uint32_t value)
 {
-	transition->transition_cx = value;
+	os_atomic_store_long(&transition->transition_cx, (long)value);
 }
 
 uint32_t obs_source_transition_seam_get_cy(const obs_source_t *transition)
 {
-	return transition->transition_cy;
+	return (uint32_t)os_atomic_load_long(&transition->transition_cy);
 }
 
 void obs_source_transition_seam_set_cy(obs_source_t *transition, uint32_t value)
 {
-	transition->transition_cy = value;
+	os_atomic_store_long(&transition->transition_cy, (long)value);
 }
 
 uint32_t obs_source_transition_seam_get_actual_cx(const obs_source_t *transition)

@@ -7,9 +7,9 @@
 //! height. The fake records each call into the rest of libobs (the locks,
 //! `obs_source_get_width()` and `_height()`, `add_alignment()`, the matrix,
 //! `calc_torquef()`, `gs_texrender_reset()`) and each write of a field the
-//! tick writes, in order, and panics when a slot or a child's size is read
-//! without `transition_mutex` (the C holds it there) or a lock is taken
-//! twice. `add_alignment()` is the C's, and `calc_torquef()` the
+//! tick writes, in order, and panics when a slot, a child's size, the mode or
+//! a manual field is read without `transition_mutex` (the C holds it there)
+//! or a lock is taken twice. `add_alignment()` is the C's, and `calc_torquef()` the
 //! `obs-graphics` port, so the positions and the manual values are the ones
 //! libobs computes.
 //!
@@ -197,22 +197,28 @@ impl Transition for Tr {
         self.f.borrow().alignment
     }
     fn mode(&self) -> i32 {
+        self.need_lock("transition_mode");
         self.f.borrow().mode
     }
     fn manual_val(&self) -> f32 {
+        self.need_lock("transition_manual_val");
         self.f.borrow().manual_val
     }
     fn set_manual_val(&self, value: f32) {
+        self.need_lock("transition_manual_val");
         self.ev(Ev::SetManualVal(value));
         self.f.borrow_mut().manual_val = value;
     }
     fn manual_target(&self) -> f32 {
+        self.need_lock("transition_manual_target");
         self.f.borrow().manual_target
     }
     fn manual_torque(&self) -> f32 {
+        self.need_lock("transition_manual_torque");
         self.f.borrow().manual_torque
     }
     fn manual_clamp(&self) -> f32 {
+        self.need_lock("transition_manual_clamp");
         self.f.borrow().manual_clamp
     }
     fn texrender(&self, idx: usize) -> u32 {
@@ -777,8 +783,10 @@ fn tick_order() {
             Ev::Lock,
             Ev::Matrix(1, (0.5, 0.5), (0.0, 37.0)),
             Ev::Unlock,
-            // the snap
+            // the snap, under the lock (#3570)
+            Ev::Lock,
             Ev::SetManualVal(1.0),
+            Ev::Unlock,
             // the render targets
             Ev::TryLockTex(0),
             Ev::Reset(11),
@@ -867,6 +875,7 @@ fn model_tick(f: &Fields, sizes: &BTreeMap<Id, (u32, u32)>, t: f32, busy: i32) -
         ev.push(Ev::Unlock);
     }
 
+    ev.push(Ev::Lock);
     if f.mode == MODE_MANUAL {
         if f.manual_torque == 0.0 {
             ev.push(Ev::SetManualVal(f.manual_target));
@@ -887,6 +896,7 @@ fn model_tick(f: &Fields, sizes: &BTreeMap<Id, (u32, u32)>, t: f32, busy: i32) -
             )));
         }
     }
+    ev.push(Ev::Unlock);
 
     ev.push(Ev::TryLockTex(busy));
     if busy == 0 {

@@ -26,13 +26,13 @@ void add_alignment(struct vec2 *v, uint32_t align, int cx, int cy);
 
 uint32_t transition_get_cx(obs_source_t *tr)
 {
-	return obs_source_transition_clock_size(tr->transition_cx,
+	return obs_source_transition_clock_size((uint32_t)os_atomic_load_long(&tr->transition_cx),
 						(uint32_t)os_atomic_load_long(&tr->transition_actual_cx));
 }
 
 uint32_t transition_get_cy(obs_source_t *tr)
 {
-	return obs_source_transition_clock_size(tr->transition_cy,
+	return obs_source_transition_clock_size((uint32_t)os_atomic_load_long(&tr->transition_cy),
 						(uint32_t)os_atomic_load_long(&tr->transition_actual_cy));
 }
 
@@ -114,6 +114,7 @@ void obs_transition_tick(obs_source_t *transition, float t)
 	transition_recalculate_size(transition);
 	transition_recalculate_matrices(transition);
 
+	lock_transition(transition);
 	switch (obs_source_transition_clock_manual((int)transition->transition_mode,
 						   transition->transition_manual_torque)) {
 	case OBS_SOURCE_TRANSITION_CLOCK_SNAP:
@@ -127,6 +128,7 @@ void obs_transition_tick(obs_source_t *transition, float t)
 	case OBS_SOURCE_TRANSITION_CLOCK_HOLD:
 		break;
 	}
+	unlock_transition(transition);
 
 	if (trylock_textures(transition) == 0) {
 		gs_texrender_reset(transition->transition_texrender[0]);
