@@ -421,7 +421,10 @@ bool mp_decode_next(struct mp_decode *d)
 		}
 
 		d->last_duration = duration;
+		/* Status queries read next_pts under the same mutex. */
+		pthread_mutex_lock(&d->m->mutex);
 		d->next_pts = d->frame_pts + duration;
+		pthread_mutex_unlock(&d->m->mutex);
 	}
 
 	return true;
@@ -443,7 +446,9 @@ void mp_decode_flush(struct mp_decode *d)
 	d->eof = false;
 	d->frame_pts = 0;
 	d->frame_ready = false;
+	pthread_mutex_lock(&d->m->mutex);
 	d->next_pts = 0;
+	pthread_mutex_unlock(&d->m->mutex);
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */

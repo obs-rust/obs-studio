@@ -376,9 +376,9 @@ static inline int64_t mp_media_get_base_pts(mp_media_t *m)
 {
 	int64_t base_ts = 0;
 
-	if (m->has_video && m->v.next_pts > base_ts)
+	if (os_atomic_load_bool(&m->has_video) && m->v.next_pts > base_ts)
 		base_ts = m->v.next_pts;
-	if (m->has_audio && m->a.next_pts > base_ts)
+	if (os_atomic_load_bool(&m->has_audio) && m->a.next_pts > base_ts)
 		base_ts = m->a.next_pts;
 
 	return base_ts;
@@ -838,13 +838,12 @@ static bool init_avformat(mp_media_t *m)
 		return false;
 	}
 
-	m->start_time = m->fmt->start_time != AV_NOPTS_VALUE ? m->fmt->start_time : 0;
-
 	pthread_mutex_lock(&m->mutex);
+	m->start_time = m->fmt->start_time != AV_NOPTS_VALUE ? m->fmt->start_time : 0;
 	m->reconnecting = false;
 	pthread_mutex_unlock(&m->mutex);
-	m->has_video = mp_decode_init(m, AVMEDIA_TYPE_VIDEO, m->hw);
-	m->has_audio = mp_decode_init(m, AVMEDIA_TYPE_AUDIO, m->hw);
+	os_atomic_store_bool(&m->has_video, mp_decode_init(m, AVMEDIA_TYPE_VIDEO, m->hw));
+	os_atomic_store_bool(&m->has_audio, mp_decode_init(m, AVMEDIA_TYPE_AUDIO, m->hw));
 
 	if (!m->has_video && !m->has_audio) {
 		blog(LOG_WARNING,
@@ -921,9 +920,11 @@ static void mp_media_measure_duration(mp_media_t *m)
 	avformat_close_input(&fmt);
 
 	int64_t start = m->start_time;
+	pthread_mutex_lock(&m->mutex);
 	if (end != AV_NOPTS_VALUE && end > start)
 		m->measured_duration = end - start;
 	m->measured_frames = frames;
+	pthread_mutex_unlock(&m->mutex);
 }
 
 bool mp_media_init2(mp_media_t *m);
@@ -1213,7 +1214,9 @@ void mp_media_stop(mp_media_t *m)
  * anywhere. */
 int64_t mp_media_get_current_time(mp_media_t *m)
 {
+	pthread_mutex_lock(&m->mutex);
 	int64_t t = mp_media_get_base_pts(m) * (int64_t)m->speed / 100000000LL - m->start_time / 1000;
+	pthread_mutex_unlock(&m->mutex);
 	return t > 0 ? t : 0;
 }
 
@@ -1245,7 +1248,10 @@ int64_t mp_media_get_frames(mp_media_t *m)
 				       (double)avg_frame_rate.num / (double)avg_frame_rate.den);
 	}
 
-	return frames > m->measured_frames ? frames : m->measured_frames;
+	pthread_mutex_lock(&m->mutex);
+	int64_t measured_frames = m->measured_frames;
+	pthread_mutex_unlock(&m->mutex);
+	return frames > measured_frames ? frames : measured_frames;
 }
 
 /* The header's duration, or the measured one where that is longer. A file
@@ -1256,7 +1262,10 @@ int64_t mp_media_get_duration(mp_media_t *m)
 		return 0;
 
 	int64_t duration = m->fmt->duration != AV_NOPTS_VALUE ? m->fmt->duration : 0;
-	return m->measured_duration > duration ? m->measured_duration : duration;
+	pthread_mutex_lock(&m->mutex);
+	int64_t measured_duration = m->measured_duration;
+	pthread_mutex_unlock(&m->mutex);
+	return measured_duration > duration ? measured_duration : duration;
 }
 
 void mp_media_seek(mp_media_t *m, int64_t pos)

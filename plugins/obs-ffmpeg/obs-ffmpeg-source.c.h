@@ -57,7 +57,7 @@ struct ffmpeg_source {
 	volatile bool reconnecting;
 	int reconnect_delay_sec;
 
-	enum obs_media_state state;
+	volatile long state;
 	obs_hotkey_pair_id play_pause_hotkey;
 	obs_hotkey_id stop_hotkey;
 };
@@ -82,7 +82,7 @@ static void stop_reconnect_thread(struct ffmpeg_source *s)
 static void set_media_state(void *data, enum obs_media_state state)
 {
 	struct ffmpeg_source *s = data;
-	s->state = state;
+	os_atomic_store_long(&s->state, state);
 }
 
 static bool is_local_file_modified(obs_properties_t *props, obs_property_t *prop, obs_data_t *settings)
@@ -283,7 +283,7 @@ static void media_stopped(void *opaque)
 	if ((s->close_when_inactive || !s->is_local_file) && s->media)
 		s->destroy_media = true;
 
-	if (s->state != OBS_MEDIA_STATE_STOPPED) {
+	if (os_atomic_load_long(&s->state) != OBS_MEDIA_STATE_STOPPED) {
 		set_media_state(s, OBS_MEDIA_STATE_ENDED);
 		obs_source_media_ended(s->source);
 	}
@@ -448,7 +448,8 @@ static void ffmpeg_source_update(void *data, obs_data_t *settings)
 	/* If media has ended and user enables looping, user expects that it restarts.
 	 * Should still check if is_looping was changed, because users may stop them
 	 * intentionally, which is why we only check for ENDED and not STOPPED. */
-	if (active && s->state == OBS_MEDIA_STATE_ENDED && is_looping == true && s->is_looping == false) {
+	if (active && os_atomic_load_long(&s->state) == OBS_MEDIA_STATE_ENDED && is_looping == true &&
+	    s->is_looping == false) {
 		should_restart_media = true;
 	}
 
@@ -561,7 +562,7 @@ static bool ffmpeg_source_play_hotkey(void *data, obs_hotkey_pair_id id, obs_hot
 
 	struct ffmpeg_source *s = data;
 
-	if (s->state == OBS_MEDIA_STATE_PLAYING || !obs_source_showing(s->source))
+	if (os_atomic_load_long(&s->state) == OBS_MEDIA_STATE_PLAYING || !obs_source_showing(s->source))
 		return false;
 
 	obs_source_media_play_pause(s->source, false);
@@ -578,7 +579,7 @@ static bool ffmpeg_source_pause_hotkey(void *data, obs_hotkey_pair_id id, obs_ho
 
 	struct ffmpeg_source *s = data;
 
-	if (s->state != OBS_MEDIA_STATE_PLAYING || !obs_source_showing(s->source))
+	if (os_atomic_load_long(&s->state) != OBS_MEDIA_STATE_PLAYING || !obs_source_showing(s->source))
 		return false;
 
 	obs_source_media_play_pause(s->source, true);
@@ -695,7 +696,8 @@ static void ffmpeg_source_play_pause(void *data, bool pause)
 
 	/* Stop and the end of the file stop the player, and unpausing does
 	 * not start it again: play from the start, like Restart. */
-	if (!pause && (s->state == OBS_MEDIA_STATE_STOPPED || s->state == OBS_MEDIA_STATE_ENDED)) {
+	long state = os_atomic_load_long(&s->state);
+	if (!pause && (state == OBS_MEDIA_STATE_STOPPED || state == OBS_MEDIA_STATE_ENDED)) {
 		ffmpeg_source_start(s);
 		return;
 	}
@@ -785,7 +787,7 @@ static enum obs_media_state ffmpeg_source_get_state(void *data)
 {
 	struct ffmpeg_source *s = data;
 
-	return s->state;
+	return (enum obs_media_state)os_atomic_load_long(&s->state);
 }
 
 static void missing_file_callback(void *src, const char *new_path, void *data)

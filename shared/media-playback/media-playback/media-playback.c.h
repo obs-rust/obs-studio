@@ -159,7 +159,7 @@ bool media_playback_has_video(media_playback_t *mp)
 	if (mp->is_cached)
 		return mp->cache.has_video;
 	else
-		return mp->media.has_video;
+		return os_atomic_load_bool(&mp->media.has_video);
 }
 
 bool media_playback_has_audio(media_playback_t *mp)
@@ -170,5 +170,5 @@ bool media_playback_has_audio(media_playback_t *mp)
 	if (mp->is_cached)
 		return mp->cache.has_audio;
 	else
-		return mp->media.has_audio;
+		return os_atomic_load_bool(&mp->media.has_audio);
 }
