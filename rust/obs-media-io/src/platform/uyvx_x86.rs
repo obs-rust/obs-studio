@@ -3,9 +3,9 @@
 
 use super::uyvx::Rows;
 use core::arch::x86_64::{
-    __m128i, _mm_add_epi16, _mm_and_si128, _mm_cvtsi128_si32, _mm_loadu_si128, _mm_packs_epi32,
+    __m128i, _mm_add_epi64, _mm_and_si128, _mm_cvtsi128_si32, _mm_loadu_si128, _mm_packs_epi32,
     _mm_packus_epi16, _mm_set1_epi16, _mm_set1_epi32, _mm_shuffle_epi32, _mm_shufflelo_epi16,
-    _mm_srli_epi16, _mm_srli_epi32, _mm_srli_si128,
+    _mm_srai_epi16, _mm_srli_si128,
 };
 
 /// Constructed only after the runtime SSE2 check.
@@ -46,10 +46,12 @@ impl Native {
 
 #[inline]
 #[target_feature(enable = "sse2")]
-fn channel<const SHIFT: i32>(a: __m128i, b: __m128i) -> __m128i {
-    let mask = _mm_set1_epi32(255);
-    let a = _mm_and_si128(_mm_srli_epi32::<SHIFT>(a), mask);
-    let b = _mm_and_si128(_mm_srli_epi32::<SHIFT>(b), mask);
+fn channel<const BYTES: i32>(a: __m128i, b: __m128i) -> __m128i {
+    // Keep the C's byte shift after masking. A per-lane logical shift lets
+    // LLVM expand the saturating packs into slower shuffle/clamp sequences.
+    let mask = _mm_set1_epi32(255 << (BYTES * 8));
+    let a = _mm_srli_si128::<BYTES>(_mm_and_si128(a, mask));
+    let b = _mm_srli_si128::<BYTES>(_mm_and_si128(b, mask));
     let packed = _mm_packs_epi32(a, b);
     _mm_packus_epi16(packed, packed)
 }
@@ -58,9 +60,9 @@ fn channel<const SHIFT: i32>(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 fn average(a: __m128i, b: __m128i) -> __m128i {
     let mask = _mm_set1_epi16(255);
-    let sum = _mm_add_epi16(_mm_and_si128(a, mask), _mm_and_si128(b, mask));
-    let pair = _mm_add_epi16(sum, _mm_shuffle_epi32::<0xb1>(sum));
-    _mm_shuffle_epi32::<0xd8>(_mm_srli_epi16::<2>(pair))
+    let sum = _mm_add_epi64(_mm_and_si128(a, mask), _mm_and_si128(b, mask));
+    let pair = _mm_add_epi64(sum, _mm_shuffle_epi32::<0xb1>(sum));
+    _mm_shuffle_epi32::<0xd8>(_mm_srai_epi16::<2>(pair))
 }
 
 #[inline]
@@ -89,7 +91,7 @@ unsafe fn i420(rows: Rows<'_>, u: *mut u8, v: *mut u8) {
             let a = _mm_loadu_si128(rows.line1.as_ptr().add(i * 16).cast());
             let b = _mm_loadu_si128(rows.line2.as_ptr().add(i * 16).cast());
             store_rows(
-                channel::<8>(a, b),
+                channel::<1>(a, b),
                 rows.luma.as_mut_ptr(),
                 i * 4,
                 rows.stride,
@@ -113,7 +115,7 @@ unsafe fn nv12(rows: Rows<'_>, chroma: *mut u8) {
             let a = _mm_loadu_si128(rows.line1.as_ptr().add(i * 16).cast());
             let b = _mm_loadu_si128(rows.line2.as_ptr().add(i * 16).cast());
             store_rows(
-                channel::<8>(a, b),
+                channel::<1>(a, b),
                 rows.luma.as_mut_ptr(),
                 i * 4,
                 rows.stride,
@@ -134,13 +136,13 @@ unsafe fn i444(rows: Rows<'_>, u: *mut u8, v: *mut u8) {
             let a = _mm_loadu_si128(rows.line1.as_ptr().add(i * 16).cast());
             let b = _mm_loadu_si128(rows.line2.as_ptr().add(i * 16).cast());
             store_rows(
-                channel::<8>(a, b),
+                channel::<1>(a, b),
                 rows.luma.as_mut_ptr(),
                 i * 4,
                 rows.stride,
             );
             store_rows(channel::<0>(a, b), u, i * 4, rows.stride);
-            store_rows(channel::<16>(a, b), v, i * 4, rows.stride);
+            store_rows(channel::<2>(a, b), v, i * 4, rows.stride);
         }
     }
 }
