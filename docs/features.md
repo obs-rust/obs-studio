@@ -2316,6 +2316,10 @@ area.
 
 ### Stability
 
+- An embedder or plugin that leaves a scene alive no longer crashes shutdown
+  when the scene still owns input sources or nested groups. *All*, pending
+  merge. Issue [#3458](https://github.com/obs-rust/obs-studio/issues/3458), PR
+  [#3535](https://github.com/obs-rust/obs-studio/pull/3535).
 - A scene item with a bounds type OBS doesn't know (a hand-edited or
   foreign scene collection, undo data, a plugin) no longer draws inside a
   phantom bounding box; it is loaded and set as no bounds. *All*, pending
