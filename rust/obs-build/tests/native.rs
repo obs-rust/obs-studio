@@ -71,7 +71,7 @@ fn canonical_scene_bounds_place_is_registered() {
     }
 }
 
-/// #3699: retain unchanged crop/size saturation cases and overflow sanitizers.
+/// #3705: retain the full scene collection crop-load integration suite.
 #[test]
 fn canonical_scene_item_crop_load_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
@@ -79,17 +79,28 @@ fn canonical_scene_item_crop_load_is_registered() {
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph.retain_suite("graphics");
     let name = "test_scene_item_crop_load";
-    let target = graph.targets.get(name)
+    let target = graph
+        .targets
+        .get(name)
         .expect("canonical graph omits scene collection crop-load compatibility coverage");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_scene_item_crop_load.c"));
-    let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-        ConditionalValue::Name(name) => name.as_str(),
-        _ => panic!("crop-load linkage must be unconditional"),
-    }).collect();
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("crop-load linkage must be unconditional"),
+        })
+        .collect();
     assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    assert_eq!(target.artifact_definitions.get("GRAPHICS_MODULE_PATH").map(String::as_str),
-        Some("OBS::libobs-opengl"));
+    assert_eq!(
+        target
+            .artifact_definitions
+            .get("GRAPHICS_MODULE_PATH")
+            .map(String::as_str),
+        Some("OBS::libobs-opengl")
+    );
     assert_eq!(target.watch_inputs, ["libobs/data"]);
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
@@ -98,8 +109,9 @@ fn canonical_scene_item_crop_load_is_registered() {
     assert_eq!(test.timeout_seconds, Some(120));
     assert_eq!(test.skip_return_code, None);
     assert!(test.optional_prefixes.is_empty());
-    let fragment = fs::read_to_string(root.join(
-        "test/cmocka/tests.d/test_scene_item_crop_load.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_scene_item_crop_load.cmake"))
+            .unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
     graph.targets.retain(|key, _| key == name);
@@ -110,14 +122,31 @@ fn canonical_scene_item_crop_load_is_registered() {
         ("OS_MACOS", true, false),
         ("OS_WINDOWS", true, false),
     ] {
-        let selected = graph.select(&[
-            (os.into(), true), ("HAVE_OBS_OPENGL".into(), graphics),
-        ].into()).unwrap();
-        assert_eq!(selected.targets.contains_key(name), expected, "{os}, OpenGL={graphics}");
-        assert_eq!(selected.tests.contains_key(name), expected, "{os}, OpenGL={graphics}");
+        let selected = graph
+            .select(
+                &[
+                    ("OS_LINUX".into(), os == "OS_LINUX"),
+                    ("OS_MACOS".into(), os == "OS_MACOS"),
+                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                    ("HAVE_OBS_OPENGL".into(), graphics),
+                ]
+                .into(),
+            )
+            .unwrap();
+        assert_eq!(
+            selected.targets.contains_key(name),
+            expected,
+            "{os}, OpenGL={graphics}"
+        );
+        assert_eq!(
+            selected.tests.contains_key(name),
+            expected,
+            "{os}, OpenGL={graphics}"
+        );
     }
 }
 
+/// #3699: retain unchanged crop/size saturation cases and overflow sanitizers.
 #[test]
 fn canonical_scene_crop_steps_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
