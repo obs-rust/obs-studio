@@ -35,8 +35,6 @@ OBS_FRAME = re.compile(r"(?<![\w/])(?:\.\./)*(?:[\w.-]+/)*?((?:libobs|frontend|p
 # asan fails the job on anything else (#3238), so the list keeps itself honest:
 # - "bug": the test is right and OBS (or its build) is wrong; it names its
 #   issue. A bug entry that ran clean is a finding: the fix drops its entry.
-# - "flaky": the test is not solid yet; it names the issue that makes it
-#   solid, and may pass meanwhile. The kind goes once those issues are done.
 # - "tool": a limitation of the tool itself, no OBS issue.
 KNOWN = {
     ("valgrind", "test_pipe"): ("tool", "valgrind runs posix_spawn as a plain fork, so a missing binary's exec "
