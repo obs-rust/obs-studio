@@ -45,6 +45,9 @@ pub(crate) use with_audio_thread_port;
 
 cfg_select! {
     target_arch = "x86_64" => {
+        #[allow(unsafe_code)] // SSE2 loads/stores are bounded by borrowed row slices
+        #[path = "uyvx_x86.rs"]
+        mod uyvx_native;
         /// [`crate::audio_clamp::clamp_samples_scalar`] compiled for AVX2.
         #[target_feature(enable = "avx2")]
         fn clamp_samples_avx2(buf: &mut [f32]) {
@@ -64,7 +67,19 @@ cfg_select! {
             }
         }
     }
+    target_arch = "aarch64" => {
+        #[allow(unsafe_code)] // NEON loads/stores are bounded by borrowed row slices
+        #[path = "uyvx_neon.rs"]
+        mod uyvx_native;
+
+        pub(crate) fn clamp_samples(buf: &mut [f32]) {
+            crate::audio_clamp::clamp_samples_scalar(buf);
+        }
+    }
     _ => {
+        #[path = "uyvx_fallback.rs"]
+        mod uyvx_native;
+
         pub(crate) fn clamp_samples(buf: &mut [f32]) {
             crate::audio_clamp::clamp_samples_scalar(buf);
         }

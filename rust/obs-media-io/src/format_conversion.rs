@@ -4,7 +4,7 @@
 //! The C does the UYVX functions with SSE2 integer operations. Every lane
 //! works out to plain integer math (picking bytes out of each pixel, and
 //! `(a + b + c + d) >> 2` for the chroma of a 2x2 block), so this is a
-//! scalar port, exact byte for byte. Offsets use the C's `u32` arithmetic,
+//! byte-exact port with a scalar fallback and runtime-selected SIMD row kernels. Offsets use the C's `u32` arithmetic,
 //! wrapping included, and each loop keeps the C's order of reads and writes,
 //! which decides the result where output rows overlap.
 //!
@@ -64,11 +64,6 @@ impl Sink for [u8] {
     }
 }
 
-/// The offset of each channel in a UYVX pixel.
-const UYVX_U: usize = 0;
-const UYVX_Y: usize = 1;
-const UYVX_V: usize = 2;
-
 /// The two 32-bit pixels `luma[at]` and `luma[at + 1]`, each with `pixel`'s
 /// value, as the two adjacent `uint32_t` stores the C makes.
 fn pair(luma: &[u8], at: usize, pixel: impl Fn(u8) -> u32) -> [u8; 8] {
@@ -89,29 +84,6 @@ fn at(base: usize, add: u32) -> usize {
 
 /// The bytes one block of four UYVX pixels occupies, and reads, in a row.
 const BLOCK_BYTES: usize = 16;
-
-/// The four bytes of channel `c` in the four UYVX pixels at `at` in `row`.
-fn channel(row: &[u8], at: usize, c: usize) -> [u8; 4] {
-    [
-        row[at + c],
-        row[at + 4 + c],
-        row[at + 8 + c],
-        row[at + 12 + c],
-    ]
-}
-
-/// Channel `c` averaged over pixels 0-1 and 2-3 of the two rows at `at`,
-/// `(a + b + c + d) >> 2`.
-fn average(line1: &[u8], line2: &[u8], at: usize, c: usize) -> [u8; 2] {
-    let avg = |p: usize| {
-        let sum = u16::from(line1[at + p + c])
-            + u16::from(line1[at + p + 4 + c])
-            + u16::from(line2[at + p + c])
-            + u16::from(line2[at + p + 4 + c]);
-        (sum >> 2) as u8
-    };
-    [avg(0), avg(8)]
-}
 
 /// Packs UYVX rows `start_y..end_y`, two at a time, into planar I420:
 /// full-size luma in `output[0]`, and U and V averaged over each 2x2 block
@@ -145,6 +117,7 @@ pub fn compress_uyvx_to_i420<S, D>(
     }
     let bytes = blocks * 4;
     let lum_stride = lum_linesize as usize;
+    let kernel = crate::platform::uyvx::Kernel::detect();
     let mut y = start_y;
     while y < end_y {
         let in_pos = y.wrapping_mul(in_linesize) as usize;
@@ -158,17 +131,17 @@ pub fn compress_uyvx_to_i420<S, D>(
         let chroma_pos = (y >> 1).wrapping_mul(chroma_linesize) as usize;
         let u_row = u.bytes_mut(chroma_pos, blocks * 2);
         let v_row = v.bytes_mut(chroma_pos, blocks * 2);
-        for i in 0..blocks {
-            let (pixel, block) = (i * 4, i * BLOCK_BYTES);
-            let luma_at = pixel;
-            luma[luma_at..luma_at + 4].copy_from_slice(&channel(line1, block, UYVX_Y));
-            luma[lum_stride + luma_at..lum_stride + luma_at + 4]
-                .copy_from_slice(&channel(line2, block, UYVX_Y));
-            let [u01, u23] = average(line1, line2, block, UYVX_U);
-            let [v01, v23] = average(line1, line2, block, UYVX_V);
-            u_row[i * 2..i * 2 + 2].copy_from_slice(&[u01, u23]);
-            v_row[i * 2..i * 2 + 2].copy_from_slice(&[v01, v23]);
-        }
+        kernel.i420(
+            crate::platform::uyvx::Rows {
+                line1,
+                line2,
+                luma,
+                stride: lum_stride,
+                blocks,
+            },
+            u_row,
+            v_row,
+        );
         y = y.wrapping_add(2);
     }
 }
@@ -200,6 +173,7 @@ pub fn compress_uyvx_to_nv12<S, D>(
     }
     let bytes = blocks * 4;
     let lum_stride = lum_linesize as usize;
+    let kernel = crate::platform::uyvx::Kernel::detect();
     let mut y = start_y;
     while y < end_y {
         let in_pos = y.wrapping_mul(in_linesize) as usize;
@@ -210,15 +184,16 @@ pub fn compress_uyvx_to_nv12<S, D>(
         let luma = lum.bytes_mut(lum_pos, lum_stride + bytes);
         let chroma_pos = (y >> 1).wrapping_mul(chroma_linesize) as usize;
         let chroma_row = chroma.bytes_mut(chroma_pos, blocks * 4);
-        for i in 0..blocks {
-            let (pixel, block) = (i * 4, i * BLOCK_BYTES);
-            luma[pixel..pixel + 4].copy_from_slice(&channel(line1, block, UYVX_Y));
-            luma[lum_stride + pixel..lum_stride + pixel + 4]
-                .copy_from_slice(&channel(line2, block, UYVX_Y));
-            let [u01, u23] = average(line1, line2, block, UYVX_U);
-            let [v01, v23] = average(line1, line2, block, UYVX_V);
-            chroma_row[pixel..pixel + 4].copy_from_slice(&[u01, v01, u23, v23]);
-        }
+        kernel.nv12(
+            crate::platform::uyvx::Rows {
+                line1,
+                line2,
+                luma,
+                stride: lum_stride,
+                blocks,
+            },
+            chroma_row,
+        );
         y = y.wrapping_add(2);
     }
 }
@@ -248,6 +223,7 @@ pub fn convert_uyvx_to_i444<S, D>(
     }
     let bytes = blocks * 4;
     let stride = out_linesize as usize;
+    let kernel = crate::platform::uyvx::Kernel::detect();
     let mut y = start_y;
     while y < end_y {
         let in_pos = y.wrapping_mul(in_linesize) as usize;
@@ -260,17 +236,17 @@ pub fn convert_uyvx_to_i444<S, D>(
         let luma = lum.bytes_mut(pos, stride + bytes);
         let u_row = u.bytes_mut(pos, stride + bytes);
         let v_row = v.bytes_mut(pos, stride + bytes);
-        for i in 0..blocks {
-            let (pixel, block) = (i * 4, i * BLOCK_BYTES);
-            for (rows, c) in [
-                (&mut *luma, UYVX_Y),
-                (&mut *u_row, UYVX_U),
-                (&mut *v_row, UYVX_V),
-            ] {
-                rows[pixel..pixel + 4].copy_from_slice(&channel(line1, block, c));
-                rows[stride + pixel..stride + pixel + 4].copy_from_slice(&channel(line2, block, c));
-            }
-        }
+        kernel.i444(
+            crate::platform::uyvx::Rows {
+                line1,
+                line2,
+                luma,
+                stride,
+                blocks,
+            },
+            u_row,
+            v_row,
+        );
         y = y.wrapping_add(2);
     }
 }

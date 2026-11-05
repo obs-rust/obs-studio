@@ -167,6 +167,12 @@ impl Uyvx {
     }
 
     fn check(&self, kind: UyvxKind) {
+        for native in [false, true] {
+            crate::platform::uyvx::with_native_for_test(native, || self.check_selected(kind));
+        }
+    }
+
+    fn check_selected(&self, kind: UyvxKind) {
         let (input_len, plane_lens) = self.sizes(kind);
         let planes = if kind == UyvxKind::Nv12 { 2 } else { 3 };
         let input = Buf::random(input_len, self.seed);
