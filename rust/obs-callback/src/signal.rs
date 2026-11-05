@@ -35,8 +35,8 @@
 //! callbacks.
 
 use std::cell::{Cell, RefCell};
-use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock};
+use std::sync::atomic::{AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 
 use crate::decl::{Decl, DeclParse, parse_decl};
 use crate::name_table::NameTable;
@@ -60,26 +60,19 @@ pub enum AddResult {
 
 /// A lock that its owner thread can take again.
 ///
-/// `std::sync::ReentrantLock` is not stable. The data a holder changes
-/// sits in its own `Mutex`, taken only for short steps and never across a
-/// callback, so taking this lock twice on one thread is safe.
+/// The outermost guard holds `gate` across callbacks. Recursive acquisitions
+/// on that same thread need no second mutex: the owner token is unique among
+/// live threads, and is cleared before the outer guard releases the gate.
 #[derive(Default)]
 struct ReentrantLock {
-    state: Mutex<Owner>,
-    released: Condvar,
-}
-
-/// The thread that holds a `ReentrantLock`, how often, and how many
-/// threads wait for it.
-#[derive(Default)]
-struct Owner {
-    thread: Option<usize>,
-    depth: usize,
-    waiting: usize,
+    gate: Mutex<()>,
+    owner: AtomicUsize,
 }
 
 struct ReentrantGuard<'a> {
     lock: &'a ReentrantLock,
+    // Keeping the real guard here also makes recursive guards !Send.
+    outer: Option<MutexGuard<'a, ()>>,
 }
 
 thread_local! {
@@ -99,30 +92,25 @@ fn thread_tag() -> usize {
 impl ReentrantLock {
     fn lock(&self) -> ReentrantGuard<'_> {
         let me = thread_tag();
-        let mut state = lock(&self.state);
-        while state.thread.is_some_and(|owner| owner != me) {
-            state.waiting += 1;
-            state = self.released.wait(state).unwrap_or_else(|e| e.into_inner());
-            state.waiting -= 1;
-        }
-        state.thread = Some(me);
-        state.depth += 1;
-        ReentrantGuard { lock: self }
+        let outer = if self.owner.load(Ordering::Relaxed) == me {
+            None
+        } else {
+            let guard = lock(&self.gate);
+            self.owner.store(me, Ordering::Relaxed);
+            Some(guard)
+        };
+        ReentrantGuard { lock: self, outer }
     }
 }
 
 impl Drop for ReentrantGuard<'_> {
-    // PERF GUARD #1748
+    // PERF GUARD #1748: the outer mutex wakes only contending threads.
     fn drop(&mut self) {
-        let mut state = lock(&self.lock.state);
-        state.depth -= 1;
-        if state.depth == 0 {
-            state.thread = None;
-            // Only when a thread waits: on Linux every notify is a futex
-            // syscall, and each signal releases two of these locks.
-            if state.waiting > 0 {
-                self.lock.released.notify_one();
-            }
+        if self.outer.is_some() {
+            // The mutex provides cross-thread synchronization. `owner` only
+            // identifies this thread's recursive entry, so relaxed suffices.
+            // Clear it while still holding the gate, including during unwind.
+            self.lock.owner.store(0, Ordering::Relaxed);
         }
     }
 }
@@ -443,7 +431,7 @@ impl SignalHandler {
             let mut i = 0;
             let mut entered = false;
             'pass: loop {
-                let (count, generation) = {
+                let (count, generation, complete) = {
                     let mut cbs = lock(&sig.callbacks);
                     // `signalling` rises under the first chunk's lock: one
                     // lock fewer per emit (#3350).
@@ -456,7 +444,11 @@ impl SignalHandler {
                     for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
                         *to = Some(*from);
                     }
-                    (count, sig.generation.load(Ordering::Relaxed))
+                    (
+                        count,
+                        sig.generation.load(Ordering::Relaxed),
+                        rest.len() <= SNAPSHOT,
+                    )
                 };
                 if count == 0 {
                     break;
@@ -472,6 +464,9 @@ impl SignalHandler {
                     if sig.generation.load(Ordering::Relaxed) != generation {
                         continue 'pass;
                     }
+                }
+                if complete {
+                    break;
                 }
             }
             CURRENT_SIGNAL.with(|c| c.set(previous));
@@ -494,7 +489,7 @@ impl SignalHandler {
             let mut i = 0;
             let mut entered = false;
             'pass: loop {
-                let (count, generation) = {
+                let (count, generation, complete) = {
                     let mut cbs = lock(&globals.callbacks);
                     if !entered {
                         cbs.signalling += 1;
@@ -505,7 +500,11 @@ impl SignalHandler {
                     for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
                         *to = Some(*from);
                     }
-                    (count, globals.generation.load(Ordering::Relaxed))
+                    (
+                        count,
+                        globals.generation.load(Ordering::Relaxed),
+                        rest.len() <= SNAPSHOT,
+                    )
                 };
                 if count == 0 {
                     break;
@@ -521,6 +520,9 @@ impl SignalHandler {
                     if globals.generation.load(Ordering::Relaxed) != generation {
                         continue 'pass;
                     }
+                }
+                if complete {
+                    break;
                 }
             }
             swap_current(previous);
