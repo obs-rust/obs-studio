@@ -125,5 +125,12 @@ int main(void)
 	assert(pthread_join(read_thread, NULL) == 0);
 	assert(pthread_barrier_destroy(&start) == 0);
 	read_value();
+#if defined(GETTER_SCROLL)
+	assert(pthread_mutex_destroy(&subject.size_mutex) == 0);
+#elif defined(GETTER_SLIDESHOW) || defined(GETTER_SLIDESHOW_MK2)
+	assert(pthread_mutex_destroy(&subject.index_mutex) == 0);
+#elif defined(GETTER_STINGER)
+	assert(pthread_mutex_destroy(&subject.point_mutex) == 0);
+#endif
 	return 0;
 }

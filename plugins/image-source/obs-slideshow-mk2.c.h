@@ -133,7 +133,9 @@ struct slideshow {
 
 static void ss_set_current_index(struct slideshow *ss, size_t index)
 {
+	pthread_mutex_lock(&ss->index_mutex);
 	ss->current_index = index;
+	pthread_mutex_unlock(&ss->index_mutex);
 }
 
 static void set_media_state(void *data, enum obs_media_state state)
@@ -761,7 +763,10 @@ static void previous_slide_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *ho
 static void current_slide_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
-	calldata_set_int(cd, "current_index", (long long)ss->current_index);
+	pthread_mutex_lock(&ss->index_mutex);
+	size_t index = ss->current_index;
+	pthread_mutex_unlock(&ss->index_mutex);
+	calldata_set_int(cd, "current_index", (long long)index);
 }
 
 static void total_slides_proc(void *data, calldata_t *cd)

@@ -54,19 +54,27 @@ struct stinger_info {
 
 static void stinger_set_transition_point(struct stinger_info *s, float point)
 {
+	pthread_mutex_lock(&s->point_mutex);
 	s->transition_point = point;
 	s->transition_a_mul = 1.0f / point;
 	s->transition_b_mul = 1.0f / (1.0f - point);
+	pthread_mutex_unlock(&s->point_mutex);
 }
 
 static float stinger_get_transition_point(struct stinger_info *s)
 {
-	return s->transition_point;
+	pthread_mutex_lock(&s->point_mutex);
+	float point = s->transition_point;
+	pthread_mutex_unlock(&s->point_mutex);
+	return point;
 }
 
 static float stinger_get_fade_multiplier(struct stinger_info *s, bool a)
 {
-	return a ? s->transition_a_mul : s->transition_b_mul;
+	pthread_mutex_lock(&s->point_mutex);
+	float multiplier = a ? s->transition_a_mul : s->transition_b_mul;
+	pthread_mutex_unlock(&s->point_mutex);
+	return multiplier;
 }
 
 static const char *stinger_get_name(void *type_data)
