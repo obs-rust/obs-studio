@@ -124,6 +124,11 @@ errors (soldr permissions, disk, Docker, host FFmpeg): see
 - Use `soldr cargo ...`, never bare `cargo`. `.claude/settings.json` wires `ci/hooks/tool_guard.py`, a PreToolUse hook that denies bare Rust tools and bare python/pip (clud sessions get the same rule from clud; `.clud/settings.json` turns on its soldr shims). It denies, after parsing the command: bare `cargo`, `cargo-clippy`, `cargo-fmt`, `clippy-driver`, `rustc`, `rustdoc`, `rustfmt`, `rustup`, `rust-gdb`, `rust-lldb`, `rust-analyzer`, `python`, `python3`, `pip`, `pip3`, also behind `FOO=bar`, `env`, `exec`, `sudo`, `time` or `bash -c`; text inside quoted arguments and heredoc bodies is never matched. Codex has no repo hook: follow the rule by hand. `ci/test_tool_guard.py` (part of `./lint`) also fails on bare Rust tools in `ci/` and `rust/tools/` shell scripts.
 - GitHub GraphQL goes through `uv run --no-project --script ci/gh_graphql.py` (same `-f`/`-F`/`--jq` arguments as `gh api graphql`), which routes it through the [ghd](https://github.com/forge-ci/ghd) caching daemon so agents share one budget. `ci/hooks/tool_guard.py` denies a bare `gh api graphql`, even in clud sessions, and `ci/test_tool_guard.py` (part of `./lint`) fails one written into a script, skill or doc.
 - Run Python through `uv run` (or `uvx`), never bare `python`/`python3`; standalone scripts use `#!/usr/bin/env -S uv run --script`. `ci/test_uv_run.py` (part of `./lint`) enforces it; see the testing policy's "Python runs through uv" rule.
+- **Bump `rust/libobs-rust/Cargo.toml` in the follow-up PR to every stable release.** Nightlies are
+  `<crate>-beta.<date>` and stables are `<crate>`, so a nightly only sorts *above* the stable it
+  descends from while the crate is ahead of that stable. The release `check` job enforces it
+  (`ci/check_release_version.py` refuses a version that does not sort after the newest stable), but
+  the fix is always the same: bump the crate, e.g. to `1.0.1` after shipping `1.0.0`.
 - Pin `rust-toolchain.toml` to the latest Rust the CI soldr version supports natively, never beyond; bump it only after a soldr bump (see the testing policy).
 - Never edit existing C tests or public C headers to make a port pass.
 - Name crates, binaries and tags per

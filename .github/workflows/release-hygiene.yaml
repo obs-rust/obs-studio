@@ -1,0 +1,50 @@
+name: Release hygiene
+# Keeps daily betas out of the Releases list as ordinary releases.
+#
+# Every daily publishes `obs-studio-rust-v<crate>-beta.<YYYYMMDD>` with
+# `--prerelease`. A release created before that flag existed (or edited by hand)
+# renders as a normal release, right next to the stable it predates — which is
+# how a user came to ask why the version in a title reads "0.1.0-Beta" under
+# 1.0.0. This marks only those leftovers. It never deletes a release and never
+# touches a tag, so every download URL people already have keeps working.
+#
+# Report-only by default; a maintainer dispatches with apply=true, or lets the
+# weekly schedule do it. Logic lives in ci/release_hygiene.py (ci/test_release_hygiene.py).
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Mark the stale dailies as pre-releases (unchecked = report only)
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: release-hygiene
+  cancel-in-progress: false
+jobs:
+  flag-stale-dailies:
+    # A fork's schedule fails there and mails its owner (ci/test_workflow_schedule_guard.py).
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Flag unflagged daily betas 🏷️
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.apply }}" = true ]; then
+            uv run --no-project --script ci/release_hygiene.py --repo "$GITHUB_REPOSITORY" --apply
+          else
+            echo "::notice::report only; dispatch with apply=true to flag them"
+            uv run --no-project --script ci/release_hygiene.py --repo "$GITHUB_REPOSITORY"
+          fi

@@ -38,7 +38,10 @@ gates pass:
   `<crate>-beta.<date>`, which sorts *before* `<crate>` in semver; that is
   harmless because nightlies are never certified, so the updaters never
   compare one with a stable release. Bump the crate (for example to 1.0.1)
-  in a follow-up PR so later nightlies sort after the stable release. macOS
+  in a follow-up PR so later nightlies sort after the stable release. The
+  release `check` job enforces that ordering (`ci/check_release_version.py`):
+  a run whose version does not sort strictly after the newest stable release
+  fails before anything builds, with the crate bump that fixes it. macOS
   `CFBundleVersion` is `YYYY.M.D` of the beta date, or of the UTC build date
   for a stable release, so Sparkle always sees a newer build.
 - **AppImage tag push:** attaches to the tag's release after the AppImage
