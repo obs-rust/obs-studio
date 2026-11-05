@@ -950,6 +950,14 @@ retaining the original Linux/Widgets guard, offscreen execution and Qt runtime
 setup. Other hosts exclude it; evaluated inventory checks cover that boundary.
 This standalone helper coverage does not establish full frontend parity (#1390).
 
+The top-level window-close helper also uses the shared Qt graph. Both Cargo
+and CMake run all five unchanged cases for never-shown, shown and handle-free
+windows, including refused closes. The graph retains Widgets selection on all
+hosts, explicit C++17 compilation, the 120-second timeout and QtCore runtime
+setup, and tracks the indirect
+helper header. The evaluated inventory is compared by the existing native Qt
+contract. This closes one coverage gap, not full frontend parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test

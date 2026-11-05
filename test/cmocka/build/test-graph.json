@@ -627,6 +627,23 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_close_top_level": {
+      "sources": [
+        "test/cmocka/test_close_top_level.cpp"
+      ],
+      "requires": "HAVE_QT6_WIDGETS",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/close-top-level.hpp"
+      ],
+      "cpp_standard": "17"
+    },
     "test_cocoa_keys_steps": {
       "sources": [
         "test/cmocka/test_cocoa_keys_steps.c",
@@ -7214,6 +7231,12 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_close_top_level": {
+      "target": "test_close_top_level",
+      "suite": "qt",
+      "timeout_seconds": 120,
+      "qt_runtime": "Qt6::Core"
     },
     "test_cocoa_keys_steps": {
       "target": "test_cocoa_keys_steps",
