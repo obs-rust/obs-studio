@@ -3249,6 +3249,15 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_protocol_null": {
+      "sources": [
+        "test/cmocka/test_output_protocol_null.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_output_raw_audio_steps": {
       "sources": [
         "test/cmocka/test_output_raw_audio_steps.c",
@@ -8326,6 +8335,21 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_protocol_null": {
+      "target": "test_output_protocol_null",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_output_raw_audio_steps": {
       "target": "test_output_raw_audio_steps",

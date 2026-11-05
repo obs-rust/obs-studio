@@ -203,6 +203,10 @@ pub struct Test {
     /// Outer-to-inner argv prefixes used when their executable is available.
     #[serde(default)]
     pub optional_prefixes: Vec<Vec<String>>,
+    /// Evaluated by Graph::select before optional command lookup. Defaults to
+    /// true so existing prefixes retain their availability-only behavior.
+    #[serde(default)]
+    pub optional_prefixes_requires: Requirement,
     /// None inherits the runner's configured default; Some(0) is unbounded,
     /// matching CTest's explicit TIMEOUT 0 semantics.
     #[serde(default)]
@@ -341,7 +345,7 @@ pub struct Graph {
 #[derive(Debug)]
 pub struct Selection<'a> {
     pub targets: BTreeMap<&'a str, &'a Target>,
-    pub tests: BTreeMap<&'a str, &'a Test>,
+    pub tests: BTreeMap<&'a str, Test>,
 }
 
 /// The selected native artifact and its public compile/link interface, matching
@@ -512,6 +516,10 @@ impl Graph {
         for (name, test) in &self.tests {
             let enabled = test.requires.evaluate(facts)?;
             if enabled && selected.targets.contains_key(test.target.as_str()) {
+                let mut test = test.clone();
+                if !test.optional_prefixes_requires.evaluate(facts)? {
+                    test.optional_prefixes.clear();
+                }
                 selected.tests.insert(name.as_str(), test);
             }
         }

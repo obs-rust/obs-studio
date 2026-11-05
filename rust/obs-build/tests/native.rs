@@ -2,6 +2,159 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+/// #3671: retain all four unchanged public output protocol NULL cases.
+#[test]
+fn canonical_output_protocol_null_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.retain_suite("core");
+    let name = "test_output_protocol_null";
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits output protocol NULL compatibility coverage");
+    assert_eq!(target.sources.len(), 1);
+    assert!(
+        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_output_protocol_null.c")
+    );
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("output protocol NULL libraries must be unconditional"),
+        })
+        .collect();
+    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert_eq!(
+        test.optional_prefixes,
+        [["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 -noreset"]]
+    );
+    assert!(
+        !root
+            .join("test/cmocka/tests.d/test_output_protocol_null.cmake")
+            .exists()
+    );
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        let selected = graph
+            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
+            .unwrap();
+        assert!(selected.targets.contains_key(name));
+        assert!(selected.tests.contains_key(name));
+        assert_eq!(
+            selected.tests[name].optional_prefixes.is_empty(),
+            os != "OS_LINUX"
+        );
+    }
+}
+
+/// #3671: a disabled wrapper stays disabled even when its program exists.
+#[test]
+fn native_test_graph_conditional_prefixes_match_consumers() {
+    use obs_build::validation::graph::Graph;
+    let root = tempfile::tempdir().unwrap();
+    let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph = serde_json::json!({
+        "schema": 1,
+        "targets": {"answer": {"sources": ["answer.c"]}},
+        "tests": {"answer": {
+            "target": "answer",
+            "optional_prefixes": [["cmake", "-E", "echo", "wrapped"]],
+            "optional_prefixes_requires": "OS_LINUX"
+        }}
+    });
+    fs::write(
+        root.path().join("answer.c"),
+        "int main(void) { return 0; }\n",
+    )
+    .unwrap();
+    fs::write(root.path().join("graph.json"), graph.to_string()).unwrap();
+    fs::write(
+        root.path().join("CMakeLists.txt"),
+        format!(
+            "cmake_minimum_required(VERSION 3.28)\nproject(prefix-contract C)\nenable_testing()\ninclude(\"{}\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"${{CMAKE_CURRENT_SOURCE_DIR}}\")\n",
+            repository.join("test/cmocka/native-test-graph.cmake").to_string_lossy().replace('\\', "/")
+        ),
+    ).unwrap();
+    let graph = Graph::parse(&graph.to_string()).unwrap();
+    for enabled in [true, false] {
+        let selected = graph
+            .select(&[("OS_LINUX".into(), enabled)].into())
+            .unwrap();
+        let target = root.path().join("answer");
+        let command = selected.tests["answer"]
+            .command(root.path(), root.path(), &target)
+            .unwrap();
+        if enabled {
+            assert!(Path::new(command.get_program()).file_stem().unwrap() == "cmake");
+        } else {
+            assert_eq!(command.get_program(), target.as_os_str());
+        }
+        let output = root.path().join(if enabled { "wrapped" } else { "direct" });
+        let configured = std::process::Command::new("cmake")
+            .arg("-S")
+            .arg(root.path())
+            .arg("-B")
+            .arg(&output)
+            .arg(format!("-DOS_LINUX={}", if enabled { "ON" } else { "OFF" }))
+            .output()
+            .unwrap();
+        assert!(
+            configured.status.success(),
+            "{}",
+            String::from_utf8_lossy(&configured.stderr)
+        );
+        let built = std::process::Command::new("cmake")
+            .arg("--build")
+            .arg(&output)
+            .arg("--config")
+            .arg("Debug")
+            .output()
+            .unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let inventory = std::process::Command::new("ctest")
+            .arg("--test-dir")
+            .arg(&output)
+            .args(["-C", "Debug", "--show-only=json-v1"])
+            .output()
+            .unwrap();
+        assert!(inventory.status.success());
+        let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+        let arguments = inventory["tests"][0]["command"].as_array().unwrap();
+        if enabled {
+            assert_eq!(
+                Path::new(arguments[0].as_str().unwrap())
+                    .file_stem()
+                    .unwrap(),
+                "cmake"
+            );
+            assert_eq!(arguments[1], "-E");
+            assert_eq!(arguments[3], "wrapped");
+        } else {
+            assert_eq!(arguments.len(), 1);
+            assert!(arguments[0].as_str().unwrap().contains("answer"));
+        }
+    }
+    assert!(
+        graph
+            .select(&Default::default())
+            .unwrap_err()
+            .contains("OS_LINUX")
+    );
+}
+
 /// #3664: retain the unchanged bit-exact and locale configuration cases.
 #[test]
 fn canonical_config_hex_float_rounding_is_registered() {
