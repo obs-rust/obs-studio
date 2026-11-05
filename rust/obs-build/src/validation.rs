@@ -172,6 +172,9 @@ fn runtime_interfaces(
     Ok(BTreeMap::from([
         ("OBS::libobs".into(), core_interface.into()),
         ("OBS::native-test-cmocka".into(), cmocka.into()),
+        // Graphics compatibility tests can inspect obs-internal.h, whose uthash
+        // dependency is header-only and uses the core build's system search.
+        ("Uthash::Uthash".into(), graph::Dependency::default()),
         (
             "OBS::caption".into(),
             graph::Dependency {

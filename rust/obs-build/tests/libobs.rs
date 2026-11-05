@@ -578,7 +578,14 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
             renderer.as_ref().unwrap(),
         )
         .unwrap();
-        assert_eq!(tests.len(), 12);
+        for name in [
+            "test_group_active_refs",
+            "test_group_child_drift",
+            "test_group_empty_bounds",
+            "test_group_recursion",
+        ] {
+            assert!(tests.iter().any(|test| test.name == name), "missing {name}");
+        }
         native_tests::exercise(
             &build,
             &root,

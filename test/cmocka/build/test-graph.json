@@ -2064,6 +2064,75 @@
         }
       ]
     },
+    "test_group_active_refs": {
+      "sources": [
+        "test/cmocka/test_group_active_refs.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "header_libraries": [
+        "Uthash::Uthash"
+      ]
+    },
+    "test_group_child_drift": {
+      "sources": [
+        "test/cmocka/test_group_child_drift.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
+    "test_group_empty_bounds": {
+      "sources": [
+        "test/cmocka/test_group_empty_bounds.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_group_extent": {
       "sources": [
         "test/cmocka/test_group_extent.c",
@@ -2101,6 +2170,48 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_group_insert_empty": {
+      "sources": [
+        "test/cmocka/test_group_insert_empty.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_group_recursion": {
+      "sources": [
+        "test/cmocka/test_group_recursion.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
+    "test_group_teardown_uaf": {
+      "sources": [
+        "test/cmocka/test_group_teardown_uaf.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_happy_eyeballs_cloexec": {
@@ -8022,6 +8133,33 @@
         "${target}"
       ]
     },
+    "test_group_active_refs": {
+      "target": "test_group_active_refs",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_group_child_drift": {
+      "target": "test_group_child_drift",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_group_empty_bounds": {
+      "target": "test_group_empty_bounds",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
     "test_group_extent": {
       "target": "test_group_extent"
     },
@@ -8033,6 +8171,38 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_group_insert_empty": {
+      "target": "test_group_insert_empty",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_group_recursion": {
+      "target": "test_group_recursion",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180
+    },
+    "test_group_teardown_uaf": {
+      "target": "test_group_teardown_uaf",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_happy_eyeballs_cloexec": {
       "target": "test_happy_eyeballs_cloexec",
