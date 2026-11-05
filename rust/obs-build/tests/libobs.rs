@@ -579,6 +579,8 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
         )
         .unwrap();
         for name in [
+            "test_video_output_formats",
+            "test_video_reset_fps",
             "test_group_active_refs",
             "test_group_child_drift",
             "test_group_empty_bounds",

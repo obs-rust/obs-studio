@@ -6885,6 +6885,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_video_output_formats": {
+      "sources": [
+        "test/cmocka/test_video_output_formats.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_video_output_plan": {
       "sources": [
         "test/cmocka/test_video_output_plan.c"
@@ -6949,6 +6970,27 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_video_reset_fps": {
+      "sources": [
+        "test/cmocka/test_video_reset_fps.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
     },
     "test_video_scaler_plan_steps": {
       "sources": [
@@ -10074,6 +10116,21 @@
     "test_video_matrices": {
       "target": "test_video_matrices"
     },
+    "test_video_output_formats": {
+      "target": "test_video_output_formats",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
     "test_video_output_plan": {
       "target": "test_video_output_plan"
     },
@@ -10087,6 +10144,21 @@
       "target": "test_video_pacing_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_video_reset_fps": {
+      "target": "test_video_reset_fps",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_video_scaler_plan_steps": {
