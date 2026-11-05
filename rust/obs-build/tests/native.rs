@@ -797,20 +797,7 @@ fn canonical_remux_queue_runs_unchanged() {
                     && property["value"] == serde_json::json!(["timing"]))
         );
     }
-    if linux {
-        let ticker = tests
-            .iter()
-            .find(|test| test["name"] == "test_volume_meter_ticker")
-            .unwrap();
-        assert!(
-            ticker["properties"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|property| property["name"] == "RESOURCE_LOCK"
-                    && property["value"] == serde_json::json!(["timing"]))
-        );
-    }
+    assert_ticker_ctest_properties(tests, linux);
     if linux {
         let undo = tests
             .iter()
@@ -837,6 +824,24 @@ fn canonical_remux_queue_runs_unchanged() {
             .any(|property| property["name"] == "TIMEOUT"
                 && property["value"].as_f64() == Some(60.0))
     );
+}
+
+#[cfg(feature = "libobs-integration")]
+fn assert_ticker_ctest_properties(tests: &[serde_json::Value], linux: bool) {
+    if linux {
+        let ticker = tests
+            .iter()
+            .find(|test| test["name"] == "test_volume_meter_ticker")
+            .unwrap();
+        assert!(
+            ticker["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|property| property["name"] == "RESOURCE_LOCK"
+                    && property["value"] == serde_json::json!(["timing"]))
+        );
+    }
 }
 
 /// #1390: the QtCore-only frontend API helper must remain available without Widgets.
