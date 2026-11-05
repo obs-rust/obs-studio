@@ -117,6 +117,18 @@ class RaceTriageTest(unittest.TestCase):
         self.assertEqual(code, 1, md)
         self.assertIn("libobs/obs-source.c.h:1409", md)
 
+    def test_counted_report_with_exit_zero_is_not_clean(self):
+        """TSan runs with exitcode=0, so the exit code alone does not show a
+        counted report (#3701)."""
+        code, md = triage(tool="tsan", text=OBS_RACE, summary="test_x exit=0\ntest_y exit=0\n")
+        self.assertEqual(code, 1, md)
+        self.assertIn("1/2 clean", md)
+
+    def test_external_report_with_exit_zero_is_clean(self):
+        code, md = triage(tool="tsan", text=GLIB_RACE, summary="test_x exit=0\ntest_y exit=0\n")
+        self.assertEqual(code, 0, md)
+        self.assertIn("2/2 clean", md)
+
 
 class SkipAndKnownTest(unittest.TestCase):
     """Known bugs and tool limitations are listed separately from failures."""
