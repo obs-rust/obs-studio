@@ -16,10 +16,14 @@ fn canonical_shutdown_after_failed_startup_is_registered() {
         .expect("canonical graph omits shutdown after failed startup compatibility coverage");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_shutdown_after_failed_startup.c"));
-    let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-        ConditionalValue::Name(name) => name.as_str(),
-        _ => panic!("failed-startup shutdown linkage must be unconditional"),
-    }).collect();
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("failed-startup shutdown linkage must be unconditional"),
+        })
+        .collect();
     assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
@@ -30,17 +34,27 @@ fn canonical_shutdown_after_failed_startup_is_registered() {
     assert!(test.optional_prefixes.is_empty());
     let fragment = fs::read_to_string(
         root.join("test/cmocka/tests.d/test_shutdown_after_failed_startup.cmake"),
-    ).unwrap();
+    )
+    .unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
-    for (os, expected) in [("OS_LINUX", true), ("OS_MACOS", false), ("OS_WINDOWS", false)] {
-        let selected = graph.select(&[
-            ("OS_LINUX".into(), os == "OS_LINUX"),
-            ("OS_MACOS".into(), os == "OS_MACOS"),
-            ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-        ].into()).unwrap();
+    for (os, expected) in [
+        ("OS_LINUX", true),
+        ("OS_MACOS", false),
+        ("OS_WINDOWS", false),
+    ] {
+        let selected = graph
+            .select(
+                &[
+                    ("OS_LINUX".into(), os == "OS_LINUX"),
+                    ("OS_MACOS".into(), os == "OS_MACOS"),
+                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                ]
+                .into(),
+            )
+            .unwrap();
         assert_eq!(selected.targets.contains_key(name), expected, "{os}");
         assert_eq!(selected.tests.contains_key(name), expected, "{os}");
     }
