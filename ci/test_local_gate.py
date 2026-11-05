@@ -170,6 +170,52 @@ class CrossTargetsTest(unittest.TestCase):
     def test_pr_gate_targets(self):
         self.assertEqual(local_gate.CROSS_TARGETS, ("x86_64-pc-windows-msvc", "aarch64-apple-darwin"))
 
+    def test_ci_cross_targets_have_separate_runners_and_one_combined_proof(self):
+        import re
+        workflow = (local_gate.ROOT / ".github/workflows/build-project.yaml").read_text()
+        def job(name):
+            return re.search(rf"^  {name}:\n(.*?)(?=^  [a-z0-9-]+:|\Z)", workflow, re.M | re.S).group(1)
+        cross = job("rust-cross-lint")
+        self.assertIn("fail-fast: false", cross)
+        self.assertIn("target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]", cross)
+        self.assertIn("--cross-target ${{ matrix.target }}", cross)
+        self.assertNotIn("actions/upload-artifact", cross)
+        proof = job("rust-cross-proof")
+        self.assertIn("needs: [ci-mode, rust-cross-lint]", proof)
+        self.assertIn("needs.rust-cross-lint.result == 'success'", proof)
+        self.assertIn("name: ${{ needs.ci-mode.outputs.cross_name }}", proof)
+
+    def test_cross_lane_changes_select_both_targets_without_native_jobs(self):
+        from ci_scope import scope
+        for event in ("pull_request", "merge_group"):
+            for path in ("ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",
+                         "local-gate.toml", ".github/workflows/build-project.yaml"):
+                with self.subTest(event=event, path=path):
+                    selected = scope([path], event=event)
+                    self.assertTrue(selected.cross_lint)
+                    self.assertFalse(selected.macos or selected.windows)
+            for path in ("docs/ci-tooling.md", "rust/obs-util/src/dstr.rs"):
+                self.assertFalse(scope([path], event=event).cross_lint)
+        workflow = (local_gate.ROOT / ".github/workflows/build-project.yaml").read_text()
+        self.assertIn("cross_lint: ${{ steps.native.outputs.cross_lint }}", workflow)
+        self.assertIn("needs.check-event.outputs.cross_lint == 'true'", workflow)
+
+    def test_selected_target_keeps_clippy_dylint_and_test_linking(self):
+        for target in local_gate.CROSS_TARGETS:
+            with self.subTest(target=target), mock.patch.object(sys, "argv", [
+                "local_gate.py", "--lane", "cross", "--cross-target", target,
+            ]), mock.patch.object(local_gate, "add_target") as add, \
+                    mock.patch.object(local_gate, "soldr_cargo") as cargo, \
+                    mock.patch.object(local_gate, "soldr_dylint") as dylint:
+                self.assertEqual(local_gate.main(), 0)
+            add.assert_called_once_with(target)
+            scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
+            self.assertEqual(cargo.call_args_list, [
+                mock.call(["clippy", *scope, "--locked", "--target", target, "--", "-D", "warnings"]),
+                mock.call(["test", "--workspace", "--no-run", "--locked", "--target", target]),
+            ])
+            dylint.assert_called_once_with(["--all", "--", *scope, "--target", target])
+
     def test_release_gate_targets(self):
         self.assertEqual(
             local_gate.RELEASE_CROSS_TARGETS,

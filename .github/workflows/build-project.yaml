@@ -119,6 +119,7 @@ jobs:
       qt_sdk: ${{ steps.native.outputs.qt_sdk }}
       docs_only: ${{ steps.native.outputs.docs_only }}
       cross_targets: ${{ steps.native.outputs.cross_targets }}
+      cross_lint: ${{ steps.native.outputs.cross_lint }}
       asan: ${{ steps.native.outputs.asan }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -1960,10 +1961,15 @@ jobs:
   # attested for the same gates (the `cross` local-gate lane).
   rust-cross-lint:
     timeout-minutes: 45
-    name: Rust Cross Lint 🦀 (Windows, macOS)
+    name: Rust Cross Lint 🦀 (${{ matrix.target }})
+    # Each target gets a fresh disk; two linked test graphs exhaust one runner.
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
     runs-on: ubuntu-26.04
     needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
     defaults:
       run:
         shell: bash
@@ -2002,8 +2008,16 @@ jobs:
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Local Gate (cross) 🧪
-        run: uv run --no-project ci/local_gate.py --lane cross
+        run: uv run --no-project ci/local_gate.py --lane cross --cross-target ${{ matrix.target }}
 
+  # A proof represents BOTH targets. Never publish it from a single matrix leg.
+  rust-cross-proof:
+    name: Rust Cross Lane Proof 🧾
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    needs: [ci-mode, rust-cross-lint]
+    if: ${{ success() && needs.rust-cross-lint.result == 'success' && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true' }}
+    steps:
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
       # that ran here and passed; the name carries the lane's input key.
       - name: Mark Lane Proof 🧾
