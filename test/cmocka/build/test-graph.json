@@ -1797,6 +1797,15 @@
         "frontend/utility"
       ]
     },
+    "test_filter_color_space": {
+      "sources": [
+        "test/cmocka/test_filter_color_space.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_filter_size_no_target": {
       "sources": [
         "test/cmocka/test_filter_size_no_target.c"
@@ -7107,15 +7116,6 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
-    },
-    "test_filter_color_space": {
-      "sources": [
-        "test/cmocka/test_filter_color_space.c"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::native-test-cmocka"
-      ]
     }
   },
   "tests": {
@@ -7835,6 +7835,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_filter_color_space": {
+      "target": "test_filter_color_space"
     },
     "test_filter_size_no_target": {
       "target": "test_filter_size_no_target"
@@ -9834,9 +9837,6 @@
       "command": [
         "${target}"
       ]
-    },
-    "test_filter_color_space": {
-      "target": "test_filter_color_space"
     }
   }
 }
