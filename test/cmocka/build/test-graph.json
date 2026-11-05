@@ -2489,6 +2489,31 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_item_transition_empty_source": {
+      "sources": [
+        "test/cmocka/test_item_transition_empty_source.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "header_libraries": [
+        "Uthash::Uthash"
+      ]
+    },
     "test_lexer": {
       "sources": [
         "test/cmocka/test_lexer.c"
@@ -6348,6 +6373,27 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_transition_recursive_destination": {
+      "sources": [
+        "test/cmocka/test_transition_recursive_destination.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_transition_render_steps": {
       "sources": [
         "test/cmocka/test_transition_render_steps.c",
@@ -6483,6 +6529,27 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_transition_swap": {
+      "sources": [
+        "test/cmocka/test_transition_swap.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
     },
     "test_transition_swap_active": {
       "sources": [
@@ -8333,6 +8400,15 @@
         "${target}"
       ]
     },
+    "test_item_transition_empty_source": {
+      "target": "test_item_transition_empty_source",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
     "test_lexer": {
       "target": "test_lexer"
     },
@@ -9833,6 +9909,15 @@
         "${target}"
       ]
     },
+    "test_transition_recursive_destination": {
+      "target": "test_transition_recursive_destination",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180
+    },
     "test_transition_render_steps": {
       "target": "test_transition_render_steps",
       "command": [
@@ -9877,6 +9962,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_transition_swap": {
+      "target": "test_transition_swap",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60
     },
     "test_transition_swap_active": {
       "target": "test_transition_swap_active",
