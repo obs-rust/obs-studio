@@ -974,18 +974,7 @@ fn canonical_remux_queue_runs_unchanged() {
         );
     }
     assert_settings_track_rows_ctest_properties(tests);
-    let close = tests
-        .iter()
-        .find(|test| test["name"] == "test_close_top_level")
-        .unwrap();
-    assert!(
-        close["properties"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|property| property["name"] == "TIMEOUT"
-                && property["value"].as_f64() == Some(120.0))
-    );
+    assert_close_top_level_ctest_properties(tests);
     let frontend_api = tests
         .iter()
         .find(|test| test["name"] == "test_frontend_api_call")
@@ -997,6 +986,22 @@ fn canonical_remux_queue_runs_unchanged() {
             .iter()
             .any(|property| property["name"] == "TIMEOUT"
                 && property["value"].as_f64() == Some(60.0))
+    );
+}
+
+#[cfg(feature = "libobs-integration")]
+fn assert_close_top_level_ctest_properties(tests: &[serde_json::Value]) {
+    let close = tests
+        .iter()
+        .find(|test| test["name"] == "test_close_top_level")
+        .unwrap();
+    assert!(
+        close["properties"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|property| property["name"] == "TIMEOUT"
+                && property["value"].as_f64() == Some(120.0))
     );
 }
 
