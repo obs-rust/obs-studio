@@ -7036,6 +7036,19 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_youtube_broadcast_settings": {
+      "sources": [
+        "test/cmocka/test_youtube_broadcast_settings.c",
+        "frontend/utility/youtube-broadcast-settings.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
     }
   },
   "tests": {
@@ -9688,6 +9701,12 @@
     },
     "test_windows_system_info_steps": {
       "target": "test_windows_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_youtube_broadcast_settings": {
+      "target": "test_youtube_broadcast_settings",
       "command": [
         "${target}"
       ]
