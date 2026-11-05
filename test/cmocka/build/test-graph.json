@@ -2447,6 +2447,19 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_missing_files_list": {
+      "sources": [
+        "test/cmocka/test_missing_files_list.c",
+        "frontend/utility/missing-files-list.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_missing_source_types": {
       "sources": [
         "test/cmocka/test_missing_source_types.c",
@@ -8021,6 +8034,12 @@
           "xvfb-run",
           "-a"
         ]
+      ]
+    },
+    "test_missing_files_list": {
+      "target": "test_missing_files_list",
+      "command": [
+        "${target}"
       ]
     },
     "test_missing_source_types": {
