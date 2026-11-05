@@ -102,12 +102,15 @@ VALGRIND = (
 # test_context_names 29 s -> 2 s, test_canvas_destroy_scene_refs 18 s -> 2 s,
 # test_video_output_formats 18 s -> 4 s, test_dock_proportions 17 s -> 4 s).
 # So only the tests that can reach FFmpeg keep it; see UnwindPolicy.
+TSAN_SUPPRESSIONS = Path(__file__).resolve().parent / "tsan.supp"
 SLOW_UNWIND = "fast_unwind_on_malloc=0"
 FAST_UNWIND = "fast_unwind_on_malloc=1"
 SANITIZER_OPTIONS = {
     "asan": f"detect_leaks=1:{SLOW_UNWIND}:abort_on_error=0:halt_on_error=0",
     "ubsan": "print_stacktrace=1:halt_on_error=0",
-    "tsan": "halt_on_error=0:second_deadlock_stack=1",
+    # triage.py decides from the reports (#3701). exitcode=0: a report with no
+    # OBS frame does not fail a test, or a parent that asserts on its child.
+    "tsan": f"halt_on_error=0:second_deadlock_stack=1:exitcode=0:suppressions={TSAN_SUPPRESSIONS}",
 }
 OBS_ARGS = ("--disable-shutdown-check", "--disable-updater", "--verbose")
 

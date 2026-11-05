@@ -1,0 +1,7 @@
+# ThreadSanitizer suppressions for the tsan pass (#3701).
+# TSan does not instrument these libraries, so it does not see their locking.
+# called_from_lib removes about 1900 false reports. Do not add Mesa here: TSan
+# then does not see Mesa's mutexes, and its tests report about 3 times more.
+called_from_lib:libglib-2.0.so
+called_from_lib:libgio-2.0.so
+called_from_lib:libgobject-2.0.so
