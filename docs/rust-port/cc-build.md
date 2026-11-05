@@ -860,6 +860,13 @@ in #1805. The graph remains a subset of the repository's native tests; target an
 selection depends on the evaluated platform and feature requirements. Cargo
 compilation of the full selected test graph currently runs on Linux.
 
+The scene bounds placement characterization also uses the shared core graph.
+Both consumers compile its original C test and two private C helper sources,
+retaining libobs/cmocka linkage and non-MSVC libm. All 16 alignment, crop, flip
+and rounding cases run without a display; the separate CMake Rust-static-symbol
+check is preserved. The private helper header is tracked as a build input. This
+closes one inventory gap, not complete scene or application parity (#3702, #1390).
+
 The unchanged texture-creator mipmap data test also uses the shared core
 inventory. It retains all four 2D/cube render-target, non-power-of-two and
 unchanged-data cases, with unconditional libobs/cmocka linkage and no display
