@@ -5,7 +5,7 @@ use std::{fs, path::Path};
 /// #3712: group mutations and teardown must run through both native consumers.
 #[test]
 fn canonical_group_lifecycle_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let cases = [
@@ -17,57 +17,7 @@ fn canonical_group_lifecycle_is_registered() {
         ("test_group_teardown_uaf", false, None),
     ];
     for (name, graphics, timeout) in cases {
-        let target = graph.targets.get(name).unwrap_or_else(|| {
-            panic!("canonical graph omits group lifecycle compatibility coverage: {name}")
-        });
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{name}.c")));
-        let libraries: Vec<_> = target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("group lifecycle linkage must be unconditional"),
-            })
-            .collect();
-        let mut expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
-        if name == "test_group_active_refs" {
-            expected.push("OBS::caption");
-        }
-        if matches!(name, "test_group_empty_bounds" | "test_group_child_drift") {
-            expected.push("m");
-        }
-        assert_eq!(libraries, expected, "{name}");
-        if name == "test_group_active_refs" {
-            assert_eq!(target.header_libraries, ["Uthash::Uthash"]);
-        } else {
-            assert!(target.header_libraries.is_empty());
-        }
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.timeout_seconds, timeout, "{name}");
-        assert_eq!(test.skip_return_code, None);
-        if graphics {
-            assert_eq!(test.suite, "graphics");
-            assert_eq!(
-                target.artifact_definitions["GRAPHICS_MODULE_PATH"],
-                "OBS::libobs-opengl"
-            );
-            assert_eq!(target.watch_inputs, ["libobs/data"]);
-            assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
-            assert!(test.optional_prefixes.is_empty());
-        } else {
-            assert_eq!(test.suite, "core");
-            assert!(target.artifact_definitions.is_empty());
-            assert!(target.watch_inputs.is_empty());
-            assert_eq!(test.working_directory, None);
-            assert_eq!(test.optional_prefixes, [vec!["xvfb-run", "-a"]]);
-        }
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("), "{name}");
-        assert!(!fragment.contains("add_test("), "{name}");
+        assert_group_lifecycle_registration(&root, &graph, name, graphics, timeout);
     }
     graph
         .targets
@@ -112,6 +62,75 @@ fn canonical_group_lifecycle_is_registered() {
                 }
             }
         }
+    }
+}
+
+fn assert_group_lifecycle_registration(
+    root: &Path,
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+    graphics: bool,
+    timeout: Option<u32>,
+) {
+    use obs_build::validation::graph::{ConditionalValue, Source};
+    let target = graph.targets.get(name).unwrap_or_else(|| {
+        panic!("canonical graph omits group lifecycle compatibility coverage: {name}")
+    });
+    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+        if path == &format!("test/cmocka/{name}.c")));
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("group lifecycle linkage must be unconditional"),
+        })
+        .collect();
+    let mut expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
+    if name == "test_group_active_refs" {
+        expected.push("OBS::caption");
+    }
+    if matches!(name, "test_group_empty_bounds" | "test_group_child_drift") {
+        expected.push("m");
+    }
+    assert_eq!(libraries, expected, "{name}");
+    if name == "test_group_active_refs" {
+        assert_eq!(target.header_libraries, ["Uthash::Uthash"]);
+    } else {
+        assert!(target.header_libraries.is_empty());
+    }
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.timeout_seconds, timeout, "{name}");
+    assert_eq!(test.skip_return_code, None);
+    assert_group_lifecycle_runtime(target, test, graphics);
+    let fragment =
+        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+    assert!(!fragment.contains("add_executable("), "{name}");
+    assert!(!fragment.contains("add_test("), "{name}");
+}
+
+fn assert_group_lifecycle_runtime(
+    target: &obs_build::validation::graph::Target,
+    test: &obs_build::validation::graph::Test,
+    graphics: bool,
+) {
+    if graphics {
+        assert_eq!(test.suite, "graphics");
+        assert_eq!(
+            target.artifact_definitions["GRAPHICS_MODULE_PATH"],
+            "OBS::libobs-opengl"
+        );
+        assert_eq!(target.watch_inputs, ["libobs/data"]);
+        assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
+        assert!(test.optional_prefixes.is_empty());
+    } else {
+        assert_eq!(test.suite, "core");
+        assert!(target.artifact_definitions.is_empty());
+        assert!(target.watch_inputs.is_empty());
+        assert_eq!(test.working_directory, None);
+        assert_eq!(test.optional_prefixes, [vec!["xvfb-run", "-a"]]);
     }
 }
 
