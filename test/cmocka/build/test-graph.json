@@ -727,6 +727,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_context_names": {
+      "sources": [
+        "test/cmocka/test_context_names.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_core_setup_rules_ms_steps": {
       "sources": [
         "test/cmocka/test_core_setup_rules_ms_steps.c",
@@ -7303,6 +7312,21 @@
     },
     "test_context_name_helpers": {
       "target": "test_context_name_helpers"
+    },
+    "test_context_names": {
+      "target": "test_context_names",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_core_setup_rules_ms_steps": {
       "target": "test_core_setup_rules_ms_steps",
