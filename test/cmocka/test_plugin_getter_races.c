@@ -37,7 +37,7 @@ static void read_value(void)
 	calldata_free(&cd);
 }
 #elif defined(GETTER_SLIDESHOW_MK2)
-#include "plugins/image-source/obs-slideshow-mk2.c.h"
+#include "plugins/image-source/build/image-source.core+.h.c"
 static struct slideshow subject = {.index_mutex = PTHREAD_MUTEX_INITIALIZER};
 static void write_value(unsigned i)
 {
@@ -68,7 +68,7 @@ static void read_value(void)
 	assert(b > 1.0f && b <= 4.0f);
 }
 #elif defined(GETTER_XSHM)
-#include "plugins/linux-capture/xshm-input.c.h"
+#include "plugins/linux-capture/build/linux-capture.nix+.h.c"
 static struct xshm_data subject;
 static void write_value(unsigned i)
 {
@@ -91,6 +91,19 @@ static void read_value(void)
 }
 #else
 #error Select a plugin getter case
+#endif
+
+#if defined(GETTER_SCROLL) || defined(GETTER_STINGER)
+/* These isolated source fixtures have no module loader or locale service. */
+const char *obs_module_text(const char *text)
+{
+	return text;
+}
+
+obs_module_t *obs_current_module(void)
+{
+	return NULL;
+}
 #endif
 
 static pthread_barrier_t start;

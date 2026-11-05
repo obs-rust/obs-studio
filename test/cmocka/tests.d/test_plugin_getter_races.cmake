@@ -9,6 +9,17 @@ if(OS_LINUX AND TARGET obs-filters AND TARGET image-source AND TARGET obs-transi
     string(TOLOWER "${plugin}" case)
     set(test_name "test_plugin_getter_${case}")
     add_executable(${test_name} test_plugin_getter_races.c)
+    # ASan retains registration globals and their callback graph. Include the
+    # real companion implementations rather than relying on section collection
+    # to hide unresolved module-local services.
+    if(plugin STREQUAL "SLIDESHOW")
+      target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/plugins/image-source/build/image-source.core+.h.c")
+    elseif(plugin STREQUAL "SLIDESHOW_MK2")
+      target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/plugins/image-source/build/image-source.slideshow+.h.c")
+    endif()
+    if(plugin MATCHES "^SLIDESHOW")
+      target_sources(${test_name} PRIVATE "${CMAKE_SOURCE_DIR}/plugins/image-source/build/image-source.posix+.h.c")
+    endif()
     target_compile_definitions(${test_name} PRIVATE GETTER_${plugin} _GNU_SOURCE)
     target_compile_options(${test_name} PRIVATE -ffunction-sections -fdata-sections -UNDEBUG)
     target_link_options(${test_name} PRIVATE -Wl,--gc-sections)
