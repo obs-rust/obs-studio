@@ -107,7 +107,9 @@ cmake --preset windows-ci-x64 -B $build `
   "-DCMAKE_PREFIX_PATH=$CMockaPrefix"
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
 
-cmake --build $build --config RelWithDebInfo `
+# The Visual Studio generator builds one project at a time unless it is told
+# otherwise (#3662).
+cmake --build $build --config RelWithDebInfo --parallel $env:NUMBER_OF_PROCESSORS `
   --target libobs libobs-c-reference cmocka-tests libobs-d3d11 libobs-opengl
 if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)" }
 
