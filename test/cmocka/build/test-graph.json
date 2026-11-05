@@ -5265,6 +5265,16 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_shutdown_after_failed_startup": {
+      "sources": [
+        "test/cmocka/test_shutdown_after_failed_startup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_shutdown_canvas_weak_ref": {
       "sources": [
         "test/cmocka/test_shutdown_canvas_weak_ref.c"
@@ -9228,6 +9238,14 @@
     },
     "test_shader_sampler_convert": {
       "target": "test_shader_sampler_convert"
+    },
+    "test_shutdown_after_failed_startup": {
+      "target": "test_shutdown_after_failed_startup",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60
     },
     "test_shutdown_canvas_weak_ref": {
       "target": "test_shutdown_canvas_weak_ref",
