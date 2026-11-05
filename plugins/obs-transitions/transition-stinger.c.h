@@ -22,6 +22,7 @@ struct stinger_info {
 	uint64_t duration_frames;
 	uint64_t transition_point_ns;
 	uint64_t transition_point_frame;
+	pthread_mutex_t point_mutex;
 	float transition_point;
 	float transition_a_mul;
 	float transition_b_mul;
@@ -50,6 +51,23 @@ struct stinger_info {
 	float (*mix_a)(void *data, float t);
 	float (*mix_b)(void *data, float t);
 };
+
+static void stinger_set_transition_point(struct stinger_info *s, float point)
+{
+	s->transition_point = point;
+	s->transition_a_mul = 1.0f / point;
+	s->transition_b_mul = 1.0f / (1.0f - point);
+}
+
+static float stinger_get_transition_point(struct stinger_info *s)
+{
+	return s->transition_point;
+}
+
+static float stinger_get_fade_multiplier(struct stinger_info *s, bool a)
+{
+	return a ? s->transition_a_mul : s->transition_b_mul;
+}
 
 static const char *stinger_get_name(void *type_data)
 {
@@ -176,6 +194,10 @@ static void *stinger_create(obs_data_t *settings, obs_source_t *source)
 {
 	struct stinger_info *s = bzalloc(sizeof(*s));
 
+	if (pthread_mutex_init(&s->point_mutex, NULL) != 0) {
+		bfree(s);
+		return NULL;
+	}
 	s->source = source;
 	s->mix_a = mix_a_fade_in_out;
 	s->mix_b = mix_b_fade_in_out;
@@ -189,6 +211,7 @@ static void *stinger_create(obs_data_t *settings, obs_source_t *source)
 	if (!s->matte_effect) {
 		blog(LOG_ERROR, "Could not open stinger_matte_transition.effect: %s", error_string);
 		bfree(error_string);
+		pthread_mutex_destroy(&s->point_mutex);
 		bfree(s);
 		return NULL;
 	}
@@ -219,6 +242,7 @@ static void stinger_destroy(void *data)
 
 	obs_leave_graphics();
 
+	pthread_mutex_destroy(&s->point_mutex);
 	bfree(s);
 }
 
@@ -385,7 +409,7 @@ static void stinger_video_render(void *data, gs_effect_t *effect)
 			return;
 	} else {
 		float t = obs_transition_get_time(s->source);
-		bool use_a = t < s->transition_point;
+		bool use_a = t < stinger_get_transition_point(s);
 
 		enum obs_transition_target target = use_a ? OBS_TRANSITION_SOURCE_A : OBS_TRANSITION_SOURCE_B;
 
@@ -458,13 +482,13 @@ static inline float calc_fade(float t, float mul)
 static float mix_a_fade_in_out(void *data, float t)
 {
 	struct stinger_info *s = data;
-	return 1.0f - calc_fade(t, s->transition_a_mul);
+	return 1.0f - calc_fade(t, stinger_get_fade_multiplier(s, true));
 }
 
 static float mix_b_fade_in_out(void *data, float t)
 {
 	struct stinger_info *s = data;
-	return 1.0f - calc_fade(1.0f - t, s->transition_b_mul);
+	return 1.0f - calc_fade(1.0f - t, stinger_get_fade_multiplier(s, false));
 }
 
 static float mix_a_cross_fade(void *data, float t)
@@ -550,20 +574,18 @@ static void stinger_transition_start(void *data)
 		s->duration_ns = (uint64_t)calldata_int(&cd, "duration") + 250000000ULL;
 		s->duration_frames = (uint64_t)calldata_int(&cd, "num_frames");
 
+		float point;
 		if (s->transition_point_is_frame)
-			s->transition_point =
-				(float)((long double)s->transition_point_frame / (long double)s->duration_frames);
+			point = (float)((long double)s->transition_point_frame / (long double)s->duration_frames);
 		else
-			s->transition_point =
-				(float)((long double)s->transition_point_ns / (long double)s->duration_ns);
+			point = (float)((long double)s->transition_point_ns / (long double)s->duration_ns);
 
-		if (s->transition_point > 0.999f)
-			s->transition_point = 0.999f;
-		else if (s->transition_point < 0.001f)
-			s->transition_point = 0.001f;
+		if (point > 0.999f)
+			point = 0.999f;
+		else if (point < 0.001f)
+			point = 0.001f;
 
-		s->transition_a_mul = (1.0f / s->transition_point);
-		s->transition_b_mul = (1.0f / (1.0f - s->transition_point));
+		stinger_set_transition_point(s, point);
 
 		if (s->track_matte_enabled && s->matte_source) {
 			proc_handler_call(matte_ph, "get_duration", &cd);

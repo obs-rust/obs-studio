@@ -109,6 +109,7 @@ struct slideshow {
 
 	float elapsed;
 	size_t cur_item;
+	pthread_mutex_t index_mutex;
 
 	uint32_t cx;
 	uint32_t cy;
@@ -134,6 +135,12 @@ struct slideshow {
 
 	enum obs_media_state state;
 };
+
+/* All index writers run on the video thread; procedures may run elsewhere. */
+static void ss_set_current_index(struct slideshow *ss, size_t index)
+{
+	ss->cur_item = index;
+}
 
 static void set_media_state(void *data, enum obs_media_state state)
 {
@@ -711,14 +718,14 @@ static void ss_update(void *data, obs_data_t *settings)
 
 	ss->cx = cx;
 	ss->cy = cy;
-	ss->cur_item = 0;
+	ss_set_current_index(ss, 0);
 	ss->elapsed = 0.0f;
 	obs_transition_set_size(ss->transition, cx, cy);
 	obs_transition_set_alignment(ss->transition, OBS_ALIGN_CENTER);
 	obs_transition_set_scale_type(ss->transition, OBS_TRANSITION_SCALE_ASPECT);
 
 	if (ss->randomize && ss->files.num)
-		ss->cur_item = random_file(ss);
+		ss_set_current_index(ss, random_file(ss));
 	if (new_tr)
 		obs_source_add_active_child(ss->source, new_tr);
 	if (ss->files.num) {
@@ -759,7 +766,7 @@ static void ss_restart(void *data)
 	struct slideshow *ss = data;
 
 	ss->elapsed = 0.0f;
-	ss->cur_item = 0;
+	ss_set_current_index(ss, 0);
 	ss->stop = false;
 	ss->paused = false;
 	do_transition(ss, false);
@@ -772,7 +779,7 @@ static void ss_stop(void *data)
 	struct slideshow *ss = data;
 
 	ss->elapsed = 0.0f;
-	ss->cur_item = 0;
+	ss_set_current_index(ss, 0);
 
 	do_transition(ss, true);
 	ss->stop = true;
@@ -798,9 +805,9 @@ static void ss_next_slide(void *data)
 	}
 
 	if (ss->randomize)
-		ss->cur_item = next_random_file(ss);
-	else if (++ss->cur_item >= ss->files.num)
-		ss->cur_item = 0;
+		ss_set_current_index(ss, next_random_file(ss));
+	else
+		ss_set_current_index(ss, (ss->cur_item + 1) % ss->files.num);
 
 	do_transition(ss, false);
 }
@@ -813,11 +820,11 @@ static void ss_previous_slide(void *data)
 		return;
 
 	if (ss->randomize)
-		ss->cur_item = next_random_file(ss);
+		ss_set_current_index(ss, next_random_file(ss));
 	else if (ss->cur_item == 0)
-		ss->cur_item = ss->files.num - 1;
+		ss_set_current_index(ss, ss->files.num - 1);
 	else
-		--ss->cur_item;
+		ss_set_current_index(ss, ss->cur_item - 1);
 
 	do_transition(ss, false);
 }
@@ -904,6 +911,7 @@ static void ss_destroy(void *data)
 	obs_source_release(ss->transition);
 	free_files(&ss->files);
 	pthread_mutex_destroy(&ss->mutex);
+	pthread_mutex_destroy(&ss->index_mutex);
 	calldata_free(&ss->cd);
 	bfree(ss);
 }
@@ -913,6 +921,10 @@ static void *ss_create(obs_data_t *settings, obs_source_t *source)
 	struct slideshow *ss = bzalloc(sizeof(*ss));
 	proc_handler_t *ph = obs_source_get_proc_handler(source);
 
+	if (pthread_mutex_init(&ss->index_mutex, NULL) != 0) {
+		bfree(ss);
+		return NULL;
+	}
 	ss->source = source;
 	ss->queue = os_task_queue_create();
 	ss->shown_item = NO_SLIDE;
@@ -985,7 +997,7 @@ static void ss_video_tick(void *data, float seconds)
 
 	if (ss->restart_on_activate && ss->use_cut) {
 		ss->elapsed = 0.0f;
-		ss->cur_item = ss->randomize ? next_random_file(ss) : 0;
+		ss_set_current_index(ss, ss->randomize ? next_random_file(ss) : 0);
 		prepare_transition(ss, false, &plan);
 		run_plan = true;
 		ss->restart_on_activate = false;

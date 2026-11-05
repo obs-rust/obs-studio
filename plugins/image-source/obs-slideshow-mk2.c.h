@@ -115,6 +115,9 @@ struct slideshow_data {
 struct slideshow {
 	obs_source_t *source;
 
+	/* Procedures read only this published index, never the mutable slide buffer. */
+	pthread_mutex_t index_mutex;
+	size_t current_index;
 	struct slideshow_data data;
 	os_task_queue_t *queue;
 	obs_source_t *transition;
@@ -127,6 +130,11 @@ struct slideshow {
 	obs_hotkey_id next_hotkey;
 	obs_hotkey_id prev_hotkey;
 };
+
+static void ss_set_current_index(struct slideshow *ss, size_t index)
+{
+	ss->current_index = index;
+}
 
 static void set_media_state(void *data, enum obs_media_state state)
 {
@@ -395,6 +403,7 @@ static void restart_slides(struct slideshow *ss)
 
 	free_active_slides(&ssd->slides);
 	ssd->slides = new_slides;
+	ss_set_current_index(ss, new_slides.cur.slide_idx);
 }
 
 static void ss_update(void *data, obs_data_t *settings)
@@ -532,6 +541,7 @@ static void ss_update(void *data, obs_data_t *settings)
 	/* update settings data                  */
 
 	ss->data = new_data;
+	ss_set_current_index(ss, 0);
 	if (new_tr) {
 		old_tr = ss->transition;
 		ss->transition = new_tr;
@@ -649,6 +659,7 @@ static void ss_next_slide(void *data)
 	deque_push_back(&slides->next, &sd, sizeof(sd));
 	deque_push_back(&slides->prev, &slides->cur, sizeof(sd));
 	deque_pop_front(&slides->next, &slides->cur, sizeof(sd));
+	ss_set_current_index(ss, slides->cur.slide_idx);
 	deque_pop_front(&slides->prev, &sd, sizeof(sd));
 	free_source_data(&sd);
 
@@ -679,6 +690,7 @@ static void ss_previous_slide(void *data)
 	deque_push_front(&slides->prev, &sd, sizeof(sd));
 	deque_push_front(&slides->next, &slides->cur, sizeof(sd));
 	deque_pop_back(&slides->prev, &slides->cur, sizeof(sd));
+	ss_set_current_index(ss, slides->cur.slide_idx);
 	deque_pop_back(&slides->next, &sd, sizeof(sd));
 	free_source_data(&sd);
 
@@ -749,7 +761,7 @@ static void previous_slide_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *ho
 static void current_slide_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
-	calldata_set_int(cd, "current_index", (long long)ss->data.slides.cur.slide_idx);
+	calldata_set_int(cd, "current_index", (long long)ss->current_index);
 }
 
 static void total_slides_proc(void *data, calldata_t *cd)
@@ -765,6 +777,7 @@ static void ss_destroy(void *data)
 	os_task_queue_destroy(ss->queue);
 	obs_source_release(ss->transition);
 	free_slideshow_data(&ss->data);
+	pthread_mutex_destroy(&ss->index_mutex);
 	bfree(ss);
 }
 
@@ -773,6 +786,10 @@ static void *ss_create(obs_data_t *settings, obs_source_t *source)
 	struct slideshow *ss = bzalloc(sizeof(*ss));
 	proc_handler_t *ph = obs_source_get_proc_handler(source);
 
+	if (pthread_mutex_init(&ss->index_mutex, NULL) != 0) {
+		bfree(ss);
+		return NULL;
+	}
 	ss->source = source;
 
 	ss->data.manual = false;
