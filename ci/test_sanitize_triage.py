@@ -11,9 +11,9 @@ report is triaged on its own, so a real OBS leak next to it still counts.
 
 Exit 77 is ctest's skip code, not a failure. A test in KNOWN is listed, not
 counted: its exit and its sanitizer reports. The list keeps itself honest
-(#3238): every bug or flaky entry names its issue, a known bug that ran
-clean is a finding (the fix must drop its entry), a flaky entry that ran
-clean is listed, and the known list comes first in the summary.
+(#3238): every bug entry names its issue, a known bug that ran clean is a
+finding (the fix must drop its entry), a tool limitation that ran clean is
+listed, and the known list comes first in the summary.
 """
 
 import importlib.util
@@ -175,16 +175,24 @@ KNOWN_ENTRIES = 3
 
 
 class KnownListTest(unittest.TestCase):
-    """Every entry has a kind; bug and flaky entries name an open issue."""
+    """Only known bugs and tool limitations can be exempt; bugs name an issue."""
 
     def test_every_entry_has_a_kind_and_an_issue(self):
         spec = importlib.util.spec_from_file_location("triage", TRIAGE)
         triage_mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(triage_mod)
-        for (tool, test), (kind, why) in triage_mod.KNOWN.items():
-            self.assertIn(kind, {"bug", "flaky", "tool"}, (tool, test))
+        self.assert_valid_entries(triage_mod.KNOWN)
+
+    def assert_valid_entries(self, entries):
+        for (tool, test), (kind, why) in entries.items():
+            self.assertIn(kind, {"bug", "tool"}, (tool, test))
             if kind != "tool":
                 self.assertRegex(why, r"#\d+", (tool, test))
+
+    def test_flaky_entries_are_rejected(self):
+        """#3370: a future exemption cannot bring the retired kind back."""
+        with self.assertRaises(AssertionError):
+            self.assert_valid_entries({("asan", "test_synthetic"): ("flaky", "timing failure (#3370)")})
 
     def test_the_list_does_not_grow_unseen(self):
         spec = importlib.util.spec_from_file_location("triage", TRIAGE)

@@ -2,7 +2,7 @@
 type: concept
 title: An asan failure on your PR
 description: "What to do when the asan job fails a PR: fix the leak or the test, find out if the failure is yours, and why the known list is the last step and not the first."
-sources: ["#3290", "#3563", "#3575", "#3576", "#3577"]
+sources: ["#3290", "#3563", "#3575", "#3576", "#3577", "#3370"]
 status: active
 ---
 
@@ -45,8 +45,9 @@ no known cause yet.
 
 ## Checks
 
-- `ci/test_sanitize_triage.py` `KnownListTest`: each `bug` or `flaky` entry names an
-  issue, and the number of entries matches `KNOWN_ENTRIES`. To add an entry you
+- `ci/test_sanitize_triage.py` `KnownListTest`: only `bug` and `tool` kinds are
+  allowed, each `bug` entry names an issue, and the number of entries matches
+  `KNOWN_ENTRIES`. To add an entry you
   must raise that number, which shows in the diff for the reviewer. To drop one
   you must lower it, so the number can not go stale.
 - The rules for each kind are in [sanitizer-known-list.md](sanitizer-known-list.md).

@@ -52,7 +52,7 @@ stays in the code PR.
 - [Running sanitizers locally](local-sanitizers.md) — Asan or valgrind on a few tests through the harness on a local machine, and what valgrind costs per test.
 - [A PipeWire loop stopped right after its start can hang](pipewire-stop-after-start.md) — pw_thread_loop_stop() can wait forever when the loop thread has not entered the loop yet (PipeWire 1.6.2). Wait for an event source's callback first (thread-loop.start-signal is ignored before PipeWire 0.3.77); a blocking pw_loop_invoke does not help.
 - [Dispatch sanitizers on a separate ref](sanitizer-dispatch.md) — A `workflow_dispatch` of `sanitizers.yaml` on a PR branch cancels the run in progress there; dispatch on a separate ref.
-- [The sanitizer known list](sanitizer-known-list.md) — The `bug`/`flaky`/`tool` kinds in `rust/tools/sanitize/triage.py`, how to add an entry, and why a `bug` entry that runs clean fails the job.
+- [The sanitizer known list](sanitizer-known-list.md) — The `bug`/`tool` kinds in `rust/tools/sanitize/triage.py`, how to add an entry, and why a `bug` entry that runs clean fails the job.
 - [A source's destroy runs later, on another thread](shutdown-deferred-destroy.md) — obs_source_destroy queues its work on the destruction task thread, so obs_shutdown can free what a queued destroy still uses; wait in a loop until the queue is empty.
 - [Free what OBS's destroy path frees](test-leaks.md) — A test that skips OBS's destroy call leaks what that call frees, and the asan job fails on that since #3290.
 - [Timing tests wait for the result](timing-tests.md) — Wait for the frame or packet you check, not a frame count or a fixed sleep; when a test needs the `timing` resource lock.
