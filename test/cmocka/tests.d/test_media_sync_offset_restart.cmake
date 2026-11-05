@@ -38,5 +38,6 @@ if(OS_LINUX AND TARGET OBS::libobs-opengl AND TARGET OBS::media-playback)
     COMMAND test_media_sync_offset_restart
     WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
-  set_tests_properties(test_media_sync_offset_restart PROPERTIES TIMEOUT 120)
+  # Real-time media/audio offsets must not overlap the other timing tests (#3661).
+  set_tests_properties(test_media_sync_offset_restart PROPERTIES TIMEOUT 120 RESOURCE_LOCK timing)
 endif()
