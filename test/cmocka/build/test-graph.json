@@ -4707,6 +4707,26 @@
         }
       ]
     },
+    "test_scene_bounds_place": {
+      "sources": [
+        "test/cmocka/test_scene_bounds_place.c",
+        "libobs/obs-scene-bounds-place.c.h",
+        "libobs/obs-scene-bounds.c.h"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-bounds.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_scene_bounds_type_range": {
       "sources": [
         "test/cmocka/test_scene_bounds_type_range.c"
@@ -8927,6 +8947,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_bounds_place": {
+      "target": "test_scene_bounds_place",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_scene_bounds_type_range": {
       "target": "test_scene_bounds_type_range",
