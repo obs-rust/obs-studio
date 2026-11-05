@@ -2244,6 +2244,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_pair_latch": {
+      "sources": [
+        "test/cmocka/test_hotkey_pair_latch.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_hotkey_pair_steps": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -7956,6 +7965,18 @@
       "target": "test_hotkey_name_map",
       "command": [
         "${target}"
+      ]
+    },
+    "test_hotkey_pair_latch": {
+      "target": "test_hotkey_pair_latch",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_hotkey_pair_steps": {
