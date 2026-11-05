@@ -49,10 +49,7 @@ fn canonical_hotkey_pair_latch_is_registered() {
             .unwrap();
         assert!(selected.targets.contains_key(name));
         assert!(selected.tests.contains_key(name));
-        assert_eq!(
-            selected.tests[name].optional_prefixes.is_empty(),
-            os != "OS_LINUX"
-        );
+        assert!(!selected.tests[name].optional_prefixes.is_empty());
     }
 }
 
