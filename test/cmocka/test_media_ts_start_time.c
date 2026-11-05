@@ -477,6 +477,9 @@ static void ts_playing_seek_lands_on_target(void **state)
 	arm(&p);
 	media_playback_seek(p.mp, target_ms);
 	int shown = wait_first_frame(&p);
+	/* Exercise delayed observation after the first seek frame: playback
+	 * keeps advancing even when the test thread has not read the result. */
+	wait_for_frame(&p, shown + FPS);
 	int64_t t = media_playback_get_current_time(p.mp);
 	player_stop(&p);
 
