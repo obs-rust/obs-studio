@@ -168,9 +168,13 @@ jobs:
 
   # Native performance evidence is opt-in, never a PR/merge-group dependency.
   format-benchmark:
-    name: UYVX format benchmark (macOS arm64)
+    name: UYVX format benchmark (${{ matrix.runner }})
     if: github.repository == 'obs-rust/obs-studio' && github.event_name == 'workflow_dispatch' && inputs.job == 'format-benchmark'
-    runs-on: macos-26
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-26.04, macos-26]
     timeout-minutes: 30
     permissions:
       contents: read
@@ -186,6 +190,15 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Configure Linux apt mirrors
+        if: runner.os == 'Linux'
+        run: sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
+      - name: Update Linux package metadata
+        if: runner.os == 'Linux'
+        run: sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
+      - name: Install Linux benchmark headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y uuid-dev libglib2.0-dev libxkbcommon-dev
       - name: Set Up soldr
         uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
         with:
@@ -201,6 +214,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: format-benchmark-${{ github.run_id }}
+          name: format-benchmark-${{ matrix.runner }}-${{ github.run_id }}
           path: ${{ runner.temp }}/format-benchmark
           if-no-files-found: warn

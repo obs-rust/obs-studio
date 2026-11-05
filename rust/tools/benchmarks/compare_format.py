@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -46,6 +47,13 @@ def measure(root: Path, output: Path, label: str) -> None:
         )
 
 
+
+def over_native_bound(rows: list[dict]) -> list[str]:
+    """#3004 requires Rust no slower than C, stricter than the general 1.10 bound."""
+    return [row["benchmark"] for row in rows
+            if not math.isfinite(row["rust_over_c"]) or row["rust_over_c"] > 1.0]
+
+
 def compare(root: Path, base: str, output: Path) -> None:
     candidate = validate_base(root, base)
     output = output.resolve()
@@ -73,10 +81,16 @@ def compare(root: Path, base: str, output: Path) -> None:
         for label, rows in manifest["results"].items():
             if {row["benchmark"] for row in rows} != CASES:
                 raise ValueError(f"{label}: missing UYVX compression measurement")
+        manifest["limit_rust_over_c"] = 1.0
+        manifest["violations"] = over_native_bound(manifest["results"]["candidate"])
+        if manifest["violations"]:
+            manifest["status"] = "over-bound"
+            raise ValueError(f"candidate exceeds #3004's Rust/C <= 1.0 bound: {manifest['violations']}")
         manifest["status"] = "measured"
         print(json.dumps(manifest, indent=2))
     except BaseException:
-        manifest["status"] = "failed"
+        if manifest["status"] == "running":
+            manifest["status"] = "failed"
         raise
     finally:
         # Retain logs/metadata on failure, and leave the runner at its candidate.

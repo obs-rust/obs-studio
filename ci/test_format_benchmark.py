@@ -52,6 +52,12 @@ class NativeFormatBenchmarkTest(unittest.TestCase):
             manifest = json.loads((output / "comparison.json").read_text())
             self.assertEqual(manifest, {"baseline": baseline, "candidate": candidate, "status": "failed"})
 
+    def test_issue_requires_exact_c_bound_not_general_ten_percent(self):
+        rows = [{"benchmark": "equal", "rust_over_c": 1.0},
+                {"benchmark": "slower", "rust_over_c": 1.000001},
+                {"benchmark": "invalid", "rust_over_c": float("nan")}]
+        self.assertEqual(MODULE.over_native_bound(rows), ["slower", "invalid"])
+
     def test_workflow_has_only_an_explicit_readonly_native_measurement(self):
         text = (ROOT / ".github/workflows/dispatch.yaml").read_text()
         self.assertIn("          - format-benchmark\n", text)
@@ -59,7 +65,8 @@ class NativeFormatBenchmarkTest(unittest.TestCase):
         self.assertIn("github.repository == 'obs-rust/obs-studio'", job)
         self.assertIn("github.event_name == 'workflow_dispatch'", job)
         self.assertIn("inputs.job == 'format-benchmark'", job)
-        self.assertIn("runs-on: macos-26", job)
+        self.assertIn("runs-on: ${{ matrix.runner }}", job)
+        self.assertIn("runner: [ubuntu-26.04, macos-26]", job)
         self.assertIn("permissions:\n      contents: read", job)
         self.assertIn("FORMAT_BASE: ${{ inputs.ref }}", job)
         self.assertIn('compare_format.py --base "$FORMAT_BASE"', job)
