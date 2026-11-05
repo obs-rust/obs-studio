@@ -1276,7 +1276,7 @@ struct obs_pw_loop_entered {
 	bool entered;
 };
 
-static void on_loop_entered_cb(void *data, uint64_t count)
+static void pipewire_on_loop_entered_cb(void *data, uint64_t count)
 {
 	struct obs_pw_loop_entered *entered = data;
 
@@ -1288,11 +1288,11 @@ static void on_loop_entered_cb(void *data, uint64_t count)
 /* A stop immediately after start can race with the loop thread entering
  * its poll loop (#3594). An event callback proves entry on every supported
  * PipeWire version; thread-loop.start-signal needs PipeWire >= 0.3.77. */
-static bool start_pipewire_loop(struct pw_thread_loop *thread_loop)
+static bool pipewire_start_loop(struct pw_thread_loop *thread_loop)
 {
 	struct pw_loop *loop = pw_thread_loop_get_loop(thread_loop);
 	struct obs_pw_loop_entered entered = {.thread_loop = thread_loop};
-	struct spa_source *event = pw_loop_add_event(loop, on_loop_entered_cb, &entered);
+	struct spa_source *event = pw_loop_add_event(loop, pipewire_on_loop_entered_cb, &entered);
 
 	if (!event)
 		return false;
@@ -1331,7 +1331,7 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 		goto fail;
 	}
 
-	if (!start_pipewire_loop(obs_pw->thread_loop)) {
+	if (!pipewire_start_loop(obs_pw->thread_loop)) {
 		blog(LOG_WARNING, "[pipewire] Error starting threaded mainloop");
 		goto fail;
 	}
