@@ -4835,6 +4835,19 @@
         "libobs/data"
       ]
     },
+    "test_scene_enum_items_removal": {
+      "sources": [
+        "test/cmocka/test_scene_enum_items_removal.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "Threads::Threads"
+      ]
+    },
     "test_scene_group_transform": {
       "sources": [
         "test/cmocka/test_scene_group_transform.c",
@@ -8954,6 +8967,19 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_enum_items_removal": {
+      "target": "test_scene_enum_items_removal",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_scene_group_transform": {
       "target": "test_scene_group_transform"
