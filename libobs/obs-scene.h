@@ -101,9 +101,14 @@ struct obs_scene {
 	struct obs_source *source;
 
 	bool is_group;
-	bool custom_size;
-	uint32_t cx;
-	uint32_t cy;
+	/* Atomic: obs_source_get_width() and obs_source_get_height() read these
+	 * with no lock, on any thread. A caller that holds a scene's audio lock
+	 * must not take the video lock (full_lock() order), so the getters do
+	 * not take it. cx and cy hold a uint32_t. A reader can see a new cx with
+	 * an old cy for one call. */
+	volatile bool custom_size;
+	volatile long cx;
+	volatile long cy;
 
 	bool absolute_coordinates;
 	uint32_t last_width;
