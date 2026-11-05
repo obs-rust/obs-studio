@@ -512,7 +512,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${test_graph}"
         "tests;${name}"
-        "target;suite;requires;command;optional_prefixes;timeout_seconds;skip_return_code;environment;environment_path_prepend;qt_runtime;working_directory;resource_locks;run_serial"
+        "target;suite;requires;command;optional_prefixes;optional_prefixes_requires;timeout_seconds;skip_return_code;environment;environment_path_prepend;qt_runtime;working_directory;resource_locks;run_serial"
       )
       string(JSON suite ERROR_VARIABLE suite_error GET "${test_graph}" tests "${name}" suite)
       if(suite_error)
@@ -547,6 +547,7 @@ function(obs_native_test_graph path root)
         list(APPEND arguments "${argument}")
       endforeach()
       string(JSON prefixes_kind ERROR_VARIABLE prefixes_error TYPE "${test_graph}" tests "${name}" optional_prefixes)
+      _obs_test_graph_requirement(prefixes_selected "${test_graph}" tests "${name}" optional_prefixes_requires)
       if(NOT prefixes_error)
         if(NOT prefixes_kind STREQUAL "ARRAY")
           message(FATAL_ERROR "Native test command prefixes must be an array")
@@ -588,7 +589,7 @@ function(obs_native_test_graph path root)
             else()
               find_program(prefix_executable NAMES "${prefix_program}" NO_CACHE)
             endif()
-            if(prefix_executable)
+            if(prefix_executable AND prefixes_selected)
               set(expanded_prefix "${prefix_executable}")
               list(REMOVE_AT prefix 0)
               foreach(argument IN LISTS prefix)
