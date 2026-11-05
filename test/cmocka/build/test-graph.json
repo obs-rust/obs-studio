@@ -682,6 +682,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_config_hex_float_rounding": {
+      "sources": [
+        "test/cmocka/test_config_hex_float_rounding.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_config_save": {
       "sources": [
         "test/cmocka/test_config_save.c"
@@ -7269,6 +7278,10 @@
     },
     "test_config_file": {
       "target": "test_config_file"
+    },
+    "test_config_hex_float_rounding": {
+      "target": "test_config_hex_float_rounding",
+      "timeout_seconds": 20
     },
     "test_config_save": {
       "target": "test_config_save"
