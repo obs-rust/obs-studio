@@ -1125,6 +1125,15 @@
         "libobs/data"
       ]
     },
+    "test_effect_lookups": {
+      "sources": [
+        "test/cmocka/test_effect_lookups.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_effect_number_defaults": {
       "sources": [
         "test/cmocka/test_effect_number_defaults.c"
@@ -7528,6 +7537,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_effect_lookups": {
+      "target": "test_effect_lookups",
+      "command": [
+        "${target}"
       ]
     },
     "test_effect_number_defaults": {
