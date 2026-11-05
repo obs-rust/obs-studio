@@ -1388,7 +1388,7 @@ void process_media_actions(obs_source_t *source)
 
 static void async_tick(obs_source_t *source)
 {
-	uint64_t sys_time = obs->video.video_time;
+	uint64_t sys_time = obs_video_stats_frame_time(&obs->video.stats);
 
 	pthread_mutex_lock(&source->async_mutex);
 
@@ -1935,7 +1935,8 @@ static void obs_source_update_async_video(obs_source_t *source)
 						source->async_unbuffered;
 			if (obs_source_async_upload_reanchor(decoupled, unbuffered)) {
 				pthread_mutex_lock(&source->audio_buf_mutex);
-				source->timing_adjust = obs->video.video_time - frame->timestamp;
+				source->timing_adjust =
+					obs_video_stats_frame_time(&obs->video.stats) - frame->timestamp;
 				source->timing_set = true;
 				pthread_mutex_unlock(&source->audio_buf_mutex);
 			}
