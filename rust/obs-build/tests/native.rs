@@ -36,6 +36,8 @@ fn canonical_config_hex_float_rounding_is_registered() {
             .join("test/cmocka/tests.d/test_config_hex_float_rounding.cmake")
             .exists()
     );
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         let selected = graph.select(&[(os.into(), true)].into()).unwrap();
         assert!(selected.targets.contains_key(name));
