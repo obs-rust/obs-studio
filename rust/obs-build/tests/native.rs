@@ -32,10 +32,7 @@ fn canonical_hotkey_pair_latch_is_registered() {
     assert_eq!(test.command, ["${target}"]);
     assert_eq!(test.timeout_seconds, None);
     assert_eq!(test.skip_return_code, None);
-    assert_eq!(
-        test.optional_prefixes,
-        [["xvfb-run", "-a"]]
-    );
+    assert_eq!(test.optional_prefixes, [["xvfb-run", "-a"]]);
     assert!(
         !root
             .join("test/cmocka/tests.d/test_hotkey_pair_latch.cmake")
