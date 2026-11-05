@@ -22,16 +22,27 @@ fn canonical_group_lifecycle_is_registered() {
         });
         assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
             if path == &format!("test/cmocka/{name}.c")));
-        let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("group lifecycle linkage must be unconditional"),
-        }).collect();
+        let libraries: Vec<_> = target
+            .libraries
+            .iter()
+            .map(|library| match library {
+                ConditionalValue::Name(name) => name.as_str(),
+                _ => panic!("group lifecycle linkage must be unconditional"),
+            })
+            .collect();
         let mut expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
-        if name == "test_group_active_refs" { expected.push("OBS::caption"); }
+        if name == "test_group_active_refs" {
+            expected.push("OBS::caption");
+        }
         if matches!(name, "test_group_empty_bounds" | "test_group_child_drift") {
             expected.push("m");
         }
         assert_eq!(libraries, expected, "{name}");
+        if name == "test_group_active_refs" {
+            assert_eq!(target.header_libraries, ["Uthash::Uthash"]);
+        } else {
+            assert!(target.header_libraries.is_empty());
+        }
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
@@ -39,7 +50,10 @@ fn canonical_group_lifecycle_is_registered() {
         assert_eq!(test.skip_return_code, None);
         if graphics {
             assert_eq!(test.suite, "graphics");
-            assert_eq!(target.artifact_definitions["GRAPHICS_MODULE_PATH"], "OBS::libobs-opengl");
+            assert_eq!(
+                target.artifact_definitions["GRAPHICS_MODULE_PATH"],
+                "OBS::libobs-opengl"
+            );
             assert_eq!(target.watch_inputs, ["libobs/data"]);
             assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
             assert!(test.optional_prefixes.is_empty());
@@ -50,27 +64,51 @@ fn canonical_group_lifecycle_is_registered() {
             assert_eq!(test.working_directory, None);
             assert_eq!(test.optional_prefixes, [vec!["xvfb-run", "-a"]]);
         }
-        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("), "{name}");
         assert!(!fragment.contains("add_test("), "{name}");
     }
-    graph.targets.retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph.tests.retain(|name, _| cases.iter().any(|case| case.0 == name));
+    graph
+        .targets
+        .retain(|name, _| cases.iter().any(|case| case.0 == name));
+    graph
+        .tests
+        .retain(|name, _| cases.iter().any(|case| case.0 == name));
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         for opengl in [true, false] {
-            let selected = graph.select(&[
-                ("OS_LINUX".into(), os == "OS_LINUX"),
-                ("OS_MACOS".into(), os == "OS_MACOS"),
-                ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                ("HAVE_OBS_OPENGL".into(), opengl),
-            ].into()).unwrap();
+            let selected = graph
+                .select(
+                    &[
+                        ("OS_LINUX".into(), os == "OS_LINUX"),
+                        ("OS_MACOS".into(), os == "OS_MACOS"),
+                        ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                        ("HAVE_OBS_OPENGL".into(), opengl),
+                    ]
+                    .into(),
+                )
+                .unwrap();
             for (name, graphics, _) in cases {
-                let expected = if graphics { os == "OS_LINUX" && opengl }
-                    else { name == "test_group_teardown_uaf" || os != "OS_WINDOWS" };
-                assert_eq!(selected.targets.contains_key(name), expected, "{os}/{opengl}/{name}");
-                assert_eq!(selected.tests.contains_key(name), expected, "{os}/{opengl}/{name}");
+                let expected = if graphics {
+                    os == "OS_LINUX" && opengl
+                } else {
+                    name == "test_group_teardown_uaf" || os != "OS_WINDOWS"
+                };
+                assert_eq!(
+                    selected.targets.contains_key(name),
+                    expected,
+                    "{os}/{opengl}/{name}"
+                );
+                assert_eq!(
+                    selected.tests.contains_key(name),
+                    expected,
+                    "{os}/{opengl}/{name}"
+                );
                 if expected && !graphics {
-                    assert_eq!(selected.tests[name].optional_prefixes.is_empty(), os != "OS_LINUX");
+                    assert_eq!(
+                        selected.tests[name].optional_prefixes.is_empty(),
+                        os != "OS_LINUX"
+                    );
                 }
             }
         }
