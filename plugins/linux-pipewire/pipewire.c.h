@@ -1271,6 +1271,42 @@ static const struct pw_core_events core_events = {
 
 /* obs_source_info methods */
 
+struct obs_pw_loop_entered {
+	struct pw_thread_loop *thread_loop;
+	bool entered;
+};
+
+static void pipewire_on_loop_entered_cb(void *data, uint64_t count)
+{
+	struct obs_pw_loop_entered *entered = data;
+
+	(void)count;
+	entered->entered = true;
+	pw_thread_loop_signal(entered->thread_loop, false);
+}
+
+/* A stop immediately after start can race with the loop thread entering
+ * its poll loop (#3594). An event callback proves entry on every supported
+ * PipeWire version; thread-loop.start-signal needs PipeWire >= 0.3.77. */
+static bool pipewire_start_loop(struct pw_thread_loop *thread_loop)
+{
+	struct pw_loop *loop = pw_thread_loop_get_loop(thread_loop);
+	struct obs_pw_loop_entered entered = {.thread_loop = thread_loop};
+	struct spa_source *event = pw_loop_add_event(loop, pipewire_on_loop_entered_cb, &entered);
+
+	if (!event)
+		return false;
+	pw_thread_loop_lock(thread_loop);
+	/* Queue the event before starting: if queuing fails, there is no
+	 * running thread to stop before its entry has been confirmed. */
+	bool started = pw_loop_signal_event(loop, event) >= 0 && pw_thread_loop_start(thread_loop) >= 0;
+	while (started && !entered.entered)
+		pw_thread_loop_wait(thread_loop);
+	pw_loop_destroy_source(loop, event);
+	pw_thread_loop_unlock(thread_loop);
+	return started;
+}
+
 obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 {
 	obs_pipewire *obs_pw;
@@ -1295,7 +1331,7 @@ obs_pipewire *obs_pipewire_connect_fd(int pipewire_fd)
 		goto fail;
 	}
 
-	if (pw_thread_loop_start(obs_pw->thread_loop) < 0) {
+	if (!pipewire_start_loop(obs_pw->thread_loop)) {
 		blog(LOG_WARNING, "[pipewire] Error starting threaded mainloop");
 		goto fail;
 	}

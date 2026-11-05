@@ -408,6 +408,8 @@ not get a line.
 
 ### Stability
 
+- **PipeWire capture connection failures return cleanly.** A failed capture connection no longer risks hanging OBS while its capture thread starts. *Linux*, pending merge. Issue [#3594](https://github.com/obs-rust/obs-studio/issues/3594).
+
 - **Capture sources start enabled.** Audio capture started by a source's create callback sees its initialized enabled state and flags; source creation no longer rewrites unchanged flags while capture is running. *All*, pending merge. Issue [#3505](https://github.com/obs-rust/obs-studio/issues/3505).
 
 - **A frozen macOS Screen Capture says so in the log.** When the source
