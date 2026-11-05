@@ -860,6 +860,13 @@ in #1805. The graph remains a subset of the repository's native tests; target an
 selection depends on the evaluated platform and feature requirements. Cargo
 compilation of the full selected test graph currently runs on Linux.
 
+The unchanged texture-creator mipmap data test also uses the shared core
+inventory. It retains all four 2D/cube render-target, non-power-of-two and
+unchanged-data cases, with unconditional libobs/cmocka linkage and no display
+wrapper. Its fake device records calls through real exported graphics APIs;
+this scoped coverage does not establish complete graphics or application parity
+(#3692, #1390).
+
 Targets may specify `"cpp_standard": "17"` or `"cpp_standard": "20"`.
 The typed native model passes the requested ISO mode to `cc::Build` only for
 C++/Objective-C++ compilation. The CMake consumer requires the same standard
