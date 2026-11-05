@@ -2,7 +2,7 @@
 type: concept
 title: Running sanitizers locally
 description: Asan or valgrind on a few tests through the harness on a local machine, and what valgrind costs per test.
-sources: ["#3290", "#3238", "#962", "#3485", "#3366", "#3489"]
+sources: ["#3290", "#3238", "#962", "#3485", "#3366", "#3489", "#3701"]
 status: active
 stale_after: 2027-05-01
 ---
@@ -68,6 +68,12 @@ The harness does not know it runs in Docker. On a build machine:
   `sudo`, so the harness stops with `FileNotFoundError: 'sudo'`. Install it, or
   relaunch with `SKIP_TESTS=1`.
 - For a cold build, use a new `SAN_OUT` and `ZCCACHE_CACHE_DIR`.
+
+tsan runs with `exitcode=0` and `rust/tools/sanitize/tsan.supp`: `triage.py` decides
+from the reports, so a test is clean with exit 0 and no counted report. Reports with
+no OBS frame are listed as external. `called_from_lib` for the glib family removes
+about 1900 of them. Do not add Mesa: TSan then does not see Mesa's mutexes, and its
+tests report about 3 times more (#3701).
 
 tsan does not instrument Rust, so `-DOBS_RUST_TSAN=ON` (set by the harness) makes
 the Rust primitives call `__tsan_acquire` and `__tsan_release`. A primitive

@@ -253,7 +253,10 @@ def main():  # noqa: C901
         hit = sorted(n for n in known if known[n] != "0" or n in reported)
         clean = sorted(n for n in known if n not in hit)
         fixed = [n for n in clean if KNOWN[(tool, n)][0] == "bug"]
-        md.append(f"**Unit tests:** {len(ran) - len(failed)}/{len(ran)} clean"
+        # TSan runs with exitcode=0 (#3701): clean is exit 0 and no counted report.
+        reported_tests = {label.split(":", 1)[0] for label, _ in test_reports}
+        unclean = reported_tests.union(n for n, _ in failed) & set(ran)
+        md.append(f"**Unit tests:** {len(ran) - len(unclean)}/{len(ran)} clean"
                   + (f", {len(known)} known (not counted)" if known else "")
                   + (f", skipped: {', '.join(skipped)}" if skipped else ""))
         md.append("")
