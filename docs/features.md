@@ -1131,11 +1131,14 @@ area.
   audio of the source into noise. The filter keeps its configured delay when
   graphics ticks skip frames, dropping expired queued pictures and holding
   the last picture across gaps instead of showing newer pictures too early.
+  Audio also stays continuous when a graphics stall overflows the incoming
+  video queue.
   *All*, 2026-10-13. Issues
   [#521](https://github.com/obs-rust/obs-studio/issues/521),
   [#3368](https://github.com/obs-rust/obs-studio/issues/3368), PRs
   [#522](https://github.com/obs-rust/obs-studio/pull/522),
-  [#3515](https://github.com/obs-rust/obs-studio/pull/3515), upstream
+  [#3515](https://github.com/obs-rust/obs-studio/pull/3515),
+  [#3653](https://github.com/obs-rust/obs-studio/pull/3653), upstream
   [obsproject/obs-studio#13830](https://github.com/obsproject/obs-studio/issues/13830).
 - Two Audio Input Capture sources on the same device both record cleanly
   when PipeWire runs at a large quantum, and the second one is no longer

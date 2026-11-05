@@ -44,7 +44,6 @@ KNOWN = {
     ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
                                    '("VEX temporary storage exhausted")'),
     ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
-    ("asan", "test_async_delay_audio"): ("flaky", "a real-time tone breaks under load (#3368, #838)"),
 }
 SKIP_EXIT = "77"
 EXTERNAL = re.compile(r"/nix/store/|/usr/(?:include|lib)/")

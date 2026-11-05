@@ -2896,7 +2896,9 @@ static inline struct obs_source_frame *cache_video(struct obs_source *source, co
 
 	if (step == OBS_SOURCE_FRAME_CACHE_OVERFLOW) {
 		free_async_cache(source);
-		source->last_frame_ts = 0;
+		/* Overflow drops queued pictures, not source time. Keep the
+		 * running clock so the next tick catches up after a graphics
+		 * stall instead of anchoring audio to the leftover backlog. */
 		pthread_mutex_unlock(&source->async_mutex);
 		return NULL;
 	}
