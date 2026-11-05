@@ -185,6 +185,17 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_async_overflow_clock": {
+      "sources": [
+        "test/cmocka/test_async_overflow_clock.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_async_rotation_normalize": {
       "sources": [
         "test/cmocka/test_async_rotation_normalize.c"
@@ -7489,6 +7500,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_async_overflow_clock": {
+      "target": "test_async_overflow_clock",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "requires": "OS_LINUX"
     },
     "test_async_rotation_normalize": {
       "target": "test_async_rotation_normalize",
