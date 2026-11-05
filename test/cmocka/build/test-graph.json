@@ -4054,6 +4054,29 @@
         "test/cmocka/remux-queue-stubs"
       ]
     },
+    "test_replay_buffer_estimate": {
+      "cpp_standard": "17",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_WIDGETS"
+        ]
+      },
+      "sources": [
+        "test/cmocka/test_replay_buffer_estimate.cpp",
+        "frontend/utility/replay-buffer-estimate.cpp.hpp"
+      ],
+      "watch_inputs": [
+        "frontend/utility/replay-buffer-estimate.hpp"
+      ]
+    },
     "test_rtmp_chunk_size": {
       "sources": [
         "test/cmocka/test_rtmp_chunk_size.c",
@@ -8539,6 +8562,11 @@
       "suite": "qt",
       "timeout_seconds": 120,
       "qt_runtime": "Qt6::Core"
+    },
+    "test_replay_buffer_estimate": {
+      "qt_runtime": "Qt6::Core",
+      "suite": "qt",
+      "target": "test_replay_buffer_estimate"
     },
     "test_rtmp_chunk_size": {
       "target": "test_rtmp_chunk_size",
