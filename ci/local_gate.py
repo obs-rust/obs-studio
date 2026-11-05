@@ -737,6 +737,8 @@ def cross_lint(targets: tuple[str, ...], link: bool) -> None:
     # obs-c-oracle is a dev-only crate of C built for the host's tests; it
     # never ships and its C doesn't cross-compile to every target.
     scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
+    free = shutil.disk_usage(ROOT).free / (1024 ** 3)
+    print(f"Cross targets: {targets}; build volume free at start: {free:.2f} GiB", flush=True)
     for target in targets:
         add_target(target)
         soldr_cargo(["clippy", *scope, "--locked", "--target", target, "--", "-D", "warnings"])
@@ -910,18 +912,26 @@ LANES = {"lint": lane_lint, "rust-test": lane_rust_test, "cross": lane_cross, "c
 CHECKS = {"clang-format": clang_format, "gersemi": gersemi, "self-test": lambda _files, _fix: self_test()}
 
 
-def main() -> int:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lane", choices=sorted(LANES), action="append", help="run only this lane (repeatable)")
     parser.add_argument("--fix", action="store_true", help="lint: rewrite files instead of checking")
     parser.add_argument("--test-diff", metavar="BASE", help="run unit tests only for crates changed since BASE (fast gate)")
     parser.add_argument("--only", choices=sorted(CHECKS), help="run only this check (CI format jobs)")
+    parser.add_argument("--cross-target", choices=CROSS_TARGETS, help="CI: run one cross target on its own runner")
     args = parser.parse_args()
+    if args.cross_target and (args.lane != ["cross"] or args.only or args.test_diff is not None):
+        parser.error("--cross-target requires only --lane cross")
     if args.test_diff is not None and not args.test_diff.strip():
         # A shell that loses the value (a Windows runner's PowerShell reads
         # `${BASE}` as an unset variable) must fail here, not silently run
         # every lane: the ci/ self-tests are POSIX-only (#2743).
         parser.error("--test-diff needs a base commit, not an empty value")
+    return args
+
+
+def main() -> int:
+    args = parse_args()
     if args.test_diff:
         try:
             test_diff(args.test_diff)
@@ -939,7 +949,10 @@ def main() -> int:
         start = time.monotonic()
         print(f"== lane {name}", flush=True)
         try:
-            LANES[name](args.fix)
+            if name == "cross" and args.cross_target:
+                cross_lint((args.cross_target,), link=True)
+            else:
+                LANES[name](args.fix)
         except NotApplicable as exc:
             # Exit 75 (EX_TEMPFAIL) when the host cannot run any lane it was
             # asked for: ci-lint reads that as "not applicable" for an
