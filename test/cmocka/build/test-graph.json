@@ -1797,6 +1797,15 @@
         "frontend/utility"
       ]
     },
+    "test_filter_size_no_target": {
+      "sources": [
+        "test/cmocka/test_filter_size_no_target.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_filter_skip_removed": {
       "sources": [
         "test/cmocka/test_filter_skip_removed.c"
@@ -7817,6 +7826,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_filter_size_no_target": {
+      "target": "test_filter_size_no_target"
     },
     "test_filter_skip_removed": {
       "target": "test_filter_skip_removed",
