@@ -3,9 +3,10 @@
 #include <pthread.h>
 #include <stdint.h>
 
-/* Private graphics-thread statistics read by public obs_get_* accessors. */
+/* Private graphics-thread clock and statistics read by obs_get_* accessors. */
 struct obs_video_stats {
 	pthread_mutex_t mutex;
+	uint64_t frame_time_ns;
 	uint64_t avg_frame_time_ns;
 	double fps;
 	uint32_t total_frames;
@@ -20,6 +21,21 @@ static inline int obs_video_stats_init(struct obs_video_stats *stats)
 static inline void obs_video_stats_destroy(struct obs_video_stats *stats)
 {
 	pthread_mutex_destroy(&stats->mutex);
+}
+
+static inline uint64_t obs_video_stats_frame_time(struct obs_video_stats *stats)
+{
+	pthread_mutex_lock(&stats->mutex);
+	uint64_t frame_time = stats->frame_time_ns;
+	pthread_mutex_unlock(&stats->mutex);
+	return frame_time;
+}
+
+static inline void obs_video_stats_set_frame_time(struct obs_video_stats *stats, uint64_t frame_time)
+{
+	pthread_mutex_lock(&stats->mutex);
+	stats->frame_time_ns = frame_time;
+	pthread_mutex_unlock(&stats->mutex);
 }
 
 static inline void obs_video_stats_add_frames(struct obs_video_stats *stats, uint32_t total, uint32_t lagged)

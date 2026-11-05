@@ -122,7 +122,7 @@ static inline struct obs_video_mix_reuse_key mix_reuse_key(const struct obs_core
 		.render_space = (int)mix->render_space,
 		.base_width = mix->ovi.base_width,
 		.base_height = mix->ovi.base_height,
-		.rendered = mix->texture_rendered,
+		.rendered = os_atomic_load_bool(&mix->texture_rendered),
 	};
 	return key;
 }
@@ -199,7 +199,7 @@ static inline void render_main_texture(struct obs_core_video_mix *video)
 	else
 		obs_view_render(video->view);
 
-	video->texture_rendered = true;
+	os_atomic_store_bool(&video->texture_rendered, true);
 
 	pthread_mutex_lock(&obs->data.draw_callbacks_mutex);
 
@@ -666,17 +666,17 @@ void add_ready_encoder_group(obs_encoder_t *encoder)
 	pthread_mutex_unlock(&obs->video.encoder_group_mutex);
 }
 
-static inline void video_sleep(struct obs_core_video *video, uint64_t *p_time, uint64_t interval_ns)
+static inline void video_sleep(struct obs_core_video *video, uint64_t interval_ns)
 {
 	struct obs_vframe_info vframe_info;
-	uint64_t cur_time = *p_time;
+	uint64_t cur_time = obs_video_stats_frame_time(&video->stats);
 	uint64_t t = cur_time + interval_ns;
 
 	const bool slept = os_sleepto_ns(t);
 	const struct obs_video_pacing_step step =
 		obs_video_pacing_step(cur_time, interval_ns, slept, slept ? 0 : os_gettime_ns());
 	const int count = step.count;
-	*p_time = step.frame_time;
+	obs_video_stats_set_frame_time(&video->stats, step.frame_time);
 
 	obs_video_stats_add_frames(&video->stats, (uint32_t)count, (uint32_t)(count - 1));
 
@@ -698,7 +698,7 @@ static inline void video_sleep(struct obs_core_video *video, uint64_t *p_time, u
 			pthread_mutex_lock(&group->mutex);
 			if (obs_video_pacing_group_starts(group->num_encoders_started, group->encoders.num,
 							  group->start_timestamp)) {
-				group->start_timestamp = *p_time;
+				group->start_timestamp = step.frame_time;
 				start_timestamp = group->start_timestamp;
 
 				/* The start frame is the next one video-io renders. Align
@@ -813,7 +813,7 @@ static inline void output_frames(void)
 
 static void clear_base_frame_data(struct obs_core_video_mix *video)
 {
-	video->texture_rendered = false;
+	os_atomic_store_bool(&video->texture_rendered, false);
 	video->texture_converted = false;
 	deque_free(&video->vframe_info_buffer);
 	video->cur_texture = 0;
@@ -910,7 +910,7 @@ bool obs_graphics_thread_loop(struct obs_graphics_context *context)
 	gs_leave_context();
 
 	profile_start(tick_sources_name);
-	context->last_time = tick_sources(obs->video.video_time, context->last_time);
+	context->last_time = tick_sources(obs_video_stats_frame_time(&obs->video.stats), context->last_time);
 	profile_end(tick_sources_name);
 
 	obs_host_pump_messages();
@@ -934,15 +934,15 @@ bool obs_graphics_thread_loop(struct obs_graphics_context *context)
 
 	profile_reenable_thread();
 
-	video_sleep(&obs->video, &obs->video.video_time, context->interval);
+	video_sleep(&obs->video, context->interval);
 
 	const struct obs_video_frame_sums sums = {
 		.frame_time_total_ns = context->frame_time_total_ns,
 		.fps_total_ns = context->fps_total_ns,
 		.fps_total_frames = context->fps_total_frames,
 	};
-	const struct obs_video_frame_stats stats =
-		obs_video_frame_timing_stats(sums, frame_time_ns, obs->video.video_time, context->last_time);
+	const struct obs_video_frame_stats stats = obs_video_frame_timing_stats(
+		sums, frame_time_ns, obs_video_stats_frame_time(&obs->video.stats), context->last_time);
 	if (stats.report)
 		obs_video_stats_set_timing(&obs->video.stats, stats.fps, stats.avg_frame_time_ns);
 
@@ -961,7 +961,7 @@ void *obs_graphics_thread(void *param)
 
 	const uint64_t interval = obs->video.video_frame_interval_ns;
 
-	obs->video.video_time = os_gettime_ns();
+	obs_video_stats_set_frame_time(&obs->video.stats, os_gettime_ns());
 
 	os_set_thread_name("libobs: graphics thread");
 

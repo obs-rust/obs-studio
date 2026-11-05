@@ -337,7 +337,7 @@ static float calc_time(obs_source_t *transition, uint64_t ts)
 
 static inline float get_video_time(obs_source_t *transition)
 {
-	uint64_t ts = obs->video.video_time;
+	uint64_t ts = obs_video_stats_frame_time(&obs->video.stats);
 	return calc_time(transition, ts);
 }
 

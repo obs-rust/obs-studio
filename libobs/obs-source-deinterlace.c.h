@@ -140,8 +140,8 @@ static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_
 
 		switch (obs_source_deinterlace_select_take_offset(s->async_unbuffered)) {
 		case OBS_SOURCE_DEINTERLACE_SELECT_OFFSET_BUFFERED:
-			s->deinterlace_offset =
-				obs_source_deinterlace_pacing_buffered_offset(obs->video.video_time, s->last_frame_ts);
+			s->deinterlace_offset = obs_source_deinterlace_pacing_buffered_offset(
+				obs_video_stats_frame_time(&obs->video.stats), s->last_frame_ts);
 			return;
 		case OBS_SOURCE_DEINTERLACE_SELECT_OFFSET_REANCHOR:
 		default:
@@ -149,7 +149,7 @@ static inline void deinterlace_get_closest_frames(obs_source_t *s, uint64_t sys_
 		}
 
 		s->deinterlace_offset = obs_source_deinterlace_pacing_reanchor(
-			s->deinterlace_offset, obs->video.video_time, s->deinterlace_frame_ts,
+			s->deinterlace_offset, obs_video_stats_frame_time(&obs->video.stats), s->deinterlace_frame_ts,
 			s->deinterlace_half_duration, obs->video.video_frame_interval_ns);
 	}
 }
@@ -308,9 +308,9 @@ void deinterlace_render(obs_source_t *s)
 	gs_effect_set_int(field, s->deinterlace_top_first);
 	gs_effect_set_vec2(dimensions, &size);
 
-	gs_effect_set_bool(frame2,
-			   obs_source_deinterlace_draw_frame2(obs->video.video_time, s->deinterlace_frame_ts,
-							      s->deinterlace_offset, s->deinterlace_half_duration));
+	gs_effect_set_bool(frame2, obs_source_deinterlace_draw_frame2(obs_video_stats_frame_time(&obs->video.stats),
+								      s->deinterlace_frame_ts, s->deinterlace_offset,
+								      s->deinterlace_half_duration));
 
 	while (gs_effect_loop(effect, tech_name))
 		gs_draw_sprite(NULL, s->async_flip ? GS_FLIP_V : 0, s->async_width, s->async_height);

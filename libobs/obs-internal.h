@@ -580,7 +580,6 @@ struct obs_core_video {
 	gs_effect_t *premultiplied_alpha_effect;
 	gs_samplerstate_t *point_sampler;
 
-	uint64_t video_time;
 	uint64_t video_frame_interval_ns;
 	uint64_t video_half_frame_interval_ns;
 	pthread_t video_thread;

@@ -579,7 +579,7 @@ void obs_free_video_mix(struct obs_core_video_mix *video)
 		deque_free(&video->vframe_info_buffer);
 		deque_free(&video->vframe_info_buffer_gpu);
 
-		video->texture_rendered = false;
+		os_atomic_store_bool(&video->texture_rendered, false);
 		memset(video->textures_copied, 0, sizeof(video->textures_copied));
 		video->texture_converted = false;
 
@@ -2332,7 +2332,7 @@ static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_ble
 	gs_eparam_t *param;
 
 	video = canvas->mix;
-	if (obs_canvas_draw_skip(video != NULL, video && video->texture_rendered))
+	if (obs_canvas_draw_skip(video != NULL, video && os_atomic_load_bool(&video->texture_rendered)))
 		return;
 
 	const enum gs_color_space source_space = video->render_space;
@@ -2393,7 +2393,7 @@ gs_texture_t *obs_get_main_texture(void)
 	const obs_canvas_t *canvas = obs->data.main_canvas;
 	struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
 
-	if (!video || !video->texture_rendered)
+	if (!video || !os_atomic_load_bool(&video->texture_rendered))
 		return NULL;
 
 	return video->render_texture;
@@ -3042,7 +3042,7 @@ profiler_name_store_t *obs_get_profiler_name_store(void)
 
 uint64_t obs_get_video_frame_time(void)
 {
-	return obs->video.video_time;
+	return obs_video_stats_frame_time(&obs->video.stats);
 }
 
 double obs_get_active_fps(void)
