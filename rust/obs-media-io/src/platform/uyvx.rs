@@ -21,6 +21,7 @@ pub(crate) struct Rows<'a> {
 
 impl Rows<'_> {
     /// Establish the bounds that each native block's loads and stores use.
+    #[inline(always)]
     pub(super) fn validate(&self) {
         assert!(self.blocks <= self.line1.len() / BLOCK_BYTES);
         assert!(self.blocks <= self.line2.len() / BLOCK_BYTES);
@@ -37,7 +38,7 @@ pub(crate) enum Kernel {
 }
 
 impl Kernel {
-    #[inline]
+    #[inline(always)]
     pub(crate) fn detect() -> Self {
         #[cfg(test)]
         if FORCE.with(core::cell::Cell::get) == Some(false) {
@@ -46,7 +47,7 @@ impl Kernel {
         Native::detect().map_or(Self::Scalar, Self::Native)
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn i420(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         match self {
             Self::Scalar => scalar_i420(rows, u, v),
@@ -54,7 +55,7 @@ impl Kernel {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn nv12(&self, rows: Rows<'_>, chroma: &mut [u8]) {
         match self {
             Self::Scalar => scalar_nv12(rows, chroma),
@@ -62,7 +63,7 @@ impl Kernel {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn i444(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         match self {
             Self::Scalar => scalar_i444(rows, u, v),

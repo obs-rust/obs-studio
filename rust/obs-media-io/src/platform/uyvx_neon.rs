@@ -11,12 +11,12 @@ use core::arch::aarch64::{
 pub(crate) struct Native(());
 
 impl Native {
-    #[inline]
+    #[inline(always)]
     pub(super) fn detect() -> Option<Self> {
         std::arch::is_aarch64_feature_detected!("neon").then_some(Self(()))
     }
 
-    #[inline]
+    #[inline(always)]
     pub(super) fn i420(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         rows.validate();
         assert!(rows.blocks <= u.len() / 2 && rows.blocks <= v.len() / 2);
@@ -24,7 +24,7 @@ impl Native {
         unsafe { i420(rows, u.as_mut_ptr(), v.as_mut_ptr()) }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(super) fn nv12(&self, rows: Rows<'_>, chroma: &mut [u8]) {
         rows.validate();
         assert!(rows.blocks <= chroma.len() / 4);
@@ -32,7 +32,7 @@ impl Native {
         unsafe { nv12(rows, chroma.as_mut_ptr()) }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(super) fn i444(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         rows.validate();
         assert!(rows.stride <= u.len() && rows.stride <= v.len());

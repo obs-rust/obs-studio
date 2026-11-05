@@ -647,7 +647,7 @@ fn uyvx_forced_row_kernels_match_c() {
                         end_y,
                         seed: 3004,
                     }
-                    .check(kind);
+                    .check_selected(kind);
                 }
             }
         });
