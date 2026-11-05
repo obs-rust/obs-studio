@@ -4771,6 +4771,29 @@
         }
       ]
     },
+    "test_scene_crop_steps": {
+      "sources": [
+        "test/cmocka/test_scene_crop_steps.c",
+        "libobs/obs-scene-crop.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "undefined,float-cast-overflow"
+    },
     "test_scene_dup_copy_lifetime": {
       "sources": [
         "test/cmocka/test_scene_dup_copy_lifetime.c"
@@ -8940,6 +8963,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_crop_steps": {
+      "target": "test_scene_crop_steps"
     },
     "test_scene_dup_copy_lifetime": {
       "target": "test_scene_dup_copy_lifetime",
