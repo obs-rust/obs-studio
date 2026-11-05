@@ -696,8 +696,8 @@ static void ffmpeg_source_play_pause(void *data, bool pause)
 
 	/* Stop and the end of the file stop the player, and unpausing does
 	 * not start it again: play from the start, like Restart. */
-	if (!pause && (os_atomic_load_long(&s->state) == OBS_MEDIA_STATE_STOPPED ||
-		       os_atomic_load_long(&s->state) == OBS_MEDIA_STATE_ENDED)) {
+	long state = os_atomic_load_long(&s->state);
+	if (!pause && (state == OBS_MEDIA_STATE_STOPPED || state == OBS_MEDIA_STATE_ENDED)) {
 		ffmpeg_source_start(s);
 		return;
 	}
