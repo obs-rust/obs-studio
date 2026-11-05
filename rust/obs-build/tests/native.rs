@@ -14,21 +14,31 @@ fn canonical_close_top_level_is_registered() {
         .get("test_close_top_level")
         .expect("canonical graph omits test_close_top_level");
     assert_eq!(target.sources.len(), 1);
-    assert!(matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_close_top_level.cpp"));
+    assert!(
+        matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_close_top_level.cpp")
+    );
     assert_eq!(target.includes, ["frontend/utility"]);
-    assert_eq!(target.watch_inputs, ["frontend/utility/close-top-level.hpp"]);
+    assert_eq!(
+        target.watch_inputs,
+        ["frontend/utility/close-top-level.hpp"]
+    );
     let test = &graph.tests["test_close_top_level"];
     assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
     assert_eq!(test.timeout_seconds, Some(120));
     for linux in [false, true] {
         for widgets in [false, true] {
-            let selected = graph.select(&[
-                ("OS_LINUX".into(), linux),
-                ("MSVC".into(), !linux),
-                ("HAVE_QT6_CORE".into(), true),
-                ("HAVE_QT6_WIDGETS".into(), widgets),
-                ("HAVE_QT6_TEST".into(), false),
-            ].into()).unwrap();
+            let selected = graph
+                .select(
+                    &[
+                        ("OS_LINUX".into(), linux),
+                        ("MSVC".into(), !linux),
+                        ("HAVE_QT6_CORE".into(), true),
+                        ("HAVE_QT6_WIDGETS".into(), widgets),
+                        ("HAVE_QT6_TEST".into(), false),
+                    ]
+                    .into(),
+                )
+                .unwrap();
             assert_eq!(selected.tests.contains_key("test_close_top_level"), widgets);
         }
     }
@@ -829,6 +839,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
         "test_volume_meter_ticker": graph["targets"].get("test_volume_meter_ticker").expect("canonical graph omits test_volume_meter_ticker"),
+        "test_close_top_level": graph["targets"].get("test_close_top_level").expect("canonical graph omits test_close_top_level"),
         "test_settings_track_rows": graph["targets"].get("test_settings_track_rows").expect("canonical graph omits test_settings_track_rows"),
         "test_replay_buffer_estimate": graph["targets"].get("test_replay_buffer_estimate").expect("canonical graph omits test_replay_buffer_estimate"),
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
@@ -840,6 +851,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
         "test_volume_meter_ticker": graph["tests"]["test_volume_meter_ticker"],
+        "test_close_top_level": graph["tests"]["test_close_top_level"],
         "test_settings_track_rows": graph["tests"]["test_settings_track_rows"],
         "test_replay_buffer_estimate": graph["tests"]["test_replay_buffer_estimate"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
@@ -915,6 +927,7 @@ fn canonical_remux_queue_runs_unchanged() {
         .collect();
     let mut expected_names: std::collections::BTreeSet<_> = [
         "test_remux_queue_model",
+        "test_close_top_level",
         "test_frontend_api_call",
         "test_settings_track_rows",
     ]
@@ -961,6 +974,18 @@ fn canonical_remux_queue_runs_unchanged() {
         );
     }
     assert_settings_track_rows_ctest_properties(tests);
+    let close = tests
+        .iter()
+        .find(|test| test["name"] == "test_close_top_level")
+        .unwrap();
+    assert!(
+        close["properties"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|property| property["name"] == "TIMEOUT"
+                && property["value"].as_f64() == Some(120.0))
+    );
     let frontend_api = tests
         .iter()
         .find(|test| test["name"] == "test_frontend_api_call")
