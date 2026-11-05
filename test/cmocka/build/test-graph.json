@@ -1745,6 +1745,22 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_filter_clipboard": {
+      "sources": [
+        "test/cmocka/test_filter_clipboard.c",
+        "frontend/utility/filter-clipboard.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    },
     "test_filter_skip_removed": {
       "sources": [
         "test/cmocka/test_filter_skip_removed.c"
@@ -7666,6 +7682,12 @@
     },
     "test_file_serializer_safe": {
       "target": "test_file_serializer_safe"
+    },
+    "test_filter_clipboard": {
+      "target": "test_filter_clipboard",
+      "command": [
+        "${target}"
+      ]
     },
     "test_filter_skip_removed": {
       "target": "test_filter_skip_removed",
