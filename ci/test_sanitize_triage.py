@@ -181,10 +181,18 @@ class KnownListTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("triage", TRIAGE)
         triage_mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(triage_mod)
-        for (tool, test), (kind, why) in triage_mod.KNOWN.items():
+        self.assert_valid_entries(triage_mod.KNOWN)
+
+    def assert_valid_entries(self, entries):
+        for (tool, test), (kind, why) in entries.items():
             self.assertIn(kind, {"bug", "flaky", "tool"}, (tool, test))
             if kind != "tool":
                 self.assertRegex(why, r"#\d+", (tool, test))
+
+    def test_flaky_entries_are_rejected(self):
+        """#3370: a future exemption cannot bring the retired kind back."""
+        with self.assertRaises(AssertionError):
+            self.assert_valid_entries({("asan", "test_synthetic"): ("flaky", "timing failure (#3370)")})
 
     def test_the_list_does_not_grow_unseen(self):
         spec = importlib.util.spec_from_file_location("triage", TRIAGE)
