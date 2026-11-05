@@ -160,6 +160,7 @@ static void scene_destroy_mutates_next_hash_entry(void **state)
 		.id = "shutdown_hash_sentinel",
 		.destroy = sentinel_destroy,
 		.type = OBS_SOURCE_TYPE_INPUT,
+		.output_flags = OBS_SOURCE_AUDIO,
 		.get_name = input_name,
 		.create = input_create,
 	};
@@ -167,6 +168,7 @@ static void scene_destroy_mutates_next_hash_entry(void **state)
 		.id = "shutdown_hash_filter",
 		.destroy = sentinel_destroy,
 		.type = OBS_SOURCE_TYPE_FILTER,
+		.output_flags = OBS_SOURCE_AUDIO,
 		.get_name = input_name,
 		.create = input_create,
 	};
@@ -187,6 +189,7 @@ static void scene_destroy_mutates_next_hash_entry(void **state)
 	assert_non_null(obs_scene_add(scene, child));
 	obs_source_release(child);
 	obs_source_filter_add(sentinel, filter);
+	assert_int_equal(obs_source_filter_count(sentinel), 1);
 	unsigned callbacks = 0;
 	signal_handler_connect(obs_source_get_signal_handler(sentinel), "filter_remove", finish_scene_destroy,
 			       &callbacks);
