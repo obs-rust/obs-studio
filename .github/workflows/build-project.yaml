@@ -401,7 +401,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `command not found: soldr` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1371,7 +1371,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `The term 'soldr' is not recognized` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1690,7 +1690,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1908,7 +1908,7 @@ jobs:
         run: git submodule update --init --depth 1 deps/libdshowcapture/src
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           verdict-scope: build-project
           version: 0.9.45
@@ -1977,7 +1977,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2047,7 +2047,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2099,7 +2099,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2251,7 +2251,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2498,7 +2498,7 @@ jobs:
       # Production hybrid libobs builds the Rust ports through Corrosion;
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2944,7 +2944,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -3109,7 +3109,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
