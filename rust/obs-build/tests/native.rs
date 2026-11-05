@@ -48,6 +48,39 @@ fn canonical_close_top_level_is_registered() {
     }
 }
 
+/// #3658: Cargo must retain CMake's unchanged Paste Filters compatibility cases.
+#[test]
+fn canonical_filter_clipboard_is_registered() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph: serde_json::Value = serde_json::from_slice(
+        &fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap(),
+    )
+    .unwrap();
+    let target = graph["targets"]
+        .get("test_filter_clipboard")
+        .expect("canonical graph omits test_filter_clipboard");
+    assert_eq!(
+        target["sources"],
+        serde_json::json!([
+            "test/cmocka/test_filter_clipboard.c",
+            "frontend/utility/filter-clipboard.c.h"
+        ])
+    );
+    assert_eq!(target["includes"], serde_json::json!(["frontend/utility"]));
+    assert_eq!(
+        target["libraries"],
+        serde_json::json!(["OBS::libobs", "OBS::native-test-cmocka"])
+    );
+    assert_eq!(
+        graph["tests"]["test_filter_clipboard"],
+        serde_json::json!({"target": "test_filter_clipboard", "command": ["${target}"]})
+    );
+    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_filter_clipboard.cmake"))
+        .unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+}
+
 /// #1390: keep the original Linux replay-buffer estimate cases in the Qt graph.
 #[test]
 fn canonical_replay_buffer_estimate_is_registered() {
