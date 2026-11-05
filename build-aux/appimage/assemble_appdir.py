@@ -633,6 +633,15 @@ def assemble(appdir: Path, compat_lib: Path, here: Path) -> None:
     # Empty on purpose: GIO modules from the host are linked against the host's GLib.
     (libdir / "gio/modules").mkdir(parents=True, exist_ok=True)
     bundle_runtime(libdir, syslib, bundle)
+    # The virtual microphone loads module-pipe-source through pactl. Minimal
+    # PipeWire desktops need not install the PulseAudio command-line utilities.
+    # Copy before walk_closure and set_runpaths so its libraries and interpreter
+    # are bundled exactly like the other executables.
+    pactl = find_program("pactl")
+    if not pactl:
+        print("::error::pactl not found; install pulseaudio-utils on the build host", file=sys.stderr)
+        raise Failure(1)
+    shutil.copy2(pactl, appdir / "usr/bin/pactl")
     record_modules(data_root, module_root)
 
     # Install the source-built version first, so closure discovery uses it and

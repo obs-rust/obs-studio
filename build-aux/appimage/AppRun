@@ -104,6 +104,8 @@ else
 fi
 
 export APPDIR="$HERE"
+# Include packaged runtime helpers such as pactl (OBS Virtual Microphone).
+export PATH="$HERE/usr/bin:$PATH"
 # Deliberately NO LD_LIBRARY_PATH: every bundled ELF carries a relative RPATH
 # (set-runpaths.sh). An exported LD_LIBRARY_PATH would leak into every process
 # OBS spawns, and host programs crash when they pick up the bundled glibc.

@@ -25,6 +25,7 @@ import io
 import os
 import re
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -130,6 +131,7 @@ class AssembleAppdirTest(unittest.TestCase):
         self.bin.mkdir()
         for name, source in STUBS.items():
             self.stub(name, source)
+        self.elf(self.bin / "pactl", executable=True)
 
         # The scripts assemble_appdir.py calls by absolute path (AppRun and
         # check_appdir.py live next to it in the real tree).
@@ -340,6 +342,45 @@ class AssembleAppdirTest(unittest.TestCase):
         self.assertIn("libmissing.so.1 => not found", err)
 
     # --- the whole thing ----------------------------------------------------
+
+    def test_virtual_microphone_helper_is_bundled_before_dependency_discovery(self):
+        closure = self.module.walk_closure
+        helpers_seen = []
+
+        def check_closure(appdir, libdir, exclude):
+            helper = appdir / "usr/bin/pactl"
+            helpers_seen.append(helper)
+            self.assertTrue(helper.is_file(), "virtual microphone requires pactl without a host installation")
+            self.assertEqual(helper.read_bytes(), ELF)
+            self.assertTrue(os.access(helper, os.X_OK))
+            closure(appdir, libdir, exclude)
+
+        with patch.object(self.module, "walk_closure", side_effect=check_closure):
+            code, _, err = self.run_main(str(self.appdir), str(self.compat))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(helpers_seen), 1)
+
+    def test_missing_virtual_microphone_helper_fails_the_build(self):
+        find_program = self.module.find_program
+        with patch.object(self.module, "find_program",
+                          side_effect=lambda name: None if name == "pactl" else find_program(name)):
+            code, _, err = self.run_main(str(self.appdir), str(self.compat))
+        self.assertEqual(code, 1)
+        self.assertIn("pactl not found", err)
+
+    def test_apprun_resolves_the_bundled_virtual_microphone_helper(self):
+        app_run = self.appdir / "AppRun"
+        app_run.write_text((APPIMAGE / "AppRun").read_text().replace("@BUNDLE_GLIBC@", "0")
+                           .replace("@OBS_GUI_NAME@", "obs"))
+        gui = self.appdir / "usr/bin/obs"
+        gui.write_text('#!/bin/sh\ncommand -v pactl\n')
+        helper = self.appdir / "usr/bin/pactl"
+        self.elf(helper, executable=True)
+        result = subprocess.run(['sh', str(app_run)], capture_output=True, text=True,
+                                env={**os.environ, 'OBS_APPIMAGE_DEBUG': '', 'OBS_HOSTLIB_SKIP_CHECK': '1'},
+                                timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(helper))
 
     def test_a_successful_assembly(self):
         code, out, err = self.run_main(str(self.appdir), str(self.compat))
