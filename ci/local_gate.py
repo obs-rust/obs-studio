@@ -44,6 +44,7 @@ import subprocess
 import sys
 import threading
 import time
+import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -221,6 +222,11 @@ def soldr_dylint(args: list[str], buffer: list[str] | None = None, beside_clippy
         # defers to that one otherwise; CI runners have none).
         "SOLDR_FORCE_MANAGED_CARGO_SUBCOMMANDS": "1",
     }
+    if not os.environ.get("RUSTUP_TOOLCHAIN"):
+        # Match setup-soldr's selection in CI. Without it soldr can select
+        # the lint crate's nightly instead of its catalogued driver (#3559).
+        toolchain = tomllib.loads((ROOT / "rust-toolchain.toml").read_text(encoding="utf-8"))
+        env["RUSTUP_TOOLCHAIN"] = toolchain["toolchain"]["channel"]
     if beside_clippy:
         # Its own target root: soldr's no-cache preflight refuses to touch a
         # target dir while the Clippy that runs beside it holds a .cargo-lock.

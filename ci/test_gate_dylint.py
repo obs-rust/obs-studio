@@ -7,7 +7,9 @@ ledger (soldr#3894) that replays a Dylint pass whose inputs already passed.
     uv run python -m unittest discover -s ci -p test_gate_dylint.py
 """
 
+import os
 import re
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -18,6 +20,30 @@ GATE = Path(local_gate.__file__)
 
 
 class GateDylintTest(unittest.TestCase):
+    def test_missing_toolchain_uses_root_pin(self):
+        for inherited in (None, ""):
+            for beside_clippy in (False, True):
+                with self.subTest(inherited=inherited, beside_clippy=beside_clippy), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    (root / "rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99.7"\n', encoding="utf-8")
+                    with (
+                        mock.patch.dict(os.environ, {}, clear=True),
+                        mock.patch.object(local_gate, "ROOT", root),
+                        mock.patch.object(local_gate, "run") as run,
+                    ):
+                        if inherited is not None:
+                            os.environ["RUSTUP_TOOLCHAIN"] = inherited
+                        local_gate.soldr_dylint(["--all"], beside_clippy=beside_clippy)
+                    self.assertEqual(run.call_args.kwargs["env"].get("RUSTUP_TOOLCHAIN"), "1.99.7")
+
+    def test_explicit_toolchain_is_preserved(self):
+        with (
+            mock.patch.dict(os.environ, {"RUSTUP_TOOLCHAIN": "custom-driver"}, clear=True),
+            mock.patch.object(local_gate, "run") as run,
+        ):
+            local_gate.soldr_dylint(["--all"])
+        self.assertEqual(run.call_args.kwargs["env"]["RUSTUP_TOOLCHAIN"], "custom-driver")
+
     def test_no_cargo_dylint_call(self):
         text = GATE.read_text(encoding="utf-8")
         self.assertIsNone(re.search(r'soldr_cargo\(\s*\[\s*"dylint"', text),
