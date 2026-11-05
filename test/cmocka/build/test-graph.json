@@ -6322,6 +6322,20 @@
         }
       ]
     },
+    "test_video_clock_race": {
+      "sources": [
+        "test/cmocka/test_video_clock_race.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_video_copy_plan_steps": {
       "sources": [
         "test/cmocka/test_video_copy_plan_steps.c",
@@ -9283,6 +9297,9 @@
     },
     "test_vec4": {
       "target": "test_vec4"
+    },
+    "test_video_clock_race": {
+      "target": "test_video_clock_race"
     },
     "test_video_copy_plan_steps": {
       "target": "test_video_copy_plan_steps",
