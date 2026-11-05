@@ -112,7 +112,16 @@ pub fn build_qt_tests(
         ),
         ("HAVE_QT6_TEST".into(), interfaces.contains_key("Qt6::Test")),
     ]);
-    compile_suite(build, &root, &graph, &facts, interfaces)
+    let mut interfaces = interfaces.clone();
+    let thread_options = crate::platform::native_test_thread_options(&build.target);
+    interfaces
+        .entry("Threads::Threads".into())
+        .or_insert_with(|| graph::Dependency {
+            compile_options: thread_options.clone(),
+            link_options: thread_options,
+            ..Default::default()
+        });
+    compile_suite(build, &root, &graph, &facts, &interfaces)
 }
 
 /// Build standalone WHIP tests from the shared graph, with no core or SDK.

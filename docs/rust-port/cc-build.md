@@ -926,6 +926,14 @@ wall-clock fixture takes the `timing` resource lock. Hosts without Qt Test
 exclude this target; this helper coverage does not establish full frontend
 parity (#1390).
 
+The Linux QtCore volume-meter ticker test is also in the shared Qt graph. Its
+nine unchanged settling, repaint and cross-thread wake cases build and run
+through Cargo and CMake, retaining the frontend header input, conditional thread
+linkage and QtCore runtime setup. Core-only selection includes it on Linux;
+other hosts exclude it. The original wall-clock fixture holds the `timing`
+resource lock. This standalone helper coverage does not establish full frontend
+or application parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
