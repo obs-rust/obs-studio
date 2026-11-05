@@ -621,7 +621,11 @@ static void pulse_stream_event_task(void *param)
 				break;
 			}
 		}
-		pulse_restart_recording(data, false);
+		/* PipeWire can announce a new default or source before its
+		 * monitor is queryable. Its name is already recorded by the
+		 * failed start, so a later event need not restart it. Retry a
+		 * missing default device with the bounded reconnect budget. */
+		pulse_restart_recording(data, data->is_default);
 		break;
 	case PULSE_STREAM_KEEP:
 		break;
