@@ -953,7 +953,8 @@ This standalone helper coverage does not establish full frontend parity (#1390).
 The top-level window-close helper also uses the shared Qt graph. Both Cargo
 and CMake run all five unchanged cases for never-shown, shown and handle-free
 windows, including refused closes. The graph retains Widgets selection on all
-hosts, the 120-second timeout and QtCore runtime setup, and tracks the indirect
+hosts, explicit C++17 compilation, the 120-second timeout and QtCore runtime
+setup, and tracks the indirect
 helper header. The evaluated inventory is compared by the existing native Qt
 contract. This closes one coverage gap, not full frontend parity (#1390).
 

@@ -17,6 +17,10 @@ fn canonical_close_top_level_is_registered() {
     assert!(
         matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_close_top_level.cpp")
     );
+    assert!(matches!(
+        target.cpp_standard,
+        Some(obs_build::CppStandard::Cpp17)
+    ));
     assert_eq!(target.includes, ["frontend/utility"]);
     assert_eq!(
         target.watch_inputs,

@@ -641,7 +641,8 @@
       ],
       "watch_inputs": [
         "frontend/utility/close-top-level.hpp"
-      ]
+      ],
+      "cpp_standard": "17"
     },
     "test_cocoa_keys_steps": {
       "sources": [
