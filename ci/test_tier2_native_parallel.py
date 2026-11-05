@@ -8,6 +8,10 @@ Cargo cores) serially: about 8 min of macOS's 13 and 5.7 min of Windows's
 12.5, the critical path of the merge queue. Linux already runs ctest with
 -j "$OBS_CTEST_JOBS"; tests that must not overlap carry RUN_SERIAL or
 RESOURCE_LOCK, which ctest honors on every platform.
+
+The Windows build also ran one MSBuild project at a time, because cmake --build
+with the Visual Studio generator is serial unless it is told otherwise (#3662).
+The Xcode generator already builds independent targets in parallel.
 """
 
 from __future__ import annotations
@@ -46,6 +50,12 @@ class NativeTier2Parallel(unittest.TestCase):
         self.assertEqual(len(suites), 2, suites)
         for line in suites:
             self.assertIn("@ctestJobs", line)
+
+    def test_windows_build_is_parallel(self) -> None:
+        ps1 = VALIDATE_PS1.read_text(encoding="utf-8")
+        builds = re.findall(r"^cmake --build .*(?:\n .*)*", ps1, re.M)
+        self.assertEqual(len(builds), 1, builds)
+        self.assertIn("--parallel $env:NUMBER_OF_PROCESSORS", builds[0])
 
 
 if __name__ == "__main__":
