@@ -129,8 +129,12 @@ fn canonical_fake_device_graphics_is_registered() {
         assert!(!fragment.contains("add_executable("), "{name}");
         assert!(!fragment.contains("add_test("), "{name}");
     }
-    graph.targets.retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph.tests.retain(|name, _| cases.iter().any(|case| case.0 == name));
+    graph
+        .targets
+        .retain(|name, _| cases.iter().any(|case| case.0 == name));
+    graph
+        .tests
+        .retain(|name, _| cases.iter().any(|case| case.0 == name));
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         let selected = graph.select(&[(os.into(), true)].into()).unwrap();
         for (name, _) in cases {

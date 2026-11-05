@@ -2013,6 +2013,16 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_immediate_render": {
+      "sources": [
+        "test/cmocka/test_graphics_immediate_render.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_immediate_steps": {
       "sources": [
         "libobs/graphics/graphics-immediate.c.h",
@@ -6291,6 +6301,15 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_texture_render": {
+      "sources": [
+        "test/cmocka/test_texture_render.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_threading": {
       "sources": [
         "test/cmocka/test_threading.c"
@@ -8224,6 +8243,12 @@
         "${target}"
       ]
     },
+    "test_graphics_immediate_render": {
+      "target": "test_graphics_immediate_render",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_graphics_immediate_steps": {
       "target": "test_graphics_immediate_steps",
       "command": [
@@ -9926,6 +9951,12 @@
         "${target}"
       ],
       "timeout_seconds": 180
+    },
+    "test_texture_render": {
+      "target": "test_texture_render",
+      "command": [
+        "${target}"
+      ]
     },
     "test_threading": {
       "target": "test_threading"
