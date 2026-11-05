@@ -11,10 +11,12 @@ use core::arch::aarch64::{
 pub(crate) struct Native(());
 
 impl Native {
+    #[inline]
     pub(super) fn detect() -> Option<Self> {
         std::arch::is_aarch64_feature_detected!("neon").then_some(Self(()))
     }
 
+    #[inline]
     pub(super) fn i420(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         rows.validate();
         assert!(rows.blocks <= u.len() / 2 && rows.blocks <= v.len() / 2);
@@ -22,6 +24,7 @@ impl Native {
         unsafe { i420(rows, u.as_mut_ptr(), v.as_mut_ptr()) }
     }
 
+    #[inline]
     pub(super) fn nv12(&self, rows: Rows<'_>, chroma: &mut [u8]) {
         rows.validate();
         assert!(rows.blocks <= chroma.len() / 4);
@@ -29,6 +32,7 @@ impl Native {
         unsafe { nv12(rows, chroma.as_mut_ptr()) }
     }
 
+    #[inline]
     pub(super) fn i444(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         rows.validate();
         assert!(rows.stride <= u.len() && rows.stride <= v.len());
@@ -86,6 +90,7 @@ unsafe fn store_rows(a: uint8x8_t, b: uint8x8_t, out: *mut u8, pixel: usize, str
     }
 }
 
+#[inline]
 #[target_feature(enable = "neon")]
 unsafe fn i420(rows: Rows<'_>, u: *mut u8, v: *mut u8) {
     // SAFETY: Native::i420 validated all ranges and established NEON support.
@@ -112,6 +117,7 @@ unsafe fn i420(rows: Rows<'_>, u: *mut u8, v: *mut u8) {
     }
 }
 
+#[inline]
 #[target_feature(enable = "neon")]
 unsafe fn nv12(rows: Rows<'_>, chroma: *mut u8) {
     // SAFETY: Native::nv12 validated all ranges and established NEON support.
@@ -137,6 +143,7 @@ unsafe fn nv12(rows: Rows<'_>, chroma: *mut u8) {
     }
 }
 
+#[inline]
 #[target_feature(enable = "neon")]
 unsafe fn i444(rows: Rows<'_>, u: *mut u8, v: *mut u8) {
     // SAFETY: Native::i444 validated all ranges and established NEON support.

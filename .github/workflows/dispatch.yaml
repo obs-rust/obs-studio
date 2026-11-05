@@ -13,6 +13,7 @@ on:
           - translations
           - documentation
           - patches
+          - format-benchmark
       ref:
         description: GitHub reference to use for job
         type: string
@@ -164,3 +165,42 @@ jobs:
           channel: ${{ inputs.channel }}
           gcsAccessKeyId: ${{ secrets.GCS_ACCESS_KEY_ID }}
           gcsAccessKeySecret: ${{ secrets.GCS_ACCESS_KEY_SECRET }}
+
+  # Native performance evidence is opt-in, never a PR/merge-group dependency.
+  format-benchmark:
+    name: UYVX format benchmark (macOS arm64)
+    if: github.repository == 'obs-rust/obs-studio' && github.event_name == 'workflow_dispatch' && inputs.job == 'format-benchmark'
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      SOLDR_RUSTC_WRAPPER: none
+      SOLDR_VERDICTS: 'off'
+      OBS_PARITY_CASES: reduced
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: false
+      - name: Set Up soldr
+        uses: zackees/setup-soldr@9337570234850b50322e696037127fa3cf8ac703 # s3 remote cache
+        with:
+          version: 0.9.45
+          build-cache: false
+          prebuild-deps: none
+          save-cache: false
+      - name: Compare baseline and candidate on the same machine
+        env:
+          FORMAT_BASE: ${{ inputs.ref }}
+        run: uv run --no-project rust/tools/benchmarks/compare_format.py --base "$FORMAT_BASE" --output "${RUNNER_TEMP}/format-benchmark"
+      - name: Keep performance and parity evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: format-benchmark-${{ github.run_id }}
+          path: ${{ runner.temp }}/format-benchmark
+          if-no-files-found: warn

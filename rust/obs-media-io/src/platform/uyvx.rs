@@ -37,6 +37,7 @@ pub(crate) enum Kernel {
 }
 
 impl Kernel {
+    #[inline]
     pub(crate) fn detect() -> Self {
         #[cfg(test)]
         if FORCE.with(core::cell::Cell::get) == Some(false) {
@@ -45,6 +46,7 @@ impl Kernel {
         Native::detect().map_or(Self::Scalar, Self::Native)
     }
 
+    #[inline]
     pub(crate) fn i420(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         match self {
             Self::Scalar => scalar_i420(rows, u, v),
@@ -52,6 +54,7 @@ impl Kernel {
         }
     }
 
+    #[inline]
     pub(crate) fn nv12(&self, rows: Rows<'_>, chroma: &mut [u8]) {
         match self {
             Self::Scalar => scalar_nv12(rows, chroma),
@@ -59,6 +62,7 @@ impl Kernel {
         }
     }
 
+    #[inline]
     pub(crate) fn i444(&self, rows: Rows<'_>, u: &mut [u8], v: &mut [u8]) {
         match self {
             Self::Scalar => scalar_i444(rows, u, v),
@@ -86,6 +90,11 @@ pub(crate) fn with_native_for_test(native: bool, run: impl FnOnce()) {
     }
     let _reset = Reset(FORCE.with(|force| force.replace(Some(native))));
     assert_eq!(matches!(Kernel::detect(), Kernel::Native(_)), native);
+    println!(
+        "UYVX row kernel: {} on {}",
+        if native { "native" } else { "scalar" },
+        std::env::consts::ARCH
+    );
     run();
 }
 
