@@ -80,6 +80,22 @@ static const char *group_getname(void *unused)
 	return "Group";
 }
 
+static inline uint32_t scene_load_cx(const struct obs_scene *scene)
+{
+	return (uint32_t)os_atomic_load_long(&scene->cx);
+}
+
+static inline uint32_t scene_load_cy(const struct obs_scene *scene)
+{
+	return (uint32_t)os_atomic_load_long(&scene->cy);
+}
+
+static inline void scene_store_size(struct obs_scene *scene, uint32_t cx, uint32_t cy)
+{
+	os_atomic_store_long(&scene->cx, (long)cx);
+	os_atomic_store_long(&scene->cy, (long)cy);
+}
+
 static void *scene_create(obs_data_t *settings, struct obs_source *source)
 {
 	struct obs_scene *scene = bzalloc(sizeof(struct obs_scene));
@@ -87,9 +103,7 @@ static void *scene_create(obs_data_t *settings, struct obs_source *source)
 
 	if (strcmp(source->info.id, group_info.id) == 0) {
 		scene->is_group = true;
-		scene->custom_size = true;
-		scene->cx = 0;
-		scene->cy = 0;
+		os_atomic_store_bool(&scene->custom_size, true);
 	}
 
 	signal_handler_add_array(obs_source_get_signal_handler(source), obs_scene_signals);
@@ -1143,9 +1157,9 @@ static void scene_load(void *data, obs_data_t *settings)
 	remove_all_items(scene);
 
 	if (obs_data_get_bool(settings, "custom_size")) {
-		scene->cx = (uint32_t)obs_data_get_int(settings, "cx");
-		scene->cy = (uint32_t)obs_data_get_int(settings, "cy");
-		scene->custom_size = true;
+		scene_store_size(scene, (uint32_t)obs_data_get_int(settings, "cx"),
+				 (uint32_t)obs_data_get_int(settings, "cy"));
+		os_atomic_store_bool(&scene->custom_size, true);
 	}
 
 	if (obs_data_has_user_value(settings, "id_counter"))
@@ -1279,10 +1293,11 @@ static void scene_save(void *data, obs_data_t *settings)
 	}
 
 	obs_data_set_int(settings, "id_counter", scene->id_counter);
-	obs_data_set_bool(settings, "custom_size", scene->custom_size);
-	if (scene->custom_size) {
-		obs_data_set_int(settings, "cx", scene->cx);
-		obs_data_set_int(settings, "cy", scene->cy);
+	const bool custom_size = os_atomic_load_bool(&scene->custom_size);
+	obs_data_set_bool(settings, "custom_size", custom_size);
+	if (custom_size) {
+		obs_data_set_int(settings, "cx", scene_load_cx(scene));
+		obs_data_set_int(settings, "cy", scene_load_cy(scene));
 	}
 
 	full_unlock(scene);
@@ -1320,8 +1335,8 @@ static uint32_t canvas_getheight(obs_weak_canvas_t *weak)
 static uint32_t scene_getwidth(void *data)
 {
 	obs_scene_t *scene = data;
-	if (scene->custom_size)
-		return scene->cx;
+	if (os_atomic_load_bool(&scene->custom_size))
+		return scene_load_cx(scene);
 	if (scene->source->canvas)
 		return canvas_getwidth(scene->source->canvas);
 	if (obs->data.main_canvas->mix)
@@ -1332,8 +1347,8 @@ static uint32_t scene_getwidth(void *data)
 static uint32_t scene_getheight(void *data)
 {
 	obs_scene_t *scene = data;
-	if (scene->custom_size)
-		return scene->cy;
+	if (os_atomic_load_bool(&scene->custom_size))
+		return scene_load_cy(scene);
 	if (scene->source->canvas)
 		return canvas_getheight(scene->source->canvas);
 	if (obs->data.main_canvas->mix)
@@ -1733,9 +1748,8 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 	obs_canvas_release(canvas);
 
 	new_scene->is_group = scene->is_group;
-	new_scene->custom_size = scene->custom_size;
-	new_scene->cx = scene->cx;
-	new_scene->cy = scene->cy;
+	scene_store_size(new_scene, scene_load_cx(scene), scene_load_cy(scene));
+	os_atomic_store_bool(&new_scene->custom_size, os_atomic_load_bool(&scene->custom_size));
 	new_scene->absolute_coordinates = scene->absolute_coordinates;
 	new_scene->last_width = scene->last_width;
 	new_scene->last_height = scene->last_height;
@@ -3350,8 +3364,7 @@ static bool resize_scene_base(obs_scene_t *scene, struct vec2 *minv, struct vec2
 
 	obs_sceneitem_t *item = scene->first_item;
 	if (!item) {
-		scene->cx = 0;
-		scene->cy = 0;
+		scene_store_size(scene, 0, 0);
 		return false;
 	}
 
@@ -3375,7 +3388,10 @@ static bool resize_scene_base(obs_scene_t *scene, struct vec2 *minv, struct vec2
 		}
 	}
 
-	obs_scene_extent_size(scale, &scene->cx, &scene->cy, minv, maxv);
+	uint32_t cx;
+	uint32_t cy;
+	obs_scene_extent_size(scale, &cx, &cy, minv, maxv);
+	scene_store_size(scene, cx, cy);
 	return true;
 }
 
