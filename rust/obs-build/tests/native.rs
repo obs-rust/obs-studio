@@ -2,6 +2,81 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+/// #3712: group mutations and teardown must run through both native consumers.
+#[test]
+fn canonical_group_lifecycle_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let cases = [
+        ("test_group_empty_bounds", true, Some(120)),
+        ("test_group_active_refs", true, Some(120)),
+        ("test_group_recursion", true, Some(180)),
+        ("test_group_insert_empty", false, None),
+        ("test_group_child_drift", true, Some(120)),
+        ("test_group_teardown_uaf", false, None),
+    ];
+    for (name, graphics, timeout) in cases {
+        let target = graph.targets.get(name).unwrap_or_else(|| {
+            panic!("canonical graph omits group lifecycle compatibility coverage: {name}")
+        });
+        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+            if path == &format!("test/cmocka/{name}.c")));
+        let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("group lifecycle linkage must be unconditional"),
+        }).collect();
+        let mut expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
+        if name == "test_group_active_refs" { expected.push("OBS::caption"); }
+        if matches!(name, "test_group_empty_bounds" | "test_group_child_drift") {
+            expected.push("m");
+        }
+        assert_eq!(libraries, expected, "{name}");
+        let test = &graph.tests[name];
+        assert_eq!(test.target, name);
+        assert_eq!(test.command, ["${target}"]);
+        assert_eq!(test.timeout_seconds, timeout, "{name}");
+        assert_eq!(test.skip_return_code, None);
+        if graphics {
+            assert_eq!(test.suite, "graphics");
+            assert_eq!(target.artifact_definitions["GRAPHICS_MODULE_PATH"], "OBS::libobs-opengl");
+            assert_eq!(target.watch_inputs, ["libobs/data"]);
+            assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
+            assert!(test.optional_prefixes.is_empty());
+        } else {
+            assert_eq!(test.suite, "core");
+            assert!(target.artifact_definitions.is_empty());
+            assert!(target.watch_inputs.is_empty());
+            assert_eq!(test.working_directory, None);
+            assert_eq!(test.optional_prefixes, [vec!["xvfb-run", "-a"]]);
+        }
+        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        assert!(!fragment.contains("add_executable("), "{name}");
+        assert!(!fragment.contains("add_test("), "{name}");
+    }
+    graph.targets.retain(|name, _| cases.iter().any(|case| case.0 == name));
+    graph.tests.retain(|name, _| cases.iter().any(|case| case.0 == name));
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        for opengl in [true, false] {
+            let selected = graph.select(&[
+                ("OS_LINUX".into(), os == "OS_LINUX"),
+                ("OS_MACOS".into(), os == "OS_MACOS"),
+                ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                ("HAVE_OBS_OPENGL".into(), opengl),
+            ].into()).unwrap();
+            for (name, graphics, _) in cases {
+                let expected = if graphics { os == "OS_LINUX" && opengl }
+                    else { name == "test_group_teardown_uaf" || os != "OS_WINDOWS" };
+                assert_eq!(selected.targets.contains_key(name), expected, "{os}/{opengl}/{name}");
+                assert_eq!(selected.tests.contains_key(name), expected, "{os}/{opengl}/{name}");
+                if expected && !graphics {
+                    assert_eq!(selected.tests[name].optional_prefixes.is_empty(), os != "OS_LINUX");
+                }
+            }
+        }
+    }
+}
+
 /// #3707: keep the unchanged shutdown-after-failed-startup regression discoverable.
 #[test]
 fn canonical_shutdown_after_failed_startup_is_registered() {
