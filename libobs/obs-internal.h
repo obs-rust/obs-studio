@@ -1308,8 +1308,8 @@ struct obs_source {
 	 * and the tick writes them outside the lock (#3570). */
 	volatile long transition_actual_cx;
 	volatile long transition_actual_cy;
-	uint32_t transition_cx;
-	uint32_t transition_cy;
+	volatile long transition_cx;
+	volatile long transition_cy;
 	uint32_t transition_fixed_duration;
 	bool transition_use_fixed_duration;
 	enum obs_transition_mode transition_mode;

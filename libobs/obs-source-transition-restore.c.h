@@ -67,8 +67,8 @@ void obs_transition_load(obs_source_t *tr, obs_data_t *data)
 	tr->transition_alignment = (uint32_t)alignment;
 	tr->transition_mode = (enum obs_transition_mode)mode;
 	tr->transition_scale_type = valid_scale_type(scale_type);
-	tr->transition_cx = (uint32_t)cx;
-	tr->transition_cy = (uint32_t)cy;
+	os_atomic_store_long(&tr->transition_cx, (long)(uint32_t)cx);
+	os_atomic_store_long(&tr->transition_cy, (long)(uint32_t)cy);
 	unlock_transition(tr);
 
 	/* Take back the source the slot held, as obs_transition_clear() does. */

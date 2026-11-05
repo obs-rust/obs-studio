@@ -57,8 +57,8 @@ void obs_transition_set_size(obs_source_t *transition, uint32_t cx, uint32_t cy)
 	if (!transition_valid(transition, "obs_transition_set_size"))
 		return;
 
-	transition->transition_cx = cx;
-	transition->transition_cy = cy;
+	os_atomic_store_long(&transition->transition_cx, (long)cx);
+	os_atomic_store_long(&transition->transition_cy, (long)cy);
 }
 
 void obs_transition_get_size(const obs_source_t *transition, uint32_t *cx, uint32_t *cy)
@@ -69,8 +69,8 @@ void obs_transition_get_size(const obs_source_t *transition, uint32_t *cx, uint3
 		return;
 	}
 
-	*cx = transition->transition_cx;
-	*cy = transition->transition_cy;
+	*cx = (uint32_t)os_atomic_load_long(&transition->transition_cx);
+	*cy = (uint32_t)os_atomic_load_long(&transition->transition_cy);
 }
 
 void obs_transition_save(obs_source_t *tr, obs_data_t *data)
@@ -84,8 +84,8 @@ void obs_transition_save(obs_source_t *tr, obs_data_t *data)
 	obs_data_set_int(data, "transition_alignment", tr->transition_alignment);
 	obs_data_set_int(data, "transition_mode", (int64_t)tr->transition_mode);
 	obs_data_set_int(data, "transition_scale_type", (int64_t)tr->transition_scale_type);
-	obs_data_set_int(data, "transition_cx", tr->transition_cx);
-	obs_data_set_int(data, "transition_cy", tr->transition_cy);
+	obs_data_set_int(data, "transition_cx", (uint32_t)os_atomic_load_long(&tr->transition_cx));
+	obs_data_set_int(data, "transition_cy", (uint32_t)os_atomic_load_long(&tr->transition_cy));
 	unlock_transition(tr);
 }
 

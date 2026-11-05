@@ -147,8 +147,8 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 		return false;
 	}
 
-	if (obs_source_transition_start_unsized(transition->transition_cx) ||
-	    obs_source_transition_start_unsized(transition->transition_cy)) {
+	if (obs_source_transition_start_unsized((uint32_t)os_atomic_load_long(&transition->transition_cx)) ||
+	    obs_source_transition_start_unsized((uint32_t)os_atomic_load_long(&transition->transition_cy))) {
 		transition_recalculate_size(transition);
 		transition_recalculate_matrices(transition);
 	}

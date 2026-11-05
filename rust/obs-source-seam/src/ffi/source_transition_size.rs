@@ -24,10 +24,10 @@
 //! floats are libobs's.
 //!
 //! The locks are the C's, taken where it takes them: `transition_mutex`
-//! around the child reads of the size and of each matrix, and a trylock of
-//! `transition_tex_mutex` around the render target resets of the tick. As in
-//! the C, the actual size and the manual value are written, and the set
-//! size, scale type, alignment and manual fields read, outside
+//! around the child reads of the size and of each matrix and around the
+//! manual step of the tick, and a trylock of `transition_tex_mutex` around
+//! the render target resets of the tick. As in the C, the actual size is
+//! written, and the set size, scale type and alignment read, outside
 //! `transition_mutex`. The seam takes no lock of its own.
 
 use std::ffi::{c_int, c_void};
