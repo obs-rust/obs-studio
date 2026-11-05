@@ -233,6 +233,7 @@ struct player {
 	bool armed;
 	int armed_from;
 	int first_frame;
+	int64_t first_frame_time;
 	bool got_seek_preview;
 	int seek_preview_frame;
 };
@@ -250,8 +251,13 @@ static void on_frame(struct player *p, struct obs_source_frame *f, bool seek_pre
 		p->got_seek_preview = true;
 		p->seek_preview_frame = n;
 	}
-	if (p->armed && p->first_frame < 0 && (n < p->armed_from || n > p->armed_from + 10))
+	if (p->armed && p->first_frame < 0 && (n < p->armed_from || n > p->armed_from + 10)) {
+		/* Sample on the playback thread before it prepares more frames.
+		 * Reading after wait_first_frame() pairs this frame with a later
+		 * media time if the test thread is slow to resume. */
+		p->first_frame_time = media_playback_get_current_time(p->mp);
 		p->first_frame = n;
+	}
 	pthread_mutex_unlock(&p->mutex);
 }
 
@@ -477,17 +483,16 @@ static void ts_playing_seek_lands_on_target(void **state)
 	arm(&p);
 	media_playback_seek(p.mp, target_ms);
 	int shown = wait_first_frame(&p);
-	int64_t t = media_playback_get_current_time(p.mp);
+	/* Exercise delayed observation after the first seek frame: playback
+	 * keeps advancing even when the test thread has not read the result. */
+	wait_for_frame(&p, shown + FPS);
 	player_stop(&p);
+	int64_t t = p.first_frame_time;
 
 	fprintf(stderr, "ts playing seek to %lld ms: first frame %d, media time %lld ms\n", (long long)target_ms, shown,
 		(long long)t);
 	expect_frame("playing seek", target_ms, shown);
-	if (t < target_ms - TIME_SLACK_MS || t > target_ms + 500) {
-		fprintf(stderr, "playing seek: seek to %lld ms reports a media time of %lld ms\n", (long long)target_ms,
-			(long long)t);
-		fail();
-	}
+	expect_time("playing seek", target_ms, t);
 }
 
 /* The fully decoded (cached) path: the media time, and a seek. The cache
