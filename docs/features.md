@@ -1925,6 +1925,11 @@ area.
   undeclared-identifier errors pointing away from the typo, and loading the
   effect no longer leaks a little memory each time. *All*, 2026-11-04.
   Issue [#3625](https://github.com/obs-rust/obs-studio/issues/3625).
+- Media Source status queries from the UI or scripts now synchronize with
+  decoding when reporting playback time, frame count, stream availability
+  and playback state. *All*, 2026-11-05. Issue
+  [#3572](https://github.com/obs-rust/obs-studio/issues/3572), PR
+  [#3643](https://github.com/obs-rust/obs-studio/pull/3643).
 
 ### Scenes and UI
 
