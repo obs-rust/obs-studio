@@ -122,6 +122,11 @@ static void input_owned_only_by_nested_group(void **state)
 	run_shutdown_case(true, true, true);
 }
 
+static void sentinel_destroy(void *data)
+{
+	(void)data;
+}
+
 static void finish_scene_destroy(void *data, calldata_t *call)
 {
 	(void)call;
@@ -153,12 +158,14 @@ static void scene_destroy_mutates_next_hash_entry(void **state)
 	};
 	struct obs_source_info sentinel_info = {
 		.id = "shutdown_hash_sentinel",
+		.destroy = sentinel_destroy,
 		.type = OBS_SOURCE_TYPE_INPUT,
 		.get_name = input_name,
 		.create = input_create,
 	};
 	struct obs_source_info filter_info = {
 		.id = "shutdown_hash_filter",
+		.destroy = sentinel_destroy,
 		.type = OBS_SOURCE_TYPE_FILTER,
 		.get_name = input_name,
 		.create = input_create,
