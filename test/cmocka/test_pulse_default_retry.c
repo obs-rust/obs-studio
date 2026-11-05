@@ -162,7 +162,7 @@ static void fire_retry(void)
 	cb(userdata);
 }
 
-static void queue_default_change(struct pulse_data *data)
+static void queue_default_change(struct pulse_data *data, enum pulse_stream_event event_type)
 {
 	retry_data = data;
 	source_alive = true;
@@ -170,7 +170,7 @@ static void queue_default_change(struct pulse_data *data)
 	data->weak_source = (obs_weak_source_t *)data;
 	struct pulse_stream_task *event = bzalloc(sizeof(*event));
 	event->weak_source = data->weak_source;
-	event->event = PULSE_SERVER_CHANGED;
+	event->event = event_type;
 	weak_refs = 1;
 	pulse_stream_event_task(event);
 	assert_string_equal(data->device, "new.monitor");
@@ -192,7 +192,7 @@ static void changed_default_retries_transient_source_info_error(void **state)
 {
 	(void)state;
 	struct pulse_data data = {.device = bstrdup("old.monitor"), .is_default = true};
-	queue_default_change(&data);
+	queue_default_change(&data, PULSE_SERVER_CHANGED);
 	/* A missing monitor is retried with the same finite budget as a
      * reconnect; it must not poll forever or leak a timer's weak ref. */
 	for (unsigned i = 1; i < PULSE_RESTART_MAX_ATTEMPTS; i++)
@@ -207,11 +207,25 @@ static void destroyed_source_drops_pending_default_retry(void **state)
 {
 	(void)state;
 	struct pulse_data data = {.device = bstrdup("old.monitor"), .is_default = true};
-	queue_default_change(&data);
+	queue_default_change(&data, PULSE_SERVER_CHANGED);
 	source_alive = false;
 	fire_retry();
 	assert_null(retry_cb);
 	assert_int_equal(retry_calls, 1);
+	assert_int_equal(weak_refs, 0);
+	bfree(data.device);
+}
+
+static void source_appears_before_default_change_event(void **state)
+{
+	(void)state;
+	struct pulse_data data = {.device = bstrdup("old.monitor"), .is_default = true};
+	/* SOURCE_NEW can run first. Its server-info lookup already records
+	 * the new default, so the later SERVER_CHANGED sees no name change. */
+	queue_default_change(&data, PULSE_SOURCE_NEW);
+	source_alive = false;
+	fire_retry();
+	assert_null(retry_cb);
 	assert_int_equal(weak_refs, 0);
 	bfree(data.device);
 }
@@ -240,6 +254,7 @@ int main(void)
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup(changed_default_retries_transient_source_info_error, retry_setup),
 		cmocka_unit_test_setup(destroyed_source_drops_pending_default_retry, retry_setup),
+		cmocka_unit_test_setup(source_appears_before_default_change_event, retry_setup),
 		cmocka_unit_test_setup(missing_named_device_still_waits_for_device_event, retry_setup),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
