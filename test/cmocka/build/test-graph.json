@@ -1544,6 +1544,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_encoder_group_null": {
+      "sources": [
+        "test/cmocka/test_encoder_group_null.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_encoder_group_reconfig_steps": {
       "sources": [
         "test/cmocka/test_encoder_group_reconfig_steps.c",
@@ -7655,6 +7664,21 @@
           "-a"
         ]
       ]
+    },
+    "test_encoder_group_null": {
+      "target": "test_encoder_group_null",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_encoder_group_reconfig_steps": {
       "target": "test_encoder_group_reconfig_steps",
