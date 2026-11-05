@@ -1298,12 +1298,16 @@ struct obs_source {
 	float transition_manual_torque;
 	float transition_manual_target;
 	float transition_manual_val;
-	bool transitioning_video;
-	bool transitioning_audio;
+	/* Atomic: the graphics and audio threads and any caller read and write
+	 * these, also with no lock held (#3570). */
+	volatile bool transitioning_video;
+	volatile bool transitioning_audio;
 	bool transition_source_active[2];
 	uint32_t transition_alignment;
-	uint32_t transition_actual_cx;
-	uint32_t transition_actual_cy;
+	/* Atomic, and they hold a uint32_t: every source size read reaches them,
+	 * and the tick writes them outside the lock (#3570). */
+	volatile long transition_actual_cx;
+	volatile long transition_actual_cy;
 	uint32_t transition_cx;
 	uint32_t transition_cy;
 	uint32_t transition_fixed_duration;

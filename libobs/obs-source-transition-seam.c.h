@@ -31,7 +31,8 @@ bool transition_valid(const obs_source_t *transition, const char *func)
 
 bool transition_active(obs_source_t *transition)
 {
-	return transition->transitioning_audio || transition->transitioning_video;
+	return os_atomic_load_bool(&transition->transitioning_audio) ||
+	       os_atomic_load_bool(&transition->transitioning_video);
 }
 
 enum obs_transition_scale_type valid_scale_type(int64_t type)
@@ -66,22 +67,22 @@ void obs_source_transition_seam_set_source_active(obs_source_t *transition, size
 
 bool obs_source_transition_seam_get_transitioning_video(const obs_source_t *transition)
 {
-	return transition->transitioning_video;
+	return os_atomic_load_bool(&transition->transitioning_video);
 }
 
 void obs_source_transition_seam_set_transitioning_video(obs_source_t *transition, bool value)
 {
-	transition->transitioning_video = value;
+	os_atomic_store_bool(&transition->transitioning_video, value);
 }
 
 bool obs_source_transition_seam_get_transitioning_audio(const obs_source_t *transition)
 {
-	return transition->transitioning_audio;
+	return os_atomic_load_bool(&transition->transitioning_audio);
 }
 
 void obs_source_transition_seam_set_transitioning_audio(obs_source_t *transition, bool value)
 {
-	transition->transitioning_audio = value;
+	os_atomic_store_bool(&transition->transitioning_audio, value);
 }
 
 enum obs_transition_mode obs_source_transition_seam_get_mode(const obs_source_t *transition)
@@ -176,22 +177,22 @@ void obs_source_transition_seam_set_cy(obs_source_t *transition, uint32_t value)
 
 uint32_t obs_source_transition_seam_get_actual_cx(const obs_source_t *transition)
 {
-	return transition->transition_actual_cx;
+	return (uint32_t)os_atomic_load_long(&transition->transition_actual_cx);
 }
 
 void obs_source_transition_seam_set_actual_cx(obs_source_t *transition, uint32_t value)
 {
-	transition->transition_actual_cx = value;
+	os_atomic_store_long(&transition->transition_actual_cx, (long)value);
 }
 
 uint32_t obs_source_transition_seam_get_actual_cy(const obs_source_t *transition)
 {
-	return transition->transition_actual_cy;
+	return (uint32_t)os_atomic_load_long(&transition->transition_actual_cy);
 }
 
 void obs_source_transition_seam_set_actual_cy(obs_source_t *transition, uint32_t value)
 {
-	transition->transition_actual_cy = value;
+	os_atomic_store_long(&transition->transition_actual_cy, (long)value);
 }
 
 uint32_t obs_source_transition_seam_get_alignment(const obs_source_t *transition)

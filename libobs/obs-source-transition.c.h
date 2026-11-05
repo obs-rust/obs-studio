@@ -114,7 +114,8 @@ static bool set_source(obs_source_t *transition, enum obs_transition_target targ
 	clock->same_as_source = new_child == transition->transition_sources[0];
 	clock->same_as_dest = new_child == old_child;
 	clock->restart =
-		obs_source_transition_start_restart(transition->transitioning_audio || transition->transitioning_video,
+		obs_source_transition_start_restart(os_atomic_load_bool(&transition->transitioning_audio) ||
+							    os_atomic_load_bool(&transition->transitioning_video),
 						    clock->same_as_dest, clock->same_as_source);
 
 	if (new_child == old_child) {
@@ -165,8 +166,8 @@ static bool activate_transition(obs_source_t *transition, size_t idx, obs_source
 		transition->transition_source_active[idx] = true;
 	}
 
-	transition->transitioning_video = true;
-	transition->transitioning_audio = true;
+	os_atomic_store_bool(&transition->transitioning_video, true);
+	os_atomic_store_bool(&transition->transitioning_audio, true);
 	return true;
 }
 
@@ -257,8 +258,8 @@ bool obs_transition_start(obs_source_t *transition, enum obs_transition_mode mod
 		return false;
 	}
 	if (obs_source_transition_start_null_dest(dest != NULL, clock.same_as_dest, clock.same_as_source)) {
-		transition->transitioning_video = true;
-		transition->transitioning_audio = true;
+		os_atomic_store_bool(&transition->transitioning_video, true);
+		os_atomic_store_bool(&transition->transitioning_audio, true);
 	}
 
 	obs_source_dosignal(transition, "source_transition_start", "transition_start");
@@ -306,8 +307,8 @@ void obs_transition_set(obs_source_t *transition, obs_source_t *source)
 	}
 	transition->transition_source_active[0] = true;
 	transition->transition_sources[0] = source;
-	transition->transitioning_video = false;
-	transition->transitioning_audio = false;
+	os_atomic_store_bool(&transition->transitioning_video, false);
+	os_atomic_store_bool(&transition->transitioning_audio, false);
 	transition->transition_manual_val = 0.0f;
 	transition->transition_manual_target = 0.0f;
 	unlock_transition(transition);
@@ -377,8 +378,8 @@ static inline void copy_transition_state(obs_source_t *transition, struct transi
 	state->s[0] = obs_source_get_ref(transition->transition_sources[0]);
 	state->s[1] = obs_source_get_ref(transition->transition_sources[1]);
 
-	state->transitioning_video = transition->transitioning_video;
-	state->transitioning_audio = transition->transitioning_audio;
+	state->transitioning_video = os_atomic_load_bool(&transition->transitioning_video);
+	state->transitioning_audio = os_atomic_load_bool(&transition->transitioning_audio);
 }
 
 static inline void render_child(obs_source_t *transition, obs_source_t *child, size_t idx, const struct matrix4 *matrix,
@@ -461,14 +462,15 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 
 	t = get_video_time(transition);
 
-	if (obs_source_transition_render_video_due(t, transition->transitioning_video)) {
+	if (obs_source_transition_render_video_due(t, os_atomic_load_bool(&transition->transitioning_video))) {
 		enum obs_source_transition_render_video_step step;
 
-		transition->transitioning_video = false;
+		os_atomic_store_bool(&transition->transitioning_video, false);
 		video_stopped = true;
 
 		/* no inactive rule here: active is true */
-		step = obs_source_transition_render_video_stop(transition->transitioning_audio, true);
+		step = obs_source_transition_render_video_stop(os_atomic_load_bool(&transition->transitioning_audio),
+							       true);
 		if (step != OBS_SOURCE_TRANSITION_RENDER_VIDEO_END) {
 			obs_transition_stop(transition);
 			stopped = true;
@@ -592,16 +594,16 @@ bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_trans
 
 	t = get_video_time(transition);
 
-	if (obs_source_transition_render_video_due(t, transition->transitioning_video)) {
+	if (obs_source_transition_render_video_due(t, os_atomic_load_bool(&transition->transitioning_video))) {
 		enum obs_source_transition_render_video_step step;
 
-		transition->transitioning_video = false;
+		os_atomic_store_bool(&transition->transitioning_video, false);
 		video_stopped = true;
 
-		step = obs_source_transition_render_video_stop(transition->transitioning_audio,
+		step = obs_source_transition_render_video_stop(os_atomic_load_bool(&transition->transitioning_audio),
 							       obs_source_active(transition));
 		if (step == OBS_SOURCE_TRANSITION_RENDER_VIDEO_STOP_AUDIO)
-			transition->transitioning_audio = false;
+			os_atomic_store_bool(&transition->transitioning_audio, false);
 
 		if (step != OBS_SOURCE_TRANSITION_RENDER_VIDEO_END) {
 			obs_transition_stop(transition);
@@ -731,10 +733,11 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	if (min_ts)
 		t = calc_time(transition, min_ts);
 
-	step = obs_source_transition_render_audio_stop(min_ts != 0, t, transition->transitioning_video,
-						       transition->transitioning_audio);
+	step = obs_source_transition_render_audio_stop(min_ts != 0, t,
+						       os_atomic_load_bool(&transition->transitioning_video),
+						       os_atomic_load_bool(&transition->transitioning_audio));
 	if (step != OBS_SOURCE_TRANSITION_RENDER_AUDIO_KEEP) {
-		transition->transitioning_audio = false;
+		os_atomic_store_bool(&transition->transitioning_audio, false);
 		if (step == OBS_SOURCE_TRANSITION_RENDER_AUDIO_STOP) {
 			obs_transition_stop(transition);
 			stopped = true;
@@ -748,8 +751,8 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 		if (min_ts) {
 			state.s[0] = obs_source_get_ref(sources[0]);
 			state.s[1] = obs_source_get_ref(sources[1]);
-			state.transitioning_video = transition->transitioning_video;
-			state.transitioning_audio = transition->transitioning_audio;
+			state.transitioning_video = os_atomic_load_bool(&transition->transitioning_video);
+			state.transitioning_audio = os_atomic_load_bool(&transition->transitioning_audio);
 			state.mode = transition->transition_mode;
 			state.manual_val = transition->transition_manual_val;
 			state.start_time = transition->transition_start_time;

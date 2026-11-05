@@ -26,12 +26,14 @@ void add_alignment(struct vec2 *v, uint32_t align, int cx, int cy);
 
 uint32_t transition_get_cx(obs_source_t *tr)
 {
-	return obs_source_transition_clock_size(tr->transition_cx, tr->transition_actual_cx);
+	return obs_source_transition_clock_size(tr->transition_cx,
+						(uint32_t)os_atomic_load_long(&tr->transition_actual_cx));
 }
 
 uint32_t transition_get_cy(obs_source_t *tr)
 {
-	return obs_source_transition_clock_size(tr->transition_cy, tr->transition_actual_cy);
+	return obs_source_transition_clock_size(tr->transition_cy,
+						(uint32_t)os_atomic_load_long(&tr->transition_actual_cy));
 }
 
 static void recalculate_transition_matrix(obs_source_t *tr, size_t idx)
@@ -103,8 +105,8 @@ void transition_recalculate_size(obs_source_t *transition)
 
 	unlock_transition(transition);
 
-	transition->transition_actual_cx = cx;
-	transition->transition_actual_cy = cy;
+	os_atomic_store_long(&transition->transition_actual_cx, (long)cx);
+	os_atomic_store_long(&transition->transition_actual_cy, (long)cy);
 }
 
 void obs_transition_tick(obs_source_t *transition, float t)
