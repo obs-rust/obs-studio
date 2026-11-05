@@ -16,6 +16,7 @@ struct scroll_filter_data {
 
 	struct vec2 scroll_speed;
 	gs_samplerstate_t *sampler;
+	pthread_mutex_t size_mutex;
 	bool limit_cx;
 	bool limit_cy;
 	uint32_t cx;
@@ -38,6 +39,10 @@ static const char *scroll_filter_get_name(void *unused)
 static void *scroll_filter_create(obs_data_t *settings, obs_source_t *context)
 {
 	struct scroll_filter_data *filter = bzalloc(sizeof(*filter));
+	if (pthread_mutex_init(&filter->size_mutex, NULL) != 0) {
+		bfree(filter);
+		return NULL;
+	}
 	char *effect_path = obs_module_file("crop_filter.effect");
 
 	filter->context = context;
@@ -49,6 +54,7 @@ static void *scroll_filter_create(obs_data_t *settings, obs_source_t *context)
 	bfree(effect_path);
 
 	if (!filter->effect) {
+		pthread_mutex_destroy(&filter->size_mutex);
 		bfree(filter);
 		return NULL;
 	}
@@ -72,17 +78,28 @@ static void scroll_filter_destroy(void *data)
 	gs_texrender_destroy(filter->window);
 	obs_leave_graphics();
 
+	pthread_mutex_destroy(&filter->size_mutex);
 	bfree(filter);
+}
+
+/* Publish the dimensions independently of graphics callbacks. */
+static void scroll_filter_set_size(struct scroll_filter_data *filter, bool limit_cx, bool limit_cy, uint32_t cx,
+				   uint32_t cy)
+{
+	pthread_mutex_lock(&filter->size_mutex);
+	filter->limit_cx = limit_cx;
+	filter->limit_cy = limit_cy;
+	filter->cx = cx;
+	filter->cy = cy;
+	pthread_mutex_unlock(&filter->size_mutex);
 }
 
 static void scroll_filter_update(void *data, obs_data_t *settings)
 {
 	struct scroll_filter_data *filter = data;
 
-	filter->limit_cx = obs_data_get_bool(settings, "limit_cx");
-	filter->limit_cy = obs_data_get_bool(settings, "limit_cy");
-	filter->cx = (uint32_t)obs_data_get_int(settings, "cx");
-	filter->cy = (uint32_t)obs_data_get_int(settings, "cy");
+	scroll_filter_set_size(filter, obs_data_get_bool(settings, "limit_cx"), obs_data_get_bool(settings, "limit_cy"),
+			       (uint32_t)obs_data_get_int(settings, "cx"), (uint32_t)obs_data_get_int(settings, "cy"));
 
 	filter->scroll_speed.x = (float)obs_data_get_double(settings, "speed_x");
 	filter->scroll_speed.y = (float)obs_data_get_double(settings, "speed_y");
@@ -335,8 +352,10 @@ static void scroll_filter_render(void *data, gs_effect_t *effect)
 	base_cx = obs_source_get_base_width(target);
 	base_cy = obs_source_get_base_height(target);
 
+	pthread_mutex_lock(&filter->size_mutex);
 	cx = filter->limit_cx ? filter->cx : base_cx;
 	cy = filter->limit_cy ? filter->cy : base_cy;
+	pthread_mutex_unlock(&filter->size_mutex);
 
 	if (base_cx && base_cy) {
 		vec2_set(&filter->size_i, 1.0f / (float)base_cx, 1.0f / (float)base_cy);
@@ -393,7 +412,12 @@ static uint32_t scroll_filter_width(void *data)
 	struct scroll_filter_data *filter = data;
 	obs_source_t *target = obs_filter_get_target(filter->context);
 
-	return filter->limit_cx ? filter->cx : obs_source_get_base_width(target);
+	pthread_mutex_lock(&filter->size_mutex);
+	bool limited = filter->limit_cx;
+	uint32_t size = filter->cx;
+	pthread_mutex_unlock(&filter->size_mutex);
+
+	return limited ? size : obs_source_get_base_width(target);
 }
 
 static uint32_t scroll_filter_height(void *data)
@@ -401,7 +425,12 @@ static uint32_t scroll_filter_height(void *data)
 	struct scroll_filter_data *filter = data;
 	obs_source_t *target = obs_filter_get_target(filter->context);
 
-	return filter->limit_cy ? filter->cy : obs_source_get_base_height(target);
+	pthread_mutex_lock(&filter->size_mutex);
+	bool limited = filter->limit_cy;
+	uint32_t size = filter->cy;
+	pthread_mutex_unlock(&filter->size_mutex);
+
+	return limited ? size : obs_source_get_base_height(target);
 }
 
 static void scroll_filter_show(void *data)

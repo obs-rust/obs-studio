@@ -56,10 +56,11 @@ struct xshm_data {
 	int_fast32_t cut_right;
 	int_fast32_t cut_bot;
 
-	int_fast32_t adj_x_org;
-	int_fast32_t adj_y_org;
-	int_fast32_t adj_width;
-	int_fast32_t adj_height;
+	/* Size procedures and capture tests read these outside the video thread. */
+	_Atomic int_fast32_t adj_x_org;
+	_Atomic int_fast32_t adj_y_org;
+	_Atomic int_fast32_t adj_width;
+	_Atomic int_fast32_t adj_height;
 
 	bool show_cursor;
 	bool use_xinerama;
