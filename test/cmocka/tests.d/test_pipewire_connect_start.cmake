@@ -13,7 +13,11 @@ if(OS_LINUX AND TARGET OBS::pipewire)
   )
   target_include_directories(
     test_pipewire_connect_start
-    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire" ${_connect_start_drm_includes}
+    PRIVATE
+      ${CMOCKA_INCLUDE_DIR}
+      "${CMAKE_SOURCE_DIR}"
+      "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire"
+      ${_connect_start_drm_includes}
   )
   target_link_libraries(
     test_pipewire_connect_start
@@ -26,6 +30,7 @@ if(OS_LINUX AND TARGET OBS::pipewire)
       "LINKER:--wrap=pw_thread_loop_unlock"
       "LINKER:--wrap=pw_thread_loop_start"
       "LINKER:--wrap=pw_thread_loop_stop"
+      "LINKER:--wrap=pw_thread_loop_wait"
       "LINKER:--wrap=pw_context_connect_fd"
   )
   add_dependencies(cmocka-tests test_pipewire_connect_start)
