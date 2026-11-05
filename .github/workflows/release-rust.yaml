@@ -125,6 +125,27 @@ jobs:
             echo "$decision"
           } >>"$GITHUB_OUTPUT"
 
+      - name: Refuse a version behind the newest stable 🧮
+        # The nightly tag is <crate>-beta.<date> and the stable is <crate>, both
+        # read from rust/libobs-rust/Cargo.toml. Nothing else stops a run whose
+        # crate version was never bumped after the last stable: its tag sorts
+        # *below* the release users already have, so the nightly channel goes
+        # quiet and the Releases list shows a "newer" build that reads as older.
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          latest=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-pre-releases --limit 1 \
+                     --json tagName --jq '.[0].tagName // ""' | sed 's/^obs-studio-rust-v//')
+          if [ -z "$latest" ]; then
+            echo "::notice::no stable release yet; nothing to sort after"
+            exit 0
+          fi
+          uv run --no-project --script ci/check_release_version.py check \
+            --version "$VERSION" --latest-stable "$latest"
+
   build:
     timeout-minutes: 240
     # Federated Azure login for Artifact Signing (no client secret exists).
