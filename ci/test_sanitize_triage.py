@@ -119,7 +119,7 @@ class RaceTriageTest(unittest.TestCase):
 
 
 class SkipAndKnownTest(unittest.TestCase):
-    """test_media_alpha_network and test_async_delay_audio are KNOWN under asan."""
+    """Known bugs and tool limitations are listed separately from failures."""
 
     def test_skip_exit_is_not_a_finding(self):
         code, md = triage(summary="test_pipewire_camera_nv12 exit=77\n")
@@ -128,10 +128,10 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("0/0 clean", md)
 
     def test_known_test_failure_is_listed_not_counted(self):
-        code, md = triage(summary="test_async_delay_audio exit=6\ntest_y exit=0\n")
+        code, md = triage(summary="test_media_alpha_network exit=6\ntest_y exit=0\n")
         self.assertEqual(code, 0, md)
         self.assertIn("1/1 clean", md)
-        self.assertIn("**test_async_delay_audio**", md)
+        self.assertIn("**test_media_alpha_network**", md)
 
     def test_known_test_reports_are_listed_not_counted(self):
         code, md = triage(OBS_LEAK, test="test_media_alpha_network")
@@ -140,10 +140,10 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("**test_media_alpha_network**", md)
 
     def test_known_test_that_ran_clean_is_listed(self):
-        code, md = triage(summary="test_async_delay_audio exit=0\n")
+        code, md = triage(tool="valgrind", summary="test_pipe exit=0\n")
         self.assertEqual(code, 0, md)
         self.assertIn("Known entries that ran clean", md)
-        self.assertIn("test_async_delay_audio", md)
+        self.assertIn("test_pipe", md)
 
     def test_known_bug_that_ran_clean_is_a_finding(self):
         """test_media_alpha_network is a known bug: clean means fixed, so the entry
@@ -154,9 +154,15 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("test_media_alpha_network", md)
 
     def test_known_list_comes_first(self):
-        code, md = triage(summary="test_async_delay_audio exit=6\ntest_y exit=1\n")
+        code, md = triage(summary="test_media_alpha_network exit=6\ntest_y exit=1\n")
         self.assertEqual(code, 1, md)
         self.assertLess(md.index("#### Known"), md.index("#### Unit tests with a non-zero exit"), md)
+
+    def test_async_delay_audio_failure_is_not_exempt(self):
+        code, md = triage(summary="test_async_delay_audio exit=6\n")
+        self.assertEqual(code, 1, md)
+        self.assertIn("Unit tests with a non-zero exit", md)
+        self.assertNotIn("#### Known", md)
 
     def test_unknown_test_failure_still_counts(self):
         code, md = triage(summary="test_y exit=1\n")
@@ -165,7 +171,7 @@ class SkipAndKnownTest(unittest.TestCase):
 
 # The goal is zero. Adding an entry raises this number, so the reviewer sees it;
 # see docs/knowledge/asan-pr-failure.md. Fix the test first.
-KNOWN_ENTRIES = 4
+KNOWN_ENTRIES = 3
 
 
 class KnownListTest(unittest.TestCase):
