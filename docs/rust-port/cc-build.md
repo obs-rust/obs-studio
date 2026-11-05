@@ -934,6 +934,14 @@ other hosts exclude it. The original wall-clock fixture holds the `timing`
 resource lock. This standalone helper coverage does not establish full frontend
 or application parity (#1390).
 
+The settings audio-track row test also uses the shared Qt graph. Its three
+unchanged cases generate the real settings UI and verify streaming, advanced
+recording and simple recording layouts at three window heights. Both consumers
+retain Widgets selection, stub include precedence, Qt runtime setup and the
+120-second timeout. The native Qt contract runs the cases through Cargo and
+CMake and checks the evaluated CTest inventory. This standalone UI layout
+coverage does not establish full frontend or application parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test

@@ -4957,6 +4957,28 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_settings_track_rows": {
+      "sources": [
+        "test/cmocka/test_settings_track_rows.cpp"
+      ],
+      "qt": {
+        "uic": [
+          "frontend/forms/OBSBasicSettings.ui"
+        ]
+      },
+      "cpp_standard": "17",
+      "requires": "HAVE_QT6_WIDGETS",
+      "includes_before": [
+        "test/cmocka/settings-ui-stubs"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "test/cmocka/settings-ui-stubs"
+      ]
+    },
     "test_shader_number_defaults": {
       "sources": [
         "test/cmocka/test_shader_number_defaults.c"
@@ -8767,6 +8789,12 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_settings_track_rows": {
+      "target": "test_settings_track_rows",
+      "suite": "qt",
+      "timeout_seconds": 120,
+      "qt_runtime": "Qt6::Core"
     },
     "test_shader_number_defaults": {
       "target": "test_shader_number_defaults",

@@ -9,7 +9,9 @@ fn canonical_settings_track_rows_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph.retain_suite("qt");
-    let target = graph.targets.get("test_settings_track_rows")
+    let target = graph
+        .targets
+        .get("test_settings_track_rows")
         .expect("canonical graph omits test_settings_track_rows");
     assert_eq!(target.sources.len(), 1);
     assert_eq!(target.qt.uic, ["frontend/forms/OBSBasicSettings.ui"]);
@@ -26,9 +28,13 @@ fn canonical_settings_track_rows_is_registered() {
                 ("HAVE_QT6_CORE".into(), true),
                 ("HAVE_QT6_WIDGETS".into(), widgets),
                 ("HAVE_QT6_TEST".into(), false),
-            ].into();
+            ]
+            .into();
             let selected = graph.select(&facts).unwrap();
-            assert_eq!(selected.tests.contains_key("test_settings_track_rows"), widgets);
+            assert_eq!(
+                selected.tests.contains_key("test_settings_track_rows"),
+                widgets
+            );
         }
     }
 }
@@ -721,6 +727,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
         "test_volume_meter_ticker": graph["targets"].get("test_volume_meter_ticker").expect("canonical graph omits test_volume_meter_ticker"),
+        "test_settings_track_rows": graph["targets"].get("test_settings_track_rows").expect("canonical graph omits test_settings_track_rows"),
         "test_frontend_api_call": graph["targets"].get("test_frontend_api_call")
             .expect("canonical graph omits test_frontend_api_call")
     },
@@ -730,6 +737,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
         "test_volume_meter_ticker": graph["tests"]["test_volume_meter_ticker"],
+        "test_settings_track_rows": graph["tests"]["test_settings_track_rows"],
         "test_frontend_api_call": graph["tests"]["test_frontend_api_call"]
     }});
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
@@ -801,8 +809,12 @@ fn canonical_remux_queue_runs_unchanged() {
         .iter()
         .map(|test| test["name"].as_str().unwrap())
         .collect();
-    let mut expected_names: std::collections::BTreeSet<_> =
-        ["test_remux_queue_model", "test_frontend_api_call"].into();
+    let mut expected_names: std::collections::BTreeSet<_> = [
+        "test_remux_queue_model",
+        "test_frontend_api_call",
+        "test_settings_track_rows",
+    ]
+    .into();
     if qt_test_available {
         expected_names.insert("test_hotkey_edit_backtab");
     }
@@ -843,6 +855,7 @@ fn canonical_remux_queue_runs_unchanged() {
                     && property["value"].as_f64() == Some(120.0))
         );
     }
+    assert_settings_track_rows_ctest_properties(tests);
     let frontend_api = tests
         .iter()
         .find(|test| test["name"] == "test_frontend_api_call")
@@ -873,6 +886,22 @@ fn assert_ticker_ctest_properties(tests: &[serde_json::Value], linux: bool) {
                     && property["value"] == serde_json::json!(["timing"]))
         );
     }
+}
+
+#[cfg(feature = "libobs-integration")]
+fn assert_settings_track_rows_ctest_properties(tests: &[serde_json::Value]) {
+    let settings = tests
+        .iter()
+        .find(|test| test["name"] == "test_settings_track_rows")
+        .unwrap();
+    assert!(
+        settings["properties"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|property| property["name"] == "TIMEOUT"
+                && property["value"].as_f64() == Some(120.0))
+    );
 }
 
 /// #1390: the QtCore-only frontend API helper must remain available without Widgets.
