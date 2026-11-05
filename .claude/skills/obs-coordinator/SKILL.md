@@ -19,7 +19,7 @@ four every tick before reporting.
 
 **Start every tick with the computed work list** from the org skill
 `obs-org-coordinator` (obs-rust/.github): `uv run -m workflow.coordinator`
-in its checkout. It lists every task in every org repo (fix-master,
+in its checkout. It lists every task in every org repo (fix-master, rerun-master,
 requeue, fix-ci, enqueue, rebase, review, decide, triage, stalled,
 investigating, escalated) with what to do. Take each task's lease first
 (`uv run -m workflow.coordinator take <kind> <repo> <N> --owner "$COORDINATOR_ID"`;
@@ -69,6 +69,10 @@ authorizes.
     and the next master run both passed. Rerun before hunting a culprit, and
     do not revert an innocent merge on one abort. Confirm against the next
     master run before calling master red.
+  - A job with no runner (`cancelled`, no steps, "not acquired by Runner of
+    type hosted"): no PR broke it and `--log-failed` returns nothing. Rerun it
+    (`rerun-master` in the work list when it is a master push). During a GitHub
+    incident, which the work list prints first, do not revert or escalate.
   - A master regression that a later merge fixed: rebase the PR
     (`gh pr update-branch <N> --rebase`).
   - A lint or formatting failure: push the fix as a mechanical fixup (below).
