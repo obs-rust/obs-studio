@@ -33,21 +33,19 @@ fn canonical_scene_bounds_place_is_registered() {
     assert!(target.includes.is_empty());
     assert_eq!(target.watch_inputs, ["libobs/obs-scene-bounds.h"]);
     assert_eq!(target.sanitizers, None);
-    assert_eq!(target.libraries.len(), 3);
-    for (library, expected) in target
-        .libraries
-        .iter()
-        .zip(["OBS::libobs", "OBS::native-test-cmocka"])
-    {
-        assert!(matches!(library, ConditionalValue::Name(name) if name == expected));
-    }
-    let ConditionalValue::Conditional {
-        name: library,
-        requires,
-    } = &target.libraries[2]
+    let [
+        ConditionalValue::Name(core),
+        ConditionalValue::Name(cmocka),
+        ConditionalValue::Conditional {
+            name: library,
+            requires,
+        },
+    ] = target.libraries.as_slice()
     else {
-        panic!("libm must retain its non-MSVC guard");
+        panic!("bounds placement needs core, cmocka and conditional libm");
     };
+    assert_eq!(core, "OBS::libobs");
+    assert_eq!(cmocka, "OBS::native-test-cmocka");
     assert_eq!(library, "m");
     assert!(matches!(requires, Requirement::Not { not }
         if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC")));
