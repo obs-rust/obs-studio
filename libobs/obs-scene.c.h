@@ -204,7 +204,8 @@ static void scene_destroy(void *data)
 
 static inline bool scene_transition_active(obs_source_t *transition)
 {
-	return transition && (transition->transitioning_audio || transition->transitioning_video);
+	return transition && (os_atomic_load_bool(&transition->transitioning_audio) ||
+			      os_atomic_load_bool(&transition->transitioning_video));
 }
 
 static void scene_enum_sources(void *data, obs_source_enum_proc_t enum_callback, void *param, bool active)

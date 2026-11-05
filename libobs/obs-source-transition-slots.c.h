@@ -37,8 +37,8 @@ void obs_transition_clear(obs_source_t *transition)
 		transition->transition_sources[i] = NULL;
 		transition->transition_source_active[i] = false;
 	}
-	transition->transitioning_video = false;
-	transition->transitioning_audio = false;
+	os_atomic_store_bool(&transition->transitioning_video, false);
+	os_atomic_store_bool(&transition->transitioning_audio, false);
 	unlock_transition(transition);
 
 	for (size_t i = 0; i < 2; i++) {
@@ -107,8 +107,8 @@ void obs_transition_swap_begin(obs_source_t *tr_dest, obs_source_t *tr_source)
 	/* Hand over a running transition too, not only its sources: a
 	 * transition that holds both sources without transitioning never
 	 * finishes, and starting it towards either source does nothing. */
-	tr_dest->transitioning_video = tr_source->transitioning_video;
-	tr_dest->transitioning_audio = tr_source->transitioning_audio;
+	os_atomic_store_bool(&tr_dest->transitioning_video, os_atomic_load_bool(&tr_source->transitioning_video));
+	os_atomic_store_bool(&tr_dest->transitioning_audio, os_atomic_load_bool(&tr_source->transitioning_audio));
 	tr_dest->transition_start_time = tr_source->transition_start_time;
 	tr_dest->transition_duration = tr_source->transition_duration;
 	tr_dest->transition_mode = tr_source->transition_mode;

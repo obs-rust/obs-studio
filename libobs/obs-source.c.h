@@ -2061,7 +2061,7 @@ static uint32_t get_base_width(const obs_source_t *source)
 {
 	switch (obs_source_size_route(size_node(source, source->info.get_width != NULL))) {
 	case OBS_SOURCE_SIZE_TRANSITION:
-		return source->transition_actual_cx;
+		return (uint32_t)os_atomic_load_long(&source->transition_actual_cx);
 	case OBS_SOURCE_SIZE_CALLBACK:
 		return source->info.get_width(source->context.data);
 	case OBS_SOURCE_SIZE_ASK_TARGET:
@@ -2083,7 +2083,7 @@ static uint32_t get_base_height(const obs_source_t *source)
 {
 	switch (obs_source_size_route(size_node(source, source->info.get_height != NULL))) {
 	case OBS_SOURCE_SIZE_TRANSITION:
-		return source->transition_actual_cy;
+		return (uint32_t)os_atomic_load_long(&source->transition_actual_cy);
 	case OBS_SOURCE_SIZE_CALLBACK:
 		return source->info.get_height(source->context.data);
 	case OBS_SOURCE_SIZE_ASK_TARGET:

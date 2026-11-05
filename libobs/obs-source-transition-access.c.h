@@ -45,7 +45,8 @@ obs_source_t *obs_transition_get_active_source(obs_source_t *transition)
 		return NULL;
 
 	lock_transition(transition);
-	active = transition->transitioning_audio || transition->transitioning_video;
+	active = os_atomic_load_bool(&transition->transitioning_audio) ||
+		 os_atomic_load_bool(&transition->transitioning_video);
 	ret = transition->transition_sources[obs_source_transition_start_active_index(active)];
 	ret = obs_source_get_ref(ret);
 	unlock_transition(transition);
