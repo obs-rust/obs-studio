@@ -23,7 +23,7 @@ RUN dnf install -y --setopt=install_weak_deps=False \
         mesa-libEGL-devel mesa-libgbm-devel libglvnd-devel libdrm-devel libva-devel \
         vulkan-headers vulkan-loader-devel \
         fontconfig-devel freetype-devel glib2-devel dbus-devel systemd-devel \
-        alsa-lib-devel pulseaudio-libs-devel speexdsp-devel libv4l-devel \
+        alsa-lib-devel pulseaudio-libs-devel pulseaudio-utils speexdsp-devel libv4l-devel \
         pciutils-devel libuuid-devel jansson-devel libcurl-devel openssl-devel \
         luajit-devel uthash-devel websocketpp-devel \
         libmount-devel libffi-devel \

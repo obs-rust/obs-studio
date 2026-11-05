@@ -1122,8 +1122,8 @@ EOF
 # Optional, local only (no CI runner has v4l2loopback): with VCAM_DEVICE set
 # to a v4l2loopback node passed into the container, OBS also starts the
 # Virtual Camera with its OBS Virtual Microphone on track 1 (#3182). With
-# VCAM_NO_PACTL=1 as well, pactl is hidden, so the camera must fall back to
-# video only and show the status-bar notice.
+# VCAM_NO_PACTL=1 as well, the host pactl is hidden; the bundled helper must
+# still provide the microphone (#3654).
 VCAM_DEVICE="${VCAM_DEVICE:-}"
 VCAM_ARGS=()
 if [ -n "$VCAM_DEVICE" ]; then
@@ -1233,8 +1233,8 @@ echo "PipeWire links and PulseAudio streams while OBS records:"
 pw-link -l 2>&1 || true
 pactl list short sources 2>&1 || true
 pactl list short source-outputs 2>&1 || true
-if [ -n "$VCAM_DEVICE" ] && [ "${VCAM_NO_PACTL:-}" != 1 ]; then
-    if pactl list short sources | grep -q obs_virtual_microphone; then
+if [ -n "$VCAM_DEVICE" ]; then
+    if "$APPDIR/usr/bin/pactl" list short sources | grep -q obs_virtual_microphone; then
         # The tone the test microphone plays must come out of the virtual one.
         timeout 3 parecord --raw --format=s16le --channels=2 --rate=48000 -d obs_virtual_microphone \
             "$OUT/vmic.raw" || true
@@ -1332,15 +1332,10 @@ else
     grep -q 'Recording Start' "$LOG" || fail "the recording did not start"
     if [ -n "$VCAM_DEVICE" ]; then
         grep -q '==== Virtual Camera Start' "$LOG" || fail "the Virtual Camera did not start"
-        if [ "${VCAM_NO_PACTL:-}" = 1 ]; then
-            grep -q 'Virtual Camera started without its microphone' "$LOG" ||
-                fail "the Virtual Camera fell back to video only without the status-bar notice"
-        else
-            grep -q "Virtual microphone 'obs_virtual_microphone' started" "$LOG" ||
-                fail "the log does not show the OBS Virtual Microphone starting on track 1"
-            grep -q 'Virtual Camera started without its microphone' "$LOG" &&
-                fail "the status-bar notice was shown although the microphone started"
-        fi
+        grep -q "Virtual microphone 'obs_virtual_microphone' started" "$LOG" ||
+            fail "the log does not show the OBS Virtual Microphone starting on track 1"
+        grep -q 'Virtual Camera started without its microphone' "$LOG" &&
+            fail "the status-bar notice was shown although the microphone started"
     fi
     # Every module the AppImage ships must load. Allowed exceptions need
     # hardware or drivers no container has.
