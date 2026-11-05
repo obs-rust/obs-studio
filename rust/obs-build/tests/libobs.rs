@@ -583,6 +583,9 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
             "test_group_child_drift",
             "test_group_empty_bounds",
             "test_group_recursion",
+            "test_transition_recursive_destination",
+            "test_transition_swap",
+            "test_item_transition_empty_source",
         ] {
             assert!(tests.iter().any(|test| test.name == name), "missing {name}");
         }
