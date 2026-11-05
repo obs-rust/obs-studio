@@ -942,6 +942,14 @@ retain Widgets selection, stub include precedence, Qt runtime setup and the
 CMake and checks the evaluated CTest inventory. This standalone UI layout
 coverage does not establish full frontend or application parity (#1390).
 
+The Linux-only replay-buffer memory-estimate test also uses the shared Qt graph.
+Its four unchanged cases check warning colours above the limit, clearing the
+warning below the limit or for an unknown estimate, and normal estimates. The
+native Qt contract builds and runs the real helper through Cargo and CMake,
+retaining the original Linux/Widgets guard, offscreen execution and Qt runtime
+setup. Other hosts exclude it; evaluated inventory checks cover that boundary.
+This standalone helper coverage does not establish full frontend parity (#1390).
+
 ### Initial native test migration (historical)
 
 `validation::build_c_tests` builds the 51 previously selected, unchanged C test
