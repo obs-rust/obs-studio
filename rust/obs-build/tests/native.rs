@@ -26,7 +26,11 @@ fn canonical_video_output_compatibility_is_registered() {
                 _ => panic!("video-output linkage must be unconditional"),
             })
             .collect();
-        assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"], "{name}");
+        assert_eq!(
+            libraries,
+            ["OBS::libobs", "OBS::native-test-cmocka"],
+            "{name}"
+        );
         assert!(target.header_libraries.is_empty());
         assert_eq!(
             target.artifact_definitions["GRAPHICS_MODULE_PATH"],
@@ -40,7 +44,10 @@ fn canonical_video_output_compatibility_is_registered() {
         assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
         assert_eq!(test.timeout_seconds, Some(timeout));
         assert_eq!(test.skip_return_code, None);
-        assert_eq!(test.optional_prefixes, [vec!["xvfb-run".to_string(), "-a".to_string()]]);
+        assert_eq!(
+            test.optional_prefixes,
+            [vec!["xvfb-run".to_string(), "-a".to_string()]]
+        );
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("), "{name}");
@@ -80,7 +87,6 @@ fn canonical_video_output_compatibility_is_registered() {
         }
     }
 }
-
 
 /// #3714: both native consumers must retain transition compatibility coverage.
 #[test]
