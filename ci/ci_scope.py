@@ -152,6 +152,7 @@ class Scope:
     docs_only: bool = False
     cross_targets: str = ""
     asan: bool = False
+    cross_lint: bool = False
 
 
 # The path -> lane table (#992). Adding a module is adding a row. Globs use
@@ -551,6 +552,11 @@ def scope(
         docs_only,
         cross_targets(files, read),
         asan,
+        # Exercise the cross lane when its own implementation/orchestration changes.
+        cross_lint=bool(set(files) & {
+            "ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",
+            "local-gate.toml", ".github/workflows/build-project.yaml",
+        }),
     )
 
 

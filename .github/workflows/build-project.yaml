@@ -119,6 +119,7 @@ jobs:
       qt_sdk: ${{ steps.native.outputs.qt_sdk }}
       docs_only: ${{ steps.native.outputs.docs_only }}
       cross_targets: ${{ steps.native.outputs.cross_targets }}
+      cross_lint: ${{ steps.native.outputs.cross_lint }}
       asan: ${{ steps.native.outputs.asan }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -1968,7 +1969,7 @@ jobs:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
     runs-on: ubuntu-26.04
     needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
     defaults:
       run:
         shell: bash
