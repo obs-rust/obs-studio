@@ -3,9 +3,9 @@
 
 use super::uyvx::Rows;
 use core::arch::x86_64::{
-    __m128i, _mm_add_epi64, _mm_and_si128, _mm_cvtsi128_si32, _mm_loadu_si128, _mm_packs_epi32,
-    _mm_packus_epi16, _mm_set1_epi16, _mm_set1_epi32, _mm_shuffle_epi32, _mm_shufflelo_epi16,
-    _mm_srai_epi16, _mm_srli_si128,
+    __m128i, _mm_add_epi64, _mm_and_si128, _mm_cvtsi128_si32, _mm_loadu_si128, _mm_packus_epi16,
+    _mm_set1_epi16, _mm_set1_epi32, _mm_shuffle_epi32, _mm_shufflelo_epi16, _mm_srai_epi16,
+    _mm_srli_si128,
 };
 
 /// Constructed only after the runtime SSE2 check.
@@ -44,16 +44,45 @@ impl Native {
     }
 }
 
-#[inline]
-#[target_feature(enable = "sse2")]
+#[inline(always)]
 fn channel<const BYTES: i32>(a: __m128i, b: __m128i) -> __m128i {
-    // Keep the C's byte shift after masking. A per-lane logical shift lets
-    // LLVM expand the saturating packs into slower shuffle/clamp sequences.
-    let mask = _mm_set1_epi32(255 << (BYTES * 8));
-    let a = _mm_srli_si128::<BYTES>(_mm_and_si128(a, mask));
-    let b = _mm_srli_si128::<BYTES>(_mm_and_si128(b, mask));
-    let packed = _mm_packs_epi32(a, b);
-    _mm_packus_epi16(packed, packed)
+    // LLVM expands the equivalent intrinsic expressions into extra shifts and
+    // clamps. Keep the C's register-only pack_shift/pack_val instruction shape.
+    let mut packed = a;
+    // SAFETY: SSE2 is mandatory on x86_64. These integer instructions only
+    // access the declared XMM operands, change no flags/stack/memory, and return
+    // a deterministic packed value. Both mutable operands are early clobbers:
+    // neither may share a register with the mask before its last use.
+    unsafe {
+        let mask = _mm_set1_epi32(255 << (BYTES * 8));
+        if BYTES == 0 {
+            core::arch::asm!(
+                "pand {packed}, {mask}",
+                "pand {other}, {mask}",
+                "packssdw {packed}, {other}",
+                "packuswb {packed}, {packed}",
+                packed = inout(xmm_reg) packed,
+                other = inout(xmm_reg) b => _,
+                mask = in(xmm_reg) mask,
+                options(pure, nomem, nostack, preserves_flags),
+            );
+        } else {
+            core::arch::asm!(
+                "pand {packed}, {mask}",
+                "pand {other}, {mask}",
+                "psrldq {packed}, {shift}",
+                "psrldq {other}, {shift}",
+                "packssdw {packed}, {other}",
+                "packuswb {packed}, {packed}",
+                packed = inout(xmm_reg) packed,
+                other = inout(xmm_reg) b => _,
+                mask = in(xmm_reg) mask,
+                shift = const BYTES,
+                options(pure, nomem, nostack, preserves_flags),
+            );
+        }
+    }
+    packed
 }
 
 #[inline]
