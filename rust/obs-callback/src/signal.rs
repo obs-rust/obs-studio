@@ -474,6 +474,12 @@ impl SignalHandler {
             remove_refs = end_signal_pass(&sig);
         }
 
+        self.signal_globals(&mut call_global);
+
+        (0..remove_refs).any(|_| self.release())
+    }
+
+    fn signal_globals(&self, call_global: &mut impl FnMut(CallbackKey)) {
         // No global callbacks: skip the pass and its locks (#3212). Nothing
         // would run, and a connect from another thread racing this check
         // is the same as one that waited for the pass to end; it would not
@@ -537,8 +543,6 @@ impl SignalHandler {
                 }
             }
         }
-
-        (0..remove_refs).any(|_| self.release())
     }
 }
 
