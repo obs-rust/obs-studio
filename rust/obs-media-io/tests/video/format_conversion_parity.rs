@@ -619,3 +619,31 @@ fn cmocka_inputs() {
         }
     }
 }
+
+/// Every compression entry point must exercise both its scalar fallback and
+/// native row kernel against the unchanged C oracle, including row overlap.
+#[test]
+fn uyvx_forced_row_kernels_match_c() {
+    for native in [false, true] {
+        crate::platform::uyvx::with_native_for_test(native, || {
+            for (in_linesize, out_linesize, start_y, end_y) in [
+                (16, [4, 4], 0, 2),
+                (32, [8, 4], 0, 4),
+                (64, [16, 16], 1, 5),
+                (64, [4, 4], 0, 4),
+                (64, [64, 32], 0, 6),
+            ] {
+                for kind in [UyvxKind::I420, UyvxKind::Nv12, UyvxKind::I444] {
+                    Uyvx {
+                        in_linesize,
+                        out_linesize,
+                        start_y,
+                        end_y,
+                        seed: 3004,
+                    }
+                    .check(kind);
+                }
+            }
+        });
+    }
+}

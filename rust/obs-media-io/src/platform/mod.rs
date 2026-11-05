@@ -7,6 +7,7 @@
 
 #[allow(unsafe_code)] // the cell is touched only while this thread holds the lock
 mod re_mutex;
+pub(crate) mod uyvx;
 pub(crate) use re_mutex::ReMutex;
 
 cfg_select! {
