@@ -207,6 +207,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """The virtual microphone HAL stays measured by the cross check (#2625)."""
         self.assertIn("obs-audio-plugin-cross", opted_in(source()))
 
+    def test_the_mac_virtualcam_slice_is_opted_in(self) -> None:
+        """Keep the virtual camera output measured on both macOS aliases (#2625)."""
+        self.assertIn("mac-virtualcam-cross", opted_in(source()))
+
     def test_the_dal_plugin_slice_is_opted_in(self) -> None:
         """Keep the Objective-C++ DAL group measured on both macOS aliases (#2625)."""
         self.assertIn("obs-dal-plugin-cross", opted_in(source()))
