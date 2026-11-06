@@ -691,6 +691,10 @@ jobs:
     name: Native macOS ${{ matrix.target }} DMG startup 🧪
     needs: [check, build]
     if: always() && needs.check.result == 'success' && needs.check.outputs.skip != 'true'
+    # TEMPORARY, owner-approved quarantine of the Intel leg only (#3168): its
+    # startup trap must not hold back every other platform's nightly. Revert this
+    # line and the warning step below once #3168 is fixed; arm64 stays blocking.
+    continue-on-error: ${{ matrix.target == 'x86_64' }}
     strategy:
       fail-fast: false
       matrix:
@@ -772,6 +776,9 @@ jobs:
           path: crash-reports/
           if-no-files-found: warn
           retention-days: 14
+      - name: Warn that the Intel leg is quarantined ⚠️
+        if: always() && matrix.target == 'x86_64'
+        run: echo "::warning::macOS x86_64 DMG startup is non-blocking (quarantined for #3168); once fixed, revert continue-on-error and this step."
 
   # The release gate: every job the dev cycle skips (#436), at this commit.
   gate:
