@@ -648,6 +648,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/obs-scripting.python-host-windows+.h.c
     DEFINES SCRIPT_DIR="cross-check"
   )
+  _obs_cross_conversion_ratchet(obs-scripting-python-host-cross)
   # The Windows-only shared libraries' unity groups (BUILD.md), which the
   # Windows plugins compile through their INTERFACE libraries.
   _obs_cross_plugin(
@@ -885,6 +886,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES build/obs-scripting.python-host-macos+.h.c
     DEFINES SCRIPT_DIR="cross-check"
   )
+  _obs_cross_conversion_ratchet(obs-scripting-python-host-cross)
 endif()
 
 # obs-ffmpeg's unity groups (BUILD.md) but VA-API, with every optional one.
