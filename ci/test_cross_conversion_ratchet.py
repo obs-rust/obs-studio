@@ -52,6 +52,73 @@ def opted_in(text: str) -> set[str]:
 
 
 class CrossConversionRatchet(unittest.TestCase):
+    def test_native_python_conversion_boundaries(self) -> None:
+        """Compile the actual boundaries without the generated SWIG runtime (#2625)."""
+        text = (CROSS.parents[2] / "shared/obs-scripting/obs-scripting-python.c.h").read_text()
+        statements = []
+        for pattern in (
+            r"timer->interval = [^;]+;",
+            r'calldata_set_int\(&cb->base.extra, "id", [^;]+;',
+            r"dstr_left\(&data->dir, &data->base.path, [^;]+;",
+            r"dstr_resize\(&data->name, [^;]+;",
+        ):
+            matches = re.findall(pattern, text)
+            self.assertEqual(len(matches), 1, pattern)
+            statements.append(matches[0])
+        program = r"""#include <assert.h>
+#include <limits.h>
+#include <stddef.h>
+#include <stdint.h>
+struct timer { uint64_t interval; };
+struct callback { struct { long long extra; } base; };
+struct data { size_t dir, name; struct { size_t path; } base; };
+static void calldata_set_int(long long *out, const char *key, long long value)
+{ (void)key; *out = value; }
+static void dstr_left(size_t *out, size_t *src, size_t length)
+{ (void)src; *out = length; }
+static void dstr_resize(size_t *out, size_t length) { *out = length; }
+static uint64_t interval(int ms)
+{ struct timer storage, *timer = &storage; STATEMENT0 return timer->interval; }
+static size_t hotkey(size_t id)
+{ struct callback storage, *cb = &storage; STATEMENT1 return (size_t)cb->base.extra; }
+int main(void)
+{
+    /* Negative milliseconds keep the existing unsigned modulo arithmetic. */
+    assert(interval(-1) == UINT64_MAX - UINT64_C(999999));
+    assert(interval(INT_MIN) == (uint64_t)INT_MIN * UINT64_C(1000000));
+    assert(interval(0) == 0);
+    assert(interval(INT_MAX) == (uint64_t)INT_MAX * UINT64_C(1000000));
+    assert(hotkey(0) == 0);
+    assert(hotkey((size_t)LLONG_MAX) == (size_t)LLONG_MAX);
+    assert(hotkey(SIZE_MAX) == SIZE_MAX); /* OBS_INVALID_HOTKEY_ID */
+    struct data storage, *data = &storage;
+    const char *path = "dir/file.py", *slash = path + 4, *ext = path + 8;
+    STATEMENT2 STATEMENT3
+    assert(data->dir == 4 && data->name == 8);
+    slash = ext = path;
+    STATEMENT2 STATEMENT3
+    assert(data->dir == 0 && data->name == 0);
+    return 0;
+}
+"""
+        for index, statement in enumerate(statements):
+            program = program.replace(f"STATEMENT{index}", statement)
+        compilers = [path for name in ("cc", "clang") if (path := shutil.which(name))]
+        if not compilers:
+            self.skipTest("a C compiler is needed for the conversion boundary check")
+        with tempfile.TemporaryDirectory() as directory:
+            src = Path(directory) / "boundaries.c"
+            exe = Path(directory) / "boundaries"
+            src.write_text(program)
+            for compiler in compilers:
+                with self.subTest(compiler=compiler):
+                    result = subprocess.run(
+                        [compiler, "-std=c17", "-O2", "-Werror", *GROUPS, str(src), "-o", str(exe)],
+                        capture_output=True, text=True, timeout=30,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    subprocess.run([str(exe)], check=True, timeout=10)
+
     def test_the_decklink_slice_is_opted_in(self) -> None:
         """Keep the DeckLink groups measured on both macOS aliases (#2625)."""
         self.assertIn("decklink-cross", opted_in(source()))
