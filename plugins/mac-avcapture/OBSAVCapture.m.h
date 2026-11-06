@@ -436,7 +436,7 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
         return NO;
     }
 
-    CMTime time = {.value = fps.denominator, .timescale = fps.numerator, .flags = 1};
+    CMTime time = {.value = fps.denominator, .timescale = (CMTimeScale) fps.numerator, .flags = 1};
 
     const char *selectedFormat = obs_data_get_string(self.captureInfo->settings, "supported_format");
     NSString *selectedFormatNSString = selectedFormat != NULL ? @(selectedFormat) : @"";
@@ -466,19 +466,20 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
         for (AVCaptureDeviceFormat *formatCandidate in [self.deviceInput.device.formats reverseObjectEnumerator]) {
             CMFormatDescriptionRef formatDescription = formatCandidate.formatDescription;
             CMVideoDimensions formatDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
-            int formatColorSpace = [OBSAVCapture colorspaceFromDescription:formatDescription];
+            int formatColorSpace = (int) [OBSAVCapture colorspaceFromDescription:formatDescription];
             int formatInputFormat =
-                [OBSAVCapture formatFromSubtype:CMFormatDescriptionGetMediaSubType(formatDescription)];
-            int formatVideoRange = [OBSAVCapture isFullRangeFormat:formatInputFormat] ? VIDEO_RANGE_FULL
-                                                                                      : VIDEO_RANGE_PARTIAL;
+                (int) [OBSAVCapture formatFromSubtype:CMFormatDescriptionGetMediaSubType(formatDescription)];
+            int formatVideoRange = [OBSAVCapture isFullRangeFormat:(FourCharCode) formatInputFormat]
+                                       ? VIDEO_RANGE_FULL
+                                       : VIDEO_RANGE_PARTIAL;
             bool foundFormat = legacyVideoRange == formatVideoRange && legacyInputFormat == formatInputFormat &&
                                legacyColorSpace == formatColorSpace &&
                                legacyDimensions.width == formatDimensions.width &&
                                legacyDimensions.height == formatDimensions.height;
             if (foundFormat) {
                 format = formatCandidate;
-                subtype = formatInputFormat;
-                colorSpace = formatColorSpace;
+                subtype = (FourCharCode) formatInputFormat;
+                colorSpace = (OBSAVCaptureColorSpace) formatColorSpace;
                 break;
             }
         }
@@ -506,7 +507,7 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
                                                       fallbackFPS.numerator, fallbackFPS.denominator];
             obs_data_set_frames_per_second(self.captureInfo->settings, "frame_rate", fallbackFPS, NULL);
             time.value = fallbackFPS.denominator;
-            time.timescale = fallbackFPS.numerator;
+            time.timescale = (CMTimeScale) fallbackFPS.numerator;
         } else {
             [self AVCaptureLog:LOG_WARNING
                     withFormat:@"Frame rate is not supported: %g FPS (%u/%u), \n"
@@ -672,8 +673,8 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
         return zero;
     }
 
-    CMVideoDimensions dimensions = {.width = (int32_t) clamp_Uint(width, 0, UINT32_MAX),
-                                    .height = (int32_t) clamp_Uint(height, 0, UINT32_MAX)};
+    CMVideoDimensions dimensions = {.width = (int32_t) clamp_Uint((UInt64) width, 0, UINT32_MAX),
+                                    .height = (int32_t) clamp_Uint((UInt64) height, 0, UINT32_MAX)};
     return dimensions;
 }
 
@@ -692,13 +693,14 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
     for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
         if (range.maxFrameRate > closestUpTo && range.maxFrameRate <= outputFPS) {
             closestUpTo = range.maxFrameRate;
-            closestUpToMFPS.numerator = (uint32_t) clamp_Uint(range.minFrameDuration.timescale, 0, UINT32_MAX);
-            closestUpToMFPS.denominator = (uint32_t) clamp_Uint(range.minFrameDuration.value, 0, UINT32_MAX);
+            closestUpToMFPS.numerator = (uint32_t) clamp_Uint((UInt64) range.minFrameDuration.timescale, 0, UINT32_MAX);
+            closestUpToMFPS.denominator = (uint32_t) clamp_Uint((UInt64) range.minFrameDuration.value, 0, UINT32_MAX);
         }
         if (range.minFrameRate > outputFPS && range.minFrameRate < closestAbove) {
             closestAbove = range.minFrameRate;
-            closestAboveMFPS.numerator = (uint32_t) clamp_Uint(range.maxFrameDuration.timescale, 0, UINT32_MAX);
-            closestAboveMFPS.denominator = (uint32_t) clamp_Uint(range.maxFrameDuration.value, 0, UINT32_MAX);
+            closestAboveMFPS.numerator =
+                (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.timescale, 0, UINT32_MAX);
+            closestAboveMFPS.denominator = (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.value, 0, UINT32_MAX);
         }
     }
     if (closestUpTo > 0) {
@@ -944,8 +946,8 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
 
 + (NSString *)stringFromFourCharCode:(OSType)fourCharCode
 {
-    char cString[5] = {(fourCharCode >> 24) & 0xFF, (fourCharCode >> 16) & 0xFF, (fourCharCode >> 8) & 0xFF,
-                       fourCharCode & 0xFF, 0};
+    char cString[5] = {(char) ((fourCharCode >> 24) & 0xFF), (char) ((fourCharCode >> 16) & 0xFF),
+                       (char) ((fourCharCode >> 8) & 0xFF), (char) (fourCharCode & 0xFF), 0};
 
     NSString *codeString = @(cString);
 
@@ -957,7 +959,7 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
     FourCharCode fourCharCode;
     const char *cString = codeString.UTF8String;
 
-    fourCharCode = (cString[0] << 24) | (cString[1] << 16) | (cString[2] << 8) | cString[3];
+    fourCharCode = (FourCharCode) ((cString[0] << 24) | (cString[1] << 16) | (cString[2] << 8) | cString[3]);
 
     return fourCharCode;
 }
@@ -1308,7 +1310,7 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
             } else {
                 OBSAVCaptureVideoFrame *frame = _captureInfo->videoFrame;
 
-                frame->timestamp = presentationNanoTimeStamp.value;
+                frame->timestamp = (uint64_t) presentationNanoTimeStamp.value;
 
                 enum video_format videoFormat = [OBSAVCapture formatFromSubtype:mediaSubType];
 
@@ -1331,8 +1333,8 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
                     bool isSampleBufferYuv = format_is_yuv(videoFormat);
 
                     frame->format = videoFormat;
-                    frame->width = sampleBufferDimensions.width;
-                    frame->height = sampleBufferDimensions.height;
+                    frame->width = (uint32_t) sampleBufferDimensions.width;
+                    frame->height = (uint32_t) sampleBufferDimensions.height;
 
                     BOOL isSampleBufferFullRange = [OBSAVCapture isFullRangeFormat:mediaSubType];
 
@@ -1455,7 +1457,7 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
                     audio->data[i] = bufferList->mBuffers[i].mData;
                 }
 
-                audio->timestamp = presentationNanoTimeStamp.value;
+                audio->timestamp = (uint64_t) presentationNanoTimeStamp.value;
                 audio->frames = (uint32_t) CMSampleBufferGetNumSamples(sampleBuffer);
 
                 const AudioStreamBasicDescription *basicDescription =

@@ -33,7 +33,7 @@ template<> struct default_delete<obs_data_item_t> {
 #define TEXT_COLOR_UNKNOWN_NAME "Unknown"
 #define TEXT_RANGE_UNKNOWN_NAME "Unknown"
 
-static const FourCharCode INPUT_FORMAT_AUTO = -1;
+static const FourCharCode INPUT_FORMAT_AUTO = static_cast<FourCharCode>(-1);
 static const int COLOR_SPACE_AUTO = -1;
 static const int VIDEO_RANGE_AUTO = -1;
 
@@ -513,8 +513,8 @@ static inline bool update_frame(av_capture *capture, obs_source_frame *frame, CM
 
 	capture->fourcc = fourcc;
 	frame->format = format;
-	frame->width = dims.width;
-	frame->height = dims.height;
+	frame->width = static_cast<uint32_t>(dims.width);
+	frame->height = static_cast<uint32_t>(dims.height);
 
 	if (format_is_yuv(format) && !update_colorspace(capture, frame, desc, is_fullrange_yuv(fourcc), vi)) {
 		return false;
@@ -629,7 +629,7 @@ static inline bool update_audio(obs_source_audio *audio, CMSampleBufferRef sampl
 	CMMediaType type = CMFormatDescriptionGetMediaType(desc);
 	if (type == kCMMediaType_Video) {
 		obs_source_frame *frame = &capture->frame;
-		frame->timestamp = target_pts_nano.value;
+		frame->timestamp = static_cast<uint64_t>(target_pts_nano.value);
 
 		if (!update_frame(capture, frame, sampleBuffer)) {
 			obs_source_output_video(capture->source, nullptr);
@@ -646,7 +646,7 @@ static inline bool update_audio(obs_source_audio *audio, CMSampleBufferRef sampl
 		}
 
 		obs_source_audio *audio = &capture->audio;
-		audio->timestamp = target_pts_nano.value;
+		audio->timestamp = static_cast<uint64_t>(target_pts_nano.value);
 
 		if (!update_audio(audio, sampleBuffer)) {
 			obs_source_output_audio(capture->source, nullptr);
@@ -881,7 +881,7 @@ static CMTime convert(media_frames_per_second fps)
 {
 	CMTime time{};
 	time.value = fps.denominator;
-	time.timescale = fps.numerator;
+	time.timescale = static_cast<CMTimeScale>(fps.numerator);
 	time.flags = 1;
 	return time;
 }
@@ -1503,7 +1503,7 @@ static bool resolution_property_needs_update(obs_property_t *p, const resolution
 			return true;
 		}
 
-		res_found[pos - begin(resolutions)] = true;
+		res_found[static_cast<size_t>(pos - begin(resolutions))] = true;
 	}
 
 	return any_of(begin(res_found), end(res_found), [](bool b) { return !b; });
@@ -1637,7 +1637,7 @@ static bool frame_rate_property_needs_update(obs_property_t *p, const frame_rate
 			return true;
 		}
 
-		fps_found[it - begin(frame_rates)] = true;
+		fps_found[static_cast<size_t>(it - begin(frame_rates))] = true;
 	}
 
 	return any_of(begin(fps_found), end(fps_found), [](bool b) { return !b; });
@@ -1704,7 +1704,7 @@ static bool input_format_property_needs_update(obs_property_t *p, const vector<A
 			return true;
 		}
 
-		if_found[pos - begin(formats)] = true;
+		if_found[static_cast<size_t>(pos - begin(formats))] = true;
 	}
 
 	return fourcc_found || any_of(begin(if_found), end(if_found), [](bool b) { return !b; });

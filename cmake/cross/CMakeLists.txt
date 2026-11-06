@@ -825,6 +825,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES ${_mac_avcapture} ${_mac_avcapture_legacy}
     INCLUDES plugins/mac-avcapture/legacy
   )
+  _obs_cross_conversion_ratchet(mac-avcapture-cross)
   # decklink's unity groups (BUILD.md) with the macOS SDK headers; Windows
   # needs the SDK's MIDL-generated header.
   _obs_cross_plugin(

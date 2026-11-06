@@ -223,6 +223,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """Keep all five capture groups measured on both macOS aliases (#2625)."""
         self.assertIn("mac-capture-cross", opted_in(source()))
 
+    def test_the_mac_avcapture_slice_is_opted_in(self) -> None:
+        """Keep modern and legacy capture measured on both macOS aliases (#2625)."""
+        self.assertIn("mac-avcapture-cross", opted_in(source()))
+
     def test_the_helper_covers_objective_cxx(self) -> None:
         """DAL is Objective-C++; a CXX-only opt-in would leave its pins active."""
         self.assertIn("COMPILE_LANG_AND_ID:OBJCXX,Clang,AppleClang", helper_body(source()))
