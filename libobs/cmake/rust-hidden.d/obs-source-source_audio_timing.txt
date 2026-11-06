@@ -5,3 +5,4 @@
 obs_source_audio_timing_pre_lock
 obs_source_audio_timing_under_lock
 obs_source_audio_timing_buffer_start
+obs_source_audio_timing_follows_video

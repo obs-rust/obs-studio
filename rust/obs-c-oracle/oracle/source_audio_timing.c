@@ -6,6 +6,7 @@
 #define obs_source_audio_timing_pre_lock oracle_obs_source_audio_timing_pre_lock
 #define obs_source_audio_timing_under_lock oracle_obs_source_audio_timing_under_lock
 #define obs_source_audio_timing_buffer_start oracle_obs_source_audio_timing_buffer_start
+#define obs_source_audio_timing_follows_video oracle_obs_source_audio_timing_follows_video
 
 /* The C adds the int64_t sync offset to a uint64_t timestamp, which converts
  * it, as source_output_audio_data() always did. The oracle builds with
@@ -21,6 +22,7 @@
 #pragma GCC diagnostic pop
 #endif
 
+#undef obs_source_audio_timing_follows_video
 #undef obs_source_audio_timing_buffer_start
 #undef obs_source_audio_timing_under_lock
 #undef obs_source_audio_timing_pre_lock

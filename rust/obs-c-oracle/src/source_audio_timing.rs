@@ -56,6 +56,7 @@ unsafe extern "C" {
     /// `obs_source_audio_timing_under_lock`: `t` points to a
     /// `struct obs_source_audio_timing_under`.
     pub fn oracle_obs_source_audio_timing_under_lock(t: *mut c_void);
+    pub fn oracle_obs_source_audio_timing_follows_video(timestamp: u64, video_ts: u64) -> bool;
     pub fn oracle_obs_source_audio_timing_buffer_start(
         os_time: u64,
         sync_offset: i64,

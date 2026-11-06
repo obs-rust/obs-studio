@@ -1171,6 +1171,10 @@ struct obs_source {
 	uint64_t next_audio_ts_min;
 	uint64_t next_audio_sys_ts_min;
 	uint64_t last_frame_ts;
+	/* the timestamp of the latest frame the source output, before any async
+	 * filter, 0 for none: the clock of the source's video, which the audio
+	 * follows only when it runs on it too (#3747). Under audio_buf_mutex. */
+	uint64_t last_output_frame_ts;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;
 

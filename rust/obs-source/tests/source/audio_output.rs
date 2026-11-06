@@ -42,6 +42,7 @@ struct Fake {
     monitoring_type: Cell<i32>,
     async_unbuffered: Cell<bool>,
     async_decoupled: Cell<bool>,
+    last_output_frame_ts: Cell<u64>,
     compensating: Cell<bool>,
     muted: Cell<bool>,
     sizes: RefCell<[usize; MAX_CHANNELS]>,
@@ -175,6 +176,10 @@ impl Source for Fake {
     }
     fn async_decoupled(&self) -> bool {
         self.async_decoupled.get()
+    }
+    fn last_output_frame_ts(&self) -> u64 {
+        self.guard("last_output_frame_ts");
+        self.last_output_frame_ts.get()
     }
     fn compensating(&self) -> bool {
         self.compensating.get()
@@ -532,6 +537,49 @@ fn a_moved_system_time_keeps_a_continuous_packet() {
     assert!(!log.iter().any(|l| l.starts_with("timing_set")));
 }
 
+/// A continuous packet on the clock of the source's video follows its moved
+/// timing (#522), as without a video frame above.
+#[test]
+fn a_moved_system_time_keeps_a_continuous_packet_on_the_video_clock() {
+    let f = Fake::new();
+    let adjust = NOW.wrapping_sub(FAR) + 3_000_000_000;
+    f.timing_set.set(true);
+    f.timing_adjust.set(adjust);
+    f.next_audio_ts_min.set(FAR);
+    f.next_audio_sys_ts_min.set(NOW);
+    f.audio_ts.set(NOW);
+    f.last_output_frame_ts.set(FAR + 33 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    assert_eq!(f.timing_adjust.get(), adjust);
+    assert!(!f.take().iter().any(|l| l.starts_with("timing_set")));
+}
+
+/// A continuous packet whose clock is hours from the source's video (NDI
+/// Test Patterns) resets to the system clock instead of following the
+/// video's timing (#3747).
+#[test]
+fn a_moved_system_time_resets_a_continuous_packet_on_another_clock() {
+    let f = Fake::new();
+    let adjust = NOW.wrapping_sub(FAR) + 3_000_000_000;
+    f.timing_set.set(true);
+    f.timing_adjust.set(adjust);
+    f.next_audio_ts_min.set(FAR);
+    f.next_audio_sys_ts_min.set(NOW);
+    f.audio_ts.set(NOW);
+    f.last_sync_offset.set(0);
+    f.last_output_frame_ts.set(FAR + 14_191_000 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    let want = NOW.wrapping_sub(FAR);
+    let log = f.take();
+    let at = log.iter().rposition(|l| l == "timing_set=true").unwrap();
+    assert_eq!(log[at + 1], format!("adjust={want}"));
+    assert_eq!(f.timing_adjust.get(), want);
+}
+
 #[test]
 fn a_decoupled_unbuffered_source_reanchors_before_the_unlock() {
     let f = Fake::new();
@@ -667,6 +715,9 @@ impl Source for Moves {
     }
     fn async_decoupled(&self) -> bool {
         self.0.async_decoupled()
+    }
+    fn last_output_frame_ts(&self) -> u64 {
+        self.0.last_output_frame_ts()
     }
     fn compensating(&self) -> bool {
         self.0.compensating()

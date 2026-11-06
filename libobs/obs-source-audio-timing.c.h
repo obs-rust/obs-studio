@@ -144,6 +144,11 @@ void obs_source_audio_timing_under_lock(struct obs_source_audio_timing_under *t)
 /* Empties the buffer for packets that continue at system time os_time:
  * reset_audio_data_at_sys_time() starts it where they belong, at that time
  * shifted by the sync offset, as a packet placed on its own would be. */
+bool obs_source_audio_timing_follows_video(uint64_t timestamp, uint64_t video_ts)
+{
+	return !video_ts || audio_timing_diff(timestamp, video_ts) < OBS_SOURCE_AUDIO_MAX_TS_VAR;
+}
+
 uint64_t obs_source_audio_timing_buffer_start(uint64_t os_time, int64_t sync_offset, uint64_t resample_offset)
 {
 	if (os_time)

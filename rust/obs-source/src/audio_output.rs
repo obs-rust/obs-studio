@@ -121,6 +121,9 @@ pub trait Source {
     fn async_unbuffered(&self) -> bool;
     /// `source->async_decoupled`.
     fn async_decoupled(&self) -> bool;
+    /// `source->last_output_frame_ts`: the timestamp of the latest frame the
+    /// source output, 0 for none. Read under `audio_buf_mutex` (#3747).
+    fn last_output_frame_ts(&self) -> u64;
 
     /// `source->resampler != NULL && source->last_async_compensation`.
     fn compensating(&self) -> bool;
@@ -316,7 +319,10 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
         timing_adjust: source.timing_adjust(),
         next_audio_sys_ts_min: source.next_audio_sys_ts_min(),
         last_sync_offset: source.last_sync_offset(),
-        continuous: pre.continuous,
+        // a continuous packet follows the video's timing only on the
+        // video's clock (#3747)
+        continuous: pre.continuous
+            && audio_timing::follows_video(packet.timestamp, source.last_output_frame_ts()),
     });
 
     if under.reset_timing {
