@@ -57,8 +57,8 @@ static inline void obs_main_host_log_debugger(const char *str)
 		static std::mutex wide_mutex;
 
 		std::lock_guard<std::mutex> lock(wide_mutex);
-		wide_buf.reserve(wNum + 1);
-		wide_buf.resize(wNum - 1);
+		wide_buf.reserve(static_cast<size_t>(wNum + 1));
+		wide_buf.resize(static_cast<size_t>(wNum - 1));
 		MultiByteToWideChar(CP_UTF8, 0, str, -1, &wide_buf[0], wNum);
 		wide_buf.push_back('\n');
 

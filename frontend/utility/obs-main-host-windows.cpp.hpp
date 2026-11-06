@@ -56,7 +56,7 @@ static void main_crash_handler(const char *format, va_list args, void * /* param
 
 	string absolutePath = canonical(filesystem::path(pathString)).u8string();
 
-	size_t size = snprintf(nullptr, 0, CRASH_MESSAGE, absolutePath.c_str());
+	size_t size = static_cast<size_t>(snprintf(nullptr, 0, CRASH_MESSAGE, absolutePath.c_str()));
 
 	unique_ptr<char[]> message_buffer(new char[size + 1]);
 

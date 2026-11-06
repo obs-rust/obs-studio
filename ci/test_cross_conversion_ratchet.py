@@ -306,6 +306,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """Keep all macOS frontend unity groups measured on both aliases (#2625)."""
         self.assertIn("frontend-macos-cross", opted_in(source()))
 
+    def test_the_frontend_windows_slice_is_opted_in(self) -> None:
+        """Keep all six Windows frontend unity groups measured (#2625)."""
+        self.assertIn("frontend-windows-cross", opted_in(source()))
+
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
         edit that drops a marker cannot quietly take them back out of the

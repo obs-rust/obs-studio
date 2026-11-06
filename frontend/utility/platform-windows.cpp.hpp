@@ -108,7 +108,7 @@ static vector<string> GetUserPreferredLocales()
 		}
 
 		char conv[MAX_PATH] = {};
-		os_wcs_to_utf8(&*start, separator - start, conv, MAX_PATH);
+		os_wcs_to_utf8(&*start, static_cast<size_t>(separator - start), conv, MAX_PATH);
 
 		result.emplace_back(conv);
 
@@ -170,7 +170,7 @@ uint32_t GetWindowsVersion()
 		struct win_version_info ver_info;
 
 		get_win_ver(&ver_info);
-		ver = (ver_info.major << 8) | ver_info.minor;
+		ver = static_cast<uint32_t>((ver_info.major << 8) | ver_info.minor);
 	}
 
 	return ver;
@@ -184,7 +184,7 @@ uint32_t GetWindowsBuild()
 		struct win_version_info ver_info;
 
 		get_win_ver(&ver_info);
-		build = ver_info.build;
+		build = static_cast<uint32_t>(ver_info.build);
 	}
 
 	return build;
@@ -192,7 +192,7 @@ uint32_t GetWindowsBuild()
 
 bool IsAlwaysOnTop(QWidget *window)
 {
-	DWORD exStyle = GetWindowLong((HWND)window->winId(), GWL_EXSTYLE);
+	DWORD exStyle = static_cast<DWORD>(GetWindowLong((HWND)window->winId(), GWL_EXSTYLE));
 	return (exStyle & WS_EX_TOPMOST) != 0;
 }
 
@@ -815,7 +815,7 @@ const char *GetPlatformPropertiesTextSource()
 
 float GetPlatformPropertiesLabelHeight(uint32_t height)
 {
-	return height;
+	return static_cast<float>(height);
 }
 
 void AdjustPlatformYouTubeDialogSize(QWidget *dialog)
