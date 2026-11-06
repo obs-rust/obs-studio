@@ -169,6 +169,13 @@ uint32_t v4l2_busy_retry_delay_ms(uint32_t attempt)
 	return delay < RETRY_MAX_MS ? delay : RETRY_MAX_MS;
 }
 
+bool v4l2_busy_should_announce(bool was_busy, bool announced_known, bool known)
+{
+	(void)announced_known;
+	(void)known;
+	return !was_busy;
+}
+
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef FORCE_POLL_MS
 #undef RETRY_FIRST_MS

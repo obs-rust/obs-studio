@@ -15,6 +15,7 @@
 
 #include <QApplication>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPointer>
 #include <QPushButton>
 #include <QTest>
@@ -41,7 +42,10 @@ static OBSCameraBusy::Texts texts(bool can_close, bool known)
 	OBSCameraBusy::Texts t;
 	t.title = "Camera is in use";
 	t.message = "OBS cannot use the camera /dev/video0: it is in use by zoom (PID 12).";
-	t.closeIt = can_close ? "Close it" : QString();
+	t.closeIt = can_close ? "Quit zoom" : QString();
+	t.confirm = "Quit zoom (PID 12)? Unsaved work in it may be lost.";
+	t.confirmQuit = "Quit";
+	t.cancel = "Cancel";
 	t.ignore = "Ignore";
 	t.alwaysAllow = known ? "Always allow" : QString();
 	return t;
@@ -113,7 +117,7 @@ static void shows_the_callers_texts_and_three_buttons(void **)
 	assert_non_null(close_it);
 	assert_non_null(ignore);
 	assert_non_null(allow);
-	assert_true(close_it->text() == "Close it");
+	assert_true(close_it->text() == "Quit zoom");
 	assert_true(ignore->text() == "Ignore");
 	assert_true(allow->text() == "Always allow");
 	assert_true(close_it->isVisible() && ignore->isVisible() && allow->isVisible());
@@ -174,13 +178,59 @@ static void waits_for_a_click(void **)
 	assert_true(s.dialog->isVisible());
 }
 
-static void close_it_answers_once(void **)
+/* Quit ends another program: it asks first (#3726). */
+static QMessageBox *confirmation(Shown &s)
+{
+	QMessageBox *box = s.dialog->findChild<QMessageBox *>("confirmQuit");
+	assert_non_null(box);
+	assert_true(box->isVisible());
+	assert_true(box->text() == "Quit zoom (PID 12)? Unsaved work in it may be lost.");
+	return box;
+}
+
+static void click_in(QWidget *box, const char *name)
+{
+	auto *button = box->findChild<QPushButton *>(name);
+	assert_non_null(button);
+	QTest::mouseClick(button, Qt::LeftButton);
+}
+
+static void quit_asks_before_it_answers(void **)
 {
 	Shown s;
 	show(s, true, true, true);
 	click(s, "closeItButton");
 	settle(50);
+	/* Nothing is closed by the first click. */
+	assert_true(s.answers.empty());
+	assert_non_null(s.dialog.data());
+	assert_true(s.dialog->isVisible());
+	QMessageBox *box = confirmation(s);
+	assert_true(box->findChild<QPushButton *>("confirmQuitButton")->text() == "Quit");
+	assert_true(box->findChild<QPushButton *>("cancelQuitButton")->text() == "Cancel");
+
+	click_in(box, "confirmQuitButton");
+	settle(50);
 	check_one_answer(s, Answer::CloseIt);
+}
+
+static void cancelled_quit_keeps_the_warning(void **)
+{
+	Shown s;
+	show(s, true, true, true);
+	click(s, "closeItButton");
+	settle(50);
+	click_in(confirmation(s), "cancelQuitButton");
+	settle(50);
+	assert_true(s.answers.empty());
+	assert_non_null(s.dialog.data());
+	assert_true(s.dialog->isVisible());
+	assert_null(s.dialog->findChild<QMessageBox *>("confirmQuit"));
+
+	/* The warning still answers afterwards. */
+	click(s, "ignoreButton");
+	settle(50);
+	check_one_answer(s, Answer::Ignore);
 }
 
 static void ignore_answers_once(void **)
@@ -230,7 +280,8 @@ int main(int argc, char **argv)
 		cmocka_unit_test_teardown(belongs_to_the_main_window, teardown),
 		cmocka_unit_test_teardown(in_the_background_it_does_not_take_the_focus, teardown),
 		cmocka_unit_test_teardown(waits_for_a_click, teardown),
-		cmocka_unit_test_teardown(close_it_answers_once, teardown),
+		cmocka_unit_test_teardown(quit_asks_before_it_answers, teardown),
+		cmocka_unit_test_teardown(cancelled_quit_keeps_the_warning, teardown),
 		cmocka_unit_test_teardown(ignore_answers_once, teardown),
 		cmocka_unit_test_teardown(always_allow_answers_once, teardown),
 		cmocka_unit_test_teardown(escape_is_ignore, teardown),

@@ -292,6 +292,24 @@ static void retry_delay_backs_off_to_30_s(void **state)
 	assert_int_equal(v4l2_busy_retry_delay_ms(UINT32_MAX), 30000);
 }
 
+/* The holder of a busy camera was not found by the first scan (#3726: Zoom
+ * held /dev/video0, the warning said "another program"). A retry that finds
+ * it announces again so the warning can name it; nothing else re-announces. */
+static void announces_again_once_the_holder_is_known(void **state)
+{
+	(void)state;
+	/* first failure of an episode, whether the holder is known or not */
+	assert_true(v4l2_busy_should_announce(false, false, false));
+	assert_true(v4l2_busy_should_announce(false, false, true));
+	/* a retry that still cannot see the holder */
+	assert_false(v4l2_busy_should_announce(true, false, false));
+	/* a retry that finds it, after an announcement without it */
+	assert_true(v4l2_busy_should_announce(true, false, true));
+	/* already named: no repeat on every retry */
+	assert_false(v4l2_busy_should_announce(true, true, true));
+	assert_false(v4l2_busy_should_announce(true, true, false));
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -306,6 +324,7 @@ int main(void)
 		cmocka_unit_test_setup_teardown(never_signals_another_users_process, setup, teardown),
 		cmocka_unit_test_setup_teardown(never_escalates_to_sigkill, setup, teardown),
 		cmocka_unit_test(retry_delay_backs_off_to_30_s),
+		cmocka_unit_test(announces_again_once_the_holder_is_known),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

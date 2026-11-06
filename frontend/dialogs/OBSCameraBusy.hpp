@@ -29,8 +29,13 @@ public:
 	struct Texts {
 		QString title;
 		QString message;
-		/* Empty: no Close it button (no holder this user may close). */
+		/* Empty: no Quit button (no holder this user may close). */
 		QString closeIt;
+		/* The question Quit asks before it answers (#3726), and its
+		 * buttons. */
+		QString confirm;
+		QString confirmQuit;
+		QString cancel;
 		QString ignore;
 		/* Empty: no Always allow button (the holder is unknown). */
 		QString alwaysAllow;

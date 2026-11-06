@@ -75,3 +75,8 @@ enum v4l2_force_result v4l2_force_release(const char *proc_root, const char *dev
 /* Delay before the given retry (0-based) of a busy device, in ms: 2 s,
  * doubling to at most 30 s. */
 uint32_t v4l2_busy_retry_delay_ms(uint32_t attempt);
+
+/* Whether a failed open of a device announces it busy: on the first failure
+ * of a busy episode (!was_busy), and again the first time a retry finds the
+ * holder when no announcement of this episode named one (#3726). */
+bool v4l2_busy_should_announce(bool was_busy, bool announced_known, bool known);

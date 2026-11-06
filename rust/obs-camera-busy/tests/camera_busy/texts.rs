@@ -1,7 +1,8 @@
 //! The holder list and the log lines (#3724).
 
 use obs_camera_busy::{
-    Answer, Cause, Closed, Holder, Show, answer_log_line, close_log_line, holder_list, log_line,
+    Answer, Cause, Closed, Holder, Show, answer_log_line, close_log_line, closable_names, holder_list,
+    log_line,
 };
 
 fn h(pid: u32, name: &str) -> Holder {
@@ -81,5 +82,24 @@ fn answer_and_close_log_lines() {
     assert_eq!(
         close_log_line("zoom", 12, Closed::Failed),
         "[camera-busy] zoom (PID 12) could not be closed"
+    );
+}
+
+/// The Quit button names the programs it quits: only those this user may
+/// close (#3726).
+#[test]
+fn closable_names_name_only_what_quit_closes() {
+    let other = Holder {
+        pid: 7,
+        name: "pipewire".into(),
+        can_close: false,
+    };
+    assert_eq!(closable_names(&[]), "");
+    assert_eq!(closable_names(&[h(12, "zoom")]), "zoom");
+    assert_eq!(closable_names(&[h(12, "zoom"), other.clone()]), "zoom");
+    assert_eq!(closable_names(&[other]), "");
+    assert_eq!(
+        closable_names(&[h(12, "zoom"), h(40, "cheese")]),
+        "zoom, cheese"
     );
 }
