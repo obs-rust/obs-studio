@@ -185,90 +185,316 @@ impl ShaderOut for ShaderString {
     }
 }
 
+/// `strcmp(a, b) == 0` of two C strings.
+fn same_name(a: &[u8], b: &[u8]) -> bool {
+    a == b
+}
+
+/// `strref_cmp(token, name) == 0`, with `name` a C string (no NUL).
+fn token_names(text: &[u8], name: &[u8]) -> bool {
+    // strref_is_empty: no bytes, or a NUL first.
+    if text.first().is_none_or(|&b| b == 0) {
+        return name.is_empty();
+    }
+    let mut i = 0;
+    loop {
+        let c1 = text.get(i).copied().unwrap_or(0);
+        let c2 = name.get(i).copied().unwrap_or(0);
+        if c1 != c2 {
+            return false;
+        }
+        // `i++ < str1->len && *str2++`
+        if !(i < text.len() && i < name.len()) {
+            return true;
+        }
+        i += 1;
+    }
+}
+
+/// `is_whitespace` (`util/lexer.h`).
+fn is_whitespace(c: u8) -> bool {
+    matches!(c, b' ' | b'\r' | b'\t' | b'\n')
+}
+
 /// `ep_getfunc`: the first function named `name`.
 #[must_use]
 pub fn find_func(src: &ShaderSource<'_>, name: &[u8]) -> Option<usize> {
-    let _ = (src, name);
-    todo!("find_func")
+    src.funcs.iter().position(|f| same_name(name, f.name))
 }
 
 /// `ep_getparam`: the first param named `name`.
 #[must_use]
 pub fn find_param(src: &ShaderSource<'_>, name: &[u8]) -> Option<usize> {
-    let _ = (src, name);
-    todo!("find_param")
+    src.params.iter().position(|p| same_name(name, p.name))
 }
 
 /// `ep_getstruct`: the first struct named `name`.
 #[must_use]
 pub fn find_struct(src: &ShaderSource<'_>, name: &[u8]) -> Option<usize> {
-    let _ = (src, name);
-    todo!("find_struct")
+    src.structs.iter().position(|s| same_name(name, s.name))
 }
 
 /// `ep_getsampler`: the first sampler named `name`.
 #[must_use]
 pub fn find_sampler(src: &ShaderSource<'_>, name: &[u8]) -> Option<usize> {
-    let _ = (src, name);
-    todo!("find_sampler")
+    src.samplers.iter().position(|s| same_name(name, s.name))
 }
 
 /// `ep_getfunc_strref`: the first function whose name the token's text is.
 #[must_use]
 pub fn find_func_token(src: &ShaderSource<'_>, text: &[u8]) -> Option<usize> {
-    let _ = (src, text);
-    todo!("find_func_token")
+    src.funcs.iter().position(|f| token_names(text, f.name))
 }
 
 /// `ep_getparam_strref`: the first param whose name the token's text is.
 #[must_use]
 pub fn find_param_token(src: &ShaderSource<'_>, text: &[u8]) -> Option<usize> {
-    let _ = (src, text);
-    todo!("find_param_token")
+    src.params.iter().position(|p| token_names(text, p.name))
 }
 
 /// `ep_write_param`: the declaration of `params[index]`, once.
 pub fn write_param(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, index: usize) {
-    let _ = (src, out, index);
-    todo!("write_param")
+    let param = &mut src.params[index];
+    if param.written {
+        return;
+    }
+
+    if param.is_const {
+        out.cat(b"const ");
+    } else if param.is_uniform {
+        out.push_used(param.name);
+        out.cat(b"uniform ");
+    }
+
+    out.cat(param.type_name);
+    out.cat(b" ");
+    out.cat(param.name);
+
+    if param.array_count != 0 {
+        // dstr_catf("[%u]") of the int: its bits as unsigned.
+        #[allow(clippy::cast_sign_loss)]
+        let count = param.array_count as u32;
+        out.cat(format!("[{count}]").as_bytes());
+    }
+
+    out.cat(b";\n");
+
+    param.written = true;
+}
+
+/// `ep_write_func_param_deps`.
+fn write_func_param_deps(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, func: usize) {
+    let deps = src.funcs[func].param_deps.clone();
+    for name in &deps {
+        if let Some(param) = find_param(src, name) {
+            write_param(src, out, param);
+        }
+    }
+
+    if !deps.is_empty() {
+        out.cat(b"\n\n");
+    }
 }
 
 /// `ep_write_sampler`: the `sampler_state` block of `samplers[index]`,
 /// once.
 pub fn write_sampler(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, index: usize) {
-    let _ = (src, out, index);
-    todo!("write_sampler")
+    let sampler = &mut src.samplers[index];
+    if sampler.written {
+        return;
+    }
+
+    out.cat(b"sampler_state ");
+    out.cat(sampler.name);
+    out.cat(b" {");
+
+    for (i, value) in sampler.values.iter().enumerate() {
+        out.cat(b"\n\t");
+        out.cat(sampler.states.get(i).copied().unwrap_or_default());
+        out.cat(b" = ");
+        out.cat(value);
+        out.cat(b";\n");
+    }
+
+    out.cat(b"\n};\n");
+    sampler.written = true;
+}
+
+/// `ep_write_func_sampler_deps`.
+fn write_func_sampler_deps(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, func: usize) {
+    let deps = src.funcs[func].sampler_deps.clone();
+    for name in &deps {
+        if let Some(sampler) = find_sampler(src, name) {
+            write_sampler(src, out, sampler);
+            out.cat(b"\n");
+        }
+    }
 }
 
 /// `ep_write_var`: `[modifier ]type name[ : MAPPING]`.
 pub fn write_var(out: &mut impl ShaderOut, var: &WriterVar<'_>) {
-    let _ = (out, var);
-    todo!("write_var")
+    match var.var_type {
+        VarType::InOut => out.cat(b"inout "),
+        VarType::Out => out.cat(b"out "),
+        VarType::Uniform => out.cat(b"uniform "),
+        // The "in" input modifier is implied by default, so leave it blank
+        // in that case.
+        VarType::In => {}
+    }
+
+    out.cat(var.type_name);
+    out.cat(b" ");
+    out.cat(var.name);
+
+    if let Some(mapping) = var.mapping {
+        out.cat(b" : ");
+        out.cat(mapping);
+    }
 }
 
 /// `ep_write_struct`: the declaration of `structs[index]`, once.
 pub fn write_struct(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, index: usize) {
-    let _ = (src, out, index);
-    todo!("write_struct")
+    let st = &mut src.structs[index];
+    if st.written {
+        return;
+    }
+
+    out.cat(b"struct ");
+    out.cat(st.name);
+    out.cat(b" {");
+
+    for var in &st.vars {
+        out.cat(b"\n\t");
+        write_var(out, var);
+        out.cat(b";");
+    }
+
+    out.cat(b"\n};\n");
+    st.written = true;
+}
+
+/// `ep_write_func_struct_deps`.
+fn write_func_struct_deps(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, func: usize) {
+    let deps = src.funcs[func].struct_deps.clone();
+    for name in &deps {
+        let Some(st) = find_struct(src, name) else {
+            continue;
+        };
+
+        if !src.structs[st].written {
+            write_struct(src, out, st);
+            out.cat(b"\n");
+            src.structs[st].written = true;
+        }
+    }
+}
+
+/// `ep_write_func_func_deps`.
+fn write_func_func_deps(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, func: usize) {
+    let deps = src.funcs[func].func_deps.clone();
+    for name in &deps {
+        let Some(func_dep) = find_func(src, name) else {
+            continue;
+        };
+
+        if !src.funcs[func_dep].written {
+            write_func(src, out, func_dep);
+            out.cat(b"\n\n");
+        }
+    }
 }
 
 /// `ep_write_func`: `funcs[index]` after what it depends on: its params,
 /// samplers, structs and functions, each written once.
 pub fn write_func(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, index: usize) {
-    let _ = (src, out, index);
-    todo!("write_func")
+    src.funcs[index].written = true;
+
+    write_func_param_deps(src, out, index);
+    write_func_sampler_deps(src, out, index);
+    write_func_struct_deps(src, out, index);
+    write_func_func_deps(src, out, index);
+
+    /* ------------------------------------ */
+
+    let func = &src.funcs[index];
+    out.cat(func.ret_type);
+    out.cat(b" ");
+    out.cat(func.name);
+    out.cat(b"(");
+
+    for (i, var) in func.param_vars.iter().enumerate() {
+        if i != 0 {
+            out.cat(b", ");
+        }
+        write_var(out, var);
+    }
+
+    out.cat(b")\n");
+    out.cat_dstr(func.contents);
+    out.cat(b"\n");
+}
+
+/// `ep_write_main_params`: the params of `funcs[index]` that are mapped,
+/// on their own or as a struct whose first member is, as `main()`'s.
+fn write_main_params(src: &ShaderSource<'_>, out: &mut impl ShaderOut, index: usize) {
+    for var in &src.funcs[index].param_vars {
+        let mut st = None;
+        let mut mapped = var.mapping.is_some();
+
+        if !mapped {
+            st = find_struct(src, var.type_name);
+            if let Some(st) = st {
+                mapped = src.structs[st].mapped();
+            }
+        }
+
+        if mapped {
+            out.cat(var.type_name);
+            out.cat(b" ");
+            out.cat(var.name);
+
+            if st.is_none() {
+                out.cat(b" : ");
+                out.cat(var.mapping.unwrap_or_default());
+            }
+        }
+    }
 }
 
 /// `ep_write_main`: `main()` over `funcs[index]`, returning the call.
 pub fn write_main(src: &ShaderSource<'_>, out: &mut impl ShaderOut, index: usize, call_str: &[u8]) {
-    let _ = (src, out, index, call_str);
-    todo!("write_main")
+    let func = &src.funcs[index];
+    out.cat(b"\n");
+    out.cat(func.ret_type);
+    out.cat(b" main(");
+
+    write_main_params(src, out, index);
+
+    out.cat(b")");
+    if let Some(mapping) = func.mapping {
+        out.cat(b" : ");
+        out.cat(mapping);
+    }
+
+    out.cat(b"\n{\n\treturn ");
+    out.cat_dstr(call_str);
+    out.cat(b"\n}\n");
 }
 
 /// `ep_reset_written`: every `written` flag cleared.
 pub fn reset_written(src: &mut ShaderSource<'_>) {
-    let _ = (src,);
-    todo!("reset_written")
+    for param in &mut src.params {
+        param.written = false;
+    }
+    for st in &mut src.structs {
+        st.written = false;
+    }
+    for func in &mut src.funcs {
+        func.written = false;
+    }
+    for sampler in &mut src.samplers {
+        sampler.written = false;
+    }
 }
 
 /// `ep_makeshaderstring`: the shader for a pass call. `call` is `None` for
@@ -279,6 +505,34 @@ pub fn make_shader_string(
     out: &mut impl ShaderOut,
     call: Option<&[CallToken<'_>]>,
 ) {
-    let _ = (src, out, call);
-    todo!("make_shader_string")
+    let Some(call) = call else {
+        return;
+    };
+
+    let start = call
+        .iter()
+        .position(|token| !is_whitespace(token.lead))
+        .unwrap_or(call.len());
+    let Some(func_name) = call.get(start) else {
+        return;
+    };
+    if token_names(func_name.text, b"NULL") {
+        return;
+    }
+
+    let mut call_str = ShaderString::default();
+    for token in &call[start..] {
+        if let Some(param) = find_param_token(src, token.text) {
+            write_param(src, out, param);
+        }
+
+        call_str.cat(token.text);
+    }
+
+    if let Some(func) = find_func_token(src, func_name.text) {
+        write_func(src, out, func);
+        write_main(src, out, func, &call_str.text);
+    }
+
+    reset_written(src);
 }
