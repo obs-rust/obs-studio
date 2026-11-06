@@ -17,8 +17,6 @@
 
 #include "libobs/build/libobs-graphics.pch.h"
 
-typedef DARRAY(struct dstr) dstr_array_t;
-
 static inline struct ep_func *ep_getfunc(struct effect_parser *ep, const char *name)
 {
 	size_t i;
@@ -619,8 +617,8 @@ static inline void ep_reset_written(struct effect_parser *ep)
 		ep->samplers.array[i].written = false;
 }
 
-static void ep_makeshaderstring(struct effect_parser *ep, struct dstr *shader, cf_token_array_t *shader_call,
-				dstr_array_t *used_params)
+void ep_makeshaderstring(struct effect_parser *ep, struct dstr *shader, cf_token_array_t *shader_call,
+			 dstr_array_t *used_params)
 {
 	struct cf_token *token = shader_call->array;
 	struct cf_token *func_name;

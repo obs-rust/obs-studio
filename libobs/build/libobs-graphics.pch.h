@@ -22,6 +22,7 @@
 #include "graphics/effect-parser-funcs.h"
 #include "graphics/effect-parser-params.h"
 #include "graphics/effect-parser-passes.h"
+#include "graphics/effect-parser-writer.h"
 #include "graphics/effect-parser.h"
 #include "graphics/effect.h"
 
