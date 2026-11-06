@@ -739,6 +739,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/obs-qsv-test.windows+.hpp.cpp
     DEFINES OBS_QSV_HOST_DEFS="plugins/obs-qsv11/bits/windows_defs.h"
   )
+  _obs_cross_conversion_ratchet(obs-qsv-test-cross)
   _obs_cross_plugin(
     obs-ffmpeg-amf-cross
     DIR plugins/obs-ffmpeg
