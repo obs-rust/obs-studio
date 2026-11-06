@@ -34,7 +34,7 @@ static int repack_squash16(struct audio_repack *repack, const uint8_t *bsrc, uin
 		return -1;
 	}
 
-	int squash = repack->squash_count;
+	int squash = (int)repack->squash_count;
 	const __m128i *src = (const __m128i *)bsrc;
 	const __m128i *end = src + frame_count;
 	uint16_t *dst = (uint16_t *)repack->packet_buffer;
@@ -68,7 +68,7 @@ static int repack_squash_swap16(struct audio_repack *repack, const uint8_t *bsrc
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
 	}
-	int squash = repack->squash_count;
+	int squash = (int)repack->squash_count;
 	const __m128i *src = (const __m128i *)bsrc;
 	const __m128i *end = src + frame_count;
 	uint16_t *dst = (uint16_t *)repack->packet_buffer;
@@ -91,7 +91,7 @@ static int repack_squash32(struct audio_repack *repack, const uint8_t *bsrc, uin
 		return -1;
 	}
 
-	int squash = repack->squash_count;
+	int squash = (int)repack->squash_count;
 	const __m128i *src = (const __m128i *)bsrc;
 	const __m128i *end = (const __m128i *)(bsrc + (frame_count * repack->base_src_size));
 	uint32_t *dst = (uint32_t *)repack->packet_buffer;
@@ -120,7 +120,7 @@ static int repack_squash_swap32(struct audio_repack *repack, const uint8_t *bsrc
 	if (check_buffer(repack, frame_count) < 0) {
 		return -1;
 	}
-	int squash = repack->squash_count;
+	int squash = (int)repack->squash_count;
 	const __m128i *src = (const __m128i *)bsrc;
 	const __m128i *end = (const __m128i *)(bsrc + (frame_count * repack->base_src_size));
 	uint32_t *dst = (uint32_t *)repack->packet_buffer;
@@ -215,11 +215,11 @@ int audio_repack_init(struct audio_repack *repack, audio_repack_mode_t repack_mo
 	}
 	int _audio_repack_ch[9] = {2, 3, 4, 5, 6, 5, 6, 8, 8};
 	int bytes_per_sample = (bits_per_sample / 8);
-	repack->bytes_per_sample = bytes_per_sample;
-	repack->base_src_size = NUM_CHANNELS * bytes_per_sample;
-	repack->base_dst_size = _audio_repack_ch[repack_mode] * bytes_per_sample;
-	uint32_t squash_count = NUM_CHANNELS - _audio_repack_ch[repack_mode];
-	repack->pad_dst_size = squash_count * bytes_per_sample;
+	repack->bytes_per_sample = (uint32_t)bytes_per_sample;
+	repack->base_src_size = (uint32_t)(NUM_CHANNELS * bytes_per_sample);
+	repack->base_dst_size = (uint32_t)(_audio_repack_ch[repack_mode] * bytes_per_sample);
+	uint32_t squash_count = (uint32_t)(NUM_CHANNELS - _audio_repack_ch[repack_mode]);
+	repack->pad_dst_size = squash_count * (uint32_t)bytes_per_sample;
 	repack->squash_count = squash_count;
 
 #ifdef USE_SIMD
