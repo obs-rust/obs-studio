@@ -19,6 +19,9 @@ copy, so the PR that opts one in adds the marker and the pin together.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -49,6 +52,42 @@ def opted_in(text: str) -> set[str]:
 
 
 class CrossConversionRatchet(unittest.TestCase):
+    def test_dependency_headers_are_system_but_our_headers_are_not(self) -> None:
+        """Exercise the native/cross policy without downloading any SDK."""
+        root = CROSS.parents[2]
+        policy = root / "cmake" / "third-party-headers.cmake"
+        self.assertTrue(policy.is_file(), "missing third-party header policy")
+        for entry in (root / "CMakeLists.txt", CROSS):
+            self.assertIn("third-party-headers.cmake", entry.read_text(encoding="utf-8"))
+        self.assertIsNotNone(shutil.which("cmake"))
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp)
+            (fixture / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 3.28)\n'
+                'project(policy NONE)\n'
+                'add_library(sample INTERFACE)\n'
+                'target_include_directories(sample INTERFACE\n'
+                ' "${CMAKE_SOURCE_DIR}/.deps/sdk/include"\n'
+                ' "${CMAKE_SOURCE_DIR}/deps/simde"\n'
+                ' "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/deps/json11>"\n'
+                ' "${CMAKE_SOURCE_DIR}/libobs"\n'
+                ' "${CMAKE_BINARY_DIR}/generated")\n'
+                f'include("{policy.as_posix()}")\n'
+                'cmake_language(DEFER CALL file GENERATE OUTPUT "${CMAKE_BINARY_DIR}/system.txt"\n'
+                ' CONTENT "$<TARGET_PROPERTY:sample,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>")\n',
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                ["cmake", "-S", str(fixture), "-B", str(fixture / "build")],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            system = (fixture / "build/system.txt").read_text(encoding="utf-8").split(";")
+            self.assertEqual(set(system), {
+                str(fixture / ".deps/sdk/include"), str(fixture / "deps/simde"),
+                str(fixture / "deps/json11"),
+            })
+
     def test_the_helper_names_the_three_groups(self) -> None:
         body = helper_body(source())
         for group in GROUPS:
