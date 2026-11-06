@@ -833,6 +833,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES build/decklink.core+.hpp.cpp build/decklink.audio-repack+.h.c build/decklink.macos+.hpp.cpp
     INCLUDES plugins/decklink/mac/decklink-sdk plugins/decklink/hosts/macos deps/libcaption
   )
+  _obs_cross_conversion_ratchet(decklink-cross)
   # mac-virtualcam's unity groups (BUILD.md): the DAL plug-in and the output.
   _obs_cross_plugin(
     obs-dal-plugin-cross

@@ -6,7 +6,7 @@ OBSVideoFrame::OBSVideoFrame(long width, long height, BMDPixelFormat pixelFormat
 	this->width = width;
 	this->height = height;
 	this->rowBytes = width * bpp;
-	this->data = new unsigned char[width * height * bpp + 1];
+	this->data = new unsigned char[static_cast<size_t>(width * height * bpp + 1)];
 	this->pixelFormat = pixelFormat;
 }
 

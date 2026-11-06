@@ -59,7 +59,8 @@ public:
 			DeviceChangeInfo &curCB = callbacks[i];
 
 			if (curCB.callback == callback && curCB.param == param) {
-				callbacks.erase(callbacks.begin() + i);
+				callbacks.erase(callbacks.begin() +
+						static_cast<decltype(callbacks)::difference_type>(i));
 				return;
 			}
 		}
