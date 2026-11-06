@@ -125,6 +125,14 @@ class CrossConversionRatchet(unittest.TestCase):
         """The virtual microphone HAL stays measured by the cross check (#2625)."""
         self.assertIn("obs-audio-plugin-cross", opted_in(source()))
 
+    def test_the_dal_plugin_slice_is_opted_in(self) -> None:
+        """Keep the Objective-C++ DAL group measured on both macOS aliases (#2625)."""
+        self.assertIn("obs-dal-plugin-cross", opted_in(source()))
+
+    def test_the_helper_covers_objective_cxx(self) -> None:
+        """DAL is Objective-C++; a CXX-only opt-in would leave its pins active."""
+        self.assertIn("COMPILE_LANG_AND_ID:OBJCXX,Clang,AppleClang", helper_body(source()))
+
     def test_the_videotoolbox_slice_is_opted_in(self) -> None:
         """The macOS encoder stays measured by the cross check (#2625)."""
         self.assertIn("mac-videotoolbox-cross", opted_in(source()))

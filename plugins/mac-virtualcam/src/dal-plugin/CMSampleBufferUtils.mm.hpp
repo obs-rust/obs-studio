@@ -18,8 +18,8 @@ CMSampleTimingInfo CMSampleTimingInfoForTimestamp(uint64_t timestampNanos, uint3
 	// 600 is a common default in Apple's docs https://developer.apple.com/documentation/avfoundation/avmutablemovie/1390622-timescale
 	CMTimeScale scale = 600;
 	CMSampleTimingInfo timing;
-	timing.duration = CMTimeMake(fpsDenominator * scale, fpsNumerator * scale);
-	CMTime timestamp = CMTimeMake(timestampNanos, NSEC_PER_SEC);
+	timing.duration = CMTimeMake(fpsDenominator * (uint32_t)scale, (int32_t)(fpsNumerator * (uint32_t)scale));
+	CMTime timestamp = CMTimeMake((int64_t)timestampNanos, NSEC_PER_SEC);
 	timing.presentationTimeStamp = CMTimeConvertScale(timestamp, scale, kCMTimeRoundingMethod_QuickTime);
 	timing.decodeTimeStamp = kCMTimeInvalid;
 	return timing;

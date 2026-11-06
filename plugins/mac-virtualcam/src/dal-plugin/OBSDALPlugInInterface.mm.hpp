@@ -156,7 +156,7 @@ Boolean HardwarePlugIn_ObjectHasProperty(CMIOHardwarePlugInRef, CMIOObjectID obj
 		return false;
 	}
 
-	Boolean answer = [object hasPropertyWithAddress:*address];
+	Boolean answer = (Boolean)[object hasPropertyWithAddress:*address];
 
 	return answer;
 }
@@ -171,7 +171,7 @@ OSStatus HardwarePlugIn_ObjectIsPropertySettable(CMIOHardwarePlugInRef self, CMI
 		return kCMIOHardwareBadObjectError;
 	}
 
-	*isSettable = [object isPropertySettableWithAddress:*address];
+	*isSettable = (Boolean)[object isPropertySettableWithAddress:*address];
 
 	DLogFunc(@"%@(%d) %@ self=%p settable=%d", NSStringFromClass([object class]), objectID,
 		 [OBSDALObjectStore StringFromPropertySelector:address->mSelector], self, *isSettable);
