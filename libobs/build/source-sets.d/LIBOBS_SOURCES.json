@@ -174,6 +174,7 @@
   "graphics/effect-parser-funcs.h",
   "graphics/effect-parser-params.h",
   "graphics/effect-parser-passes.h",
+  "graphics/effect-parser-writer.h",
   "graphics/effect-parser.h",
   "graphics/effect.h",
   "graphics/graphics-ffmpeg-host.h",
@@ -209,6 +210,7 @@
   "build/libobs.core-output+.h.c",
   "build/libobs.core-source+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
+  "build/libobs.effect-parser-writer+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
   "build/libobs.media+.h.c"
