@@ -6,6 +6,7 @@
  * libobs (test_effect_parser_lifecycle_rust) never pulls the staticlib's own
  * copies of them, which clash with libobs's exports on Windows. */
 void *obs_graphics_bmalloc(size_t size);
+void *obs_graphics_brealloc(void *ptr, size_t size);
 void obs_graphics_bfree(void *ptr);
 void obs_graphics_log(int level, const char *line);
 void obs_graphics_effect_param_error(int which);
@@ -22,6 +23,11 @@ char *obs_graphics_cf_literal_to_str(const char *literal, size_t count);
 void *obs_graphics_bmalloc(size_t size)
 {
 	return bmalloc(size);
+}
+
+void *obs_graphics_brealloc(void *ptr, size_t size)
+{
+	return brealloc(ptr, size);
 }
 
 void obs_graphics_bfree(void *ptr)

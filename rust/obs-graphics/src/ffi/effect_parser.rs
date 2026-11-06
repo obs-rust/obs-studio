@@ -59,7 +59,7 @@
 //! it, and sets and clears the items' `written` flags where the C does. It
 //! appends to the caller's `struct dstr` as `dstr_cat`, `dstr_cat_dstr` and
 //! `dstr_catf` append (the buffer grown as `dstr_ensure_capacity` grows it,
-//! on libobs's allocator), and pushes each used param's name as a
+//! with libobs's `brealloc`), and pushes each used param's name as a
 //! `dstr_init_copy` into `used_params`. The four
 //! lookups it shares with the function parser, which `effect-parser-funcs.c`
 //! keeps in C, are the core's ports of them (the same first-match rules),
@@ -604,6 +604,14 @@ pub struct ep_func {
     pub written: bool,
 }
 
+unsafe extern "C" {
+    // libobs's brealloc, through the private C adapter
+    // (libobs/graphics/obs-graphics-adapter.c.h): dstr_ensure_capacity()
+    // grows a string with it.
+    #[link_name = "obs_graphics_brealloc"]
+    fn brealloc(ptr: *mut c_void, size: usize) -> *mut c_void;
+}
+
 /// The bytes of a C string, empty for `NULL` (the C would crash on it).
 ///
 /// # Safety
@@ -879,12 +887,12 @@ impl CallTokens for CCall {
 }
 
 /// `dstr_ensure_capacity`: the capacity doubles, or becomes `new_size`
-/// from 0 or when doubling is not enough, the old bytes moved to a new
-/// `bmalloc` buffer (as `brealloc` moves them).
+/// from 0 or when doubling is not enough, with `brealloc`.
 ///
 /// # Safety
 ///
-/// `d` is a valid `struct dstr`, its buffer (if any) from `bmalloc`.
+/// `d` is a valid `struct dstr`, its buffer (if any) from libobs's
+/// allocator.
 unsafe fn dstr_reserve(d: &mut dstr, new_size: usize) {
     if new_size <= d.capacity {
         return;
@@ -894,18 +902,8 @@ unsafe fn dstr_reserve(d: &mut dstr, new_size: usize) {
     } else {
         d.capacity.saturating_mul(2).max(new_size)
     };
-    // SAFETY: bmalloc never returns null; the old buffer holds `capacity`
-    // bytes and came from bmalloc.
-    unsafe {
-        let p = bmalloc(new_cap).cast::<c_char>();
-        if !d.array.is_null() {
-            if d.capacity != 0 {
-                ptr::copy_nonoverlapping(d.array, p, d.capacity);
-            }
-            bfree(d.array.cast());
-        }
-        d.array = p;
-    }
+    // SAFETY: brealloc keeps the old bytes and never returns null.
+    d.array = unsafe { brealloc(d.array.cast(), new_cap) }.cast();
     d.capacity = new_cap;
 }
 
