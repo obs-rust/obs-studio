@@ -15,6 +15,13 @@
     "utility/ExtraBrowsersDelegate.hpp",
     "utility/ExtraBrowsersModel.hpp"
   ],
+  "CAMERA_BUSY_RUST_HEADER": [
+    "utility/obs-camera-busy.h"
+  ],
+  "CAMERA_BUSY": [
+    "build/frontend.camera-busy+.hpp.cpp",
+    "utility/CameraBusy.hpp"
+  ],
   "FALLBACK_WARNING_RUST_HEADER": [
     "utility/obs-fallback-warning.h"
   ],
@@ -236,6 +243,8 @@
     "dialogs/OBSBasicSourceSelect.hpp",
     "dialogs/OBSBasicTransform.hpp",
     "dialogs/OBSBasicVCamConfig.hpp",
+    "build/frontend.dialogs-obscamerabusy+.hpp.cpp",
+    "dialogs/OBSCameraBusy.hpp",
     "build/frontend.dialogs-obsfallbackwarning+.hpp.cpp",
     "dialogs/OBSFallbackWarning.hpp",
     "dialogs/OBSLogViewer.hpp",

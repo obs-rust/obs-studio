@@ -15,6 +15,7 @@ workspace = true
 libloading = { workspace = true, default-features = true }
 
 [dev-dependencies]
+obs-camera-busy = { path = "../obs-camera-busy" }
 obs-fallback-warning = { path = "../obs-fallback-warning" }
 
 [lib]

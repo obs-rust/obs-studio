@@ -78,6 +78,7 @@ rust/obs-audio-controls/src/platform/mod.rs # new platform boundary for the AVX2
 rust/obs-build/build.rs
 rust/obs-build/src/platform/mod.rs
 rust/obs-c-oracle/build.rs
+rust/obs-camera-busy/src/platform/mod.rs # new crate's platform boundary (#3724)
 rust/obs-core/src/platform/mod.rs
 rust/obs-data/build.rs
 rust/obs-gpu-status/src/platform/mod.rs

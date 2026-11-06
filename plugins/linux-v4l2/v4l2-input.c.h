@@ -112,6 +112,11 @@ struct v4l2_data {
 	uint64_t busy_retry_ns;
 	uint64_t busy_check_ns;
 	bool busy_task_queued;
+
+	/* The device announced to the frontend as opened (source_device_opened,
+	 * obs-rust/obs-studio#3724), so it watches it for other programs; NULL
+	 * when none. Only v4l2_init() and v4l2_terminate() touch it. */
+	char *announced_device;
 };
 
 /* forward declarations */
@@ -1449,8 +1454,40 @@ static obs_properties_t *v4l2_properties(void *vptr)
 	return props;
 }
 
+/*
+ * Tell the frontend that this source holds / let go of its device, so the
+ * camera-busy warning watches it for other programs opening it
+ * (obs-rust/obs-studio#3724). The frontend declares the signals on the global
+ * handler; without a frontend nobody has, and the signal does nothing.
+ *
+ * void source_device_opened(ptr source, string device)
+ * void source_device_closed(ptr source, string device)
+ */
+static void v4l2_announce_device(struct v4l2_data *data, const char *signal, const char *device)
+{
+	/* No source (the C tests create one without libobs running): nobody to
+	 * tell, and obs_get_signal_handler() needs a started libobs. */
+	if (!data->source || !device)
+		return;
+	signal_handler_t *sh = obs_get_signal_handler();
+	if (!sh)
+		return;
+
+	calldata_t cd = {0};
+	calldata_set_ptr(&cd, "source", data->source);
+	calldata_set_string(&cd, "device", device);
+	signal_handler_signal(sh, signal, &cd);
+	calldata_free(&cd);
+}
+
 static void v4l2_terminate(struct v4l2_data *data)
 {
+	if (data->announced_device) {
+		v4l2_announce_device(data, "source_device_closed", data->announced_device);
+		bfree(data->announced_device);
+		data->announced_device = NULL;
+	}
+
 	if (data->thread) {
 		os_event_signal(data->event);
 		pthread_join(data->thread, NULL);
@@ -1609,6 +1646,8 @@ static void v4l2_init(struct v4l2_data *data, const char *hint)
 	if (pthread_create(&data->thread, NULL, v4l2_thread, data) != 0)
 		goto fail;
 	v4l2_busy_update(data, 0);
+	data->announced_device = bstrdup(data->device_id);
+	v4l2_announce_device(data, "source_device_opened", data->announced_device);
 	return;
 fail:;
 	int err = errno;

@@ -2,6 +2,9 @@
 
 mod backoff;
 mod busy_percent;
+// obs-camera-busy (#3724): the frontend's other Rust, same category.
+#[path = "../../../obs-camera-busy/tests/camera_busy/main.rs"]
+mod camera_busy;
 mod classify;
 mod device_cache;
 mod dxgi;

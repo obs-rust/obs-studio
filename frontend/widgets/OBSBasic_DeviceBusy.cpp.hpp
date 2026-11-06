@@ -24,12 +24,44 @@
 const char *OBSBasic::sourceDeviceBusyDecl = "void source_device_busy(ptr source, string device, string holder, "
 					     "int pid, bool is_obs, bool can_force)";
 
+/* The camera-busy warning (obs-rust/obs-studio#3724) replaces the popup below
+ * when the frontend has its Rust: every holder, Close it (SIGTERM, then
+ * SIGKILL), Ignore and Always allow, a window that belongs to the main
+ * window, and a watch for programs that open the camera while OBS has it. */
+const char *OBSBasic::sourceDeviceOpenedDecl = "void source_device_opened(ptr source, string device)";
+const char *OBSBasic::sourceDeviceClosedDecl = "void source_device_closed(ptr source, string device)";
+
+/* Called on the thread that opened the device */
+void OBSBasic::SourceDeviceOpened(void *data, calldata_t *params)
+{
+	OBSBasic *main = static_cast<OBSBasic *>(data);
+	std::string device = calldata_string(params, "device") ? calldata_string(params, "device") : "";
+	QMetaObject::invokeMethod(main, [device]() { CameraBusy::DeviceOpened(device.c_str()); }, Qt::QueuedConnection);
+}
+
+/* Called on the thread that closed the device */
+void OBSBasic::SourceDeviceClosed(void *data, calldata_t *params)
+{
+	OBSBasic *main = static_cast<OBSBasic *>(data);
+	std::string device = calldata_string(params, "device") ? calldata_string(params, "device") : "";
+	QMetaObject::invokeMethod(main, [device]() { CameraBusy::DeviceClosed(device.c_str()); }, Qt::QueuedConnection);
+}
+
+void OBSBasic::SaveCameraBusyAllowlist(void *, const char *config)
+{
+	config_set_string(App()->GetUserConfig(), "General", "CameraBusyAllowlist", config);
+	config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
+}
+
 /* Called on the thread that opened the device */
 void OBSBasic::SourceDeviceBusy(void *data, calldata_t *params)
 {
 	OBSBasic *main = static_cast<OBSBasic *>(data);
 	obs_source_t *source = static_cast<obs_source_t *>(calldata_ptr(params, "source"));
 	if (!source) {
+		return;
+	}
+	if (CameraBusy::Busy(calldata_string(params, "device"))) {
 		return;
 	}
 

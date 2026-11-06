@@ -190,6 +190,16 @@ not get a line.
   camera when it is free. *Linux*, 2026-10-15. Issue
   [#799](https://github.com/obs-rust/obs-studio/issues/799), PR
   [#800](https://github.com/obs-rust/obs-studio/pull/800).
+- **Camera-busy warning: Close it, Ignore, Always allow.** When a V4L2 camera
+  OBS uses is busy, or another program opens it while OBS has it, OBS names
+  every program holding it (app and PID) in a window of the main window and
+  waits for a click: Close it (SIGTERM, then SIGKILL after 2 s), Ignore, or
+  Always allow (never warn about that app again; kept in the user config).
+  One warning per camera and app at a time, at most once a minute after an
+  answer; each one is logged. It never takes the focus while OBS is in the
+  background. *Linux*, 2026-11-05. Issue
+  [#3724](https://github.com/obs-rust/obs-studio/issues/3724), PR
+  [#3725](https://github.com/obs-rust/obs-studio/pull/3725).
 - **Option to not restore V4L2 camera controls.** A V4L2 camera source has
   the option "Restore camera controls when the camera connects", so an
   external PTZ controller can keep control of the camera. *Linux*,

@@ -539,6 +539,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-camera-busy"
+version = "0.1.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "obs-codec"
 version = "0.1.0"
 dependencies = [
@@ -593,6 +600,7 @@ version = "0.1.0"
 name = "obs-frontend"
 version = "0.1.0"
 dependencies = [
+ "obs-camera-busy",
  "obs-fallback-warning",
  "obs-gpu-status",
 ]
@@ -602,6 +610,7 @@ name = "obs-gpu-status"
 version = "0.1.0"
 dependencies = [
  "libloading",
+ "obs-camera-busy",
  "obs-fallback-warning",
 ]
 

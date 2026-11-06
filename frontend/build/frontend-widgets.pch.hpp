@@ -64,6 +64,7 @@
 #if defined(_WIN32) || defined(WHATSNEW_ENABLED)
 #include <utility/WhatsNewInfoThread.hpp>
 #endif
+#include <utility/CameraBusy.hpp>
 #include <utility/FallbackWarning.hpp>
 #include <utility/GpuStatus.hpp>
 #include <utility/product-name.h>
