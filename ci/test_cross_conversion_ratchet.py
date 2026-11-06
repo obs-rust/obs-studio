@@ -344,8 +344,12 @@ class CrossConversionRatchet(unittest.TestCase):
         for plugin in ("linux-v4l2", "oss-audio"):
             with self.subTest(plugin=plugin):
                 text = (root / "plugins" / plugin / "CMakeLists.txt").read_text(encoding="utf-8")
+                text = re.sub(r"#[^\n]*", "", text)
+                options = re.search(rf"target_compile_options\(\s*{re.escape(plugin)}\s+(.*?)\n\)", text, re.S)
+                self.assertIsNotNone(options, f"{plugin} has no target_compile_options()")
+                assert options is not None
                 for group in GROUPS:
-                    self.assertIn(group, text)
+                    self.assertIn(group, options[1])
 
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
