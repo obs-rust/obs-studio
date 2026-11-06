@@ -134,6 +134,45 @@ int main(void)
                 for group in GROUPS:
                     self.assertIn(group, options[0])
 
+    def test_decklink_repack_sentinel_compiles_with_both_compilers(self) -> None:
+        """Compile the production enum and default return without a PCH (#2625)."""
+        root = CROSS.parents[2]
+        implementation = (root / "plugins/decklink/decklink-device-instance.cpp.hpp").read_text()
+        function = implementation.split("static inline audio_repack_mode_t ConvertRepackFormat", 1)[1]
+        function = "static inline audio_repack_mode_t ConvertRepackFormat" + function.split("\n}\n", 1)[0] + "\n}\n"
+        with tempfile.TemporaryDirectory() as directory:
+            scratch = Path(directory)
+            # audio-repack.h uses no OBS declarations; isolate its real contents.
+            (scratch / "obs.h").write_text("")
+            header = root / "plugins/decklink/audio-repack.h"
+            common = f'#include "{header}"\n'
+            c = scratch / "header.c"
+            c.write_text(common + '_Static_assert(sizeof(audio_repack_mode_t) == sizeof(int), "enum size");\n')
+            cpp = scratch / "sentinel.cpp"
+            cpp.write_text(
+                common + "#include <cassert>\n"
+                "enum speaker_layout { SPEAKERS_2POINT1, SPEAKERS_4POINT0, SPEAKERS_4POINT1, "
+                "SPEAKERS_5POINT1, SPEAKERS_7POINT1, SPEAKERS_UNKNOWN };\n" + function +
+                "int main() {\n"
+                "  for (int swap = 0; swap < 2; ++swap) {\n"
+                "    const int expected[] = {0, 1, swap ? 4 : 2, swap ? 5 : 3, swap ? 6 : 7};\n"
+                "    for (int mode = 0; mode < 5; ++mode)\n"
+                "      if (static_cast<int>(ConvertRepackFormat(static_cast<speaker_layout>(mode), swap != 0)) != expected[mode]) return 1;\n"
+                "  }\n"
+                "  return static_cast<int>(ConvertRepackFormat(SPEAKERS_UNKNOWN, false)) == -1 ? 0 : 2;\n"
+                "}\n"
+            )
+            for cc, cxx in (("gcc", "g++"), ("clang", "clang++")):
+                if not shutil.which(cc) or not shutil.which(cxx):
+                    continue
+                with self.subTest(compiler=cxx):
+                    flags = ["-I", directory, "-Werror=conversion", "-Werror=sign-conversion", "-Werror=float-conversion"]
+                    subprocess.run([cc, *flags, "-std=c11", "-fsyntax-only", str(c)], check=True, capture_output=True)
+                    binary = scratch / "sentinel"
+                    result = subprocess.run([cxx, *flags, "-std=c++17", "-DNDEBUG", "-O2", str(cpp), "-o", str(binary)], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    subprocess.run([str(binary)], check=True)
+
     def test_the_decklink_slice_is_opted_in(self) -> None:
         """Keep the DeckLink groups measured on both macOS aliases (#2625)."""
         self.assertIn("decklink-cross", opted_in(source()))
