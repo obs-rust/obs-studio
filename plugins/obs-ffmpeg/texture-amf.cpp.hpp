@@ -273,7 +273,12 @@ template<typename T> static void set_amf_property(amf_base *enc, const wchar_t *
 #define set_avc_opt(name, value) set_avc_property(enc, name, value)
 #define set_hevc_opt(name, value) set_hevc_property(enc, name, value)
 #define set_av1_opt(name, value) set_av1_property(enc, name, value)
-#define set_enum_opt(name, value) set_amf_property(enc, get_opt_name(name), get_opt_name(name##_##value))
+/* Unary + makes the existing integral promotions explicit before mixing codec enums. */
+#define set_enum_opt(name, value) \
+ set_amf_property(enc, get_opt_name(name), \
+ (enc->codec == amf_codec_type::AVC) ? +AMF_VIDEO_ENCODER_##name##_##value \
+ : (enc->codec == amf_codec_type::HEVC) ? +AMF_VIDEO_ENCODER_HEVC_##name##_##value \
+ : +AMF_VIDEO_ENCODER_AV1_##name##_##value)
 #define set_avc_enum(name, value) set_avc_property(enc, name, AMF_VIDEO_ENCODER_##name##_##value)
 #define set_hevc_enum(name, value) set_hevc_property(enc, name, AMF_VIDEO_ENCODER_HEVC_##name##_##value)
 #define set_av1_enum(name, value) set_av1_property(enc, name, AMF_VIDEO_ENCODER_AV1_##name##_##value)
@@ -646,7 +651,7 @@ static void roi_cb(void *param, obs_encoder_roi *roi)
 				continue;
 			}
 
-			rp->buf[mb_y * rp->pitch / sizeof(amf_uint32) + mb_x] = priority;
+			rp->buf[mb_y * static_cast<uint32_t>(rp->pitch) / sizeof(amf_uint32) + mb_x] = priority;
 		}
 	}
 }
@@ -666,7 +671,8 @@ static void create_roi(amf_base *enc, AMFSurface *amf_surf)
 	if (!enc->roi_map) {
 		AMFContext1Ptr context1(enc->amf_context);
 		AMF_RESULT res = context1->AllocSurfaceEx(
-			AMF_MEMORY_HOST, AMF_SURFACE_GRAY32, mb_width, mb_height,
+			AMF_MEMORY_HOST, AMF_SURFACE_GRAY32, static_cast<amf_int32>(mb_width),
+			static_cast<amf_int32>(mb_height),
 			(AMF_SURFACE_USAGE)(AMF_SURFACE_USAGE_DEFAULT | AMF_SURFACE_USAGE_LINEAR),
 			(AMF_MEMORY_CPU_ACCESS)(AMF_MEMORY_CPU_DEFAULT), &enc->roi_map);
 
@@ -681,7 +687,7 @@ static void create_roi(amf_base *enc, AMFSurface *amf_surf)
 	/* This is just following the SimpleROI example. */
 	amf_uint32 *pBuf = (amf_uint32 *)enc->roi_map->GetPlaneAt(0)->GetNative();
 	amf_int32 pitch = enc->roi_map->GetPlaneAt(0)->GetHPitch();
-	memset(pBuf, 0, pitch * mb_height);
+	memset(pBuf, 0, static_cast<uint32_t>(pitch) * mb_height);
 
 	roi_params par{mb_width, mb_height, pitch, enc->codec == amf_codec_type::AVC, pBuf};
 	obs_encoder_enum_roi(enc->encoder, roi_cb, &par);
@@ -933,8 +939,10 @@ try {
 
 	copy_frame_data(enc, buf, frame);
 
-	res = enc->amf_context->CreateSurfaceFromHostNative(enc->amf_format, enc->cx, enc->cy, enc->linesize, 0,
-							    &buf[0], &amf_surf, enc);
+	res = enc->amf_context->CreateSurfaceFromHostNative(enc->amf_format, static_cast<amf_int32>(enc->cx),
+							    static_cast<amf_int32>(enc->cy),
+							    static_cast<amf_int32>(enc->linesize), 0, &buf[0],
+							    &amf_surf, enc);
 	if (res != AMF_OK) {
 		throw amf_error("CreateSurfaceFromHostNative failed", res);
 	}
@@ -1377,11 +1385,11 @@ static bool amf_avc_update_data(amf_base *enc, int rc, int64_t bitrate, int64_t 
 			pipeline_flush = false;
 		} else if (rc == AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR ||
 			   rc == AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_HIGH_QUALITY_VBR) {
-			set_avc_property(enc, PEAK_BITRATE, bitrate * 1.5);
-			set_avc_property(enc, VBV_BUFFER_SIZE, bitrate * 1.5);
+			set_avc_property(enc, PEAK_BITRATE, static_cast<double>(bitrate) * 1.5);
+			set_avc_property(enc, VBV_BUFFER_SIZE, static_cast<double>(bitrate) * 1.5);
 		} else if (rc == AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR) {
 			int64_t framerate = enc->fps_num / enc->fps_den;
-			set_avc_property(enc, VBV_BUFFER_SIZE, (bitrate / framerate) * 1.1);
+			set_avc_property(enc, VBV_BUFFER_SIZE, static_cast<double>(bitrate / framerate) * 1.1);
 		}
 	} else {
 		set_avc_property(enc, QP_I, qp);
@@ -1414,7 +1422,7 @@ try {
 			throw amf_error("AMFComponent::Flush failed", res);
 		}
 
-		res = enc->amf_encoder->ReInit(enc->cx, enc->cy);
+		res = enc->amf_encoder->ReInit(static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy));
 		if (res != AMF_OK) {
 			throw amf_error("AMFComponent::ReInit failed", res);
 		}
@@ -1449,7 +1457,7 @@ static inline void adjust_recommended_avc_defaults(amf_base *enc, obs_data_t *se
 static void amf_set_codec_level(amf_base *enc)
 {
 	uint64_t luma_pic_size = enc->cx * enc->cy;
-	uint64_t luma_sample_rate = luma_pic_size * (enc->fps_num / enc->fps_den);
+	uint64_t luma_sample_rate = luma_pic_size * static_cast<uint64_t>(enc->fps_num / enc->fps_den);
 	std::vector<codec_level_entry> *levels;
 
 	if (enc->codec == amf_codec_type::AVC) {
@@ -1663,7 +1671,8 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 
 	const char *preset = obs_data_get_string(settings, "preset");
 
-	set_avc_property(enc, FRAMESIZE, AMFConstructSize(enc->cx, enc->cy));
+	set_avc_property(enc, FRAMESIZE,
+			 AMFConstructSize(static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy)));
 	set_avc_property(enc, USAGE, AMF_VIDEO_ENCODER_USAGE_TRANSCODING);
 	set_avc_property(enc, QUALITY_PRESET, get_avc_preset(enc, preset));
 	set_avc_property(enc, PROFILE, get_avc_profile(settings));
@@ -1678,7 +1687,7 @@ static void amf_avc_create_internal(amf_base *enc, obs_data_t *settings)
 
 	amf_avc_init(enc, settings);
 
-	res = enc->amf_encoder->Init(enc->amf_format, enc->cx, enc->cy);
+	res = enc->amf_encoder->Init(enc->amf_format, static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy));
 	if (res != AMF_OK) {
 		throw amf_error("AMFComponent::Init failed", res);
 	}
@@ -1862,11 +1871,11 @@ static bool amf_hevc_update_data(amf_base *enc, int rc, int64_t bitrate, int64_t
 			pipeline_flush = false;
 		} else if (rc == AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR ||
 			   rc == AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_HIGH_QUALITY_VBR) {
-			set_hevc_property(enc, PEAK_BITRATE, bitrate * 1.5);
-			set_hevc_property(enc, VBV_BUFFER_SIZE, bitrate * 1.5);
+			set_hevc_property(enc, PEAK_BITRATE, static_cast<double>(bitrate) * 1.5);
+			set_hevc_property(enc, VBV_BUFFER_SIZE, static_cast<double>(bitrate) * 1.5);
 		} else if (rc == AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR) {
 			int64_t framerate = enc->fps_num / enc->fps_den;
-			set_hevc_property(enc, VBV_BUFFER_SIZE, (bitrate / framerate) * 1.1);
+			set_hevc_property(enc, VBV_BUFFER_SIZE, static_cast<double>(bitrate / framerate) * 1.1);
 		}
 	} else {
 		set_hevc_property(enc, QP_I, qp);
@@ -1898,7 +1907,7 @@ try {
 			throw amf_error("AMFComponent::Flush failed", res);
 		}
 
-		res = enc->amf_encoder->ReInit(enc->cx, enc->cy);
+		res = enc->amf_encoder->ReInit(static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy));
 		if (res != AMF_OK) {
 			throw amf_error("AMFComponent::ReInit failed", res);
 		}
@@ -2060,7 +2069,8 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 	const char *preset = obs_data_get_string(settings, "preset");
 	obs_data_set_string(settings, "profile", is10bit ? "main10" : "main");
 
-	set_hevc_property(enc, FRAMESIZE, AMFConstructSize(enc->cx, enc->cy));
+	set_hevc_property(enc, FRAMESIZE,
+			  AMFConstructSize(static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy)));
 	set_hevc_property(enc, USAGE, AMF_VIDEO_ENCODER_USAGE_TRANSCODING);
 	set_hevc_property(enc, QUALITY_PRESET, get_hevc_preset(enc, preset));
 	set_hevc_property(enc, COLOR_BIT_DEPTH, is10bit ? AMF_COLOR_BIT_DEPTH_10 : AMF_COLOR_BIT_DEPTH_8);
@@ -2088,7 +2098,7 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 		md->whitePoint[0] = amf_hdr_primary(3127, 10000);
 		md->whitePoint[1] = amf_hdr_primary(329, 1000);
 		md->minMasteringLuminance = 0;
-		md->maxMasteringLuminance = amf_make_lum(hdr_nominal_peak_level);
+		md->maxMasteringLuminance = amf_make_lum(static_cast<amf_uint32>(hdr_nominal_peak_level));
 		md->maxContentLightLevel = (amf_uint16)hdr_nominal_peak_level;
 		md->maxFrameAverageLightLevel = (amf_uint16)hdr_nominal_peak_level;
 		set_hevc_property(enc, INPUT_HDR_METADATA, buf);
@@ -2096,7 +2106,7 @@ static void amf_hevc_create_internal(amf_base *enc, obs_data_t *settings)
 
 	amf_hevc_init(enc, settings);
 
-	res = enc->amf_encoder->Init(enc->amf_format, enc->cx, enc->cy);
+	res = enc->amf_encoder->Init(enc->amf_format, static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy));
 	if (res != AMF_OK) {
 		throw amf_error("AMFComponent::Init failed", res);
 	}
@@ -2290,11 +2300,11 @@ static bool amf_av1_update_data(amf_base *enc, int rc, int64_t bitrate, int64_t 
 			pipeline_flush = false;
 		} else if (rc == AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR ||
 			   rc == AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD_HIGH_QUALITY_VBR) {
-			set_av1_property(enc, PEAK_BITRATE, bitrate * 1.5);
-			set_av1_property(enc, VBV_BUFFER_SIZE, bitrate * 1.5);
+			set_av1_property(enc, PEAK_BITRATE, static_cast<double>(bitrate) * 1.5);
+			set_av1_property(enc, VBV_BUFFER_SIZE, static_cast<double>(bitrate) * 1.5);
 		} else if (rc == AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR) {
 			int64_t framerate = enc->fps_num / enc->fps_den;
-			set_av1_property(enc, VBV_BUFFER_SIZE, (bitrate / framerate) * 1.1);
+			set_av1_property(enc, VBV_BUFFER_SIZE, static_cast<double>(bitrate / framerate) * 1.1);
 		}
 	} else {
 		int64_t qp = cq_value * 4;
@@ -2328,7 +2338,7 @@ try {
 			throw amf_error("AMFComponent::Flush failed", res);
 		}
 
-		res = enc->amf_encoder->ReInit(enc->cx, enc->cy);
+		res = enc->amf_encoder->ReInit(static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy));
 		if (res != AMF_OK) {
 			throw amf_error("AMFComponent::ReInit failed", res);
 		}
@@ -2492,7 +2502,8 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 	obs_data_set_bool(settings, "screen_content_tools", enable_screen_content_tools);
 	obs_data_set_bool(settings, "palette_mode", enable_palette_mode);
 
-	set_av1_property(enc, FRAMESIZE, AMFConstructSize(enc->cx, enc->cy));
+	set_av1_property(enc, FRAMESIZE,
+			 AMFConstructSize(static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy)));
 	set_av1_property(enc, USAGE, AMF_VIDEO_ENCODER_USAGE_TRANSCODING);
 	set_av1_property(enc, ALIGNMENT_MODE, AMF_VIDEO_ENCODER_AV1_ALIGNMENT_MODE_NO_RESTRICTIONS);
 	set_av1_property(enc, QUALITY_PRESET, get_av1_preset(enc, preset));
@@ -2510,7 +2521,7 @@ static void amf_av1_create_internal(amf_base *enc, obs_data_t *settings)
 
 	amf_av1_init(enc, settings);
 
-	res = enc->amf_encoder->Init(enc->amf_format, enc->cx, enc->cy);
+	res = enc->amf_encoder->Init(enc->amf_format, static_cast<amf_int32>(enc->cx), static_cast<amf_int32>(enc->cy));
 	if (res != AMF_OK) {
 		throw amf_error("AMFComponent::Init failed", res);
 	}
