@@ -105,6 +105,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """Keep both Windows capture unity groups measured (#2625)."""
         self.assertIn("win-capture-cross", opted_in(source()))
 
+    def test_the_virtualcam_module_slice_is_opted_in(self) -> None:
+        """Keep both Windows virtual camera module unity groups measured (#2625)."""
+        self.assertIn("virtualcam-module-cross", opted_in(source()))
+
     def test_the_updater_slice_is_opted_in(self) -> None:
         """`updater-cross` is a real slice: its diagnostics are stated (#2625)."""
         self.assertIn("updater-cross", opted_in(source()))
