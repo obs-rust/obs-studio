@@ -298,6 +298,9 @@ class CrossConversionRatchet(unittest.TestCase):
     def test_the_d3d11_slice_is_opted_in(self) -> None:
         """Keep the Windows Direct3D 11 unity group measured (#2625)."""
         self.assertIn("libobs-d3d11-cross", opted_in(source()))
+    def test_the_amf_encoder_slice_is_opted_in(self) -> None:
+        """Keep the Windows AMF texture encoders measured (#2625)."""
+        self.assertIn("obs-ffmpeg-amf-cross", opted_in(source()))
 
     def test_the_frontend_macos_slice_is_opted_in(self) -> None:
         """Keep all macOS frontend unity groups measured on both aliases (#2625)."""

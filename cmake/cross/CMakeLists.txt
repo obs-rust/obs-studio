@@ -761,6 +761,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/obs-ffmpeg.amf-windows+.hpp.cpp
     INCLUDES shared/opts-parser
   )
+  _obs_cross_conversion_ratchet(obs-ffmpeg-amf-cross)
   # libobs-d3d11's unity group (BUILD.md).
   include("${OBS_SOURCE_ROOT}/cmake/common/graphics-sources.cmake")
   obs_graphics_sources(_d3d11_sources D3D11_CORE "${OBS_SOURCE_ROOT}/libobs-d3d11")
