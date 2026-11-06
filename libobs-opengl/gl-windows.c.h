@@ -578,8 +578,8 @@ extern void gl_getclientsize(const struct gs_swap_chain *swap, uint32_t *width, 
 	RECT rc;
 	if (swap) {
 		GetClientRect(swap->wi->hwnd, &rc);
-		*width = rc.right;
-		*height = rc.bottom;
+		*width = (uint32_t)rc.right;
+		*height = (uint32_t)rc.bottom;
 	} else {
 		*width = 0;
 		*height = 0;
