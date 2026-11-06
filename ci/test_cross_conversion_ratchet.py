@@ -113,6 +113,17 @@ class CrossConversionRatchet(unittest.TestCase):
         """The macOS encoder stays measured by the cross check (#2625)."""
         self.assertIn("mac-videotoolbox-cross", opted_in(source()))
 
+    def test_the_virtualcam_output_slice_is_opted_in(self) -> None:
+        """Keep the Objective-C++ camera output measured (#2625)."""
+        self.assertIn("mac-virtualcam-cross", opted_in(source()))
+
+    def test_the_helper_enables_objective_cxx_conversions(self) -> None:
+        """An Objective-C++ opt-in must enable the groups for its actual language."""
+        self.assertIn(
+            f"$<$<COMPILE_LANG_AND_ID:OBJCXX,Clang,AppleClang>:{';'.join(GROUPS)}>",
+            helper_body(source()),
+        )
+
     def test_the_network_interface_host_slice_is_opted_in_on_both_hosts(self) -> None:
         """Keep both Windows and macOS network-interface groups measured (#2625)."""
         target = "obs-outputs-net-if-host-cross"
