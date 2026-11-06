@@ -1,8 +1,8 @@
 //! The holder list and the log lines (#3724).
 
 use obs_camera_busy::{
-    Answer, Cause, Closed, Holder, Show, answer_log_line, close_log_line, closable_names, holder_list,
-    log_line,
+    Answer, Cause, Closed, Holder, Show, answer_log_line, closable_names, close_log_line,
+    holder_list, log_line,
 };
 
 fn h(pid: u32, name: &str) -> Holder {

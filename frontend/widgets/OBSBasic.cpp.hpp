@@ -1243,8 +1243,9 @@ void OBSBasic::OnFirstLoad()
 	CameraBusy::SetMainWindow(this,
 				  {QTStr("Basic.CameraBusy.Title"), QTStr("Basic.CameraBusy.Busy"),
 				   QTStr("Basic.CameraBusy.BusyUnknown"), QTStr("Basic.CameraBusy.Opened"),
-				   QTStr("Basic.CameraBusy.CloseIt"), QTStr("Basic.CameraBusy.Ignore"),
-				   QTStr("Basic.CameraBusy.AlwaysAllow")},
+				   QTStr("Basic.CameraBusy.Quit"), QTStr("Basic.CameraBusy.QuitConfirm"),
+				   QTStr("Basic.CameraBusy.QuitConfirmButton"), QTStr("Cancel"),
+				   QTStr("Basic.CameraBusy.Ignore"), QTStr("Basic.CameraBusy.AlwaysAllow")},
 				  config_get_string(App()->GetUserConfig(), "General", "CameraBusyAllowlist"),
 				  OBSBasic::SaveCameraBusyAllowlist, this);
 

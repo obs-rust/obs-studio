@@ -60,6 +60,10 @@ obs_camera_busy_holders_t *obs_camera_busy_begin(int cause, const char *device,
 /* The dialog ended with `answer`: returns whether the allowlist changed. */
 bool obs_camera_busy_end(const char *device, const obs_camera_busy_holders_t *holders, int answer, uint64_t now_ms);
 
+/* Whether a warning about `device` that could not name its holder is open. */
+bool obs_camera_busy_unknown_open(const char *device);
+/* The holders Quit closes (this user's): "zoom, cheese" */
+char *obs_camera_busy_closable_names(const obs_camera_busy_holders_t *holders);
 /* "zoom (PID 12), cheese (PID 40)" */
 char *obs_camera_busy_holder_list(const obs_camera_busy_holders_t *holders);
 char *obs_camera_busy_log_line(int cause, const char *device, const obs_camera_busy_holders_t *holders, int show);

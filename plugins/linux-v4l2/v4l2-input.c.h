@@ -106,6 +106,8 @@ struct v4l2_data {
 	pthread_mutex_t busy_mutex;
 	bool busy;
 	bool busy_holder_known;
+	/* an announcement of this busy episode named the holder (#3726) */
+	bool busy_announced_known;
 	struct v4l2_holder busy_holder;
 	uint32_t busy_attempt;
 	/* next full retry, and next check whether the holder let go */
@@ -1238,13 +1240,15 @@ static void v4l2_busy_update(struct v4l2_data *data, int err)
 	}
 	pthread_mutex_unlock(&data->busy_mutex);
 
-	if (busy && !was_busy) {
+	/* Once per busy episode, and again when a retry first finds the holder
+	 * the earlier scan could not see (#3726), not on every retry. */
+	if (busy && v4l2_busy_should_announce(was_busy, was_busy && data->busy_announced_known, known)) {
 		struct dstr text = {0};
 		v4l2_busy_describe(&text, data->device_id, known ? &holder : NULL);
 		blog(LOG_WARNING, "%s%s; retrying until it is free", text.array,
 		     known && v4l2_holder_is_obs(&holder) ? ", another OBS instance" : "");
 		dstr_free(&text);
-		/* once per busy episode, not on every retry */
+		data->busy_announced_known = known;
 		v4l2_busy_announce(data, known ? &holder : NULL);
 	}
 	if (busy != was_busy || (busy && known))

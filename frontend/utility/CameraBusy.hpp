@@ -30,7 +30,12 @@ struct Texts {
 	QString busyUnknown;
 	/* %1 the holder list, %2 device */
 	QString opened;
+	/* %1 the programs Quit closes ("Quit zoom", #3726) */
 	QString closeIt;
+	/* %1 the holder list: asked before Quit closes them */
+	QString confirm;
+	QString confirmQuit;
+	QString cancel;
 	QString ignore;
 	QString alwaysAllow;
 };

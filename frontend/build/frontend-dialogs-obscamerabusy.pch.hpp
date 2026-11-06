@@ -11,5 +11,6 @@
 #include <QCloseEvent>
 #include <QDialogButtonBox>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QVBoxLayout>

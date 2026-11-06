@@ -200,6 +200,13 @@ not get a line.
   background. *Linux*, 2026-11-05. Issue
   [#3724](https://github.com/obs-rust/obs-studio/issues/3724), PR
   [#3725](https://github.com/obs-rust/obs-studio/pull/3725).
+- **Camera-busy warning names a holder found on a retry, and Quit asks
+  first.** When the first look misses the program holding a busy camera,
+  the next retry that finds it replaces the "another program" warning with
+  one that names it (app and PID). The Close it button is now "Quit <app>"
+  ("Quit zoom") and asks for confirmation before it ends the program; it is
+  offered only for programs of the same user. *Linux*, 2026-11-06. Issue
+  [#3726](https://github.com/obs-rust/obs-studio/issues/3726).
 - **Option to not restore V4L2 camera controls.** A V4L2 camera source has
   the option "Restore camera controls when the camera connects", so an
   external PTZ controller can keep control of the camera. *Linux*,

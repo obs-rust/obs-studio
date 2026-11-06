@@ -48,6 +48,9 @@ static struct {
 	/* Waiting for the main window to be shown or restored. */
 	std::deque<Report> pending;
 	std::map<std::string, Watch> watches;
+	/* The open warnings that could not name the holder, by device: a named
+	 * one replaces it (#3726). */
+	std::map<std::string, QPointer<OBSCameraBusy>> unknown;
 	WindowFilter *filter = nullptr;
 } cb_state;
 
@@ -135,7 +138,13 @@ static void cb_open(const Report &r, const HolderList &shown)
 	} else {
 		t.message = cb_state.texts.busy.arg(device, list);
 	}
-	t.closeIt = closable ? cb_state.texts.closeIt : QString();
+	if (closable) {
+		t.closeIt = cb_state.texts.closeIt.arg(
+			QString::fromStdString(cb_take(obs_camera_busy_closable_names(shown.get()))));
+		t.confirm = cb_state.texts.confirm.arg(list);
+		t.confirmQuit = cb_state.texts.confirmQuit;
+		t.cancel = cb_state.texts.cancel;
+	}
 	t.ignore = cb_state.texts.ignore;
 	t.alwaysAllow = n ? cb_state.texts.alwaysAllow : QString();
 
@@ -154,6 +163,9 @@ static void cb_open(const Report &r, const HolderList &shown)
 			obs_camera_busy_end(r.device.c_str(), shown.get(), OBS_CAMERA_BUSY_IGNORE, cb_now_ms());
 		}
 	});
+	if (n == 0) {
+		cb_state.unknown[r.device] = dialog;
+	}
 	dialog->show();
 	if (!active) {
 		QApplication::alert(cb_state.window);
@@ -164,6 +176,8 @@ static void cb_open(const Report &r, const HolderList &shown)
 static void cb_handle(const Report &r)
 {
 	int show = OBS_CAMERA_BUSY_NO_HOLDER;
+	bool replaces = obs_camera_busy_holders_count(r.holders.get()) > 0 &&
+			obs_camera_busy_unknown_open(r.device.c_str());
 	HolderList shown =
 		cb_list(obs_camera_busy_begin(r.cause, r.device.c_str(), r.holders.get(), cb_now_ms(), &show));
 	/* OBS reopening its own camera, or a program that only probed it. */
@@ -173,6 +187,15 @@ static void cb_handle(const Report &r)
 	blog(show == OBS_CAMERA_BUSY_DIALOG ? LOG_WARNING : LOG_INFO, "%s",
 	     cb_take(obs_camera_busy_log_line(r.cause, r.device.c_str(), shown.get(), show)).c_str());
 	if (show == OBS_CAMERA_BUSY_DIALOG) {
+		/* A retry found the holder the first scan could not see: this
+		 * warning names it, so the "another program" one goes. */
+		auto it = cb_state.unknown.find(r.device);
+		if (replaces && it != cb_state.unknown.end()) {
+			if (it->second) {
+				it->second->close();
+			}
+			cb_state.unknown.erase(it);
+		}
 		cb_open(r, shown);
 	}
 }

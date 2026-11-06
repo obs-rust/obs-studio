@@ -54,6 +54,8 @@ protected:
 
 private:
 	void finish(Answer answer);
+	/* Quit: asks texts.confirm, and answers CloseIt only on its Quit. */
+	void confirmQuit(const Texts &texts);
 
 	bool done = false;
 };

@@ -284,6 +284,27 @@ pub unsafe extern "C" fn obs_camera_busy_holder_list(holders: *const Holders) ->
     owned(crate::holder_list(unsafe { list(holders) }))
 }
 
+/// [`Warnings::unknown_open`].
+///
+/// # Safety
+/// `device` is null or a NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_camera_busy_unknown_open(device: *const c_char) -> bool {
+    // SAFETY: as the caller promises.
+    let device = unsafe { text(device) };
+    with_warnings(|w| w.unknown_open(&device))
+}
+
+/// [`crate::closable_names`]; free it with [`obs_camera_busy_free`].
+///
+/// # Safety
+/// `holders` is null or a live list.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_camera_busy_closable_names(holders: *const Holders) -> *mut c_char {
+    // SAFETY: as the caller promises.
+    owned(crate::closable_names(unsafe { list(holders) }))
+}
+
 /// [`crate::log_line`]; free it with [`obs_camera_busy_free`].
 ///
 /// # Safety
