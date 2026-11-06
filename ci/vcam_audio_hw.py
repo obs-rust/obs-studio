@@ -82,10 +82,16 @@ def write_profile(root: Path, tone: Path, device: str) -> None:
 def find_input(name: str):
     import sounddevice as sd
 
-    for i, dev in enumerate(sd.query_devices()):
-        if dev["max_input_channels"] > 0 and name.lower() in dev["name"].lower():
-            return i, dev
-    return None, None
+    # On Windows the same device shows up under MME, DirectSound, WASAPI and
+    # WDM-KS; MME opens VB-Cable at 16 channels and fails, so prefer WASAPI.
+    apis = sd.query_hostapis()
+    matches = [
+        (i, dev)
+        for i, dev in enumerate(sd.query_devices())
+        if dev["max_input_channels"] > 0 and name.lower() in dev["name"].lower()
+    ]
+    matches.sort(key=lambda m: "WASAPI" not in apis[m[1]["hostapi"]]["name"])
+    return matches[0] if matches else (None, None)
 
 
 def record(name: str, seconds: float, out: Path) -> int:
