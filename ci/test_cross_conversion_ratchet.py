@@ -96,6 +96,12 @@ class CrossConversionRatchet(unittest.TestCase):
         """The macOS encoder stays measured by the cross check (#2625)."""
         self.assertIn("mac-videotoolbox-cross", opted_in(source()))
 
+    def test_the_network_interface_host_slice_is_opted_in_on_both_hosts(self) -> None:
+        """Keep both Windows and macOS network-interface groups measured (#2625)."""
+        target = "obs-outputs-net-if-host-cross"
+        self.assertIn(target, opted_in(source()))
+        self.assertEqual(source().count(f"{HELPER}({target})"), 2)
+
 
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
