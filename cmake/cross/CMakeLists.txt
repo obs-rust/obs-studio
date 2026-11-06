@@ -602,6 +602,7 @@ if(_host STREQUAL WINDOWS)
     DIR plugins/win-wasapi
     SOURCES build/win-wasapi.windows+.hpp.cpp
   )
+  _obs_cross_conversion_ratchet(win-wasapi-cross)
   _obs_cross_plugin(
     win-dshow-cross
     DIR plugins/win-dshow
