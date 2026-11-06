@@ -30,7 +30,7 @@ static inline uint64_t get_clockfreq(void)
 		have_clockfreq = true;
 	}
 
-	return clock_freq.QuadPart;
+	return (uint64_t)clock_freq.QuadPart;
 }
 
 static inline uint32_t get_winver(void)
@@ -38,7 +38,7 @@ static inline uint32_t get_winver(void)
 	if (!winver) {
 		struct win_version_info ver;
 		get_win_ver(&ver);
-		winver = (ver.major << 8) | ver.minor;
+		winver = (uint32_t)((ver.major << 8) | ver.minor);
 	}
 
 	return winver;
@@ -324,14 +324,14 @@ void os_cpu_usage_info_destroy(os_cpu_usage_info_t *info)
 bool os_sleepto_ns(uint64_t time_target)
 {
 	const uint64_t freq = get_clockfreq();
-	const LONGLONG count_target = util_mul_div64(time_target, freq, 1000000000);
+	const LONGLONG count_target = (LONGLONG)util_mul_div64(time_target, freq, 1000000000);
 
 	LARGE_INTEGER count;
 	QueryPerformanceCounter(&count);
 
 	const bool stall = count.QuadPart < count_target;
 	if (stall) {
-		const DWORD milliseconds = (DWORD)(((count_target - count.QuadPart) * 1000.0) / freq);
+		const DWORD milliseconds = (DWORD)(((double)(count_target - count.QuadPart) * 1000.0) / (double)freq);
 		if (milliseconds > 1)
 			Sleep(milliseconds - 1);
 
@@ -379,7 +379,7 @@ uint64_t os_gettime_ns(void)
 {
 	LARGE_INTEGER current_time;
 	QueryPerformanceCounter(&current_time);
-	return util_mul_div64(current_time.QuadPart, 1000000000, get_clockfreq());
+	return util_mul_div64((uint64_t)current_time.QuadPart, 1000000000, get_clockfreq());
 }
 
 /* returns [folder]\[name] on windows */
@@ -453,7 +453,7 @@ char *os_get_executable_path_ptr(const char *name)
 	dstr_replace(&path, "\\", "/");
 	slash = strrchr(path.array, '/');
 	if (slash) {
-		size_t len = slash - path.array + 1;
+		size_t len = (size_t)(slash - path.array + 1);
 		dstr_resize(&path, len);
 	}
 
@@ -607,7 +607,7 @@ static void make_globent(struct os_globent *ent, WIN32_FIND_DATA *wfd, const cha
 	if (path.array) {
 		slash = strrchr(path.array, '/');
 		if (slash)
-			dstr_resize(&path, slash + 1 - path.array);
+			dstr_resize(&path, (size_t)(slash + 1 - path.array));
 		else
 			dstr_free(&path);
 	}
@@ -1034,9 +1034,9 @@ static inline void rtl_get_ver(struct win_version_info *ver)
 		return;
 	}
 
-	ver->major = osver.dwMajorVersion;
-	ver->minor = osver.dwMinorVersion;
-	ver->build = osver.dwBuildNumber;
+	ver->major = (int)osver.dwMajorVersion;
+	ver->minor = (int)osver.dwMinorVersion;
+	ver->build = (int)osver.dwBuildNumber;
 	ver->revis = 0;
 }
 

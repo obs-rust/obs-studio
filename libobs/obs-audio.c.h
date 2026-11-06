@@ -57,7 +57,8 @@ static void push_audio_tree2(obs_source_t *parent, obs_source_t *source, void *p
 	bool present = idx != DARRAY_INVALID;
 	obs_source_t *s = present ? audio->render_order.array[idx] : source;
 
-	switch (obs_audio_render_tree(removed, present, s->info.type, s->info.output_flags, s->audio_is_duplicated)) {
+	switch (obs_audio_render_tree(removed, present, (uint32_t)s->info.type, s->info.output_flags,
+				      s->audio_is_duplicated)) {
 	case OBS_AUDIO_TREE_ADD:
 		/* First time we see this source → add to render order */
 		s = obs_source_get_ref(source);

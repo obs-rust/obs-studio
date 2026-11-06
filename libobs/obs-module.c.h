@@ -460,7 +460,8 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 
 	/* obs_module_load_rules_skip_step() names each read in turn; the type
 	 * decides whether the disabled and core module lists are read at all. */
-	while ((step = obs_module_load_rules_skip_step(step, info->type, value)) != OBS_MODULE_LOAD_RULES_SKIP_LOAD) {
+	while ((step = obs_module_load_rules_skip_step(step, (uint32_t)info->type, value)) !=
+	       OBS_MODULE_LOAD_RULES_SKIP_LOAD) {
 		switch (step) {
 		case OBS_MODULE_LOAD_RULES_SKIP_PLUGIN:
 			get_plugin_info(info->bin_path, &value);
@@ -541,7 +542,8 @@ static void load_all_callback(void *param, const struct obs_module_info2 *info)
 		 * (obs_module_load_rules_open_route()), so this is the module
 		 * that carries the type. Keeping the two in one branch also
 		 * shows the compiler the variable is set before its use. */
-		if ((route & OBS_MODULE_LOAD_RULES_CORE_CONTINUES) && obs_module_load_rules_is_core(info->type)) {
+		if ((route & OBS_MODULE_LOAD_RULES_CORE_CONTINUES) &&
+		    obs_module_load_rules_is_core((uint32_t)info->type)) {
 			disabled_module->module_type = info->type;
 			blog(LOG_WARNING, "Core module '%s' could not be opened, continuing without it", info->name);
 			return;
@@ -638,7 +640,7 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 	const char *name = obs_module_names_file_name(info->path_info.binary);
 	info->name = name;
 
-	if (!obs_module_load_rules_is_core(info->type)) {
+	if (!obs_module_load_rules_is_core((uint32_t)info->type)) {
 		blog(LOG_WARNING, "Module %s is not a core module, and must be loaded with the plugin loader.", name);
 		return false;
 	}
@@ -651,7 +653,7 @@ bool obs_is_core_module(obs_module_t *module)
 {
 	if (!module)
 		return false;
-	return obs_module_load_rules_is_core(module->module_type);
+	return obs_module_load_rules_is_core((uint32_t)module->module_type);
 }
 
 bool obs_is_legacy_module(obs_module_t *module)
@@ -660,7 +662,7 @@ bool obs_is_legacy_module(obs_module_t *module)
 		return false;
 	}
 
-	return obs_module_load_rules_is_legacy(module->module_type);
+	return obs_module_load_rules_is_legacy((uint32_t)module->module_type);
 }
 
 void obs_find_modules2(obs_find_module_callback2_t callback, void *param)

@@ -389,6 +389,10 @@ if(_host STREQUAL MACOS)
   _obs_cross_c_conversion_ratchet(libobs-cross)
   _obs_cross_c_conversion_ratchet(libobs-cross-rust-shims)
 endif()
+if(_host STREQUAL WINDOWS)
+  _obs_cross_c_conversion_ratchet(libobs-cross)
+  _obs_cross_c_conversion_ratchet(libobs-cross-rust-shims)
+endif()
 
 # The platform-only plugins, compile-only like libobs above: each one's own
 # sources with the libobs, shared/ and deps/ headers it builds against, through
