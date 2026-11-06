@@ -78,7 +78,7 @@
 	_testCardSize = NSZeroSize;
 	_fps = 0;
 	dispatch_time_t startTime = dispatch_time(DISPATCH_TIME_NOW, 0);
-	uint64_t intervalTime = (int64_t)(NSEC_PER_SEC / self.fps);
+	uint64_t intervalTime = (uint64_t)(int64_t)(NSEC_PER_SEC / self.fps);
 	dispatch_source_set_timer(_frameDispatchSource, startTime, intervalTime, 0);
 	dispatch_resume(_frameDispatchSource);
 }
@@ -226,8 +226,8 @@
 					     [NSNumber numberWithBool:YES],
 					     kCVPixelBufferCGBitmapContextCompatibilityKey, nil];
 	CVPixelBufferRef pxbuffer = NULL;
-	CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_32ARGB,
-					      (__bridge CFDictionaryRef)options, &pxbuffer);
+	CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault, (size_t)width, (size_t)height,
+					      kCVPixelFormatType_32ARGB, (__bridge CFDictionaryRef)options, &pxbuffer);
 
 	NSParameterAssert(status == kCVReturnSuccess && pxbuffer != NULL);
 
@@ -237,8 +237,8 @@
 
 	CGColorSpaceRef rgbColorSpace = CGColorSpaceCreateDeviceRGB();
 	CGContextRef context = CGBitmapContextCreate(
-		pxdata, width, height, 8, CVPixelBufferGetBytesPerRowOfPlane(pxbuffer, 0), rgbColorSpace,
-		(CGBitmapInfo)kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Big);
+		pxdata, (size_t)width, (size_t)height, 8, CVPixelBufferGetBytesPerRowOfPlane(pxbuffer, 0),
+		rgbColorSpace, (CGBitmapInfo)kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Big);
 	CFRelease(rgbColorSpace);
 	NSParameterAssert(context);
 

@@ -429,6 +429,7 @@ function(_obs_cross_conversion_ratchet target)
     PRIVATE
       "$<$<COMPILE_LANG_AND_ID:C,Clang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
       "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+      "$<$<COMPILE_LANG_AND_ID:OBJCXX,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
   )
 endfunction()
 
@@ -827,6 +828,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES build/dal-plugin.macos+.hpp.mm
     INCLUDES plugins/mac-virtualcam/src/common
   )
+  _obs_cross_conversion_ratchet(obs-dal-plugin-cross)
   target_compile_options(
     obs-dal-plugin-cross
     PRIVATE "$<$<COMPILE_LANG_AND_ID:OBJCXX,AppleClang,Clang>:-Wno-deprecated-declarations>"
