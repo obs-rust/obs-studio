@@ -931,6 +931,7 @@ _obs_cross_plugin(
   INCLUDES shared/media-playback shared/opts-parser plugins/obs-ffmpeg/hosts/${_obs_ffmpeg_net_host}
   DEFINES ENABLE_FFMPEG_LOGGING ENABLE_FFMPEG_NVENC NEW_MPEGTS_OUTPUT
 )
+_obs_cross_conversion_ratchet(obs-ffmpeg-cross)
 
 # obs-x264's unity group (BUILD.md).
 _obs_cross_plugin(

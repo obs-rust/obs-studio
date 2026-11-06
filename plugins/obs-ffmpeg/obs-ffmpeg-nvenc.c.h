@@ -253,12 +253,12 @@ static void ffnvenc_on_first_packet(void *data, AVPacket *pkt, struct darray *da
 	darray_free(da);
 #ifdef ENABLE_HEVC
 	if (enc->hevc) {
-		obs_extract_hevc_headers(pkt->data, pkt->size, (uint8_t **)&da->array, &da->num, &enc->header.array,
+		obs_extract_hevc_headers(pkt->data, (size_t)pkt->size, (uint8_t **)&da->array, &da->num, &enc->header.array,
 					 &enc->header.num, &enc->sei.array, &enc->sei.num);
 	} else
 #endif
 	{
-		obs_extract_avc_headers(pkt->data, pkt->size, (uint8_t **)&da->array, &da->num, &enc->header.array,
+		obs_extract_avc_headers(pkt->data, (size_t)pkt->size, (uint8_t **)&da->array, &da->num, &enc->header.array,
 					&enc->header.num, &enc->sei.array, &enc->sei.num);
 	}
 	da->capacity = da->num;
