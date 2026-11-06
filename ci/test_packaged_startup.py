@@ -293,7 +293,24 @@ class ProbeDependencyInstallTest(unittest.TestCase):
         text = self.WORKFLOW.read_text()
         rest = text[text.index(f"\n  {name}:\n") + 1 :]
         following = re.search(r"\n  [a-z_]+:\n", rest)
-        return rest if following is None else rest[: following.start()]
+        job = rest if following is None else rest[: following.start()]
+        if "run: uv run --no-project ci/macos_dmg_startup.py" in job:
+            # Follow the extracted runner, retaining every lockfile/order assertion.
+            import ast
+
+            runner = ast.parse((ROOT / "ci/macos_dmg_startup.py").read_text())
+            for node in ast.walk(runner):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "run"
+                ):
+                    job += "\n" + " ".join(
+                        arg.value
+                        for arg in node.args
+                        if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+                    )
+        return job
 
     def probe_lines(self, job: str) -> list[str]:
         return [

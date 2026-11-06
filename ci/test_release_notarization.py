@@ -61,6 +61,15 @@ def enabled(expression: str, os_: str, signed: bool, notarized: bool) -> bool:
 
 class ReleaseNotarizationTest(unittest.TestCase):
     def test_release_launches_both_macos_dmg_architectures_with_saved_profiles(self):
+        self.assertIn("run: uv run --no-project ci/macos_dmg_startup.py", self.workflow)
+        # Follow the extracted runner without dropping the launch/signing checks.
+        runner = ast.parse((ROOT / "ci/macos_dmg_startup.py").read_text())
+        for node in ast.walk(runner):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "run":
+                self.workflow += "\n" + " ".join(
+                    arg.value for arg in node.args
+                    if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+                )
         self.assertIn("macos_smoke:", self.workflow, "release never launches its DMGs with saved capture sources")
         self.assertIn("runner: macos-26-intel", self.workflow, "Intel DMG has no native runtime check")
         self.assertIn("name: obs-studio-rust-macos-${{ matrix.target }}", self.workflow)
