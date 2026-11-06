@@ -54,13 +54,13 @@
 //! The compile step (`effect-parser.c`) calls [`ep_makeshaderstring`] on
 //! each pass's vertex and pixel call, declared in
 //! `graphics/effect-parser-writer.h` without `EXPORT` and hidden the same
-//! way. The writer reads `ep->params`, `structs`, `funcs` and `samplers` in
-//! place (their strings, function bodies and the call's tokens borrowed,
-//! not copied), appends to the caller's `struct dstr` as `dstr_cat`,
-//! `dstr_cat_dstr` and `dstr_catf` append (the buffer grown as
-//! `dstr_ensure_capacity` grows it, on libobs's allocator), pushes each
-//! used param's name as a `dstr_init_copy` into `used_params`, and writes
-//! the `written` flags back into the items once it returns. The four
+//! way. The writer reads `ep->params`, `structs`, `funcs` and `samplers`
+//! and the call's tokens in place, one field at a time where the C reads
+//! it, and sets and clears the items' `written` flags where the C does. It
+//! appends to the caller's `struct dstr` as `dstr_cat`, `dstr_cat_dstr` and
+//! `dstr_catf` append (the buffer grown as `dstr_ensure_capacity` grows it,
+//! on libobs's allocator), and pushes each used param's name as a
+//! `dstr_init_copy` into `used_params`. The four
 //! lookups it shares with the function parser, which `effect-parser-funcs.c`
 //! keeps in C, are the core's ports of them (the same first-match rules),
 //! so the shim names no C symbol beyond the allocator adapters.
@@ -79,8 +79,7 @@ use obs_util::ffi::dstr::dstr;
 
 use crate::effect_param_types::{self, Route};
 use crate::effect_parser::writer::{
-    self, CallToken, ShaderOut, ShaderSource, VarType, WriterFunc, WriterParam, WriterSampler,
-    WriterStruct, WriterVar,
+    self, CallTokens, Deps, ShaderOut, VarType, VarsOf, WriterParser,
 };
 use crate::effect_parser::{
     self as core_blocks, INVALID_TYPE, Param, ParamTokens, Pass, ProgramToken, Sampler, Struct,
@@ -605,20 +604,6 @@ pub struct ep_func {
     pub written: bool,
 }
 
-/// The items of a darray of `T`, empty for a null array.
-///
-/// # Safety
-///
-/// `da` holds `num` initialized items of `T`, which outlive `'a` and are
-/// not written while the slice lives.
-unsafe fn items<'a, T>(da: &darray) -> &'a [T] {
-    if da.array.is_null() || da.num == 0 {
-        return &[];
-    }
-    // SAFETY: the caller's contract.
-    unsafe { core::slice::from_raw_parts(da.array.cast::<T>(), da.num) }
-}
-
 /// The bytes of a C string, empty for `NULL` (the C would crash on it).
 ///
 /// # Safety
@@ -642,136 +627,254 @@ unsafe fn c_mapping<'a>(s: *const c_char) -> Option<&'a [u8]> {
     (!s.is_null()).then(|| unsafe { c_text(s) })
 }
 
-/// The C strings of a `DARRAY(char *)`.
-///
-/// # Safety
-///
-/// `da` is a valid darray of C strings, all outliving `'a`.
-unsafe fn c_names<'a>(da: &darray) -> Vec<&'a [u8]> {
-    // SAFETY: the caller's contract.
-    unsafe { items::<*mut c_char>(da) }
-        .iter()
+/// The parser, read and written in place: each method reads the one field
+/// the C reads at that point, and the `written` flags are set in the
+/// items themselves.
+struct CParser(*mut effect_parser);
+
+impl CParser {
+    /// Item `i` of one of the parser's arrays.
+    ///
+    /// # Safety
+    ///
+    /// `da` is one of the parser's arrays of `T`, holding more than `i`
+    /// items.
+    unsafe fn item<T>(da: &darray, i: usize) -> *mut T {
         // SAFETY: the caller's contract.
-        .map(|&s| unsafe { c_text(s) })
-        .collect()
-}
+        unsafe { da.array.cast::<T>().add(i) }
+    }
 
-/// A `struct ep_var` as the writer reads it.
-///
-/// # Safety
-///
-/// As for [`c_text`], for each of its strings.
-unsafe fn var_from_c<'a>(var: &ep_var) -> WriterVar<'a> {
-    // SAFETY: the caller's contract.
-    unsafe {
-        WriterVar {
-            type_name: c_text(var.r#type),
-            name: c_text(var.name),
-            mapping: c_mapping(var.mapping),
-            var_type: match var.var_type {
-                1 => VarType::InOut,
-                2 => VarType::Out,
-                3 => VarType::Uniform,
-                _ => VarType::In,
-            },
+    fn ep(&self) -> &effect_parser {
+        // SAFETY: the shim's contract: a valid parser, which the writer
+        // reaches only through this.
+        unsafe { &*self.0 }
+    }
+
+    fn param(&self, i: usize) -> &ep_param {
+        // SAFETY: the core asks only for i < param_count().
+        unsafe { &*Self::item::<ep_param>(&self.ep().params, i) }
+    }
+
+    fn strukt(&self, i: usize) -> &ep_struct {
+        // SAFETY: the core asks only for i < struct_count().
+        unsafe { &*Self::item::<ep_struct>(&self.ep().structs, i) }
+    }
+
+    fn sampler(&self, i: usize) -> &ep_sampler {
+        // SAFETY: the core asks only for i < sampler_count().
+        unsafe { &*Self::item::<ep_sampler>(&self.ep().samplers, i) }
+    }
+
+    fn func(&self, i: usize) -> &ep_func {
+        // SAFETY: the core asks only for i < func_count().
+        unsafe { &*Self::item::<ep_func>(&self.ep().funcs, i) }
+    }
+
+    fn var(&self, of: VarsOf, j: usize) -> &ep_var {
+        let vars = match of {
+            VarsOf::Struct(i) => &self.strukt(i).vars,
+            VarsOf::Func(i) => &self.func(i).param_vars,
+        };
+        // SAFETY: the core asks only for j < var_count(of).
+        unsafe { &*Self::item::<ep_var>(vars, j) }
+    }
+
+    fn deps(&self, i: usize, deps: Deps) -> &darray {
+        let f = self.func(i);
+        match deps {
+            Deps::Funcs => &f.func_deps,
+            Deps::Structs => &f.struct_deps,
+            Deps::Params => &f.param_deps,
+            Deps::Samplers => &f.sampler_deps,
         }
+    }
+
+    /// String `j` of a `DARRAY(char *)`.
+    fn name_at(da: &darray, j: usize) -> &[u8] {
+        // SAFETY: the core asks only for j < num; each entry is a C string
+        // of the parser's.
+        unsafe { c_text(*Self::item::<*mut c_char>(da, j)) }
     }
 }
 
-/// The parser's `params`, `structs`, `funcs` and `samplers` as the writer
-/// reads them, borrowing their strings and function bodies.
-///
-/// # Safety
-///
-/// `ep` is a valid parser whose four arrays hold initialized items; their
-/// strings and bodies outlive `'a` and are not written while it lives.
-unsafe fn source_from_c<'a>(ep: &effect_parser) -> ShaderSource<'a> {
-    // SAFETY: the caller's contract, for every array and string read.
-    unsafe {
-        ShaderSource {
-            params: items::<ep_param>(&ep.params)
-                .iter()
-                .map(|p| WriterParam {
-                    type_name: c_text(p.r#type),
-                    name: c_text(p.name),
-                    is_const: p.is_const,
-                    is_uniform: p.is_uniform,
-                    array_count: p.array_count,
-                    written: p.written,
-                })
-                .collect(),
-            structs: items::<ep_struct>(&ep.structs)
-                .iter()
-                .map(|st| WriterStruct {
-                    name: c_text(st.name),
-                    vars: items::<ep_var>(&st.vars)
-                        .iter()
-                        .map(|v| var_from_c(v))
-                        .collect(),
-                    written: st.written,
-                })
-                .collect(),
-            funcs: items::<ep_func>(&ep.funcs)
-                .iter()
-                .map(|f| WriterFunc {
-                    name: c_text(f.name),
-                    ret_type: c_text(f.ret_type),
-                    mapping: c_mapping(f.mapping),
-                    contents: if f.contents.array.is_null() {
-                        &[]
-                    } else {
-                        core::slice::from_raw_parts(f.contents.array.cast::<u8>(), f.contents.len)
-                    },
-                    param_vars: items::<ep_var>(&f.param_vars)
-                        .iter()
-                        .map(|v| var_from_c(v))
-                        .collect(),
-                    func_deps: c_names(&f.func_deps),
-                    struct_deps: c_names(&f.struct_deps),
-                    param_deps: c_names(&f.param_deps),
-                    sampler_deps: c_names(&f.sampler_deps),
-                    written: f.written,
-                })
-                .collect(),
-            samplers: items::<ep_sampler>(&ep.samplers)
-                .iter()
-                .map(|sa| WriterSampler {
-                    name: c_text(sa.name),
-                    states: c_names(&sa.states),
-                    values: c_names(&sa.values),
-                    written: sa.written,
-                })
-                .collect(),
+impl WriterParser for CParser {
+    fn param_count(&self) -> usize {
+        self.ep().params.num
+    }
+    fn param_name(&self, i: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.param(i).name) }
+    }
+    fn param_type(&self, i: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.param(i).r#type) }
+    }
+    fn param_is_const(&self, i: usize) -> bool {
+        self.param(i).is_const
+    }
+    fn param_is_uniform(&self, i: usize) -> bool {
+        self.param(i).is_uniform
+    }
+    fn param_array_count(&self, i: usize) -> i32 {
+        self.param(i).array_count
+    }
+    fn param_written(&self, i: usize) -> bool {
+        self.param(i).written
+    }
+    fn set_param_written(&mut self, i: usize, written: bool) {
+        // SAFETY: i < param_count(); no reference to the item is alive.
+        unsafe { (*Self::item::<ep_param>(&(*self.0).params, i)).written = written };
+    }
+
+    fn struct_count(&self) -> usize {
+        self.ep().structs.num
+    }
+    fn struct_name(&self, i: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.strukt(i).name) }
+    }
+    fn struct_written(&self, i: usize) -> bool {
+        self.strukt(i).written
+    }
+    fn set_struct_written(&mut self, i: usize, written: bool) {
+        // SAFETY: i < struct_count(); no reference to the item is alive.
+        unsafe { (*Self::item::<ep_struct>(&(*self.0).structs, i)).written = written };
+    }
+
+    fn sampler_count(&self) -> usize {
+        self.ep().samplers.num
+    }
+    fn sampler_name(&self, i: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.sampler(i).name) }
+    }
+    fn sampler_value_count(&self, i: usize) -> usize {
+        self.sampler(i).values.num
+    }
+    fn sampler_state(&self, i: usize, j: usize) -> &[u8] {
+        let states = &self.sampler(i).states;
+        // The parser pushes a state with each value; past its states the C
+        // reads out of bounds.
+        if j >= states.num {
+            return &[];
         }
+        Self::name_at(states, j)
+    }
+    fn sampler_value(&self, i: usize, j: usize) -> &[u8] {
+        Self::name_at(&self.sampler(i).values, j)
+    }
+    fn sampler_written(&self, i: usize) -> bool {
+        self.sampler(i).written
+    }
+    fn set_sampler_written(&mut self, i: usize, written: bool) {
+        // SAFETY: i < sampler_count(); no reference to the item is alive.
+        unsafe { (*Self::item::<ep_sampler>(&(*self.0).samplers, i)).written = written };
+    }
+
+    fn func_count(&self) -> usize {
+        self.ep().funcs.num
+    }
+    fn func_name(&self, i: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.func(i).name) }
+    }
+    fn func_ret_type(&self, i: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.func(i).ret_type) }
+    }
+    fn func_mapping(&self, i: usize) -> Option<&[u8]> {
+        // SAFETY: null or a C string of the parser's.
+        unsafe { c_mapping(self.func(i).mapping) }
+    }
+    fn func_contents(&self, i: usize) -> &[u8] {
+        let contents = &self.func(i).contents;
+        if contents.array.is_null() || contents.len == 0 {
+            return &[];
+        }
+        // SAFETY: a dstr holds len bytes.
+        unsafe { core::slice::from_raw_parts(contents.array.cast::<u8>(), contents.len) }
+    }
+    fn dep_count(&self, i: usize, deps: Deps) -> usize {
+        self.deps(i, deps).num
+    }
+    fn dep(&self, i: usize, deps: Deps, k: usize) -> &[u8] {
+        Self::name_at(self.deps(i, deps), k)
+    }
+    fn func_written(&self, i: usize) -> bool {
+        self.func(i).written
+    }
+    fn set_func_written(&mut self, i: usize, written: bool) {
+        // SAFETY: i < func_count(); no reference to the item is alive.
+        unsafe { (*Self::item::<ep_func>(&(*self.0).funcs, i)).written = written };
+    }
+
+    fn var_count(&self, of: VarsOf) -> usize {
+        match of {
+            VarsOf::Struct(i) => self.strukt(i).vars.num,
+            VarsOf::Func(i) => self.func(i).param_vars.num,
+        }
+    }
+    fn var_type(&self, of: VarsOf, j: usize) -> VarType {
+        match self.var(of, j).var_type {
+            1 => VarType::InOut,
+            2 => VarType::Out,
+            3 => VarType::Uniform,
+            _ => VarType::In,
+        }
+    }
+    fn var_type_name(&self, of: VarsOf, j: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.var(of, j).r#type) }
+    }
+    fn var_name(&self, of: VarsOf, j: usize) -> &[u8] {
+        // SAFETY: a C string of the parser's.
+        unsafe { c_text(self.var(of, j).name) }
+    }
+    fn var_mapping(&self, of: VarsOf, j: usize) -> Option<&[u8]> {
+        // SAFETY: null or a C string of the parser's.
+        unsafe { c_mapping(self.var(of, j).mapping) }
     }
 }
 
-/// Writes the writer's `written` flags back into the parser's items, one
-/// for one.
-///
-/// # Safety
-///
-/// As for [`source_from_c`], with no slice of the items alive.
-unsafe fn flags_to_c(ep: *mut effect_parser, src: &ShaderSource<'_>) {
-    // SAFETY: the caller's contract: each array holds one item per entry of
-    // src's matching list, which source_from_c read from it.
-    unsafe {
-        let params = (*ep).params.array.cast::<ep_param>();
-        for (i, p) in src.params.iter().enumerate() {
-            (*params.add(i)).written = p.written;
+/// A pass call's token array, read a token at a time. The array is not
+/// null.
+struct CCall(*const darray);
+
+impl CCall {
+    fn token(&self, k: usize) -> &cf_token {
+        // SAFETY: the shim's contract: a valid token array; the core asks
+        // for token k only once every token before it was not the end, and
+        // is_end stops at num.
+        unsafe { &*(*self.0).array.cast::<cf_token>().add(k) }
+    }
+}
+
+impl CallTokens for CCall {
+    fn is_end(&self, k: usize) -> bool {
+        // SAFETY: as for token().
+        let num = unsafe { (*self.0).num };
+        // The C reads on past num until it finds the end token; the pass
+        // parser always ends a call with one.
+        k >= num || self.token(k).r#type == CFTOKEN_NONE
+    }
+
+    fn lead(&self, k: usize) -> u8 {
+        let s = &self.token(k).str;
+        if s.array.is_null() {
+            return 0;
         }
-        let structs = (*ep).structs.array.cast::<ep_struct>();
-        for (i, st) in src.structs.iter().enumerate() {
-            (*structs.add(i)).written = st.written;
+        // SAFETY: a token's str points into the lexer's text, and the C
+        // reads its first byte even when len is 0.
+        unsafe { *s.array.cast::<u8>() }
+    }
+
+    fn text(&self, k: usize) -> &[u8] {
+        let s = &self.token(k).str;
+        if s.array.is_null() || s.len == 0 {
+            return &[];
         }
-        let funcs = (*ep).funcs.array.cast::<ep_func>();
-        for (i, f) in src.funcs.iter().enumerate() {
-            (*funcs.add(i)).written = f.written;
-        }
-        let samplers = (*ep).samplers.array.cast::<ep_sampler>();
-        for (i, sa) in src.samplers.iter().enumerate() {
-            (*samplers.add(i)).written = sa.written;
-        }
+        // SAFETY: len bytes of the lexer's text.
+        unsafe { core::slice::from_raw_parts(s.array.cast::<u8>(), s.len) }
     }
 }
 
@@ -866,51 +969,19 @@ impl ShaderOut for CShader {
     }
 }
 
-/// The tokens of a pass call before its end token, as the writer reads
-/// them, or `None` for a call with no token array.
-///
-/// # Safety
-///
-/// `call` is a valid `cf_token_array_t` whose tokens' strings outlive `'a`.
-unsafe fn call_from_c<'a>(call: &darray) -> Option<Vec<CallToken<'a>>> {
-    if call.array.is_null() {
-        return None;
-    }
-    // SAFETY: the caller's contract.
-    let tokens = unsafe { items::<cf_token>(call) };
-    Some(
-        tokens
-            .iter()
-            .take_while(|token| token.r#type != CFTOKEN_NONE)
-            .map(|token| {
-                let s = &token.str;
-                if s.array.is_null() {
-                    return CallToken::default();
-                }
-                // SAFETY: a token's str is len bytes of the lexer's text, and
-                // the C reads its first byte even when len is 0.
-                unsafe {
-                    CallToken {
-                        text: core::slice::from_raw_parts(s.array.cast::<u8>(), s.len),
-                        lead: *s.array.cast::<u8>(),
-                    }
-                }
-            })
-            .collect(),
-    )
-}
-
 /// `void ep_makeshaderstring(struct effect_parser *ep, struct dstr
 /// *shader, cf_token_array_t *shader_call, dstr_array_t *used_params)`.
 ///
 /// The compile step calls it on each pass's vertex and pixel call. It
-/// appends to `shader` as the C appends, pushes a `bmalloc`'d copy of each
-/// uniform param's name it declares into `used_params` (the caller frees
-/// them), and sets and then clears the `written` flags of `ep`'s params,
-/// structs, functions and samplers, as the C does. A call with no token
-/// array, only whitespace or `NULL` changes nothing. The call's tokens are
-/// read up to its end token or its last token, whichever comes first (the
-/// C reads on past the last until it finds an end token).
+/// appends to `shader` as the C appends, pushes a copy of each uniform
+/// param's name it declares into `used_params` (the caller frees them), and
+/// sets and then clears the `written` flags of `ep`'s params, structs,
+/// functions and samplers in place, each where the C sets it. The writer
+/// reads the parser and the call one field at a time, where the C reads
+/// them: a call with no token array, only whitespace or `NULL` reads
+/// nothing of the parser and changes nothing. The call's tokens are read up
+/// to its end token or its last token, whichever comes first (the C reads
+/// on past the last until it finds an end token).
 ///
 /// # Safety
 ///
@@ -928,18 +999,11 @@ pub unsafe extern "C" fn ep_makeshaderstring(
     if ep.is_null() || shader.is_null() || shader_call.is_null() || used_params.is_null() {
         return;
     }
-    // SAFETY: the caller's contract. The model borrows only the strings,
-    // bodies and token texts, none of which the writer changes; it writes
-    // only the shader string and used_params, and the flags go back once it
-    // returns.
-    unsafe {
-        let call = call_from_c(&*shader_call);
-        let mut src = source_from_c(&*ep);
-        let mut out = CShader {
-            shader,
-            used_params,
-        };
-        writer::make_shader_string(&mut src, &mut out, call.as_deref());
-        flags_to_c(ep, &src);
-    }
+    // SAFETY: the caller's contract.
+    let call = (!unsafe { (*shader_call).array }.is_null()).then_some(CCall(shader_call));
+    let mut out = CShader {
+        shader,
+        used_params,
+    };
+    writer::make_shader_string(&mut CParser(ep), &mut out, call.as_ref());
 }

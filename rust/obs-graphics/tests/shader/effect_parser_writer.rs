@@ -23,10 +23,13 @@
 //! The `edge_*` tests add what the C test leaves out.
 
 use obs_graphics::effect_parser::writer::{
-    CallToken, ShaderOut, ShaderSource, ShaderString, VarType, WriterFunc, WriterParam,
-    WriterSampler, WriterStruct, WriterVar, find_func, find_func_token, find_param,
-    find_param_token, find_sampler, find_struct, make_shader_string,
+    CallToken, Deps, ShaderOut, ShaderSource, ShaderString, VarType, VarsOf, WriterFunc,
+    WriterParam, WriterParser, WriterSampler, WriterStruct, WriterVar, find_func, find_func_token,
+    find_param, find_param_token, find_sampler, find_struct, make_shader_string,
 };
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use VarType::{In, InOut, Out, Uniform};
 
@@ -355,7 +358,7 @@ fn edge_lead_is_the_byte_tested() {
         },
     ];
     let mut out = ShaderString::default();
-    make_shader_string(&mut src, &mut out, Some(&call));
+    make_shader_string(&mut src, &mut out, Some(&call[..]));
     assert_eq!(
         text(&out),
         "float4 PS()\n{ }\n\nfloat4 main() : TARGET\n{\n\treturn PS\n}\n"
@@ -374,7 +377,7 @@ fn edge_lead_is_the_byte_tested() {
         },
     ];
     let mut out = ShaderString::default();
-    make_shader_string(&mut src, &mut out, Some(&call));
+    make_shader_string(&mut src, &mut out, Some(&call[..]));
     assert_eq!(out, ShaderString::default());
 }
 
@@ -1905,3 +1908,299 @@ const PRESET_0: &str = concat!(
     "    used \n",
     "    written param=ViewProj,image struct=VertInOut func=sample_at,VSDefault,PSDraw sampler=def_sampler\n",
 );
+
+/// The list a recorder and its output log into, in order.
+type Log = Rc<RefCell<Vec<String>>>;
+
+/// A parser that logs every read and write of the writer, with the text it
+/// appends, in one list, so the order of the C's reads and flag writes is
+/// checked, not only the result.
+struct Recorder<'a> {
+    src: ShaderSource<'a>,
+    log: Log,
+}
+
+impl Recorder<'_> {
+    fn note(&self, what: String) {
+        self.log.borrow_mut().push(what);
+    }
+}
+
+/// The recorder's appends, into the same log.
+struct RecordedOut(Log);
+
+impl ShaderOut for RecordedOut {
+    fn cat(&mut self, piece: &[u8]) {
+        self.0
+            .borrow_mut()
+            .push(format!("cat {:?}", String::from_utf8_lossy(piece)));
+    }
+    fn cat_dstr(&mut self, piece: &[u8]) {
+        self.0
+            .borrow_mut()
+            .push(format!("cat_dstr {:?}", String::from_utf8_lossy(piece)));
+    }
+    fn push_used(&mut self, name: &[u8]) {
+        self.0
+            .borrow_mut()
+            .push(format!("used {}", String::from_utf8_lossy(name)));
+    }
+}
+macro_rules! logged {
+    ($($name:ident($($arg:ident: $ty:ty),*) -> $ret:ty;)*) => {
+        $(fn $name(&self, $($arg: $ty),*) -> $ret {
+            self.note(format!(concat!(stringify!($name), "{:?}"), ($($arg,)*)));
+            self.src.$name($($arg),*)
+        })*
+    };
+}
+
+impl WriterParser for Recorder<'_> {
+    logged! {
+        param_count() -> usize;
+        param_name(i: usize) -> &[u8];
+        param_type(i: usize) -> &[u8];
+        param_is_const(i: usize) -> bool;
+        param_is_uniform(i: usize) -> bool;
+        param_array_count(i: usize) -> i32;
+        param_written(i: usize) -> bool;
+        struct_count() -> usize;
+        struct_name(i: usize) -> &[u8];
+        struct_written(i: usize) -> bool;
+        sampler_count() -> usize;
+        sampler_name(i: usize) -> &[u8];
+        sampler_value_count(i: usize) -> usize;
+        sampler_state(i: usize, j: usize) -> &[u8];
+        sampler_value(i: usize, j: usize) -> &[u8];
+        sampler_written(i: usize) -> bool;
+        func_count() -> usize;
+        func_name(i: usize) -> &[u8];
+        func_ret_type(i: usize) -> &[u8];
+        func_mapping(i: usize) -> Option<&[u8]>;
+        func_contents(i: usize) -> &[u8];
+        dep_count(i: usize, deps: Deps) -> usize;
+        dep(i: usize, deps: Deps, k: usize) -> &[u8];
+        func_written(i: usize) -> bool;
+        var_count(of: VarsOf) -> usize;
+        var_type(of: VarsOf, j: usize) -> VarType;
+        var_type_name(of: VarsOf, j: usize) -> &[u8];
+        var_name(of: VarsOf, j: usize) -> &[u8];
+        var_mapping(of: VarsOf, j: usize) -> Option<&[u8]>;
+    }
+    fn set_param_written(&mut self, i: usize, written: bool) {
+        self.note(format!("set_param_written{:?}", (i, written)));
+        self.src.set_param_written(i, written);
+    }
+    fn set_struct_written(&mut self, i: usize, written: bool) {
+        self.note(format!("set_struct_written{:?}", (i, written)));
+        self.src.set_struct_written(i, written);
+    }
+    fn set_sampler_written(&mut self, i: usize, written: bool) {
+        self.note(format!("set_sampler_written{:?}", (i, written)));
+        self.src.set_sampler_written(i, written);
+    }
+    fn set_func_written(&mut self, i: usize, written: bool) {
+        self.note(format!("set_func_written{:?}", (i, written)));
+        self.src.set_func_written(i, written);
+    }
+}
+
+/// One call through the recorder, its log.
+fn record(src: Src, call: Option<&[&'static str]>) -> Vec<String> {
+    let call = call.map(tokens);
+    let log = Log::default();
+    let mut rec = Recorder {
+        src: src.0,
+        log: Rc::clone(&log),
+    };
+    let mut out = RecordedOut(Rc::clone(&log));
+    make_shader_string(&mut rec, &mut out, call.as_deref());
+    drop(rec);
+    log.take()
+}
+
+fn traced() -> Src {
+    let mut s = Src::default();
+    s.param(Uni, "float4", "tint", 0);
+    s.strukt("V", &[v(In, "float4", "pos", Some("POSITION"))]);
+    s.sampler("smp", &[("Filter", "Linear")]);
+    s.func(Func {
+        ret: "float4",
+        name: "PS",
+        mapping: Some("TARGET"),
+        vars: &[v(In, "V", "v", None)],
+        body: "{}",
+        funcs: &[],
+        structs: &["V"],
+        params: &["tint"],
+        samplers: &["smp"],
+    });
+    s
+}
+
+#[test]
+fn edge_calls_read_nothing() {
+    // ep_makeshaderstring() returns before it reads anything of the parser
+    // for a call with no token array, no tokens, only whitespace or NULL.
+    for call in [
+        None,
+        Some(&[][..]),
+        Some(&[" ", "\t"][..]),
+        Some(&["\n", "NULL", "(", ")"][..]),
+    ] {
+        assert_eq!(record(traced(), call), Vec::<String>::new(), "{call:?}");
+    }
+}
+
+/// What the writer reads and writes for `traced()` and `PS(v)`.
+const TRACE: &[&str] = &[
+    "param_count()",
+    "param_name(0,)",
+    "param_count()",
+    "param_name(0,)",
+    "param_count()",
+    "param_name(0,)",
+    "param_count()",
+    "param_name(0,)",
+    "func_count()",
+    "func_name(0,)",
+    "set_func_written(0, true)",
+    "dep_count(0, Params)",
+    "dep(0, Params, 0)",
+    "param_count()",
+    "param_name(0,)",
+    "param_written(0,)",
+    "param_is_const(0,)",
+    "param_is_uniform(0,)",
+    "param_name(0,)",
+    "used tint",
+    "cat \"uniform \"",
+    "param_type(0,)",
+    "cat \"float4\"",
+    "cat \" \"",
+    "param_name(0,)",
+    "cat \"tint\"",
+    "param_array_count(0,)",
+    "cat \";\\n\"",
+    "set_param_written(0, true)",
+    "dep_count(0, Params)",
+    "dep_count(0, Params)",
+    "cat \"\\n\\n\"",
+    "dep_count(0, Samplers)",
+    "dep(0, Samplers, 0)",
+    "sampler_count()",
+    "sampler_name(0,)",
+    "sampler_written(0,)",
+    "cat \"sampler_state \"",
+    "sampler_name(0,)",
+    "cat \"smp\"",
+    "cat \" {\"",
+    "sampler_value_count(0,)",
+    "cat \"\\n\\t\"",
+    "sampler_state(0, 0)",
+    "cat \"Filter\"",
+    "cat \" = \"",
+    "sampler_value(0, 0)",
+    "cat \"Linear\"",
+    "cat \";\\n\"",
+    "sampler_value_count(0,)",
+    "cat \"\\n};\\n\"",
+    "set_sampler_written(0, true)",
+    "cat \"\\n\"",
+    "dep_count(0, Samplers)",
+    "dep_count(0, Structs)",
+    "dep(0, Structs, 0)",
+    "struct_count()",
+    "struct_name(0,)",
+    "struct_written(0,)",
+    "struct_written(0,)",
+    "cat \"struct \"",
+    "struct_name(0,)",
+    "cat \"V\"",
+    "cat \" {\"",
+    "var_count(Struct(0),)",
+    "cat \"\\n\\t\"",
+    "var_type(Struct(0), 0)",
+    "var_type_name(Struct(0), 0)",
+    "cat \"float4\"",
+    "cat \" \"",
+    "var_name(Struct(0), 0)",
+    "cat \"pos\"",
+    "var_mapping(Struct(0), 0)",
+    "cat \" : \"",
+    "cat \"POSITION\"",
+    "cat \";\"",
+    "var_count(Struct(0),)",
+    "cat \"\\n};\\n\"",
+    "set_struct_written(0, true)",
+    "cat \"\\n\"",
+    "set_struct_written(0, true)",
+    "dep_count(0, Structs)",
+    "dep_count(0, Funcs)",
+    "func_ret_type(0,)",
+    "cat \"float4\"",
+    "cat \" \"",
+    "func_name(0,)",
+    "cat \"PS\"",
+    "cat \"(\"",
+    "var_count(Func(0),)",
+    "var_type(Func(0), 0)",
+    "var_type_name(Func(0), 0)",
+    "cat \"V\"",
+    "cat \" \"",
+    "var_name(Func(0), 0)",
+    "cat \"v\"",
+    "var_mapping(Func(0), 0)",
+    "var_count(Func(0),)",
+    "cat \")\\n\"",
+    "func_contents(0,)",
+    "cat_dstr \"{}\"",
+    "cat \"\\n\"",
+    "cat \"\\n\"",
+    "func_ret_type(0,)",
+    "cat \"float4\"",
+    "cat \" main(\"",
+    "var_count(Func(0),)",
+    "var_mapping(Func(0), 0)",
+    "var_type_name(Func(0), 0)",
+    "struct_count()",
+    "struct_name(0,)",
+    "var_count(Struct(0),)",
+    "var_mapping(Struct(0), 0)",
+    "var_type_name(Func(0), 0)",
+    "cat \"V\"",
+    "cat \" \"",
+    "var_name(Func(0), 0)",
+    "cat \"v\"",
+    "var_count(Func(0),)",
+    "cat \")\"",
+    "func_mapping(0,)",
+    "cat \" : \"",
+    "cat \"TARGET\"",
+    "cat \"\\n{\\n\\treturn \"",
+    "cat_dstr \"PS(v)\"",
+    "cat \"\\n}\\n\"",
+    "param_count()",
+    "set_param_written(0, false)",
+    "param_count()",
+    "struct_count()",
+    "set_struct_written(0, false)",
+    "struct_count()",
+    "func_count()",
+    "set_func_written(0, false)",
+    "func_count()",
+    "sampler_count()",
+    "set_sampler_written(0, false)",
+    "sampler_count()",
+];
+
+#[test]
+fn edge_reads_in_c_order() {
+    // Every read of the parser and every written flag set, with the text,
+    // in the C's order: each loop bound read on each pass, a flag tested
+    // before its item is read and set right after it is written, a
+    // function marked written before its dependencies, the struct
+    // dependency's written flag tested twice and set twice, and the
+    // flags cleared one collection at a time at the end.
+    assert_eq!(record(traced(), Some(&["PS", "(", "v", ")"])), TRACE);
+}
