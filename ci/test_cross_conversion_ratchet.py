@@ -119,6 +119,18 @@ int main(void)
                     self.assertEqual(result.returncode, 0, result.stderr)
                     subprocess.run([str(exe)], check=True, timeout=10)
 
+    def test_the_native_decklink_slice_covers_c_and_cxx(self) -> None:
+        """The native DeckLink C++ inputs must share the C opt-in (#2625)."""
+        text = (CROSS.parents[2] / "plugins/decklink/CMakeLists.txt").read_text()
+        text = re.sub(r"#[^\n]*", "", text)
+        blocks = re.findall(r"target_compile_options\(\s*decklink\s+PRIVATE\s+([^)]*)\)", text, re.S)
+        for language in ("C", "CXX"):
+            with self.subTest(language=language):
+                options = [block for block in blocks if f"COMPILE_LANG_AND_ID:{language},GNU,Clang,AppleClang>" in block]
+                self.assertEqual(len(options), 1)
+                for group in GROUPS:
+                    self.assertIn(group, options[0])
+
     def test_the_decklink_slice_is_opted_in(self) -> None:
         """Keep the DeckLink groups measured on both macOS aliases (#2625)."""
         self.assertIn("decklink-cross", opted_in(source()))
