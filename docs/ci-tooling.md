@@ -230,6 +230,11 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
   - Writable caches are named volumes the next run reattaches: `/build` per checkout; soldr's LLVM and SDKs and the prebuilt deps shared.
   - `--clean` starts the build volume over.
 - **Warnings** are reported; `-DOBS_CROSS_WERROR=ON` makes them errors.
+  The [dependency warning boundary](../BUILD.md#dependency-warning-boundary-decision-of-2026-11-06-2625)
+  exempts third-party headers through SYSTEM includes while keeping OBS headers
+  and source strict. `ci/test_cross_conversion_ratchet.py` enforces it in
+  `ci.yml`'s required `Format 🔍 / checks` job (`ci/ Self-Tests 🧪`), not in the
+  external `zackees/ci.yml` repository. No additional workflow step is needed.
 - **Getting soldr:** `cmake/common/soldr.cmake` uses soldr from `PATH`, or downloads the version CI pins and checks its SHA256 (`ci/test_soldr_pin.py` keeps that pin equal to the workflows').
 - **Finding the toolchain:** `cmake/common/soldr.cmake` asks soldr for it (`soldr cc --target <triple> --print-cc/--print-cxx/--print-linker/--print-sysroot/--print-ar/--print-rc`), so a soldr layout change no longer breaks the check (`ci/test_soldr_cross_toolchain.py`).
 - **In PR CI:** the `Cross Compile 🧰` job in `build-project.yaml` runs it, compile-only, for the aliases `ci/ci_scope.py` selects (`cross_targets`).

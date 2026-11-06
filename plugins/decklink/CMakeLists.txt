@@ -24,6 +24,14 @@ target_include_directories(
     "$<$<PLATFORM_ID:Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/hosts/macos>"
     "$<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:${CMAKE_CURRENT_SOURCE_DIR}/hosts/linux>"
 )
+target_include_directories(
+  decklink-sdk
+  SYSTEM
+  INTERFACE
+    "$<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/win/decklink-sdk>"
+    "$<$<PLATFORM_ID:Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/mac/decklink-sdk>"
+    "$<$<PLATFORM_ID:Linux,FreeBSD,OpenBSD>:${CMAKE_CURRENT_SOURCE_DIR}/linux/decklink-sdk>"
+)
 
 target_sources(
   decklink-sdk

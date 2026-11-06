@@ -22,7 +22,7 @@
 #include "util/windows/win-registry.h"
 #include "util/windows/win-version.h"
 
-#include "deps/w32-pthreads/pthread.h"
+#include <pthread.h>
 
 /* util/platform-file-host-windows.c, util/profiler-io-host-windows.c */
 #include <stdio.h>

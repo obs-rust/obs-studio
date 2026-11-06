@@ -100,6 +100,10 @@ function(_obs_cross_dependencies)
   set(OBS_CROSS_QT "${dependencies_dir}/obs-deps-qt6-${version}-${arch}" PARENT_SCOPE)
 endfunction()
 _obs_cross_dependencies()
+include("${OBS_SOURCE_ROOT}/cmake/third-party-headers.cmake")
+if(_host STREQUAL WINDOWS)
+  set(_obs_cross_pthread_include "${OBS_SOURCE_ROOT}/deps/w32-pthreads")
+endif()
 if(NOT EXISTS "${OBS_CROSS_DEPS}/include")
   message(FATAL_ERROR "Prebuilt dependencies for ${OBS_CROSS_TARGET} missing: ${OBS_CROSS_DEPS}/include")
 endif()
@@ -141,7 +145,7 @@ function(_obs_cross_object_library name)
       "${CMAKE_BINARY_DIR}/config"
       "${OBS_SOURCE_ROOT}/deps/libcaption"
       "${OBS_CROSS_DEPS}/include"
-      $<$<STREQUAL:${_host},WINDOWS>:${OBS_SOURCE_ROOT}/deps/w32-pthreads>
+      ${_obs_cross_pthread_include}
   )
   target_compile_definitions(
     ${name}
@@ -378,7 +382,7 @@ function(_obs_cross_plugin name)
       "${OBS_SOURCE_ROOT}/libobs"
       "${CMAKE_BINARY_DIR}/config"
       "${OBS_CROSS_DEPS}/include"
-      $<$<STREQUAL:${_host},WINDOWS>:${OBS_SOURCE_ROOT}/deps/w32-pthreads>
+      ${_obs_cross_pthread_include}
   )
   target_compile_definitions(
     ${name}
@@ -547,7 +551,7 @@ function(_obs_cross_frontend name)
     PRIVATE "${CMAKE_BINARY_DIR}/frontend-ui" "${CMAKE_BINARY_DIR}/frontend" ${qt_includes}
   )
   if(_host STREQUAL MACOS)
-    target_compile_options(${name} PRIVATE "-F${OBS_CROSS_QT}/lib")
+    target_compile_options(${name} PRIVATE "SHELL:-iframework ${OBS_CROSS_QT}/lib")
   endif()
   add_dependencies(${name} frontend-ui-cross)
 endfunction()
