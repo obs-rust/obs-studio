@@ -309,11 +309,11 @@ bool properties_update_config(OBSAVCapture *capture, obs_properties_t *propertie
             if ([selectedFormatString isEqualToString:internalRepresentation]) {
                 for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
                     struct media_frames_per_second min_fps = {
-                        .numerator = (uint32_t) clamp_Uint(range.maxFrameDuration.timescale, 0, UINT32_MAX),
-                        .denominator = (uint32_t) clamp_Uint(range.maxFrameDuration.value, 0, UINT32_MAX)};
+                        .numerator = (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.timescale, 0, UINT32_MAX),
+                        .denominator = (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.value, 0, UINT32_MAX)};
                     struct media_frames_per_second max_fps = {
-                        .numerator = (uint32_t) clamp_Uint(range.minFrameDuration.timescale, 0, UINT32_MAX),
-                        .denominator = (uint32_t) clamp_Uint(range.minFrameDuration.value, 0, UINT32_MAX)};
+                        .numerator = (uint32_t) clamp_Uint((UInt64) range.minFrameDuration.timescale, 0, UINT32_MAX),
+                        .denominator = (uint32_t) clamp_Uint((UInt64) range.minFrameDuration.value, 0, UINT32_MAX)};
 
                     if (![frameRates containsObject:range]) {
                         obs_property_frame_rate_fps_range_add(prop_framerate, min_fps, max_fps);
