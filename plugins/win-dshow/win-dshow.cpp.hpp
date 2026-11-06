@@ -530,8 +530,8 @@ void DShowInput::OnVideoData(const VideoConfig &config, unsigned char *data, siz
 	const int cy_abs = config.cy_abs;
 
 	frame.timestamp = (uint64_t)startTime * 100;
-	frame.width = config.cx;
-	frame.height = cy_abs;
+	frame.width = static_cast<uint32_t>(config.cx);
+	frame.height = static_cast<uint32_t>(cy_abs);
 	frame.format = ConvertVideoFormat(config.format);
 	frame.flip = flip;
 	frame.flags = OBS_SOURCE_FRAME_LINEAR_ALPHA;
@@ -546,44 +546,44 @@ void DShowInput::OnVideoData(const VideoConfig &config, unsigned char *data, siz
 
 	if (videoConfig.format == VideoFormat::XRGB || videoConfig.format == VideoFormat::ARGB) {
 		frame.data[0] = data;
-		frame.linesize[0] = cx * 4;
+		frame.linesize[0] = static_cast<uint32_t>(cx * 4);
 
 	} else if (videoConfig.format == VideoFormat::YVYU || videoConfig.format == VideoFormat::YUY2 ||
 		   videoConfig.format == VideoFormat::HDYC || videoConfig.format == VideoFormat::UYVY) {
 		frame.data[0] = data;
-		frame.linesize[0] = cx * 2;
+		frame.linesize[0] = static_cast<uint32_t>(cx * 2);
 
 	} else if (videoConfig.format == VideoFormat::I420) {
 		frame.data[0] = data;
 		frame.data[1] = frame.data[0] + (cx * cy_abs);
 		frame.data[2] = frame.data[1] + (cx * cy_abs / 4);
-		frame.linesize[0] = cx;
-		frame.linesize[1] = cx / 2;
-		frame.linesize[2] = cx / 2;
+		frame.linesize[0] = static_cast<uint32_t>(cx);
+		frame.linesize[1] = static_cast<uint32_t>(cx / 2);
+		frame.linesize[2] = static_cast<uint32_t>(cx / 2);
 
 	} else if (videoConfig.format == VideoFormat::YV12) {
 		frame.data[0] = data;
 		frame.data[2] = frame.data[0] + (cx * cy_abs);
 		frame.data[1] = frame.data[2] + (cx * cy_abs / 4);
-		frame.linesize[0] = cx;
-		frame.linesize[1] = cx / 2;
-		frame.linesize[2] = cx / 2;
+		frame.linesize[0] = static_cast<uint32_t>(cx);
+		frame.linesize[1] = static_cast<uint32_t>(cx / 2);
+		frame.linesize[2] = static_cast<uint32_t>(cx / 2);
 
 	} else if (videoConfig.format == VideoFormat::NV12) {
 		frame.data[0] = data;
 		frame.data[1] = frame.data[0] + (cx * cy_abs);
-		frame.linesize[0] = cx;
-		frame.linesize[1] = cx;
+		frame.linesize[0] = static_cast<uint32_t>(cx);
+		frame.linesize[1] = static_cast<uint32_t>(cx);
 
 	} else if (videoConfig.format == VideoFormat::Y800) {
 		frame.data[0] = data;
-		frame.linesize[0] = cx;
+		frame.linesize[0] = static_cast<uint32_t>(cx);
 
 	} else if (videoConfig.format == VideoFormat::P010) {
 		frame.data[0] = data;
 		frame.data[1] = frame.data[0] + (cx * cy_abs) * 2;
-		frame.linesize[0] = cx * 2;
-		frame.linesize[1] = cx * 2;
+		frame.linesize[0] = static_cast<uint32_t>(cx * 2);
+		frame.linesize[1] = static_cast<uint32_t>(cx * 2);
 
 	} else {
 		/* TODO: other formats */
@@ -1257,7 +1257,8 @@ static void InsertResolution(vector<Resolution> &resolutions, int cx, int cy)
 		}
 	}
 
-	resolutions.insert(resolutions.begin() + idx, Resolution(cx, cy));
+	resolutions.insert(resolutions.begin() + static_cast<vector<Resolution>::difference_type>(idx),
+			   Resolution(cx, cy));
 }
 
 static inline void AddCap(vector<Resolution> &resolutions, const VideoInfo &cap)
@@ -1629,7 +1630,7 @@ static DStr GetFPSName(long long interval)
 		return name;
 	}
 
-	dstr_cat(name, to_string(10000000. / interval).c_str());
+	dstr_cat(name, to_string(10000000. / static_cast<double>(interval)).c_str());
 	return name;
 }
 

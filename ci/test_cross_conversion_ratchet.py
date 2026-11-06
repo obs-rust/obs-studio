@@ -187,6 +187,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """Keep both Windows capture unity groups measured (#2625)."""
         self.assertIn("win-capture-cross", opted_in(source()))
 
+    def test_the_win_dshow_slice_is_opted_in(self) -> None:
+        """Keep all three Windows DirectShow unity groups measured (#2625)."""
+        self.assertIn("win-dshow-cross", opted_in(source()))
+
     def test_the_virtualcam_module_slice_is_opted_in(self) -> None:
         """Keep both Windows virtual camera module unity groups measured (#2625)."""
         self.assertIn("virtualcam-module-cross", opted_in(source()))

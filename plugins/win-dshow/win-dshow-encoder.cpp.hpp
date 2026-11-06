@@ -96,12 +96,13 @@ inline bool DShowEncoder::Update(obs_data_t *settings)
 		height = 720;
 	}
 
-	int keyint = keyint_sec * voi->fps_num / voi->fps_den;
+	/* Keep the existing unsigned FPS arithmetic before the signed device API boundary. */
+	int keyint = static_cast<int>(static_cast<uint32_t>(keyint_sec) * voi->fps_num / voi->fps_den);
 
 	frameInterval = voi->fps_den * 10000000 / voi->fps_num;
 
-	config.fpsNumerator = voi->fps_num;
-	config.fpsDenominator = voi->fps_den;
+	config.fpsNumerator = static_cast<int>(voi->fps_num);
+	config.fpsDenominator = static_cast<int>(voi->fps_den);
 	config.bitrate = bitrate;
 	config.keyframeInterval = keyint;
 	config.cx = width;
@@ -198,10 +199,10 @@ inline void DShowEncoder::ParseFirstPacket(const uint8_t *data, size_t size)
 		}
 
 		if (type == OBS_NAL_SPS || type == OBS_NAL_PPS) {
-			da_push_back_array(header, nal_codestart, nal_end - nal_codestart);
+			da_push_back_array(header, nal_codestart, static_cast<size_t>(nal_end - nal_codestart));
 
 		} else {
-			da_push_back_array(firstPacket, nal_codestart, nal_end - nal_codestart);
+			da_push_back_array(firstPacket, nal_codestart, static_cast<size_t>(nal_end - nal_codestart));
 		}
 
 		nal_start = nal_end;
@@ -220,9 +221,10 @@ inline bool DShowEncoder::Encode(struct encoder_frame *frame, struct encoder_pac
 		frame_data[0] = frame->data[0];
 		frame_data[1] = frame->data[2];
 		frame_data[2] = frame->data[1];
-		frame_sizes[0] = frame->linesize[0] * config.cy;
-		frame_sizes[1] = frame->linesize[2] * config.cy / 2;
-		frame_sizes[2] = frame->linesize[1] * config.cy / 2;
+		/* Preserve the uint32_t products before widening to the device's size_t lengths. */
+		frame_sizes[0] = frame->linesize[0] * static_cast<uint32_t>(config.cy);
+		frame_sizes[1] = frame->linesize[2] * static_cast<uint32_t>(config.cy) / 2;
+		frame_sizes[2] = frame->linesize[1] * static_cast<uint32_t>(config.cy) / 2;
 	}
 
 	long long actualPTS = frame->pts * frameInterval;
