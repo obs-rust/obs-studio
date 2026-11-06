@@ -87,7 +87,7 @@ static inline audio_repack_mode_t ConvertRepackFormat(speaker_layout format, boo
 		return swap ? repack_mode_8ch_swap : repack_mode_8ch;
 	default:
 		assert(false && "No repack requested");
-		return (audio_repack_mode_t)-1;
+		return repack_mode_invalid;
 	}
 }
 

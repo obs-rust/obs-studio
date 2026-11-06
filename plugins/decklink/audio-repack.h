@@ -25,6 +25,7 @@ struct audio_repack {
 };
 
 enum _audio_repack_mode {
+	repack_mode_invalid = -1,
 	repack_mode_8to3ch = 0,
 	repack_mode_8to4ch,
 	repack_mode_8to5ch,
