@@ -56,7 +56,7 @@ bool find_window(cocoa_window_t cw, obs_data_t *settings, bool force)
         pthread_mutex_unlock(&cw->name_lock);
 
         NSNumber *window_id = (NSNumber *) dict[WINDOW_NUMBER];
-        cw->window_id = window_id.intValue;
+        cw->window_id = (CGWindowID) window_id.intValue;
         NSNumber *owner_pid = (NSNumber *) dict[OWNER_PID];
         cw->owner_pid = owner_pid.intValue;
 
@@ -95,7 +95,7 @@ void init_window(cocoa_window_t cw, obs_data_t *settings)
         if (owner_names_match && (ids_match || window_names_match)) {
             pthread_mutex_unlock(&cw->name_lock);
 
-            cw->window_id = [dict[WINDOW_NUMBER] intValue];
+            cw->window_id = (CGWindowID)[dict[WINDOW_NUMBER] intValue];
             cw->owner_pid = [dict[OWNER_PID] intValue];
 
             obs_data_set_int(settings, "window", cw->window_id);

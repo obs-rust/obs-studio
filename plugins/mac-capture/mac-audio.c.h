@@ -407,10 +407,11 @@ static bool coreaudio_init_buffer(struct coreaudio_data *ca)
 
 	streamDescription.mSampleRate = rate;
 
-	int bufferPropertySize =
-		offsetof(AudioBufferList, mBuffers[0]) + (sizeof(AudioBuffer) * streamDescription.mChannelsPerFrame);
+	/* Keep the existing int-sized buffer-list length at the allocation boundary. */
+	int bufferPropertySize = (int)(offsetof(AudioBufferList, mBuffers[0]) +
+				       (sizeof(AudioBuffer) * streamDescription.mChannelsPerFrame));
 
-	AudioBufferList *inputBuffer = (AudioBufferList *)bmalloc(bufferPropertySize);
+	AudioBufferList *inputBuffer = (AudioBufferList *)bmalloc((size_t)bufferPropertySize);
 	inputBuffer->mNumberBuffers = streamDescription.mChannelsPerFrame;
 
 	for (UInt32 i = 0; i < inputBuffer->mNumberBuffers; i++) {
