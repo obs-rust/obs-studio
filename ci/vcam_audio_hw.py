@@ -104,19 +104,21 @@ def record(name: str, seconds: float, out: Path) -> int:
         print(sd.query_devices(), file=sys.stderr)
         return 1
     channels = min(2, dev["max_input_channels"])
-    print(f"recording {seconds}s from #{index} {dev['name']!r} ({channels} ch)")
-    audio = sd.rec(int(seconds * RATE), samplerate=RATE, channels=channels, dtype="float32", device=index)
+    # WASAPI shared mode opens only at the device's own mix rate.
+    rate = int(dev["default_samplerate"])
+    print(f"recording {seconds}s from #{index} {dev['name']!r} ({channels} ch, {rate} Hz)")
+    audio = sd.rec(int(seconds * rate), samplerate=rate, channels=channels, dtype="float32", device=index)
     sd.wait()
     with wave.open(str(out), "wb") as w:
         w.setnchannels(channels)
         w.setsampwidth(2)
-        w.setframerate(RATE)
+        w.setframerate(rate)
         w.writeframes((np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes())
     # Skip the first half second: the device may still be filling.
-    mono = audio[RATE // 2:].mean(axis=1)
+    mono = audio[rate // 2:].mean(axis=1)
     rms = float(np.sqrt(np.mean(mono ** 2)))
     spectrum = np.abs(np.fft.rfft(mono * np.hanning(len(mono))))
-    peak = float(np.fft.rfftfreq(len(mono), 1 / RATE)[int(spectrum.argmax())])
+    peak = float(np.fft.rfftfreq(len(mono), 1 / rate)[int(spectrum.argmax())])
     print(f"rms={rms:.4f} peak={peak:.1f} Hz")
     if rms < 0.01:
         print("FAIL: the virtual microphone is silent", file=sys.stderr)
