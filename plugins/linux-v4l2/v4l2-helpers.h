@@ -145,7 +145,7 @@ static const int64_t v4l2_framerates[] = {PACK64(1, 60),
  */
 static inline int64_t v4l2_pack_tuple(int32_t a, int32_t b)
 {
-	return PACK64(a, b);
+	return (int64_t)PACK64(a, b);
 }
 
 /**
@@ -160,7 +160,7 @@ static inline int64_t v4l2_pack_tuple(int32_t a, int32_t b)
 static void v4l2_unpack_tuple(int32_t *a, int32_t *b, int64_t packed)
 {
 	// Since we changed from 32 to 64 bits, handle old values too.
-	if ((packed & 0xffffffff00000000) == 0) {
+	if (((uint64_t)packed & 0xffffffff00000000) == 0) {
 		*a = (int32_t)(packed >> 16);
 		*b = (int32_t)(packed & 0xffff);
 	} else {
