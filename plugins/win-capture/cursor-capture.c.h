@@ -4,13 +4,14 @@ static uint8_t *get_bitmap_data(HBITMAP hbmp, BITMAP *bmp)
 {
 	if (GetObject(hbmp, sizeof(*bmp), bmp) != 0) {
 		uint8_t *output;
-		unsigned int size = bmp->bmHeight * bmp->bmWidthBytes;
+		// GDI bitmap dimensions are nonnegative LONGs; keep the existing 32-bit byte count.
+		unsigned int size = (unsigned int)(bmp->bmHeight * bmp->bmWidthBytes);
 		if (!size) {
 			return NULL;
 		}
 
 		output = bmalloc(size);
-		GetBitmapBits(hbmp, size, output);
+		GetBitmapBits(hbmp, (LONG)size, output);
 		return output;
 	}
 
@@ -79,8 +80,9 @@ static inline uint8_t *copy_from_color(ICONINFO *ii, uint32_t *width, uint32_t *
 		bfree(mask);
 	}
 
-	*width = bmp_color.bmWidth;
-	*height = bmp_color.bmHeight;
+	// Cursor bitmaps have positive dimensions, shared with the unsigned texture API.
+	*width = (uint32_t)bmp_color.bmWidth;
+	*height = (uint32_t)bmp_color.bmHeight;
 	return color;
 }
 
@@ -103,7 +105,8 @@ static inline uint8_t *copy_from_mask(ICONINFO *ii, uint32_t *width, uint32_t *h
 	if (!pixels) {
 		return NULL;
 	}
-	output = bzalloc(pixels * 4);
+	// The mask dimensions give a nonnegative byte count; retain the LONG product.
+	output = bzalloc((size_t)(pixels * 4));
 
 	bottom = bmp.bmWidthBytes * bmp.bmHeight;
 
@@ -124,8 +127,8 @@ static inline uint8_t *copy_from_mask(ICONINFO *ii, uint32_t *width, uint32_t *h
 
 	bfree(mask);
 
-	*width = bmp.bmWidth;
-	*height = bmp.bmHeight;
+	*width = (uint32_t)bmp.bmWidth;
+	*height = (uint32_t)bmp.bmHeight;
 	return output;
 }
 
@@ -184,8 +187,9 @@ static inline bool cursor_capture_icon(struct cursor_data *data, HICON icon)
 		gs_texture_set_image(data->texture, bitmap, width * 4, false);
 		bfree(bitmap);
 
-		data->x_hotspot = ii.xHotspot;
-		data->y_hotspot = ii.yHotspot;
+		// Hotspots lie inside the cursor bitmap and fit signed Windows coordinates.
+		data->x_hotspot = (long)ii.xHotspot;
+		data->y_hotspot = (long)ii.yHotspot;
 	}
 
 	DeleteObject(ii.hbmColor);

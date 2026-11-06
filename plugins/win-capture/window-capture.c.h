@@ -717,8 +717,9 @@ static void wc_tick(void *data, float seconds)
 			wc->resize_timer = 0.0f;
 			wc->last_rect = rect;
 			dc_capture_free(&wc->capture);
-			dc_capture_init(&wc->capture, 0, 0, rect.right - rect.left, rect.bottom - rect.top, wc->cursor,
-					wc->compatibility);
+			// GetClientRect returns nonnegative extents for the unsigned texture dimensions.
+			dc_capture_init(&wc->capture, 0, 0, (uint32_t)(rect.right - rect.left),
+					(uint32_t)(rect.bottom - rect.top), wc->cursor, wc->compatibility);
 			if (!wc->hooked && wc->capture.valid) {
 				wc->hooked = true;
 

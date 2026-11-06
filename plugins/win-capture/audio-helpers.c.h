@@ -5,8 +5,9 @@ static inline bool settings_changed(obs_data_t *old_settings, obs_data_t *new_se
 	const char *old_window = obs_data_get_string(old_settings, "window");
 	const char *new_window = obs_data_get_string(new_settings, "window");
 
-	enum window_priority old_priority = obs_data_get_int(old_settings, "priority");
-	enum window_priority new_priority = obs_data_get_int(new_settings, "priority");
+	// Use the same settings-to-enum conversion as the capture configuration.
+	enum window_priority old_priority = (enum window_priority)obs_data_get_int(old_settings, "priority");
+	enum window_priority new_priority = (enum window_priority)obs_data_get_int(new_settings, "priority");
 
 	// Changes to priority only matter if a window is set
 	return (old_priority != new_priority && *new_window) || strcmp(old_window, new_window) != 0;

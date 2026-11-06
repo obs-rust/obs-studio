@@ -689,9 +689,10 @@ static uint32_t duplicator_capture_height(void *data)
 
 static void duplicator_draw_cursor(struct duplicator_capture *capture)
 {
+	// Display extents fit the signed Windows coordinates cursor_draw consumes.
 	cursor_draw(&capture->cursor_data, -capture->x, -capture->y,
-		    capture->rot % 180 == 0 ? capture->width : capture->height,
-		    capture->rot % 180 == 0 ? capture->height : capture->width);
+		    (long)(capture->rot % 180 == 0 ? capture->width : capture->height),
+		    (long)(capture->rot % 180 == 0 ? capture->height : capture->width));
 }
 
 static void duplicator_capture_render(void *data, gs_effect_t *unused)

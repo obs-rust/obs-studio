@@ -1342,7 +1342,7 @@ static void copy_b5g6r5_tex(struct game_capture *gc, int cur_texture, uint8_t *d
 			pixels_red = _mm_add_epi32(pixels_red, red_offset);
 			pixels_red = _mm_slli_epi32(pixels_red, 8);
 
-			pixels_result = _mm_set1_epi32(0xFF000000);
+			pixels_result = _mm_set1_epi32(-16777216) /* 0xFF000000 as a signed 32-bit lane */;
 			pixels_result = _mm_or_si128(pixels_result, pixels_blue);
 			pixels_result = _mm_or_si128(pixels_result, pixels_green);
 			pixels_result = _mm_or_si128(pixels_result, pixels_red);
@@ -1362,7 +1362,7 @@ static void copy_b5g6r5_tex(struct game_capture *gc, int cur_texture, uint8_t *d
 			pixels_red = _mm_add_epi32(pixels_red, red_offset);
 			pixels_red = _mm_slli_epi32(pixels_red, 8);
 
-			pixels_result = _mm_set1_epi32(0xFF000000);
+			pixels_result = _mm_set1_epi32(-16777216) /* 0xFF000000 as a signed 32-bit lane */;
 			pixels_result = _mm_or_si128(pixels_result, pixels_blue);
 			pixels_result = _mm_or_si128(pixels_result, pixels_green);
 			pixels_result = _mm_or_si128(pixels_result, pixels_red);
@@ -1404,7 +1404,7 @@ static void copy_b5g5r5a1_tex(struct game_capture *gc, int cur_texture, uint8_t 
 			__m128i red_offset = _mm_set1_epi32(0x00000180);
 			__m128i alpha_channel_mask = _mm_set1_epi32(0x00008000);
 			__m128i alpha_offset = _mm_set1_epi32(0x00000001);
-			__m128i alpha_mask32 = _mm_set1_epi32(0xFF000000);
+			__m128i alpha_mask32 = _mm_set1_epi32(-16777216) /* 0xFF000000 as a signed 32-bit lane */;
 
 			pixels_blue = _mm_and_si128(pixels_low, blue_channel_mask);
 			pixels_blue = _mm_slli_epi32(pixels_blue, 3);
@@ -1853,7 +1853,8 @@ static inline void game_capture_render_cursor(struct game_capture *gc)
 	if (previous)
 		gc->set_thread_dpi_awareness_context(previous);
 
-	cursor_draw(&gc->cursor_data, -p.x, -p.y, gc->global_hook_info->cx, gc->global_hook_info->cy);
+	// Captured client extents use the same signed Windows coordinate range as p.
+	cursor_draw(&gc->cursor_data, -p.x, -p.y, (long)gc->global_hook_info->cx, (long)gc->global_hook_info->cy);
 }
 
 static void game_capture_render(void *data, gs_effect_t *unused)
