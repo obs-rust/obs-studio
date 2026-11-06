@@ -10,14 +10,13 @@
 
 # The same cases against the Rust shims, built and run only with the hybrid
 # backend (OBS_LIBOBS_BACKEND=C has no Rust target). The port has no
-# intentional difference, so the test file is the same. ep_parse(), the
-# function parser and the shader writer it calls (effect-parser-funcs.c and
-# effect-parser-writer.c) stay C and are compiled in as above;
-# effect-parser-passes.c, effect-parser-blocks.c and
-# effect-parser-params.c are not, so the techniques, the two blocks, the
-# parameter declarations, ep_free() and the parameter type decisions, all
-# hidden in the shared library, come from the exact production staticlib at
-# executable link time.
+# intentional difference, so the test file is the same. ep_parse() and the
+# function parser it calls (effect-parser-funcs.c) stay C and are compiled in
+# as above; effect-parser-passes.c, effect-parser-blocks.c,
+# effect-parser-params.c and effect-parser-writer.c are not, so the
+# techniques, the two blocks, the parameter declarations, the shader writer,
+# ep_free() and the parameter type decisions, all hidden in the shared
+# library, come from the exact production staticlib at executable link time.
 # The staticlib's obs-graphics calls the private obs-graphics and effect
 # parser adapters, which libobs links but does not export, so this executable
 # compiles its own copies, as test_effect_parser_blocks_rust does.
@@ -27,7 +26,6 @@ if(TARGET libobs_rust-static)
     test_effect_parser_passes.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-funcs.c.h"
-    "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-writer.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
   )
