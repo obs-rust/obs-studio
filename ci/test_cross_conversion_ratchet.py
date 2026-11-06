@@ -93,6 +93,10 @@ class CrossConversionRatchet(unittest.TestCase):
         target = "coreaudio-encoder-cross"
         self.assertEqual(source().count(f"{HELPER}({target})"), 2)
 
+    def test_the_nv_filters_slice_is_opted_in(self) -> None:
+        """Keep all three NVIDIA filter unity groups measured (#2625)."""
+        self.assertIn("nv-filters-cross", opted_in(source()))
+
     def test_the_updater_slice_is_opted_in(self) -> None:
         """`updater-cross` is a real slice: its diagnostics are stated (#2625)."""
         self.assertIn("updater-cross", opted_in(source()))
