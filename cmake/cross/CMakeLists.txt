@@ -849,6 +849,7 @@ elseif(_host STREQUAL MACOS)
     INCLUDES plugins/mac-virtualcam/src/common frontend/api
     DEFINES OBS_CAMERA_EXTENSION_ID="cross-check"
   )
+  _obs_cross_conversion_ratchet(mac-virtualcam-cross)
   target_compile_options(mac-virtualcam-cross PRIVATE "$<$<COMPILE_LANGUAGE:OBJCXX>:-fcxx-modules>")
   # The OBS Virtual Microphone HAL plug-in (obs-rust/obs-studio#3184).
   _obs_cross_plugin(

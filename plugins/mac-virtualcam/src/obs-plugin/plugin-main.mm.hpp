@@ -580,8 +580,10 @@ static bool virtualcam_output_start(void *data)
 		[streamIds getBytes:&vcam->streamID range:NSMakeRange(sizeof(CMIOStreamID), sizeof(CMIOStreamID))];
 
 		CMIOStreamCopyBufferQueue(vcam->streamID, [](CMIOStreamID, void *, void *) {}, NULL, &vcam->queue);
-		CMVideoFormatDescriptionCreate(kCFAllocatorDefault, video_format, vcam->videoInfo.output_width,
-					       vcam->videoInfo.output_height, NULL, &vcam->formatDescription);
+		CMVideoFormatDescriptionCreate(kCFAllocatorDefault, video_format,
+					       static_cast<int32_t>(vcam->videoInfo.output_width),
+					       static_cast<int32_t>(vcam->videoInfo.output_height), NULL,
+					       &vcam->formatDescription);
 
 		OSStatus result = CMIODeviceStartStream(vcam->deviceID, vcam->streamID);
 
@@ -696,7 +698,8 @@ static void virtualcam_output_raw_video(void *data, struct video_data *frame)
 
 	if (cmio_extension_supported()) {
 		CMSampleBufferRef sampleBuffer;
-		CMSampleTimingInfo timingInfo{.presentationTimeStamp = CMTimeMake(frame->timestamp, NSEC_PER_SEC)};
+		CMSampleTimingInfo timingInfo{.presentationTimeStamp =
+						      CMTimeMake(static_cast<int64_t>(frame->timestamp), NSEC_PER_SEC)};
 
 		CMSampleBufferCreateForImageBuffer(kCFAllocatorDefault, frameRef, true, NULL, NULL,
 						   vcam->formatDescription, &timingInfo, &sampleBuffer);
