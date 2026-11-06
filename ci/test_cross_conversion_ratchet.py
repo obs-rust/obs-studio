@@ -330,7 +330,7 @@ class CrossConversionRatchet(unittest.TestCase):
         """The measured native frontend must keep all three groups (#2625)."""
         text = (CROSS.parents[2] / "frontend" / "CMakeLists.txt").read_text()
         blocks = re.findall(
-            r"target_compile_options\(obs-studio\s+PRIVATE\s+([^)]*)\)", text, re.S
+            r"target_compile_options\(\s*obs-studio\s+PRIVATE\s+([^)]*)\)", text, re.S
         )
         positive = [block for block in blocks if "-Wsign-conversion" in block]
         self.assertEqual(len(positive), 1)
