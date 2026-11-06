@@ -679,6 +679,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/obs-qsv11.c+.h.c build/obs-qsv11.core+.hpp.cpp build/obs-qsv11.windows-c+.h.c
     DEFINES OBS_QSV_HOST_DEFS="plugins/obs-qsv11/bits/windows_defs.h"
   )
+  _obs_cross_conversion_ratchet(obs-qsv11-cross)
   # frontend-tools' Windows host group (BUILD.md, #855); its Qt groups need
   # Qt, which the cross check does not have.
   _obs_cross_plugin(frontend-tools-host-cross DIR plugins/frontend-tools SOURCES build/frontend-tools.host-windows+.h.c)

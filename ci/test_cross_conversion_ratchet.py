@@ -173,6 +173,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """Keep the Windows audio capture unity group measured (#2625)."""
         self.assertIn("win-wasapi-cross", opted_in(source()))
 
+    def test_the_qsv_encoder_slice_is_opted_in(self) -> None:
+        """Keep all three Windows QSV encoder unity groups measured (#2625)."""
+        self.assertIn("obs-qsv11-cross", opted_in(source()))
+
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
         edit that drops a marker cannot quietly take them back out of the
