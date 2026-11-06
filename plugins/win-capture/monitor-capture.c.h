@@ -68,8 +68,9 @@ static void update_monitor(struct monitor_capture *capture, obs_data_t *settings
 
 	capture->monitor = monitor.id;
 
-	width = monitor.rect.right - monitor.rect.left;
-	height = monitor.rect.bottom - monitor.rect.top;
+	// A monitor RECT has nonnegative extents; the texture API uses unsigned dimensions.
+	width = (uint32_t)(monitor.rect.right - monitor.rect.left);
+	height = (uint32_t)(monitor.rect.bottom - monitor.rect.top);
 
 	dc_capture_init(&capture->data, monitor.rect.left, monitor.rect.top, width, height, capture->capture_cursor,
 			capture->compatibility);

@@ -59,8 +59,9 @@ void dc_capture_init(struct dc_capture *capture, int x, int y, uint32_t width, u
 		BITMAPINFOHEADER *bih = &bi.bmiHeader;
 		bih->biSize = sizeof(BITMAPINFOHEADER);
 		bih->biBitCount = 32;
-		bih->biWidth = width;
-		bih->biHeight = height;
+		// GDI uses signed 32-bit dimensions for the same positive texture extents.
+		bih->biWidth = (LONG)width;
+		bih->biHeight = (LONG)height;
 		bih->biPlanes = 1;
 
 		const HDC hdc = CreateCompatibleDC(NULL);
@@ -166,7 +167,8 @@ void dc_capture_capture(struct dc_capture *capture, HWND window)
 
 	hdc_target = GetDC(window);
 
-	BitBlt(hdc, 0, 0, capture->width, capture->height, hdc_target, capture->x, capture->y, SRCCOPY);
+	// BitBlt takes signed GDI extents, as does the bitmap created above.
+	BitBlt(hdc, 0, 0, (int)capture->width, (int)capture->height, hdc_target, capture->x, capture->y, SRCCOPY);
 
 	ReleaseDC(NULL, hdc_target);
 

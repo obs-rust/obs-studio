@@ -559,6 +559,7 @@ if(_host STREQUAL WINDOWS)
     INCLUDES shared/obs-hook-config shared/obs-inject-library shared/ipc-util shared/file-updater libobs-winrt
     DEFINES COMPAT_URL="cross-check"
   )
+  _obs_cross_conversion_ratchet(win-capture-cross)
   set(COMPILE_D3D12_HOOK 1)
   set(VULKAN_FOUND 1)
   configure_file(
