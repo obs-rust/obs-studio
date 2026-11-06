@@ -1465,8 +1465,12 @@ static obs_properties_t *v4l2_properties(void *vptr)
  */
 static void v4l2_announce_device(struct v4l2_data *data, const char *signal, const char *device)
 {
+	/* No source (the C tests create one without libobs running): nobody to
+	 * tell, and obs_get_signal_handler() needs a started libobs. */
+	if (!data->source || !device)
+		return;
 	signal_handler_t *sh = obs_get_signal_handler();
-	if (!sh || !data->source || !device)
+	if (!sh)
 		return;
 
 	calldata_t cd = {0};

@@ -68,7 +68,8 @@ fn without_exe_the_comm_then_the_cmdline() {
     assert_eq!(display_name(None, "", b""), "?");
 }
 
-#[cfg(unix)]
+// Linux: the only host that reads owners from /proc (V4L2 is Linux only).
+#[cfg(target_os = "linux")]
 mod tree {
     use std::fs;
     use std::os::unix::fs::{MetadataExt, symlink};
