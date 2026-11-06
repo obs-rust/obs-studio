@@ -243,6 +243,10 @@ class CrossConversionRatchet(unittest.TestCase):
         self.assertEqual(targets.count("obs-outputs-rtmp-host-cross"), 2)
 
 
+    def test_the_ffmpeg_slice_is_opted_in(self) -> None:
+        """Keep the shared FFmpeg unity groups measured on every alias (#2625)."""
+        self.assertIn("obs-ffmpeg-cross", opted_in(source()))
+
     def test_the_ffmpeg_host_slice_is_opted_in_on_both_hosts(self) -> None:
         """Keep the NVENC availability/module host groups measured (#2625)."""
         targets = [match.group("target") for match in OPT_IN.finditer(source())]
