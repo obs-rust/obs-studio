@@ -237,6 +237,14 @@ not get a line.
   that it captures again. *Linux*, 2026-10-29. Issue
   [#2924](https://github.com/obs-rust/obs-studio/issues/2924), PR
   [#2933](https://github.com/obs-rust/obs-studio/pull/2933).
+- **NDI audio on its own clock stays in the mix.** An NDI source whose sender
+  stamps its audio and video on different clocks, such as NDI Test Patterns
+  through DistroAV, is heard in the mix and in recordings again. Since
+  2026-10-13 its audio dropped out for minutes at a time, a source recording
+  of it started late or not at all, and OBS could hang at quit with a
+  source-record filter on it. *All*, pending merge. Issue
+  [#3747](https://github.com/obs-rust/obs-studio/issues/3747), PR
+  [#3752](https://github.com/obs-rust/obs-studio/pull/3752).
 
 ### Encoding, streaming and recording
 
