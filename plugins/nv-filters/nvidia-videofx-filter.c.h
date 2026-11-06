@@ -130,7 +130,7 @@ static void nvvfx_filter_update(void *data, obs_data_t *settings)
 		int mode = id == S_FX_BG_BLUR ? (int)S_MODE_PERF : (int)obs_data_get_int(settings, S_MODE);
 		if (filter->mode != mode) {
 			filter->mode = mode;
-			vfxErr = NvVFX_SetU32(filter->handle, NVVFX_MODE, mode);
+			vfxErr = NvVFX_SetU32(filter->handle, NVVFX_MODE, (unsigned int)mode);
 			vfxErr = NvVFX_Load(filter->handle);
 			if (NVCV_SUCCESS != vfxErr)
 				error("Error loading AI Greenscreen FX %i", vfxErr);
@@ -404,7 +404,7 @@ static void nvvfx_filter_reset(void *data, calldata_t *calldata)
 
 	/* 3. load FX */
 	if (filter->filter_id != S_FX_BLUR) {
-		vfxErr = NvVFX_SetU32(filter->handle, NVVFX_MODE, filter->mode);
+		vfxErr = NvVFX_SetU32(filter->handle, NVVFX_MODE, (unsigned int)filter->mode);
 		if (NVCV_SUCCESS != vfxErr)
 			error("Error loading NVIDIA Video FX %i", vfxErr);
 		// reallocate state object

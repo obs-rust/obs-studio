@@ -581,7 +581,8 @@ static unsigned int get_vfx_lib_version(void)
 
 	struct win_version_info nto_ver = {0};
 	if (get_dll_ver(dllPath, &nto_ver))
-		version = nto_ver.major << 24 | nto_ver.minor << 16 | nto_ver.build << 8 | nto_ver.revis << 0;
+		version = (unsigned int)(nto_ver.major << 24 | nto_ver.minor << 16 | nto_ver.build << 8 |
+					 nto_ver.revis << 0);
 
 	return version;
 }
