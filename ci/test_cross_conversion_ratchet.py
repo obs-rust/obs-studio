@@ -178,7 +178,18 @@ class CrossConversionRatchet(unittest.TestCase):
                 text,
                 rf"_obs_cross_c_conversion_ratchet\({target}\)",
             )
-        self.assertIn("COMPILE_LANG_AND_ID:OBJC,Clang,AppleClang", text)
+        helper = re.search(
+            r"function\(_obs_cross_c_conversion_ratchet target\)(.*?)endfunction\(\)", text, re.S
+        )
+        self.assertIsNotNone(helper)
+        body = helper.group(1)
+        for language in ("C", "OBJC"):
+            self.assertIn(
+                f"$<$<COMPILE_LANG_AND_ID:{language},Clang,AppleClang>:"
+                "-Wconversion;-Wsign-conversion;-Wfloat-conversion>",
+                body,
+            )
+        self.assertRegex(body, r"(?s)set_property\(\s*SOURCE.*?APPEND\s+PROPERTY\s+COMPILE_OPTIONS")
         self.assertRegex(
             text,
             r"if\(_host STREQUAL MACOS\)\s+"
