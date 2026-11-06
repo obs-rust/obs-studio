@@ -79,36 +79,51 @@ def write_profile(root: Path, tone: Path, device: str) -> None:
     (scenes / "Test.json").write_text(json.dumps(collection, indent=2))
 
 
-def find_input(name: str):
+def find_inputs(name: str):
     import sounddevice as sd
 
     # On Windows the same device shows up under MME, DirectSound, WASAPI and
-    # WDM-KS; MME opens VB-Cable at 16 channels and fails, so prefer WASAPI.
+    # WDM-KS, and not every one of them opens VB-Cable; try them in this order.
+    order = ["WASAPI", "DirectSound", "MME", "WDM-KS"]
     apis = sd.query_hostapis()
+
+    def rank(m):
+        api = apis[m[1]["hostapi"]]["name"]
+        return next((n for n, a in enumerate(order) if a in api), len(order))
+
     matches = [
         (i, dev)
         for i, dev in enumerate(sd.query_devices())
         if dev["max_input_channels"] > 0 and name.lower() in dev["name"].lower()
     ]
-    matches.sort(key=lambda m: "WASAPI" not in apis[m[1]["hostapi"]]["name"])
-    return matches[0] if matches else (None, None)
+    return sorted(matches, key=rank)
 
 
 def record(name: str, seconds: float, out: Path) -> int:
     import numpy as np
     import sounddevice as sd
 
-    index, dev = find_input(name)
-    if index is None:
+    matches = find_inputs(name)
+    if not matches:
         print(f"FAIL: no input device matching {name!r}", file=sys.stderr)
         print(sd.query_devices(), file=sys.stderr)
         return 1
-    channels = min(2, dev["max_input_channels"])
-    # WASAPI shared mode opens only at the device's own mix rate.
-    rate = int(dev["default_samplerate"])
-    print(f"recording {seconds}s from #{index} {dev['name']!r} ({channels} ch, {rate} Hz)")
-    audio = sd.rec(int(seconds * rate), samplerate=rate, channels=channels, dtype="float32", device=index)
-    sd.wait()
+    audio = None
+    for index, dev in matches:
+        channels = min(2, dev["max_input_channels"])
+        # WASAPI shared mode opens only at the device's own mix rate.
+        rate = int(dev["default_samplerate"])
+        api = sd.query_hostapis(dev["hostapi"])["name"]
+        print(f"recording {seconds}s from #{index} {dev['name']!r} ({api}, {channels} ch, {rate} Hz)")
+        try:
+            audio = sd.rec(int(seconds * rate), samplerate=rate, channels=channels, dtype="float32", device=index)
+            sd.wait()
+            break
+        except sd.PortAudioError as e:
+            print(f"  cannot open it: {e}")
+    if audio is None:
+        print(f"FAIL: no device matching {name!r} opened", file=sys.stderr)
+        return 1
     with wave.open(str(out), "wb") as w:
         w.setnchannels(channels)
         w.setsampwidth(2)
