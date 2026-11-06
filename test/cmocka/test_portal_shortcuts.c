@@ -34,6 +34,11 @@ struct obs_core *hotkey_test_obs;
 static struct obs_nix_hotkey_state key_state;
 static pthread_t hotkey_thread;
 static profiler_name_store_t *name_store;
+/* Set once the hotkey thread has fetched the name store for its one-time
+ * profiler name push. setup() must not return before that push is done: the
+ * fake portal's GTestDBus forks, and a fork in the middle of the push leaves
+ * the child an unreachable name buffer that LeakSanitizer reports (#3728). */
+static volatile long name_store_fetched;
 
 bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t key)
 {
@@ -43,6 +48,9 @@ bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t 
 
 profiler_name_store_t *obs_get_profiler_name_store(void)
 {
+	/* Widen the window so a setup() that does not wait loses every time. */
+	os_sleep_ms(50);
+	os_atomic_set_long(&name_store_fetched, 1);
 	return name_store;
 }
 
@@ -562,7 +570,9 @@ static int setup(void **state)
 					"void source_rename(ptr source, string new_name, string prev_name)",
 					NULL};
 	assert_true(signal_handler_add_array(hotkey_test_obs->hotkeys.signals, signals));
+	os_atomic_set_long(&name_store_fetched, 0);
 	assert_int_equal(pthread_create(&hotkey_thread, NULL, obs_hotkey_thread, NULL), 0);
+	assert_int_equal(os_atomic_load_long(&name_store_fetched), 1);
 	return 0;
 }
 
