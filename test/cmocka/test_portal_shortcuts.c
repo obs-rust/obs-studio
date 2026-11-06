@@ -571,7 +571,13 @@ static int setup(void **state)
 					NULL};
 	assert_true(signal_handler_add_array(hotkey_test_obs->hotkeys.signals, signals));
 	os_atomic_set_long(&name_store_fetched, 0);
-	assert_int_equal(pthread_create(&hotkey_thread, NULL, obs_hotkey_thread, NULL), 0);
+	/* Wait, as obs_init_hotkeys() does, until the thread's one-time
+	 * allocations are done, so no later fork catches them mid-flight. */
+	os_event_t *ready;
+	assert_int_equal(os_event_init(&ready, OS_EVENT_TYPE_MANUAL), 0);
+	assert_int_equal(pthread_create(&hotkey_thread, NULL, obs_hotkey_thread, ready), 0);
+	os_event_wait(ready);
+	os_event_destroy(ready);
 	assert_int_equal(os_atomic_load_long(&name_store_fetched), 1);
 	return 0;
 }
