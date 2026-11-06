@@ -338,6 +338,15 @@ class CrossConversionRatchet(unittest.TestCase):
         """Keep AJA's three unity groups measured on all three aliases (#2625)."""
         self.assertIn("aja-cross", opted_in(source()))
 
+    def test_the_native_seams_keep_conversion_groups(self) -> None:
+        """Native-only v4l2 and OSS have no cmake/cross declaration (#2625)."""
+        root = CROSS.parent.parent.parent
+        for plugin in ("linux-v4l2", "oss-audio"):
+            with self.subTest(plugin=plugin):
+                text = (root / "plugins" / plugin / "CMakeLists.txt").read_text(encoding="utf-8")
+                for group in GROUPS:
+                    self.assertIn(group, text)
+
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
         edit that drops a marker cannot quietly take them back out of the
