@@ -568,15 +568,16 @@ static CGEventRef KeyboardEventProc(CGEventTapProxy proxy __unused, CGEventType 
     platform->is_key_down[OBS_KEY_META] = obs_cocoa_keys_modifier(flags, OBS_KEY_META);
     platform->is_key_down[OBS_KEY_CONTROL] = obs_cocoa_keys_modifier(flags, OBS_KEY_CONTROL);
 
+    /* Keyboard event virtual keycodes are CGKeyCode (uint16_t), hence fit int. */
     switch (type) {
         case kCGEventKeyDown: {
             const int64_t keycode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-            platform->is_key_down[obs_key_from_virtual_key(keycode)] = true;
+            platform->is_key_down[obs_key_from_virtual_key((int) keycode)] = true;
             break;
         }
         case kCGEventKeyUp: {
             const int64_t keycode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-            platform->is_key_down[obs_key_from_virtual_key(keycode)] = false;
+            platform->is_key_down[obs_key_from_virtual_key((int) keycode)] = false;
             break;
         }
         case kCGEventFlagsChanged: {

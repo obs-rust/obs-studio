@@ -161,6 +161,26 @@ function(_obs_cross_object_library name)
   )
 endfunction()
 
+# C/Objective-C product groups, measured independently of PCH (#2625).
+# libnsgif remains outside this slice pending its dependency-policy decision.
+# Positive source options avoid overriding the existing pins for vendor groups.
+function(_obs_cross_c_conversion_ratchet target)
+  get_target_property(_sources ${target} SOURCES)
+  foreach(_source IN LISTS _sources)
+    if(_source MATCHES "libobs\\.ported-nsgif-")
+      continue()
+    endif()
+    set_property(
+      SOURCE "${_source}" TARGET_DIRECTORY ${target}
+      APPEND
+      PROPERTY
+        COMPILE_OPTIONS
+          "$<$<COMPILE_LANG_AND_ID:C,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+          "$<$<COMPILE_LANG_AND_ID:OBJC,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+    )
+  endforeach()
+endfunction()
+
 # The clang warning set OBS builds with (cmake/common/compiler_common.cmake);
 # skip its IPO probe, which would need a link.
 set(HAS_INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
@@ -363,6 +383,12 @@ set_source_files_properties(
   "${OBS_SOURCE_ROOT}/libobs/build/libobs.windows-crash-handler+.h.c"
   PROPERTIES COMPILE_DEFINITIONS OBS_VERSION="cross-check"
 )
+
+# Append after the ARC source options above so they cannot replace the ratchet.
+if(_host STREQUAL MACOS)
+  _obs_cross_c_conversion_ratchet(libobs-cross)
+  _obs_cross_c_conversion_ratchet(libobs-cross-rust-shims)
+endif()
 
 # The platform-only plugins, compile-only like libobs above: each one's own
 # sources with the libobs, shared/ and deps/ headers it builds against, through
@@ -817,6 +843,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES ${_mac_capture}
   )
   _obs_cross_conversion_ratchet(mac-capture-cross)
+  _obs_cross_c_conversion_ratchet(mac-capture-cross)
   _obs_cross_plugin(
     mac-avcapture-cross
     OBJC_ARC

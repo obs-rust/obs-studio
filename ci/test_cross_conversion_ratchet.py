@@ -170,6 +170,38 @@ class CrossConversionRatchet(unittest.TestCase):
         slices = {"coreaudio-encoder-cross", "obs-text-cross"}
         self.assertLessEqual(slices, opted_in(source()))
 
+    def test_the_libobs_cocoa_slice_covers_compiled_languages(self) -> None:
+        """Core/shims and mac-capture must enforce C and Objective-C (#2625)."""
+        text = source()
+        for target in ("libobs-cross", "libobs-cross-rust-shims", "mac-capture-cross"):
+            self.assertRegex(
+                text,
+                rf"_obs_cross_c_conversion_ratchet\({target}\)",
+            )
+        helper = re.search(
+            r"function\(_obs_cross_c_conversion_ratchet target\)(.*?)endfunction\(\)", text, re.S
+        )
+        self.assertIsNotNone(helper)
+        body = helper.group(1)
+        for language in ("C", "OBJC"):
+            self.assertIn(
+                f"$<$<COMPILE_LANG_AND_ID:{language},Clang,AppleClang>:"
+                "-Wconversion;-Wsign-conversion;-Wfloat-conversion>",
+                body,
+            )
+        self.assertRegex(body, r"(?s)set_property\(\s*SOURCE.*?APPEND\s+PROPERTY\s+COMPILE_OPTIONS")
+        self.assertRegex(
+            text,
+            r"if\(_host STREQUAL MACOS\)\s+"
+            r"_obs_cross_c_conversion_ratchet\(libobs-cross\)\s+"
+            r"_obs_cross_c_conversion_ratchet\(libobs-cross-rust-shims\)\s+endif\(\)",
+        )
+        self.assertIn('if(_source MATCHES "libobs\\\\.ported-nsgif-")', text)
+        self.assertLess(
+            text.index("PROPERTIES COMPILE_OPTIONS -fobjc-arc"),
+            text.index("_obs_cross_c_conversion_ratchet(libobs-cross)"),
+        )
+
     def test_the_coreaudio_encoder_slice_is_opted_in_on_both_hosts(self) -> None:
         """Keep the Windows and macOS encoder groups measured (#2625)."""
         target = "coreaudio-encoder-cross"
