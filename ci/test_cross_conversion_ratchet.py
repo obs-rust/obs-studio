@@ -101,6 +101,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """`updater-cross` is a real slice: its diagnostics are stated (#2625)."""
         self.assertIn("updater-cross", opted_in(source()))
 
+    def test_the_qsv_probe_slice_is_opted_in(self) -> None:
+        """Keep the Windows QSV capability probe measured (#2625)."""
+        self.assertIn("obs-qsv-test-cross", opted_in(source()))
+
     def test_the_audio_plugin_slice_is_opted_in(self) -> None:
         """The virtual microphone HAL stays measured by the cross check (#2625)."""
         self.assertIn("obs-audio-plugin-cross", opted_in(source()))
