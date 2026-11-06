@@ -123,7 +123,7 @@ static bool d3d8_shmem_init_buffer(IDirect3DDevice8 *device, int idx)
 			return false;
 		}
 
-		data.pitch = rect.Pitch;
+		data.pitch = static_cast<uint32_t>(rect.Pitch);
 		data.copy_surfaces[0]->UnlockRect();
 	}
 
@@ -137,7 +137,8 @@ static bool d3d8_shmem_init(IDirect3DDevice8 *device)
 			return false;
 		}
 	}
-	if (!capture_init_shmem(&data.shmem_info, data.window, data.cx, data.cy, data.pitch, data.dxgi_format, false)) {
+	if (!capture_init_shmem(&data.shmem_info, data.window, data.cx, data.cy, data.pitch,
+				static_cast<uint32_t>(data.dxgi_format), false)) {
 		return false;
 	}
 
@@ -188,7 +189,7 @@ static void d3d8_shmem_capture_copy(int idx)
 		hr = target->LockRect(&rect, nullptr, D3DLOCK_READONLY);
 		if (SUCCEEDED(hr)) {
 			data.surface_locked[idx] = true;
-			shmem_copy_data(idx, rect.pBits);
+			shmem_copy_data(static_cast<size_t>(idx), rect.pBits);
 		}
 	}
 }

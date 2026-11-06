@@ -446,7 +446,7 @@ void hlog_hr(const char *text, HRESULT hr)
 	LPSTR buffer = NULL;
 
 	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
-		       NULL, hr, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), (LPSTR)&buffer, 0, NULL);
+		       NULL, (DWORD)hr, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), (LPSTR)&buffer, 0, NULL);
 
 	if (buffer) {
 		hlog("%s (0x%08lX): %s", text, hr, buffer);
@@ -466,7 +466,7 @@ static inline uint64_t get_clockfreq(void)
 		have_clockfreq = true;
 	}
 
-	return clock_freq.QuadPart;
+	return (uint64_t)clock_freq.QuadPart;
 }
 
 uint64_t os_gettime_ns(void)
@@ -570,12 +570,12 @@ static DWORD CALLBACK copy_thread(LPVOID unused)
 	int shmem_id = 0;
 
 	if (!duplicate_handle(&events[0], thread_data.copy_event)) {
-		hlog_hr("copy_thread: Failed to duplicate copy event: %d", GetLastError());
+		hlog_hr("copy_thread: Failed to duplicate copy event: %d", (HRESULT)GetLastError());
 		return 0;
 	}
 
 	if (!duplicate_handle(&events[1], thread_data.stop_event)) {
-		hlog_hr("copy_thread: Failed to duplicate stop event: %d", GetLastError());
+		hlog_hr("copy_thread: Failed to duplicate stop event: %d", (HRESULT)GetLastError());
 		goto finish;
 	}
 
@@ -700,8 +700,8 @@ bool capture_init_shmem(struct shmem_data **data, HWND window, uint32_t cx, uint
 			uint32_t format, bool flip)
 {
 	uint32_t tex_size = cy * pitch;
-	uint32_t aligned_header = ALIGN(sizeof(struct shmem_data), 32);
-	uint32_t aligned_tex = ALIGN(tex_size, 32);
+	uint32_t aligned_header = ALIGN(sizeof(struct shmem_data), (size_t)32);
+	uint32_t aligned_tex = ALIGN(tex_size, 32U);
 	uint32_t total_size = aligned_header + aligned_tex * 2 + 32;
 	uintptr_t align_pos;
 
@@ -715,7 +715,7 @@ bool capture_init_shmem(struct shmem_data **data, HWND window, uint32_t cx, uint
 	/* to ensure fast copy rate, align texture data to 256bit addresses */
 	align_pos = (uintptr_t)shmem_info;
 	align_pos += aligned_header;
-	align_pos &= ~(32 - 1);
+	align_pos &= ~(uintptr_t)(32 - 1);
 	align_pos -= (uintptr_t)shmem_info;
 
 	if (align_pos < sizeof(struct shmem_data))

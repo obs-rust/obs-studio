@@ -275,8 +275,8 @@ static bool d3d9_shtex_init(HWND window)
 	if (!d3d9_shtex_init_copytex()) {
 		return false;
 	}
-	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, data.dxgi_format, false,
-				(uintptr_t)data.handle)) {
+	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, static_cast<uint32_t>(data.dxgi_format),
+				false, (uintptr_t)data.handle)) {
 		return false;
 	}
 
@@ -305,7 +305,7 @@ static bool d3d9_shmem_init_buffers(size_t buffer)
 			return false;
 		}
 
-		data.pitch = rect.Pitch;
+		data.pitch = static_cast<uint32_t>(rect.Pitch);
 		data.copy_surfaces[buffer]->UnlockRect();
 	}
 
@@ -327,7 +327,8 @@ static bool d3d9_shmem_init(HWND window)
 			return false;
 		}
 	}
-	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.pitch, data.dxgi_format, false)) {
+	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.pitch,
+				static_cast<uint32_t>(data.dxgi_format), false)) {
 		return false;
 	}
 
@@ -499,7 +500,7 @@ static void d3d9_shmem_capture_copy(int i)
 	hr = target->LockRect(&rect, nullptr, D3DLOCK_READONLY);
 	if (SUCCEEDED(hr)) {
 		data.texture_mapped[i] = true;
-		shmem_copy_data(i, rect.pBits);
+		shmem_copy_data(static_cast<size_t>(i), rect.pBits);
 	}
 }
 

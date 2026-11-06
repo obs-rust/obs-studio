@@ -175,7 +175,7 @@ static bool d3d12_shtex_init(ID3D12Device *device, HWND window, UINT count)
 	if (!create_d3d12_tex(count)) {
 		return false;
 	}
-	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, data.format, false,
+	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, static_cast<uint32_t>(data.format), false,
 				(uintptr_t)data.handle)) {
 		return false;
 	}

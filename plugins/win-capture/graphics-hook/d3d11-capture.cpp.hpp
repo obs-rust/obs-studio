@@ -180,8 +180,8 @@ static bool d3d11_shmem_init(HWND window)
 			return false;
 		}
 	}
-	if (!capture_init_shmem(&data.u.shmem.shmem_info, window, data.cx, data.cy, data.u.shmem.pitch, data.format,
-				false)) {
+	if (!capture_init_shmem(&data.u.shmem.shmem_info, window, data.cx, data.cy, data.u.shmem.pitch,
+				static_cast<uint32_t>(data.format), false)) {
 		return false;
 	}
 
@@ -201,8 +201,8 @@ static bool d3d11_shtex_init(HWND window)
 		hlog("d3d11_shtex_init: failed to create texture");
 		return false;
 	}
-	if (!capture_init_shtex(&data.u.shtex.shtex_info, window, data.cx, data.cy, data.format, false,
-				(uintptr_t)data.u.shtex.handle)) {
+	if (!capture_init_shtex(&data.u.shtex.shtex_info, window, data.cx, data.cy, static_cast<uint32_t>(data.format),
+				false, (uintptr_t)data.u.shtex.handle)) {
 		return false;
 	}
 
@@ -263,7 +263,7 @@ static void d3d11_shmem_capture_copy(int i)
 		hr = data.context->Map(data.u.shmem.copy_surfaces[i], 0, D3D11_MAP_READ, 0, &map);
 		if (SUCCEEDED(hr)) {
 			data.u.shmem.texture_mapped[i] = true;
-			shmem_copy_data(i, map.pData);
+			shmem_copy_data(static_cast<size_t>(i), map.pData);
 		}
 	}
 }
