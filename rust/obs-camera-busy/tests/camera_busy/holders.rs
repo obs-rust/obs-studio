@@ -57,7 +57,10 @@ fn a_nix_wrapper_is_its_program() {
 
 #[test]
 fn without_exe_the_comm_then_the_cmdline() {
-    assert_eq!(display_name(None, "guvcview\n", b"/usr/bin/x\0"), "guvcview");
+    assert_eq!(
+        display_name(None, "guvcview\n", b"/usr/bin/x\0"),
+        "guvcview"
+    );
     assert_eq!(
         display_name(None, "", b"/usr/bin/ffplay\0/dev/video0\0"),
         "ffplay"

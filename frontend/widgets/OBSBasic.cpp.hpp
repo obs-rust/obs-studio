@@ -767,13 +767,19 @@ void OBSBasic::InitOBSCallbacks()
 {
 	ProfileScope("OBSBasic::InitOBSCallbacks");
 
-	signalHandlers.reserve(signalHandlers.size() + 7);
+	signalHandlers.reserve(signalHandlers.size() + 9);
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_create", OBSBasic::SourceCreated, this);
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_remove", OBSBasic::SourceRemoved, this);
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_rename", OBSBasic::SourceRenamed, this);
 	/* Declared here, before the plugins that emit it load */
 	signal_handler_add(obs_get_signal_handler(), sourceDeviceBusyDecl);
 	signalHandlers.emplace_back(obs_get_signal_handler(), "source_device_busy", OBSBasic::SourceDeviceBusy, this);
+	signal_handler_add(obs_get_signal_handler(), sourceDeviceOpenedDecl);
+	signal_handler_add(obs_get_signal_handler(), sourceDeviceClosedDecl);
+	signalHandlers.emplace_back(obs_get_signal_handler(), "source_device_opened", OBSBasic::SourceDeviceOpened,
+				    this);
+	signalHandlers.emplace_back(obs_get_signal_handler(), "source_device_closed", OBSBasic::SourceDeviceClosed,
+				    this);
 	signalHandlers.emplace_back(
 		obs_get_signal_handler(), "hotkey_background_status_changed",
 		[](void *handler_data, calldata_t *) {
@@ -1232,6 +1238,15 @@ void OBSBasic::OnFirstLoad()
 	/* Fallback warnings (#2218) waited for the main window; they run now. */
 	FallbackWarning::SetMainWindow(this, {QTStr("FallbackWarning.AcceptAnyway"), QTStr("Cancel"),
 					      QTStr("FallbackWarning.FutureError")});
+
+	/* The camera-busy warning (#3724) shows on the main window from now on. */
+	CameraBusy::SetMainWindow(this,
+				  {QTStr("Basic.CameraBusy.Title"), QTStr("Basic.CameraBusy.Busy"),
+				   QTStr("Basic.CameraBusy.BusyUnknown"), QTStr("Basic.CameraBusy.Opened"),
+				   QTStr("Basic.CameraBusy.CloseIt"), QTStr("Basic.CameraBusy.Ignore"),
+				   QTStr("Basic.CameraBusy.AlwaysAllow")},
+				  config_get_string(App()->GetUserConfig(), "General", "CameraBusyAllowlist"),
+				  OBSBasic::SaveCameraBusyAllowlist, this);
 
 #ifdef WHATSNEW_ENABLED
 	/* Attempt to load init screen if available */
@@ -1915,6 +1930,7 @@ void OBSBasic::closeWindow()
 	/* Answer every fallback warning (#2218), also those still queued, while
 	 * its callers (sources) exist: the open dialog closes, the rest accept. */
 	FallbackWarning::SetMainWindow(nullptr, {});
+	CameraBusy::SetMainWindow(nullptr, {}, nullptr, nullptr, nullptr);
 	QApplication::sendPostedEvents(nullptr);
 
 	OnEvent(OBS_FRONTEND_EVENT_SCRIPTING_SHUTDOWN);

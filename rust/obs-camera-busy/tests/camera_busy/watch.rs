@@ -13,7 +13,10 @@ use std::time::Duration;
 use obs_camera_busy::watch_holders;
 
 fn node(name: &str) -> std::path::PathBuf {
-    let p = std::env::temp_dir().join(format!("obs-camera-busy-watch-{name}-{}", std::process::id()));
+    let p = std::env::temp_dir().join(format!(
+        "obs-camera-busy-watch-{name}-{}",
+        std::process::id()
+    ));
     std::fs::write(&p, b"").unwrap();
     std::fs::canonicalize(p).unwrap()
 }
@@ -85,7 +88,5 @@ fn an_open_by_obs_itself_reports_nobody() {
 #[test]
 fn a_missing_device_cannot_be_watched() {
     let missing = std::env::temp_dir().join("obs-camera-busy-no-such-device");
-    assert!(
-        watch_holders(&missing, Path::new("/proc"), 1, None, 10, Box::new(|_| {})).is_err()
-    );
+    assert!(watch_holders(&missing, Path::new("/proc"), 1, None, 10, Box::new(|_| {})).is_err());
 }

@@ -534,6 +534,13 @@ private:
 	/* A capture source's device is held by another process: popup with
 	 * Force Camera (obs-rust/obs-studio#799). */
 	static const char *sourceDeviceBusyDecl;
+	/* A capture source opened / closed its device: the camera-busy warning
+	 * watches it for other programs opening it (obs-rust/obs-studio#3724). */
+	static const char *sourceDeviceOpenedDecl;
+	static const char *sourceDeviceClosedDecl;
+	static void SourceDeviceOpened(void *data, calldata_t *params);
+	static void SourceDeviceClosed(void *data, calldata_t *params);
+	static void SaveCameraBusyAllowlist(void *param, const char *config);
 	QSet<QString> busyDevicePopups;
 	static void SourceDeviceBusy(void *data, calldata_t *params);
 	void ShowDeviceBusy(OBSWeakSource weak, QString device, QString holder, qint64 pid, bool isObs, bool canForce);

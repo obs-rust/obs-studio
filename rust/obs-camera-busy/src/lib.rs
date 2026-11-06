@@ -357,7 +357,11 @@ impl Warnings {
         match answer {
             Answer::Ignore => Action::default(),
             Answer::CloseIt => Action {
-                close: holders.iter().filter(|h| h.can_close).map(|h| h.pid).collect(),
+                close: holders
+                    .iter()
+                    .filter(|h| h.can_close)
+                    .map(|h| h.pid)
+                    .collect(),
                 allowlist_changed: false,
             },
             Answer::AlwaysAllow => {

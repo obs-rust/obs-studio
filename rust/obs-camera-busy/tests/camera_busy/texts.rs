@@ -37,7 +37,12 @@ fn busy_log_lines() {
 #[test]
 fn opened_log_lines() {
     assert_eq!(
-        log_line(Cause::Opened, "/dev/video0", &[h(12, "zoom")], Show::Allowed),
+        log_line(
+            Cause::Opened,
+            "/dev/video0",
+            &[h(12, "zoom")],
+            Show::Allowed
+        ),
         "[camera-busy] zoom (PID 12) opened /dev/video0 while OBS uses it: allowed, not warned"
     );
 }

@@ -147,16 +147,28 @@ fn close_log_line_through_the_c_abi() {
     // SAFETY: a C string.
     unsafe {
         assert_eq!(
-            take(obs_camera_busy_close_log_line(name.as_ptr(), 12, OBS_CAMERA_BUSY_EXITED)),
+            take(obs_camera_busy_close_log_line(
+                name.as_ptr(),
+                12,
+                OBS_CAMERA_BUSY_EXITED
+            )),
             "[camera-busy] zoom (PID 12) exited on SIGTERM"
         );
         assert!(
-            take(obs_camera_busy_close_log_line(name.as_ptr(), 12, OBS_CAMERA_BUSY_KILLED))
-                .ends_with("was killed (SIGKILL)")
+            take(obs_camera_busy_close_log_line(
+                name.as_ptr(),
+                12,
+                OBS_CAMERA_BUSY_KILLED
+            ))
+            .ends_with("was killed (SIGKILL)")
         );
         assert!(
-            take(obs_camera_busy_close_log_line(name.as_ptr(), 12, OBS_CAMERA_BUSY_FAILED))
-                .ends_with("could not be closed")
+            take(obs_camera_busy_close_log_line(
+                name.as_ptr(),
+                12,
+                OBS_CAMERA_BUSY_FAILED
+            ))
+            .ends_with("could not be closed")
         );
     }
 }

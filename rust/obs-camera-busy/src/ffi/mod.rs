@@ -298,7 +298,12 @@ pub unsafe extern "C" fn obs_camera_busy_log_line(
 ) -> *mut c_char {
     // SAFETY: as the caller promises.
     let (device, holders) = unsafe { (text(device), list(holders)) };
-    owned(crate::log_line(cause(cause_code), &device, holders, show(show_value)))
+    owned(crate::log_line(
+        cause(cause_code),
+        &device,
+        holders,
+        show(show_value),
+    ))
 }
 
 /// [`crate::answer_log_line`]; free it with [`obs_camera_busy_free`].
@@ -313,7 +318,11 @@ pub unsafe extern "C" fn obs_camera_busy_answer_log_line(
 ) -> *mut c_char {
     // SAFETY: as the caller promises.
     let (device, holders) = unsafe { (text(device), list(holders)) };
-    owned(crate::answer_log_line(&device, holders, answer(answer_code)))
+    owned(crate::answer_log_line(
+        &device,
+        holders,
+        answer(answer_code),
+    ))
 }
 
 /// Close it for `pid` with [`crate::KILL_GRACE_MS`]: blocks up to twice
