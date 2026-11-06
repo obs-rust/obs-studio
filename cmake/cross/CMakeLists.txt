@@ -591,6 +591,7 @@ if(_host STREQUAL WINDOWS)
       build/get-graphics-offsets.get-graphics-offsets-windows+.h.c
     INCLUDES shared/obs-hook-config shared/obs-d3d8-api plugins/win-capture
   )
+  _obs_cross_conversion_ratchet(get-graphics-offsets-cross)
   # The hook and offsets helper don't link libobs: standard-library PCH, as
   # in the native build.
   set_target_properties(graphics-hook-cross get-graphics-offsets-cross PROPERTIES OBS_PCH_PROFILE std)
