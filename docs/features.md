@@ -1651,6 +1651,11 @@ area.
   stays live, against the user's choice. *All*, 2026-11-01. Issue
   [#3448](https://github.com/obs-rust/obs-studio/issues/3448), upstream
   obs-studio issue 13856.
+- OBS no longer hangs on exit when a recording was stopped before it got
+  any data, such as a Source Record recording of a source whose audio had
+  not started yet. Such a recording now stops at once and can start
+  again. *All*, 2026-11-06. Issue
+  [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
 
 ### Sources and filters
 

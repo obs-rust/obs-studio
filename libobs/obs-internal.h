@@ -1632,6 +1632,10 @@ struct obs_output {
 	uint32_t starting_lagged_count;
 
 	volatile long total_frames;
+	/* set when a packet reaches info.encoded_packet, cleared when data
+	 * capture begins: an output that got none cannot finish a stop that
+	 * waits for its next packet (#3739) */
+	volatile bool delivered_packet;
 
 	volatile bool active;
 	/* start() was called and data capture has not begun yet (a network
@@ -1758,6 +1762,8 @@ struct obs_output_interleave_fields {
 	void (*const *encoded_packet)(void *data, struct encoder_packet *packet);
 	void *const *data;
 	char *const *name;
+	/* NULL: not tracked */
+	volatile bool *delivered_packet;
 };
 
 /* The caption state of one video track of an output, as pointers into its

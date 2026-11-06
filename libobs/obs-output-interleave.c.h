@@ -187,6 +187,9 @@ static inline void send_interleaved(struct obs_output *output)
 	}
 	pthread_mutex_unlock(f.pkt_callbacks_mutex);
 
+	/* NULL where the fields come from elsewhere: not tracked */
+	if (f.delivered_packet)
+		os_atomic_set_bool(f.delivered_packet, true);
 	(*f.encoded_packet)(*f.data, &out);
 	obs_encoder_packet_release(&out);
 }

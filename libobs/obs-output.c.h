@@ -412,6 +412,7 @@ struct obs_output_interleave_fields obs_output_interleave_fields(const obs_outpu
 		.encoded_packet = &o->info.encoded_packet,
 		.data = &o->context.data,
 		.name = &o->context.name,
+		.delivered_packet = &o->delivered_packet,
 	};
 
 	return f;
@@ -607,6 +608,15 @@ void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 
 	if (output->context.data && call_stop) {
 		output->info.stop(output->context.data, ts);
+
+		/* An encoded output that never got a packet cannot finish a stop
+		 * that waits for its next packet (ffmpeg_muxer): its encoders may
+		 * never produce one, and obs_output_destroy() would wait forever
+		 * (#3739). End the capture here; a later end from the output is
+		 * ignored. */
+		if (obs_output_stop_encoded(output->info.flags) && !delay_active(output) &&
+		    !os_atomic_load_bool(&output->delivered_packet))
+			obs_output_end_data_capture(output);
 
 	} else if (was_reconnecting) {
 		output->stop_code = OBS_OUTPUT_SUCCESS;
@@ -1707,6 +1717,7 @@ static void default_encoded_callback(void *param, struct encoder_packet *packet,
 	if (data_active(output)) {
 		packet->track_idx = get_encoder_index(output, packet);
 
+		os_atomic_set_bool(&output->delivered_packet, true);
 		output->info.encoded_packet(output->context.data, packet);
 
 		if (packet->type == OBS_ENCODER_VIDEO)
@@ -2203,6 +2214,7 @@ static bool obs_output_begin_data_capture_internal(obs_output_t *output)
 		return false;
 
 	os_atomic_set_long(&output->total_frames, 0);
+	os_atomic_set_bool(&output->delivered_packet, false);
 
 	if (obs_output_start_reset_raw(output->info.flags))
 		reset_raw_output(output);

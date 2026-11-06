@@ -243,6 +243,9 @@ pub trait InterleaveOutput {
     );
     /// `info.encoded_packet(context.data, packet)`.
     fn encoded_packet(&mut self, packet: &mut Self::Packet);
+    /// `delivered_packet = true`, just before [`InterleaveOutput::encoded_packet`]
+    /// (#3739).
+    fn mark_delivered(&mut self);
     /// `os_gettime_ns()`.
     fn now(&self) -> u64;
 
@@ -775,6 +778,7 @@ pub fn send_interleaved<O: InterleaveOutput>(o: &mut O) {
     }
     o.unlock_callbacks();
 
+    o.mark_delivered();
     o.encoded_packet(&mut out);
     o.release(&mut out);
 }
