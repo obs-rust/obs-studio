@@ -383,6 +383,15 @@ class CrossConversionRatchet(unittest.TestCase):
                 for group in GROUPS:
                     self.assertIn(group, options[1])
 
+    def test_the_windows_libobs_slices_are_opted_in(self) -> None:
+        """Windows product C groups retain all conversion diagnostics (#2625)."""
+        self.assertRegex(
+            source(),
+            r"if\(_host STREQUAL WINDOWS\)\s*"
+            r"_obs_cross_c_conversion_ratchet\(libobs-cross\)\s*"
+            r"_obs_cross_c_conversion_ratchet\(libobs-cross-rust-shims\)\s*endif\(\)",
+        )
+
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
         edit that drops a marker cannot quietly take them back out of the
