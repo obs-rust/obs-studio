@@ -132,6 +132,11 @@ class CrossConversionRatchet(unittest.TestCase):
         targets = [match.group("target") for match in OPT_IN.finditer(source())]
         self.assertEqual(targets.count("frontend-tools-host-cross"), 2)
 
+    def test_the_outputs_host_slice_is_opted_in_on_both_hosts(self) -> None:
+        """Keep the Windows and POSIX output host groups measured (#2625)."""
+        targets = [match.group("target") for match in OPT_IN.finditer(source())]
+        self.assertEqual(targets.count("obs-outputs-host-cross"), 2)
+
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
         edit that drops a marker cannot quietly take them back out of the
