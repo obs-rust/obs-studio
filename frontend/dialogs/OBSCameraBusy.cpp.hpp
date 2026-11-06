@@ -38,7 +38,12 @@ OBSCameraBusy::OBSCameraBusy(QWidget *parent, const Texts &texts, bool activate)
 		return button;
 	};
 	if (!texts.closeIt.isEmpty()) {
-		add(texts.closeIt, "closeItButton", QDialogButtonBox::DestructiveRole, Answer::CloseIt);
+		QPushButton *quit = buttons->addButton(texts.closeIt, QDialogButtonBox::DestructiveRole);
+		quit->setObjectName("closeItButton");
+		quit->setAutoDefault(false);
+		/* Quit ends another program: it asks first, and answers only on
+		 * Quit (#3726). Cancel leaves the warning open. */
+		connect(quit, &QPushButton::clicked, this, [this, texts]() { confirmQuit(texts); });
 	}
 	if (!texts.alwaysAllow.isEmpty()) {
 		add(texts.alwaysAllow, "alwaysAllowButton", QDialogButtonBox::ActionRole, Answer::AlwaysAllow);
@@ -71,4 +76,34 @@ void OBSCameraBusy::finish(Answer answer)
 	}
 	done = true;
 	emit answered(answer);
+}
+
+void OBSCameraBusy::confirmQuit(const Texts &texts)
+{
+	if (texts.confirm.isEmpty()) {
+		finish(Answer::CloseIt);
+		close();
+		return;
+	}
+	if (findChild<QMessageBox *>("confirmQuit")) {
+		return;
+	}
+	QMessageBox *box =
+		new QMessageBox(QMessageBox::Question, windowTitle(), texts.confirm, QMessageBox::NoButton, this);
+	box->setObjectName("confirmQuit");
+	box->setAttribute(Qt::WA_DeleteOnClose);
+	box->setWindowModality(Qt::WindowModal);
+	QPushButton *yes = box->addButton(texts.confirmQuit, QMessageBox::DestructiveRole);
+	yes->setObjectName("confirmQuitButton");
+	QPushButton *no = box->addButton(texts.cancel, QMessageBox::RejectRole);
+	no->setObjectName("cancelQuitButton");
+	box->setDefaultButton(no);
+	box->setEscapeButton(no);
+	connect(box, &QMessageBox::buttonClicked, this, [this, yes](QAbstractButton *clicked) {
+		if (clicked == yes) {
+			finish(Answer::CloseIt);
+			close();
+		}
+	});
+	box->open();
 }

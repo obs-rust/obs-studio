@@ -341,6 +341,12 @@ impl Warnings {
         }
     }
 
+    /// Whether a warning about `device` that could not name its holder is
+    /// open (#3726).
+    pub fn unknown_open(&self, device: &str) -> bool {
+        self.open.contains(&Self::key(device, ""))
+    }
+
     /// The dialog for `device` naming `holders` (as [`Begin::holders`])
     /// ended with `answer` at `now_ms`.
     pub fn end(&mut self, device: &str, holders: &[Holder], answer: Answer, now_ms: u64) -> Action {
@@ -446,6 +452,17 @@ pub fn holder_list(holders: &[Holder]) -> String {
     let names: Vec<String> = holders
         .iter()
         .map(|h| format!("{} (PID {})", h.name, h.pid))
+        .collect();
+    names.join(", ")
+}
+
+/// The programs the Quit button closes, as it names them: `zoom, cheese`
+/// (#3726).
+pub fn closable_names(holders: &[Holder]) -> String {
+    let names: Vec<&str> = holders
+        .iter()
+        .filter(|h| h.can_close)
+        .map(|h| h.name.as_str())
         .collect();
     names.join(", ")
 }

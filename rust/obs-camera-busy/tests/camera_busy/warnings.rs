@@ -196,3 +196,24 @@ fn set_allowlist_replaces_it() {
         Show::Dialog
     );
 }
+
+/// A warning that could not name the holder stays open while the source keeps
+/// retrying; a later report that names it replaces it (#3726).
+#[test]
+fn unknown_warning_is_open_until_answered() {
+    let mut w = Warnings::default();
+    assert!(!w.unknown_open(DEV));
+    assert_eq!(w.begin(Cause::Busy, DEV, &[], 0), dialog(vec![]));
+    assert!(w.unknown_open(DEV));
+    assert!(!w.unknown_open("/dev/video1"));
+
+    // The holder is found on a retry: a named warning shows beside it.
+    assert_eq!(
+        w.begin(Cause::Busy, DEV, &[h(12, "zoom")], 1),
+        dialog(vec![h(12, "zoom")])
+    );
+    assert!(w.unknown_open(DEV));
+
+    w.end(DEV, &[], Answer::Ignore, 2);
+    assert!(!w.unknown_open(DEV));
+}
