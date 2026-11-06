@@ -14,13 +14,16 @@ int wmain(int argc, wchar_t *argv_w[])
 	SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 	SetDllDirectoryW(L"");
 
-	argv = malloc(argc * sizeof(char *));
+	/* The CRT supplies a nonnegative argument count. */
+	argv = malloc((size_t)argc * sizeof(char *));
 	for (int i = 0; i < argc; i++) {
 		size_t len = wcslen(argv_w[i]);
 		int size;
 
 		size = WideCharToMultiByte(CP_UTF8, 0, argv_w[i], (int)len, NULL, 0, NULL, NULL);
-		argv[i] = malloc(size + 1);
+		/* The UTF-8 byte count is nonnegative (zero on conversion failure).
+		 * Keep the existing int addition before the allocation-size conversion. */
+		argv[i] = malloc((size_t)(size + 1));
 		WideCharToMultiByte(CP_UTF8, 0, argv_w[i], (int)len, argv[i], size + 1, NULL, NULL);
 		argv[i][size] = 0;
 	}
