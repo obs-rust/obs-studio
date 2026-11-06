@@ -326,6 +326,15 @@ class CrossConversionRatchet(unittest.TestCase):
             r'-Wconversion;-Wsign-conversion;-Wfloat-conversion>"\s*\)',
         )
 
+    def test_the_native_frontend_slice_enables_all_groups(self) -> None:
+        """The measured native frontend must keep all three groups (#2625)."""
+        text = (CROSS.parents[2] / "frontend" / "CMakeLists.txt").read_text()
+        blocks = re.findall(r"target_compile_options\(obs-studio\s+PRIVATE\s+([^\n]*)", text)
+        positive = [block for block in blocks if "-Wsign-conversion" in block]
+        self.assertEqual(len(positive), 1)
+        for group in GROUPS:
+            self.assertIn(group, positive[0])
+
     def test_the_frontend_macos_slice_is_opted_in(self) -> None:
         """Keep all macOS frontend unity groups measured on both aliases (#2625)."""
         self.assertIn("frontend-macos-cross", opted_in(source()))

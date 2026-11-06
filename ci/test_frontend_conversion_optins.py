@@ -47,7 +47,7 @@ INTERFACE_CALL = re.compile(
 )
 
 # The groups the app target states at its call sites today.
-APP_TARGET_GROUPS = {"-Wsign-conversion"}
+APP_TARGET_GROUPS = {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"}
 # The three groups the global pins hide across every target.
 GLOBAL_PINS = {"-Wno-conversion", "-Wno-sign-conversion", "-Wno-float-conversion"}
 
