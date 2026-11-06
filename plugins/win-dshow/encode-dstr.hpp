@@ -46,7 +46,7 @@ static inline bool DecodeDeviceDStr(DStr &name, DStr &path, const char *device_i
 	dstr_copy(path, path_str + 1);
 	dstr_copy(name, device_id);
 
-	size_t len = path_str - device_id;
+	size_t len = static_cast<size_t>(path_str - device_id);
 	name->array[len] = 0;
 	name->len = len;
 

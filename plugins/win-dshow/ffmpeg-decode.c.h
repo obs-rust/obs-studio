@@ -261,11 +261,11 @@ bool ffmpeg_decode_audio(struct ffmpeg_decode *decode, uint8_t *data, size_t siz
 		audio->data[i] = decode->frame->data[i];
 	}
 
-	audio->samples_per_sec = decode->frame->sample_rate;
+	audio->samples_per_sec = (uint32_t)decode->frame->sample_rate;
 	audio->format = convert_sample_format(decode->frame->format);
 	audio->speakers = convert_speaker_layout((uint8_t)decode->decoder->ch_layout.nb_channels);
 
-	audio->frames = decode->frame->nb_samples;
+	audio->frames = (uint32_t)decode->frame->nb_samples;
 
 	if (audio->format == AUDIO_FORMAT_UNKNOWN) {
 		return false;
@@ -370,7 +370,7 @@ bool ffmpeg_decode_video(struct ffmpeg_decode *decode, uint8_t *data, size_t siz
 
 	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
 		frame->data[i] = decode->frame->data[i];
-		frame->linesize[i] = decode->frame->linesize[i];
+		frame->linesize[i] = (uint32_t)decode->frame->linesize[i];
 	}
 
 	const enum video_format format = convert_pixel_format(decode->frame->format);
@@ -399,8 +399,8 @@ bool ffmpeg_decode_video(struct ffmpeg_decode *decode, uint8_t *data, size_t siz
 
 	*ts = decode->frame->pts;
 
-	frame->width = decode->frame->width;
-	frame->height = decode->frame->height;
+	frame->width = (uint32_t)decode->frame->width;
+	frame->height = (uint32_t)decode->frame->height;
 	frame->flip = false;
 
 	switch (decode->frame->color_trc) {
