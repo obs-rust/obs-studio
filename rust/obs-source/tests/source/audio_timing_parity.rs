@@ -359,6 +359,24 @@ fn under_lock_special_values() {
     assert_eq!(runs, 16 * 5 * 9 * 3 * 9 * 3 * 2 * 3);
 }
 
+#[track_caller]
+fn follows_both(timestamp: u64, video_ts: u64) -> bool {
+    // SAFETY: a pure function.
+    let c = unsafe { oracle::oracle_obs_source_audio_timing_follows_video(timestamp, video_ts) };
+    let rust = shim::obs_source_audio_timing_follows_video(timestamp, video_ts);
+    assert_eq!(rust, c, "follows_video({timestamp}, {video_ts})");
+    rust
+}
+
+#[test]
+fn follows_video_special_values() {
+    for &timestamp in &SPECIAL {
+        for &video_ts in &SPECIAL {
+            follows_both(timestamp, video_ts);
+        }
+    }
+}
+
 #[test]
 fn buffer_start_special_values() {
     for &os_time in &SPECIAL {
@@ -489,6 +507,11 @@ proptest! {
     #[test]
     fn under_lock_any_input(input in under_input(), fill in fill()) {
         under_both(input, &fill);
+    }
+
+    #[test]
+    fn follows_video_any_input(timestamp in timestamp(), video_ts in timestamp()) {
+        follows_both(timestamp, video_ts);
     }
 
     #[test]

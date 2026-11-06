@@ -19,7 +19,7 @@
 
 use obs_source::audio_timing::{
     Action, MAX_TS_VAR, PreLock, PreLockInput, TS_SMOOTHING_THRESHOLD, UnderLock, UnderLockInput,
-    buffer_start, distance, pre_lock, under_lock,
+    buffer_start, distance, follows_video, pre_lock, under_lock,
 };
 use proptest::prelude::*;
 
@@ -674,6 +674,27 @@ fn steps_buffer_start() {
         buffer_start(u64::MAX, i64::MAX, 0),
         u64::try_from(i64::MAX).unwrap() - 1
     );
+}
+
+// --------------------------------------------------------------------------
+// obs_source_audio_timing_follows_video
+
+/// `follows_video` (#3747): within MAX_TS_VAR of the video's clock, either
+/// way, or no frame yet.
+#[test]
+fn steps_follows_video() {
+    let ts = 5_000_000_000_000_000;
+    assert!(follows_video(ts, 0));
+    assert!(follows_video(ts, ts));
+    assert!(follows_video(ts, ts + MAX_VAR - 1));
+    assert!(follows_video(ts, ts - (MAX_VAR - 1)));
+    assert!(!follows_video(ts, ts + MAX_VAR));
+    assert!(!follows_video(ts, ts - MAX_VAR));
+    // NDI Test Patterns: audio 14191 s ahead of its video
+    assert!(!follows_video(ts, ts - 14_191_000 * MS));
+    // the distance is not modular
+    assert!(!follows_video(0, u64::MAX));
+    assert!(!follows_video(u64::MAX, 1));
 }
 
 // --------------------------------------------------------------------------

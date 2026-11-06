@@ -2956,6 +2956,12 @@ static void obs_source_output_video_internal(obs_source_t *source, const struct 
 	if (!obs_source_valid(source, "obs_source_output_video"))
 		return;
 
+	/* the clock of the source's video, for its audio (#3747): taken alone,
+	 * the graphics thread takes audio_buf_mutex inside async_mutex */
+	pthread_mutex_lock(&source->audio_buf_mutex);
+	source->last_output_frame_ts = frame ? frame->timestamp : 0;
+	pthread_mutex_unlock(&source->audio_buf_mutex);
+
 	if (!frame) {
 		pthread_mutex_lock(&source->async_mutex);
 		os_atomic_set_bool(&source->async_active, false);

@@ -47,6 +47,7 @@ unsafe extern "C" {
     fn obs_source_audio_output_seam_get_monitoring_type(source: *const c_void) -> c_int;
     fn obs_source_audio_output_seam_get_async_unbuffered(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_get_async_decoupled(source: *const c_void) -> bool;
+    fn obs_source_audio_output_seam_get_last_output_frame_ts(source: *const c_void) -> u64;
 
     fn obs_source_audio_output_seam_compensating(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_set_compensation_error(source: *mut c_void, error: i64);
@@ -189,6 +190,10 @@ impl Source for Seam {
     fn async_decoupled(&self) -> bool {
         // SAFETY: see the impl.
         unsafe { obs_source_audio_output_seam_get_async_decoupled(self.0) }
+    }
+    fn last_output_frame_ts(&self) -> u64 {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_get_last_output_frame_ts(self.0) }
     }
     fn compensating(&self) -> bool {
         // SAFETY: see the impl.

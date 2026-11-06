@@ -62,6 +62,8 @@ uint64_t obs_source_audio_output_seam_get_resample_offset(const obs_source_t *so
 int obs_source_audio_output_seam_get_monitoring_type(const obs_source_t *source);
 bool obs_source_audio_output_seam_get_async_unbuffered(const obs_source_t *source);
 bool obs_source_audio_output_seam_get_async_decoupled(const obs_source_t *source);
+/* source->last_output_frame_ts, under audio_buf_mutex (#3747) */
+uint64_t obs_source_audio_output_seam_get_last_output_frame_ts(const obs_source_t *source);
 
 bool obs_source_audio_output_seam_compensating(const obs_source_t *source);
 void obs_source_audio_output_seam_set_compensation_error(obs_source_t *source, int64_t error);

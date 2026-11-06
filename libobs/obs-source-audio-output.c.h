@@ -198,7 +198,10 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 		.timing_adjust = source->timing_adjust,
 		.next_audio_sys_ts_min = source->next_audio_sys_ts_min,
 		.last_sync_offset = source->last_sync_offset,
-		.continuous = pre.continuous,
+		/* a continuous packet follows the video's timing only on the
+		 * video's clock (#3747) */
+		.continuous = pre.continuous &&
+			      obs_source_audio_timing_follows_video(data->timestamp, source->last_output_frame_ts),
 	};
 	obs_source_audio_timing_under_lock(&under);
 

@@ -173,6 +173,13 @@ pub unsafe extern "C" fn obs_source_audio_timing_under_lock(t: *mut obs_source_a
     }
 }
 
+/// `bool obs_source_audio_timing_follows_video(uint64_t timestamp,
+/// uint64_t video_ts)`.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_source_audio_timing_follows_video(timestamp: u64, video_ts: u64) -> bool {
+    core::follows_video(timestamp, video_ts)
+}
+
 /// `uint64_t obs_source_audio_timing_buffer_start(uint64_t os_time,
 /// int64_t sync_offset, uint64_t resample_offset)`.
 #[unsafe(no_mangle)]

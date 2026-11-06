@@ -21,6 +21,9 @@
 //!   the sync and resampler offsets, `next_audio_sys_ts_min`, and the rule
 //!   that a changed sync offset places the packet (#333).
 //!
+//! [`follows_video`] is whether a continuous packet may follow the timing of
+//! the source's video at all: only on the video's clock (#3747).
+//!
 //! [`buffer_start`] is where `reset_audio_data_at_sys_time()` starts an
 //! emptied buffer (#286).
 //!
@@ -291,6 +294,16 @@ pub fn under_lock(input: UnderLockInput) -> UnderLock {
         next_audio_sys_ts_min,
         last_sync_offset,
     }
+}
+
+/// `obs_source_audio_timing_follows_video()`: whether a continuous packet
+/// stamped `timestamp` may follow the timing of the source's video when that
+/// moved more than [`MAX_TS_VAR`] (#522). Only when the audio runs on the
+/// video's clock: less than [`MAX_TS_VAR`] from `video_ts`, the timestamp of
+/// the latest frame the source output, or the source output none (0). Audio
+/// on a clock of its own resets to the system clock instead (#3747).
+pub fn follows_video(timestamp: u64, video_ts: u64) -> bool {
+    video_ts == 0 || distance(timestamp, video_ts) < MAX_TS_VAR
 }
 
 /// `obs_source_audio_timing_buffer_start()`: where

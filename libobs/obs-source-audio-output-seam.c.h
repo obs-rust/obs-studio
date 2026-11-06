@@ -149,6 +149,11 @@ bool obs_source_audio_output_seam_get_async_decoupled(const obs_source_t *source
 	return source->async_decoupled;
 }
 
+uint64_t obs_source_audio_output_seam_get_last_output_frame_ts(const obs_source_t *source)
+{
+	return source->last_output_frame_ts;
+}
+
 bool obs_source_audio_output_seam_compensating(const obs_source_t *source)
 {
 	return source->resampler && source->last_async_compensation;
