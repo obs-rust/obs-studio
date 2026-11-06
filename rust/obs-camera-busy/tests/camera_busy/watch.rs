@@ -34,15 +34,15 @@ fn reports_who_opened_the_device() {
     )
     .unwrap();
 
-    // The child's stdin is the "device".
-    let mut child = Command::new("sleep")
-        .arg("30")
-        .stdin(Stdio::from(File::open(&dev).unwrap()))
+    // The child opens the "device" itself, as its stdin, and keeps it open.
+    let mut child = Command::new("sh")
+        .args(["-c", "exec sleep 30 < \"$0\""])
+        .arg(&dev)
+        .stdin(Stdio::null())
         .spawn()
         .unwrap();
 
     let mut found = None;
-    // Our own File::open above also fires; wait for the report with the child.
     while let Ok(holders) = rx.recv_timeout(Duration::from_secs(5)) {
         if let Some(h) = holders.into_iter().find(|h| h.pid == child.id()) {
             found = Some(h);

@@ -7,8 +7,30 @@ use obs_camera_busy::{Holder, display_name};
 #[test]
 fn name_is_the_exe_file_name() {
     assert_eq!(
-        display_name(Some(Path::new("/opt/zoom/zoom")), "ZoomWebviewHost", b"x\0"),
+        display_name(Some(Path::new("/opt/zoom/zoom")), "zoom\n", b"x\0"),
         "zoom"
+    );
+    // comm is cut to 15 bytes; the exe has the whole name.
+    assert_eq!(
+        display_name(
+            Some(Path::new("/usr/lib/x/a-very-long-program")),
+            "a-very-long-pro\n",
+            b""
+        ),
+        "a-very-long-program"
+    );
+}
+
+#[test]
+fn a_multicall_or_renamed_binary_is_its_comm() {
+    // NixOS's sleep is coreutils; an Electron app may rename itself.
+    assert_eq!(
+        display_name(
+            Some(Path::new("/nix/store/abc-coreutils/bin/coreutils")),
+            "sleep\n",
+            b"sleep\x0030\0"
+        ),
+        "sleep"
     );
 }
 
@@ -26,7 +48,7 @@ fn a_nix_wrapper_is_its_program() {
     assert_eq!(
         display_name(
             Some(Path::new("/nix/store/abc-zoom/bin/.zoom-wrapped")),
-            "",
+            ".zoom-wrapped\n",
             b""
         ),
         "zoom"
