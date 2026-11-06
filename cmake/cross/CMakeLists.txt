@@ -640,6 +640,7 @@ if(_host STREQUAL WINDOWS)
   _obs_cross_conversion_ratchet(obs-outputs-host-cross)
   _obs_cross_plugin(obs-scripting-lua-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.lua-host-windows+.h.c)
   _obs_cross_plugin(obs-scripting-python-import-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.python-import-host-windows+.h.c)
+  _obs_cross_conversion_ratchet(obs-scripting-python-import-host-cross)
   _obs_cross_plugin(
     obs-scripting-python-host-cross
     DIR shared/obs-scripting
@@ -875,6 +876,7 @@ elseif(_host STREQUAL MACOS)
   _obs_cross_conversion_ratchet(obs-outputs-host-cross)
   _obs_cross_plugin(obs-scripting-lua-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.lua-host-macos+.h.c)
   _obs_cross_plugin(obs-scripting-python-import-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.python-import-host-macos+.h.c)
+  _obs_cross_conversion_ratchet(obs-scripting-python-import-host-cross)
   _obs_cross_plugin(
     obs-scripting-python-host-cross
     DIR shared/obs-scripting
