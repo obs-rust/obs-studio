@@ -296,8 +296,9 @@ API_AVAILABLE(macos(12.5)) void screen_stream_video_update(struct screen_capture
                     needs_to_update_properties = true;
                 }
             } else {
-                int width = CVPixelBufferGetWidth(image_buffer);
-                int height = CVPixelBufferGetHeight(image_buffer);
+                /* Match the existing int-sized frame comparison below. */
+                int width = (int) CVPixelBufferGetWidth(image_buffer);
+                int height = (int) CVPixelBufferGetHeight(image_buffer);
 
                 int frameWidth = (int) sc->frame.size.width;
                 int frameHeight = (int) sc->frame.size.height;

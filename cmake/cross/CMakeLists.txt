@@ -811,6 +811,7 @@ elseif(_host STREQUAL MACOS)
     DIR plugins/mac-capture
     SOURCES ${_mac_capture}
   )
+  _obs_cross_conversion_ratchet(mac-capture-cross)
   _obs_cross_plugin(
     mac-avcapture-cross
     OBJC_ARC

@@ -227,7 +227,7 @@ API_AVAILABLE(macos(12.5)) static bool init_screen_stream(struct screen_capture 
     [sc->stream_properties setColorSpaceName:kCGColorSpaceDisplayP3];
     [sc->stream_properties setBackgroundColor:background];
     if (hasVideoInfo) {
-        CMTime frameTimeInterval = CMTimeMake((int64_t) video_info.fps_den, video_info.fps_num);
+        CMTime frameTimeInterval = CMTimeMake((int64_t) video_info.fps_den, (int32_t) video_info.fps_num);
         CMTime minimumUpdateTime = CMTimeMultiplyByFloat64(frameTimeInterval, 0.9);
         [sc->stream_properties setMinimumFrameInterval:minimumUpdateTime];
     } else {

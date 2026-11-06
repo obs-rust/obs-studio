@@ -263,7 +263,7 @@ static bool init_display_stream(struct display_capture *dc)
 
     const CGSize *size = &dc->frame.size;
     dc->disp = CGDisplayStreamCreateWithDispatchQueue(
-        disp_id, (size_t) size->width, (size_t) size->height, bgra_code, (__bridge CFDictionaryRef) dict,
+        disp_id, (size_t) size->width, (size_t) size->height, (int32_t) bgra_code, (__bridge CFDictionaryRef) dict,
         dispatch_queue_create(NULL, NULL),
         ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface,
           CGDisplayStreamUpdateRef updateRef) {
@@ -642,7 +642,7 @@ static void display_capture_defaults(obs_data_t *settings)
 
 void load_crop_mode(enum crop_mode *mode, obs_data_t *settings)
 {
-    *mode = (int) obs_data_get_int(settings, "crop_mode");
+    *mode = (enum crop_mode)(int) obs_data_get_int(settings, "crop_mode");
     if (!crop_mode_valid(*mode))
         *mode = CROP_NONE;
 }

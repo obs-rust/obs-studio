@@ -140,7 +140,7 @@ API_AVAILABLE(macos(13.0)) static bool init_audio_screen_stream(struct screen_ca
         [content_filter release];
         return did_get_audio_info;
     }
-    int channel_count = get_audio_channels(audio_info.speakers);
+    int channel_count = (int) get_audio_channels(audio_info.speakers);
     if (channel_count > 1) {
         [sc->stream_properties setChannelCount:2];
     } else {
