@@ -40,7 +40,10 @@ obs_msvc_exempt_c4201(obs-studio)
 if(OS_MACOS)
   target_compile_options(obs-studio PRIVATE -Wno-sign-conversion)
 else()
-  target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>")
+  target_compile_options(
+    obs-studio
+    PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  )
 endif()
 
 include(cmake/sources.cmake)
