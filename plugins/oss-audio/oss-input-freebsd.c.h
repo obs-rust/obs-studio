@@ -71,7 +71,7 @@ void oss_sndstat_add_devices(obs_property_t *p, const char *sndstat_path)
 			if (end == NULL || end - line == 0)
 				continue;
 
-			udname = strndup(line, end - line);
+			udname = strndup(line, (size_t)(end - line));
 			if (udname == NULL)
 				continue;
 		}

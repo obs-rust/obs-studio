@@ -22,4 +22,10 @@ endif()
 
 target_link_libraries(oss-audio PRIVATE OBS::libobs OSS::OSS)
 
+# #2625: keep the native OSS implementation under the conversion ratchet.
+target_compile_options(
+  oss-audio
+  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+)
+
 set_target_properties_obs(oss-audio PROPERTIES FOLDER plugins PREFIX "")
