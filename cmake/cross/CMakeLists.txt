@@ -984,6 +984,7 @@ target_compile_definitions(
   aja-cross
   PRIVATE "$<IF:$<STREQUAL:${_host},WINDOWS>,AJA_WINDOWS;_WINDOWS;WIN32;MSWindows,AJAMac;AJA_MAC>"
 )
+_obs_cross_conversion_ratchet(aja-cross)
 target_compile_options(aja-cross PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang>:-Wno-deprecated-declarations>")
 # LibAJANTV2 includes Windows SDK headers with their old mixed-case names
 # (<Basetsd.h>), which Windows' case-insensitive filesystem finds and the

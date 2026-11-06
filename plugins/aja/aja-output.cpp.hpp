@@ -249,7 +249,7 @@ void AJAOutput::QueueVideoFrame(struct video_data *frame, size_t size)
 
 	VideoFrame vf;
 	vf.frame = *frame;
-	vf.frameNum = mVideoWriteFrames;
+	vf.frameNum = static_cast<int64_t>(mVideoWriteFrames);
 	vf.size = size;
 
 	if (mVideoQueue->size() > kVideoQueueMaxSize) {

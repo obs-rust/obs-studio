@@ -281,7 +281,7 @@ void AJASource::CaptureThread(AJAThread *thread, void *data)
 
 	AudioRepacker *audioRepacker =
 		new AudioRepacker(ConvertRepackFormat(sourceProps.SpeakerLayout(), sourceProps.swapFrontCenterLFE),
-				  sourceProps.audioSampleSize * 8);
+				  static_cast<int>(sourceProps.audioSampleSize * 8));
 
 	while (ajaSource->IsCapturing()) {
 		if (card->GetModelName() == "(Not Found)") {
@@ -1095,7 +1095,7 @@ void register_aja_source_info()
 	obs_register_source(&aja_source_info);
 
 	aja_source_info.version = 2;
-	aja_source_info.output_flags &= ~OBS_SOURCE_CAP_OBSOLETE;
+	aja_source_info.output_flags &= ~static_cast<uint32_t>(OBS_SOURCE_CAP_OBSOLETE);
 	aja_source_info.get_defaults = aja_source_get_defaults;
 	obs_register_source(&aja_source_info);
 }
