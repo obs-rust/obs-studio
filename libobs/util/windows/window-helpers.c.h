@@ -161,7 +161,7 @@ void ms_get_window_title(struct dstr *name, HWND hwnd)
 	if (len > 1024) {
 		wchar_t *temp;
 
-		temp = malloc(sizeof(wchar_t) * (len + 1));
+		temp = malloc(sizeof(wchar_t) * (size_t)(len + 1));
 		if (!temp)
 			return;
 

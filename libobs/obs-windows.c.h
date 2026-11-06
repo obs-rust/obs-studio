@@ -211,7 +211,7 @@ static void log_security_products_by_type(IWSCProductList *prod_list, int type)
 	BSTR name;
 	WSC_SECURITY_PRODUCT_STATE prod_state;
 
-	hr = prod_list->lpVtbl->Initialize(prod_list, type);
+	hr = prod_list->lpVtbl->Initialize(prod_list, (ULONG)type);
 
 	if (FAILED(hr)) {
 		prod_list->lpVtbl->Release(prod_list);
@@ -225,7 +225,7 @@ static void log_security_products_by_type(IWSCProductList *prod_list, int type)
 	}
 
 	for (int i = 0; i < count; i++) {
-		hr = prod_list->lpVtbl->get_Item(prod_list, i, &prod);
+		hr = prod_list->lpVtbl->get_Item(prod_list, (ULONG)i, &prod);
 		if (FAILED(hr))
 			continue;
 
@@ -300,8 +300,8 @@ void log_system_info(void)
 	struct win_version_info ver;
 	get_win_ver(&ver);
 
-	win_ver = obs_windows_system_info_version(ver.major, ver.minor);
-	win_build = ver.build;
+	win_ver = obs_windows_system_info_version((uint32_t)ver.major, (uint32_t)ver.minor);
+	win_build = (uint32_t)ver.build;
 
 	log_processor_info();
 	log_processor_cores();
@@ -500,7 +500,7 @@ bool obs_hotkeys_platform_init(struct obs_core_hotkeys *hotkeys)
 	hotkeys->platform_context = bzalloc(sizeof(obs_hotkeys_platform_t));
 
 	for (size_t i = 0; i < OBS_KEY_LAST_VALUE; i++)
-		hotkeys->platform_context->vk_codes[i] = obs_windows_keys_virtual_key(i);
+		hotkeys->platform_context->vk_codes[i] = obs_windows_keys_virtual_key((obs_key_t)i);
 
 	return true;
 }
@@ -513,7 +513,7 @@ void obs_hotkeys_platform_free(struct obs_core_hotkeys *hotkeys)
 
 static bool vk_down(DWORD vk)
 {
-	short state = GetAsyncKeyState(vk);
+	short state = GetAsyncKeyState((int)vk);
 	bool down = (state & 0x8000) != 0;
 
 	return down;
@@ -526,7 +526,7 @@ bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t 
 	}
 
 	UNUSED_PARAMETER(context);
-	return vk_down(obs_key_to_virtual_key(key));
+	return vk_down((DWORD)obs_key_to_virtual_key(key));
 }
 
 void obs_key_to_str(obs_key_t key, struct dstr *str)
@@ -565,7 +565,7 @@ void obs_key_to_str(obs_key_t key, struct dstr *str)
 	vk = obs_key_to_virtual_key(key);
 	scan_code = obs_windows_keys_scan_code(vk, MapVirtualKey(vk, 0));
 
-	if (obs_windows_keys_system_name(key, scan_code) && GetKeyNameTextW(scan_code, name, 128) != 0) {
+	if (obs_windows_keys_system_name(key, scan_code) && GetKeyNameTextW((LONG)scan_code, name, 128) != 0) {
 		dstr_from_wcs(str, name);
 	} else if (key != OBS_KEY_NONE) {
 		dstr_copy(str, obs_key_to_name(key));

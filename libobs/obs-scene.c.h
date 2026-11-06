@@ -2347,7 +2347,7 @@ bool save_transform_states(obs_scene_t *scene, obs_sceneitem_t *item, void *vp_p
 		struct vec2 scale = info.scale;
 		float rot = info.rot;
 		uint32_t alignment = info.alignment;
-		uint32_t bounds_type = info.bounds_type;
+		uint32_t bounds_type = (uint32_t)info.bounds_type;
 		uint32_t bounds_alignment = info.bounds_alignment;
 		bool crop_to_bounds = info.crop_to_bounds;
 		struct vec2 bounds = info.bounds;
