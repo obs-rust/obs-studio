@@ -75,11 +75,16 @@ VCamFilter::VCamFilter() : OutputFilter()
 		}
 	}
 
+	// DirectShow uses signed dimensions and 100 ns intervals; keep the existing boundary conversions.
 	if (new_obs_cx != obs_cx || new_obs_cy != obs_cy || new_obs_interval != obs_interval) {
-		AddVideoFormat(VideoFormat::NV12, new_obs_cx, new_obs_cy, new_obs_interval);
-		AddVideoFormat(VideoFormat::I420, new_obs_cx, new_obs_cy, new_obs_interval);
-		AddVideoFormat(VideoFormat::YUY2, new_obs_cx, new_obs_cy, new_obs_interval);
-		SetVideoFormat(VideoFormat::NV12, new_obs_cx, new_obs_cy, new_obs_interval);
+		AddVideoFormat(VideoFormat::NV12, static_cast<int>(new_obs_cx), static_cast<int>(new_obs_cy),
+			       static_cast<long long>(new_obs_interval));
+		AddVideoFormat(VideoFormat::I420, static_cast<int>(new_obs_cx), static_cast<int>(new_obs_cy),
+			       static_cast<long long>(new_obs_interval));
+		AddVideoFormat(VideoFormat::YUY2, static_cast<int>(new_obs_cx), static_cast<int>(new_obs_cy),
+			       static_cast<long long>(new_obs_interval));
+		SetVideoFormat(VideoFormat::NV12, static_cast<int>(new_obs_cx), static_cast<int>(new_obs_cy),
+			       static_cast<long long>(new_obs_interval));
 
 		obs_cx = new_obs_cx;
 		obs_cy = new_obs_cy;
@@ -183,8 +188,10 @@ void VCamFilter::Thread()
 	/* Created dynamically based on output resolution changes */
 	placeholder.scaled_data = nullptr;
 
-	nv12_scale_init(&scaler, TARGET_FORMAT_NV12, obs_cx, obs_cy, obs_cx, obs_cy);
-	nv12_scale_init(&placeholder.scaler, TARGET_FORMAT_NV12, obs_cx, obs_cy, placeholder.cx, placeholder.cy);
+	nv12_scale_init(&scaler, TARGET_FORMAT_NV12, static_cast<int>(obs_cx), static_cast<int>(obs_cy),
+			static_cast<int>(obs_cx), static_cast<int>(obs_cy));
+	nv12_scale_init(&placeholder.scaler, TARGET_FORMAT_NV12, static_cast<int>(obs_cx), static_cast<int>(obs_cy),
+			placeholder.cx, placeholder.cy);
 
 	UpdatePlaceholder();
 
@@ -234,7 +241,7 @@ void VCamFilter::Frame(uint64_t ts)
 		   the same resolution as the filter output */
 		new_obs_cx = new_filter_cx;
 		new_obs_cy = new_filter_cy;
-		new_obs_interval = GetInterval();
+		new_obs_interval = static_cast<uint64_t>(GetInterval());
 	}
 
 	if (new_obs_cx != obs_cx || new_obs_cy != obs_cy || new_obs_interval != obs_interval) {
@@ -243,7 +250,8 @@ void VCamFilter::Frame(uint64_t ts)
 		if (in_obs) {
 			/* If the vcam is being used inside obs, adjust
 			   the format we present to match */
-			SetVideoFormat(GetVideoFormat(), new_obs_cx, new_obs_cy, new_obs_interval);
+			SetVideoFormat(GetVideoFormat(), static_cast<int>(new_obs_cx), static_cast<int>(new_obs_cy),
+				       static_cast<long long>(new_obs_interval));
 
 			/* Update the new filter size immediately since we
 			   know it just changed above */
@@ -252,7 +260,9 @@ void VCamFilter::Frame(uint64_t ts)
 		}
 
 		/* Re-initialize the main scaler to use the new resolution */
-		nv12_scale_init(&scaler, scaler.format, new_filter_cx, new_filter_cy, new_obs_cx, new_obs_cy);
+		nv12_scale_init(&scaler, scaler.format, static_cast<int>(new_filter_cx),
+				static_cast<int>(new_filter_cy), static_cast<int>(new_obs_cx),
+				static_cast<int>(new_obs_cy));
 
 		obs_cx = new_obs_cx;
 		obs_cy = new_obs_cy;
@@ -267,7 +277,9 @@ void VCamFilter::Frame(uint64_t ts)
 		filter_cy = new_filter_cy;
 
 		/* Re-initialize the main scaler to use the new resolution */
-		nv12_scale_init(&scaler, scaler.format, new_filter_cx, new_filter_cy, new_obs_cx, new_obs_cy);
+		nv12_scale_init(&scaler, scaler.format, static_cast<int>(new_filter_cx),
+				static_cast<int>(new_filter_cy), static_cast<int>(new_obs_cx),
+				static_cast<int>(new_obs_cy));
 
 		UpdatePlaceholder();
 	}
@@ -298,7 +310,7 @@ void VCamFilter::Frame(uint64_t ts)
 			ShowDefaultFrame(ptr);
 		}
 
-		UnlockSampleData(ts, ts + obs_interval);
+		UnlockSampleData(static_cast<long long>(ts), static_cast<long long>(ts + obs_interval));
 	}
 }
 
@@ -314,9 +326,9 @@ void VCamFilter::ShowOBSFrame(uint8_t *ptr)
 void VCamFilter::ShowDefaultFrame(uint8_t *ptr)
 {
 	if (placeholder.scaled_data) {
-		memcpy(ptr, placeholder.scaled_data, GetOutputBufferSize());
+		memcpy(ptr, placeholder.scaled_data, static_cast<size_t>(GetOutputBufferSize()));
 	} else {
-		memset(ptr, 127, GetOutputBufferSize());
+		memset(ptr, 127, static_cast<size_t>(GetOutputBufferSize()));
 	}
 }
 
@@ -332,14 +344,14 @@ void VCamFilter::UpdatePlaceholder(void)
 		free(placeholder.scaled_data);
 	}
 
-	placeholder.scaled_data = (uint8_t *)malloc(GetOutputBufferSize());
+	placeholder.scaled_data = (uint8_t *)malloc(static_cast<size_t>(GetOutputBufferSize()));
 	if (!placeholder.scaled_data) {
 		return;
 	}
 
 	if (placeholder.cx == GetCX() && placeholder.cy == GetCY() && placeholder.scaler.format == TARGET_FORMAT_NV12) {
 		/* No scaling necessary if it matches exactly */
-		memcpy(placeholder.scaled_data, placeholder.source_data, GetOutputBufferSize());
+		memcpy(placeholder.scaled_data, placeholder.source_data, static_cast<size_t>(GetOutputBufferSize()));
 	} else {
 		nv12_scale_init(&placeholder.scaler, placeholder.scaler.format, GetCX(), GetCY(), placeholder.cx,
 				placeholder.cy);

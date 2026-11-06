@@ -10,7 +10,7 @@ static inline uint64_t get_clockfreq(void)
 		have_clockfreq = true;
 	}
 
-	return clock_freq.QuadPart;
+	return (uint64_t)clock_freq.QuadPart;
 }
 
 uint64_t gettime_100ns(void)

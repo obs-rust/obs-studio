@@ -12,8 +12,9 @@ int cx, cy;
 
 static void convert_placeholder(const uint8_t *rgb_in, int width, int height)
 {
-	size_t size = width * height * 3;
-	size_t linesize = width * 3;
+	// Preserve the signed pixel arithmetic before crossing the allocation boundary.
+	size_t size = static_cast<size_t>(width * height * 3);
+	size_t linesize = static_cast<size_t>(width * 3);
 
 	std::vector<uint8_t> yuv_out;
 	yuv_out.resize(size);
@@ -32,7 +33,7 @@ static void convert_placeholder(const uint8_t *rgb_in, int width, int height)
 		*(out++) = (uint8_t)(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
 	}
 
-	placeholder.resize(width * height * 3 / 2);
+	placeholder.resize(static_cast<size_t>(width * height * 3 / 2));
 
 	in = &yuv_out[0];
 	end = in + size;
@@ -97,8 +98,8 @@ static bool load_placeholder_internal()
 		return false;
 	}
 
-	cx = bmp.GetWidth();
-	cy = bmp.GetHeight();
+	cx = static_cast<int>(bmp.GetWidth());
+	cy = static_cast<int>(bmp.GetHeight());
 
 	BitmapData bmd = {};
 	Rect r(0, 0, cx, cy);

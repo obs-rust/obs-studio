@@ -722,6 +722,7 @@ if(_host STREQUAL WINDOWS)
       deps/libdshowcapture/src/external/capture-device-support/Library
     DEFINES VIRTUALCAM_AVAILABLE
   )
+  _obs_cross_conversion_ratchet(virtualcam-module-cross)
   # libdshowcapture includes Windows SDK headers by mixed-case names, which
   # Windows' filesystem finds and the cross check's lowercase SDK doesn't.
   foreach(_header IN ITEMS Amaudio Dvdmedia SetupAPI)
