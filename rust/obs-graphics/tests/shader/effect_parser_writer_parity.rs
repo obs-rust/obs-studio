@@ -24,7 +24,13 @@
 //! token, as the pass parser leaves it (the C reads on past its last token
 //! until it finds one).
 //!
-//! No intentional differences.
+//! One intentional difference (#3768): where the call writes a `main()`
+//! whose function has two or more mapped params, the port puts `", "`
+//! between them and the C writes nothing there. For exactly those calls the
+//! C's shader string is compared with its end, from the first mapped param
+//! on, rewritten with the commas, and its capacity is not compared (it
+//! follows the longer length); everything else, and every other call, must
+//! match as it is.
 
 use core::ffi::{c_char, c_int};
 use core::mem::{align_of, offset_of, size_of};
@@ -600,8 +606,95 @@ fn run(m: &Model, oracle: bool) -> Outcome {
     }
 }
 
+/// `strref_cmp(text, name) == 0`, `name` a C string.
+fn token_names(text: &[u8], name: &[u8]) -> bool {
+    if text.first().is_none_or(|&b| b == 0) {
+        return name.is_empty();
+    }
+    let mut i = 0;
+    loop {
+        if text.get(i).copied().unwrap_or(0) != name.get(i).copied().unwrap_or(0) {
+            return false;
+        }
+        if !(i < text.len() && i < name.len()) {
+            return true;
+        }
+        i += 1;
+    }
+}
+
+/// The intentional difference (#3768): when the call writes a `main()` with
+/// two or more mapped params, the end of the C shader string as the C
+/// writes it (the params with nothing between them) and as the port does
+/// (with `", "`). `None` for every other call, which must match exactly.
+fn main_with_commas(m: &Model) -> Option<(Vec<u8>, Vec<u8>)> {
+    let call = m.call.as_ref()?;
+    let start = call
+        .iter()
+        .position(|(t, lead)| !matches!(t.first().unwrap_or(lead), b' ' | b'\r' | b'\t' | b'\n'))?;
+    let name = &call[start].0;
+    if token_names(name, b"NULL") {
+        return None;
+    }
+    let func = m.funcs.iter().find(|f| token_names(name, &f.name))?;
+    let mut params = Vec::new();
+    for var in &func.vars {
+        let own = var.mapping.is_some();
+        let by_struct = !own
+            && m.structs
+                .iter()
+                .find(|st| st.name == var.ty)
+                .is_some_and(|st| st.vars.first().is_some_and(|v| v.mapping.is_some()));
+        if own || by_struct {
+            let mut p = [var.ty.as_slice(), b" ", &var.name].concat();
+            if own {
+                p.extend_from_slice(b" : ");
+                p.extend_from_slice(var.mapping.as_deref().unwrap_or_default());
+            }
+            params.push(p);
+        }
+    }
+    if params.len() < 2 {
+        return None;
+    }
+    // ep_write_main() after the params: dstr_cat_strref of each call token
+    // (nothing for an empty or NUL-first one).
+    let mut call_str = Vec::new();
+    for (t, _) in &call[start..] {
+        if t.first().is_some_and(|&b| b != 0) {
+            call_str.extend_from_slice(t);
+        }
+    }
+    let mut tail = b")".to_vec();
+    if let Some(mapping) = &func.mapping {
+        tail.extend_from_slice(b" : ");
+        tail.extend_from_slice(mapping);
+    }
+    tail.extend_from_slice(b"\n{\n\treturn ");
+    tail.extend_from_slice(&call_str);
+    tail.extend_from_slice(b"\n}\n");
+    let c_end = [params.concat(), tail.clone()].concat();
+    let rust_end = [params.join(&b", "[..]), tail].concat();
+    Some((c_end, rust_end))
+}
+
 fn check(m: &Model) -> Result<(), TestCaseError> {
-    prop_assert_eq!(run(m, false), run(m, true), "{:?}", m);
+    let rust = run(m, false);
+    let mut oracle = run(m, true);
+    if let Some((c_end, rust_end)) = main_with_commas(m) {
+        // The C's shader string with its end written the port's way; the
+        // capacity follows the length, so it is not compared.
+        let (bytes, len, _) = &mut oracle.shader;
+        let text = bytes.as_mut().expect("a main() was written");
+        text.pop(); // the NUL
+        prop_assert!(text.ends_with(&c_end), "{:?}", m);
+        text.truncate(text.len() - c_end.len());
+        text.extend_from_slice(&rust_end);
+        text.push(0);
+        *len = text.len() - 1;
+        oracle.shader.2 = rust.shader.2;
+    }
+    prop_assert_eq!(rust, oracle, "{:?}", m);
     Ok(())
 }
 

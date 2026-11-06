@@ -1970,6 +1970,13 @@ area.
   and playback state. *All*, 2026-11-05. Issue
   [#3572](https://github.com/obs-rust/obs-studio/issues/3572), PR
   [#3643](https://github.com/obs-rust/obs-studio/pull/3643).
+- A shader effect (a plugin's shader filter or a custom `.effect` file)
+  whose vertex or pixel function takes two or more separately mapped
+  parameters, such as `float4 pos : POSITION, float2 uv : TEXCOORD0`, now
+  compiles. The generated `main()` used to run them together with no comma,
+  so the shader failed with a syntax error in code the file doesn't
+  contain. *All*, 2026-11-06. Issue
+  [#3768](https://github.com/obs-rust/obs-studio/issues/3768).
 
 ### Scenes and UI
 

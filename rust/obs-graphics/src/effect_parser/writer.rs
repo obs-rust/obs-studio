@@ -50,6 +50,13 @@
 //! into a string `ep_write_main()` frees unused, and `ep_write_main()`
 //! returns a copy of the call string; neither reaches the output, so the
 //! port keeps neither.
+//!
+//! One intentional difference (#3768): `main()` gets `", "` between its
+//! mapped params. The C writes each straight after the one before it (the
+//! `", "` it adds goes only into that unused name string), so a function
+//! with two or more mapped params got a `main()` that does not compile:
+//! `float4 main(float4 pos : POSITIONfloat2 uv : TEXCOORD0)`. Every shader
+//! with at most one mapped param comes out the same.
 
 /// `enum ep_var_type`: the input modifier of a struct member or a
 /// function param. `EP_VAR_NONE` is [`VarType::In`].
@@ -435,8 +442,11 @@ pub fn write_func(src: &mut ShaderSource<'_>, out: &mut impl ShaderOut, index: u
 }
 
 /// `ep_write_main_params`: the params of `funcs[index]` that are mapped,
-/// on their own or as a struct whose first member is, as `main()`'s.
+/// on their own or as a struct whose first member is, as `main()`'s, with
+/// `", "` between them. The C writes them with nothing between them
+/// (#3768).
 fn write_main_params(src: &ShaderSource<'_>, out: &mut impl ShaderOut, index: usize) {
+    let mut first = true;
     for var in &src.funcs[index].param_vars {
         let mut st = None;
         let mut mapped = var.mapping.is_some();
@@ -449,6 +459,11 @@ fn write_main_params(src: &ShaderSource<'_>, out: &mut impl ShaderOut, index: us
         }
 
         if mapped {
+            if !first {
+                out.cat(b", ");
+            }
+            first = false;
+
             out.cat(var.type_name);
             out.cat(b" ");
             out.cat(var.name);
