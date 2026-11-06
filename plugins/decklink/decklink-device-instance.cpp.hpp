@@ -15,12 +15,12 @@ template<typename T> HRESULT RenderDelegate<T>::QueryInterface(REFIID, LPVOID *p
 
 template<typename T> ULONG RenderDelegate<T>::AddRef()
 {
-	return ++m_refCount;
+	return static_cast<ULONG>(++m_refCount);
 }
 
 template<typename T> ULONG RenderDelegate<T>::Release()
 {
-	const ULONG newRefValue = --m_refCount;
+	const ULONG newRefValue = static_cast<ULONG>(--m_refCount);
 	if (newRefValue == 0) {
 		delete this;
 		return 0;
@@ -467,8 +467,8 @@ bool DeckLinkDeviceInstance::StartCapture(DeckLinkDeviceMode *mode_, bool allow1
 
 	if (channelFormat != SPEAKERS_UNKNOWN) {
 		const int channel = ConvertChannelFormat(channelFormat);
-		const HRESULT audioResult =
-			input->EnableAudioInput(bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger, channel);
+		const HRESULT audioResult = input->EnableAudioInput(
+			bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger, static_cast<uint32_t>(channel));
 		if (audioResult != S_OK) {
 			LOG(LOG_WARNING, "Failed to enable audio input; continuing...");
 		}
@@ -569,7 +569,7 @@ bool DeckLinkDeviceInstance::StartOutput(DeckLinkDeviceMode *mode_)
 	const int rowSize = decklinkOutput->GetWidth() * 4;
 	const int frameSize = rowSize * decklinkOutput->GetHeight();
 	for (std::vector<uint8_t> &blob : frameBlobs) {
-		blob.assign(frameSize, 0);
+		blob.assign(static_cast<size_t>(frameSize), 0);
 		frameQueueDecklinkToObs.push(blob.data());
 	}
 	activeBlob = nullptr;
@@ -646,7 +646,7 @@ void DeckLinkDeviceInstance::UpdateVideoFrame(video_data *frame)
 
 	uint8_t *const blob = frameQueueDecklinkToObs.pop();
 	if (blob) {
-		memcpy(blob, frame->data[0], frame->linesize[0] * decklinkOutput->GetHeight());
+		memcpy(blob, frame->data[0], frame->linesize[0] * static_cast<uint32_t>(decklinkOutput->GetHeight()));
 		frameQueueObsToDecklink.push(blob);
 	}
 }
@@ -665,11 +665,11 @@ void DeckLinkDeviceInstance::ScheduleVideoFrame(IDeckLinkVideoFrame *frame)
 			blob = activeBlob;
 		}
 
-		const int frameSize = frame->GetRowBytes() * frame->GetHeight();
+		const int frameSize = static_cast<int>(frame->GetRowBytes() * frame->GetHeight());
 		if (blob) {
-			memcpy(bytes, blob, frameSize);
+			memcpy(bytes, blob, static_cast<size_t>(frameSize));
 		} else {
-			memset(bytes, 0, frameSize);
+			memset(bytes, 0, static_cast<size_t>(frameSize));
 		}
 
 		output->ScheduleVideoFrame(frame, totalFramesScheduled * frameDuration, frameDuration, frameTimescale);
@@ -772,7 +772,7 @@ DeckLinkDeviceInstance::VideoInputFormatChanged(BMDVideoInputFormatChangedEvents
 
 ULONG STDMETHODCALLTYPE DeckLinkDeviceInstance::AddRef(void)
 {
-	return os_atomic_inc_long(&refCount);
+	return static_cast<ULONG>(os_atomic_inc_long(&refCount));
 }
 
 HRESULT STDMETHODCALLTYPE DeckLinkDeviceInstance::QueryInterface(REFIID iid, LPVOID *ppv)
@@ -803,7 +803,7 @@ ULONG STDMETHODCALLTYPE DeckLinkDeviceInstance::Release(void)
 		return 0;
 	}
 
-	return newRefCount;
+	return static_cast<ULONG>(newRefCount);
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */

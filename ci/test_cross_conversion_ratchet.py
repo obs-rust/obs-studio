@@ -52,6 +52,10 @@ def opted_in(text: str) -> set[str]:
 
 
 class CrossConversionRatchet(unittest.TestCase):
+    def test_the_decklink_slice_is_opted_in(self) -> None:
+        """Keep the DeckLink groups measured on both macOS aliases (#2625)."""
+        self.assertIn("decklink-cross", opted_in(source()))
+
     def test_dependency_includes_do_not_bypass_system_roots(self) -> None:
         root = CROSS.parents[2]
         tracked = subprocess.run(

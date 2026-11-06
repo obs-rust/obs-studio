@@ -88,7 +88,7 @@ HRESULT STDMETHODCALLTYPE DeckLinkDeviceDiscovery::DeckLinkDeviceRemoved(IDeckLi
 			}
 
 			devices[i]->Release();
-			devices.erase(devices.begin() + i);
+			devices.erase(devices.begin() + static_cast<decltype(devices)::difference_type>(i));
 			break;
 		}
 	}
@@ -97,7 +97,7 @@ HRESULT STDMETHODCALLTYPE DeckLinkDeviceDiscovery::DeckLinkDeviceRemoved(IDeckLi
 
 ULONG STDMETHODCALLTYPE DeckLinkDeviceDiscovery::AddRef(void)
 {
-	return os_atomic_inc_long(&refCount);
+	return static_cast<ULONG>(os_atomic_inc_long(&refCount));
 }
 
 HRESULT STDMETHODCALLTYPE DeckLinkDeviceDiscovery::QueryInterface(REFIID iid, LPVOID *ppv)
@@ -128,5 +128,5 @@ ULONG STDMETHODCALLTYPE DeckLinkDeviceDiscovery::Release(void)
 		return 0;
 	}
 
-	return newRefCount;
+	return static_cast<ULONG>(newRefCount);
 }

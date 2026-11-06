@@ -23,8 +23,8 @@ static void *decklink_output_create(obs_data_t *settings, obs_output_t *output)
 		if (mode) {
 			struct video_scale_info to = {};
 			to.format = VIDEO_FORMAT_BGRA;
-			to.width = mode->GetWidth();
-			to.height = mode->GetHeight();
+			to.width = static_cast<uint32_t>(mode->GetWidth());
+			to.height = static_cast<uint32_t>(mode->GetHeight());
 			to.range = VIDEO_RANGE_FULL;
 			to.colorspace = (device->GetSupportsHDRMetadata() && !decklinkOutput->force_sdr)
 						? VIDEO_CS_2100_PQ
