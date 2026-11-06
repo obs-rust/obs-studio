@@ -92,6 +92,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """`updater-cross` is a real slice: its diagnostics are stated (#2625)."""
         self.assertIn("updater-cross", opted_in(source()))
 
+    def test_the_videotoolbox_slice_is_opted_in(self) -> None:
+        """The macOS encoder stays measured by the cross check (#2625)."""
+        self.assertIn("mac-videotoolbox-cross", opted_in(source()))
+
 
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
