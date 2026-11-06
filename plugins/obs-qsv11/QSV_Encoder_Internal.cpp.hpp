@@ -421,8 +421,11 @@ mfxStatus QSV_Encoder_Internal::InitParams(qsv_param_t *pParams, enum qsv_codec 
 	// Width must be a multiple of 16
 	// Height must be a multiple of 16 in case of frame picture and a
 	// multiple of 32 in case of field picture
-	m_mfxEncParams.mfx.FrameInfo.Width = MSDK_ALIGN16(pParams->nWidth);
-	m_mfxEncParams.mfx.FrameInfo.Height = MSDK_ALIGN16(pParams->nHeight);
+	// nWidth/nHeight are mfxU16; alignment promotes them to int and may reach
+	// 65536. Keep the SDK field's existing modulo-65536 conversion explicit.
+	// The mask bounds the result to mfxU16 before narrowing.
+	m_mfxEncParams.mfx.FrameInfo.Width = static_cast<mfxU16>(MSDK_ALIGN16(pParams->nWidth) & 0xffff);
+	m_mfxEncParams.mfx.FrameInfo.Height = static_cast<mfxU16>(MSDK_ALIGN16(pParams->nHeight) & 0xffff);
 
 	if (m_bUseTexAlloc) {
 		m_mfxEncParams.IOPattern = MFX_IOPATTERN_IN_VIDEO_MEMORY;
