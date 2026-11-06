@@ -41,10 +41,11 @@ static void GetSemanticInfo(shader_var *var, const char *&name, uint32_t &index)
 	while (*indexStr && !isdigit(*indexStr)) {
 		indexStr++;
 	}
-	index = (*indexStr) ? strtol(indexStr, NULL, 10) : 0;
+	index = (*indexStr) ? static_cast<uint32_t>(strtol(indexStr, NULL, 10)) : 0;
 
 	string nameStr;
-	nameStr.assign(mapping, indexStr - mapping);
+	// indexStr advances within mapping, so the substring length is nonnegative.
+	nameStr.assign(mapping, static_cast<size_t>(indexStr - mapping));
 	name = ConvertSemanticName(nameStr.c_str());
 }
 
@@ -220,7 +221,8 @@ void ShaderProcessor::BuildString(string &outputString)
 		} else if (strref_cmp(&token->str, "VERTEXID") == 0) {
 			output << "SV_VertexID";
 		} else {
-			output.write(token->str.array, token->str.len);
+			// Preserve the size_t-to-streamsize conversion at the stream boundary.
+			output.write(token->str.array, static_cast<std::streamsize>(token->str.len));
 		}
 
 		token++;

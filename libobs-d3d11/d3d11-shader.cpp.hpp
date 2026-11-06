@@ -171,13 +171,13 @@ void gs_shader::BuildConstantBuffer()
 		}
 
 		if (param.arrayCount) {
-			size *= param.arrayCount;
+			size *= static_cast<size_t>(param.arrayCount);
 		}
 
 		/* checks to see if this constant needs to start at a new
 		 * register */
 		if (size && (constantSize & 15) != 0) {
-			size_t alignMax = (constantSize + 15) & ~15;
+			size_t alignMax = (constantSize + 15) & ~size_t{15};
 
 			if ((size + constantSize) > alignMax) {
 				constantSize = alignMax;
@@ -255,7 +255,7 @@ void gs_shader::Compile(const char *shaderString, const char *file, const char *
 		} else {
 			len -= sizeof(checksum);
 
-			hr = D3DCreateBlob(len, shader);
+			hr = D3DCreateBlob(static_cast<SIZE_T>(len), shader);
 			if (FAILED(hr)) {
 				cacheFile.close();
 				removeCacheFile(cachePath, "cache blob allocation failed");
@@ -268,7 +268,8 @@ void gs_shader::Compile(const char *shaderString, const char *file, const char *
 
 				if (success) {
 					uint64_t calculated_checksum =
-						fnv1a_hash(static_cast<char *>((*shader)->GetBufferPointer()), len);
+						fnv1a_hash(static_cast<char *>((*shader)->GetBufferPointer()),
+							   static_cast<size_t>(len));
 
 					if (calculated_checksum == checksum) {
 						is_cached = true;
@@ -302,7 +303,9 @@ void gs_shader::Compile(const char *shaderString, const char *file, const char *
 			uint64_t calculated_checksum = fnv1a_hash(static_cast<char *>((*shader)->GetBufferPointer()),
 								  (*shader)->GetBufferSize());
 
-			outFile.write(static_cast<char *>((*shader)->GetBufferPointer()), (*shader)->GetBufferSize());
+			// The stream API uses signed counts; retain the original same-width conversion.
+			outFile.write(static_cast<char *>((*shader)->GetBufferPointer()),
+				      static_cast<std::streamsize>((*shader)->GetBufferSize()));
 			outFile.write(reinterpret_cast<char *>(&calculated_checksum), sizeof(calculated_checksum));
 			outFile.close();
 
@@ -350,9 +353,9 @@ inline void gs_shader::UpdateParam(std::vector<uint8_t> &constData, gs_shader_pa
 		struct gs_shader_texture shader_tex;
 		memcpy(&shader_tex, param.curValue.data(), sizeof(shader_tex));
 		if (shader_tex.srgb) {
-			device_load_texture_srgb(device, shader_tex.tex, param.textureID);
+			device_load_texture_srgb(device, shader_tex.tex, static_cast<int>(param.textureID));
 		} else {
-			device_load_texture(device, shader_tex.tex, param.textureID);
+			device_load_texture(device, shader_tex.tex, static_cast<int>(param.textureID));
 		}
 
 		if (param.nextSampler) {

@@ -168,10 +168,10 @@ void gs_swap_chain::Resize(uint32_t cx, uint32_t cy, gs_color_format format)
 	if (cx == 0 || cy == 0) {
 		GetClientRect(hwnd, &clientRect);
 		if (cx == 0) {
-			cx = clientRect.right;
+			cx = static_cast<uint32_t>(clientRect.right);
 		}
 		if (cy == 0) {
-			cy = clientRect.bottom;
+			cy = static_cast<uint32_t>(clientRect.bottom);
 		}
 	}
 
@@ -612,7 +612,8 @@ void gs_device::InitDevice(uint32_t adapterIdx)
 
 	hr = adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umd);
 	if (SUCCEEDED(hr)) {
-		driverVersion = umd.QuadPart;
+		// Treat the signed SDK container as the same 64 packed version bits.
+		driverVersion = static_cast<uint64_t>(umd.QuadPart);
 	}
 
 	hr = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, createFlags, featureLevels,
@@ -1068,8 +1069,9 @@ static HRESULT GetPathInfo(_In_ PCWSTR pszDeviceName, _Out_ DISPLAYCONFIG_PATH_I
 		delete[] ModeInfoArray;
 		ModeInfoArray = nullptr;
 
-		hr = HRESULT_FROM_WIN32(GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &NumPathArrayElements,
-								    &NumModeInfoArrayElements));
+		// HRESULT_FROM_WIN32 takes unsigned long; preserve the SDK status bits.
+		hr = HRESULT_FROM_WIN32(static_cast<unsigned long>(GetDisplayConfigBufferSizes(
+			QDC_ONLY_ACTIVE_PATHS, &NumPathArrayElements, &NumModeInfoArrayElements)));
 		if (FAILED(hr)) {
 			break;
 		}
@@ -1086,8 +1088,9 @@ static HRESULT GetPathInfo(_In_ PCWSTR pszDeviceName, _Out_ DISPLAYCONFIG_PATH_I
 			break;
 		}
 
-		hr = HRESULT_FROM_WIN32(QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &NumPathArrayElements, PathInfoArray,
-							   &NumModeInfoArrayElements, ModeInfoArray, nullptr));
+		hr = HRESULT_FROM_WIN32(static_cast<unsigned long>(
+			QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &NumPathArrayElements, PathInfoArray,
+					   &NumModeInfoArrayElements, ModeInfoArray, nullptr)));
 	} while (hr == HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER));
 
 	INT DesiredPathIdx = -1;
@@ -1101,14 +1104,15 @@ static HRESULT GetPathInfo(_In_ PCWSTR pszDeviceName, _Out_ DISPLAYCONFIG_PATH_I
 			SourceName.header.adapterId = PathInfoArray[PathIdx].sourceInfo.adapterId;
 			SourceName.header.id = PathInfoArray[PathIdx].sourceInfo.id;
 
-			hr = HRESULT_FROM_WIN32(DisplayConfigGetDeviceInfo(&SourceName.header));
+			hr = HRESULT_FROM_WIN32(
+				static_cast<unsigned long>(DisplayConfigGetDeviceInfo(&SourceName.header)));
 			if (SUCCEEDED(hr)) {
 				if (wcscmp(pszDeviceName, SourceName.viewGdiDeviceName) == 0) {
 					// Found the source which matches this hmonitor. The paths are given in path-priority order
 					// so the first found is the most desired, unless we later find an internal.
 					if (DesiredPathIdx == -1 ||
 					    IsInternalVideoOutput(PathInfoArray[PathIdx].targetInfo.outputTechnology)) {
-						DesiredPathIdx = PathIdx;
+						DesiredPathIdx = static_cast<INT>(PathIdx);
 					}
 				}
 			}
@@ -1199,7 +1203,9 @@ gs_monitor_color_info gs_device::GetMonitorColorInfo(HMONITOR hMonitor)
 				const bool hdr = desc1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
 				const UINT bits = desc1.BitsPerColor;
 				const ULONG nits = GetSdrMaxNits(desc1.Monitor);
-				return monitor_to_hdr.emplace_back(hMonitor, gs_monitor_color_info(hdr, bits, nits))
+				return monitor_to_hdr
+					.emplace_back(hMonitor,
+						      gs_monitor_color_info(hdr, static_cast<int>(bits), nits))
 					.second;
 			}
 		}
@@ -1308,7 +1314,7 @@ static inline void LogAdapterMonitors(IDXGIAdapter1 *adapter)
 		UINT dpiX, dpiY;
 		unsigned scaling = 100;
 		if (GetDpiForMonitor(desc.Monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY) == S_OK) {
-			scaling = (unsigned)(dpiX * 100.0f / 96.0f);
+			scaling = (unsigned)(static_cast<float>(dpiX) * 100.0f / 96.0f);
 		} else {
 			dpiX = 0;
 		}
@@ -1397,7 +1403,7 @@ static inline void LogD3DAdapters()
 		LARGE_INTEGER umd;
 		hr = adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umd);
 		if (SUCCEEDED(hr)) {
-			const uint64_t version = umd.QuadPart;
+			const uint64_t version = static_cast<uint64_t>(umd.QuadPart);
 			const uint16_t aa = (version >> 48) & 0xffff;
 			const uint16_t bb = (version >> 32) & 0xffff;
 			const uint16_t ccccc = (version >> 16) & 0xffff;
@@ -1865,7 +1871,7 @@ static void device_load_texture_internal(gs_device_t *device, gs_texture_t *tex,
 	}
 
 	device->curTextures[unit] = tex;
-	device->context->PSSetShaderResources(unit, 1, &view);
+	device->context->PSSetShaderResources(static_cast<UINT>(unit), 1, &view);
 }
 
 void device_load_texture(gs_device_t *device, gs_texture_t *tex, int unit)
@@ -1903,7 +1909,7 @@ void device_load_samplerstate(gs_device_t *device, gs_samplerstate_t *samplersta
 	}
 
 	device->curSamplers[unit] = samplerstate;
-	device->context->PSSetSamplers(unit, 1, &state);
+	device->context->PSSetSamplers(static_cast<UINT>(unit), 1, &state);
 }
 
 void device_load_vertexshader(gs_device_t *device, gs_shader_t *vertshader)

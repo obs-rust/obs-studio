@@ -756,6 +756,7 @@ if(_host STREQUAL WINDOWS)
   include("${OBS_SOURCE_ROOT}/cmake/common/graphics-sources.cmake")
   obs_graphics_sources(_d3d11_sources D3D11_CORE "${OBS_SOURCE_ROOT}/libobs-d3d11")
   _obs_cross_plugin(libobs-d3d11-cross DIR libobs-d3d11 SOURCES ${_d3d11_sources} DEFINES GPU_PRIORITY_VAL=0)
+  _obs_cross_conversion_ratchet(libobs-d3d11-cross)
   # libobs-opengl's unity groups (BUILD.md): the shared renderer and WGL.
   obs_graphics_sources(_opengl_sources OPENGL_CORE "${OBS_SOURCE_ROOT}/libobs-opengl")
   obs_graphics_sources(_opengl_windows OPENGL_WINDOWS "${OBS_SOURCE_ROOT}/libobs-opengl")

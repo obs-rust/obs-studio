@@ -21,7 +21,7 @@ static inline bool get_monitor(gs_device_t *device, int monitor_idx, IDXGIOutput
 {
 	HRESULT hr;
 
-	hr = device->adapter->EnumOutputs(monitor_idx, dxgiOutput);
+	hr = device->adapter->EnumOutputs(static_cast<UINT>(monitor_idx), dxgiOutput);
 	if (FAILED(hr)) {
 		if (hr == DXGI_ERROR_NOT_FOUND) {
 			return false;
@@ -163,7 +163,8 @@ EXPORT int device_duplicator_get_monitor_index(gs_device_t *device, void *monito
 			DXGI_OUTPUT_DESC desc;
 			if (SUCCEEDED(pOutput->GetDesc(&desc))) {
 				if (desc.Monitor == handle) {
-					index = output;
+					// DXGI indexes use UINT; the C API uses the same-width int.
+					index = static_cast<int>(output);
 				}
 			} else {
 				blog(LOG_ERROR,

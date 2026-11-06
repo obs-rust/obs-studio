@@ -163,7 +163,8 @@ void gs_texture_3d::InitResourceView()
 
 	viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
 	viewDesc.Texture3D.MostDetailedMip = 0;
-	viewDesc.Texture3D.MipLevels = genMipmaps || !levels ? -1 : levels;
+	// UINT(-1) is the SDK sentinel for all mip levels.
+	viewDesc.Texture3D.MipLevels = genMipmaps || !levels ? UINT(-1) : levels;
 
 	hr = device->device->CreateShaderResourceView(texture, &viewDesc, shaderRes.Assign());
 	if (FAILED(hr)) {

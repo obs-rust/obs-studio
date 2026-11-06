@@ -54,7 +54,8 @@ static inline uint32_t GetWinVer()
 	struct win_version_info ver;
 	get_win_ver(&ver);
 
-	return (ver.major << 8) | ver.minor;
+	// Preserve the packed signed expression's conversion to the unsigned API.
+	return static_cast<uint32_t>((ver.major << 8) | ver.minor);
 }
 
 static inline DXGI_FORMAT ConvertGSTextureFormatResource(gs_color_format format)
@@ -953,7 +954,7 @@ struct gs_monitor_color_info {
 
 	gs_monitor_color_info(bool hdr, int bits_per_color, ULONG sdr_white_nits)
 		: hdr(hdr),
-		  bits_per_color(bits_per_color),
+		  bits_per_color(static_cast<UINT>(bits_per_color)),
 		  sdr_white_nits(sdr_white_nits)
 	{
 	}
