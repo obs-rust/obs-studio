@@ -97,7 +97,9 @@ target_link_libraries(
 # -Wno-float-conversion only leave the flag lists once every target is ratcheted.
 target_compile_options(
   decklink
-  PRIVATE "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  PRIVATE
+    "$<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+    "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
 )
 
 if(OS_WINDOWS)
