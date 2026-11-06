@@ -164,7 +164,8 @@ static void initialize_params(struct nvenc_data *enc, const GUID *nv_preset, NV_
 	params->encodeConfig = &enc->config;
 	params->tuningInfo = nv_tuning;
 #ifdef NVENC_12_1_OR_LATER
-	params->splitEncodeMode = (NV_ENC_SPLIT_ENCODE_MODE)enc->props.split_encode;
+	/* The SDK stores its nonnegative split-mode enum (0..15) in an unsigned bitfield. */
+	params->splitEncodeMode = (uint32_t)(NV_ENC_SPLIT_ENCODE_MODE)enc->props.split_encode;
 #endif
 }
 
