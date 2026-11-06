@@ -678,7 +678,9 @@ static inline void process_fx(struct nvidia_audio_data *ng)
 					 (const uint8_t **)ng->nvafx_segment_buffers, NVAFX_FRAME_SIZE);
 
 		for (size_t i = 0; i < ng->channels; i++) {
-			for (ssize_t j = 0, k = (ssize_t)out_frames - ng->frames; j < (ssize_t)ng->frames; ++j, ++k) {
+			/* Both counts fit ssize_t: uint32_t output and a 10 ms input block. */
+			for (ssize_t j = 0, k = (ssize_t)out_frames - (ssize_t)ng->frames; j < (ssize_t)ng->frames;
+			     ++j, ++k) {
 				if (k >= 0) {
 					ng->copy_buffers[i][j] = output[i][k];
 				} else {

@@ -669,6 +669,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/nv-filters.windows+.h.c build/nv-filters.windows-afx+.h.c build/nv-filters.windows-vfx+.h.c
     DEFINES LIBNVAFX_ENABLED LIBNVVFX_ENABLED
   )
+  _obs_cross_conversion_ratchet(nv-filters-cross)
   # obs-qsv11's unity groups (BUILD.md) with the prebuilt VPL headers; not
   # the windows group, which needs ATL (atlbase.h), absent from xwin's SDK.
   _obs_cross_plugin(
