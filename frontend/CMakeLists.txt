@@ -32,26 +32,18 @@ add_executable(obs-studio)
 add_executable(OBS::studio ALIAS obs-studio)
 obs_msvc_exempt_c4201(obs-studio)
 
-# #2625: the app target's sign conversions are stated at their call sites, so it
-# opts into that group alone. -Wconversion and -Wfloat-conversion keep the global
-# pins until every frontend file is converted: #2909 named them here with 63 files
-# still unconverted and stopped every app lane (#2938). Add a group to this one
-# opt-in, in the PR that converts its last file — never a second opt-in.
-# Apple TUs keep a `-Wno-sign-conversion` pin: with the group on, the macOS app
-# lane stops inside Qt 6.11's own headers (qversiontagging.h, qkeycombination.h,
-# qnamespace.h), which no obs source states. State the two platforms as branches:
-# a genex expands fine, but the branch keeps the pin visible as a compile option
-# in `OTHER_CFLAGS` and independent of the option ordering. The group itself is
-# not what reached these TUs (#3096): `OBS::properties-view` links its conversion
-# groups as INTERFACE options, which CMake appends after this target's own, and
-# `-Wconversion` re-enables `-Wsign-conversion` diagnostics ahead of any earlier
-# `-Wno-sign-conversion`. That interface block is why the lane was red; see
-# `shared/properties-view/CMakeLists.txt`.
-# `ci/test_frontend_conversion_optins.py` holds the target to that shape.
+# #2625: all native frontend conversion boundaries are now explicit. Keep one
+# opt-in block so the complete target stays covered, including properties-view
+# consumers. Native macOS retains its historical sign pin until its full app
+# sources and dependencies are measured; the cross check covers host groups only.
+# `ci/test_frontend_conversion_optins.py` holds both branches to this shape.
 if(OS_MACOS)
   target_compile_options(obs-studio PRIVATE -Wno-sign-conversion)
 else()
-  target_compile_options(obs-studio PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wsign-conversion>")
+  target_compile_options(
+    obs-studio
+    PRIVATE "$<$<COMPILE_LANG_AND_ID:CXX,AppleClang,Clang,GNU>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  )
 endif()
 
 include(cmake/sources.cmake)

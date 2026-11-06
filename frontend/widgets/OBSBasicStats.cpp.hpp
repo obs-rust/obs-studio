@@ -551,7 +551,8 @@ void OBSBasicStats::OutputLabels::Update(obs_output_t *output, bool rec)
 	}
 	megabytesSent->setText(QString("%1 %2").arg(num, 0, 'f', 1).arg(unit));
 
-	num = kbps;
+	/* Preserve the existing rounding at the double display boundary. */
+	num = static_cast<double>(kbps);
 	unit = "kb/s";
 	if (num >= 10'000) {
 		num /= 1000;
@@ -571,7 +572,7 @@ void OBSBasicStats::OutputLabels::Update(obs_output_t *output, bool rec)
 		total -= first_total;
 		dropped -= first_dropped;
 
-		num = total ? (long double)dropped / (long double)total * 100.0l : 0.0l;
+		num = static_cast<double>(total ? (long double)dropped / (long double)total * 100.0l : 0.0l);
 
 		str = QString("%1 / %2 (%3%)")
 			      .arg(QString::number(dropped), QString::number(total),

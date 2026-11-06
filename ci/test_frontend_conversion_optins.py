@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""The app target opts into exactly one conversion group at a time (#2625, #2938).
+"""The app target keeps one complete native conversion opt-in block (#2625, #2938).
 
     uv run python -m unittest ci/test_frontend_conversion_optins.py
 
@@ -47,7 +47,7 @@ INTERFACE_CALL = re.compile(
 )
 
 # The groups the app target states at its call sites today.
-APP_TARGET_GROUPS = {"-Wsign-conversion"}
+APP_TARGET_GROUPS = {"-Wconversion", "-Wsign-conversion", "-Wfloat-conversion"}
 # The three groups the global pins hide across every target.
 GLOBAL_PINS = {"-Wno-conversion", "-Wno-sign-conversion", "-Wno-float-conversion"}
 
@@ -185,8 +185,8 @@ class FrontendConversionOptinsTest(unittest.TestCase):
         self.assertEqual(
             sorted(set(ratcheted[0])),
             sorted(APP_TARGET_GROUPS),
-            "the app target opts into one conversion group; a second block widens it "
-            "while the remaining files are still unconverted (#2938)",
+            "the app target keeps every measured conversion group in one block; "
+            "a second block can silently widen its coverage (#2938)",
         )
         pins = [
             flags for flags in calls if all(flag.startswith("-Wno-") for flag in flags)
