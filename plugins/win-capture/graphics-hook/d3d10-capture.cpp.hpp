@@ -224,7 +224,8 @@ static bool d3d10_shmem_init(HWND window)
 			return false;
 		}
 	}
-	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.pitch, data.format, false)) {
+	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.pitch,
+				static_cast<uint32_t>(data.format), false)) {
 		return false;
 	}
 
@@ -244,7 +245,7 @@ static bool d3d10_shtex_init(HWND window)
 		hlog("d3d10_shtex_init: failed to create texture");
 		return false;
 	}
-	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, data.format, false,
+	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, static_cast<uint32_t>(data.format), false,
 				(uintptr_t)data.handle)) {
 		return false;
 	}
@@ -304,7 +305,7 @@ static void d3d10_shmem_capture_copy(int i)
 		hr = data.copy_surfaces[i]->Map(0, D3D10_MAP_READ, 0, &map);
 		if (SUCCEEDED(hr)) {
 			data.texture_mapped[i] = true;
-			shmem_copy_data(i, map.pData);
+			shmem_copy_data(static_cast<size_t>(i), map.pData);
 		}
 	}
 }

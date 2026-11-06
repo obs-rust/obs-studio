@@ -582,6 +582,7 @@ if(_host STREQUAL WINDOWS)
     INCLUDES shared/obs-hook-config shared/ipc-util shared/obs-d3d8-api plugins/win-capture
     DEFINES COMPILE_D3D12_HOOK COMPILE_VULKAN_HOOK
   )
+  _obs_cross_conversion_ratchet(graphics-hook-cross)
   _obs_cross_plugin(
     get-graphics-offsets-cross
     DIR plugins/win-capture/get-graphics-offsets

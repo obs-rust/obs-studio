@@ -219,8 +219,8 @@ static void get_window_size(HDC hdc, uint32_t *cx, uint32_t *cy)
 		*cy = 1080;
 	} else {
 		GetClientRect(hwnd, &rc);
-		*cx = rc.right;
-		*cy = rc.bottom;
+		*cx = (uint32_t)rc.right;
+		*cy = (uint32_t)rc.bottom;
 	}
 }
 
@@ -402,7 +402,7 @@ static bool gl_shtex_init(HWND window)
 	if (!gl_init_fbo()) {
 		return false;
 	}
-	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, data.format, true,
+	if (!capture_init_shtex(&data.shtex_info, window, data.cx, data.cy, (uint32_t)data.format, true,
 				(uintptr_t)data.handle)) {
 		return false;
 	}
@@ -418,7 +418,7 @@ static inline bool gl_shmem_init_data(size_t idx, size_t size)
 		return false;
 	}
 
-	glBufferData(GL_PIXEL_PACK_BUFFER, size, 0, GL_STREAM_READ);
+	glBufferData(GL_PIXEL_PACK_BUFFER, (GLsizeiptrARB)size, 0, GL_STREAM_READ);
 	if (gl_error("gl_shmem_init_data", "failed to set pbo data")) {
 		return false;
 	}
@@ -428,7 +428,7 @@ static inline bool gl_shmem_init_data(size_t idx, size_t size)
 		return false;
 	}
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, data.cx, data.cy, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)data.cx, (GLsizei)data.cy, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
 	if (gl_error("gl_shmem_init_data", "failed to set texture data")) {
 		return false;
 	}
@@ -468,8 +468,8 @@ static inline bool gl_shmem_init_buffers(void)
 		}
 	}
 
-	glBindBuffer(GL_PIXEL_PACK_BUFFER, last_pbo);
-	glBindTexture(GL_TEXTURE_2D, last_tex);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, (GLuint)last_pbo);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)last_tex);
 	return true;
 }
 
@@ -481,7 +481,7 @@ static bool gl_shmem_init(HWND window)
 	if (!gl_init_fbo()) {
 		return false;
 	}
-	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.cx * 4, data.format, true)) {
+	if (!capture_init_shmem(&data.shmem_info, window, data.cx, data.cy, data.cx * 4, (uint32_t)data.format, true)) {
 		return false;
 	}
 
@@ -505,8 +505,8 @@ static int gl_init(HDC hdc)
 		data.cy = 1080;
 	} else {
 		GetClientRect(window, &rc);
-		data.cx = rc.right;
-		data.cy = rc.bottom;
+		data.cx = (uint32_t)rc.right;
+		data.cy = (uint32_t)rc.bottom;
 	}
 
 	data.hdc = hdc;
@@ -556,7 +556,8 @@ static void gl_copy_backbuffer(GLuint dst)
 		return;
 	}
 
-	glBlitFramebuffer(0, 0, data.cx, data.cy, 0, 0, data.cx, data.cy, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBlitFramebuffer(0, 0, (GLint)data.cx, (GLint)data.cy, 0, 0, (GLint)data.cx, (GLint)data.cy,
+			  GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	gl_error("gl_copy_backbuffer", "failed to blit");
 }
 
@@ -579,8 +580,8 @@ static void gl_shtex_capture(void)
 
 	gl_copy_backbuffer(data.texture);
 
-	glBindTexture(GL_TEXTURE_2D, last_tex);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last_fbo);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)last_tex);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)last_fbo);
 
 	obsglDXUnlockObjectsNV(data.gl_device, 1, &data.gl_dxobj);
 
@@ -602,7 +603,7 @@ static void gl_shmem_capture_copy(int i)
 		buffer = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
 		if (buffer) {
 			data.texture_mapped[i] = true;
-			shmem_copy_data(i, buffer);
+			shmem_copy_data((size_t)i, buffer);
 		}
 	}
 }
@@ -665,9 +666,9 @@ static void gl_shmem_capture(void)
 		data.texture_ready[data.cur_tex] = true;
 	}
 
-	glBindTexture(GL_TEXTURE_2D, last_tex);
-	glBindBuffer(GL_PIXEL_PACK_BUFFER, last_pbo);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, last_fbo);
+	glBindTexture(GL_TEXTURE_2D, (GLuint)last_tex);
+	glBindBuffer(GL_PIXEL_PACK_BUFFER, (GLuint)last_pbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)last_fbo);
 
 	data.cur_tex = next_tex;
 }
