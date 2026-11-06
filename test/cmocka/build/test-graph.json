@@ -1230,6 +1230,7 @@
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_blocks.c"
       ],
@@ -1253,6 +1254,7 @@
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_funcs.c"
       ],
@@ -1276,6 +1278,7 @@
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_params.c"
       ],
@@ -1299,6 +1302,7 @@
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_passes.c"
       ],
@@ -1322,6 +1326,7 @@
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_shader_call.c"
       ],
@@ -1349,6 +1354,7 @@
         "libobs/graphics/effect-parser-lifecycle.c.h",
         "libobs/graphics/effect-parser-params.c.h",
         "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
         "libobs/graphics/effect-parser.c.h",
         "test/cmocka/test_effect_parser_writer.c"
       ],
