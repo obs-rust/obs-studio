@@ -795,6 +795,7 @@ elseif(_host STREQUAL MACOS)
       build/frontend.crypto-macos-mm+.hpp.mm
       build/frontend.sparkle+.hpp.cpp
   )
+  _obs_cross_conversion_ratchet(frontend-macos-cross)
   target_compile_options(
     frontend-macos-cross
     PRIVATE
