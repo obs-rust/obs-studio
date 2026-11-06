@@ -830,6 +830,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES build/audio-plugin.macos+.h.c
     INCLUDES plugins/mac-virtualcam/src/common
   )
+  _obs_cross_conversion_ratchet(obs-audio-plugin-cross)
   _obs_cross_plugin(mac-videotoolbox-cross DIR plugins/mac-videotoolbox SOURCES build/mac-videotoolbox.macos+.h.c)
   _obs_cross_conversion_ratchet(mac-videotoolbox-cross)
   # libobs-opengl's unity groups (BUILD.md): the shared renderer and CGL.
