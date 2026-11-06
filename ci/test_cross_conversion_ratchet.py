@@ -30,8 +30,8 @@ GROUPS = ("-Wconversion", "-Wsign-conversion", "-Wfloat-conversion")
 HELPER = "_obs_cross_conversion_ratchet"
 # The helper's body, up to the next top-level construct.
 HELPER_BODY = re.compile(rf"^function\({HELPER}\b(?P<body>.*?)^endfunction\(\)$", re.M | re.S)
-# `_obs_cross_plugin(<target> ...)` declares a cross target; the call may wrap.
-PLUGIN = re.compile(r"_obs_cross_plugin\(\s*(?P<target>[A-Za-z0-9_.+-]+)", re.S)
+# Both helpers declare cross targets; `_obs_cross_frontend` wraps the plugin helper.
+PLUGIN = re.compile(r"_obs_cross_(?:plugin|frontend)\(\s*(?P<target>[A-Za-z0-9_.+-]+)", re.S)
 # A call of the helper at the start of a line, `_obs_cross_conversion_ratchet(<target>)`.
 OPT_IN = re.compile(rf"^[ \t]*{HELPER}\(\s*(?P<target>[A-Za-z0-9_.+-]+)", re.M)
 
@@ -157,7 +157,7 @@ class CrossConversionRatchet(unittest.TestCase):
         declared = {match.group("target") for match in PLUGIN.finditer(text)}
         chosen = opted_in(text)
         self.assertTrue(chosen, f"no target calls {HELPER}()")
-        self.assertLessEqual(chosen, declared, f"not declared by _obs_cross_plugin(): {chosen - declared}")
+        self.assertLessEqual(chosen, declared, f"not declared by a cross target helper: {chosen - declared}")
 
     def test_the_wiring_proof_is_opted_in(self) -> None:
         """`obs-amf-test-cross` is the no-op slice: it carries no diagnostics, so
@@ -298,6 +298,10 @@ class CrossConversionRatchet(unittest.TestCase):
     def test_the_d3d11_slice_is_opted_in(self) -> None:
         """Keep the Windows Direct3D 11 unity group measured (#2625)."""
         self.assertIn("libobs-d3d11-cross", opted_in(source()))
+
+    def test_the_frontend_macos_slice_is_opted_in(self) -> None:
+        """Keep all macOS frontend unity groups measured on both aliases (#2625)."""
+        self.assertIn("frontend-macos-cross", opted_in(source()))
 
     def test_the_shared_and_plugin_slices_stay_opted_in(self) -> None:
         """The win-x64 slices burned down after #3157 stay opted in, so a later
