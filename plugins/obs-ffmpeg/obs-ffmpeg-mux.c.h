@@ -413,6 +413,14 @@ static inline bool ffmpeg_mux_start_internal(struct ffmpeg_muxer *stream, obs_da
 			os_unlink(path);
 	}
 
+	/* libobs ends the stop of an output that never got a packet (#3739),
+	 * so the pipe of that start is still open: close it before the next */
+	if (stream->pipe) {
+		os_process_pipe_destroy(stream->pipe);
+		stream->pipe = NULL;
+		os_atomic_set_bool(&stream->sent_headers, false);
+	}
+
 	start_pipe(stream, path);
 
 	if (!stream->pipe) {

@@ -25,7 +25,7 @@ pub const VALUE_NAMES: [&str; 9] = [
 
 /// Index of each entry in `oracle_output_interleave_layout`, in the C's
 /// order.
-pub const LAYOUT_NAMES: [&str; 67] = [
+pub const LAYOUT_NAMES: [&str; 68] = [
     "sizeof(struct keyframe_group_data)",
     "alignof(struct keyframe_group_data)",
     "offsetof(struct keyframe_group_data, group_id)",
@@ -73,6 +73,7 @@ pub const LAYOUT_NAMES: [&str; 67] = [
     "offsetof(struct obs_output_interleave_fields, encoded_packet)",
     "offsetof(struct obs_output_interleave_fields, data)",
     "offsetof(struct obs_output_interleave_fields, name)",
+    "offsetof(struct obs_output_interleave_fields, delivered_packet)",
     "sizeof(struct obs_output_caption_track_fields)",
     "alignof(struct obs_output_caption_track_fields)",
     "offsetof(struct obs_output_caption_track_fields, caption_mutex)",

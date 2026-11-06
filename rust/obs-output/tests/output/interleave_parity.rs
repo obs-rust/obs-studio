@@ -162,6 +162,7 @@ fn layout_matches_c() {
         offset_of!(F, encoded_packet),
         offset_of!(F, data),
         offset_of!(F, name),
+        offset_of!(F, delivered_packet),
         size_of::<R>(),
         align_of::<R>(),
         offset_of!(R, caption_mutex),
@@ -324,6 +325,7 @@ struct Fixture {
     encoded_packet: encoded_packet_t,
     data: *mut c_void,
     name: *mut c_char,
+    delivered: bool,
     captions: Vec<CaptionTrack>,
     /// Video encoders, then audio encoders.
     /// Never grown after the fixture is made, so their addresses hold.
@@ -415,6 +417,7 @@ impl Fixture {
             active_delay_ns: 0,
             encoded_packet: Some(encoded_packet),
             data: ptr::null_mut(),
+            delivered: false,
             name: NAME.as_ptr().cast_mut(),
             captions,
             encoders,
@@ -578,6 +581,7 @@ impl Fixture {
                 highest_audio_ts: self.highest_audio_ts,
                 highest_video_ts: self.highest_video_ts,
                 total_frames: self.total_frames,
+                delivered: self.delivered,
             },
             captions: self
                 .captions
@@ -650,6 +654,7 @@ struct Fields {
     highest_audio_ts: i64,
     highest_video_ts: [i64; V],
     total_frames: c_int,
+    delivered: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -739,6 +744,7 @@ pub unsafe extern "C" fn obs_output_interleave_fields(
             encoded_packet: &raw const (*o).encoded_packet,
             data: &raw const (*o).data,
             name: &raw const (*o).name,
+            delivered_packet: &raw mut (*o).delivered,
         }
     }
 }

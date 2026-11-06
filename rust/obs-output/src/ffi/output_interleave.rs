@@ -47,6 +47,7 @@
 use core::ffi::{c_char, c_int, c_longlong, c_void};
 use core::mem::{offset_of, size_of};
 use core::ptr;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use obs_util::ffi::darray::{
     darray, darray_erase, darray_erase_range, darray_free, darray_insert, darray_pop_front,
@@ -154,6 +155,8 @@ pub struct obs_output_interleave_fields {
     pub encoded_packet: *const encoded_packet_t,
     pub data: *const *mut c_void,
     pub name: *const *mut c_char,
+    /// `volatile bool *`: set before each packet reaches the output (#3739).
+    pub delivered_packet: *mut bool,
 }
 
 /// `struct obs_output_caption_track_fields` (`obs-internal.h`).
@@ -599,6 +602,16 @@ impl InterleaveOutput for COutput {
     fn max_batch_size(&self) -> usize {
         // SAFETY: a live field.
         unsafe { *self.f.interleaver_max_batch_size }
+    }
+
+    fn mark_delivered(&mut self) {
+        // NULL where the fields come from elsewhere: not tracked, as in the C
+        if self.f.delivered_packet.is_null() {
+            return;
+        }
+        // SAFETY: a live field, written with the C's os_atomic_set_bool
+        // (a sequentially consistent store) from more than one thread.
+        unsafe { AtomicBool::from_ptr(self.f.delivered_packet).store(true, Ordering::SeqCst) };
     }
 
     fn inc_total_frames(&mut self) {

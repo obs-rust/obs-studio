@@ -116,7 +116,7 @@ void oracle_output_interleave_apply_ept_offsets(struct obs_output *output)
  * rust/obs-c-oracle/src/output_interleave.rs. */
 enum {
 	ORACLE_OUTPUT_INTERLEAVE_VALUE_COUNT = 9,
-	ORACLE_OUTPUT_INTERLEAVE_LAYOUT_COUNT = 67,
+	ORACLE_OUTPUT_INTERLEAVE_LAYOUT_COUNT = 68,
 };
 
 int64_t oracle_output_interleave_value(size_t which);
@@ -188,6 +188,7 @@ size_t oracle_output_interleave_layout(size_t which)
 		offsetof(struct obs_output_interleave_fields, encoded_packet),
 		offsetof(struct obs_output_interleave_fields, data),
 		offsetof(struct obs_output_interleave_fields, name),
+		offsetof(struct obs_output_interleave_fields, delivered_packet),
 		sizeof(struct obs_output_caption_track_fields),
 		_Alignof(struct obs_output_caption_track_fields),
 		offsetof(struct obs_output_caption_track_fields, caption_mutex),

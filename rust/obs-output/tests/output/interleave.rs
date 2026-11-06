@@ -277,6 +277,9 @@ struct Out {
     captions: [CaptionTrack; MAX_OUTPUT_VIDEO_ENCODERS],
     callbacks: usize,
     total_frames: i32,
+    /// `delivered_packet`, and how many packets the output had when it was
+    /// set (#3739).
+    delivered: Option<usize>,
     max_batch_size: usize,
     add_caption_result: bool,
 
@@ -349,6 +352,7 @@ impl Out {
             captions: Default::default(),
             callbacks: 1,
             total_frames: 0,
+            delivered: None,
             max_batch_size: 8,
             add_caption_result: true,
             locked: false,
@@ -756,6 +760,10 @@ impl InterleaveOutput for Out {
             callbacks_locked: self.callbacks_locked,
         });
     }
+    fn mark_delivered(&mut self) {
+        self.delivered = Some(self.sent.len());
+    }
+
     fn encoded_packet(&mut self, packet: &mut Pkt) {
         assert!(self.sent.len() < 64);
         self.sent.push(Sent {
@@ -1669,10 +1677,13 @@ fn send_interleaved_times_callbacks_and_counts() {
 
     // video: the packet time with the same pts is handed to the packet
     // callback, with pir set, and taken out of the array; the others stay
+    assert_eq!(out.delivered, None);
     send_interleaved(&mut out);
     assert_eq!(out.num_sent(), 1);
     assert_eq!(out.sent[0].tag, 1);
     assert_eq!(out.total_frames, 1);
+    // delivered_packet is set before the output gets the packet (#3739)
+    assert_eq!(out.delivered, Some(0));
     assert_eq!(out.callback_calls.len(), 1);
     assert_eq!(out.callback_calls[0].tag, 1);
     assert!(out.callback_calls[0].time_found);
