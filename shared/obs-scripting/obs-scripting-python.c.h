@@ -428,7 +428,7 @@ static PyObject *timer_add(PyObject *self, PyObject *args)
 	struct python_obs_callback *cb = add_python_obs_callback_extra(script, py_cb, sizeof(struct python_obs_timer));
 	struct python_obs_timer *timer = python_obs_callback_extra_data(cb);
 
-	timer->interval = (uint64_t)ms * 1000000ULL;
+	timer->interval = (uint64_t)ms * UINT64_C(1000000);
 	timer->last_ts = obs_get_video_frame_time();
 
 	defer_call_post(defer_timer_init, cb);
@@ -799,7 +799,7 @@ static PyObject *hotkey_register_frontend(PyObject *self, PyObject *args)
 	struct python_obs_callback *cb = add_python_obs_callback(script, py_cb);
 	cb->base.on_remove = on_remove_hotkey;
 	id = obs_hotkey_register_frontend(name, desc, hotkey_callback, cb);
-	calldata_set_int(&cb->base.extra, "id", id);
+	calldata_set_int(&cb->base.extra, "id", (long long)id);
 
 	if (id == OBS_INVALID_HOTKEY_ID)
 		remove_python_obs_callback(cb);
@@ -1265,7 +1265,7 @@ obs_script_t *obs_python_script_create(const char *path, obs_data_t *settings)
 	if (slash) {
 		slash++;
 		dstr_copy(&data->base.file, slash);
-		dstr_left(&data->dir, &data->base.path, slash - path);
+		dstr_left(&data->dir, &data->base.path, (size_t)(slash - path));
 	} else {
 		dstr_copy(&data->base.file, path);
 	}
@@ -1275,7 +1275,7 @@ obs_script_t *obs_python_script_create(const char *path, obs_data_t *settings)
 
 	const char *ext = strstr(path, ".py");
 	if (ext)
-		dstr_resize(&data->name, ext - path);
+		dstr_resize(&data->name, (size_t)(ext - path));
 
 	data->base.settings = obs_data_create();
 	if (settings)
