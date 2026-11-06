@@ -46,7 +46,7 @@ STDMETHODIMP VCamFactory::QueryInterface(REFIID riid, void **p_ptr)
 
 STDMETHODIMP_(ULONG) VCamFactory::AddRef()
 {
-	return os_atomic_inc_long(&refs);
+	return static_cast<ULONG>(os_atomic_inc_long(&refs));
 }
 
 STDMETHODIMP_(ULONG) VCamFactory::Release()
