@@ -53,7 +53,7 @@ bool obs_ffmpeg_host_nvenc_available(bool (*is_blacklisted)(int device_id))
 		}
 
 		// 0x10de = NVIDIA Corporation
-		/* DXGI reports a 16-bit PCI device ID; the callback takes int. */
+		/* NVIDIA uses a 16-bit PCI device ID, which fits the callback's int. */
 		if (desc.VendorId == 0x10de && !is_blacklisted((int)desc.DeviceId)) {
 			available = true;
 			goto finish;
