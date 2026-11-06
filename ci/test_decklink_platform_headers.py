@@ -16,13 +16,13 @@ PLUGIN = ROOT / 'plugins/decklink'
 
 def include_command():
     text = (PLUGIN / 'CMakeLists.txt').read_text()
-    match = re.search(r'target_include_directories\(\s*decklink-sdk\b', text)
-    if not match:
-        return ''
-    start = match.start(); end = text.index('(', start) + 1; depth = 1
-    while depth:
-        depth += (text[end] == '(') - (text[end] == ')'); end += 1
-    return text[start:end]
+    commands = []
+    for match in re.finditer(r'target_include_directories\(\s*decklink-sdk\b', text):
+        start = match.start(); end = text.index('(', start) + 1; depth = 1
+        while depth:
+            depth += (text[end] == '(') - (text[end] == ')'); end += 1
+        commands.append(text[start:end])
+    return '\n'.join(commands)
 
 
 class DecklinkPlatformHeadersTest(unittest.TestCase):
@@ -57,38 +57,42 @@ class DecklinkPlatformHeadersTest(unittest.TestCase):
                 for target in PLUGIN.glob('hosts/*/decklink-platform.hpp'):
                     write(str(target.relative_to(PLUGIN)), target.read_text())
                 sdk = '#pragma once\nstruct IDeckLinkDiscovery;struct IDeckLinkIterator;struct IDeckLinkVideoConversion;\n'
-                write('DeckLinkAPI.h', sdk)
                 for directory in ('win', 'mac', 'linux'):
-                    write(f'plugins/decklink/{directory}/decklink-sdk/DeckLinkAPI.h', sdk)
-                    write(f'plugins/decklink/{directory}/decklink-sdk/DeckLinkAPIVersion.h', '#pragma once\n')
+                    write(f'{directory}/decklink-sdk/DeckLinkAPI.h', sdk)
+                    write(f'{directory}/decklink-sdk/DeckLinkAPIVersion.h', '#pragma once\n')
                 write('combaseapi.h', '#pragma once\nusing BOOL=int;using BSTR=wchar_t*;using REFIID=const int&;inline const int IID_IUnknown=1;\n')
                 write('CoreFoundation/CoreFoundation.h', '#pragma once\nstruct CFString;using CFStringRef=const CFString*;\n')
                 for name in ('HRError', 'ComPtr'):
                     write(f'util/windows/{name}.hpp', '#pragma once\n')
                 selected = base
+                native={'windows':'win','macos':'mac','linux':'linux'}[host]
+                sdk_root = base / native / 'decklink-sdk'
                 command = include_command()
                 if command:
                     write('CMakeLists.txt', 'cmake_minimum_required(VERSION 3.28)\nproject(decklink_header NONE)\n'
                           'add_library(decklink-sdk INTERFACE)\n' + command + '\n'
                           'file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/selection.txt" CONTENT '
-                          '"$<TARGET_GENEX_EVAL:decklink-sdk,$<TARGET_PROPERTY:decklink-sdk,INTERFACE_INCLUDE_DIRECTORIES>>")\n')
+                          '"$<TARGET_GENEX_EVAL:decklink-sdk,$<TARGET_PROPERTY:decklink-sdk,INTERFACE_INCLUDE_DIRECTORIES>>")\n'
+                          'file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/system.txt" CONTENT '
+                          '"$<TARGET_GENEX_EVAL:decklink-sdk,$<TARGET_PROPERTY:decklink-sdk,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>>")\n')
                     result = subprocess.run(['cmake', '-S', tmp, '-B', str(base/'build'),
                                              '-DCMAKE_SYSTEM_NAME='+system], capture_output=True,text=True)
                     self.assertEqual(result.returncode,0,result.stderr)
                     directories=[p for p in (base/'build/selection.txt').read_text().split(';') if p]
-                    self.assertEqual(directories,[str(base/f'hosts/{host}')])
+                    self.assertEqual(directories,[str(base/f'hosts/{host}'), str(sdk_root)])
+                    system_directories = (base/'build/system.txt').read_text().split(';')
+                    self.assertEqual([p for p in system_directories if p], [str(sdk_root)])
                     selected=Path(directories[0])
                 preamble = '#include <string>\n#include <type_traits>\n#include <cassert>\n#include <cstring>\n#include <cstdlib>\n#include "plugins/decklink/platform.hpp"\n'
                 if system=='FreeBSD':
                     write('types.cpp',preamble)
                     # BSD was listed in SDK CMake, but the original header never
                     # defined its string type. Preserve that unsupported case.
-                    result=subprocess.run([compiler,'-std=c++17','-I',tmp,'-I',str(selected),*flags,
+                    result=subprocess.run([compiler,'-std=c++17','-I',tmp,'-I',str(selected),'-isystem',str(sdk_root),*flags,
                                            '-fsyntax-only',str(base/'types.cpp')],capture_output=True,text=True)
                     self.assertNotEqual(result.returncode,0)
                     self.assertIn('decklink_string_t',result.stderr)
                     continue
-                native={'windows':'win','macos':'mac','linux':'linux'}[host]
                 body=function((PLUGIN/f'{native}/platform.cpp.hpp').read_text(), 'bool DeckLinkStringToStdString(')
                 if host=='windows':
                     preamble+='''
@@ -117,7 +121,7 @@ static int freed=0;void track_free(void *p){++freed;std::free(p);}
 '''
                     checks='std::string output="old";assert(!DeckLinkStringToStdString(nullptr,output));assert(output=="old"&&freed==0);for(const char *value:{"text","","\\xc3\\xa9"}){char *input=strdup(value);assert(DeckLinkStringToStdString(input,output));assert(output==value);}assert(freed==3);'
                 write('types.cpp',preamble+body+'\nint main(){'+checks+'}\n')
-                result=subprocess.run([compiler,'-std=c++17','-I',tmp,'-I',str(selected),*flags,
+                result=subprocess.run([compiler,'-std=c++17','-I',tmp,'-I',str(selected),'-isystem',str(sdk_root),*flags,
                                        str(base/'types.cpp'),'-o',str(base/'types')],capture_output=True,text=True)
                 self.assertEqual(result.returncode,0,result.stderr)
                 subprocess.run([str(base/'types')],check=True)
