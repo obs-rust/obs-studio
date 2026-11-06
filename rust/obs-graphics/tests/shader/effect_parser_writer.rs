@@ -15,6 +15,11 @@
 //! shader line behind `| `, a tab as `\t`, the used params, and the items
 //! whose `written` flag is set after the call.
 //!
+//! One intentional difference (#3768): where `main()` takes two or more
+//! mapped params, the C writes them with nothing between them, which the C
+//! test pins in `mains_cases[0]` and `[1]`; the port puts `", "` between
+//! them, so those two expectations here have the comma.
+//!
 //! The `edge_*` tests add what the C test leaves out.
 
 use obs_graphics::effect_parser::writer::{
@@ -552,6 +557,40 @@ fn edge_struct_params_of_main() {
     assert_eq!(
         text(&out),
         "float4 PS(In i, Bare b, float k)\n{}\n\nfloat4 main(In i) : TARGET\n{\n\treturn PS(i,b,k)\n}\n"
+    );
+}
+
+#[test]
+fn edge_main_params_get_commas() {
+    // #3768: a comma between main()'s mapped params, none before the first
+    // one written (a dropped param leaves none behind) and none after the
+    // last.
+    let mut s = Src::default();
+    s.strukt("In", &[v(In, "float4", "pos", Some("POSITION"))]);
+    s.func(Func {
+        ret: "float4",
+        name: "PS",
+        mapping: Some("TARGET"),
+        vars: &[
+            v(In, "float", "k", None),
+            v(In, "In", "i", None),
+            v(In, "float4", "c", Some("COLOR")),
+            v(In, "float", "j", None),
+            v(In, "float2", "uv", Some("TEXCOORD0")),
+        ],
+        body: "{}",
+        funcs: &[],
+        structs: &[],
+        params: &[],
+        samplers: &[],
+    });
+    let mut src = s.0;
+    let out = write(&mut src, Some(&["PS"]));
+    assert!(
+        text(&out)
+            .contains("\nfloat4 main(In i, float4 c : COLOR, float2 uv : TEXCOORD0) : TARGET\n"),
+        "{}",
+        text(&out)
     );
 }
 
@@ -1571,7 +1610,9 @@ const FUNCS_1: &str = concat!(
     "    written param= struct= func= sampler=\n",
 );
 
-/// `mains_cases[0]`: two mapped params (characterized, not endorsed: no comma between them, so the shader doesn't compile)
+/// `mains_cases[0]`: two mapped params. The C test pins the C's `main()`,
+/// with no comma between them (characterized, not endorsed); the port puts
+/// one there (#3768).
 const MAINS_0: &str = concat!(
     "Draw/0\n",
     "  vertex\n",
@@ -1580,7 +1621,7 @@ const MAINS_0: &str = concat!(
     "    | \\treturn float4(uv, pos.zw);\n",
     "    | }\n",
     "    | \n",
-    "    | float4 main(float4 pos : POSITIONfloat2 uv : TEXCOORD0) : TARGET\n",
+    "    | float4 main(float4 pos : POSITION, float2 uv : TEXCOORD0) : TARGET\n",
     "    | {\n",
     "    | \\treturn PSTwo(pos,uv);\n",
     "    | }\n",
@@ -1592,7 +1633,7 @@ const MAINS_0: &str = concat!(
     "    | \\treturn float4(uv, pos.zw);\n",
     "    | }\n",
     "    | \n",
-    "    | float4 main(float4 pos : POSITIONfloat2 uv : TEXCOORD0) : TARGET\n",
+    "    | float4 main(float4 pos : POSITION, float2 uv : TEXCOORD0) : TARGET\n",
     "    | {\n",
     "    | \\treturn PSTwo(pos,uv);\n",
     "    | }\n",
@@ -1600,7 +1641,9 @@ const MAINS_0: &str = concat!(
     "    written param= struct= func= sampler=\n",
 );
 
-/// `mains_cases[1]`: mapped and unmapped params mixed (characterized, not endorsed: main drops k, and no comma between the rest)
+/// `mains_cases[1]`: mapped and unmapped params mixed (characterized, not
+/// endorsed: main drops k). The C test pins no comma between the rest; the
+/// port puts one there (#3768).
 const MAINS_1: &str = concat!(
     "Draw/0\n",
     "  vertex\n",
@@ -1609,7 +1652,7 @@ const MAINS_1: &str = concat!(
     "    | \\treturn pos * k + float4(uv, 0.0, 0.0);\n",
     "    | }\n",
     "    | \n",
-    "    | float4 main(float4 pos : POSITIONfloat2 uv : TEXCOORD0) : TARGET\n",
+    "    | float4 main(float4 pos : POSITION, float2 uv : TEXCOORD0) : TARGET\n",
     "    | {\n",
     "    | \\treturn PSMix(pos,k,uv);\n",
     "    | }\n",
@@ -1626,7 +1669,7 @@ const MAINS_1: &str = concat!(
     "    | \\treturn v.pos * c;\n",
     "    | }\n",
     "    | \n",
-    "    | float4 main(VertInOut vfloat4 c : COLOR) : TARGET\n",
+    "    | float4 main(VertInOut v, float4 c : COLOR) : TARGET\n",
     "    | {\n",
     "    | \\treturn PSBoth(v,c);\n",
     "    | }\n",
