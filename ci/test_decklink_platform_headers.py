@@ -34,6 +34,11 @@ class DecklinkPlatformHeadersTest(unittest.TestCase):
         for host in ('windows', 'macos', 'linux'):
             self.assertTrue((PLUGIN / f'hosts/{host}/decklink-platform.hpp').is_file())
 
+    def test_fixture_reads_system_sdk_includes(self):
+        self.assertIn('SYSTEM', include_command())
+        for directory in ('win', 'mac', 'linux'):
+            self.assertIn(f'/{directory}/decklink-sdk', include_command())
+
     def test_header_types_and_conversion_behavior(self):  # noqa: C901
         compiler = shutil.which('c++')
         if not compiler:
