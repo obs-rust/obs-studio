@@ -469,8 +469,9 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
             int formatColorSpace = (int) [OBSAVCapture colorspaceFromDescription:formatDescription];
             int formatInputFormat =
                 (int) [OBSAVCapture formatFromSubtype:CMFormatDescriptionGetMediaSubType(formatDescription)];
-            int formatVideoRange = [OBSAVCapture isFullRangeFormat:(FourCharCode) formatInputFormat] ? VIDEO_RANGE_FULL
-                                                                                      : VIDEO_RANGE_PARTIAL;
+            int formatVideoRange = [OBSAVCapture isFullRangeFormat:(FourCharCode) formatInputFormat]
+                                       ? VIDEO_RANGE_FULL
+                                       : VIDEO_RANGE_PARTIAL;
             bool foundFormat = legacyVideoRange == formatVideoRange && legacyInputFormat == formatInputFormat &&
                                legacyColorSpace == formatColorSpace &&
                                legacyDimensions.width == formatDimensions.width &&
@@ -697,7 +698,8 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
         }
         if (range.minFrameRate > outputFPS && range.minFrameRate < closestAbove) {
             closestAbove = range.minFrameRate;
-            closestAboveMFPS.numerator = (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.timescale, 0, UINT32_MAX);
+            closestAboveMFPS.numerator =
+                (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.timescale, 0, UINT32_MAX);
             closestAboveMFPS.denominator = (uint32_t) clamp_Uint((UInt64) range.maxFrameDuration.value, 0, UINT32_MAX);
         }
     }
@@ -944,8 +946,8 @@ static const UInt32 kMaxFrameRateRangesInDescription = 10;
 
 + (NSString *)stringFromFourCharCode:(OSType)fourCharCode
 {
-    char cString[5] = {(char) ((fourCharCode >> 24) & 0xFF), (char) ((fourCharCode >> 16) & 0xFF), (char) ((fourCharCode >> 8) & 0xFF),
-                       (char) (fourCharCode & 0xFF), 0};
+    char cString[5] = {(char) ((fourCharCode >> 24) & 0xFF), (char) ((fourCharCode >> 16) & 0xFF),
+                       (char) ((fourCharCode >> 8) & 0xFF), (char) (fourCharCode & 0xFF), 0};
 
     NSString *codeString = @(cString);
 
