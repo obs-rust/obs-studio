@@ -874,6 +874,11 @@ elseif(_host STREQUAL MACOS)
     DEFINES GL_SILENCE_DEPRECATION
   )
   _obs_cross_conversion_ratchet(libobs-opengl-cross)
+  # The shared helper covers C/C++/Objective-C++; Cocoa is Objective-C.
+  target_compile_options(
+    libobs-opengl-cross
+    PRIVATE "$<$<COMPILE_LANG_AND_ID:OBJC,Clang,AppleClang>:-Wconversion;-Wsign-conversion;-Wfloat-conversion>"
+  )
   _obs_cross_plugin(coreaudio-encoder-cross DIR plugins/coreaudio-encoder SOURCES build/coreaudio-encoder.macos+.hpp.cpp INCLUDES plugins/coreaudio-encoder/hosts/macos)
   _obs_cross_conversion_ratchet(coreaudio-encoder-cross)
   _obs_cross_plugin(obs-ffmpeg-mux-host-cross DIR plugins/obs-ffmpeg SOURCES build/obs-ffmpeg.mux-host-macos+.h.c)
