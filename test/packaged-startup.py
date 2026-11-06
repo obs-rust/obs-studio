@@ -855,24 +855,31 @@ def main() -> None:  # noqa: C901
     require_config_directory(config, args.platform)
     # Ownership is established before launching: never delete an existing config.
     fixture = ConfigFixture(config, args.platform, args.config_mode, port, password)
+    diagnostics = None
+    if args.platform == "macos":
+        diagnostics = _load(
+            "macos_startup_diagnostics",
+            Path(__file__).resolve().parents[1] / "ci/macos_startup_diagnostics.py",
+        )
+
     proc = None
     succeeded = False
     launched = time.time()
     try:
-        proc = subprocess.Popen(
-            [
-                str(app),
-                "--disable-shutdown-check",
-                "--disable-updater",
-                "--profile",
-                PROFILE,
-                "--collection",
-                PROFILE,
-                "--scene",
-                SCENE,
-            ],
-            cwd=app.parent,
-        )
+        command = [
+            str(app),
+            "--disable-shutdown-check",
+            "--disable-updater",
+            "--profile",
+            PROFILE,
+            "--collection",
+            PROFILE,
+            "--scene",
+            SCENE,
+        ]
+        if diagnostics is not None:
+            command = diagnostics.launch_command(command, args.config_mode)
+        proc = subprocess.Popen(command, cwd=app.parent)
         try:
             asyncio.run(inspect_running_app(proc, port, password, args.platform))
         except Exception as error:
@@ -888,7 +895,9 @@ def main() -> None:  # noqa: C901
                 config, args.platform, launched, args.config_mode, error
             ) from error
         fixture.verify()
-        logs = sorted((config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime)
+        logs = sorted(
+            (config / "logs").glob("*.txt"), key=lambda log: log.stat().st_mtime
+        )
         current_logs = [
             log.read_text(encoding="utf-8-sig", errors="replace") for log in logs
         ]
@@ -925,6 +934,10 @@ def main() -> None:  # noqa: C901
                         proc.wait(timeout=10)
         if not succeeded:
             report_frontend_log(config)
+        if diagnostics is not None:
+            # Custom migration locations can hold logs outside the default root.
+            for index, root in enumerate(dict.fromkeys([config, *fixture.owned])):
+                diagnostics.collect(root, f"{args.config_mode}-{index}")
         fixture.cleanup()
 
 
