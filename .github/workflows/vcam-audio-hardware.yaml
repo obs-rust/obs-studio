@@ -1,0 +1,227 @@
+name: Virtual Camera Audio Hardware
+# The hardware acceptance runs of #3183 (Windows) and #3184 (macOS) on real
+# GitHub runners: x64 Windows with VB-Cable, arm64 macOS with the OBS Virtual
+# Microphone HAL driver. Nothing is built here; each job tests the OBS package
+# a scheduled master build already made, so a run costs minutes, not an app
+# build. It runs on demand and on PRs that change it, never in the merge gate.
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Run ID whose OBS packages to test (default the newest successful scheduled master run)
+        type: string
+        default: ''
+  pull_request:
+    paths:
+      - .github/workflows/vcam-audio-hardware.yaml
+      - ci/vcam_audio_hw.py
+permissions:
+  actions: read
+  contents: read
+concurrency:
+  group: vcam-audio-hardware-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  GH_TOKEN: ${{ github.token }}
+  BUILD_RUN: ${{ inputs.build_run }}
+jobs:
+  windows:
+    name: Windows x64 🪟 VB-Cable
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Download the OBS package
+        run: |
+          $run = $env:BUILD_RUN
+          if (-not $run) {
+            $run = gh run list --repo $env:GITHUB_REPOSITORY --workflow scheduled.yaml --branch master `
+              --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+          }
+          $name = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100" `
+            --jq '.artifacts[] | select(.name | test("^obs-studio-windows-x64-[0-9a-f]+$")) | .name'
+          if (-not $name) { throw "run $run has no Windows x64 package" }
+          "Testing $name from run $run" | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+          gh run download $run --repo $env:GITHUB_REPOSITORY -n $name -D pkg
+          Expand-Archive (Get-ChildItem pkg/*.zip).FullName -DestinationPath C:\obs
+      - name: Register the virtual camera
+        run: |
+          foreach ($dll in 'obs-virtualcam-module32.dll', 'obs-virtualcam-module64.dll') {
+            $p = Start-Process regsvr32 -ArgumentList '/s', "C:\obs\core\win-dshow\data\$dll" -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "regsvr32 $dll exited $($p.ExitCode)" }
+          }
+      - name: Install VB-Cable
+        run: |
+          foreach ($svc in 'AudioEndpointBuilder', 'Audiosrv') {
+            Set-Service $svc -StartupType Automatic
+            Start-Service $svc
+          }
+          Invoke-WebRequest https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip -OutFile vbcable.zip
+          Expand-Archive vbcable.zip -DestinationPath vbcable
+          # Trust VB-Audio's publisher certificate so the driver installs without a prompt.
+          $cat = Get-ChildItem vbcable -Filter *.cat | Select-Object -First 1
+          $cert = (Get-AuthenticodeSignature $cat.FullName).SignerCertificate
+          if ($cert) {
+            $store = New-Object System.Security.Cryptography.X509Certificates.X509Store 'TrustedPublisher', 'LocalMachine'
+            $store.Open('ReadWrite'); $store.Add($cert); $store.Close()
+          }
+          $p = Start-Process vbcable\VBCABLE_Setup_x64.exe -ArgumentList '-i', '-h' -Wait -PassThru
+          "VB-Cable setup exited $($p.ExitCode)"
+          Start-Sleep 10
+          Restart-Service Audiosrv -Force
+          Get-PnpDevice -Class AudioEndpoint, MEDIA -ErrorAction SilentlyContinue | Format-Table -AutoSize Status, Class, FriendlyName
+          uv run --script ci/vcam_audio_hw.py devices
+      - name: Write the saved profile
+        run: uv run --script ci/vcam_audio_hw.py profile --config-root "$env:APPDATA\obs-studio-rust" --tone "$env:RUNNER_TEMP\tone.wav"
+      - name: Start the Virtual Camera with its microphone
+        run: |
+          Start-Process C:\obs\bin\64bit\obs64.exe -WorkingDirectory C:\obs\bin\64bit `
+            -ArgumentList '--profile', 'Test', '--collection', 'Test', '--startvirtualcam', '--disable-shutdown-check', '--verbose'
+          Start-Sleep 25
+          if (-not (Get-Process obs64 -ErrorAction SilentlyContinue)) { throw 'OBS exited' }
+      - name: Record the tone from CABLE Output
+        run: uv run --script ci/vcam_audio_hw.py record --device 'CABLE Output' --out "$env:RUNNER_TEMP\cable-output.wav"
+      - name: Check the OBS log
+        if: always()
+        run: |
+          Get-Process obs64 -ErrorAction SilentlyContinue | Stop-Process -Force
+          $log = Get-ChildItem "$env:APPDATA\obs-studio-rust\logs" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $log) { throw 'OBS wrote no log' }
+          Copy-Item $log.FullName "$env:RUNNER_TEMP\obs-log.txt"
+          Select-String -Path $log.FullName -Pattern 'Virtual (camera audio|output)|virtualcam|VB-Audio|CABLE'
+          if (-not (Select-String -Path $log.FullName -Pattern "Virtual camera audio: track 1 to 'CABLE Input" -Quiet)) {
+            throw 'the Virtual Camera did not route track 1 to CABLE Input'
+          }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: vcam-audio-windows-x64
+          path: |
+            ${{ runner.temp }}/obs-log.txt
+            ${{ runner.temp }}/cable-output.wav
+          if-no-files-found: warn
+
+  macos:
+    name: macOS arm64 🍏 OBS Virtual Microphone
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Download the OBS package
+        run: |
+          set -euo pipefail
+          [ "$(uname -m)" = arm64 ] || { echo "not an arm64 runner"; exit 1; }
+          run="$BUILD_RUN"
+          if [ -z "$run" ]; then
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow scheduled.yaml --branch master \
+              --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          name=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | test("^obs-studio-macos-arm64-[0-9a-f]+$")) | .name')
+          [ -n "$name" ] || { echo "run $run has no macOS arm64 package"; exit 1; }
+          echo "Testing $name from run $run" | tee -a "$GITHUB_STEP_SUMMARY"
+          gh run download "$run" --repo "$GITHUB_REPOSITORY" -n "$name" -D pkg
+          ls -la pkg
+          mkdir -p obs
+          for f in pkg/*; do
+            case "$f" in
+              *.dmg) hdiutil attach -nobrowse -readonly -mountpoint /Volumes/obs-pkg "$f"
+                     cp -R /Volumes/obs-pkg/*.app obs/ ;;
+              *.tar*|*.tgz) tar -xf "$f" -C obs ;;
+              *.zip) ditto -x -k "$f" obs ;;
+            esac
+          done
+          app=$(find obs -maxdepth 2 -name '*.app' | head -1)
+          [ -n "$app" ] || { echo "no app in the package"; exit 1; }
+          echo "APP=$PWD/$app" >> "$GITHUB_ENV"
+      - name: Install the OBS Virtual Microphone driver
+        run: |
+          set -euo pipefail
+          driver="$APP/Contents/Resources/OBSVirtualMicrophone.driver"
+          [ -d "$driver" ] || { echo "OBS.app does not ship $driver"; exit 1; }
+          codesign -dv "$driver" 2>&1 || true
+          sudo mkdir -p /Library/Audio/Plug-Ins/HAL
+          sudo cp -R "$driver" /Library/Audio/Plug-Ins/HAL/
+          sudo killall coreaudiod || true
+          for _ in $(seq 1 30); do
+            system_profiler SPAudioDataType | grep -q 'OBS Virtual Microphone' && break
+            sleep 1
+          done
+          system_profiler SPAudioDataType
+          system_profiler SPAudioDataType | grep -q 'OBS Virtual Microphone' ||
+            { echo "Core Audio does not list the OBS Virtual Microphone"; log show --last 2m --predicate 'process == "coreaudiod"' | tail -50; exit 1; }
+      - name: Allow microphone access
+        run: |
+          # The runner's own processes record; grant them the microphone (TCC).
+          now=$(date +%s)
+          for db in "$HOME/Library/Application Support/com.apple.TCC/TCC.db" /Library/Application\ Support/com.apple.TCC/TCC.db; do
+            for client in /usr/local/opt/runner/provisioner/provisioner /bin/bash /opt/homebrew/bin/bash "$(command -v uv)"; do
+              sudo sqlite3 "$db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceMicrophone','$client',1,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,$now,NULL,NULL,'UNUSED',$now);" 2>&1 ||
+                sudo sqlite3 "$db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceMicrophone','$client',1,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,$now);" 2>&1 || true
+            done
+          done
+      - name: Feed the ring as OBS does
+        run: |
+          set -euo pipefail
+          # The writer half of plugin-main's vmic_start, with a 440 Hz tone in
+          # place of the OBS mix; the HAL driver is the reader under test.
+          cat > "$RUNNER_TEMP/vmic-writer.c" <<'EOF'
+          #include <fcntl.h>
+          #include <math.h>
+          #include <mach/mach_time.h>
+          #include <stdio.h>
+          #include <sys/mman.h>
+          #include <sys/stat.h>
+          #include <unistd.h>
+          #include "vmic-shm.h"
+          int main(void)
+          {
+          	const uint32_t rate = 48000, ch = 2;
+          	size_t size = vmic_shm_size(ch, rate);
+          	int fd = shm_open(VMIC_SHM_NAME, O_RDWR | O_CREAT, 0666);
+          	if (fd < 0) { perror("shm_open"); return 1; }
+          	fchmod(fd, 0666);
+          	struct stat st;
+          	if (fstat(fd, &st) == 0 && st.st_size == 0) ftruncate(fd, (off_t)size);
+          	struct vmic_shm *shm = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+          	if (shm == MAP_FAILED) { perror("mmap"); return 1; }
+          	vmic_shm_init(shm, rate, ch, rate);
+          	float buf[480 * 2];
+          	uint64_t n = 0;
+          	for (int packet = 0; packet < 100 * 60; packet++) {
+          		for (int i = 0; i < 480; i++, n++)
+          			buf[2 * i] = buf[2 * i + 1] = 0.4f * sinf(2.0f * (float)M_PI * 440.0f * (float)n / rate);
+          		vmic_shm_write(shm, buf, 480, mach_absolute_time());
+          		usleep(10000);
+          	}
+          	return 0;
+          }
+          EOF
+          clang -O2 -std=c11 -I plugins/mac-virtualcam/src/common "$RUNNER_TEMP/vmic-writer.c" -o "$RUNNER_TEMP/vmic-writer"
+          nohup "$RUNNER_TEMP/vmic-writer" > "$RUNNER_TEMP/vmic-writer.log" 2>&1 &
+          sleep 2
+      - name: Record the tone from the OBS Virtual Microphone
+        run: |
+          uv run --script ci/vcam_audio_hw.py devices
+          uv run --script ci/vcam_audio_hw.py record --device 'OBS Virtual Microphone' --out "$RUNNER_TEMP/obs-virtual-microphone.wav"
+      - name: Driver log
+        if: always()
+        run: log show --last 5m --predicate 'process == "coreaudiod" AND eventMessage CONTAINS[c] "OBS"' > "$RUNNER_TEMP/coreaudiod.log" 2>&1 || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: vcam-audio-macos-arm64
+          path: |
+            ${{ runner.temp }}/obs-virtual-microphone.wav
+            ${{ runner.temp }}/coreaudiod.log
+          if-no-files-found: warn
