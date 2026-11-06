@@ -92,6 +92,10 @@ class CrossConversionRatchet(unittest.TestCase):
         """`updater-cross` is a real slice: its diagnostics are stated (#2625)."""
         self.assertIn("updater-cross", opted_in(source()))
 
+    def test_the_audio_plugin_slice_is_opted_in(self) -> None:
+        """The virtual microphone HAL stays measured by the cross check (#2625)."""
+        self.assertIn("obs-audio-plugin-cross", opted_in(source()))
+
     def test_the_videotoolbox_slice_is_opted_in(self) -> None:
         """The macOS encoder stays measured by the cross check (#2625)."""
         self.assertIn("mac-videotoolbox-cross", opted_in(source()))
