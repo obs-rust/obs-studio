@@ -184,12 +184,13 @@ void gs_texture_2d::InitResourceView()
 	memset(&viewDesc, 0, sizeof(viewDesc));
 	viewDesc.Format = dxgiFormatView;
 
+	// UINT(-1) is the SDK sentinel for all mip levels.
 	if (type == GS_TEXTURE_CUBE) {
 		viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-		viewDesc.TextureCube.MipLevels = genMipmaps || !levels ? -1 : levels;
+		viewDesc.TextureCube.MipLevels = genMipmaps || !levels ? UINT(-1) : levels;
 	} else {
 		viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		viewDesc.Texture2D.MipLevels = genMipmaps || !levels ? -1 : levels;
+		viewDesc.Texture2D.MipLevels = genMipmaps || !levels ? UINT(-1) : levels;
 	}
 
 	hr = device->device->CreateShaderResourceView(texture, &viewDesc, shaderRes.Assign());

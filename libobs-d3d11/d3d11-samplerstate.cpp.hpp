@@ -74,7 +74,8 @@ gs_sampler_state::gs_sampler_state(gs_device_t *device, const gs_sampler_info *i
 	sd.AddressW = ConvertGSAddressMode(info->address_w);
 	sd.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 	sd.Filter = ConvertGSFilter(info->filter);
-	sd.MaxAnisotropy = info->max_anisotropy;
+	// Keep the signed C API value converted to the SDK UINT, including invalid input.
+	sd.MaxAnisotropy = static_cast<UINT>(info->max_anisotropy);
 	sd.MaxLOD = FLT_MAX;
 
 	vec4_from_rgba(&v4, info->border_color);
