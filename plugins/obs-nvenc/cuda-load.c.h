@@ -87,7 +87,8 @@ bool init_cuda_internal(obs_encoder_t *encoder)
 			return false;
 		}
 
-		*(uintptr_t *)((uintptr_t)cu + func.offset) = (uintptr_t)fptr;
+		/* Every offset is offsetof(CudaFunctions, member), hence nonnegative and in bounds. */
+		*(uintptr_t *)((uintptr_t)cu + (uintptr_t)func.offset) = (uintptr_t)fptr;
 	}
 
 	success = true;
