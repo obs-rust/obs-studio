@@ -35,6 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Download the OBS package
         run: |
           $run = $env:BUILD_RUN
@@ -74,9 +76,9 @@ jobs:
           Start-Sleep 10
           Restart-Service Audiosrv -Force
           Get-PnpDevice -Class AudioEndpoint, MEDIA -ErrorAction SilentlyContinue | Format-Table -AutoSize Status, Class, FriendlyName
-          uv run ci/vcam_audio_hw.py devices
+          uv run --script ci/vcam_audio_hw.py devices
       - name: Write the saved profile
-        run: uv run ci/vcam_audio_hw.py profile --config-root "$env:APPDATA\obs-studio-rust" --tone "$env:RUNNER_TEMP\tone.wav"
+        run: uv run --script ci/vcam_audio_hw.py profile --config-root "$env:APPDATA\obs-studio-rust" --tone "$env:RUNNER_TEMP\tone.wav"
       - name: Start the Virtual Camera with its microphone
         run: |
           Start-Process C:\obs\bin\64bit\obs64.exe -WorkingDirectory C:\obs\bin\64bit `
@@ -84,7 +86,7 @@ jobs:
           Start-Sleep 25
           if (-not (Get-Process obs64 -ErrorAction SilentlyContinue)) { throw 'OBS exited' }
       - name: Record the tone from CABLE Output
-        run: uv run ci/vcam_audio_hw.py record --device 'CABLE Output' --out "$env:RUNNER_TEMP\cable-output.wav"
+        run: uv run --script ci/vcam_audio_hw.py record --device 'CABLE Output' --out "$env:RUNNER_TEMP\cable-output.wav"
       - name: Check the OBS log
         if: always()
         run: |
@@ -113,6 +115,8 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Download the OBS package
         run: |
           set -euo pipefail
@@ -208,8 +212,8 @@ jobs:
           sleep 2
       - name: Record the tone from the OBS Virtual Microphone
         run: |
-          uv run ci/vcam_audio_hw.py devices
-          uv run ci/vcam_audio_hw.py record --device 'OBS Virtual Microphone' --out "$RUNNER_TEMP/obs-virtual-microphone.wav"
+          uv run --script ci/vcam_audio_hw.py devices
+          uv run --script ci/vcam_audio_hw.py record --device 'OBS Virtual Microphone' --out "$RUNNER_TEMP/obs-virtual-microphone.wav"
       - name: Driver log
         if: always()
         run: log show --last 5m --predicate 'process == "coreaudiod" AND eventMessage CONTAINS[c] "OBS"' > "$RUNNER_TEMP/coreaudiod.log" 2>&1 || true

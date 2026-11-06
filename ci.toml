@@ -170,7 +170,7 @@ cache = "machine"
 
 # -- Allowlists ---------------------------------------------------------------
 [allow]
-workflows = { "ci.yml" = ["workflow_dispatch", "pull_request", "merge_group"], "ci-pre.yml" = ["workflow_call"], "push.yaml" = ["push"], "build-project.yaml" = ["workflow_call"], "analyze-project.yaml" = ["workflow_call"], "check-format.yaml" = ["workflow_call"], "sign-windows.yaml" = ["workflow_call"], "appimage.yaml" = ["push", "workflow_call", "workflow_dispatch"], "claim-bot.yaml" = ["issue_comment", "pull_request", "schedule", "workflow_dispatch"], "dispatch.yaml" = ["workflow_dispatch"], "leaderboard.yml" = ["schedule", "workflow_dispatch"], "publish.yaml" = ["release"], "release-rust.yaml" = ["schedule", "workflow_dispatch"], "release-hygiene.yaml" = ["schedule", "workflow_dispatch"], "sanitizers.yaml" = ["workflow_call", "workflow_dispatch", "schedule"], "scheduled.yaml" = ["workflow_dispatch", "schedule"], "welcome.yaml" = ["issues", "pull_request_target"] }
+workflows = { "ci.yml" = ["workflow_dispatch", "pull_request", "merge_group"], "ci-pre.yml" = ["workflow_call"], "push.yaml" = ["push"], "build-project.yaml" = ["workflow_call"], "analyze-project.yaml" = ["workflow_call"], "check-format.yaml" = ["workflow_call"], "sign-windows.yaml" = ["workflow_call"], "appimage.yaml" = ["push", "workflow_call", "workflow_dispatch"], "claim-bot.yaml" = ["issue_comment", "pull_request", "schedule", "workflow_dispatch"], "dispatch.yaml" = ["workflow_dispatch"], "leaderboard.yml" = ["schedule", "workflow_dispatch"], "publish.yaml" = ["release"], "release-rust.yaml" = ["schedule", "workflow_dispatch"], "release-hygiene.yaml" = ["schedule", "workflow_dispatch"], "sanitizers.yaml" = ["workflow_call", "workflow_dispatch", "schedule"], "scheduled.yaml" = ["workflow_dispatch", "schedule"], "welcome.yaml" = ["issues", "pull_request_target"], "vcam-audio-hardware.yaml" = ["workflow_dispatch", "pull_request"] }
 actions = [
   "actions/attest", "actions/cache", "actions/checkout", "actions/download-artifact", "actions/upload-artifact",
   "andriivitiv/setup-steamcmd", "andriivitiv/steam-totp", "astral-sh/setup-uv", "cloudflare/wrangler-action",
@@ -297,6 +297,12 @@ rule = "GEN-002"
 path = ".github/workflows/check-format.yaml"
 reason = "Non-Linux jobs are gated by check-event outputs (ci/ci_scope.py), not the ci-lint plan."
 issue = "https://github.com/obs-rust/obs-studio/issues/962"
+expires = "2027-04-15"
+[[exceptions]]
+rule = "GEN-002"
+path = ".github/workflows/vcam-audio-hardware.yaml"
+reason = "Hardware acceptance runs for the virtual camera microphone on hosted Windows x64 and macOS arm64; on demand and on PRs touching only the workflow or ci/vcam_audio_hw.py, outside the merge gate."
+issue = "https://github.com/obs-rust/obs-studio/issues/3177"
 expires = "2027-04-15"
 [[exceptions]]
 rule = "GEN-002"
