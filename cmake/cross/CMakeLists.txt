@@ -624,6 +624,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES build/obs-outputs.net-if-host-windows+.h.c
     INCLUDES plugins/obs-outputs/hosts/windows
   )
+  _obs_cross_conversion_ratchet(obs-outputs-net-if-host-cross)
   _obs_cross_plugin(
     obs-outputs-rtmp-host-cross
     DIR plugins/obs-outputs
@@ -851,6 +852,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES build/obs-outputs.net-if-host-posix+.h.c
     INCLUDES plugins/obs-outputs/hosts/posix
   )
+  _obs_cross_conversion_ratchet(obs-outputs-net-if-host-cross)
   _obs_cross_plugin(
     obs-outputs-rtmp-host-cross
     DIR plugins/obs-outputs
