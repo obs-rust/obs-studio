@@ -305,6 +305,16 @@ class CrossConversionRatchet(unittest.TestCase):
         self.assertIn("libobs-opengl-cross", opted_in(text))
         self.assertEqual(len(re.findall(r"^\s*_obs_cross_conversion_ratchet\(libobs-opengl-cross\)", text, re.M)), 2)
 
+    def test_the_opengl_cocoa_slice_enables_objective_c(self) -> None:
+        """The Cocoa group is OBJC, which the shared helper does not cover."""
+        text = source().split("elseif(_host STREQUAL MACOS)", 1)[1]
+        self.assertRegex(
+            text,
+            r'target_compile_options\(\s*libobs-opengl-cross\s+PRIVATE\s+'
+            r'"\$<\$<COMPILE_LANG_AND_ID:OBJC,Clang,AppleClang>:'
+            r'-Wconversion;-Wsign-conversion;-Wfloat-conversion>"\s*\)',
+        )
+
     def test_the_frontend_macos_slice_is_opted_in(self) -> None:
         """Keep all macOS frontend unity groups measured on both aliases (#2625)."""
         self.assertIn("frontend-macos-cross", opted_in(source()))
