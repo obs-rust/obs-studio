@@ -23,7 +23,7 @@ static bool gl_init_volume(GLenum type, uint32_t num_levels, GLenum format, GLin
 	bool success = true;
 	const uint8_t *const *data = p_data ? *p_data : NULL;
 	uint32_t i;
-	const uint32_t bpp = gs_get_format_bpp(format);
+	const uint32_t bpp = gs_get_format_bpp((enum gs_color_format)format);
 
 	for (i = 0; i < num_levels; i++) {
 		if (compressed) {

@@ -775,6 +775,7 @@ if(_host STREQUAL WINDOWS)
     SOURCES ${_opengl_sources} ${_opengl_windows}
     INCLUDES deps/glad/include
   )
+  _obs_cross_conversion_ratchet(libobs-opengl-cross)
 elseif(_host STREQUAL MACOS)
   include("${OBS_SOURCE_ROOT}/plugins/mac-capture/sources.cmake")
   obs_macos_capture_sources(_mac_capture MAC_CAPTURE "${OBS_SOURCE_ROOT}/plugins/mac-capture")
@@ -872,6 +873,7 @@ elseif(_host STREQUAL MACOS)
     INCLUDES deps/glad/include
     DEFINES GL_SILENCE_DEPRECATION
   )
+  _obs_cross_conversion_ratchet(libobs-opengl-cross)
   _obs_cross_plugin(coreaudio-encoder-cross DIR plugins/coreaudio-encoder SOURCES build/coreaudio-encoder.macos+.hpp.cpp INCLUDES plugins/coreaudio-encoder/hosts/macos)
   _obs_cross_conversion_ratchet(coreaudio-encoder-cross)
   _obs_cross_plugin(obs-ffmpeg-mux-host-cross DIR plugins/obs-ffmpeg SOURCES build/obs-ffmpeg.mux-host-macos+.h.c)
