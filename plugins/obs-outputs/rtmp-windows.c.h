@@ -30,7 +30,8 @@ static bool socket_event(struct rtmp_stream *stream, bool *can_write, uint64_t l
 
 	if (net_events.lNetworkEvents & FD_CLOSE) {
 		if (last_send_time) {
-			uint32_t diff = (os_gettime_ns() / 1000000) - last_send_time;
+			/* Keep the existing modulo-2^32 diagnostic interval. */
+			uint32_t diff = (uint32_t)(((os_gettime_ns() / 1000000) - last_send_time) & UINT32_MAX);
 
 			blog(LOG_ERROR,
 			     "socket_thread_windows: Received "
@@ -149,7 +150,7 @@ static void ideal_send_backlog_event(struct rtmp_stream *stream)
 enum data_ret { RET_BREAK, RET_FATAL, RET_CONTINUE };
 
 static enum data_ret write_data(struct rtmp_stream *stream, bool *can_write, uint64_t *last_send_time,
-				size_t latency_packet_size, int delay_time)
+				size_t latency_packet_size, uint32_t delay_time)
 {
 	bool exit_loop = false;
 
@@ -179,10 +180,12 @@ static enum data_ret write_data(struct rtmp_stream *stream, bool *can_write, uin
 
 	if (send_result == RTMP_SEND_WROTE) {
 		rtmp_send_retry_done(&stream->send_retry);
+		/* RTMP_SEND_WROTE requires ret > 0, so it fits size_t unchanged. */
+		size_t written = (size_t)ret;
 
-		if (stream->write_buf_len - ret)
-			memmove(stream->write_buf, stream->write_buf + ret, stream->write_buf_len - ret);
-		stream->write_buf_len -= ret;
+		if (stream->write_buf_len - written)
+			memmove(stream->write_buf, stream->write_buf + written, stream->write_buf_len - written);
+		stream->write_buf_len -= written;
 
 		*last_send_time = os_gettime_ns() / 1000000;
 
@@ -240,7 +243,7 @@ static inline void socket_thread_windows_internal(struct rtmp_stream *stream)
 {
 	bool can_write = false;
 
-	int delay_time;
+	uint32_t delay_time;
 	size_t latency_packet_size;
 	uint64_t last_send_time = 0;
 
@@ -289,7 +292,7 @@ static inline void socket_thread_windows_internal(struct rtmp_stream *stream)
 			pthread_mutex_unlock(&stream->write_buf_mutex);
 		}
 
-		int status = WaitForMultipleObjects(3, objs, false, INFINITE);
+		DWORD status = WaitForMultipleObjects(3, objs, false, INFINITE);
 		if (status == WAIT_ABANDONED || status == WAIT_FAILED) {
 			blog(LOG_ERROR, "socket_thread_windows: Aborting due "
 					"to WaitForMultipleObjects failure");

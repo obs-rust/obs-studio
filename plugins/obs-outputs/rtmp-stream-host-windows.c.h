@@ -17,7 +17,8 @@ int rtmp_host_bytes_available(uintptr_t sock, int *size)
 int rtmp_host_set_nonblocking(uintptr_t sock)
 {
 	u_long one = 1;
-	if (ioctlsocket((SOCKET)sock, FIONBIO, &one))
+	/* Winsock encodes the command in 32 bits, including the sign bit. */
+	if (ioctlsocket((SOCKET)sock, (long)FIONBIO, &one))
 		return WSAGetLastError();
 	return 0;
 }
@@ -82,7 +83,7 @@ void rtmp_host_log_interface_type(struct rtmp_stream *stream)
 	char hostname[256];
 	HOSTENT *h;
 
-	if (rtmp->Link.hostname.av_len >= sizeof(hostname) - 1)
+	if ((size_t)rtmp->Link.hostname.av_len >= sizeof(hostname) - 1)
 		return;
 
 	strncpy(hostname, rtmp->Link.hostname.av_val, sizeof(hostname));
@@ -107,8 +108,9 @@ void rtmp_host_log_interface_type(struct rtmp_stream *stream)
 		row.InterfaceIndex = route.dwForwardIfIndex;
 
 		if (!GetIfEntry2(&row)) {
-			uint32_t rxSpeed = row.ReceiveLinkSpeed / 1000000;
-			uint32_t txSpeed = row.TransmitLinkSpeed / 1000000;
+			/* Preserve the log's existing low 32 bits, even for oversized SDK values. */
+			uint32_t rxSpeed = (uint32_t)((row.ReceiveLinkSpeed / 1000000) & UINT32_MAX);
+			uint32_t txSpeed = (uint32_t)((row.TransmitLinkSpeed / 1000000) & UINT32_MAX);
 			char *type;
 			struct dstr other = {0};
 
@@ -149,6 +151,8 @@ static int socket_queue_data(RTMPSockBuf *sb, const char *data, int len, void *a
 	UNUSED_PARAMETER(sb);
 
 	struct rtmp_stream *stream = arg;
+	/* librtmp WriteN calls custom send only while its int byte count is positive. */
+	size_t size = (size_t)len;
 
 retry_send:
 
@@ -157,7 +161,7 @@ retry_send:
 
 	pthread_mutex_lock(&stream->write_buf_mutex);
 
-	if (stream->write_buf_len + len > stream->write_buf_size) {
+	if (stream->write_buf_len + size > stream->write_buf_size) {
 
 		pthread_mutex_unlock(&stream->write_buf_mutex);
 
@@ -168,8 +172,8 @@ retry_send:
 		goto retry_send;
 	}
 
-	memcpy(stream->write_buf + stream->write_buf_len, data, len);
-	stream->write_buf_len += len;
+	memcpy(stream->write_buf + stream->write_buf_len, data, size);
+	stream->write_buf_len += size;
 
 	pthread_mutex_unlock(&stream->write_buf_mutex);
 
