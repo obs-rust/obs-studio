@@ -126,7 +126,10 @@ int main(void)
         blocks = re.findall(r"target_compile_options\(\s*decklink\s+PRIVATE\s+([^)]*)\)", text, re.S)
         for language in ("C", "CXX"):
             with self.subTest(language=language):
-                options = [block for block in blocks if f"COMPILE_LANG_AND_ID:{language},GNU,Clang,AppleClang>" in block]
+                options = re.findall(
+                    rf"\$<\$<COMPILE_LANG_AND_ID:{language},GNU,Clang,AppleClang>:(.*?)>",
+                    "\n".join(blocks),
+                )
                 self.assertEqual(len(options), 1)
                 for group in GROUPS:
                     self.assertIn(group, options[0])
