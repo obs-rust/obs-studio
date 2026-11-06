@@ -705,6 +705,7 @@ if(_host STREQUAL WINDOWS)
       build/frontend.plugin-manager-pluginmoduleloader_windows+.hpp.cpp
     DEFINES PSAPI_VERSION=2
   )
+  _obs_cross_conversion_ratchet(frontend-windows-cross)
   # obs-text's unity group (BUILD.md).
   _obs_cross_plugin(obs-text-cross DIR plugins/obs-text SOURCES build/obs-text.windows+.hpp.cpp)
   _obs_cross_conversion_ratchet(obs-text-cross)

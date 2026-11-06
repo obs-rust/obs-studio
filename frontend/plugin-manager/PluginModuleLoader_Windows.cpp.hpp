@@ -113,7 +113,7 @@ State PluginManager::loadPlugins(bool usePortableMode)
 		int bufferSize = os_get_program_data_path(appLibraryPath.data(), appLibraryPath.size(),
 							  kPluginPathSuffix.data());
 		if (bufferSize > 0) {
-			appLibraryPath.resize(bufferSize);
+			appLibraryPath.resize(static_cast<size_t>(bufferSize));
 		}
 	} else {
 		appLibraryPath = kPortablePluginPath;
@@ -169,7 +169,7 @@ State PluginManager::loadLegacyPlugins(bool usePortableMode)
 		int bufferSize = os_get_program_data_path(appLibraryPath.data(), appLibraryPath.size(),
 							  kPluginPathSuffix.data());
 		if (bufferSize > 0) {
-			appLibraryPath.resize(bufferSize);
+			appLibraryPath.resize(static_cast<size_t>(bufferSize));
 			libraryPluginState =
 				loadPluginsFromPath(appLibraryPath, OBS_MODULE_TYPE_LEGACY_PLUGIN, failedModules_);
 		}
