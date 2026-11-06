@@ -740,7 +740,7 @@ jobs:
           retention-days: 14
       - name: Warn that the Intel leg is quarantined ⚠️
         if: always() && matrix.target == 'x86_64'
-        run: echo "::warning::macOS x86_64 DMG startup is non-blocking (quarantined for #3168); once fixed, revert continue-on-error and this step."
+        run: 'echo "::warning::macOS x86_64 DMG startup is non-blocking (quarantined for #3168); once fixed, revert continue-on-error and this step."'
 
   # The release gate: every job the dev cycle skips (#436), at this commit.
   gate:

@@ -1,11 +1,18 @@
 #!/usr/bin/env -S uv run --script
-"""No workflow or action YAML repeats a key in the same mapping.
+"""No workflow or action YAML repeats a key or cuts a scalar short at a " #".
 
 Two PRs each added `rust_libobs` to appimage.yaml's workflow_call inputs (one
 at the top, one at the bottom); git merged both without a conflict, and
 GitHub then refused every release dispatch: "'rust_libobs' is already
 defined". Each PR passed on its own, so only a check of the merged file
 catches it. This scans block-style YAML by indentation (stdlib only).
+
+An unquoted value ends at " #": YAML reads the rest as a comment. A run: step
+with "for #3168" in its message reached the shell as an unterminated double
+quote, and failed only when that step ran. So a plain run: value may hold no
+" #" at all, and no other plain value may be followed by " #<digit>", which is
+an issue reference that lost its text and not a comment. Quote the value, or
+use a block scalar. A real "# v1.2.3" comment after a uses: pin stays allowed.
 
     uv run python -m unittest ci/test_workflow_duplicate_keys.py
 """
@@ -19,6 +26,44 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FILES = sorted([*ROOT.glob(".github/workflows/*.y*ml"), *ROOT.glob(".github/actions/*/action.y*ml")])
 KEY = re.compile(r"^(?P<indent> *)(?:- +)?(?P<key>[A-Za-z0-9_.-]+|'[^']*'|\"[^\"]*\"):(?:\s|$)")
+KEY_VALUE = re.compile(r"^ *(?:- +)*(?P<key>[A-Za-z0-9_.-]+):[ \t]+(?P<value>\S.*)$")
+COMMENT = re.compile(r"[ \t]#")
+ISSUE_REF = re.compile(r"[ \t]#\d")
+
+
+def content_lines(text: str) -> list[tuple[int, str]]:
+    lines = enumerate(text.splitlines(), 1)
+    return [(n, line) for n, line in lines if line.strip() and not line.lstrip(" ").startswith("#")]
+
+
+def cut_short(key: str, value: str) -> bool:
+    return bool(ISSUE_REF.search(value)) or (key == "run" and bool(COMMENT.search(value)))
+
+
+def truncated_scalars(text: str) -> list[str]:
+    found = []
+    # The key whose value runs on over deeper lines: a block scalar, or a plain
+    # run: value, whose deeper lines are checked too.
+    open_column = None
+    open_is_run = False
+    for lineno, line in content_lines(text):
+        if open_column is not None and len(line) - len(line.lstrip(" ")) > open_column:
+            if open_is_run and COMMENT.search(line):
+                found.append(f"line {lineno}: run")
+            continue
+        open_column = None
+        m = KEY_VALUE.match(line)
+        if not m:
+            continue
+        key, value = m.group("key"), m.group("value")
+        if value[0] in "'\"":
+            continue
+        open_is_run = key == "run" and value[0] not in "|>"
+        if open_is_run or value[0] in "|>":
+            open_column = m.start("key")
+        if value[0] not in "|>" and cut_short(key, value):
+            found.append(f"line {lineno}: {key}")
+    return found
 
 
 def duplicate_keys(text: str) -> list[str]:  # noqa: C901
@@ -72,6 +117,44 @@ class WorkflowDuplicateKeysTest(unittest.TestCase):
     def test_list_items_are_separate_mappings(self):
         text = "steps:\n  - name: x\n    run: |\n      name: y\n  - name: z\n"
         self.assertEqual(duplicate_keys(text), [])
+
+
+class WorkflowTruncatedScalarsTest(unittest.TestCase):
+    def test_no_truncated_scalars(self):
+        bad = []
+        for path in FILES:
+            for d in truncated_scalars(path.read_text()):
+                bad.append(f"{path.relative_to(ROOT)} {d}")
+        self.assertEqual(bad, [])
+
+    def test_detects_a_plain_run_cut_at_a_hash(self):
+        text = 'steps:\n  - name: x\n    run: echo "see #1 now"\n  - run: echo a # b\n'
+        self.assertEqual(truncated_scalars(text), ["line 3: run", "line 4: run"])
+
+    def test_detects_a_hash_on_a_continuation_line(self):
+        text = "steps:\n  - run: echo a\n      b # c\n    name: x\n"
+        self.assertEqual(truncated_scalars(text), ["line 3: run"])
+
+    def test_detects_an_issue_reference_after_another_key(self):
+        text = "inputs:\n  a:\n    description: Fail (always, #3238)\n"
+        self.assertEqual(truncated_scalars(text), ["line 3: description"])
+
+    def test_allows_what_survives_parsing(self):
+        text = (
+            "steps:\n"
+            "  - uses: actions/checkout@abc # v6.0.2\n"
+            "    with:\n"
+            "      ref: ${{ inputs.ref }} # empty outside workflow_call\n"
+            "  - run: echo \"a#b\"\n"
+            "    name: x\n"
+            "  - run: 'echo \"see #1\"'\n"
+            "  - run: \"echo see #1\"\n"
+            "  - run: |\n"
+            "      echo a # b\n"
+            "      run: echo c # d\n"
+            "  - name: y\n"
+        )
+        self.assertEqual(truncated_scalars(text), [])
 
 
 if __name__ == "__main__":
