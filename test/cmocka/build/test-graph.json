@@ -1340,6 +1340,29 @@
         "gs_vertexshader_create=test_vertexshader_create"
       ]
     },
+    "test_effect_parser_writer": {
+      "sources": [
+        "libobs/graphics/effect-param-numbers.c.h",
+        "libobs/graphics/effect-param-types.c.h",
+        "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser-params.c.h",
+        "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser.c.h",
+        "test/cmocka/test_effect_parser_writer.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_effect_pass_loop": {
       "sources": [
         "test/cmocka/test_effect_pass_loop.c"
@@ -7978,6 +8001,12 @@
     },
     "test_effect_parser_shader_call": {
       "target": "test_effect_parser_shader_call",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_effect_parser_writer": {
+      "target": "test_effect_parser_writer",
       "command": [
         "${target}"
       ]
