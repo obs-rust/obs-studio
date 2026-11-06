@@ -179,6 +179,17 @@ class CrossConversionRatchet(unittest.TestCase):
                 rf"_obs_cross_c_conversion_ratchet\({target}\)",
             )
         self.assertIn("COMPILE_LANG_AND_ID:OBJC,Clang,AppleClang", text)
+        self.assertRegex(
+            text,
+            r"if\(_host STREQUAL MACOS\)\s+"
+            r"_obs_cross_c_conversion_ratchet\(libobs-cross\)\s+"
+            r"_obs_cross_c_conversion_ratchet\(libobs-cross-rust-shims\)\s+endif\(\)",
+        )
+        self.assertIn('if(_source MATCHES "libobs\\\\.ported-nsgif-")', text)
+        self.assertLess(
+            text.index("PROPERTIES COMPILE_OPTIONS -fobjc-arc"),
+            text.index("_obs_cross_c_conversion_ratchet(libobs-cross)"),
+        )
 
     def test_the_coreaudio_encoder_slice_is_opted_in_on_both_hosts(self) -> None:
         """Keep the Windows and macOS encoder groups measured (#2625)."""
