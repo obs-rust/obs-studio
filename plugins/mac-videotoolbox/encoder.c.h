@@ -498,8 +498,8 @@ static OSStatus create_encoder(struct vt_encoder *enc)
 
     CFDictionaryRef pixbuf_spec = create_pixbuf_spec(enc);
 
-    code = VTCompressionSessionCreate(kCFAllocatorDefault, enc->width, enc->height, enc->codec_type, encoder_spec,
-                                      pixbuf_spec, NULL, &sample_encoded_callback, enc->queue, &s);
+    code = VTCompressionSessionCreate(kCFAllocatorDefault, (int32_t) enc->width, (int32_t) enc->height, enc->codec_type,
+                                      encoder_spec, pixbuf_spec, NULL, &sample_encoded_callback, enc->queue, &s);
 
     CFRelease(encoder_spec);
     CFRelease(pixbuf_spec);
@@ -525,7 +525,7 @@ static OSStatus create_encoder(struct vt_encoder *enc)
 
     if (enc->codec_type == kCMVideoCodecType_H264 || enc->codec_type == kCMVideoCodecType_HEVC) {
         // This can fail when using GPU hardware encoding
-        code = session_set_prop_int(s, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, enc->keyint);
+        code = session_set_prop_int(s, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, (int32_t) enc->keyint);
         if (code != noErr)
             log_osstatus(LOG_WARNING, enc,
                          "setting kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration failed, "
@@ -537,8 +537,8 @@ static OSStatus create_encoder(struct vt_encoder *enc)
                                      kVTCompressionPropertyKey_AllowFrameReordering,
                                      kVTCompressionPropertyKey_ProfileLevel};
 
-        int actual_frame_rate = enc->fps_num / enc->fps_den;
-        int key_frame_interval = enc->keyint * actual_frame_rate;
+        int actual_frame_rate = (int) (enc->fps_num / enc->fps_den);
+        int key_frame_interval = (int) (enc->keyint * (uint32_t) actual_frame_rate);
 
         CFNumberRef MaxKeyFrameInterval = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &key_frame_interval);
         CFNumberRef ExpectedFrameRate = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &actual_frame_rate);
@@ -566,8 +566,8 @@ static OSStatus create_encoder(struct vt_encoder *enc)
             return code;
         }
 
-        code = session_set_bitrate(s, enc->rate_control, enc->bitrate, enc->quality, enc->limit_bitrate,
-                                   enc->rc_max_bitrate, enc->rc_max_bitrate_window);
+        code = session_set_bitrate(s, enc->rate_control, (int) enc->bitrate, enc->quality, enc->limit_bitrate,
+                                   (int) enc->rc_max_bitrate, enc->rc_max_bitrate_window);
         if (code != noErr) {
             return code;
         }
@@ -740,7 +740,7 @@ static bool update_params(struct vt_encoder *enc, obs_data_t *settings)
     enc->rc_max_bitrate_window = obs_data_get_double(settings, "max_bitrate_window");
     enc->bframes = obs_data_get_bool(settings, "bframes");
 
-    enum aq_mode spatial_aq_mode = obs_data_get_int(settings, "spatial_aq_mode");
+    enum aq_mode spatial_aq_mode = (enum aq_mode) obs_data_get_int(settings, "spatial_aq_mode");
     if (spatial_aq_mode == AQ_AUTO) {
         /* Only enable by default in CRF mode. */
         enc->spatial_aq = strcmp(enc->rate_control, "CRF") == 0;
@@ -763,8 +763,8 @@ static bool vt_update(void *data, obs_data_t *settings)
     if (old_bitrate == enc->bitrate && old_limit_bitrate == enc->limit_bitrate)
         return true;
 
-    OSStatus code = session_set_bitrate(enc->session, enc->rate_control, enc->bitrate, enc->quality, enc->limit_bitrate,
-                                        enc->rc_max_bitrate, enc->rc_max_bitrate_window);
+    OSStatus code = session_set_bitrate(enc->session, enc->rate_control, (int) enc->bitrate, enc->quality,
+                                        enc->limit_bitrate, (int) enc->rc_max_bitrate, enc->rc_max_bitrate_window);
     if (code != noErr)
         VT_BLOG(LOG_WARNING, "Failed to set bitrate to session");
 
@@ -814,7 +814,7 @@ static void packet_put_startcode(struct darray *packet, int size)
 {
     assert(size == 3 || size == 4);
 
-    packet_put(packet, &annexb_startcode[4 - size], size);
+    packet_put(packet, &annexb_startcode[4 - size], (size_t) size);
 }
 
 static bool handle_prores_packet(struct vt_encoder *enc, CMSampleBufferRef buffer)
@@ -860,7 +860,7 @@ static void convert_block_nals_to_annexb(struct vt_encoder *enc, struct darray *
         else
             return;
 
-        bytes_remaining -= nal_length_bytes;
+        bytes_remaining -= (size_t) nal_length_bytes;
         block_buf += nal_length_bytes;
 
         if (bytes_remaining < nal_size) {
@@ -979,8 +979,8 @@ static bool parse_sample(struct vt_encoder *enc, CMSampleBufferRef buffer, struc
     else if (enc->bframes)
         dts = CMTimeSubtract(dts, off);
 
-    pts = CMTimeMultiply(pts, enc->fps_num);
-    dts = CMTimeMultiply(dts, enc->fps_num);
+    pts = CMTimeMultiply(pts, (int32_t) enc->fps_num);
+    dts = CMTimeMultiply(dts, (int32_t) enc->fps_num);
 
     const bool is_avc = enc->codec_type == kCMVideoCodecType_H264;
     const bool has_annexb = is_avc || (enc->codec_type == kCMVideoCodecType_HEVC);
@@ -1104,9 +1104,9 @@ static bool vt_encode(void *data, struct encoder_frame *frame, struct encoder_pa
 
     OSStatus code;
 
-    CMTime dur = CMTimeMake(enc->fps_den, enc->fps_num);
+    CMTime dur = CMTimeMake(enc->fps_den, (int32_t) enc->fps_num);
     CMTime off = CMTimeMultiply(dur, 2);
-    CMTime pts = CMTimeMake(frame->pts, enc->fps_num);
+    CMTime pts = CMTimeMake(frame->pts, (int32_t) enc->fps_num);
 
     CVPixelBufferRef pixbuf = NULL;
 
@@ -1120,7 +1120,7 @@ static bool vt_encode(void *data, struct encoder_frame *frame, struct encoder_pa
         goto fail;
     }
 
-    for (int i = 0; i < MAX_AV_PLANES; i++) {
+    for (size_t i = 0; i < MAX_AV_PLANES; i++) {
         if (frame->data[i] == NULL)
             break;
         uint8_t *p = (uint8_t *) CVPixelBufferGetBaseAddressOfPlane(pixbuf, i);
@@ -1485,12 +1485,12 @@ void obs_module_post_load(void)
 
         CFStringRef EncoderID = CFDictionaryGetValue(encoder_dict, kVTVideoEncoderList_EncoderID);
         CFIndex id_len = CFStringGetMaximumSizeOfFileSystemRepresentation(EncoderID);
-        char *id = bzalloc(id_len + 1);
+        char *id = bzalloc((size_t) (id_len + 1));
         CFStringGetFileSystemRepresentation(EncoderID, id, id_len);
 
         CFStringRef DisplayName = CFDictionaryGetValue(encoder_dict, kVTVideoEncoderList_DisplayName);
         CFIndex disp_name_len = CFStringGetMaximumSizeOfFileSystemRepresentation(DisplayName);
-        char *disp_name = bzalloc(disp_name_len + 1);
+        char *disp_name = bzalloc((size_t) (disp_name_len + 1));
         CFStringGetFileSystemRepresentation(DisplayName, disp_name, disp_name_len);
 
         CFBooleanRef hardware_ref = CFDictionaryGetValue(encoder_dict, kVTVideoEncoderList_IsHardwareAccelerated);
