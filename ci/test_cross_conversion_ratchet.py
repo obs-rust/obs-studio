@@ -170,6 +170,16 @@ class CrossConversionRatchet(unittest.TestCase):
         slices = {"coreaudio-encoder-cross", "obs-text-cross"}
         self.assertLessEqual(slices, opted_in(source()))
 
+    def test_the_libobs_cocoa_slice_covers_compiled_languages(self) -> None:
+        """Core/shims and mac-capture must enforce C and Objective-C (#2625)."""
+        text = source()
+        for target in ("libobs-cross", "libobs-cross-rust-shims", "mac-capture-cross"):
+            self.assertRegex(
+                text,
+                rf"_obs_cross_c_conversion_ratchet\({target}\)",
+            )
+        self.assertIn("COMPILE_LANG_AND_ID:OBJC,Clang,AppleClang", text)
+
     def test_the_coreaudio_encoder_slice_is_opted_in_on_both_hosts(self) -> None:
         """Keep the Windows and macOS encoder groups measured (#2625)."""
         target = "coreaudio-encoder-cross"
