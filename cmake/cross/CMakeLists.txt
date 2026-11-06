@@ -674,6 +674,7 @@ if(_host STREQUAL WINDOWS)
   # frontend-tools' Windows host group (BUILD.md, #855); its Qt groups need
   # Qt, which the cross check does not have.
   _obs_cross_plugin(frontend-tools-host-cross DIR plugins/frontend-tools SOURCES build/frontend-tools.host-windows+.h.c)
+  _obs_cross_conversion_ratchet(frontend-tools-host-cross)
   # The frontend's Windows unity groups (BUILD.md, #2408).
   _obs_cross_frontend(
     frontend-windows-cross
@@ -761,6 +762,7 @@ elseif(_host STREQUAL MACOS)
   # frontend-tools' macOS host group (BUILD.md, #855); its Qt groups need
   # Qt, which the cross check does not have.
   _obs_cross_plugin(frontend-tools-host-cross DIR plugins/frontend-tools SOURCES build/frontend-tools.host-macos+.h.c)
+  _obs_cross_conversion_ratchet(frontend-tools-host-cross)
   # The frontend's macOS unity groups (BUILD.md, #2408), with the flags
   # frontend/cmake/os-macos.cmake gives them. Not the Sparkle .mm groups,
   # which need Sparkle.framework.
