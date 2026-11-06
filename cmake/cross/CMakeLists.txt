@@ -632,6 +632,7 @@ if(_host STREQUAL WINDOWS)
     INCLUDES plugins/obs-outputs/hosts/windows
     DEFINES USE_MBEDTLS CRYPTO
   )
+  _obs_cross_conversion_ratchet(obs-outputs-rtmp-host-cross)
   _obs_cross_plugin(obs-outputs-host-cross DIR plugins/obs-outputs SOURCES build/obs-outputs.host-windows+.h.c)
   _obs_cross_plugin(obs-scripting-lua-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.lua-host-windows+.h.c)
   _obs_cross_plugin(obs-scripting-python-import-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.python-import-host-windows+.h.c)
@@ -859,6 +860,7 @@ elseif(_host STREQUAL MACOS)
     SOURCES build/obs-outputs.rtmp-host-posix+.h.c
     INCLUDES plugins/obs-outputs/hosts/posix
   )
+  _obs_cross_conversion_ratchet(obs-outputs-rtmp-host-cross)
   _obs_cross_plugin(obs-outputs-host-cross DIR plugins/obs-outputs SOURCES build/obs-outputs.host-posix+.h.c)
   _obs_cross_plugin(obs-scripting-lua-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.lua-host-macos+.h.c)
   _obs_cross_plugin(obs-scripting-python-import-host-cross DIR shared/obs-scripting SOURCES build/obs-scripting.python-import-host-macos+.h.c)
