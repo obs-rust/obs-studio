@@ -1,0 +1,21 @@
+[package]
+autotests = false
+name = "obs-camera-busy"
+version = "0.1.0"
+description = "The camera-busy warning: who holds a V4L2 camera, and what the popup does (obs-rust/obs-studio#3724)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# kill(2), getuid(2) and inotify, in src/platform/linux.rs only.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = { workspace = true }
+
+# The tests run in obs-gpu-status's obs-tests-gpu (ci/test_binary_cap.py: one
+# executable per category; all three are the frontend's Rust).
+[lib]
+test = false
