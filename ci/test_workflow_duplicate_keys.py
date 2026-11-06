@@ -31,36 +31,38 @@ COMMENT = re.compile(r"[ \t]#")
 ISSUE_REF = re.compile(r"[ \t]#\d")
 
 
+def content_lines(text: str) -> list[tuple[int, str]]:
+    lines = enumerate(text.splitlines(), 1)
+    return [(n, line) for n, line in lines if line.strip() and not line.lstrip(" ").startswith("#")]
+
+
+def cut_short(key: str, value: str) -> bool:
+    return bool(ISSUE_REF.search(value)) or (key == "run" and bool(COMMENT.search(value)))
+
+
 def truncated_scalars(text: str) -> list[str]:
     found = []
-    block_column = None  # inside a | or > block scalar opened by the key at this column
-    run_column = None  # inside a plain run: value, which may continue on deeper lines
-    for lineno, line in enumerate(text.splitlines(), 1):
-        stripped = line.lstrip(" ")
-        if not stripped or stripped.startswith("#"):
+    # The key whose value runs on over deeper lines: a block scalar, or a plain
+    # run: value, whose deeper lines are checked too.
+    open_column = None
+    open_is_run = False
+    for lineno, line in content_lines(text):
+        if open_column is not None and len(line) - len(line.lstrip(" ")) > open_column:
+            if open_is_run and COMMENT.search(line):
+                found.append(f"line {lineno}: run")
             continue
-        indent = len(line) - len(stripped)
-        if block_column is not None:
-            if indent > block_column:
-                continue
-            block_column = None
-        if run_column is not None:
-            if indent > run_column:
-                if COMMENT.search(line):
-                    found.append(f"line {lineno}: run")
-                continue
-            run_column = None
+        open_column = None
         m = KEY_VALUE.match(line)
         if not m:
             continue
         key, value = m.group("key"), m.group("value")
-        if value[0] in "|>":
-            block_column = m.start("key")
-        elif value[0] not in "'\"":
-            if key == "run":
-                run_column = m.start("key")
-            if ISSUE_REF.search(value) or (key == "run" and COMMENT.search(value)):
-                found.append(f"line {lineno}: {key}")
+        if value[0] in "'\"":
+            continue
+        open_is_run = key == "run" and value[0] not in "|>"
+        if open_is_run or value[0] in "|>":
+            open_column = m.start("key")
+        if value[0] not in "|>" and cut_short(key, value):
+            found.append(f"line {lineno}: {key}")
     return found
 
 
