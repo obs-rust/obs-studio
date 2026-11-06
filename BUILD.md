@@ -48,6 +48,50 @@ behind the same single header, on every compiler, OS and generator.
 
 ## The rules
 
+### Dependency warning boundary (decision of 2026-11-06, #2625)
+
+The maintainer decided: "Only strict settings for OUR headers and source.
+third_party code is assumed working correctly and allows relaxed compiler
+settings to allow it to pass. Make this a decision and put this in ci.yml."
+
+First-party source and headers retain the full warning policy, including every
+conversion group a target has enabled. Do not suppress diagnostics for a
+first-party file to accommodate a dependency, or edit dependency code to make it
+meet our warning policy. Dependency headers use CMake SYSTEM includes; imported
+dependency targets retain CMake's default system-header treatment.
+
+The concrete third-party paths, relative to the repository, are `.deps/**`
+(downloaded dependency/Qt SDKs, including AMF, FFmpeg and bundled SIMDe),
+`deps/**` (vendored libraries, including a SIMDe checkout placed there), and
+`plugins/decklink/{linux,mac,win}/decklink-sdk/**`. A dependency remains third
+party when vendored inside this repository. The browser and WebSocket git
+submodules keep their own build policy. Everything else in the source tree is
+first party unless a later reviewed decision explicitly extends this list;
+in particular `libobs/`, `frontend/`, `shared/`, generated OBS headers, and the
+rest of `plugins/` must never be made SYSTEM roots. Externally installed SDKs
+are consumed through imported dependency targets, not by marking an OBS root
+SYSTEM.
+
+`cmake/third-party-headers.cmake` classifies the completed native and cross
+target graphs. It keeps the original include lists and warning flags, marks
+only dependency include directories SYSTEM, and propagates that classification
+from vendored libraries to their consumers. Unknown generator expressions stay
+strict; build-interface and simple conditional paths are classified explicitly. Resolved symlinks into
+first-party directories are not exempt. CMake searches SYSTEM directories after
+ordinary directories, so verify header resolution and generated code when
+changing this boundary. Include dependency headers through their dedicated
+SYSTEM include roots with angle brackets, including vendored dependencies;
+spelling them through the ordinary repository root would bypass the exemption.
+This dependency rule is an exception to the repo-root spelling rule below.
+
+This decision is enforced by `ci/test_cross_conversion_ratchet.py`, including
+a real compile that accepts a conversion in a dependency header and rejects one
+in a first-party header. It runs in the existing required `ci.yml` path:
+`Format 🔍 / checks` → `ci/ Self-Tests 🧪` → `ci/local_gate.py --only self-test`.
+`CI Gate ✅` requires the Format workflow. "Put this in ci.yml" means enforcement
+through that existing job; it does not require another workflow step or a change
+to the external `zackees/ci.yml` policy repository.
+
 ### 1. File names say the role
 
 | Role | C | C++ | Objective-C | Objective-C++ |

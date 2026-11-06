@@ -4,6 +4,8 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCO
 
 project(obs-studio VERSION ${OBS_VERSION_CANONICAL})
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/third-party-headers.cmake")
+
 # Unity groups, precompiled headers and implementation files include repo
 # files by their repo-root path (BUILD.md); also in the Windows child
 # architecture builds below, which configure only a few subdirectories.

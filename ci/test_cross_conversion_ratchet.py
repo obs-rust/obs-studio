@@ -52,6 +52,24 @@ def opted_in(text: str) -> set[str]:
 
 
 class CrossConversionRatchet(unittest.TestCase):
+    def test_dependency_includes_do_not_bypass_system_roots(self) -> None:
+        root = CROSS.parents[2]
+        tracked = subprocess.run(
+            ["git", "ls-files", "libobs", "libobs-*", "frontend", "plugins", "shared"],
+            cwd=root, capture_output=True, text=True, check=True,
+        ).stdout.splitlines()
+        offenders = []
+        for name in tracked:
+            path = root / name
+            if path.suffix not in {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}:
+                continue
+            if "/decklink-sdk/" in name:
+                continue
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if re.match(r'^\s*#\s*include\s*["<](?:deps/|\.deps/|plugins/decklink/(?:linux|mac|win)/decklink-sdk/)', line):
+                    offenders.append(f"{name}:{number}")
+        self.assertEqual(offenders, [], "use the dependency SYSTEM root, not the ordinary repo root")
+
     def test_dependency_headers_are_system_but_our_headers_are_not(self) -> None:
         """Exercise the native/cross policy without downloading any SDK."""
         root = CROSS.parents[2]
@@ -64,18 +82,28 @@ class CrossConversionRatchet(unittest.TestCase):
             fixture = Path(tmp)
             (fixture / "CMakeLists.txt").write_text(
                 'cmake_minimum_required(VERSION 3.28)\n'
-                'project(policy NONE)\n'
+                'project(policy C)\n'
                 'add_library(sample INTERFACE)\n'
                 'target_include_directories(sample INTERFACE\n'
                 ' "${CMAKE_SOURCE_DIR}/.deps/sdk/include"\n'
                 ' "${CMAKE_SOURCE_DIR}/deps/simde"\n'
+                ' "$<$<BOOL:1>:${CMAKE_SOURCE_DIR}/plugins/decklink/mac/decklink-sdk>"\n'
                 ' "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/deps/json11>"\n'
                 ' "${CMAKE_SOURCE_DIR}/libobs"\n'
                 ' "${CMAKE_BINARY_DIR}/generated")\n'
+                'file(WRITE "${CMAKE_BINARY_DIR}/sample.c" "#include <dependency.h>\\n")\n'
+                'add_library(consumer OBJECT "${CMAKE_BINARY_DIR}/sample.c")\n'
+                'target_include_directories(consumer PRIVATE "${CMAKE_SOURCE_DIR}/deps/simde")\n'
+                'target_compile_options(consumer PRIVATE -Werror=conversion)\n'
                 f'include("{policy.as_posix()}")\n'
                 'cmake_language(DEFER CALL file GENERATE OUTPUT "${CMAKE_BINARY_DIR}/system.txt"\n'
                 ' CONTENT "$<TARGET_PROPERTY:sample,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>")\n',
                 encoding="utf-8",
+            )
+            vendor = fixture / "deps/simde"
+            vendor.mkdir(parents=True)
+            (vendor / "dependency.h").write_text(
+                "static inline int dependency(double x) { return x; }\n", encoding="utf-8"
             )
             result = subprocess.run(
                 ["cmake", "-S", str(fixture), "-B", str(fixture / "build")],
@@ -86,7 +114,22 @@ class CrossConversionRatchet(unittest.TestCase):
             self.assertEqual(set(system), {
                 str(fixture / ".deps/sdk/include"), str(fixture / "deps/simde"),
                 str(fixture / "deps/json11"),
+                str(fixture / "plugins/decklink/mac/decklink-sdk"),
             })
+            build = ["cmake", "--build", str(fixture / "build"), "--target", "consumer"]
+            result = subprocess.run(build, capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            ours = fixture / "libobs"
+            ours.mkdir()
+            (ours / "ours.h").write_text(
+                "static inline int ours(double x) { return x; }\n", encoding="utf-8"
+            )
+            (fixture / "build/sample.c").write_text(
+                f'#include "{(ours / "ours.h").as_posix()}"\n', encoding="utf-8"
+            )
+            result = subprocess.run(build, capture_output=True, text=True, check=False)
+            self.assertNotEqual(result.returncode, 0, "first-party conversion must fail")
+            self.assertIn("ours.h", result.stdout + result.stderr)
 
     def test_the_helper_names_the_three_groups(self) -> None:
         body = helper_body(source())
