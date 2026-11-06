@@ -831,6 +831,7 @@ elseif(_host STREQUAL MACOS)
     INCLUDES plugins/mac-virtualcam/src/common
   )
   _obs_cross_plugin(mac-videotoolbox-cross DIR plugins/mac-videotoolbox SOURCES build/mac-videotoolbox.macos+.h.c)
+  _obs_cross_conversion_ratchet(mac-videotoolbox-cross)
   # libobs-opengl's unity groups (BUILD.md): the shared renderer and CGL.
   _obs_cross_plugin(
     libobs-opengl-cross
