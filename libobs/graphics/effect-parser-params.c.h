@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-effect-parser-params.pch.h"
+#include "libobs/build/libobs-ported-effect-parser-params.pch.h"
 
 static inline int ep_parse_param_annotation_var(struct effect_parser *ep, struct ep_param *var)
 {

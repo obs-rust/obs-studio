@@ -5,9 +5,10 @@
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
-//! `effect-parser-blocks.c.h` and `effect-parser-passes.c.h`, its struct
-//! and sampler-state blocks and its passes and techniques
-//! ([`effect_parser`]), from
+//! `effect-parser-blocks.c.h`, `effect-parser-params.c.h` and
+//! `effect-parser-passes.c.h`, its struct and sampler-state blocks, its
+//! parameter declarations, annotations and value assignments and its passes
+//! and techniques ([`effect_parser`]), from
 //! `libobs/graphics/shader-parser.c.h`: `shader-param-values.c.h`, the
 //! shader parser's array counts and int and float default values
 //! ([`shader_param_values`]), and `shader-parser-blocks.c.h`, its

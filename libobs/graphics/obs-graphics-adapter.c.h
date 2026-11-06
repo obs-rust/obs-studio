@@ -17,6 +17,7 @@ double obs_graphics_os_strtod(const char *str);
 void obs_graphics_cf_adderror(struct cf_parser *p, const char *error, int level, const char *val1, const char *val2,
 			      const char *val3);
 bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out);
+char *obs_graphics_cf_literal_to_str(const char *literal, size_t count);
 
 void *obs_graphics_bmalloc(size_t size)
 {
@@ -112,4 +113,11 @@ void obs_graphics_cf_adderror(struct cf_parser *p, const char *error, int level,
 bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out)
 {
 	return cf_pass_pair(p, in, out);
+}
+
+/* cf_literal_to_str for the effect parser's string and texture path values
+ * (effect-parser-params.c), on the string token the C passed it. */
+char *obs_graphics_cf_literal_to_str(const char *literal, size_t count)
+{
+	return cf_literal_to_str(literal, count);
 }

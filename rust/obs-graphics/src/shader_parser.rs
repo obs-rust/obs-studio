@@ -53,10 +53,14 @@ pub const LEX_WARNING: i32 = 1;
 pub const CFTOKEN_NONE: i32 = 0;
 /// `CFTOKEN_NAME`.
 pub const CFTOKEN_NAME: i32 = 1;
+/// `CFTOKEN_NUM`.
+pub const CFTOKEN_NUM: i32 = 2;
 /// `CFTOKEN_SPACETAB`.
 pub const CFTOKEN_SPACETAB: i32 = 3;
 /// `CFTOKEN_NEWLINE`.
 pub const CFTOKEN_NEWLINE: i32 = 4;
+/// `CFTOKEN_STRING`.
+pub const CFTOKEN_STRING: i32 = 5;
 
 /// The errors the blocks add, each a `cf_adderror(p, ...)` of
 /// `util/cf-parser.h`, or of the block itself.
@@ -71,6 +75,11 @@ pub enum BlockError {
     /// The effect parser's pass command: `"compile keyword not
     /// necessary"`, a warning.
     CompileNotNecessary,
+    /// The effect parser's vector and matrix values: `"Invalid row
+    /// count"`.
+    InvalidRowCount,
+    /// The effect parser's matrix values: `"Invalid column count"`.
+    InvalidColumnCount,
 }
 
 impl BlockError {
@@ -82,6 +91,8 @@ impl BlockError {
             Self::UnexpectedEof => (c"Unexpected EOF", None),
             Self::SyntaxError => (c"Syntax error", None),
             Self::CompileNotNecessary => (c"compile keyword not necessary", None),
+            Self::InvalidRowCount => (c"Invalid row count", None),
+            Self::InvalidColumnCount => (c"Invalid column count", None),
         }
     }
 
@@ -91,7 +102,11 @@ impl BlockError {
     pub fn level(self) -> i32 {
         match self {
             Self::CompileNotNecessary => LEX_WARNING,
-            Self::Expecting(_) | Self::UnexpectedEof | Self::SyntaxError => LEX_ERROR,
+            Self::Expecting(_)
+            | Self::UnexpectedEof
+            | Self::SyntaxError
+            | Self::InvalidRowCount
+            | Self::InvalidColumnCount => LEX_ERROR,
         }
     }
 }
@@ -251,7 +266,7 @@ pub(crate) fn peek_valid_token_is(t: &mut impl Tokens, s: &CStr) -> Option<bool>
 }
 
 /// `cf_token_is_type`.
-fn token_is_type(
+pub(crate) fn token_is_type(
     t: &mut impl Tokens,
     kind: i32,
     type_expected: &'static CStr,

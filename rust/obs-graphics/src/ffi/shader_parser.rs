@@ -93,7 +93,7 @@ unsafe extern "C" {
 pub(crate) struct RawTokens(pub(crate) *mut cf_parser);
 
 impl RawTokens {
-    fn token(&self) -> &cf_token {
+    pub(crate) fn token(&self) -> &cf_token {
         // SAFETY: the parser's cur_token points into its terminated token
         // array (the shim's contract), and the core never moves it past the
         // terminator.
