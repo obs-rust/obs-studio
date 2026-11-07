@@ -30,6 +30,15 @@ Rust test binary counts change.
   configure passes Linux/FreeBSD/OpenBSD/Windows/macOS selections.
 - Seven focused Python graph, cmocka and test-budget modules pass
   (`local-test-CbjETq.log`). Managed rustfmt and gersemi 0.25.0 pass.
+- Whole-graph legacy replacement passes (`local-test-FArDOb.log`). Scoped
+  all-target Clippy with `libobs-integration` and `-D warnings` passes
+  (`local-test-Nq4PB1.log`). An earlier duplicate Clippy invocation was
+  refused while full lint held the target lock; it was retried after lint
+  exited.
+- One primary clud-review reviewer reports clean and independently replays
+  all four SDK contracts successfully (`local-test-aLUuwB.log`). The first
+  full lint found module ordering; the corrected ordering passes a scoped
+  managed rustfmt check.
 - Test cost, 25 reduced-debug runs each: registration longest 0.0292 s,
   selection 0.0473 s, package-free configure 0.3850 s; peak child RSS
   19,368 KiB. Fast contracts own no threads. Native compiler/CMake replay
