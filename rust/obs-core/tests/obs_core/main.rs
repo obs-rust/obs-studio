@@ -20,6 +20,7 @@ mod context_names;
 mod context_names_parity;
 mod core_setup_rules;
 mod core_setup_rules_parity;
+mod display_size;
 mod display_state;
 mod display_state_parity;
 mod module_failure_info;
