@@ -2796,6 +2796,17 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_image_exif_orientation": {
+      "sources": [
+        "test/cmocka/test_image_exif_orientation.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_image_file_version": {
       "sources": [
         "test/cmocka/test_image_file_version.c",
@@ -3092,6 +3103,18 @@
             "not": "MSVC"
           }
         }
+      ]
+    },
+    "test_media_remux": {
+      "sources": [
+        "test/cmocka/test_media_remux.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_media_time": {
@@ -9383,6 +9406,11 @@
         ]
       ]
     },
+    "test_image_exif_orientation": {
+      "target": "test_image_exif_orientation",
+      "suite": "core",
+      "timeout_seconds": 60
+    },
     "test_image_file_version": {
       "target": "test_image_file_version",
       "suite": "core"
@@ -9476,6 +9504,11 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_media_remux": {
+      "target": "test_media_remux",
+      "suite": "core",
+      "timeout_seconds": 60
     },
     "test_media_time": {
       "target": "test_media_time",
