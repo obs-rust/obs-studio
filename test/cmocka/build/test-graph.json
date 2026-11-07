@@ -7403,6 +7403,17 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_filter_relationship_getters": {
+      "sources": [
+        "test/cmocka/test_source_filter_relationship_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_frame_copy_steps": {
       "sources": [
         "test/cmocka/test_source_frame_copy_steps.c",
@@ -12695,6 +12706,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_filter_relationship_getters": {
+      "target": "test_source_filter_relationship_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "working_directory": "${runtime}"
     },
     "test_source_frame_copy_steps": {
       "target": "test_source_frame_copy_steps",
