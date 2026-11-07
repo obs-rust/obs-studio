@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-view.pch.h"
 
 void obs_display_set_enabled(obs_display_t *display, bool enable)
 {
@@ -16,4 +16,3 @@ void obs_display_set_background_color(obs_display_t *display, uint32_t color)
 	if (display)
 		display->background_color = color;
 }
-

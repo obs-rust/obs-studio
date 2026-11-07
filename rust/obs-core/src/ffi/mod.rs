@@ -7,6 +7,7 @@ pub mod audio_render;
 pub mod canvas_draw;
 pub mod canvas_rules;
 pub mod context_names;
+pub mod display_state;
 pub mod core_setup_rules;
 pub mod module_failure_info;
 pub mod module_load_rules;

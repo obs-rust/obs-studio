@@ -49,8 +49,8 @@ static void test_color(void **state)
 	display.use_clear_workaround = true;
 	struct obs_display expected;
 	memcpy(&expected, &display, sizeof(display));
-	const uint32_t colors[] = {0, UINT32_MAX, UINT32_C(0x80000000), UINT32_C(0x01020304),
-				   UINT32_C(0xff000000), UINT32_C(0x00ffffff)};
+	const uint32_t colors[] = {
+		0, UINT32_MAX, UINT32_C(0x80000000), UINT32_C(0x01020304), UINT32_C(0xff000000), UINT32_C(0x00ffffff)};
 	for (size_t i = 0; i < sizeof(colors) / sizeof(colors[0]); i++) {
 		expected.background_color = colors[i];
 		obs_display_set_background_color(&display, colors[i]);
