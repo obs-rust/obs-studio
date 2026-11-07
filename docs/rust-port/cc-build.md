@@ -901,9 +901,12 @@ space decisions, multitrack ladder and encoder override tests also use the share
 graph. The standalone caption round-trip suite also uses the shared graph,
 retaining its vendored libcaption and cmocka dependencies without needing libobs.
 `canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
-all six original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
-alongside the existing remux contract; it proves these standalone helpers, not
+the original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. It also runs the seven unchanged VAAPI device
+fallback cases on Linux, FreeBSD and OpenBSD, preserving their OS guard and
+cmocka-only linkage without a GPU or display. The guard is checked for selection;
+local runtime evidence for this addition is Linux with GCC and Clang. Native
+macOS and Windows Rust lanes run this contract alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
