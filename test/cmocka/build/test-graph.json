@@ -2608,6 +2608,34 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_mac_vmic_clock": {
+      "sources": [
+        "test/cmocka/test_mac_vmic_clock.c"
+      ],
+      "includes": [
+        "plugins/mac-virtualcam/src/common"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/mac-virtualcam/src/common"
+      ]
+    },
+    "test_mac_vmic_install": {
+      "sources": [
+        "test/cmocka/test_mac_vmic_install.c"
+      ],
+      "includes": [
+        "plugins/mac-virtualcam/src/common"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/mac-virtualcam/src/common"
+      ]
+    },
     "test_main_mix_before_video": {
       "sources": [
         "test/cmocka/test_main_mix_before_video.c"
@@ -8579,6 +8607,12 @@
     },
     "test_lexer": {
       "target": "test_lexer"
+    },
+    "test_mac_vmic_clock": {
+      "target": "test_mac_vmic_clock"
+    },
+    "test_mac_vmic_install": {
+      "target": "test_mac_vmic_install"
     },
     "test_main_mix_before_video": {
       "target": "test_main_mix_before_video",
