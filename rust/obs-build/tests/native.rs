@@ -2,6 +2,80 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+/// #1390: the unchanged POSIX output helpers must reach both native consumers.
+#[test]
+fn canonical_posix_output_hosts_are_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let names = ["test_obs_ffmpeg_net_host", "test_obs_outputs_host"];
+    for name in names {
+        let target = graph
+            .targets
+            .get(name)
+            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+            if path == &format!("test/cmocka/{name}.c")));
+        assert!(
+            matches!(&target.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
+        );
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)]
+            if name == "OBS::native-test-cmocka")
+        );
+        assert!(target.header_libraries.is_empty());
+        let (includes, watch): (&[&str], &[&str]) = if name == "test_obs_ffmpeg_net_host" {
+            (
+                &["plugins/obs-ffmpeg/hosts/posix"],
+                &["plugins/obs-ffmpeg/hosts/posix/obs-ffmpeg-net-host.h"],
+            )
+        } else {
+            (
+                &["."],
+                &[
+                    "plugins/obs-outputs/build/obs-outputs-host-posix.pch.h",
+                    "plugins/obs-outputs/obs-outputs-host-posix.c.h",
+                    "plugins/obs-outputs/obs-outputs-host.h",
+                    "plugins/obs-outputs/utils.h",
+                ],
+            )
+        };
+        assert_eq!(target.includes, includes);
+        assert_eq!(target.watch_inputs, watch);
+        let test = &graph.tests[name];
+        assert!(
+            matches!(&test.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
+        );
+        assert_eq!(test.target, name);
+        assert_eq!(test.command, ["${target}"]);
+        assert_eq!(test.suite, "core");
+        assert_eq!(test.timeout_seconds, None);
+        assert_eq!(test.skip_return_code, None);
+        assert!(test.optional_prefixes.is_empty());
+        assert_eq!(test.qt_runtime, None);
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        assert!(!fragment.contains("add_executable("));
+        assert!(!fragment.contains("add_test("));
+    }
+    graph.targets.retain(|key, _| names.contains(&key.as_str()));
+    graph.tests.retain(|key, _| names.contains(&key.as_str()));
+    for (os, windows) in [
+        ("OS_LINUX", false),
+        ("OS_MACOS", false),
+        ("OS_FREEBSD", false),
+        ("OS_WINDOWS", true),
+    ] {
+        let selected = graph
+            .select(&[(os.into(), true), ("OS_WINDOWS".into(), windows)].into())
+            .unwrap();
+        for name in names {
+            assert_eq!(selected.targets.contains_key(name), !windows, "{os}/{name}");
+            assert_eq!(selected.tests.contains_key(name), !windows, "{os}/{name}");
+        }
+    }
+}
+
 /// #1390: standalone caption compatibility must reach both native consumers.
 #[test]
 fn canonical_caption_unmappable_is_registered() {
