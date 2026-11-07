@@ -161,6 +161,8 @@ mod canonical_async_overflow_clock_is_registered;
 mod canonical_audio_filter_scalars_are_registered;
 #[path = "native/registration/canonical_canvas_flags_getter_is_registered.rs"]
 mod canonical_canvas_flags_getter_is_registered;
+#[path = "native/registration/canonical_canvas_video_getter_is_registered.rs"]
+mod canonical_canvas_video_getter_is_registered;
 #[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
 mod canonical_caption_unmappable_is_registered;
 #[path = "native/registration/canonical_capture_helpers_are_registered.rs"]
