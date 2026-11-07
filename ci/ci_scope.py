@@ -371,6 +371,24 @@ def is_shared_cmake(path: str) -> bool:
     return path.startswith("cmake/") and not path.startswith(CMAKE_SHARED_DIRS)
 
 
+def tree_lanes(path: str) -> tuple[bool, bool, bool]:
+    """`(macos, windows, tier2)` for trees the name classifier cannot place.
+
+    Kept out of `scope()` so that function stays under the C901 complexity
+    budget; `libobs-opengl` is compiled on Linux and Windows, Metal is macOS
+    only, and a top-level cmake module is read by every target.
+    """
+    macos = windows = tier2 = False
+    tree = tree_platforms(path)
+    if tree is not None:
+        macos = MACOS in tree
+        windows = WINDOWS in tree
+        tier2 = LINUX in tree
+    if is_shared_cmake(path):
+        return True, True, True
+    return macos, windows, tier2
+
+
 def os_lanes(path: str) -> frozenset[str]:
     if not path.startswith(OS_LANES[LINUX]):
         return frozenset()
@@ -532,13 +550,10 @@ def scope(
     for path in files:
         qt |= is_qt(path, read)
         plat = path_platforms(path)
-        if tree := tree_platforms(path):
-            macos |= MACOS in tree
-            windows |= WINDOWS in tree
-            if LINUX in tree:
-                tier2 = True
-        if is_shared_cmake(path):
-            macos = windows = tier2 = True
+        tree_macos, tree_windows, tree_tier2 = tree_lanes(path)
+        macos |= tree_macos
+        windows |= tree_windows
+        tier2 |= tree_tier2
         # A platform-only file (libobs/**/platform-windows.c) never starts the
         # Linux Tier 2.
         if (
