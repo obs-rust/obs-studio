@@ -9,7 +9,10 @@ fn canonical_x11_keymap_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_x11_keymap";
-    let target = graph.targets.get(name).expect("canonical graph omits test_x11_keymap");
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_x11_keymap");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_x11_keymap.c"));
     assert_eq!(target.includes, ["libobs"]);
@@ -17,8 +20,10 @@ fn canonical_x11_keymap_is_registered() {
     assert_eq!(target.header_packages, ["xcb"]);
     assert!(target.packages.is_empty());
     assert!(target.header_libraries.is_empty());
-    assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
-        if library == "OBS::native-test-cmocka"));
+    assert!(
+        matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
+        if library == "OBS::native-test-cmocka")
+    );
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
@@ -26,16 +31,29 @@ fn canonical_x11_keymap_is_registered() {
     assert_eq!(test.timeout_seconds, None);
     assert_eq!(test.skip_return_code, None);
     assert!(test.optional_prefixes.is_empty());
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_x11_keymap.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_x11_keymap.cmake")).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_FREEBSD", "OS_MACOS", "OS_WINDOWS", "OS_OPENBSD", "OTHER"] {
-        let selected = graph.select(&[
-            ("OS_LINUX".into(), os == "OS_LINUX"),
-            ("OS_FREEBSD".into(), os == "OS_FREEBSD"),
-        ].into()).unwrap();
+    for os in [
+        "OS_LINUX",
+        "OS_FREEBSD",
+        "OS_MACOS",
+        "OS_WINDOWS",
+        "OS_OPENBSD",
+        "OTHER",
+    ] {
+        let selected = graph
+            .select(
+                &[
+                    ("OS_LINUX".into(), os == "OS_LINUX"),
+                    ("OS_FREEBSD".into(), os == "OS_FREEBSD"),
+                ]
+                .into(),
+            )
+            .unwrap();
         let expected = matches!(os, "OS_LINUX" | "OS_FREEBSD");
         assert_eq!(selected.targets.contains_key(name), expected, "{os}");
         assert_eq!(selected.tests.contains_key(name), expected, "{os}");
@@ -2098,12 +2116,20 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
         "test_caption_unmappable",
+        "test_x11_keymap",
         "test_stream_service_select",
         "test_saved_transition",
         "test_record_disk_space",
         "test_multitrack_ladder",
         "test_multitrack_encoder_override",
     ] {
+        if name == "test_x11_keymap"
+            && !["linux", "freebsd"]
+                .iter()
+                .any(|os| obs_build::BUILD_TARGET.contains(os))
+        {
+            continue;
+        }
         for section in ["targets", "tests"] {
             selected[section][name] = raw[section]
                 .get(name)
@@ -2132,9 +2158,14 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         },
     )])
     .collect();
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_LINUX".into(), build.target.contains("linux")),
+        ("OS_FREEBSD".into(), build.target.contains("freebsd")),
+    ]
+    .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 6);
+    assert_eq!(artifacts.len(), graph.targets.len());
     for (name, test) in &graph.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
@@ -2153,7 +2184,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX FALSE)\nset(OS_FREEBSD FALSE)\nif(CMAKE_SYSTEM_NAME STREQUAL \"Linux\")\nset(OS_LINUX TRUE)\nelseif(CMAKE_SYSTEM_NAME STREQUAL \"FreeBSD\")\nset(OS_FREEBSD TRUE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();

@@ -7514,6 +7514,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_x11_keymap": {
+      "sources": [
+        "test/cmocka/test_x11_keymap.c"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-x11-keymap.h"
+      ],
+      "header_packages": [
+        "xcb"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_youtube_broadcast_settings": {
       "sources": [
         "test/cmocka/test_youtube_broadcast_settings.c",
@@ -10438,6 +10461,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_x11_keymap": {
+      "target": "test_x11_keymap",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
