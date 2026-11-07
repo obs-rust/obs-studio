@@ -8098,6 +8098,42 @@
         "frontend/utility"
       ]
     },
+    "test_text_aa_file": {
+      "sources": [
+        "test/cmocka/test_text_aa_file.c",
+        "plugins/text-freetype2/text-freetype2.c.h",
+        "plugins/text-freetype2/text-functionality.c.h",
+        "plugins/text-freetype2/text-file.c.h",
+        "plugins/text-freetype2/glyph-atlas.c.h",
+        "plugins/text-freetype2/obs-convenience.c.h",
+        "plugins/text-freetype2/find-font-unix.c.h",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/text-freetype2"
+      ],
+      "definitions": [
+        "TEST_FONT_PATH=\"${source}/test/cmocka/data/text-aa.ttf\""
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+        "test/cmocka/data/text-aa.ttf"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Freetype::Freetype",
+        "Fontconfig::Fontconfig",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_TEXT_FREETYPE2",
+          "HAVE_FREETYPE_FILE_SDK"
+        ]
+      }
+    },
     "test_text_freetype2_platform": {
       "sources": [
         "test/cmocka/test_text_freetype2_platform.c",
@@ -12829,6 +12865,16 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_text_aa_file": {
+      "target": "test_text_aa_file",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_TEXT_FREETYPE2",
+          "HAVE_FREETYPE_FILE_SDK"
+        ]
+      }
     },
     "test_text_freetype2_platform": {
       "target": "test_text_freetype2_platform",
