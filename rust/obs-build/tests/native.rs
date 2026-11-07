@@ -5701,3 +5701,57 @@ fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
                 && property["value"] == serde_json::json!(["timing"]))
     );
 }
+
+/// #1390: unchanged process-pipe contracts retain their real core dependency.
+#[test]
+fn canonical_pipe_contracts_are_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let cases = [
+        ("test_pipe_create2_exact_path", Some(20), true, true),
+        ("test_pipe_no_handle_leak", Some(30), false, true),
+        ("test_pipe_shell_argv0", Some(20), true, true),
+        ("test_pipe_stdio_inherit", None, true, false),
+    ];
+    for (name, timeout, _, _) in cases {
+        let target = graph.targets.get(name).expect("canonical graph omits pipe contract");
+        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+            if path == &format!("test/cmocka/{name}.c")));
+        let libraries: Vec<_> = target.libraries.iter().filter_map(|library| match library {
+            ConditionalValue::Name(name) => Some(name.as_str()),
+            _ => None,
+        }).collect();
+        assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
+        assert_eq!(target.libraries.len(), if name == "test_pipe_no_handle_leak" { 3 } else { 2 });
+        if name == "test_pipe_no_handle_leak" {
+            assert!(matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: obs_build::validation::graph::Requirement::Fact(fact) }
+                if name == "ws2_32" && fact == "OS_WINDOWS"));
+        }
+        assert!(target.packages.is_empty());
+        assert!(target.header_libraries.is_empty());
+        assert!(target.link_options.is_empty());
+        let test = &graph.tests[name];
+        assert_eq!(test.target, name);
+        assert_eq!(test.command, ["${target}"]);
+        assert_eq!(test.timeout_seconds, timeout);
+        assert_eq!(test.skip_return_code, None);
+        assert!(test.optional_prefixes.is_empty());
+        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        assert!(!fragment.contains("add_executable("));
+        assert!(!fragment.contains("add_test("));
+    }
+    graph.targets.retain(|name, _| cases.iter().any(|case| case.0 == name));
+    graph.tests.retain(|name, _| cases.iter().any(|case| case.0 == name));
+    for unix in [false, true] {
+        for available in [false, true] {
+            let facts = [("UNIX".into(), unix), ("HAVE_LIBOBS".into(), available), ("OS_WINDOWS".into(), !unix)].into();
+            let selected = graph.select(&facts).unwrap();
+            for (name, _, needs_unix, needs_core_guard) in cases {
+                let enabled = (!needs_unix || unix) && (!needs_core_guard || available);
+                assert_eq!(selected.targets.contains_key(name), enabled, "{name} Unix={unix} core={available}");
+                assert_eq!(selected.tests.contains_key(name), enabled, "{name}");
+            }
+        }
+    }
+}
