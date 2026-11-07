@@ -5,6 +5,7 @@
     "core-output",
     "core-source",
     "null-audio",
+    "scene-item-scale-fields",
     "util-cf"
   ],
   "depends": [
