@@ -6403,6 +6403,51 @@
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_qsv_encode_bounds": {
+      "sources": [
+        "test/cmocka/test_qsv_encode_bounds.cpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "header_libraries": [
+        "VPL::VPL"
+      ],
+      "definitions": [
+        "OBS_QSV_HOST_DEFS=\"plugins/obs-qsv11/bits/linux_defs.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/QSV_Encoder.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder.h",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.h",
+        "plugins/obs-qsv11/bits/linux_defs.h",
+        "plugins/obs-qsv11/build/obs-qsv11-c.pch.h",
+        "plugins/obs-qsv11/build/obs-qsv11.core+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.linux+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.pch.hpp",
+        "plugins/obs-qsv11/common_directx11.cpp.hpp",
+        "plugins/obs-qsv11/common_directx11.h",
+        "plugins/obs-qsv11/common_utils.cpp.hpp",
+        "plugins/obs-qsv11/common_utils.h",
+        "plugins/obs-qsv11/obs-qsv11.c.h",
+        "plugins/obs-qsv11/qsv-host.h",
+        "plugins/obs-qsv11/qsv-probe.h"
+      ],
+      "compile_options_if_supported": [
+        "-Wno-error=switch"
+      ]
+    },
     "test_qsv_host": {
       "sources": [
         "test/cmocka/test_qsv_host.c"
@@ -6506,6 +6551,51 @@
       "watch_inputs": [
         "plugins/obs-qsv11",
         "test/cmocka"
+      ]
+    },
+    "test_qsv_update": {
+      "sources": [
+        "test/cmocka/test_qsv_update.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "header_libraries": [
+        "VPL::VPL"
+      ],
+      "definitions": [
+        "OBS_QSV_HOST_DEFS=\"plugins/obs-qsv11/bits/linux_defs.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/QSV_Encoder.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder.h",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.h",
+        "plugins/obs-qsv11/bits/linux_defs.h",
+        "plugins/obs-qsv11/build/obs-qsv11-c.pch.h",
+        "plugins/obs-qsv11/build/obs-qsv11.core+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.linux+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.pch.hpp",
+        "plugins/obs-qsv11/common_directx11.cpp.hpp",
+        "plugins/obs-qsv11/common_directx11.h",
+        "plugins/obs-qsv11/common_utils.cpp.hpp",
+        "plugins/obs-qsv11/common_utils.h",
+        "plugins/obs-qsv11/obs-qsv11.c.h",
+        "plugins/obs-qsv11/qsv-host.h",
+        "plugins/obs-qsv11/qsv-probe.h"
+      ],
+      "compile_options_if_supported": [
+        "-Wno-error=switch"
       ]
     },
     "test_quat": {
@@ -9923,6 +10013,47 @@
         ]
       }
     },
+    "test_v4l2_device_identity": {
+      "sources": [
+        "test/cmocka/test_v4l2_device_identity.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ],
+      "definitions": [
+        "HAVE_UDEV=1",
+        "FIXTURE_DIR=\"${build}/test_v4l2_device_identity.d\"",
+        "V4L2_DEV_DIR=\"${build}/test_v4l2_device_identity.d/dev\"",
+        "V4L2_SYSFS_ROOT=\"${build}/test_v4l2_device_identity.d/sys\""
+      ]
+    },
     "test_v4l2_dqbuf_error": {
       "sources": [
         "test/cmocka/test_v4l2_dqbuf_error.c",
@@ -10031,6 +10162,27 @@
           "HAVE_V4L2_CAPTURE_SDK"
         ]
       }
+    },
+    "test_v4l2_input_caps": {
+      "sources": [
+        "test/cmocka/test_v4l2_input_caps.c",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_V4L2",
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "Libv4l2::Libv4l2",
+        "FFmpeg::avutil"
+      ]
     },
     "test_v4l2_udev_poll_error": {
       "sources": [
@@ -10202,6 +10354,27 @@
           "OS_OPENBSD"
         ]
       }
+    },
+    "test_vcam_format": {
+      "sources": [
+        "test/cmocka/test_vcam_format.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_V4L2",
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "Libv4l2::Libv4l2",
+        "FFmpeg::avutil"
+      ]
     },
     "test_vec2": {
       "sources": [
@@ -11033,6 +11206,17 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_windows_monitor_identity": {
+      "sources": [
+        "test/cmocka/test_windows_monitor_identity.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/win-capture/monitor-identity.h"
+      ]
     },
     "test_windows_symbol_paths_steps": {
       "sources": [
@@ -13497,6 +13681,19 @@
       "target": "test_pulse_timing",
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_qsv_encode_bounds": {
+      "target": "test_qsv_encode_bounds",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120
+    },
     "test_qsv_host": {
       "target": "test_qsv_host",
       "command": [
@@ -13523,6 +13720,19 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_qsv_update": {
+      "target": "test_qsv_update",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_quat": {
       "target": "test_quat"
@@ -14739,6 +14949,19 @@
       },
       "timeout_seconds": 60
     },
+    "test_v4l2_device_identity": {
+      "target": "test_v4l2_device_identity",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
     "test_v4l2_dqbuf_error": {
       "target": "test_v4l2_dqbuf_error",
       "requires": {
@@ -14773,6 +14996,13 @@
         ]
       },
       "timeout_seconds": 60
+    },
+    "test_v4l2_input_caps": {
+      "target": "test_v4l2_input_caps",
+      "requires": "HAVE_OBS_V4L2",
+      "command": [
+        "${target}"
+      ]
     },
     "test_v4l2_udev_poll_error": {
       "target": "test_v4l2_udev_poll_error",
@@ -14837,6 +15067,13 @@
           "OS_OPENBSD"
         ]
       }
+    },
+    "test_vcam_format": {
+      "target": "test_vcam_format",
+      "requires": "HAVE_OBS_V4L2",
+      "command": [
+        "${target}"
+      ]
     },
     "test_vec2": {
       "target": "test_vec2"
@@ -15127,6 +15364,12 @@
     },
     "test_windows_keys_steps": {
       "target": "test_windows_keys_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_windows_monitor_identity": {
+      "target": "test_windows_monitor_identity",
       "command": [
         "${target}"
       ]

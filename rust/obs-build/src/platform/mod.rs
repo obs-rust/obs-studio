@@ -925,6 +925,7 @@ pub fn native_test_facts(
         ("HAVE_LINUX_CAPTURE".into(), false),
         ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
         ("HAVE_TEXT_FILE_OWNER".into(), false),
+        ("HAVE_QSV_TEST_SDK".into(), false),
         ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
         ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("MSVC".into(), target.contains("msvc")),
