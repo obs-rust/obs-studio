@@ -2077,6 +2077,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_ffmpeg_mux_write_packet": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_mux_write_packet.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-mux.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg.mux-host-posix+.h.c"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=os_process_pipe_write"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg"
+      ]
+    },
     "test_file_serializer": {
       "sources": [
         "test/cmocka/test_file_serializer.c"
@@ -9013,6 +9036,11 @@
       "requires": {
         "not": "OS_WINDOWS"
       }
+    },
+    "test_ffmpeg_mux_write_packet": {
+      "target": "test_ffmpeg_mux_write_packet",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 60
     },
     "test_file_serializer": {
       "target": "test_file_serializer"
