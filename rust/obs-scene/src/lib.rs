@@ -53,3 +53,4 @@ pub mod ffi;
 pub mod item_state_getters;
 
 pub mod item_render_getters;
+pub mod item_bounds_getters;
