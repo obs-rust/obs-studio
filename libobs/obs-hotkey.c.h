@@ -61,26 +61,6 @@ const char *obs_hotkey_get_name(const obs_hotkey_t *key)
 	return key->name;
 }
 
-const char *obs_hotkey_get_description(const obs_hotkey_t *key)
-{
-	return key->description;
-}
-
-obs_hotkey_registerer_t obs_hotkey_get_registerer_type(const obs_hotkey_t *key)
-{
-	return key->registerer_type;
-}
-
-void *obs_hotkey_get_registerer(const obs_hotkey_t *key)
-{
-	return key->registerer;
-}
-
-obs_hotkey_id obs_hotkey_get_pair_partner_id(const obs_hotkey_t *key)
-{
-	return key->pair_partner_id;
-}
-
 void obs_hotkey_set_name(obs_hotkey_id id, const char *name)
 {
 	obs_hotkey_t *hotkey;
