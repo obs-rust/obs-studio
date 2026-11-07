@@ -592,6 +592,12 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
     )
     .expect("write encoder metadata adapter extract");
+    // Compile the exact production relationship adapter over the real private header.
+    std::fs::write(
+        extract_dir.join("source_filter_relationship_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-filter-relationship-fields.c.h")),
+    )
+    .expect("write filter relationship field adapter extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

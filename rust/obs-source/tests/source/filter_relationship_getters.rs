@@ -5,7 +5,13 @@ fn mirrors_c_null_defaults() {
     let mut logs = Vec::new();
     assert_eq!(parent::<usize>(None, |f, p| logs.push((f, p))), 0);
     assert_eq!(target::<usize>(None, |f, p| logs.push((f, p))), 0);
-    assert_eq!(logs, [(c"obs_filter_get_parent", c"filter"), (c"obs_filter_get_target", c"filter")]);
+    assert_eq!(
+        logs,
+        [
+            (c"obs_filter_get_parent", c"filter"),
+            (c"obs_filter_get_target", c"filter")
+        ]
+    );
 }
 
 #[test]

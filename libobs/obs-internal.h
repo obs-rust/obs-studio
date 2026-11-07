@@ -1367,6 +1367,14 @@ struct obs_source {
 	obs_weak_canvas_t *canvas;
 };
 
+/* Borrowed field addresses only; no locking, type validation or references.
+ * The caller keeps the filter live and synchronizes exactly as for the C getters. */
+struct obs_source_filter_relationship_fields {
+	obs_source_t *const *parent;
+	obs_source_t *const *target;
+};
+struct obs_source_filter_relationship_fields obs_source_filter_relationship_fields(const obs_source_t *filter);
+
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
