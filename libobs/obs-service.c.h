@@ -34,31 +34,6 @@ const struct obs_service_info *find_service(const char *id)
  * obs_service, its context and its reference counts, which stay here with
  * the struct; the Rust port (obs-output's service module) calls the same
  * ones. Hidden. */
-obs_module_t *obs_service_module_first(bool disabled)
-{
-	return disabled ? obs->first_disabled_module : obs->first_module;
-}
-
-obs_module_t *obs_service_module_next(obs_module_t *module)
-{
-	return module->next;
-}
-
-size_t obs_service_module_service_count(obs_module_t *module)
-{
-	return module->services.num;
-}
-
-const char *obs_service_module_service_id(obs_module_t *module, size_t i)
-{
-	return module->services.array[i];
-}
-
-enum obs_module_load_state obs_service_module_load_state(obs_module_t *module)
-{
-	return module->load_state;
-}
-
 /* A zeroed service with its context set up, or NULL (freed) if that fails. */
 obs_service_t *obs_service_context_new(const char *name, obs_data_t *settings, obs_data_t *hotkey_data, bool private)
 {
