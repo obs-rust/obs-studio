@@ -7422,6 +7422,20 @@
       ],
       "requires": "OS_WINDOWS"
     },
+    "test_win_vmic_route": {
+      "sources": [
+        "test/cmocka/test_win_vmic_route.c"
+      ],
+      "includes": [
+        "plugins/win-dshow"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/win-dshow/vmic-route.h"
+      ]
+    },
     "test_win_wsc_product_refs": {
       "sources": [
         "test/cmocka/test_win_wsc_product_refs.c",
@@ -10407,6 +10421,9 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_win_vmic_route": {
+      "target": "test_win_vmic_route"
     },
     "test_win_wsc_product_refs": {
       "target": "test_win_wsc_product_refs",
