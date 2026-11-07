@@ -471,14 +471,18 @@ def cross_targets(files: list[str], read: Callable[[str], str]) -> str:
     return ",".join(sorted(CROSS_ALIASES[os] for os in oses))
 
 
-def core_native_lanes(core: bool, event: str, ref: str) -> bool:
-    """Native core validation runs on master pushes; queue execution is Linux-only.
+def core_native_lanes(core: bool, event: str, ref: str) -> frozenset[str]:
+    """Core PRs run Windows; master pushes run both native platforms.
 
-    Native compiler/runtime regressions are caught after merge and on nightly/
-    release runs. Hosted native runner starvation must not stall queue admission.
-    PRs keep platform path selection.
+    Hosted native runner starvation must not stall queue admission: merge groups
+    stay Linux-only (#3634). A missing PR runner delays only its author (#3637).
+    macOS core PR coverage is a separate rollout; keep native master validation.
     """
-    return core and event == "push" and ref == "master"
+    if core and event == "pull_request":
+        return frozenset({WINDOWS})
+    if core and event == "push" and ref == "master":
+        return frozenset({MACOS, WINDOWS})
+    return frozenset()
 
 
 def scope(
@@ -494,7 +498,7 @@ def scope(
     """`exists(path)` says whether a file exists in the checkout, `read(path)`
     returns its text ("" when missing). `submodules` is accepted for callers
     but no path escalates to a full run any more. `event`/`ref` are the
-    workflow's, and escalate core code on merge groups and master pushes."""
+    workflow's, and add native core validation on PRs and master pushes."""
     core = macos = windows = qt = tier2 = qt_sdk = False
     targets: set[str] = set()
     linked = tuple(f"rust/{c}/**" for c in sorted(linked_crates(read)))
@@ -527,8 +531,9 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    if core_native_lanes(core or "ci/ci_scope.py" in files, event, ref):
-        macos = windows = True
+    native = core_native_lanes(core or "ci/ci_scope.py" in files, event, ref)
+    macos |= MACOS in native
+    windows |= WINDOWS in native
     docs_only = bool(files) and all(is_docs(path) for path in files)
     # #2923: the ratchet's blind spot is the configuration. A PR that changes a
     # compile input of a target which already names a conversion group runs the
