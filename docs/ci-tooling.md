@@ -400,8 +400,11 @@ the paths that select them, so a change only triggers the tests it can affect.
   (`*-posix.c`, `unix/`, and `libobs/util/platform-nix.c`) belong to Linux
   and macOS, so changing one starts macOS too. Core files carry no platform
   defines or OS headers (`ci/platform_ifdef_ratchet.py` enforces it, and
-  fails a platform file that names another OS), so a core change runs on
-  Linux; file contents are never read. A module whose name doesn't say its OSes
+  fails a platform file that names another OS), so a core PR runs on
+  Linux and Windows (#3637 step 2); file contents are never read. Windows runs
+  the existing native Rust tests and Tier 2, including both C reference and
+  hybrid libobs. macOS core PR coverage remains a separate rollout. A module
+  whose name doesn't say its OSes
   (`coreaudio-encoder`, `obs-text`, ...) is listed in `ci/platform_paths.py`
   with its `PLATFORMS` from `plugins/CMakeLists.txt`; upstream paths are
   never renamed for this (#1051). `libobs/cmake/os-<os>.cmake` starts only
@@ -412,9 +415,8 @@ the paths that select them, so a change only triggers the tests it can affect.
   cmocka tests with their `tests.d` registrations (#610). A master push adds the lanes a PR
   defers (Linux Tier 2, Qt, the workspace tests) and runs macOS/Windows
   Rust tests and Tier 2 for paths that select them **and for core code**
-  (`libobs/`, `rust/`, `Cargo.lock`): a core-only diff selects no platform
-  lane on a PR, so a Windows- or macOS-only break in it used to land on
-  master never compiled there (#2916, #2910). Merge groups run only Linux
+  (`libobs/`, `rust/`, Cargo files). This retains coverage for native core
+  regressions (#2916, #2910). Merge groups run only Linux
   execution, including for platform-specific diffs. Native Rust tests and
   Tier 2 remain selected on master pushes, and full native application builds
   remain on nightly/manual/release events. This supersedes #3606's native
@@ -427,6 +429,10 @@ the paths that select them, so a change only triggers the tests it can affect.
   closed with named diagnostics. Cancelled jobs with no assigned runner and
   no steps are reported as runner-capacity conditions and still fail the gate;
   there is no automatic retry or conversion to success.
+  Scope-policy edits (`ci/ci_scope.py`) also select Windows on PRs to exercise
+  the routing on hosted CI. A failed or runnerless selected Windows job still
+  blocks that PR; it cannot start on the Linux-only merge queue. No required
+  check is exempted and native master coverage remains in place.
   Evidence and the tradeoff are recorded in
   [the queue decision](ci-merge-group-scope.md).
   A master push builds no OBS app. Every platform and every app build runs on schedule,
@@ -449,6 +455,7 @@ Cargo files test the workspace), on every PR. No Qt is installed there.
 |---|---|
 | everything | Fast Gate: 1) fmt, clippy, Dylint; 2) unit tests of the touched crates; 3) Linux build of touched `plugins/<x>`/`shared/<x>` targets (ENABLE_FRONTEND=OFF, no Qt) |
 | `libobs/` (not platform-only files), crates linked into libobs, `test/cmocka/`, `deps/`, `rust/tools/linux-validate/`, Cargo files | Tier 2 Linux: compilation overlaps Fast Gate; OFF/ON tests wait for the Tier 2 build, with one complete suite per mode |
+| core (`libobs/`, `rust/`, Cargo files), `ci/ci_scope.py` | Windows Rust tests and Tier 2 on PRs; both native platforms on master pushes; neither on merge groups |
 | `frontend/`, Qt-linked tests, `shared/qt`, the Qt job's own files | Qt Frontend Linux (the only Qt). Frontend platform files start no Windows/macOS Rust or Tier 2 job; Windows/macOS Qt lanes are a follow-up |
 | files matching `/platform[/-](windows, macos, linux, posix)[/.]` (posix = linux+macos), legacy OS names, shared build files (`cmake/common`, `cmake/finders`, `libobs/cmake`, root CMake, crate-root `build.rs`, `platform/mod.rs`, C++ cmocka tests) | macOS / Windows Rust tests, Tier 2, cross lint |
 | `build-aux/`, `.gitmodules`, submodules | compiled on Linux only; no full build from a PR |
