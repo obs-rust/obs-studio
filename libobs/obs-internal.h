@@ -2055,6 +2055,12 @@ struct obs_encoder_last_error_fields {
 	char *const *message;
 };
 extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+/* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
+struct obs_encoder_roi_state_fields {
+	const size_t *count;
+	const uint32_t *increment;
+};
+extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
 
 extern struct obs_encoder_info *find_encoder(const char *id);
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);

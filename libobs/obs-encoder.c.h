@@ -2143,11 +2143,6 @@ char *obs_encoder_dup_last_error(obs_encoder_t *encoder)
 	return message;
 }
 
-bool obs_encoder_has_roi(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_has_roi") ? encoder->roi.num > 0 : false;
-}
-
 bool obs_encoder_add_roi(obs_encoder_t *encoder, const struct obs_encoder_roi *roi)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_add_roi"))
@@ -2212,11 +2207,6 @@ void obs_encoder_enum_roi(obs_encoder_t *encoder, void (*enum_proc)(void *, stru
 	}
 
 	pthread_mutex_unlock(&encoder->roi_mutex);
-}
-
-uint32_t obs_encoder_get_roi_increment(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_roi_increment") ? encoder->roi_increment : 0;
 }
 
 bool obs_encoder_set_group(obs_encoder_t *encoder, obs_encoder_group_t *group)
