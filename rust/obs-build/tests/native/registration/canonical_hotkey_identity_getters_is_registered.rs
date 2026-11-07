@@ -20,7 +20,10 @@ fn canonical_hotkey_identity_getters_is_registered() {
         ])
     );
     assert_eq!(raw["tests"][name]["target"], name);
-    assert_eq!(raw["tests"][name]["command"], serde_json::json!(["${target}"]));
+    assert_eq!(
+        raw["tests"][name]["command"],
+        serde_json::json!(["${target}"])
+    );
     assert_eq!(raw["tests"][name]["suite"], "core");
     let fragment =
         fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
