@@ -34,6 +34,15 @@
  *   takes the same locks around them as the code that reads the field today.
  * - obs_source_transition_seam_get_child_name(): the context.name of a child
  *   in a slot, read as obs_transition_save() reads it.
+ * - obs_source_transition_seam_call_start() and _call_stop(): the type's
+ *   transition_start (or transition_stop) callback on the context data, when
+ *   it has one; each returns whether it had one.
+ * - obs_source_transition_seam_dosignal(): obs_source_dosignal(), signal_obs
+ *   on the core's handler (unless NULL, or the source is private) and
+ *   signal_source on the transition's (unless NULL), both passed through.
+ * - obs_source_transition_seam_get_video_time(): the latest video frame's
+ *   time. It takes obs->video.stats.mutex, which its callers take with
+ *   transition_mutex held.
  *
  * Hidden in libobs: not EXPORT. */
 
@@ -90,3 +99,7 @@ int obs_source_transition_seam_trylock(obs_source_t *transition);
 int obs_source_transition_seam_lock_textures(obs_source_t *transition);
 int obs_source_transition_seam_unlock_textures(obs_source_t *transition);
 int obs_source_transition_seam_trylock_textures(obs_source_t *transition);
+bool obs_source_transition_seam_call_start(obs_source_t *transition);
+bool obs_source_transition_seam_call_stop(obs_source_t *transition);
+void obs_source_transition_seam_dosignal(obs_source_t *transition, const char *signal_obs, const char *signal_source);
+uint64_t obs_source_transition_seam_get_video_time(void);
