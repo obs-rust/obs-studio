@@ -92,15 +92,39 @@ fn native_test_graph_portable_startup_without_output_directory() {
             &format!("set({host} TRUE)\nunset(OBS_OUTPUT_DIR)\nunset(OBS_OUTPUT_DIR CACHE)"),
         );
         configure(fixture.path());
-        let tests = fs::read_to_string(fixture.path().join("build/CTestTestfile.cmake")).unwrap();
+        // Query CTest rather than depending on CMake's generated quoting style.
+        // Show-only mode does not require these configuration fixtures to be built.
+        let build = fixture.path().join("build");
+        let result = std::process::Command::new("ctest")
+            .current_dir(&build)
+            .args(["--show-only=json-v1"])
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{host}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let listing: serde_json::Value = serde_json::from_slice(&result.stdout).unwrap();
+        let tests = listing["tests"].as_array().unwrap();
+        assert_eq!(tests.len(), 3, "{host}: {listing}");
         for name in [
             "test_startup_alloc_stable",
             "test_startup_cycle_stress",
             "test_video_io_hidden",
         ] {
-            assert!(
-                tests.contains(&format!("add_test([=[{name}]=]")),
-                "{host}/{name}: {tests}"
+            let test = tests.iter().find(|test| test["name"] == name).unwrap();
+            let directory = test["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|property| property["name"] == "WORKING_DIRECTORY")
+                .and_then(|property| property["value"].as_str())
+                .unwrap();
+            assert_eq!(
+                dunce::canonicalize(directory).unwrap(),
+                dunce::canonicalize(&build).unwrap(),
+                "{host}/{name}: {test}"
             );
         }
     }
