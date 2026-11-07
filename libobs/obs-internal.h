@@ -2013,6 +2013,17 @@ struct obs_service {
 
 extern const struct obs_service_info *find_service(const char *id);
 
+/* Private field view for the #3840 Rust state accessors. No ownership transfer. */
+struct obs_service_state_fields {
+	bool *active;
+	bool *destroy;
+	obs_output_t **output;
+	obs_weak_object_t *const *control;
+};
+
+extern struct obs_service_state_fields obs_service_state_fields(const obs_service_t *service);
+extern obs_service_t **obs_service_output_service_field(obs_output_t *output);
+
 extern void obs_service_activate(struct obs_service *service);
 extern void obs_service_deactivate(struct obs_service *service, bool remove);
 /* obs-service.c: the callback table and plugin data of a service, for obs-service-getters.c
