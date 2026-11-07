@@ -260,7 +260,7 @@ jobs:
           version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --release
-          cache-key-suffix: ${{ matrix.os == 'linux' && 'linux-host-v2' || '' }}
+          cache-key-suffix: ${{ matrix.os == 'linux' && 'linux-host-v3' || '' }}
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           shims: true
           # Cross matrix legs add target std libraries after setup (#507/#969).
