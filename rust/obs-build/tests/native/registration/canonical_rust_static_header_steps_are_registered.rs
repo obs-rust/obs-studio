@@ -17,7 +17,7 @@ const CASES: &[(&str, bool)] = &[
 
 #[test]
 fn canonical_rust_static_header_steps_are_registered() {
-    use obs_build::validation::graph::{Graph, Source};
+    use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph
@@ -32,26 +32,8 @@ fn canonical_rust_static_header_steps_are_registered() {
             .targets
             .get(&name)
             .expect("missing Rust-static header steps");
-        let sources: Vec<_> = target
-            .sources
-            .iter()
-            .map(|source| match source {
-                Source::Path(path) => path.as_str(),
-                Source::Conditional { .. } => panic!("header-step sources must be unconditional"),
-            })
-            .collect();
-        let expected = format!("test/cmocka/{base}.c");
-        let expected_sources = if base == "test_scene_render_plan_steps" {
-            vec![
-                "test/cmocka/scene-getter-log-link-stub.c",
-                expected.as_str(),
-            ]
-        } else {
-            vec![expected.as_str()]
-        };
-        assert_eq!(sources, expected_sources, "{name}");
+        assert_source_getter_link_support(target, base, true);
         assert_eq!(target.includes, ["libobs"]);
-        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
         assert!(target.archives.is_empty());
         assert!(target.definitions.is_empty());
         assert!(target.compile_options.is_empty());
@@ -77,7 +59,10 @@ fn assert_header_step_linkage(
     unix_math: bool,
 ) {
     use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), if math { 3 } else { 2 });
+    assert_eq!(
+        target.libraries.len(),
+        if math { 3 } else { 2 } + getter_link_library_count(target)
+    );
     assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static"));
     assert!(
         matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
