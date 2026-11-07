@@ -7042,6 +7042,17 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_async_flag_getters": {
+      "sources": [
+        "test/cmocka/test_source_async_flag_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_audio_balance_mono": {
       "sources": [
         "test/cmocka/test_source_audio_balance_mono.c"
@@ -12544,6 +12555,14 @@
     },
     "test_slideshow_size": {
       "target": "test_slideshow_size"
+    },
+    "test_source_async_flag_getters": {
+      "target": "test_source_async_flag_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "working_directory": "${runtime}"
     },
     "test_source_audio_balance_mono": {
       "target": "test_source_audio_balance_mono",
