@@ -5808,7 +5808,7 @@ fn canonical_rust_static_pacing_runs_unchanged() {
         graph.targets[name]
             .dependency_artifacts(&facts, &interfaces)
             .unwrap(),
-        [archive.clone()]
+        std::slice::from_ref(&archive)
     );
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), 1);
