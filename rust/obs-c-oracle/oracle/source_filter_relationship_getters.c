@@ -11,8 +11,7 @@
 #undef obs_filter_get_target
 #include "source_filter_relationship_fields.inc"
 
-extern obs_source_t *obs_filter_get_parent(const obs_source_t *filter);
-extern obs_source_t *obs_filter_get_target(const obs_source_t *filter);
+typedef obs_source_t *(*relationship_getter)(const obs_source_t *filter);
 
 void oracle_filter_relationship_layout(size_t *layout);
 void oracle_filter_relationship_layout(size_t *layout)
@@ -79,18 +78,18 @@ static void relationship_capture(int level, const char *format, va_list args, vo
 	vsnprintf(log->message, sizeof(log->message), format, args);
 }
 
-bool oracle_filter_relationship_null_log(bool rust);
-bool oracle_filter_relationship_null_log(bool rust)
+bool oracle_filter_relationship_null_log(relationship_getter get_parent, relationship_getter get_target);
+bool oracle_filter_relationship_null_log(relationship_getter get_parent, relationship_getter get_target)
 {
 	struct relationship_log log = {0};
 	log_handler_t old_handler;
 	void *old_param;
 	base_get_log_handler(&old_handler, &old_param);
 	base_set_log_handler(relationship_capture, &log);
-	obs_source_t *parent = rust ? obs_filter_get_parent(NULL) : oracle_obs_filter_get_parent(NULL);
+	obs_source_t *parent = get_parent(NULL);
 	bool parent_ok = !parent && log.count == 1 && log.level == LOG_DEBUG &&
 			 strcmp(log.message, "obs_filter_get_parent: Null 'filter' parameter") == 0;
-	obs_source_t *target = rust ? obs_filter_get_target(NULL) : oracle_obs_filter_get_target(NULL);
+	obs_source_t *target = get_target(NULL);
 	base_set_log_handler(old_handler, old_param);
 	return parent_ok && !target && log.count == 2 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_filter_get_target: Null 'filter' parameter") == 0;

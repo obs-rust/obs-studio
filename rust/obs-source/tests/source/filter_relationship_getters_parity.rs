@@ -11,7 +11,10 @@ unsafe extern "C" {
     fn oracle_filter_relationship_unchanged(filter: *const c_void) -> bool;
     fn oracle_obs_filter_get_parent(filter: *const c_void) -> *mut c_void;
     fn oracle_obs_filter_get_target(filter: *const c_void) -> *mut c_void;
-    fn oracle_filter_relationship_null_log(rust: bool) -> bool;
+    fn oracle_filter_relationship_null_log(
+        parent: unsafe extern "C" fn(*const c_void) -> *mut c_void,
+        target: unsafe extern "C" fn(*const c_void) -> *mut c_void,
+    ) -> bool;
 }
 
 #[test]
@@ -94,8 +97,14 @@ fn null_defaults_and_exact_logs() {
     }
     // SAFETY: isolated probes save and restore the process-global logger.
     unsafe {
-        assert!(oracle_filter_relationship_null_log(false));
-        assert!(oracle_filter_relationship_null_log(true));
+        assert!(oracle_filter_relationship_null_log(
+            oracle_obs_filter_get_parent,
+            oracle_obs_filter_get_target
+        ));
+        assert!(oracle_filter_relationship_null_log(
+            rust::obs_filter_get_parent,
+            rust::obs_filter_get_target
+        ));
     }
 }
 
