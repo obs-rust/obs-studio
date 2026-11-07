@@ -57,7 +57,9 @@ fn canonical_ffmpeg_packet_write_is_registered() {
         "OS_FREEBSD",
         "OS_OPENBSD",
     ] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
+        let selected = graph
+            .select(&[("OS_LINUX".into(), os == "OS_LINUX")].into())
+            .unwrap();
         let count = usize::from(os == "OS_LINUX");
         assert_eq!(selected.targets.len(), count);
         assert_eq!(selected.tests.len(), count);

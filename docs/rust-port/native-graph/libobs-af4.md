@@ -31,3 +31,20 @@ not declared ineligible. Display-dependent audio/video, graphics and Qt tests
 remain deferred. Rust-static tests belong to their assigned slice;
 async-delay pacing remains owned by #3829. No PR, auto-merge, hosted CI,
 target pruning or soldr gc is requested by this branch-only assignment.
+
+Whole-graph legacy replacement passes (local-test-c4mb7x.log); focused
+Python graph/sorted-list/build-group guards pass (local-test-RXbH2b.log).
+Full lint passes its formatting and Python checks, but cannot complete:
+workspace Clippy's no-cache preflight refuses an active target build lock,
+and soldr refuses the unavailable pre-deployed Dylint driver under clud
+(local-test-6F7bX6.log). No toolchain or guard workaround was attempted.
+
+Scoped Application/build all-target Clippy passes (local-test-VtafWG.log).
+The registration fixture was corrected to supply an explicit false Linux
+fact for non-Linux selections; the resolver rejects missing facts rather
+than treating them as false. Native replay remained unchanged.
+
+Final registration checks pass (local-test-byn8R0.log and
+local-test-Keuq8e.log). Test cost: 25 reduced debug observations, longest
+0.176 seconds, peak child RSS 14,368 KiB, no owned threads
+(`/tmp/parity-b2-libobs-af4/cost.json`). Eight Rust category binaries remain.
