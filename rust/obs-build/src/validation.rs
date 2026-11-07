@@ -228,6 +228,7 @@ pub fn build_graphics_tests(
     let mut facts = crate::platform::native_test_facts(&build.target, false, false);
     facts.extend([
         ("HAVE_OBS_OPENGL".into(), true),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
         // This graphics-only builder has no optional plugin, X11 or Qt interfaces.
         // Focused replays supply those owners and their capabilities explicitly.
         ("HAVE_OBS_FILTERS".into(), false),
@@ -263,6 +264,7 @@ pub fn build_vlc_tests(
     let mut facts = crate::platform::native_test_facts(&build.target, false, false);
     facts.extend([
         ("HAVE_OBS_OPENGL".into(), true),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
         ("HAVE_VLC_MODULE".into(), true),
     ]);
     compile_suite(build, &root, &graph, &facts, &interfaces)
@@ -300,6 +302,7 @@ pub fn build_c_tests(
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_OBS_OPENGL".into(), false),
         ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
         ("HAVE_STARTUP_GLAD".into(), false),
         ("HAVE_STARTUP_X11".into(), false),
         ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
