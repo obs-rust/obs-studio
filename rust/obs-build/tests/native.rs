@@ -76,6 +76,8 @@ mod canonical_scene_crop_steps_is_registered;
 mod canonical_scene_enum_items_removal_is_registered;
 #[path = "native/registration/canonical_scene_item_crop_load_is_registered.rs"]
 mod canonical_scene_item_crop_load_is_registered;
+#[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
+mod canonical_sck_vaapi_helpers_are_registered;
 #[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
