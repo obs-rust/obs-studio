@@ -2332,6 +2332,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
         ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
         ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
         ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),

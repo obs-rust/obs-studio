@@ -91,11 +91,26 @@ fn canonical_display_audio_runs_unchanged() {
         Dependency::package(&build.target, "zlib").unwrap(),
     );
 
-    for (name, package) in [("FFmpeg::avformat", "libavformat"), ("FFmpeg::avutil", "libavutil"), ("X11::X11", "x11")] {
-        interfaces.insert(name.into(), Dependency::package(&build.target, package).unwrap());
+    for (name, package) in [
+        ("FFmpeg::avformat", "libavformat"),
+        ("FFmpeg::avutil", "libavutil"),
+        ("X11::X11", "x11"),
+    ] {
+        interfaces.insert(
+            name.into(),
+            Dependency::package(&build.target, package).unwrap(),
+        );
     }
-    for name in ["OBS::caption", "Uthash::Uthash"] { interfaces.insert(name.into(), Dependency::default()); }
-    interfaces.insert("dl".into(), Dependency { link_options: vec!["-ldl".into()], ..Default::default() });
+    for name in ["OBS::caption", "Uthash::Uthash"] {
+        interfaces.insert(name.into(), Dependency::default());
+    }
+    interfaces.insert(
+        "dl".into(),
+        Dependency {
+            link_options: vec!["-ldl".into()],
+            ..Default::default()
+        },
+    );
     let facts = [
         ("OS_LINUX".into(), true),
         ("OS_WINDOWS".into(), false),
@@ -143,6 +158,8 @@ project(display-audio-contract C)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 enable_testing()
 option(OS_LINUX "Original Linux guard" ON)
+option(OS_WINDOWS "Windows dependency guard" OFF)
+option(OS_MACOS "macOS fixture guard" OFF)
 option(HAVE_OBS_OPENGL "Original renderer guard" ON)
 option(DECLARE_XVFB_RUNNER "Root CMake declares its runtime Xvfb runner" ON)
 if(DECLARE_XVFB_RUNNER)
@@ -187,12 +204,38 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
 fn replay_cmake(directory: &Path, core: &Path) {
     for (mode, options, expected) in [
         ("enabled", vec![], CASES.to_vec()),
-        ("windows", vec!["-DOS_LINUX=OFF", "-DOS_WINDOWS=ON"], vec!["test_shutdown_leaked_scenes"]),
-        ("macos", vec!["-DOS_LINUX=OFF", "-DOS_MACOS=ON"], vec!["test_shutdown_leaked_scenes"]),
-        ("no-display", vec!["-DDECLARE_XVFB_RUNNER=OFF"], vec!["test_obs_startup_failure_diagnostics"]),
+        (
+            "windows",
+            vec!["-DOS_LINUX=OFF", "-DOS_WINDOWS=ON"],
+            vec!["test_shutdown_leaked_scenes"],
+        ),
+        (
+            "macos",
+            vec!["-DOS_LINUX=OFF", "-DOS_MACOS=ON"],
+            vec!["test_shutdown_leaked_scenes"],
+        ),
+        (
+            "no-display",
+            vec!["-DDECLARE_XVFB_RUNNER=OFF"],
+            vec!["test_obs_startup_failure_diagnostics"],
+        ),
         ("declared-runner", vec![], CASES.to_vec()),
-        ("no-renderer", vec!["-DHAVE_OBS_OPENGL=OFF"], vec!["test_obs_startup_failure_diagnostics", "test_shutdown_leaked_scenes"]),
-        ("no-x11", vec!["-DDECLARE_X11=OFF"], CASES.into_iter().filter(|name| *name != "test_obs_startup_failure_diagnostics").collect()),
+        (
+            "no-renderer",
+            vec!["-DHAVE_OBS_OPENGL=OFF"],
+            vec![
+                "test_obs_startup_failure_diagnostics",
+                "test_shutdown_leaked_scenes",
+            ],
+        ),
+        (
+            "no-x11",
+            vec!["-DDECLARE_X11=OFF"],
+            CASES
+                .into_iter()
+                .filter(|name| *name != "test_obs_startup_failure_diagnostics")
+                .collect(),
+        ),
     ] {
         let output = directory.join(mode);
         let mut configure = Command::new("cmake");
@@ -253,9 +296,19 @@ fn check_inventory(output: &Path, expected: &[&str], built: bool) {
         assert!(expected.contains(&name));
         if built {
             let command = test["command"].as_array().unwrap();
-            assert_eq!(command.len(), if name == "test_shutdown_leaked_scenes" { 3 } else { 1 });
+            assert_eq!(
+                command.len(),
+                if name == "test_shutdown_leaked_scenes" {
+                    3
+                } else {
+                    1
+                }
+            );
             if name == "test_shutdown_leaked_scenes" {
-                assert_eq!(Path::new(command[0].as_str().unwrap()).file_name().unwrap(), "xvfb-run-or-display.sh");
+                assert_eq!(
+                    Path::new(command[0].as_str().unwrap()).file_name().unwrap(),
+                    "xvfb-run-or-display.sh"
+                );
                 assert_eq!(command[1], "-a");
             }
             assert_eq!(
@@ -289,13 +342,30 @@ fn check_inventory(output: &Path, expected: &[&str], built: bool) {
             .unwrap()
             .iter()
             .find(|p| p["name"] == "RESOURCE_LOCK");
-        let expected_locks = record.get("resource_locks").and_then(|value| value.as_array());
-        assert_eq!(locks.map(|property| property["value"].as_array().unwrap()), expected_locks);
-        let cwd = test["properties"].as_array().unwrap().iter().find(|property| property["name"] == "WORKING_DIRECTORY").unwrap();
+        let expected_locks = record
+            .get("resource_locks")
+            .and_then(|value| value.as_array());
+        assert_eq!(
+            locks.map(|property| property["value"].as_array().unwrap()),
+            expected_locks
+        );
+        let cwd = test["properties"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|property| property["name"] == "WORKING_DIRECTORY")
+            .unwrap();
         let expected_cwd = if record.get("working_directory").is_some() {
             output.parent().unwrap().join("runtime/RelWithDebInfo")
-        } else { output.to_path_buf() };
-        if built { assert_eq!(dunce::canonicalize(cwd["value"].as_str().unwrap()).unwrap(), dunce::canonicalize(expected_cwd).unwrap()); }
+        } else {
+            output.to_path_buf()
+        };
+        if built {
+            assert_eq!(
+                dunce::canonicalize(cwd["value"].as_str().unwrap()).unwrap(),
+                dunce::canonicalize(expected_cwd).unwrap()
+            );
+        }
     }
 }
 

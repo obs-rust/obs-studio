@@ -292,6 +292,30 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_async_delay_audio": {
+      "sources": [
+        "test/cmocka/test_async_delay_audio.c",
+        "plugins/obs-filters/async-delay-filter.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_async_delay_pacing": {
       "sources": [
         "test/cmocka/test_async_delay_pacing.c"
@@ -2198,6 +2222,47 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_error_stop": {
+      "sources": [
+        "test/cmocka/test_encoder_error_stop.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-mux.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg.mux-host-posix+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "dl",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "header_libraries": [
+        "OBS::caption",
+        "Uthash::Uthash"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_encoder_fallback": {
       "sources": [
         "test/cmocka/test_encoder_fallback.c",
@@ -2514,6 +2579,36 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_encoder_stop_packet_times": {
+      "sources": [
+        "test/cmocka/test_encoder_stop_packet_times.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "header_libraries": [
+        "OBS::caption",
+        "Uthash::Uthash"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_encoder_tex_active_null": {
       "sources": [
@@ -5817,6 +5912,28 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_obs_startup_failure_diagnostics": {
+      "sources": [
+        "test/cmocka/test_obs_startup_failure_diagnostics.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "X11::X11"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=XOpenDisplay"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-platform.h"
+      ]
+    },
     "test_os_path": {
       "sources": [
         "test/cmocka/test_os_path.c"
@@ -8472,6 +8589,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_audio_actions": {
+      "sources": [
+        "test/cmocka/test_scene_audio_actions.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "header_libraries": [
+        "OBS::caption",
+        "Uthash::Uthash"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_scene_audio_mix_steps": {
       "sources": [
         "test/cmocka/test_scene_audio_mix_steps.c",
@@ -9328,6 +9475,36 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_LINUX"
+    },
+    "test_shutdown_leaked_scenes": {
+      "sources": [
+        "test/cmocka/test_shutdown_leaked_scenes.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "compile_options": [
+        {
+          "name": "/std:c11",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/experimental:c11atomics",
+          "requires": "MSVC"
+        }
+      ],
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_shutdown_type_lifetime": {
       "sources": [
@@ -13113,6 +13290,25 @@
         "${target}"
       ]
     },
+    "test_async_delay_audio": {
+      "target": "test_async_delay_audio",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "resource_locks": [
+        "timing"
+      ],
+      "timeout_seconds": 180,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_async_delay_pacing": {
       "target": "test_async_delay_pacing"
     },
@@ -13862,6 +14058,22 @@
         "${target}"
       ]
     },
+    "test_encoder_error_stop": {
+      "target": "test_encoder_error_stop",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 240,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_encoder_fallback": {
       "target": "test_encoder_fallback",
       "command": [
@@ -14008,6 +14220,22 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_encoder_stop_packet_times": {
+      "target": "test_encoder_stop_packet_times",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_encoder_tex_active_null": {
       "target": "test_encoder_tex_active_null",
@@ -15157,6 +15385,20 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_obs_startup_failure_diagnostics": {
+      "target": "test_obs_startup_failure_diagnostics",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_os_path": {
       "target": "test_os_path"
     },
@@ -15956,6 +16198,22 @@
         "${target}"
       ]
     },
+    "test_scene_audio_actions": {
+      "target": "test_scene_audio_actions",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_scene_audio_mix_steps": {
       "target": "test_scene_audio_mix_steps",
       "command": [
@@ -16333,6 +16591,28 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_shutdown_leaked_scenes": {
+      "target": "test_shutdown_leaked_scenes",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_shutdown_type_lifetime": {
       "target": "test_shutdown_type_lifetime",
