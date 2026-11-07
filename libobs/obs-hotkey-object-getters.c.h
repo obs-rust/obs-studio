@@ -36,4 +36,3 @@ obs_hotkey_id obs_hotkey_get_pair_partner_id(const obs_hotkey_t *key)
 {
 	return key->pair_partner_id;
 }
-

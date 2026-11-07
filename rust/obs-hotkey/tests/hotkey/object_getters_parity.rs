@@ -10,7 +10,10 @@ use std::mem::{align_of, offset_of, size_of};
 unsafe extern "C" {
     fn oracle_hotkey_object_layout(values: *mut usize);
     fn oracle_hotkey_object_new(
-        description: *mut c_char, kind: c_uint, registerer: *mut c_void, partner: usize,
+        description: *mut c_char,
+        kind: c_uint,
+        registerer: *mut c_void,
+        partner: usize,
     ) -> *mut obs_hotkey_t;
     fn oracle_hotkey_object_unchanged(key: *const obs_hotkey_t) -> bool;
     fn oracle_hotkey_object_free(key: *mut obs_hotkey_t);
@@ -24,10 +27,19 @@ unsafe extern "C" {
 fn real_header_layout() {
     type Fields = rs::obs_hotkey_object_fields;
     let rust = [
-        size_of::<Fields>(), align_of::<Fields>(),
-        offset_of!(Fields, description), offset_of!(Fields, registerer_type),
-        offset_of!(Fields, registerer), offset_of!(Fields, pair_partner_id),
-        size_of::<c_uint>(), align_of::<c_uint>(), 0, 1, 2, 3, 4,
+        size_of::<Fields>(),
+        align_of::<Fields>(),
+        offset_of!(Fields, description),
+        offset_of!(Fields, registerer_type),
+        offset_of!(Fields, registerer),
+        offset_of!(Fields, pair_partner_id),
+        size_of::<c_uint>(),
+        align_of::<c_uint>(),
+        0,
+        1,
+        2,
+        3,
+        4,
     ];
     let mut c = [0; 13];
     // SAFETY: the helper fills exactly 13 size_t values from the real headers.
@@ -43,12 +55,26 @@ impl Drop for Fixture {
     }
 }
 
-fn check(mut bytes: Vec<u8>, kind: u32, partner: usize, has_description: bool, has_registerer: bool) {
+fn check(
+    mut bytes: Vec<u8>,
+    kind: u32,
+    partner: usize,
+    has_description: bool,
+    has_registerer: bool,
+) {
     bytes.push(0);
     let before = bytes.clone();
-    let description = if has_description { bytes.as_mut_ptr().cast() } else { std::ptr::null_mut() };
+    let description = if has_description {
+        bytes.as_mut_ptr().cast()
+    } else {
+        std::ptr::null_mut()
+    };
     let mut token = 17u8;
-    let registerer = if has_registerer { (&raw mut token).cast() } else { std::ptr::null_mut() };
+    let registerer = if has_registerer {
+        (&raw mut token).cast()
+    } else {
+        std::ptr::null_mut()
+    };
     // SAFETY: C stores these borrowed pointers without taking ownership. The
     // description and token stay live until the C fixture is freed.
     let key = Fixture(unsafe { oracle_hotkey_object_new(description, kind, registerer, partner) });
@@ -56,13 +82,28 @@ fn check(mut bytes: Vec<u8>, kind: u32, partner: usize, has_description: bool, h
     // SAFETY: key is a real initialized C hotkey. Both sets of getters read
     // only stored fields, and the oracle snapshot covers every object byte.
     unsafe {
-        assert_eq!(rs::obs_hotkey_get_description(key.0), oracle_obs_hotkey_get_description(key.0));
-        assert_eq!(rs::obs_hotkey_get_description(key.0), description.cast_const());
-        assert_eq!(rs::obs_hotkey_get_registerer_type(key.0), oracle_obs_hotkey_get_registerer_type(key.0));
+        assert_eq!(
+            rs::obs_hotkey_get_description(key.0),
+            oracle_obs_hotkey_get_description(key.0)
+        );
+        assert_eq!(
+            rs::obs_hotkey_get_description(key.0),
+            description.cast_const()
+        );
+        assert_eq!(
+            rs::obs_hotkey_get_registerer_type(key.0),
+            oracle_obs_hotkey_get_registerer_type(key.0)
+        );
         assert_eq!(rs::obs_hotkey_get_registerer_type(key.0), kind);
-        assert_eq!(rs::obs_hotkey_get_registerer(key.0), oracle_obs_hotkey_get_registerer(key.0));
+        assert_eq!(
+            rs::obs_hotkey_get_registerer(key.0),
+            oracle_obs_hotkey_get_registerer(key.0)
+        );
         assert_eq!(rs::obs_hotkey_get_registerer(key.0), registerer);
-        assert_eq!(rs::obs_hotkey_get_pair_partner_id(key.0), oracle_obs_hotkey_get_pair_partner_id(key.0));
+        assert_eq!(
+            rs::obs_hotkey_get_pair_partner_id(key.0),
+            oracle_obs_hotkey_get_pair_partner_id(key.0)
+        );
         assert_eq!(rs::obs_hotkey_get_pair_partner_id(key.0), partner);
         assert!(oracle_hotkey_object_unchanged(key.0));
     }
@@ -76,7 +117,13 @@ fn characterized_edges() {
         for partner in [0, 17, usize::MAX] {
             for has_description in [false, true] {
                 for has_registerer in [false, true] {
-                    check(vec![b'x', 0xff], kind, partner, has_description, has_registerer);
+                    check(
+                        vec![b'x', 0xff],
+                        kind,
+                        partner,
+                        has_description,
+                        has_registerer,
+                    );
                     check(vec![], kind, partner, has_description, has_registerer);
                 }
             }
