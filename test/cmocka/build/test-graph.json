@@ -6589,6 +6589,15 @@
         "libobs/data"
       ]
     },
+    "test_scene_item_id": {
+      "sources": [
+        "test/cmocka/test_scene_item_id.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_scene_item_names_steps": {
       "sources": [
         "test/cmocka/test_scene_item_names_steps.c",
@@ -12327,6 +12336,13 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_item_id": {
+      "target": "test_scene_item_id",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_scene_item_names_steps": {
       "target": "test_scene_item_names_steps",
