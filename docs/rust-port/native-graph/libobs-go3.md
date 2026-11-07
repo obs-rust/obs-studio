@@ -36,6 +36,13 @@ No C tests, public headers, WebSocket files or workflow files changed.
 - Binary-budget, native graph slicing and sanitizer-harness Python guards pass
   (`local-test-4AofNQ.log`). One primary read-only clud-review found no defects
   and independently reran the registration test successfully.
+- Scoped Application-category and obs-build Clippy passes with
+  `libobs-integration` and `-D warnings` (`local-test-Ink5LP.log`). Cargo fmt
+  for the Application category also passes (`local-test-zm2W5z.log`).
+- The final formatted source compiles and all three inherited/current libobs
+  g-o registration modules pass (`local-test-cxo0iR.log`), including go2's
+  previously uncompiled exact-source assertions. Whole-graph legacy replacement
+  also passes (`local-test-G5Jton.log`).
 
 The replay uses an installed real core, not a final-head hybrid/C-reference
 pair. Exact export parity, native Windows/macOS execution, application/profile,
@@ -45,7 +52,7 @@ An initial direct Soldr rustc replay failed on a missing broker daemon path;
 the documented wrapper setting then stalled. A scratch Soldr Cargo build
 succeeded and produced the replay used above. No lock was removed or guard
 bypassed. Scoped Clippy initially refused an active build lock while that
-scratch build was running; its result is reported separately in the handoff.
+scratch build was running; the ordinary retry passed after the build completed.
 
 ## Remaining scope
 
