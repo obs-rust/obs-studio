@@ -6009,6 +6009,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_audio_input_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_audio_input_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-audio-input.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_audio_output": {
       "sources": [
         "test/cmocka/test_source_audio_output.c"
@@ -6080,6 +6096,28 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_audio_render_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_audio_render_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-audio-render.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_source_audio_settings": {
       "sources": [
         "test/cmocka/test_source_audio_settings.c"
@@ -6123,6 +6161,22 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_audio_timing_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_audio_timing_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-audio-timing.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_source_color_space_steps": {
       "sources": [
@@ -6235,6 +6289,30 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_frame_copy_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_frame_copy_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-frame-copy.h",
+        "libobs/media-io/video-io.h",
+        "libobs/media-io/media-io-defs.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
     },
     "test_source_full_tree_root": {
       "sources": [
@@ -6403,6 +6481,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_ptm_gate_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_ptm_gate_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-ptm-gate.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_registration": {
       "sources": [
         "test/cmocka/test_source_registration.c"
@@ -6457,6 +6551,28 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_size_route_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_size_route_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-size.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
     },
     "test_source_transition_access": {
       "sources": [
@@ -6606,6 +6722,29 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_volume_apply_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_volume_apply_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-ptm-gate.h",
+        "libobs/obs-source-volume.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
     },
     "test_source_volume_mix": {
       "sources": [
@@ -6961,6 +7100,28 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_transition_render_steps_rust": {
+      "sources": [
+        "test/cmocka/test_transition_render_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-transition-render.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
     },
     "test_transition_sample_time_steps": {
       "sources": [
@@ -10371,6 +10532,13 @@
         "${target}"
       ]
     },
+    "test_source_audio_input_steps_rust": {
+      "target": "test_source_audio_input_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_source_audio_output": {
       "target": "test_source_audio_output",
       "command": [
@@ -10402,6 +10570,13 @@
         "${target}"
       ]
     },
+    "test_source_audio_render_steps_rust": {
+      "target": "test_source_audio_render_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_source_audio_settings": {
       "target": "test_source_audio_settings",
       "command": [
@@ -10421,6 +10596,13 @@
     },
     "test_source_audio_timing_steps": {
       "target": "test_source_audio_timing_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_audio_timing_steps_rust": {
+      "target": "test_source_audio_timing_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -10463,6 +10645,13 @@
     },
     "test_source_frame_copy_steps": {
       "target": "test_source_frame_copy_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_frame_copy_steps_rust": {
+      "target": "test_source_frame_copy_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -10548,6 +10737,13 @@
         "${target}"
       ]
     },
+    "test_source_ptm_gate_steps_rust": {
+      "target": "test_source_ptm_gate_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_source_registration": {
       "target": "test_source_registration",
       "command": [
@@ -10570,6 +10766,13 @@
     },
     "test_source_size_route_steps": {
       "target": "test_source_size_route_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_size_route_steps_rust": {
+      "target": "test_source_size_route_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -10627,6 +10830,13 @@
     },
     "test_source_volume_apply_steps": {
       "target": "test_source_volume_apply_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_volume_apply_steps_rust": {
+      "target": "test_source_volume_apply_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -10746,6 +10956,13 @@
     },
     "test_transition_render_steps": {
       "target": "test_transition_render_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_transition_render_steps_rust": {
+      "target": "test_transition_render_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

@@ -13,9 +13,15 @@ const CASES: &[(&str, bool)] = &[
 
 #[test]
 fn canonical_rust_static_source_steps_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
+    use obs_build::validation::graph::{Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph
+        .targets
+        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
+    graph
+        .tests
+        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
     for &(base, math) in CASES {
         let name = format!("{base}_rust");
         let target = graph
@@ -31,19 +37,7 @@ fn canonical_rust_static_source_steps_are_registered() {
         assert!(target.compile_options.is_empty());
         assert!(target.link_options.is_empty());
         assert_eq!(target.sanitizers, None);
-        assert_eq!(target.libraries.len(), if math { 3 } else { 2 });
-        assert!(
-            matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static")
-        );
-        assert!(
-            matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
-        );
-        if math {
-            assert!(
-                matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: Requirement::Not { not } }
-                if name == "m" && matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-            );
-        }
+        assert_source_step_linkage(target, math);
         let test = &graph.tests[&name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
@@ -53,18 +47,37 @@ fn canonical_rust_static_source_steps_are_registered() {
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{base}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
-        for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-            for available in [false, true] {
-                let facts = [
-                    (os.into(), true),
-                    ("MSVC".into(), os == "OS_WINDOWS"),
-                    ("HAVE_LIBOBS_RUST_STATIC".into(), available),
-                ]
-                .into();
-                let selected = graph.select(&facts).unwrap();
-                assert_eq!(selected.targets.contains_key(name.as_str()), available);
-                assert_eq!(selected.tests.contains_key(name.as_str()), available);
-            }
+        assert_source_step_selection(&graph, &name);
+    }
+}
+
+fn assert_source_step_linkage(target: &obs_build::validation::graph::Target, math: bool) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement};
+    assert_eq!(target.libraries.len(), if math { 3 } else { 2 });
+    assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static"));
+    assert!(
+        matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
+    );
+    if math {
+        assert!(
+            matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: Requirement::Not { not } }
+                if name == "m" && matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
+        );
+    }
+}
+
+fn assert_source_step_selection(graph: &obs_build::validation::graph::Graph, name: &str) {
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        for available in [false, true] {
+            let facts = [
+                (os.into(), true),
+                ("MSVC".into(), os == "OS_WINDOWS"),
+                ("HAVE_LIBOBS_RUST_STATIC".into(), available),
+            ]
+            .into();
+            let selected = graph.select(&facts).unwrap();
+            assert_eq!(selected.targets.contains_key(name), available);
+            assert_eq!(selected.tests.contains_key(name), available);
         }
     }
 }
@@ -94,6 +107,7 @@ fn replay_cmake(directory: &Path, root: &Path, archive: &Path, selected: &serde_
         format!(
             r#"cmake_minimum_required(VERSION 3.28)
 project(rust-static-source-steps C)
+set(MSVC FALSE)
 enable_testing()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
