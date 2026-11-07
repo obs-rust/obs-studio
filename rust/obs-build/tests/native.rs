@@ -4,6 +4,8 @@ mod archive_freshness;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
+#[path = "native/registration/canonical_display_startup_is_registered.rs"]
+mod canonical_display_startup_is_registered;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
 #[path = "native/registration/canonical_headless_characterizations_is_registered.rs"]
@@ -117,7 +119,7 @@ fn native_test_graph_cmake_platform_requirements_allow_false_but_reject_unknown(
         format!(
             r#"cmake_minimum_required(VERSION 3.28)
 include("{consumer}")
-foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC ENABLE_WAYLAND)
+foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC ENABLE_WAYLAND HAVE_X11_DISPLAY)
   unset(${{platform}})
   unset(${{platform}} CACHE)
   _obs_test_graph_requirement(selected "\"${{platform}}\"")
@@ -158,6 +160,7 @@ endif()
         "GRAPH_FEATURE_TYPO",
         "ENABLE_WAYLND",
         "HAVE_WAYLAND_TYPO_SDK",
+        "HAVE_X11_DISPALY",
     ] {
         let result = std::process::Command::new("cmake")
             .arg(format!("-DUNKNOWN_REQUIREMENT={unknown}"))
