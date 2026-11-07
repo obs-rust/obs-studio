@@ -92,6 +92,8 @@ mod canonical_undo_stack_is_registered;
 mod canonical_vaapi_device_select_is_registered;
 #[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
 mod canonical_video_output_compatibility_is_registered;
+#[path = "native/registration/canonical_video_scaler_direct_is_registered.rs"]
+mod canonical_video_scaler_direct_is_registered;
 #[path = "native/registration/canonical_vmic_helpers_are_registered.rs"]
 mod canonical_vmic_helpers_are_registered;
 #[path = "native/registration/canonical_volume_meter_ticker_is_registered.rs"]
