@@ -2785,27 +2785,6 @@ void obs_sceneitem_get_pos(const obs_sceneitem_t *item, struct vec2 *pos)
 	item_fields_unlock(scene);
 }
 
-float obs_sceneitem_get_rot(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return 0.0f;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	float value = item->rot;
-	item_fields_unlock(scene);
-	return value;
-}
-
-uint32_t obs_sceneitem_get_alignment(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return 0;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	uint32_t value = item->align;
-	item_fields_unlock(scene);
-	return value;
-}
 
 void obs_sceneitem_get_bounds(const obs_sceneitem_t *item, struct vec2 *bounds)
 {
