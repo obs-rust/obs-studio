@@ -1,12 +1,18 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/archive_freshness.rs"]
+mod archive_freshness;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
+#[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
+mod canonical_opengl_video_slice_is_registered;
 #[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
 mod canonical_v4l2_capture_sdk_is_registered;
 #[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
 mod canonical_v4l2_freetype_sdk_is_registered;
 #[path = "native/registration/canonical_wayland_sdk_is_registered.rs"]
 mod canonical_wayland_sdk_is_registered;
+#[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
+mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
@@ -172,6 +178,8 @@ mod canonical_encoder_group_null_is_registered;
 mod canonical_fade_and_host_tests_are_registered;
 #[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
 mod canonical_fake_device_graphics_is_registered;
+#[path = "native/registration/canonical_ffmpeg_mux_hosts_are_registered.rs"]
+mod canonical_ffmpeg_mux_hosts_are_registered;
 #[path = "native/registration/canonical_ffmpeg_packet_write_is_registered.rs"]
 mod canonical_ffmpeg_packet_write_is_registered;
 #[path = "native/registration/canonical_filter_clipboard_is_registered.rs"]
@@ -190,12 +198,18 @@ mod canonical_frontend_tools_hosts_are_registered;
 mod canonical_frontend_utility_tests_are_registered;
 #[path = "native/registration/canonical_group_lifecycle_is_registered.rs"]
 mod canonical_group_lifecycle_is_registered;
+#[path = "native/registration/canonical_headless_abi_is_registered.rs"]
+mod canonical_headless_abi_is_registered;
+#[path = "native/registration/canonical_headless_audio_is_registered.rs"]
+mod canonical_headless_audio_is_registered;
 #[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
 mod canonical_hotkey_backtab_is_registered;
 #[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
 mod canonical_hotkey_mnemonic_is_registered;
 #[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
 mod canonical_hotkey_pair_latch_is_registered;
+#[path = "native/registration/canonical_import_ffmpeg_hosts_are_registered.rs"]
+mod canonical_import_ffmpeg_hosts_are_registered;
 #[path = "native/registration/canonical_libobs_go2_is_registered.rs"]
 mod canonical_libobs_go2_is_registered;
 #[path = "native/registration/canonical_libobs_go3_is_registered.rs"]
@@ -258,6 +272,8 @@ mod canonical_scene_enum_items_removal_is_registered;
 mod canonical_scene_item_crop_load_is_registered;
 #[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
 mod canonical_sck_vaapi_helpers_are_registered;
+#[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]
+mod canonical_scripting_hosts_are_registered;
 #[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
@@ -266,6 +282,8 @@ mod canonical_shutdown_after_failed_startup_is_registered;
 mod canonical_texture_create_mip_data_is_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
 mod canonical_transition_compatibility_is_registered;
+#[path = "native/registration/canonical_transport_helpers_are_registered.rs"]
+mod canonical_transport_helpers_are_registered;
 #[path = "native/registration/canonical_undo_stack_is_registered.rs"]
 mod canonical_undo_stack_is_registered;
 #[path = "native/registration/canonical_vaapi_device_select_is_registered.rs"]
@@ -2251,6 +2269,12 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_OUTPUTS".into(), false),
         ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
+        ("HAVE_OBS_ALSA".into(), false),
+        ("HAVE_RTMPS_TEST_SDK".into(), false),
+        ("HAVE_LIBRIST_TEST_SDK".into(), false),
+        ("HAVE_CURL_TEST_SDK".into(), false),
+        ("HAVE_SRT_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PACKET_TEST_SDK".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
@@ -2262,6 +2286,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
         ("HAVE_OBS_TEXT_FREETYPE2".into(), false),
         ("HAVE_FREETYPE_FILE_SDK".into(), false),
+        ("HAVE_LINUX_CAPTURE".into(), false),
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
