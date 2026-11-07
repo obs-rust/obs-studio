@@ -579,6 +579,13 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
+    // Keep the encoder's field adapter verbatim, without the broad production
+    // PCH; the getter oracle already includes the real obs-internal.h.
+    std::fs::write(
+        extract_dir.join("encoder_counter_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-encoder-counter-fields.c.h")),
+    )
+    .expect("write encoder counter adapter extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
