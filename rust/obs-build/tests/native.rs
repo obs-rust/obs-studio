@@ -2329,6 +2329,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
         ("HAVE_RTMP_SERVICES_MODULE".into(), false),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
         ("HAVE_OBS_ALSA".into(), false),
         ("HAVE_RTMPS_TEST_SDK".into(), false),
         ("HAVE_LIBRIST_TEST_SDK".into(), false),
