@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-view.pch.h"
 
 void obs_display_size(obs_display_t *display, uint32_t *width, uint32_t *height)
 {

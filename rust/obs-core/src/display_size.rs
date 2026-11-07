@@ -13,6 +13,13 @@ pub trait SizeAccess {
 }
 
 /// Zero outputs before inspecting the display, then copy under its own lock.
-pub fn size(_access: &mut impl SizeAccess) {
-    todo!()
+pub fn size(access: &mut impl SizeAccess) {
+    access.set_width(0);
+    access.set_height(0);
+    if access.has_display() {
+        access.lock();
+        access.set_width(access.width());
+        access.set_height(access.height());
+        access.unlock();
+    }
 }
