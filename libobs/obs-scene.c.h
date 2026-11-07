@@ -378,6 +378,13 @@ static inline void item_canvas_scale(struct vec2 *dst, const obs_sceneitem_t *it
 	obs_scene_item_canvas_scale(dst, &item->scale, y, item->scale_ref.y);
 }
 
+/* Private conversion boundary: preserve the scene/canvas dimension path. */
+void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const obs_sceneitem_t *item);
+void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const obs_sceneitem_t *item)
+{
+	item_canvas_scale(dst, item);
+}
+
 /* Return scale value scaled to original canvas size. */
 static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item)
 {
@@ -2787,19 +2794,6 @@ float obs_sceneitem_get_rot(const obs_sceneitem_t *item)
 	float value = item->rot;
 	item_fields_unlock(scene);
 	return value;
-}
-
-void obs_sceneitem_get_scale(const obs_sceneitem_t *item, struct vec2 *scale)
-{
-	if (!item)
-		return;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	if (!item->absolute_coordinates)
-		item_canvas_scale(scale, item);
-	else
-		vec2_copy(scale, &item->scale);
-	item_fields_unlock(scene);
 }
 
 uint32_t obs_sceneitem_get_alignment(const obs_sceneitem_t *item)
