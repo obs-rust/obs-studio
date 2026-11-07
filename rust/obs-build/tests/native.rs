@@ -68,6 +68,15 @@ fn assert_posix_output_host_registration(
     };
     assert_eq!(target.includes, includes);
     assert_eq!(target.watch_inputs, watch);
+    assert_posix_output_host_execution(root, graph, name);
+}
+
+fn assert_posix_output_host_execution(
+    root: &Path,
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+) {
+    use obs_build::validation::graph::Requirement;
     let test = &graph.tests[name];
     assert!(
         matches!(&test.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
