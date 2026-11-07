@@ -4937,6 +4937,37 @@
         "-fvisibility=default"
       ]
     },
+    "test_pipewire_frame_layout": {
+      "sources": [
+        "test/cmocka/test_pipewire_frame_layout.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire",
+        "deps/glad/include"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PipeWire::PipeWire",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PIPEWIRE",
+          "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK"
+        ]
+      },
+      "header_packages": [
+        "libdrm",
+        "gio-2.0"
+      ]
+    },
     "test_pipewire_reconnect": {
       "sources": [
         "test/cmocka/test_pipewire_reconnect.c",
@@ -5256,6 +5287,37 @@
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_pulse_default_retry": {
+      "sources": [
+        "test/cmocka/test_pulse_default_retry.c",
+        "plugins/linux-pulseaudio/pulse-reconnect.c.h",
+        "plugins/linux-pulseaudio/pulse-timing.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pulseaudio"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pulseaudio/build/linux-pulseaudio-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PULSEAUDIO",
+          "HAVE_PULSE_DEFAULT_RETRY_SDK"
+        ]
+      },
+      "link_options": [
+        "-Wl,--wrap=obs_weak_source_addref,--wrap=obs_weak_source_release,--wrap=obs_weak_source_get_source",
+        "-Wl,--wrap=obs_obj_get_data,--wrap=obs_source_release,--wrap=obs_queue_task",
+        "-Wl,--wrap=obs_source_set_async_compensation"
+      ]
+    },
     "test_pulse_monitor_backlog": {
       "sources": [
         "test/cmocka/test_pulse_monitor_backlog.c",
@@ -5553,6 +5615,52 @@
       ],
       "watch_inputs": [
         "frontend/utility"
+      ]
+    },
+    "test_recording_shutdown_inactive": {
+      "sources": [
+        "test/cmocka/test_recording_shutdown_inactive.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "includes": [
+        "frontend/widgets"
+      ],
+      "watch_inputs": [
+        "frontend/widgets/RecordingShutdown.hpp",
+        "frontend/widgets/RecordingShutdownWait.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_recording_shutdown_wait": {
+      "sources": [
+        "test/cmocka/test_recording_shutdown_wait.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "includes": [
+        "frontend/widgets"
+      ],
+      "watch_inputs": [
+        "frontend/widgets/RecordingShutdown.hpp",
+        "frontend/widgets/RecordingShutdownWait.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_register_partial_callbacks": {
@@ -11247,6 +11355,16 @@
       "target": "test_pipe_wait_error",
       "timeout_seconds": 30
     },
+    "test_pipewire_frame_layout": {
+      "target": "test_pipewire_frame_layout",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PIPEWIRE",
+          "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK"
+        ]
+      }
+    },
     "test_pipewire_reconnect": {
       "target": "test_pipewire_reconnect"
     },
@@ -11352,6 +11470,17 @@
     "test_pulse_default_id": {
       "target": "test_pulse_default_id"
     },
+    "test_pulse_default_retry": {
+      "target": "test_pulse_default_retry",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PULSEAUDIO",
+          "HAVE_PULSE_DEFAULT_RETRY_SDK"
+        ]
+      },
+      "timeout_seconds": 10
+    },
     "test_pulse_monitor_backlog": {
       "target": "test_pulse_monitor_backlog"
     },
@@ -11428,6 +11557,34 @@
     },
     "test_record_disk_space": {
       "target": "test_record_disk_space"
+    },
+    "test_recording_shutdown_inactive": {
+      "target": "test_recording_shutdown_inactive",
+      "suite": "qt",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 15
+    },
+    "test_recording_shutdown_wait": {
+      "target": "test_recording_shutdown_wait",
+      "suite": "qt",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_register_partial_callbacks": {
       "target": "test_register_partial_callbacks",
