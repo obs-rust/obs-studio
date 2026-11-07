@@ -5766,6 +5766,44 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_sck_stall": {
+      "sources": [
+        "test/cmocka/test_sck_stall.c",
+        "plugins/mac-capture/mac-sck-stall.c.h"
+      ],
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture/mac-sck-stall.h",
+        "plugins/mac-capture/build/mac-capture-sck-stall.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_sck_stop_wait": {
+      "sources": [
+        "test/cmocka/test_sck_stop_wait.c",
+        "plugins/mac-capture/mac-sck-stop.c.h"
+      ],
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture/mac-sck-stop.h",
+        "plugins/mac-capture/build/mac-capture-sck-stop.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_serializer": {
       "sources": [
         "test/cmocka/test_serializer.c"
@@ -7286,6 +7324,30 @@
       "watch_inputs": [
         "plugins/obs-ffmpeg"
       ]
+    },
+    "test_vaapi_probe_policy": {
+      "sources": [
+        "test/cmocka/test_vaapi_probe_policy.c",
+        "plugins/obs-ffmpeg/vaapi-probe-policy.c.h"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/vaapi-probe-policy.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-vaapi-probe-policy.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      }
     },
     "test_vec2": {
       "sources": [
@@ -10215,6 +10277,12 @@
         ]
       ]
     },
+    "test_sck_stall": {
+      "target": "test_sck_stall"
+    },
+    "test_sck_stop_wait": {
+      "target": "test_sck_stop_wait"
+    },
     "test_serializer": {
       "target": "test_serializer"
     },
@@ -10856,6 +10924,16 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_vaapi_probe_policy": {
+      "target": "test_vaapi_probe_policy",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      }
     },
     "test_vec2": {
       "target": "test_vec2"
