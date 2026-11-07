@@ -589,6 +589,11 @@ fn main() {
         ),
     )
     .expect("write media-remux adapter extract");
+    std::fs::write(
+        extract_dir.join("canvas_readonly_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
+    )
+    .expect("write canvas field adapter extract");
     oracle.include(&extract_dir);
 
     oracle

@@ -1052,6 +1052,15 @@ struct obs_canvas {
 	struct obs_core_video_mix *mix;
 };
 
+/* Private borrowed field addresses; the canvas layout remains owned by C. */
+struct obs_canvas_readonly_fields {
+	char *const *name;
+	const char *const *uuid;
+	signal_handler_t *const *signals;
+	struct obs_core_video_mix *const *mix;
+};
+extern struct obs_canvas_readonly_fields obs_canvas_readonly_fields(const obs_canvas_t *canvas);
+
 extern obs_canvas_t *obs_create_main_canvas(void);
 extern void obs_canvas_destroy(obs_canvas_t *canvas);
 extern void obs_canvas_clear_mix(obs_canvas_t *canvas);

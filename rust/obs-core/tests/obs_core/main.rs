@@ -13,6 +13,7 @@ mod audio_render_parity;
 mod canvas_draw;
 mod canvas_draw_parity;
 mod canvas_readonly_getters;
+mod canvas_readonly_getters_parity;
 mod canvas_rules;
 mod canvas_rules_parity;
 mod context_names;

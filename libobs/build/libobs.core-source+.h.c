@@ -2,7 +2,7 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-canvas-readonly-getters.c.h"
+#include "libobs/obs-canvas-readonly-fields.c.h"
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
