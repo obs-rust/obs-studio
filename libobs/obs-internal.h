@@ -39,6 +39,7 @@
 #include "media-io/audio-io.h"
 
 #include "obs.h"
+#include "obs-canvas-flags-fields.h"
 #include "obs-video-stats.h"
 
 #include <obsversion.h>
