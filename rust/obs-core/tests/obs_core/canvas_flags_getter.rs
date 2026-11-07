@@ -3,7 +3,20 @@ use obs_core::canvas_flags_getter::stored_flags;
 
 #[test]
 fn stored_flags_match_c_characterization() {
-    for value in [0, 1, 2, 4, 8, 16, 32, 64, 128, 0x8000_0000, 0xa5a5_a5a5, u32::MAX] {
+    for value in [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        0x8000_0000,
+        0xa5a5_a5a5,
+        u32::MAX,
+    ] {
         let flags = value;
         assert_eq!(stored_flags(&flags), value);
         assert_eq!(flags, value);

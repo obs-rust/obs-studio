@@ -8,13 +8,17 @@ fn canonical_canvas_flags_getter_is_registered() {
     let name = "test_canvas_flags_getter";
     let target = &graph.targets[name];
     assert_eq!(target.sources.len(), 1);
-    assert!(matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_canvas_flags_getter.c"));
+    assert!(
+        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_canvas_flags_getter.c")
+    );
     assert_eq!(graph.tests[name].target, name);
     assert_eq!(graph.tests[name].command, ["${target}"]);
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into()).unwrap();
+        let selected = graph
+            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
+            .unwrap();
         assert_eq!(selected.targets.len(), 1);
         assert_eq!(selected.tests.len(), 1);
         assert!(selected.targets.contains_key(name));
