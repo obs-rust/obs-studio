@@ -53,21 +53,26 @@ fn canonical_frontend_tools_hosts_are_registered() {
         .targets
         .retain(|name, _| names.contains(&name.as_str()));
     graph.tests.retain(|name, _| names.contains(&name.as_str()));
-    for windows in [false, true] {
-        for linux in [false, true] {
-            for macos in [false, true] {
-                let facts = [
-                    ("OS_WINDOWS".into(), windows),
-                    ("OS_LINUX".into(), linux),
-                    ("OS_MACOS".into(), macos),
-                ]
-                .into();
-                let selected = graph.select(&facts).unwrap();
-                for name in names {
-                    assert_eq!(selected.targets.contains_key(name), !windows);
-                    assert_eq!(selected.tests.contains_key(name), !windows);
-                }
-            }
+    for (windows, linux, macos) in [
+        (false, false, false),
+        (false, false, true),
+        (false, true, false),
+        (false, true, true),
+        (true, false, false),
+        (true, false, true),
+        (true, true, false),
+        (true, true, true),
+    ] {
+        let facts = [
+            ("OS_WINDOWS".into(), windows),
+            ("OS_LINUX".into(), linux),
+            ("OS_MACOS".into(), macos),
+        ]
+        .into();
+        let selected = graph.select(&facts).unwrap();
+        for name in names {
+            assert_eq!(selected.targets.contains_key(name), !windows);
+            assert_eq!(selected.tests.contains_key(name), !windows);
         }
     }
 }
