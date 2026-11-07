@@ -2798,39 +2798,6 @@ uint32_t obs_sceneitem_get_alignment(const obs_sceneitem_t *item)
 	return value;
 }
 
-enum obs_bounds_type obs_sceneitem_get_bounds_type(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return OBS_BOUNDS_NONE;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	enum obs_bounds_type value = item->bounds_type;
-	item_fields_unlock(scene);
-	return value;
-}
-
-uint32_t obs_sceneitem_get_bounds_alignment(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return 0;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	uint32_t value = item->bounds_align;
-	item_fields_unlock(scene);
-	return value;
-}
-
-bool obs_sceneitem_get_bounds_crop(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return false;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	bool value = item->crop_to_bounds;
-	item_fields_unlock(scene);
-	return value;
-}
-
 void obs_sceneitem_get_bounds(const obs_sceneitem_t *item, struct vec2 *bounds)
 {
 	if (!item)
