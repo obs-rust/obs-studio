@@ -47,9 +47,9 @@ void *oracle_hotkey_identity_new(size_t id, char *name)
 }
 
 bool oracle_hotkey_identity_probe(const void *handle, obs_hotkey_id (*get_id)(const obs_hotkey_t *),
-				const char *(*get_name)(const obs_hotkey_t *));
+				  const char *(*get_name)(const obs_hotkey_t *));
 bool oracle_hotkey_identity_probe(const void *handle, obs_hotkey_id (*get_id)(const obs_hotkey_t *),
-				const char *(*get_name)(const obs_hotkey_t *))
+				  const char *(*get_name)(const obs_hotkey_t *))
 {
 	const struct hotkey_identity_fixture *fixture = handle;
 	return get_id(&fixture->key) == oracle_obs_hotkey_get_id(&fixture->key) &&
