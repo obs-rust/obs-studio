@@ -1750,7 +1750,7 @@ jobs:
       - name: Local Gate (lint) 🧪
         env:
           OBS_GATE_SKIP_SELF_TEST: "1"
-        run: uv run --no-project ci/local_gate.py --lane lint
+        run: uv run --no-project ci/local_gate.py --lane lint --lane dylint
 
       - name: Unit Tests (changed crates) 🧪
         if: needs.check-event.outputs.deferred == 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
