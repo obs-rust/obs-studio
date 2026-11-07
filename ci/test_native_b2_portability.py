@@ -98,7 +98,7 @@ class NativeB2Portability(unittest.TestCase):
                                "C_COMPILER_CLANG", "HAVE_OBS_FFMPEG", "HAVE_OBS_QSV11", "HAVE_OBS_OPENGL"), False)
         facts.update(dict.fromkeys(("OS_LINUX", "UNIX", "HAVE_LIBOBS", "HAVE_LIBOBS_RUST_STATIC",
                                     "HAVE_HAPPY_EYEBALLS", "HAVE_OBS_OUTPUTS", "HAVE_OBS_FILTERS",
-                                    "HAVE_OBS_PIPEWIRE", "HAVE_OBS_PULSEAUDIO"), True))
+                                     "HAVE_OBS_ALSA", "HAVE_OBS_PIPEWIRE", "HAVE_OBS_PULSEAUDIO"), True))
 
         def enabled(requirement):
             if isinstance(requirement, bool):

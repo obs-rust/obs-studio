@@ -283,7 +283,9 @@ pub fn build_c_tests(
         ("HAVE_OBS_FILTERS".into(), options.filters),
         ("HAVE_OBS_PIPEWIRE".into(), options.pipewire),
         ("HAVE_OBS_PULSEAUDIO".into(), options.pulseaudio_plugin),
-        // obs-build builds neither plugin; their tests run under CMake.
+        // This compatibility stage does not build these plugin owners.
+        // Focused graph replays supply each owner and its SDK explicitly.
+        ("HAVE_OBS_ALSA".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_OBS_OPENGL".into(), false),

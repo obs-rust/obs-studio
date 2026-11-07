@@ -53,6 +53,10 @@ def non_windows_plugins() -> set[str]:
     return found
 
 
+# The graph's HAVE_OBS_* facts mirror these same original target guards.
+NON_WINDOWS_PLUGIN_FACTS = {f"HAVE_OBS_{name.upper()}" for name in non_windows_plugins()}
+
+
 def excludes_windows(condition: str, plugins: set[str]) -> bool:
     """A condition that is false on Windows: one AND term that is, or ORs of only such words."""
     condition = " ".join(condition.split())
@@ -108,7 +112,7 @@ def windows_requirement(requirement: bool | str | dict) -> bool | None:
     if isinstance(requirement, bool):
         return requirement
     if isinstance(requirement, str):
-        if requirement in NOT_WINDOWS:
+        if requirement in NOT_WINDOWS or requirement in NON_WINDOWS_PLUGIN_FACTS:
             return False
         if requirement in {"MSVC", "WIN32", "OS_WINDOWS", "WINDOWS"}:
             return True
@@ -163,6 +167,8 @@ class CmockaWindowsDiagnosticsTest(unittest.TestCase):
             self.assertFalse(excludes_windows(condition, plugins), condition)
 
     def test_shared_graph_reader_keeps_possible_windows_sources(self):
+        self.assertFalse(windows_requirement("HAVE_OBS_ALSA"))
+        self.assertIsNone(windows_requirement("HAVE_OBS_FILTERS"))
         graph = {"schema": 1, "targets": {
             "portable": {"sources": ["portable.c",
                 {"path": "unix-helper.c", "requires": "OS_LINUX"},
@@ -173,6 +179,7 @@ class CmockaWindowsDiagnosticsTest(unittest.TestCase):
             "impossible": {"requires": {"all": ["OS_LINUX", "OPTIONAL"]}, "sources": ["impossible.c"]},
             "non-msvc": {"requires": {"not": "MSVC"}, "sources": ["non-msvc.c"]},
             "non-linux": {"requires": {"not": "OS_LINUX"}, "sources": ["non-linux.c"]},
+            "alsa": {"requires": "HAVE_OBS_ALSA", "sources": ["alsa.c"]},
         }}
         with tempfile.TemporaryDirectory(prefix="obs-windows-graph-") as tmp:
             path = Path(tmp) / "graph.json"
