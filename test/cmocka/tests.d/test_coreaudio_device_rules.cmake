@@ -20,17 +20,4 @@
 # obs-audio-monitoring member needs nothing from libobs, so it links the
 # archive alone. Linux only: the shims have no host code, so one host shows
 # the swap.
-if(TARGET libobs_rust-static)
-  if(OS_LINUX)
-    add_executable(test_coreaudio_device_rules_rust test_coreaudio_device_rules.c)
-    target_include_directories(
-      test_coreaudio_device_rules_rust
-      PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR}
-    )
-    target_compile_definitions(test_coreaudio_device_rules_rust PRIVATE COREAUDIO_DEVICE_RULES_TEST_RUST)
-    target_link_libraries(test_coreaudio_device_rules_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES} m)
-    obs_test_sanitize(test_coreaudio_device_rules_rust "address,undefined")
-    add_dependencies(cmocka-tests test_coreaudio_device_rules_rust)
-    add_test(test_coreaudio_device_rules_rust ${CMAKE_CURRENT_BINARY_DIR}/test_coreaudio_device_rules_rust)
-  endif()
-endif()
+# Rust-static target and test are declared in ../build/test-graph.json.

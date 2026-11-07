@@ -80,6 +80,10 @@ fn compile_suite(
 ) -> Result<Vec<Executable>, String> {
     let mut facts = facts.clone();
     facts.insert("HAVE_LIBOBS".into(), interfaces.contains_key("OBS::libobs"));
+    facts.insert(
+        "HAVE_HAPPY_EYEBALLS".into(),
+        interfaces.contains_key("OBS::happy-eyeballs"),
+    );
     let facts = &facts;
     let artifacts = graph.compile(build, root, facts, interfaces)?;
     graph
@@ -282,6 +286,7 @@ pub fn build_c_tests(
         // obs-build builds neither plugin; their tests run under CMake.
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
+        ("HAVE_OBS_OPENGL".into(), false),
     ]);
     let mut core_interface = SharedLibrary {
         include_dirs: vec![
