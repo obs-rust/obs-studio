@@ -1,6 +1,4 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
-#[path = "native/registration/canonical_headless_characterizations_is_registered.rs"]
-mod canonical_headless_characterizations_is_registered;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/rust_static_entries.rs"]
@@ -8,6 +6,8 @@ mod rust_static_entries;
 
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
+#[path = "native/registration/canonical_headless_characterizations_is_registered.rs"]
+mod canonical_headless_characterizations_is_registered;
 #[path = "native/registration/canonical_headless_devices_is_registered.rs"]
 mod canonical_headless_devices_is_registered;
 #[path = "native/registration/canonical_headless_helpers_is_registered.rs"]
@@ -2319,6 +2319,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_STARTUP_GLAD".into(), false),
         ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),
         ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
         ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),
