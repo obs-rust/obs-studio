@@ -8,7 +8,7 @@
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene.c.h"
-#include "libobs/obs-source-async-flag-getters.c.h"
+#include "libobs/obs-source-async-flag-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
