@@ -287,24 +287,26 @@ int obs_source_transition_seam_trylock_textures(obs_source_t *transition)
 
 bool obs_source_transition_seam_call_start(obs_source_t *transition)
 {
-	UNUSED_PARAMETER(transition);
-	return false;
+	if (!transition->info.transition_start)
+		return false;
+	transition->info.transition_start(transition->context.data);
+	return true;
 }
 
 bool obs_source_transition_seam_call_stop(obs_source_t *transition)
 {
-	UNUSED_PARAMETER(transition);
-	return false;
+	if (!transition->info.transition_stop)
+		return false;
+	transition->info.transition_stop(transition->context.data);
+	return true;
 }
 
 void obs_source_transition_seam_dosignal(obs_source_t *transition, const char *signal_obs, const char *signal_source)
 {
-	UNUSED_PARAMETER(transition);
-	UNUSED_PARAMETER(signal_obs);
-	UNUSED_PARAMETER(signal_source);
+	obs_source_dosignal(transition, signal_obs, signal_source);
 }
 
 uint64_t obs_source_transition_seam_get_video_time(void)
 {
-	return 0;
+	return obs_video_stats_frame_time(&obs->video.stats);
 }
