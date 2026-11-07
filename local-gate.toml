@@ -23,14 +23,8 @@ verify = "build-project.yaml:ci-mode"
 
 # The manual fresh-runner compiler transfer trial cannot be locally attested.
 verify-exempt = [
-  "check-event",
-  "macos-build",
-  "ubuntu-build",
-  "flatpak-build",
-  "flatpak-runtime-test",
-  "flatpak-compiler-consumer",
-  "windows-build",
-  "ci.yml",
+  "check-event", "macos-build", "ubuntu-build", "flatpak-build", "flatpak-runtime-test", "flatpak-compiler-consumer",
+  "windows-build", "ci.yml",
 ]
 mode = "shadow"
 # GATE-001: these remote jobs run the gate command itself (`--lane` args
@@ -61,18 +55,8 @@ run = ["uv", "run", "ci/local_gate.py", "--lane", "rust-test"]
 tools = ["soldr"]
 exclude = ["**"]
 keep = [
-  "rust/**",
-  "dylints/**",
-  "Cargo.toml",
-  "Cargo.lock",
-  "rust-toolchain.toml",
-  ".cargo/**",
-  "libobs/**",
-  "plugins/obs-nvenc/**",
-  "deps/**",
-  "ci/local_gate.py",
-  "ci/nextest_tool.py",
-  "ci/nextest.toml",
+  "rust/**", "dylints/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**",
+  "plugins/obs-nvenc/**", "deps/**", "ci/local_gate.py", "ci/nextest_tool.py", "ci/nextest.toml",
 ]
 
 # Clippy and Dylint for x86_64-pc-windows-msvc and both macOS targets,
@@ -82,15 +66,8 @@ run = ["uv", "run", "ci/local_gate.py", "--lane", "cross"]
 tools = ["soldr"]
 exclude = ["**"]
 keep = [
-  "rust/**",
-  "dylints/**",
-  "Cargo.toml",
-  "Cargo.lock",
-  "rust-toolchain.toml",
-  ".cargo/**",
-  "libobs/**",
-  "plugins/obs-nvenc/**",
-  "deps/**",
+  "rust/**", "dylints/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**",
+  "plugins/obs-nvenc/**", "deps/**",
 ]
 
 # Tier 2: cmocka against libobs and libobs-c-reference (one build) in Docker
@@ -111,20 +88,11 @@ group = "docker"
 # list is checked against that closure by ci/test_tier2_proof_inputs.py).
 # Every workspace manifest stays an input: cargo reads them all.
 exclude = [
-  "docs/**",
-  "**/*.md",
-  "build-aux/**",
-  "libobs-d3d11/**",
-  "libobs-metal/**",
-  "libobs-winrt/**",
-  "additional_install_files/**",
-  "tools/**",
-  "ci/**",
-  ".github/**",
-  ".claude/**",
-  "rust/*/tests/**", "rust/*/benches/**", "rust/*/examples/**",
-  "rust/obs-c-oracle/**", "rust/obs-camera-busy/**", "rust/obs-fallback-warning/**", "rust/obs-gpu-status/**",
-  "rust/obs-frontend/**"]
+  "docs/**", "**/*.md", "build-aux/**", "libobs-d3d11/**", "libobs-metal/**", "libobs-winrt/**",
+  "additional_install_files/**", "tools/**", "ci/**", ".github/**", ".claude/**", "rust/*/tests/**",
+  "rust/*/benches/**", "rust/*/examples/**", "rust/obs-c-oracle/**", "rust/obs-camera-busy/**",
+  "rust/obs-fallback-warning/**", "rust/obs-gpu-status/**", "rust/obs-frontend/**",
+]
 keep = ["rust/*/Cargo.toml", "rust/obs-mcp/tests/**", "rust/obs-studio-rust/tests/**", "rust/obs-sys/tests/**"]
 
 # The platform half of the gate (#443): a change to macOS or Windows code is
@@ -150,13 +118,9 @@ optional = true
 [gate.trust]
 mode = "enforce"
 skip = [
-  "build-project.yaml:rust-tests-linux",
-  "build-project.yaml:rust-linux-tier2",
-  "build-project.yaml:rust-cross-lint",
-  "build-project.yaml:rust-tests-macos",
-  "build-project.yaml:rust-tests-windows",
-  "build-project.yaml:rust-tier2-macos",
-  "build-project.yaml:rust-tier2-windows",
+  "build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux-tier2", "build-project.yaml:rust-cross-lint",
+  "build-project.yaml:rust-tests-macos", "build-project.yaml:rust-tests-windows",
+  "build-project.yaml:rust-tier2-macos", "build-project.yaml:rust-tier2-windows",
 ]
 covered-by."build-project.yaml:rust-tests-linux" = ["lint", "dylint", "rust-test"]
 covered-by."build-project.yaml:rust-linux-tier2" = ["tier2-linux"]
@@ -166,8 +130,5 @@ covered-by."build-project.yaml:rust-tests-windows" = ["lint", "dylint", "cross",
 covered-by."build-project.yaml:rust-tier2-macos" = ["macos-native"]
 covered-by."build-project.yaml:rust-tier2-windows" = ["windows-native"]
 surfaces = [
-  "ci/nextest_tool.py",
-  "ci/nextest.toml",
-  "rust/tools/linux-validate/**",
-  "rust-toolchain.toml",
+  "ci/nextest_tool.py", "ci/nextest.toml", "rust/tools/linux-validate/**", "rust-toolchain.toml",
 ]

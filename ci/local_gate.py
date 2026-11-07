@@ -693,7 +693,8 @@ def lane_lint(fix: bool) -> None:
 def lane_dylint(fix: bool) -> None:
     # Pre-expansion Dylints scan whole source files, including inline tests;
     # lib + bins avoids integration tests requiring CARGO_BIN_EXE_* (#323).
-    soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"])
+    # Preserve the host pass's dedicated target root and warm artifacts (#2293).
+    soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"], beside_clippy=True)
 
 
 # Cross targets linted from this host (#472, #955): soldr provides the
