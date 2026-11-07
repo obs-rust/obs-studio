@@ -10,7 +10,7 @@ REGISTRATION = ROOT / "rust/obs-build/tests/native/registration"
 
 
 def shared_list(source):
-    return bool(re.search(r"const\s+CASES\s*:", source))
+    return bool(re.search(r"(?:const|static)\s+CASES\s*:[^=]*=\s*&\[", source))
 
 
 class RegistrationEntries(unittest.TestCase):

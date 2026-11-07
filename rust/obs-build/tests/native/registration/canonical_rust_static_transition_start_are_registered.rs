@@ -2,52 +2,14 @@ use super::*;
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 use std::path::PathBuf;
 
-const CASES: &[(&str, bool)] = &[("test_transition_start_steps", false)];
+static CASES: std::sync::LazyLock<Vec<String>> =
+    std::sync::LazyLock::new(|| rust_static_entries::cases("transition-start"));
 
 #[test]
 fn canonical_rust_static_transition_start_are_registered() {
-    use obs_build::validation::graph::{Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph
-        .targets
-        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
-    graph
-        .tests
-        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
-    for &(base, _) in CASES {
-        let name = format!("{base}_rust");
-        let target = graph
-            .targets
-            .get(&name)
-            .expect("missing Rust-static transition start");
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{base}.c")));
-        assert_eq!(target.includes, ["libobs"]);
-        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
-        assert!(target.archives.is_empty());
-        assert!(target.definitions.is_empty());
-        assert!(target.compile_options.is_empty());
-        assert!(target.link_options.is_empty());
-        assert_eq!(target.sanitizers, None);
-        use obs_build::validation::graph::ConditionalValue;
-        assert_eq!(target.libraries.len(), 2);
-        assert!(
-            matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static")
-        );
-        assert!(
-            matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
-        );
-        let test = &graph.tests[&name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{base}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-        assert_header_step_selection(&graph, &name);
+    let graph = rust_static_entries::assert_family("transition-start");
+    for base in CASES.iter() {
+        assert_header_step_selection(&graph, &format!("{base}_rust"));
     }
 }
 
@@ -164,7 +126,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
             assert!(
                 CASES
                     .iter()
-                    .any(|(base, _)| test["name"] == format!("{base}_rust"))
+                    .any(|base| test["name"] == format!("{base}_rust"))
             );
             assert!(
                 !test["properties"]
@@ -202,7 +164,7 @@ fn canonical_rust_static_transition_start_run_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
-    for &(base, _) in CASES {
+    for base in CASES.iter() {
         for section in ["targets", "tests"] {
             let name = format!("{base}_rust");
             selected[section][&name] = raw[section][&name].clone();

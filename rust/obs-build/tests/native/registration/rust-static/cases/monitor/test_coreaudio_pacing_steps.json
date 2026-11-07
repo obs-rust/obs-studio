@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_coreaudio_pacing_steps_rust": {
+      "sources": [
+        "test/cmocka/test_coreaudio_pacing_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "sanitizers": "address,undefined",
+      "definitions": [
+        "COREAUDIO_PACING_TEST_RUST"
+      ]
+    }
+  },
+  "tests": {
+    "test_coreaudio_pacing_steps_rust": {
+      "target": "test_coreaudio_pacing_steps_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

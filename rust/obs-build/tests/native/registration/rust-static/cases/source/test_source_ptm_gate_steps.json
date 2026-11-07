@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_ptm_gate_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_ptm_gate_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-ptm-gate.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_ptm_gate_steps_rust": {
+      "target": "test_source_ptm_gate_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

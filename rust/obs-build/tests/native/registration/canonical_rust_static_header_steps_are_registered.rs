@@ -2,96 +2,14 @@ use super::*;
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 use std::path::PathBuf;
 
-const CASES: &[(&str, bool)] = &[
-    ("test_async_upload_steps", true),
-    ("test_deinterlace_draw_plan_steps", true),
-    ("test_scene_render_plan_steps", true),
-    ("test_source_audio_place_steps", false),
-    ("test_source_draw_plan_steps", true),
-    ("test_source_media_admission_steps", true),
-    ("test_source_monitoring_steps", true),
-    ("test_source_render_route_steps", true),
-    ("test_source_video_tick_steps", false),
-    ("test_transition_load_steps", false),
-];
+static CASES: std::sync::LazyLock<Vec<String>> =
+    std::sync::LazyLock::new(|| rust_static_entries::cases("header"));
 
 #[test]
 fn canonical_rust_static_header_steps_are_registered() {
-    use obs_build::validation::graph::{Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph
-        .targets
-        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
-    graph
-        .tests
-        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
-    for &(base, math) in CASES {
-        let name = format!("{base}_rust");
-        let target = graph
-            .targets
-            .get(&name)
-            .expect("missing Rust-static header steps");
-        let sources: Vec<_> = target
-            .sources
-            .iter()
-            .map(|source| match source {
-                Source::Path(path) => path.as_str(),
-                Source::Conditional { .. } => panic!("header-step sources must be unconditional"),
-            })
-            .collect();
-        let expected = format!("test/cmocka/{base}.c");
-        let expected_sources = if base == "test_scene_render_plan_steps" {
-            vec![
-                "test/cmocka/scene-getter-log-link-stub.c",
-                expected.as_str(),
-            ]
-        } else {
-            vec![expected.as_str()]
-        };
-        assert_eq!(sources, expected_sources, "{name}");
-        assert_eq!(target.includes, ["libobs"]);
-        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
-        assert!(target.archives.is_empty());
-        assert!(target.definitions.is_empty());
-        assert!(target.compile_options.is_empty());
-        assert!(target.link_options.is_empty());
-        assert_eq!(target.sanitizers, None);
-        assert_header_step_linkage(target, math, base == "test_scene_render_plan_steps");
-        let test = &graph.tests[&name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{base}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-        assert_header_step_selection(&graph, &name);
-    }
-}
-
-fn assert_header_step_linkage(
-    target: &obs_build::validation::graph::Target,
-    math: bool,
-    unix_math: bool,
-) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), if math { 3 } else { 2 });
-    assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static"));
-    assert!(
-        matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
-    );
-    if unix_math {
-        assert!(
-            matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: Requirement::Fact(fact) }
-            if name == "m" && fact == "UNIX")
-        );
-    } else if math {
-        assert!(
-            matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: Requirement::Not { not } }
-                if name == "m" && matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-        );
+    let graph = rust_static_entries::assert_family("header");
+    for base in CASES.iter() {
+        assert_header_step_selection(&graph, &format!("{base}_rust"));
     }
 }
 
@@ -211,7 +129,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
             assert!(
                 CASES
                     .iter()
-                    .any(|(base, _)| test["name"] == format!("{base}_rust"))
+                    .any(|base| test["name"] == format!("{base}_rust"))
             );
             assert!(
                 !test["properties"]
@@ -249,7 +167,7 @@ fn canonical_rust_static_header_steps_run_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
-    for &(base, _) in CASES {
+    for base in CASES.iter() {
         for section in ["targets", "tests"] {
             let name = format!("{base}_rust");
             selected[section][&name] = raw[section][&name].clone();
