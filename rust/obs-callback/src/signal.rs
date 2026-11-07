@@ -35,8 +35,8 @@
 //! callbacks.
 
 use std::cell::{Cell, RefCell};
-use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 
 use crate::decl::{Decl, DeclParse, parse_decl};
 use crate::name_table::NameTable;
@@ -60,26 +60,19 @@ pub enum AddResult {
 
 /// A lock that its owner thread can take again.
 ///
-/// `std::sync::ReentrantLock` is not stable. The data a holder changes
-/// sits in its own `Mutex`, taken only for short steps and never across a
-/// callback, so taking this lock twice on one thread is safe.
+/// The outermost guard holds `gate` across callbacks. Recursive acquisitions
+/// on that same thread need no second mutex: the owner token is unique among
+/// live threads, and is cleared before the outer guard releases the gate.
 #[derive(Default)]
 struct ReentrantLock {
-    state: Mutex<Owner>,
-    released: Condvar,
-}
-
-/// The thread that holds a `ReentrantLock`, how often, and how many
-/// threads wait for it.
-#[derive(Default)]
-struct Owner {
-    thread: Option<usize>,
-    depth: usize,
-    waiting: usize,
+    gate: Mutex<()>,
+    owner: AtomicUsize,
 }
 
 struct ReentrantGuard<'a> {
     lock: &'a ReentrantLock,
+    // Keeping the real guard here also makes recursive guards !Send.
+    outer: Option<MutexGuard<'a, ()>>,
 }
 
 thread_local! {
@@ -99,30 +92,25 @@ fn thread_tag() -> usize {
 impl ReentrantLock {
     fn lock(&self) -> ReentrantGuard<'_> {
         let me = thread_tag();
-        let mut state = lock(&self.state);
-        while state.thread.is_some_and(|owner| owner != me) {
-            state.waiting += 1;
-            state = self.released.wait(state).unwrap_or_else(|e| e.into_inner());
-            state.waiting -= 1;
-        }
-        state.thread = Some(me);
-        state.depth += 1;
-        ReentrantGuard { lock: self }
+        let outer = if self.owner.load(Ordering::Relaxed) == me {
+            None
+        } else {
+            let guard = lock(&self.gate);
+            self.owner.store(me, Ordering::Relaxed);
+            Some(guard)
+        };
+        ReentrantGuard { lock: self, outer }
     }
 }
 
 impl Drop for ReentrantGuard<'_> {
-    // PERF GUARD #1748
+    // PERF GUARD #1748: the outer mutex wakes only contending threads.
     fn drop(&mut self) {
-        let mut state = lock(&self.lock.state);
-        state.depth -= 1;
-        if state.depth == 0 {
-            state.thread = None;
-            // Only when a thread waits: on Linux every notify is a futex
-            // syscall, and each signal releases two of these locks.
-            if state.waiting > 0 {
-                self.lock.released.notify_one();
-            }
+        if self.outer.is_some() {
+            // The mutex provides cross-thread synchronization. `owner` only
+            // identifies this thread's recursive entry, so relaxed suffices.
+            // Clear it while still holding the gate, including during unwind.
+            self.lock.owner.store(0, Ordering::Relaxed);
         }
     }
 }
@@ -143,8 +131,6 @@ struct Entry {
 #[derive(Default)]
 struct Callbacks {
     entries: Vec<Entry>,
-    /// Depth of the running passes of this signal.
-    signalling: usize,
 }
 
 /// `struct signal_info`.
@@ -152,6 +138,11 @@ struct Signal {
     decl: Decl,
     pass: ReentrantLock,
     callbacks: Mutex<Callbacks>,
+    /// Exact list emptiness, published under `callbacks` after every resize.
+    /// Includes marked entries until the outer pass sweeps them.
+    has_entries: AtomicBool,
+    /// Accessed only while `pass` is held, including recursive acquisitions.
+    signalling: AtomicUsize,
     /// Bumped on every change to `callbacks.entries` (#3350).
     generation: AtomicU64,
 }
@@ -165,14 +156,16 @@ struct GlobalEntry {
 #[derive(Default)]
 struct GlobalCallbacks {
     entries: Vec<GlobalEntry>,
-    /// Depth of the running global passes.
-    signalling: usize,
 }
 
 #[derive(Default)]
 struct Globals {
     pass: ReentrantLock,
     callbacks: Mutex<GlobalCallbacks>,
+    /// Same emptiness invariant as `Signal::has_entries`.
+    has_entries: AtomicBool,
+    /// Accessed only while `pass` is held, including recursive acquisitions.
+    signalling: AtomicUsize,
     /// Bumped on every change to `callbacks.entries` (#3350).
     generation: AtomicU64,
 }
@@ -312,6 +305,8 @@ impl SignalHandler {
             decl,
             pass: ReentrantLock::default(),
             callbacks: Mutex::new(Callbacks::default()),
+            has_entries: AtomicBool::new(false),
+            signalling: AtomicUsize::new(0),
             generation: AtomicU64::new(0),
         });
         let mut signals = self.signals.write().unwrap_or_else(|err| err.into_inner());
@@ -346,6 +341,7 @@ impl SignalHandler {
                 keep_ref,
             });
             bump(&sig.generation);
+            sig.has_entries.store(true, Ordering::Release);
         }
         true
     }
@@ -360,16 +356,19 @@ impl SignalHandler {
         let keep_ref = {
             let _pass = sig.pass.lock();
             let mut cbs = lock(&sig.callbacks);
-            let signalling = cbs.signalling != 0;
+            let signalling = sig.signalling.load(Ordering::Relaxed) != 0;
             bump(&sig.generation);
-            match cbs.entries.iter().position(|e| e.key == key) {
+            let keep_ref = match cbs.entries.iter().position(|e| e.key == key) {
                 Some(i) if signalling => {
                     cbs.entries[i].remove = true;
                     false
                 }
                 Some(i) => cbs.entries.remove(i).keep_ref,
                 None => false,
-            }
+            };
+            sig.has_entries
+                .store(!cbs.entries.is_empty(), Ordering::Release);
+            keep_ref
         };
         keep_ref && self.release()
     }
@@ -380,6 +379,7 @@ impl SignalHandler {
         let mut cbs = lock(&self.globals.callbacks);
         if global_find(&cbs.entries, key).is_none() {
             cbs.entries.push(GlobalEntry { key, remove: false });
+            self.globals.has_entries.store(true, Ordering::Release);
             bump(&self.globals.generation);
         }
     }
@@ -391,10 +391,13 @@ impl SignalHandler {
         let mut cbs = lock(&self.globals.callbacks);
         if let Some(i) = global_find(&cbs.entries, key) {
             bump(&self.globals.generation);
-            if cbs.signalling != 0 {
+            if self.globals.signalling.load(Ordering::Relaxed) != 0 {
                 cbs.entries[i].remove = true;
             } else {
                 cbs.entries.remove(i);
+                self.globals
+                    .has_entries
+                    .store(!cbs.entries.is_empty(), Ordering::Release);
             }
         }
     }
@@ -413,8 +416,9 @@ impl SignalHandler {
         // its reentrant lock and the pass stack (#3277). Nothing would run
         // or be swept, and a connect racing this check is the same as one
         // that waited for the pass to end; it would not run in this pass
-        // either. The global pass below still runs. The check runs under
-        // the table's read lock, so that case clones no `Arc` (#3350):
+        // either. Writers publish list emptiness before releasing their
+        // callback lock. The global pass below still runs. The check runs
+        // under the table's read lock, so that case clones no `Arc` (#3350):
         // `add` takes the write lock without any callback lock, so the
         // nesting cannot invert.
         let sig = {
@@ -422,12 +426,17 @@ impl SignalHandler {
             let Some(sig) = signals.get(signal) else {
                 return false;
             };
-            (!lock(&sig.callbacks).entries.is_empty()).then(|| Arc::clone(sig))
+            sig.has_entries
+                .load(Ordering::Acquire)
+                .then(|| Arc::clone(sig))
         };
         let mut remove_refs = 0;
         if let Some(sig) = sig {
             let _pass = sig.pass.lock();
             let pass_slot = PassSlot::push(&SIGNAL_PASSES, &sig);
+            let initial_generation = sig.generation.load(Ordering::Relaxed);
+            let depth = sig.signalling.load(Ordering::Relaxed);
+            sig.signalling.store(depth + 1, Ordering::Relaxed);
 
             // Every writer holds `pass`, so while it is held only this
             // thread's callbacks change the list. Copy it out in chunks
@@ -441,22 +450,19 @@ impl SignalHandler {
             let previous = CURRENT_SIGNAL.with(|c| c.replace(Some((slot, 0))));
             let mut snapshot = [None::<Entry>; SNAPSHOT];
             let mut i = 0;
-            let mut entered = false;
             'pass: loop {
-                let (count, generation) = {
-                    let mut cbs = lock(&sig.callbacks);
-                    // `signalling` rises under the first chunk's lock: one
-                    // lock fewer per emit (#3350).
-                    if !entered {
-                        cbs.signalling += 1;
-                        entered = true;
-                    }
+                let (count, generation, complete) = {
+                    let cbs = lock(&sig.callbacks);
                     let rest = cbs.entries.get(i..).unwrap_or_default();
                     let count = rest.len().min(SNAPSHOT);
                     for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
                         *to = Some(*from);
                     }
-                    (count, sig.generation.load(Ordering::Relaxed))
+                    (
+                        count,
+                        sig.generation.load(Ordering::Relaxed),
+                        rest.len() <= SNAPSHOT,
+                    )
                 };
                 if count == 0 {
                     break;
@@ -473,39 +479,50 @@ impl SignalHandler {
                         continue 'pass;
                     }
                 }
+                if complete {
+                    break;
+                }
             }
             CURRENT_SIGNAL.with(|c| c.set(previous));
 
-            remove_refs = end_signal_pass(&sig);
+            remove_refs = end_signal_pass(&sig, initial_generation);
         }
 
+        self.signal_globals(&mut call_global);
+
+        (0..remove_refs).any(|_| self.release())
+    }
+
+    fn signal_globals(&self, call_global: &mut impl FnMut(CallbackKey)) {
         // No global callbacks: skip the pass and its locks (#3212). Nothing
         // would run, and a connect from another thread racing this check
         // is the same as one that waited for the pass to end; it would not
         // have run in this pass either.
-        if !lock(&self.globals.callbacks).entries.is_empty() {
+        if self.globals.has_entries.load(Ordering::Acquire) {
             let globals = &self.globals;
             let _pass = globals.pass.lock();
             let pass_slot = PassSlot::push(&GLOBAL_PASSES, globals);
+            let initial_generation = globals.generation.load(Ordering::Relaxed);
+            let depth = globals.signalling.load(Ordering::Relaxed);
+            globals.signalling.store(depth + 1, Ordering::Relaxed);
             // As in the signal pass above (#3350).
             let slot = pass_slot.slot;
             let previous = swap_current((None, Some((slot, 0))));
             let mut snapshot = [None::<GlobalEntry>; SNAPSHOT];
             let mut i = 0;
-            let mut entered = false;
             'pass: loop {
-                let (count, generation) = {
-                    let mut cbs = lock(&globals.callbacks);
-                    if !entered {
-                        cbs.signalling += 1;
-                        entered = true;
-                    }
+                let (count, generation, complete) = {
+                    let cbs = lock(&globals.callbacks);
                     let rest = cbs.entries.get(i..).unwrap_or_default();
                     let count = rest.len().min(SNAPSHOT);
                     for (to, from) in snapshot.iter_mut().zip(&rest[..count]) {
                         *to = Some(*from);
                     }
-                    (count, globals.generation.load(Ordering::Relaxed))
+                    (
+                        count,
+                        globals.generation.load(Ordering::Relaxed),
+                        rest.len() <= SNAPSHOT,
+                    )
                 };
                 if count == 0 {
                     break;
@@ -522,32 +539,39 @@ impl SignalHandler {
                         continue 'pass;
                     }
                 }
+                if complete {
+                    break;
+                }
             }
             swap_current(previous);
-            let mut cbs = lock(&globals.callbacks);
-            cbs.signalling -= 1;
-            if cbs.signalling == 0 {
+            globals.signalling.store(depth, Ordering::Relaxed);
+            if depth == 0 && globals.generation.load(Ordering::Relaxed) != initial_generation {
+                let mut cbs = lock(&globals.callbacks);
                 let before = cbs.entries.len();
                 cbs.entries.retain(|entry| !entry.remove);
+                globals
+                    .has_entries
+                    .store(!cbs.entries.is_empty(), Ordering::Release);
                 // The list changed only if the sweep removed something.
                 if cbs.entries.len() != before {
                     bump(&globals.generation);
                 }
             }
         }
-
-        (0..remove_refs).any(|_| self.release())
     }
 }
 
 /// Ends a signal pass: the outermost one sweeps the callbacks marked for
 /// removal. Returns how many of them held a `keep_ref` reference.
-fn end_signal_pass(sig: &Signal) -> usize {
-    let mut cbs = lock(&sig.callbacks);
-    cbs.signalling -= 1;
-    if cbs.signalling != 0 {
+fn end_signal_pass(sig: &Signal, initial_generation: u64) -> usize {
+    let depth = sig.signalling.load(Ordering::Relaxed) - 1;
+    sig.signalling.store(depth, Ordering::Relaxed);
+    // Outermost passes start with no marked entries. An unchanged generation
+    // therefore needs neither a sweep nor its callback mutex (#3350).
+    if depth != 0 || sig.generation.load(Ordering::Relaxed) == initial_generation {
         return 0;
     }
+    let mut cbs = lock(&sig.callbacks);
     let before = cbs.entries.len();
     let mut remove_refs = 0;
     for i in (0..cbs.entries.len()).rev() {
@@ -561,6 +585,8 @@ fn end_signal_pass(sig: &Signal) -> usize {
     // The list changed only if the sweep removed something (#3350).
     if cbs.entries.len() != before {
         bump(&sig.generation);
+        sig.has_entries
+            .store(!cbs.entries.is_empty(), Ordering::Release);
     }
     remove_refs
 }

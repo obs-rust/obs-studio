@@ -79,8 +79,8 @@ bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- '(avc|hevc
 issue = 1748
 file = "rust/obs-callback/src/signal.rs"
 function = "drop"
-require = ["if state.waiting > 0", "notify_one()"]
-reason = "each signal releases two ReentrantLocks; notify_one with no waiter is a FUTEX_WAKE syscall on Linux (about 335 ns in an LXC container), and notifying on every release made signal_handler_signal 12.9x the C code on x86_64"
+require = ["if self.outer.is_some()", "self.lock.owner.store(0, Ordering::Relaxed)"]
+reason = "each signal releases two ReentrantLocks; the outer guard clears its owner while holding a standard mutex, whose unlock wakes only contended waiters. Unconditional Condvar notification previously cost a FUTEX_WAKE syscall per release (#1748)"
 bench = "soldr cargo bench -p obs-c-oracle --bench port_comparison -- signal/ (x86_64 Linux, needs the callback benches of #1746)"
 
 [[guard]]
