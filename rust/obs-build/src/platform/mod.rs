@@ -901,6 +901,11 @@ pub fn native_test_facts(
         ("OS_OPENBSD".into(), target.contains("openbsd")),
         ("ENABLE_PULSEAUDIO".into(), pulseaudio),
         ("ENABLE_HEVC".into(), hevc),
+        // The compatibility builder has no Wayland option; explicit SDK contracts
+        // and CMake enable these fixtures with the original feature guard.
+        ("ENABLE_WAYLAND".into(), false),
+        ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
+        ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         // Optional headless plugin SDKs are false until the consumer probes them.
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
         ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
