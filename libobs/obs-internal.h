@@ -244,6 +244,13 @@ struct obs_hotkey {
 	UT_hash_handle hh;
 };
 
+/* Borrowed identity fields keep getters independent of the hotkey layout. */
+struct obs_hotkey_identity_fields {
+	const obs_hotkey_id *id;
+	char *const *name;
+};
+struct obs_hotkey_identity_fields obs_hotkey_identity_fields(const obs_hotkey_t *key);
+
 /* Borrowed field pointers keep read-only getters independent of the hotkey layout. */
 struct obs_hotkey_object_fields {
 	char *const *description;

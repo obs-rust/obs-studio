@@ -51,16 +51,6 @@ void obs_hotkeys_mutex_unlock(void)
 	pthread_mutex_unlock(&obs->hotkeys.mutex);
 }
 
-obs_hotkey_id obs_hotkey_get_id(const obs_hotkey_t *key)
-{
-	return key->id;
-}
-
-const char *obs_hotkey_get_name(const obs_hotkey_t *key)
-{
-	return key->name;
-}
-
 void obs_hotkey_set_name(obs_hotkey_id id, const char *name)
 {
 	obs_hotkey_t *hotkey;
