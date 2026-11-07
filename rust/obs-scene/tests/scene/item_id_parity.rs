@@ -27,7 +27,11 @@ fn real_header_prefix_layout() {
     ];
     for (index, value) in rust.into_iter().enumerate() {
         // SAFETY: the oracle accepts every integer and returns a layout value.
-        assert_eq!(value, unsafe { oracle_scene_item_id_layout(index as u32) }, "layout index {index}");
+        assert_eq!(
+            value,
+            unsafe { oracle_scene_item_id_layout(index as u32) },
+            "layout index {index}"
+        );
     }
 }
 
@@ -35,13 +39,26 @@ fn check(flags: u32, id: i64) {
     // SAFETY: C constructs a complete live item and calls the getter
     // synchronously with its initialized ID, then compares all item bytes.
     let mismatches = unsafe { oracle_scene_item_id_probe(flags, id, obs_sceneitem_get_id) };
-    assert_eq!(mismatches, 0, "flags={flags:#x}, id={id}, mismatch bits={mismatches}");
+    assert_eq!(
+        mismatches, 0,
+        "flags={flags:#x}, id={id}, mismatch bits={mismatches}"
+    );
 }
 
 #[test]
 fn characterized_edges() {
     for flags in 0..128 {
-        for id in [i64::MIN, i64::MIN + 1, -17, -1, 0, 1, 17, i64::MAX - 1, i64::MAX] {
+        for id in [
+            i64::MIN,
+            i64::MIN + 1,
+            -17,
+            -1,
+            0,
+            1,
+            17,
+            i64::MAX - 1,
+            i64::MAX,
+        ] {
             check(flags, id);
         }
     }
@@ -53,16 +70,28 @@ fn null_diagnostic() {
     if std::env::var_os(CHILD).is_some() {
         // SAFETY: this child has no concurrent tests; the C probe saves and
         // restores the global log handler around synchronous getter calls.
-        assert_eq!(unsafe { oracle_scene_item_id_null_probe(obs_sceneitem_get_id) }, 0);
+        assert_eq!(
+            unsafe { oracle_scene_item_id_null_probe(obs_sceneitem_get_id) },
+            0
+        );
         return;
     }
     let module = module_path!().split_once("::").unwrap().1;
     let output = std::process::Command::new(std::env::current_exe().unwrap())
         .env(CHILD, "1")
-        .args(["--exact", &format!("{module}::null_diagnostic"), "--nocapture"])
+        .args([
+            "--exact",
+            &format!("{module}::null_diagnostic"),
+            "--nocapture",
+        ])
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
 }
 
