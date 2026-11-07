@@ -963,6 +963,15 @@ cmocka-only linkage and tracked host implementation/PCH headers; they need no
 Python runtime or display. This is standalone helper coverage, not full
 frontend/application parity (#1390). Hosted native selectors still name the
 older utility-only contract, so this does not claim macOS/Windows runtime replay.
+the selected original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. The display-free X11 keymap reply-bit suite is
+included on Linux/FreeBSD, preserving cmocka-only linkage and declaring XCB as a
+header-only dependency. Its indirect helper header is tracked for invalidation.
+This checks the NULL-reply and key-bit cases without starting an X server.
+Hosted commands still select the utility contract's earlier name, so this
+contract alone does not establish native macOS/Windows runtime coverage. It
+proves the selected standalone helpers, not full frontend/application parity
+(#1390).
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
 Its unchanged four cases exercise worker-thread profile creation/removal,

@@ -194,7 +194,10 @@ fn canonical_x11_keymap_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_x11_keymap";
-    let target = graph.targets.get(name).expect("canonical graph omits test_x11_keymap");
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_x11_keymap");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_x11_keymap.c"));
     assert_eq!(target.includes, ["libobs"]);
@@ -202,8 +205,10 @@ fn canonical_x11_keymap_is_registered() {
     assert_eq!(target.header_packages, ["xcb"]);
     assert!(target.packages.is_empty());
     assert!(target.header_libraries.is_empty());
-    assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
-        if library == "OBS::native-test-cmocka"));
+    assert!(
+        matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
+        if library == "OBS::native-test-cmocka")
+    );
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
