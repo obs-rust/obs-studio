@@ -956,6 +956,13 @@ unchanged cases. Their common header directory is tracked for rebuilds. The
 frontend utility contract replays them through Cargo and CMake on Linux with
 GCC and Clang; this does not exercise the macOS HAL plug-in, installation or
 an audio device, nor establish cross-host runtime parity (#1390).
+all six original C tests plus the two unchanged frontend-tools host helpers
+through both the Cargo and CMake consumers and compares the evaluated CTest
+inventory. The host helpers retain their original `NOT OS_WINDOWS` guard,
+cmocka-only linkage and tracked host implementation/PCH headers; they need no
+Python runtime or display. This is standalone helper coverage, not full
+frontend/application parity (#1390). Hosted native selectors still name the
+older utility-only contract, so this does not claim macOS/Windows runtime replay.
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
 Its unchanged four cases exercise worker-thread profile creation/removal,

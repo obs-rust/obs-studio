@@ -290,11 +290,31 @@ fn canonical_frontend_tools_hosts_are_registered() {
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let names = ["test_frontend_tools_host", "test_frontend_tools_host_macos"];
     for name in names {
-        let target = graph.targets.get(name).unwrap_or_else(|| panic!("canonical graph omits {name}"));
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)] if path == &format!("test/cmocka/{name}.c")));
+        let target = graph
+            .targets
+            .get(name)
+            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        assert!(
+            matches!(target.sources.as_slice(), [Source::Path(path)] if path == &format!("test/cmocka/{name}.c"))
+        );
         assert_eq!(target.includes, ["."]);
-        assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)] if name == "OBS::native-test-cmocka"));
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)] if name == "OBS::native-test-cmocka")
+        );
         assert!(target.header_libraries.is_empty());
+        let host = if name.ends_with("macos") {
+            "macos"
+        } else {
+            "posix"
+        };
+        assert_eq!(
+            target.watch_inputs,
+            [
+                format!("plugins/frontend-tools/frontend-tools-host-{host}.c.h"),
+                "plugins/frontend-tools/frontend-tools-host.h".into(),
+                format!("plugins/frontend-tools/build/frontend-tools-host-{host}.pch.h"),
+            ]
+        );
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
