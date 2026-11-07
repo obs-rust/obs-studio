@@ -4309,6 +4309,24 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_can_pause": {
+      "sources": [
+        "test/cmocka/test_output_can_pause.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_caption_codec": {
       "sources": [
         "test/cmocka/test_output_caption_codec.c"
@@ -11132,6 +11150,12 @@
     },
     "test_output_begin_steps": {
       "target": "test_output_begin_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_can_pause": {
+      "target": "test_output_can_pause",
       "command": [
         "${target}"
       ]
