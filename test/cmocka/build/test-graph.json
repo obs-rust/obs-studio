@@ -3893,6 +3893,44 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_lua_graphics_lock": {
+      "sources": [
+        "test/cmocka/test_lua_graphics_lock.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "test/cmocka/fixtures/lua-graphics-lock-original.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_lua_graphics_lock_bounded": {
+      "sources": [
+        "test/cmocka/test_lua_graphics_lock_bounded.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-source.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ]
+    },
     "test_mac_vmic_clock": {
       "sources": [
         "test/cmocka/test_mac_vmic_clock.c"
@@ -8666,6 +8704,28 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_service_state": {
+      "sources": [
+        "test/cmocka/test_service_state.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "includes": [
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-state.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_settings_migration": {
       "sources": [
         "test/cmocka/test_settings_migration.cpp"
@@ -11143,6 +11203,15 @@
         ]
       }
     },
+    "test_vcam_audio_config": {
+      "sources": [
+        "frontend/tests/test_vcam_audio_config.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/utility/VCamAudio.hpp"
+      ]
+    },
     "test_vcam_format": {
       "sources": [
         "test/cmocka/test_vcam_format.c",
@@ -11482,6 +11551,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_virtual_cam_shutdown": {
+      "sources": [
+        "frontend/tests/test_virtual_cam_shutdown.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/widgets/VirtualCamShutdown.hpp"
+      ]
+    },
     "test_visibility_transition": {
       "sources": [
         "test/cmocka/test_visibility_transition.c",
@@ -11732,6 +11810,40 @@
             "not": "MSVC"
           }
         }
+      ]
+    },
+    "test_wayland_hotkeys": {
+      "sources": [
+        "test/cmocka/test_wayland_hotkeys.c",
+        "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h",
+        "libobs/obs-nix-hotkey-state.c.h"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs.pch.h",
+        "libobs/build/libobs-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_wayland_keymap": {
@@ -13581,6 +13693,20 @@
     "test_libobs_reference_hosts": {
       "target": "test_libobs_reference_hosts"
     },
+    "test_lua_graphics_lock": {
+      "target": "test_lua_graphics_lock",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
+    },
+    "test_lua_graphics_lock_bounded": {
+      "target": "test_lua_graphics_lock_bounded",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
+    },
     "test_mac_vmic_clock": {
       "target": "test_mac_vmic_clock"
     },
@@ -15098,6 +15224,12 @@
         ]
       ]
     },
+    "test_service_state": {
+      "target": "test_service_state",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_settings_migration": {
       "target": "test_settings_migration",
       "command": [
@@ -16037,6 +16169,13 @@
         ]
       }
     },
+    "test_vcam_audio_config": {
+      "target": "test_vcam_audio_config",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+    },
     "test_vcam_format": {
       "target": "test_vcam_format",
       "requires": "HAVE_OBS_V4L2",
@@ -16170,6 +16309,13 @@
         ]
       ]
     },
+    "test_virtual_cam_shutdown": {
+      "target": "test_virtual_cam_shutdown",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+    },
     "test_visibility_transition": {
       "target": "test_visibility_transition",
       "command": [
@@ -16242,6 +16388,18 @@
       "resource_locks": [
         "timing"
       ]
+    },
+    "test_wayland_hotkeys": {
+      "target": "test_wayland_hotkeys",
+      "command": [
+        "${target}"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
     },
     "test_wayland_keymap": {
       "target": "test_wayland_keymap",

@@ -60,10 +60,7 @@ elseif(OS_FREEBSD OR OS_OPENBSD)
 endif()
 
 if(ENABLE_UNIT_TESTS)
-  add_executable(test_virtual_cam_shutdown tests/test_virtual_cam_shutdown.cpp)
-  add_test(NAME test_virtual_cam_shutdown COMMAND test_virtual_cam_shutdown)
-  add_executable(test_vcam_audio_config tests/test_vcam_audio_config.cpp)
-  add_test(NAME test_vcam_audio_config COMMAND test_vcam_audio_config)
+  # Virtual-camera helper tests are registered by test/cmocka/build/test-graph.json.
   add_executable(test_first_run_wizard tests/test_first_run_wizard.cpp)
   add_test(NAME test_first_run_wizard COMMAND test_first_run_wizard)
   add_executable(test_config_migration tests/test_config_migration.cpp)
