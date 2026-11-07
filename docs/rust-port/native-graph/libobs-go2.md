@@ -26,11 +26,13 @@ Registration checks cover all five OS selections, exact source lists and
 real linkage, absent timeouts/wrappers and removal of legacy declarations.
 Original/canonical CMake inventories match for Linux (three), Windows (one),
 macOS, FreeBSD and OpenBSD (two each). This simulates selection, not runtime
-on those platforms. GCC and Clang CMake configure/build/CTest each pass all
+on those platforms. GCC and Clang Cargo graph compilation/execution and CMake
+configure/build/CTest each pass all
 three executables (11 unchanged C cases) using installed OBS 32.1.2.
 
 Replay sources, original fragments, dependency inputs and inventories are in
-`/tmp/b2-libobs-go2/`. CMake evidence: `local-test-k92OvU.log`; five-OS
+`/tmp/b2-libobs-go2/`. Cargo/CMake evidence: `local-test-cnq704.log` (all exit codes zero; expected
+missing-sndstat diagnostic is asserted by the unchanged test); five-OS
 selection: `local-test-WjIwmg.log`; focused Python guards:
 `local-test-HzbNkK.log`. These external-library smoke checks do not establish
 current-head hybrid/C-reference runtime or exact dynamic export parity.
@@ -45,3 +47,18 @@ several output tests need graphics/display/plugin integration; media tests
 need FFmpeg fixtures; inhibit checks need OS services; connector, JACK, Lua,
 output-host, startup and Rust-static checks remain separate dependency slices.
 No PR, auto-merge or hosted CI is requested for this branch-only handoff.
+
+Initial GREEN registration passed (`local-test-s5eESI.log`); 25 reduced debug
+runs of that compiled check took at most 0.042 s, peak RSS 10,888 KiB, with no
+test-owned threads (`local-test-RMILUu.log`). The later exact-source assertions
+in the registration module remain uncompiled locally: the subsequent Soldr
+compile stalled, and scoped Clippy was refused by Soldr's active build-lock
+preflight (`local-test-8k7sSc.log`). No lock was removed or guard bypassed.
+The native replay compiled successfully with the documented
+`SOLDR_RUSTC_WRAPPER=none` setting and confirmed each artifact's selected real
+libobs resolution with `ldd`. Whole-graph legacy replacement passes
+(`local-test-jg5pRy.log`); scoped rustfmt and `git diff --check` pass.
+One primary read-only clud-review found no issues. Full lint/unittest were
+not run; the unittest wrapper's pruning is prohibited for this assignment.
+The manager must compile/run the enhanced registration and scoped Clippy
+on the rollup before claiming those checks pass.
