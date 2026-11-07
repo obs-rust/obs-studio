@@ -235,6 +235,29 @@
       ],
       "sanitizers": "undefined"
     },
+    "test_async_audio_own_clock": {
+      "sources": [
+        "test/cmocka/test_async_audio_own_clock.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_async_conversion_plan": {
       "sources": [
         "test/cmocka/test_async_conversion_plan.c",
@@ -279,6 +302,30 @@
           }
         }
       ]
+    },
+    "test_async_delay_audio": {
+      "sources": [
+        "test/cmocka/test_async_delay_audio.c",
+        "plugins/obs-filters/async-delay-filter.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_async_delay_pacing": {
       "sources": [
@@ -2921,6 +2968,28 @@
         "frontend/api/obs-frontend-internal.hpp"
       ]
     },
+    "test_gl_dynamic_texture": {
+      "sources": [
+        "test/cmocka/test_gl_dynamic_texture.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_glyph_atlas": {
       "sources": [
         "test/cmocka/test_glyph_atlas.c",
@@ -4922,6 +4991,22 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_nix_startup_log": {
+      "sources": [
+        "test/cmocka/test_nix_startup_log.c",
+        "libobs/obs-nix-log-rules.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_nix_system_info_steps": {
       "sources": [
@@ -8675,6 +8760,21 @@
         "libobs/data"
       ]
     },
+    "test_scene_size_race": {
+      "sources": [
+        "test/cmocka/test_scene_size_race.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_scene_transform_update_steps": {
       "sources": [
         "test/cmocka/test_scene_transform_update_steps.c",
@@ -10031,6 +10131,23 @@
       "header_libraries": [
         "OBS::ffmpeg-net-host"
       ]
+    },
+    "test_startup_alloc_stable": {
+      "sources": [
+        "test/cmocka/test_startup_alloc_stable.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_stinger_monitoring_migration": {
       "sources": [
@@ -12436,6 +12553,18 @@
         "${target}"
       ]
     },
+    "test_async_audio_own_clock": {
+      "target": "test_async_audio_own_clock",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180,
+      "resource_locks": [
+        "timing"
+      ]
+    },
     "test_async_conversion_plan": {
       "target": "test_async_conversion_plan",
       "command": [
@@ -12447,6 +12576,18 @@
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
+      ]
+    },
+    "test_async_delay_audio": {
+      "target": "test_async_delay_audio",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 180,
+      "resource_locks": [
+        "timing"
       ]
     },
     "test_async_delay_pacing": {
@@ -13476,6 +13617,15 @@
         "${target}"
       ]
     },
+    "test_gl_dynamic_texture": {
+      "target": "test_gl_dynamic_texture",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
     "test_glyph_atlas": {
       "target": "test_glyph_atlas"
     },
@@ -14155,6 +14305,15 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_nix_startup_log": {
+      "target": "test_nix_startup_log",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
@@ -15341,6 +15500,14 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120
     },
+    "test_scene_size_race": {
+      "target": "test_scene_size_race",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}"
+    },
     "test_scene_transform_update_steps": {
       "target": "test_scene_transform_update_steps",
       "command": [
@@ -15930,6 +16097,20 @@
       "target": "test_srt_open_close",
       "requires": "HAVE_SRT_TEST_SDK",
       "timeout_seconds": 60
+    },
+    "test_startup_alloc_stable": {
+      "target": "test_startup_alloc_stable",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_stinger_monitoring_migration": {
       "target": "test_stinger_monitoring_migration"

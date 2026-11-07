@@ -57,10 +57,10 @@ function(_obs_test_graph_requirement output json)
     set(${output} "${value}" PARENT_SCOPE)
   elseif(kind STREQUAL "STRING")
     # CMake defines these built-in platform/compiler facts only when true.
-    # Wayland is a host-only option, absent on Windows and macOS. SDK facts
-    # remain explicitly declared by their fragments; unknown names stay fatal.
+    # Wayland and the X11 display declaration may be absent on other hosts.
+    # SDK facts stay explicitly declared; unknown names (including typos) fail.
     set(platform_facts UNIX APPLE WIN32 MSVC)
-    set(host_options ENABLE_WAYLAND)
+    set(host_options ENABLE_WAYLAND HAVE_X11_DISPLAY)
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
@@ -224,6 +224,15 @@ function(_obs_test_graph_values output graph target field)
 endfunction()
 
 function(obs_native_test_graph path root)
+  # A declared X server enables Linux startup/graphics fixtures. Absence is
+  # unsupported, not an unknown requirement or permission to report skips.
+  # Focused consumers may declare this fact explicitly before calling us.
+  if(NOT DEFINED HAVE_X11_DISPLAY)
+    set(HAVE_X11_DISPLAY FALSE)
+    if(OS_LINUX AND NOT "$ENV{DISPLAY}" STREQUAL "")
+      set(HAVE_X11_DISPLAY TRUE)
+    endif()
+  endif()
   set(HAVE_HAPPY_EYEBALLS FALSE)
   if(TARGET OBS::happy-eyeballs)
     set(HAVE_HAPPY_EYEBALLS TRUE)

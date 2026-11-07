@@ -895,6 +895,11 @@ pub fn native_test_facts(
     std::collections::BTreeMap::from([
         ("UNIX".into(), !target.contains("windows")),
         ("OS_LINUX".into(), target.contains("linux")),
+        (
+            "HAVE_X11_DISPLAY".into(),
+            target.contains("linux")
+                && std::env::var_os("DISPLAY").is_some_and(|display| !display.is_empty()),
+        ),
         ("OS_FREEBSD".into(), target.contains("freebsd")),
         ("OS_WINDOWS".into(), target.contains("windows")),
         ("OS_MACOS".into(), target.contains("apple")),
