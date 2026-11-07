@@ -603,6 +603,13 @@ fn main() {
     .expect("write canvas field adapter extract");
     oracle.include(&extract_dir);
 
+    // Compile the production borrowed field seam without the full app PCH.
+    std::fs::write(
+        extract_dir.join("output-can-pause-fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-output-can-pause-fields.c.h")),
+    )
+    .expect("write output pause capability field seam");
+
     oracle
         .include(&libobs)
         // The libobs implementation files include their precompiled header by

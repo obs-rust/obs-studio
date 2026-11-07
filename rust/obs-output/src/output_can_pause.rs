@@ -5,6 +5,12 @@ use crate::NullLog;
 pub const OBS_OUTPUT_CAN_PAUSE: u32 = 1 << 5;
 
 /// Query the current output flags; a missing output logs and returns false.
-pub fn can_pause(_flags: Option<u32>, _log: &impl NullLog) -> bool {
-    todo!("#3895")
+pub fn can_pause(flags: Option<u32>, log: &impl NullLog) -> bool {
+    match flags {
+        Some(flags) => flags & OBS_OUTPUT_CAN_PAUSE != 0,
+        None => {
+            log.null_output(c"obs_output_can_pause");
+            false
+        }
+    }
 }

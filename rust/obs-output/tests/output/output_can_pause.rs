@@ -1,6 +1,6 @@
 //! Tier 1: mirrors test_output_can_pause.c (#3895).
-use obs_output::output_can_pause::{OBS_OUTPUT_CAN_PAUSE, can_pause};
 use obs_output::NullLog;
+use obs_output::output_can_pause::{OBS_OUTPUT_CAN_PAUSE, can_pause};
 use std::cell::RefCell;
 use std::ffi::CStr;
 
@@ -15,8 +15,17 @@ impl NullLog for Log {
 #[test]
 fn test_flags() {
     let log = Log::default();
-    for flags in [0, OBS_OUTPUT_CAN_PAUSE, u32::MAX, u32::MAX ^ OBS_OUTPUT_CAN_PAUSE, 7] {
-        assert_eq!(can_pause(Some(flags), &log), flags & OBS_OUTPUT_CAN_PAUSE != 0);
+    for flags in [
+        0,
+        OBS_OUTPUT_CAN_PAUSE,
+        u32::MAX,
+        u32::MAX ^ OBS_OUTPUT_CAN_PAUSE,
+        7,
+    ] {
+        assert_eq!(
+            can_pause(Some(flags), &log),
+            flags & OBS_OUTPUT_CAN_PAUSE != 0
+        );
     }
     for bit in 0..32 {
         let flags = 1 << bit;
