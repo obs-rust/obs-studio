@@ -1748,9 +1748,26 @@ jobs:
       # clang-format, gersemi and soldr cargo test --workspace --locked.
       # The ci/ self-tests run in the Checks job on the standard pool (#427).
       - name: Local Gate (lint) 🧪
+        id: local-gate
         env:
           OBS_GATE_SKIP_SELF_TEST: "1"
-        run: uv run --no-project ci/local_gate.py --lane lint --lane dylint
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.sha }}
+        run: |
+          uv run --no-project ci/local_gate.py --lane lint --lane dylint
+          git fetch -q --depth=1 origin "${BASE}"
+          # Writes key=/name= to $GITHUB_OUTPUT; surfaces touched by the change
+          # leave name= empty, which skips the upload below.
+          uv run --no-project ci/lane_proof.py key --lane dylint --base "${BASE}"
+          touch "${{ runner.temp }}/dylint-lane-proof"
+
+      - name: Upload Dylint Lane Proof 🧾
+        if: steps.local-gate.outputs.name != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.local-gate.outputs.name }}
+          path: ${{ runner.temp }}/dylint-lane-proof
+          retention-days: 3
+          if-no-files-found: error
 
       - name: Unit Tests (changed crates) 🧪
         if: needs.check-event.outputs.deferred == 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
