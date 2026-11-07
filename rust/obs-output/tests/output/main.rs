@@ -5,6 +5,8 @@ mod caption_text;
 mod caption_text_parity;
 mod delay;
 mod delay_parity;
+mod encoder_audio_getters;
+mod encoder_audio_getters_parity;
 mod encoder_audio_start;
 mod encoder_audio_start_frames;
 mod encoder_audio_start_frames_parity;

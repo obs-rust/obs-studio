@@ -1,0 +1,3 @@
+obs_encoder_get_frame_size
+obs_encoder_get_mixer_index
+obs_encoder_get_sample_rate

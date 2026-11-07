@@ -2037,6 +2037,17 @@ struct obs_encoder_dimensions_fields {
 };
 struct obs_encoder_dimensions_fields obs_encoder_dimensions_fields(const obs_encoder_t *encoder);
 
+/* Borrowed audio field addresses, without allocation or value conversion. */
+struct obs_encoder_audio_getters_fields {
+	const enum obs_encoder_type *type;
+	void *const *media;
+	const uint32_t *rate;
+	const size_t *frame_size;
+	const size_t *mixer_index;
+	char *const *name;
+};
+struct obs_encoder_audio_getters_fields obs_encoder_audio_getters_fields(const obs_encoder_t *encoder);
+
 /* Read-only field address for the borrowed last-error getter; not EXPORT. */
 struct obs_encoder_last_error_fields {
 	char *const *message;
