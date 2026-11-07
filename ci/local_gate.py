@@ -143,7 +143,7 @@ def resource_sample() -> str:
     return " ".join(used)
 
 
-def sample_while(emit, interval: float | None = None) -> threading.Event:
+def sample_while(emit, interval: float | None = None) -> tuple[threading.Event, threading.Thread | None]:
     """Print a resource sample every `interval` seconds until `done` is set."""
 
     def loop(done: threading.Event) -> None:
@@ -151,9 +151,11 @@ def sample_while(emit, interval: float | None = None) -> threading.Event:
             emit(resource_sample() + "\n")
 
     done = threading.Event()
+    sampler = None
     if os.environ.get("OBS_GATE_RESOURCE_SAMPLES") != "0":
-        threading.Thread(target=loop, args=(done,), daemon=True).start()
-    return done
+        sampler = threading.Thread(target=loop, args=(done,), daemon=True)
+        sampler.start()
+    return done, sampler
 
 
 def run(cmd: list[str], buffer: list[str] | None = None, **kw) -> None:
@@ -175,7 +177,7 @@ def run(cmd: list[str], buffer: list[str] | None = None, **kw) -> None:
     ) as proc:
         # Samples go to the live log, not to a buffer a parallel step would
         # only print when it finished (after the runner is already gone).
-        done = sample_while(emit) if buffer is None else threading.Event()
+        done, sampler = sample_while(emit) if buffer is None else (threading.Event(), None)
         assert proc.stdout is not None
         try:
             for line in proc.stdout:
@@ -184,6 +186,10 @@ def run(cmd: list[str], buffer: list[str] | None = None, **kw) -> None:
                     seen.append(line)
         finally:
             done.set()
+            # A sample already collecting data can still emit after done is set.
+            # Finish it before the caller changes stdout or starts another step.
+            if sampler is not None:
+                sampler.join()
     for hint in hints_for("".join(seen)):
         emit(hint + "\n")
     if proc.returncode:
