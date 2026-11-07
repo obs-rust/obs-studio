@@ -1,5 +1,9 @@
 use super::*;
 
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "recording_shutdown_runtime.rs"]
+mod runtime;
+
 const CASES: [(&str, u32); 2] = [
     ("test_recording_shutdown_inactive", 15),
     ("test_recording_shutdown_wait", 60),
@@ -33,7 +37,7 @@ fn canonical_recording_shutdown_waits_are_registered() {
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
         assert_eq!(test.suite, "qt");
-        assert_eq!(test.command, ["@EXECUTABLE@"]);
+        assert_eq!(test.command, ["${target}"]);
         assert_eq!(test.timeout_seconds, Some(timeout));
         assert!(test.skip_return_code.is_none());
         assert!(test.environment.is_empty());
