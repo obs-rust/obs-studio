@@ -8,6 +8,8 @@ mod rust_static_entries;
 
 #[path = "native/registration/canonical_display_audio_is_registered.rs"]
 mod canonical_display_audio_is_registered;
+#[path = "native/registration/canonical_display_media_is_registered.rs"]
+mod canonical_display_media_is_registered;
 #[path = "native/registration/canonical_display_outputs_is_registered.rs"]
 mod canonical_display_outputs_is_registered;
 #[path = "native/registration/canonical_display_plugins_is_registered.rs"]
