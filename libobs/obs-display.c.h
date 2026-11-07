@@ -274,23 +274,6 @@ void render_display(struct obs_display *display)
 	}
 }
 
-void obs_display_set_enabled(obs_display_t *display, bool enable)
-{
-	if (display)
-		display->enabled = enable;
-}
-
-bool obs_display_enabled(obs_display_t *display)
-{
-	return display ? display->enabled : false;
-}
-
-void obs_display_set_background_color(obs_display_t *display, uint32_t color)
-{
-	if (display)
-		display->background_color = color;
-}
-
 void obs_display_size(obs_display_t *display, uint32_t *width, uint32_t *height)
 {
 	*width = 0;
