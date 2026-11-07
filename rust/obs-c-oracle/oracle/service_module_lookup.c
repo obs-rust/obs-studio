@@ -27,6 +27,9 @@ void oracle_module_lookup_set_roots(obs_module_t *enabled, obs_module_t *disable
 	obs->first_module = enabled;
 	obs->first_disabled_module = disabled;
 }
+/* Name the real darray type: MSVC rejects anonymous definitions in offsetof. */
+typedef DARRAY(char *) module_service_ids_t;
+
 size_t oracle_module_lookup_layout(size_t index);
 size_t oracle_module_lookup_layout(size_t index)
 {
@@ -59,10 +62,10 @@ size_t oracle_module_lookup_layout(size_t index)
 		offsetof(struct obs_module, services),
 		offsetof(struct obs_module, module_type),
 		sizeof(((struct obs_module *)0)->services),
-		_Alignof(DARRAY(char *)),
-		offsetof(DARRAY(char *), array),
-		offsetof(DARRAY(char *), num),
-		offsetof(DARRAY(char *), capacity),
+		_Alignof(module_service_ids_t),
+		offsetof(module_service_ids_t, array),
+		offsetof(module_service_ids_t, num),
+		offsetof(module_service_ids_t, capacity),
 	};
 	return values[index];
 }
