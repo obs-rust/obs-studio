@@ -1,5 +1,8 @@
 # Batch 5: real OpenGL visibility fixture
 
+> Historical installed-core evidence. [Built-core replay](b5-built.md) supersedes
+> the runtime binding and current validation described below.
+
 Refs #1390. Branch-only slice based on `origin/test/1390-b4-rollup` (#3877).
 
 Register `test_visibility_transition` (eight unchanged C cases) in the shared

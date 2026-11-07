@@ -1,5 +1,8 @@
 # Batch 5 follow-up: XComposite error replies
 
+> Historical installed-core evidence. [Built-core replay](b5-built.md) supersedes
+> the runtime binding and current validation described below.
+
 Refs #1390. Branch-only slice `test/1390-b5-gl2`, based on
 `origin/test/1390-b5-gl` and successfully rebased onto updated
 `origin/test/1390-b4-rollup` at `c8f429ec2` (rebase exit 0).

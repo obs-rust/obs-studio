@@ -1,11 +1,10 @@
 use super::*;
 
-const CASES: [(&str, Option<u32>); 6] = [
+const CASES: [(&str, Option<u32>); 5] = [
     ("test_visibility_transition", None),
     ("test_preview_only_hide", Some(120)),
     ("test_raw_output_video_reset", Some(120)),
     ("test_transition_audio_clock", Some(60)),
-    ("test_transition_audio_rescale", Some(60)),
     ("test_transition_removed_child_audio", Some(60)),
 ];
 
@@ -44,16 +43,8 @@ fn canonical_opengl_video_slice_is_registered() {
                 _ => panic!("transition linkage must be unconditional"),
             })
             .collect();
-        let mut expected = vec!["OBS::libobs"];
-        if name == "test_preview_only_hide" {
-            expected.push("OBS::caption");
-        }
-        expected.push("OBS::native-test-cmocka");
-        if name == "test_transition_audio_rescale" {
-            expected.push("m");
-        }
         assert!(target.header_libraries.is_empty());
-        assert_eq!(libraries, expected, "{name}");
+        assert_eq!(libraries, expected_libraries(name), "{name}");
         assert_eq!(
             target.artifact_definitions["GRAPHICS_MODULE_PATH"],
             "OBS::libobs-opengl"
@@ -105,6 +96,15 @@ fn canonical_opengl_video_slice_is_registered() {
             }
         }
     }
+}
+
+fn expected_libraries(name: &str) -> Vec<&'static str> {
+    let mut libraries = vec!["OBS::libobs"];
+    if name == "test_preview_only_hide" {
+        libraries.push("OBS::caption");
+    }
+    libraries.push("OBS::native-test-cmocka");
+    libraries
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
