@@ -1,6 +1,13 @@
 use super::*;
 use obs_build::validation::graph::Graph;
-const CASES: [&str; 6] = ["test_media_cover_art_seek", "test_media_gif_last_frame", "test_media_play_after_stop", "test_media_restart_first_frame", "test_media_restart_stale_frame", "test_v4l2_busy_signal"];
+const CASES: [&str; 6] = [
+    "test_media_cover_art_seek",
+    "test_media_gif_last_frame",
+    "test_media_play_after_stop",
+    "test_media_restart_first_frame",
+    "test_media_restart_stale_frame",
+    "test_v4l2_busy_signal",
+];
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("display_media_expected.json")).unwrap()
 }
@@ -37,11 +44,20 @@ fn canonical_display_media_guards() {
                         ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), owners),
                         ("HAVE_OBS_V4L2".into(), owners),
                     ]);
-                    if let Some(value) = display { facts.insert("HAVE_X11_DISPLAY".into(), value); }
+                    if let Some(value) = display {
+                        facts.insert("HAVE_X11_DISPLAY".into(), value);
+                    }
                     let selected = graph.select(&facts).unwrap();
                     for name in CASES {
-                        let enabled = os == "OS_LINUX" && display == Some(true) && owners && (name == "test_v4l2_busy_signal" || renderer);
-                        assert_eq!(selected.targets.contains_key(name), enabled, "{os}/{display:?}/{renderer}/{owners}/{name}");
+                        let enabled = os == "OS_LINUX"
+                            && display == Some(true)
+                            && owners
+                            && (name == "test_v4l2_busy_signal" || renderer);
+                        assert_eq!(
+                            selected.targets.contains_key(name),
+                            enabled,
+                            "{os}/{display:?}/{renderer}/{owners}/{name}"
+                        );
                         assert_eq!(selected.tests.contains_key(name), enabled, "{name}");
                     }
                 }

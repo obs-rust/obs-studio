@@ -4863,6 +4863,44 @@
         "test/cmocka/data/media_cached_paused_seek.mkv"
       ]
     },
+    "test_media_cover_art_seek": {
+      "sources": [
+        "test/cmocka/test_media_cover_art_seek.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h",
+        "shared/media-playback"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
     "test_media_format_change": {
       "sources": [
         "test/cmocka/test_media_format_change.c"
@@ -4903,6 +4941,44 @@
         "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
         "shared/media-playback/media-playback/platform-media-ffmpeg.h"
       ]
+    },
+    "test_media_gif_last_frame": {
+      "sources": [
+        "test/cmocka/test_media_gif_last_frame.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h",
+        "shared/media-playback"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
     },
     "test_media_loop_start_time": {
       "sources": [
@@ -5021,6 +5097,44 @@
         "test/cmocka/data/media_packet_eof_leak.mkv"
       ]
     },
+    "test_media_play_after_stop": {
+      "sources": [
+        "test/cmocka/test_media_play_after_stop.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h",
+        "shared/media-playback"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
     "test_media_remux": {
       "sources": [
         "test/cmocka/test_media_remux.c"
@@ -5032,6 +5146,82 @@
         "FFmpeg::avutil",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_media_restart_first_frame": {
+      "sources": [
+        "test/cmocka/test_media_restart_first_frame.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h",
+        "shared/media-playback"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
+    "test_media_restart_stale_frame": {
+      "sources": [
+        "test/cmocka/test_media_restart_stale_frame.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h",
+        "shared/media-playback"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
     },
     "test_media_seek_keyframe": {
       "sources": [
@@ -12331,6 +12521,42 @@
         ]
       }
     },
+    "test_v4l2_busy_signal": {
+      "sources": [
+        "test/cmocka/test_v4l2_busy_signal.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ]
+    },
     "test_v4l2_controls": {
       "sources": [
         "test/cmocka/test_v4l2_controls.c",
@@ -15724,9 +15950,37 @@
       ],
       "working_directory": "${build}"
     },
+    "test_media_cover_art_seek": {
+      "target": "test_media_cover_art_seek",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
     "test_media_format_change": {
       "target": "test_media_format_change",
       "timeout_seconds": 120
+    },
+    "test_media_gif_last_frame": {
+      "target": "test_media_gif_last_frame",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
     },
     "test_media_loop_start_time": {
       "target": "test_media_loop_start_time",
@@ -15746,10 +16000,52 @@
         "${source}/test/cmocka/data/media_packet_eof_leak.mkv"
       ]
     },
+    "test_media_play_after_stop": {
+      "target": "test_media_play_after_stop",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
     "test_media_remux": {
       "target": "test_media_remux",
       "suite": "core",
       "timeout_seconds": 60
+    },
+    "test_media_restart_first_frame": {
+      "target": "test_media_restart_first_frame",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
+    "test_media_restart_stale_frame": {
+      "target": "test_media_restart_stale_frame",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
     },
     "test_media_seek_keyframe": {
       "target": "test_media_seek_keyframe",
@@ -18431,6 +18727,18 @@
         ]
       },
       "timeout_seconds": 60
+    },
+    "test_v4l2_busy_signal": {
+      "target": "test_v4l2_busy_signal",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_V4L2"
+        ]
+      }
     },
     "test_v4l2_controls": {
       "target": "test_v4l2_controls",
