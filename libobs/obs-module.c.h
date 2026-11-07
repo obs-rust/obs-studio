@@ -66,23 +66,6 @@ static int load_module_exports(struct obs_module *mod, const char *path)
 	return MODULE_SUCCESS;
 }
 
-bool obs_module_get_locale_string(const obs_module_t *mod, const char *lookup_string, const char **translated_string)
-{
-	assert(mod);
-	if (mod && mod->get_string) {
-		return mod->get_string(lookup_string, translated_string);
-	}
-
-	return false;
-}
-
-const char *obs_module_get_locale_text(const obs_module_t *mod, const char *text)
-{
-	const char *str = text;
-	obs_module_get_locale_string(mod, text, &str);
-	return str;
-}
-
 static inline char *get_module_name(const char *file)
 {
 	return obs_module_names_module_name(file, get_module_extension());

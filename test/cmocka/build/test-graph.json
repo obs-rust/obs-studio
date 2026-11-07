@@ -4096,6 +4096,25 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_module_locale_getters": {
+      "sources": [
+        "test/cmocka/test_module_locale_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    },
     "test_module_metadata": {
       "sources": [
         "test/cmocka/test_module_metadata.c"
@@ -12654,6 +12673,14 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_module_locale_getters": {
+      "target": "test_module_locale_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_module_metadata": {
       "target": "test_module_metadata",
