@@ -32,8 +32,12 @@ fn canonical_rust_static_transition_start_are_registered() {
         assert_eq!(target.sanitizers, None);
         use obs_build::validation::graph::ConditionalValue;
         assert_eq!(target.libraries.len(), 2);
-        assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static"));
-        assert!(matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka"));
+        assert!(
+            matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static")
+        );
+        assert!(
+            matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
+        );
         let test = &graph.tests[&name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
@@ -245,10 +249,7 @@ fn canonical_rust_static_transition_start_run_unchanged() {
         ),
     ]
     .into();
-    let facts = [
-        ("HAVE_LIBOBS_RUST_STATIC".into(), true),
-    ]
-    .into();
+    let facts = [("HAVE_LIBOBS_RUST_STATIC".into(), true)].into();
     for target in graph.targets.values() {
         assert_eq!(
             target.dependency_artifacts(&facts, &interfaces).unwrap(),

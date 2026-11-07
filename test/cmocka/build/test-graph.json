@@ -7641,6 +7641,23 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_transition_start_steps_rust": {
+      "sources": [
+        "test/cmocka/test_transition_start_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_transition_swap": {
       "sources": [
         "test/cmocka/test_transition_swap.c"
@@ -11550,6 +11567,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_transition_start_steps_rust": {
+      "target": "test_transition_start_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_transition_swap": {
       "target": "test_transition_swap",
