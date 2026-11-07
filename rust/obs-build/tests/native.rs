@@ -66,6 +66,8 @@ mod canonical_pulse_monitor_decisions_are_registered;
 mod canonical_replay_buffer_estimate_is_registered;
 #[path = "native/registration/canonical_rust_static_conversion_is_registered.rs"]
 mod canonical_rust_static_conversion_is_registered;
+#[path = "native/registration/canonical_rust_static_decision_steps_are_registered.rs"]
+mod canonical_rust_static_decision_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
 mod canonical_rust_static_pacing_is_registered;
 #[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
