@@ -353,13 +353,13 @@ impl CompileModel for Fake {
     fn param_type_name(&self, slot: ParamSlot) -> &[u8] {
         self.parser_param(slot).ty.as_bytes()
     }
-    fn fill_param(&mut self, slot: ParamSlot, section: i32, type_: i32) {
-        self.trace.push(format!("fill {slot:?} {section} {type_}"));
+    fn fill_param(&mut self, slot: ParamSlot, section: i32) {
+        self.trace.push(format!("fill {slot:?} {section}"));
         let src = self.parser_param(slot);
         let param = EffParam {
             name: Some(src.name.as_bytes().to_vec()),
             section,
-            type_,
+            type_: 0,
             default: src.default.to_vec(),
             effect_self: true,
             annotations: Vec::new(),
@@ -376,6 +376,15 @@ impl CompileModel for Fake {
             ParamSlot::Annotation { param: i, index } => {
                 self.params[i].annotations[index] = param;
                 self.parser[i].annotations_left[index] = 0;
+            }
+        }
+    }
+    fn set_param_type(&mut self, slot: ParamSlot, type_: i32) {
+        self.trace.push(format!("type {slot:?} {type_}"));
+        match slot {
+            ParamSlot::Param(i) => self.params[i].type_ = type_,
+            ParamSlot::Annotation { param, index } => {
+                self.params[param].annotations[index].type_ = type_;
             }
         }
     }
@@ -531,6 +540,7 @@ impl CompileModel for Fake {
     }
     fn shader_param(&mut self, shader: usize, built: &C, i: usize) -> Option<usize> {
         let name = built.used[i];
+        self.trace.push(format!("sparam_lookup {shader} {name}"));
         if shader < 32 && self.fx.missing == Some(name) && self.fx.missing_mask & (1 << shader) != 0
         {
             return None;
@@ -541,20 +551,23 @@ impl CompileModel for Fake {
         self.sparam_names.push(format!("{shader}:{name}"));
         Some(self.sparam_names.len() - 1)
     }
-    fn set_shader_param(
-        &mut self,
-        slot: ShaderSlot,
-        i: usize,
-        eparam: Option<usize>,
-        sparam: Option<usize>,
-    ) {
-        self.trace.push(format!("set_shader_param {slot:?} {i}"));
+    fn set_shader_eparam(&mut self, slot: ShaderSlot, i: usize, eparam: Option<usize>) {
+        self.trace.push(format!("set_eparam {slot:?} {i}"));
         let pass = self.pass(slot);
         let params = match slot.kind {
             ShaderType::Vertex => &mut pass.vparams,
             ShaderType::Pixel => &mut pass.pparams,
         };
-        params[i] = (eparam, sparam);
+        params[i].0 = eparam;
+    }
+    fn set_shader_sparam(&mut self, slot: ShaderSlot, i: usize, sparam: Option<usize>) {
+        self.trace.push(format!("set_sparam {slot:?} {i}"));
+        let pass = self.pass(slot);
+        let params = match slot.kind {
+            ShaderType::Vertex => &mut pass.vparams,
+            ShaderType::Pixel => &mut pass.pparams,
+        };
+        params[i].1 = sparam;
     }
     fn free_built(&mut self, _built: C) {
         self.trace.push("free_built".into());
@@ -698,7 +711,8 @@ fn edge_failed_pass_calls_in_order() {
             "resize_params 1",
             "resize_techniques 1",
             "link 0",
-            "fill Param(0) 0 7",
+            "fill Param(0) 0",
+            "type Param(0) 7",
             "resize_annotations 0 0",
             "fill_technique 0",
             "resize_passes 0 1",
@@ -759,6 +773,26 @@ fn edge_shader_params_stop_at_the_missing_one() {
     // list; the last stays zeroed. The pixel shader is still compiled.
     let mut m = Fake::new(&EDGE_MISSING);
     assert!(!compile(&mut m));
+    // Each eparam is stored before its shader param is looked up, as the
+    // C sets param->eparam first; the missing one is stored as NULL.
+    let vertex = "ShaderSlot { tech: 0, pass: 0, kind: Vertex }";
+    let shader_steps: Vec<&str> = m
+        .trace
+        .iter()
+        .map(String::as_str)
+        .filter(|t| t.starts_with("set_") || t.starts_with("sparam_lookup"))
+        .collect();
+    assert_eq!(
+        shader_steps,
+        [
+            format!("set_eparam {vertex} 0"),
+            "sparam_lookup 0 x".into(),
+            format!("set_sparam {vertex} 0"),
+            format!("set_eparam {vertex} 1"),
+            "sparam_lookup 0 a".into(),
+            format!("set_sparam {vertex} 1"),
+        ]
+    );
     let got = m.finish(false);
     assert!(
         got.contains("  pass 0 p section=3 vert=0 pixel=1\n      vparams -/0:x, 0:a/NULL, -/NULL\n      pparams\n"),
@@ -827,18 +861,23 @@ fn edge_params_and_empty_techniques() {
             "resize_params 3",
             "resize_techniques 2",
             "link 0",
-            "fill Param(0) 0 11",
+            "fill Param(0) 0",
+            "type Param(0) 11",
             "world 0",
             "resize_annotations 0 0",
             "link 1",
-            "fill Param(1) 0 11",
+            "fill Param(1) 0",
+            "type Param(1) 11",
             "resize_annotations 1 0",
             "link 2",
-            "fill Param(2) 0 3",
+            "fill Param(2) 0",
+            "type Param(2) 3",
             "view_proj 2",
             "resize_annotations 2 2",
-            "fill Annotation { param: 2, index: 0 } 4 4",
-            "fill Annotation { param: 2, index: 1 } 4 0",
+            "fill Annotation { param: 2, index: 0 } 4",
+            "type Annotation { param: 2, index: 0 } 4",
+            "fill Annotation { param: 2, index: 1 } 4",
+            "type Annotation { param: 2, index: 1 } 0",
             "fill_technique 0",
             "resize_passes 0 0",
             "fill_technique 1",
@@ -888,7 +927,8 @@ fn edge_pass_and_shader_alone() {
     let mut m = Fake::new(&FX);
     m.resize_params(1);
     m.link_param(0);
-    m.fill_param(ParamSlot::Param(0), EFFECT_PARAM, 2);
+    m.fill_param(ParamSlot::Param(0), EFFECT_PARAM);
+    m.set_param_type(ParamSlot::Param(0), 2);
     m.resize_techniques(1);
     assert!(compile_technique(&mut m, 0));
     assert!(compile_pass(&mut m, 0, 0));
