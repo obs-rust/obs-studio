@@ -105,6 +105,9 @@ fn expected_libraries(name: &str) -> Vec<&'static str> {
         libraries.push("OBS::caption");
     }
     libraries.push("OBS::native-test-cmocka");
+    if name == "test_transition_audio_rescale" {
+        libraries.push("m");
+    }
     libraries
 }
 

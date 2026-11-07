@@ -77,6 +77,7 @@ pub fn build_hybrid_with_options(
             rust_archive.display()
         ));
     }
+    check_rust_archive(root, rust_archive)?;
     let plan = prepare(build, root, options)?;
     let mut library = plan.common;
     add_variant(
@@ -88,6 +89,133 @@ pub fn build_hybrid_with_options(
         Some(rust_archive),
     )?;
     finish(build, &library)
+}
+
+/// Cargo's adjacent depfile identifies the archive's actual local crate closure.
+/// Check their production inputs conservatively, including build-script data and
+/// newly added files; do not invalidate an archive for native build/test edits.
+/// This is an mtime guard, not a content attestation: preserve source timestamps
+/// honestly and retain the depfile when supplying an external archive.
+fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
+    let modified = fs::metadata(archive)
+        .and_then(|metadata| metadata.modified())
+        .map_err(|error| format!("read Rust archive {}: {error}", archive.display()))?;
+    let depfile = archive.with_extension("d");
+    let dependencies = fs::read_to_string(&depfile).map_err(|error| {
+        format!(
+            "cannot verify Rust archive {}: read {}: {error}; retain Cargo's depfile and \
+         rebuild with soldr cargo build --locked --release -p libobs-rust",
+            archive.display(),
+            depfile.display(),
+        )
+    })?;
+    let (_, dependencies) = dependencies
+        .lines()
+        .next()
+        .unwrap_or("")
+        .split_once(": ")
+        .ok_or_else(|| format!("invalid Rust archive depfile {}", depfile.display()))?;
+    let root = dunce::canonicalize(root).map_err(|error| error.to_string())?;
+    let mut crates = std::collections::BTreeSet::new();
+    for dependency in depfile_paths(dependencies) {
+        let dependency = dunce::canonicalize(&dependency).map_err(|error| format!("read Rust archive input {dependency}: {error}; rebuild with soldr cargo build --locked --release -p libobs-rust"))?;
+        if let Ok(local) = dependency.strip_prefix(root.join("rust")) {
+            if let Some(name) = local.components().next() {
+                crates.insert(root.join("rust").join(name));
+            }
+            // A removed input is stale too; do not silently accept its absence.
+            check_rust_input(&root, &dependency, archive, modified)?;
+        }
+    }
+    if !crates.contains(&root.join("rust/libobs-rust")) {
+        return Err(format!(
+            "Rust archive depfile {} does not describe this tree {}; rebuild with soldr cargo build --locked --release -p libobs-rust",
+            depfile.display(),
+            root.display()
+        ));
+    }
+    for input in crates {
+        check_rust_input(&root, &input, archive, modified)?;
+    }
+    for input in [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        ".cargo",
+        "libobs/obs-hotkeys.h",
+    ] {
+        let input = root.join(input);
+        if input.try_exists().map_err(|error| error.to_string())? {
+            check_rust_input(&root, &input, archive, modified)?;
+        }
+    }
+    Ok(())
+}
+
+// Make depfiles escape whitespace and backslashes. Preserve ordinary Windows
+// path separators; the target rule was split at colon-space, not a drive colon.
+fn depfile_paths(dependencies: &str) -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut path = String::new();
+    let mut chars = dependencies.chars().peekable();
+    while let Some(character) = chars.next() {
+        if character == '\\'
+            && chars
+                .peek()
+                .is_some_and(|next| next.is_whitespace() || *next == '\\')
+        {
+            path.push(chars.next().unwrap());
+        } else if character.is_whitespace() {
+            if !path.is_empty() {
+                paths.push(std::mem::take(&mut path));
+            }
+        } else {
+            path.push(character);
+        }
+    }
+    if !path.is_empty() {
+        paths.push(path);
+    }
+    paths
+}
+
+fn check_rust_input(
+    root: &Path,
+    input: &Path,
+    archive: &Path,
+    modified: std::time::SystemTime,
+) -> Result<(), String> {
+    let metadata = fs::metadata(input)
+        .map_err(|error| format!("read Rust input {}: {error}", input.display()))?;
+    if metadata.is_dir() {
+        for entry in fs::read_dir(input).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            if [
+                "tests",
+                "benches",
+                "examples",
+                "proptest-regressions",
+                "target",
+                "tools",
+                ".git",
+            ]
+            .iter()
+            .any(|name| entry.file_name() == *name)
+            {
+                continue;
+            }
+            check_rust_input(root, &entry.path(), archive, modified)?;
+        }
+    } else if metadata.modified().map_err(|error| error.to_string())? > modified {
+        return Err(format!(
+            "stale Rust archive {}: newer input {}; rebuild from {} with \
+             soldr cargo build --locked --release -p libobs-rust before linking hybrid libobs",
+            archive.display(),
+            input.strip_prefix(root).unwrap_or(input).display(),
+            root.display(),
+        ));
+    }
+    Ok(())
 }
 
 struct Plan {
@@ -488,6 +616,7 @@ pub fn build_pair(
             rust_archive.display()
         ));
     }
+    check_rust_archive(root, rust_archive)?;
     let plan = prepare(build, root, options)?;
     let mut common = plan.common;
     common.name = "obs-common".into();
