@@ -6515,6 +6515,25 @@
         }
       ]
     },
+    "test_scene_item_bounds_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_bounds_getters.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_item_crop": {
       "sources": [
         "test/cmocka/test_scene_item_crop.c",
@@ -11872,6 +11891,14 @@
     },
     "test_scene_group_transform": {
       "target": "test_scene_group_transform"
+    },
+    "test_scene_item_bounds_getters": {
+      "target": "test_scene_item_bounds_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_item_crop": {
       "target": "test_scene_item_crop",
