@@ -30,6 +30,7 @@ mod module_load_rules;
 mod module_load_rules_parity;
 mod module_load_rules_skip;
 mod module_locale;
+mod module_locale_getters;
 mod module_locale_parity;
 mod module_metadata;
 mod module_metadata_parity;
