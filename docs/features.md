@@ -1666,6 +1666,11 @@ area.
   not started yet. Such a recording now stops at once and can start
   again. *All*, 2026-11-06. Issue
   [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
+- OBS no longer hangs on exit after a stream was stopped while it waited to
+  reconnect, such as an SRT stream (from OBS or from a Source Record filter)
+  to a server that does not answer. The stop now finishes at once.
+  *All*, 2026-11-07. Issue
+  [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
 
 ### Sources and filters
 

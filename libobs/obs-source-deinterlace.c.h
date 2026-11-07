@@ -378,26 +378,12 @@ void obs_source_set_deinterlace_mode(obs_source_t *source, enum obs_deinterlace_
 	}
 }
 
-enum obs_deinterlace_mode obs_source_get_deinterlace_mode(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_set_deinterlace_mode") ? source->deinterlace_mode
-									   : OBS_DEINTERLACE_MODE_DISABLE;
-}
-
 void obs_source_set_deinterlace_field_order(obs_source_t *source, enum obs_deinterlace_field_order field_order)
 {
 	if (!obs_source_valid(source, "obs_source_set_deinterlace_field_order"))
 		return;
 
 	source->deinterlace_top_first = field_order == OBS_DEINTERLACE_FIELD_ORDER_TOP;
-}
-
-enum obs_deinterlace_field_order obs_source_get_deinterlace_field_order(const obs_source_t *source)
-{
-	if (!obs_source_valid(source, "obs_source_set_deinterlace_field_order"))
-		return OBS_DEINTERLACE_FIELD_ORDER_TOP;
-
-	return source->deinterlace_top_first ? OBS_DEINTERLACE_FIELD_ORDER_TOP : OBS_DEINTERLACE_FIELD_ORDER_BOTTOM;
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */

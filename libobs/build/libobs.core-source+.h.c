@@ -2,6 +2,7 @@
 
 #include "libobs/build/libobs.pch.h"
 
+#include "libobs/obs-canvas-flags-fields.c.h"
 #include "libobs/obs-canvas-readonly-fields.c.h"
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display-size-fields.c.h"
@@ -11,6 +12,7 @@
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
+#include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
 #include "libobs/obs-source-transition-seam.c.h"

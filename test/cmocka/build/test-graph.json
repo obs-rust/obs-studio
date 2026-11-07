@@ -261,8 +261,9 @@
     "test_async_conversion_plan_rust": {
       "sources": [
         "test/cmocka/test_async_conversion_plan.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -332,8 +333,9 @@
     "test_async_frame_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_async_frame_pacing_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -415,8 +417,9 @@
     "test_async_upload_steps_rust": {
       "sources": [
         "test/cmocka/test_async_upload_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -818,6 +821,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_canvas_flags_getter": {
+      "sources": [
+        "test/cmocka/test_canvas_flags_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_canvas_readonly_getters": {
       "sources": [
         "test/cmocka/test_canvas_readonly_getters.c"
@@ -1020,6 +1038,15 @@
     "test_context_names": {
       "sources": [
         "test/cmocka/test_context_names.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_core_global_getters": {
+      "sources": [
+        "test/cmocka/test_core_global_getters.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -1354,8 +1381,9 @@
     "test_deinterlace_draw_plan_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_draw_plan_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -1423,8 +1451,9 @@
     "test_deinterlace_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_pacing_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -1469,8 +1498,9 @@
     "test_deinterlace_select_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_select_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2174,6 +2204,21 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_encoder_dimensions": {
+      "sources": [
+        "test/cmocka/test_encoder_dimensions.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
     },
     "test_encoder_fallback": {
       "sources": [
@@ -4847,6 +4892,25 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_module_locale_getters": {
+      "sources": [
+        "test/cmocka/test_module_locale_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
     },
     "test_module_metadata": {
       "sources": [
@@ -8782,6 +8846,25 @@
         }
       ]
     },
+    "test_scene_item_scale_getter": {
+      "sources": [
+        "test/cmocka/test_scene_item_scale_getter.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_item_state_getters": {
       "sources": [
         "test/cmocka/test_scene_item_state_getters.c"
@@ -8796,6 +8879,25 @@
       ],
       "includes": [
         "libobs"
+      ]
+    },
+    "test_scene_item_transform_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_transform_getters.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_scene_item_transform_steps": {
@@ -9309,8 +9411,9 @@
     "test_source_audio_input_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_input_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -9368,8 +9471,9 @@
     "test_source_audio_place_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_place_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -9433,8 +9537,9 @@
     "test_source_audio_render_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_render_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -9511,8 +9616,9 @@
     "test_source_audio_timing_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_timing_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -9556,8 +9662,9 @@
     "test_source_color_space_steps_rust": {
       "sources": [
         "test/cmocka/test_source_color_space_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -9591,6 +9698,17 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_deinterlace_getters": {
+      "sources": [
+        "test/cmocka/test_source_deinterlace_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_draw_plan_steps": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
@@ -9617,8 +9735,9 @@
     "test_source_draw_plan_steps_rust": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -9722,8 +9841,9 @@
     "test_source_frame_copy_steps_rust": {
       "sources": [
         "test/cmocka/test_source_frame_copy_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -9807,8 +9927,9 @@
     "test_source_media_admission_steps_rust": {
       "sources": [
         "test/cmocka/test_source_media_admission_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -9891,8 +10012,9 @@
     "test_source_monitoring_steps_rust": {
       "sources": [
         "test/cmocka/test_source_monitoring_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -9987,8 +10109,9 @@
     "test_source_ptm_gate_steps_rust": {
       "sources": [
         "test/cmocka/test_source_ptm_gate_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -10047,8 +10170,9 @@
     "test_source_render_route_steps_rust": {
       "sources": [
         "test/cmocka/test_source_render_route_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -10101,8 +10225,9 @@
     "test_source_size_route_steps_rust": {
       "sources": [
         "test/cmocka/test_source_size_route_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -10281,8 +10406,9 @@
     "test_source_video_tick_steps_rust": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -10330,8 +10456,9 @@
     "test_source_volume_apply_steps_rust": {
       "sources": [
         "test/cmocka/test_source_volume_apply_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -10939,8 +11066,9 @@
     "test_transition_load_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_load_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -11029,8 +11157,9 @@
     "test_transition_render_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_render_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11176,8 +11305,9 @@
     "test_transition_start_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_start_steps.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -13190,6 +13320,12 @@
         ]
       ]
     },
+    "test_canvas_flags_getter": {
+      "target": "test_canvas_flags_getter",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_canvas_readonly_getters": {
       "target": "test_canvas_readonly_getters",
       "command": [
@@ -13337,6 +13473,21 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_core_global_getters": {
+      "target": "test_core_global_getters",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_core_module_manifest": {
       "target": "test_core_module_manifest",
@@ -13707,6 +13858,12 @@
     },
     "test_encoder_bind_steps": {
       "target": "test_encoder_bind_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_dimensions": {
+      "target": "test_encoder_dimensions",
       "command": [
         "${target}"
       ]
@@ -14619,6 +14776,14 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_module_locale_getters": {
+      "target": "test_module_locale_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_module_metadata": {
       "target": "test_module_metadata",
@@ -15910,8 +16075,24 @@
       ],
       "suite": "core"
     },
+    "test_scene_item_scale_getter": {
+      "target": "test_scene_item_scale_getter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
     "test_scene_item_state_getters": {
       "target": "test_scene_item_state_getters"
+    },
+    "test_scene_item_transform_getters": {
+      "target": "test_scene_item_transform_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
@@ -16271,6 +16452,13 @@
           "-a"
         ]
       ]
+    },
+    "test_source_deinterlace_getters": {
+      "target": "test_source_deinterlace_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_draw_plan_steps": {
       "target": "test_source_draw_plan_steps",

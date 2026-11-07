@@ -39,6 +39,7 @@
 #include "media-io/audio-io.h"
 
 #include "obs.h"
+#include "obs-canvas-flags-fields.h"
 #include "obs-video-stats.h"
 
 #include <obsversion.h>
@@ -808,6 +809,11 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Private field-pointer seam: core initialization remains a caller precondition. */
+extern char *const *obs_core_global_locale_field(void);
+extern signal_handler_t *const *obs_core_global_signals_field(void);
+extern proc_handler_t *const *obs_core_global_procs_field(void);
+
 struct obs_graphics_context {
 	uint64_t last_time;
 	uint64_t interval;
@@ -1399,6 +1405,14 @@ struct obs_source_filter_relationship_fields {
 	obs_source_t *const *target;
 };
 struct obs_source_filter_relationship_fields obs_source_filter_relationship_fields(const obs_source_t *filter);
+/* Borrowed field addresses only: no Rust mirror of the private source layout,
+ * ownership, synchronization, or getter decisions in the C adapter. */
+struct obs_source_deinterlace_fields {
+	const enum obs_deinterlace_mode *mode;
+	const bool *top_first;
+};
+
+struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
 
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
@@ -2005,6 +2019,16 @@ struct obs_encoder {
 	/* reconfigure encoder at next possible opportunity */
 	bool reconfigure_requested;
 };
+
+/* Borrowed dimension field addresses, with no allocation or value conversion. */
+struct obs_encoder_dimensions_fields {
+	const enum obs_encoder_type *type;
+	void *const *media;
+	const uint32_t *width;
+	const uint32_t *height;
+	char *const *name;
+};
+struct obs_encoder_dimensions_fields obs_encoder_dimensions_fields(const obs_encoder_t *encoder);
 
 /* Read-only field address for the borrowed last-error getter; not EXPORT. */
 struct obs_encoder_last_error_fields {

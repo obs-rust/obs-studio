@@ -648,6 +648,11 @@ fn main() {
         ),
     )
     .expect("write media-remux adapter extract");
+    std::fs::write(
+        extract_dir.join("obs-core-global-getters.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-core-global-getters.c.h")),
+    )
+    .expect("write global getter extract");
     oracle.include(&extract_dir);
 
     oracle

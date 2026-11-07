@@ -20,3 +20,12 @@ void obs_sceneitem_fields_unlock(obs_scene_t *scene)
 	if (scene)
 		pthread_mutex_unlock(&scene->video_mutex);
 }
+
+struct vec2;
+void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const struct obs_scene_item *item);
+void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const struct obs_scene_item *item)
+{
+	struct obs_transform_info info = {0};
+	obs_sceneitem_get_info2(item, &info);
+	*dst = info.scale;
+}

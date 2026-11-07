@@ -41,3 +41,10 @@ mod item_bounds_getters;
 mod item_render_getters_parity;
 
 mod item_bounds_getters_parity;
+mod item_scale_getter;
+mod item_scale_getter_parity;
+
+mod item_transform_getters;
+
+#[allow(unsafe_code)]
+mod item_transform_getters_parity;
