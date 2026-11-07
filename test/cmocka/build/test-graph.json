@@ -2112,6 +2112,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_metadata_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_metadata_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_output_getters_characterization": {
       "sources": [
         "test/cmocka/test_encoder_output_getters_characterization.c"
@@ -10688,6 +10703,12 @@
     },
     "test_encoder_lifecycle_steps": {
       "target": "test_encoder_lifecycle_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_metadata_getters": {
+      "target": "test_encoder_metadata_getters",
       "command": [
         "${target}"
       ]
