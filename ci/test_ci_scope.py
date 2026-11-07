@@ -51,8 +51,8 @@ class CiScopeTest(unittest.TestCase):
             ["rust/obs-util/src/dstr.rs"], lambda path: path in CPP_TESTS, **master_push
         )
         self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
-        # PRs and non-master pushes retain path selection.
-        for event in ("pull_request", "push"):
+        # Non-master pushes retain path selection.
+        for event in ("push",):
             got = scope(
                 ["libobs/obs.c.h"],
                 lambda path: path in CPP_TESTS,
@@ -72,6 +72,30 @@ class CiScopeTest(unittest.TestCase):
             **master_push,
         )
         self.assertEqual((got.macos, got.windows), (True, False))
+
+    def test_core_prs_select_windows_without_adding_macos_or_queue_work(self):
+        for path in (
+            "libobs/obs.c.h",
+            "rust/obs-util/src/dstr.rs",
+            "Cargo.toml",
+            "Cargo.lock",
+            "rust-toolchain.toml",
+            "ci/ci_scope.py",
+        ):
+            with self.subTest(path=path):
+                pr = scope([path], event="pull_request", ref="3637/merge")
+                self.assertTrue(pr.windows)
+                self.assertFalse(pr.macos or pr.full)
+                queued = scope([path], event="merge_group")
+                self.assertFalse(queued.windows or queued.macos or queued.full)
+                pushed = scope([path], event="push", ref="master")
+                self.assertTrue(pushed.windows and pushed.macos)
+
+    def test_non_core_prs_keep_platform_path_selection(self):
+        for path in ("docs/features.md", "ci/test_ci_scope.py", "plugins/obs-ffmpeg/obs-ffmpeg.c"):
+            with self.subTest(path=path):
+                got = scope([path], event="pull_request")
+                self.assertFalse(got.windows or got.macos or got.full)
 
     def test_merge_group_is_linux_only_and_push_keeps_native_coverage(self):
         # #3606: the effect parser batch passed with MSVC linking skipped.

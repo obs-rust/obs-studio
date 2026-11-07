@@ -204,6 +204,14 @@ class GateJobs(unittest.TestCase):
                 conclusion,
             )
 
+    def test_windows_tier2_failure_and_no_runner_still_block_pr_admission(self):
+        name = "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)"
+        for conclusion in ("failure", "cancelled", "timed_out"):
+            with self.subTest(conclusion=conclusion):
+                record = job(name, conclusion)
+                record.update(runner_name="", runner_id=0, steps=[])
+                self.assertEqual(blocking([record]), [name])
+
     def test_maintenance_jobs_never_block(self):
         # ci-pre's sweep and the end-of-queue janitor sit outside the gate.
         self.assertEqual(
