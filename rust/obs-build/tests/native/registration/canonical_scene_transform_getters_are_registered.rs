@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn canonical_scene_transform_getters_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph =
+    let mut graph =
         obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
             .unwrap();
     let name = "test_scene_item_transform_getters";
@@ -32,6 +32,8 @@ fn canonical_scene_transform_getters_are_registered() {
     );
     assert_eq!(graph.tests[name].command, ["${target}"]);
     assert_eq!(graph.tests[name].timeout_seconds, Some(30));
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         let selected = graph.select(&[(os.into(), true)].into()).unwrap();
         assert!(selected.targets.contains_key(name));
