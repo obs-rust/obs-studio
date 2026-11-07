@@ -3140,22 +3140,12 @@ void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type f
 	os_atomic_set_bool(&item->update_transform, true);
 }
 
-enum obs_scale_type obs_sceneitem_get_scale_filter(obs_sceneitem_t *item)
-{
-	return obs_ptr_valid(item, "obs_sceneitem_get_scale_filter") ? item->scale_filter : OBS_SCALE_DISABLE;
-}
-
 void obs_sceneitem_set_blending_method(obs_sceneitem_t *item, enum obs_blending_method method)
 {
 	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_method"))
 		return;
 
 	item->blend_method = method;
-}
-
-enum obs_blending_method obs_sceneitem_get_blending_method(obs_sceneitem_t *item)
-{
-	return obs_ptr_valid(item, "obs_sceneitem_get_blending_method") ? item->blend_method : OBS_BLEND_METHOD_DEFAULT;
 }
 
 void obs_sceneitem_set_blending_mode(obs_sceneitem_t *item, enum obs_blending_type type)
@@ -3166,11 +3156,6 @@ void obs_sceneitem_set_blending_mode(obs_sceneitem_t *item, enum obs_blending_ty
 	item->blend_type = type;
 
 	os_atomic_set_bool(&item->update_transform, true);
-}
-
-enum obs_blending_type obs_sceneitem_get_blending_mode(obs_sceneitem_t *item)
-{
-	return obs_ptr_valid(item, "obs_sceneitem_get_blending_mode") ? item->blend_type : OBS_BLEND_NORMAL;
 }
 
 void obs_sceneitem_defer_update_begin(obs_sceneitem_t *item)
