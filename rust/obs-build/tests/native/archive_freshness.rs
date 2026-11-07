@@ -65,10 +65,7 @@ fn hybrid_rejects_stale_rust_archive_before_native_compilation() {
                     .unwrap_err()
             };
             assert!(error.contains("stale Rust archive"), "{input}: {error}");
-            assert!(
-                error.contains(input),
-                "{input}: {error}"
-            );
+            assert!(error.contains(input), "{input}: {error}");
             assert!(error.contains("soldr cargo build"), "{error}");
             assert!(!build.output.exists(), "must reject before a native build");
         }

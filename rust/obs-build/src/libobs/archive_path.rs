@@ -1,7 +1,8 @@
 use std::path::Path;
 
 pub(crate) fn portable_input(input: &Path) -> String {
-    input.display().to_string()
+    // Depfiles and native paths can use either separator; diagnostics use '/'.
+    input.to_string_lossy().replace('\\', "/")
 }
 
 #[cfg(test)]
@@ -14,7 +15,10 @@ mod tests {
             "rust/obs-core/src/audio_render.rs",
             r"rust\obs-core\src\audio_render.rs",
         ] {
-            assert_eq!(portable_input(Path::new(input)), "rust/obs-core/src/audio_render.rs");
+            assert_eq!(
+                portable_input(Path::new(input)),
+                "rust/obs-core/src/audio_render.rs"
+            );
         }
     }
 }
