@@ -1,0 +1,5 @@
+add_executable(test_scene_item_id test_scene_item_id.c)
+target_include_directories(test_scene_item_id PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_scene_item_id PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_scene_item_id)
+add_test(NAME test_scene_item_id COMMAND test_scene_item_id)
