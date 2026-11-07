@@ -10,7 +10,6 @@
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
-#include "libobs/obs-source-transition-access.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-transition.c.h"
 #include "libobs/obs-source.c.h"

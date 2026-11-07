@@ -9,9 +9,21 @@
 //! link count per parent and child, and a trace of every call. Sources cross
 //! as opaque pointers, the enums as `int`.
 //!
-//! The graph is process-wide: a test holds its own lock around every use.
+//! The graph is process-wide, and the getters and manual controls oracle
+//! (`crate::source_transition_access`) builds its test sources on it too:
+//! every test that touches it holds [`graph_lock`] around every use, from
+//! making the sources to [`oracle_slots_reset`], which frees them.
 
 use core::ffi::{c_char, c_int, c_void};
+use std::sync::{Mutex, MutexGuard, PoisonError};
+
+/// The one lock on the process-wide graph, shared by every parity suite
+/// that builds test sources on it (a reset frees every source, so two
+/// suites holding different locks could free each other's).
+pub fn graph_lock() -> MutexGuard<'static, ()> {
+    static GRAPH: Mutex<()> = Mutex::new(());
+    GRAPH.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// A traced call's kind: `obs_source_get_ref` (its result is whether it
 /// gave the source).

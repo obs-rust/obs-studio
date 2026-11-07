@@ -2763,6 +2763,11 @@ area.
   video, or starts after it, without dropping any of its frames. *All*,
   2026-11-02. Issue
   [#3487](https://github.com/obs-rust/obs-studio/issues/3487).
+- A plugin or script that sets a transition's manual time or torque with
+  no transition no longer crashes OBS, and one that passes a source that
+  is not a transition no longer changes that source; the call is ignored,
+  as the other transition setters do. *All*, 2026-11-04. Issue
+  [#3605](https://github.com/obs-rust/obs-studio/issues/3605).
 
 ### Security hardening
 

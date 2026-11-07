@@ -43,6 +43,7 @@ mod source_duplicate;
 mod source_duplicate_parity;
 mod source_filter_chain;
 mod source_filter_chain_parity;
+mod transition_access;
 mod transition_clock;
 mod transition_clock_parity;
 mod transition_load;

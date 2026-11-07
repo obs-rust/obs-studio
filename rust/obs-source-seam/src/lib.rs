@@ -14,12 +14,17 @@
 //! implements `obs_source::transition_load::Transition` on the sizing's
 //! `Seam`, over the same seam, `obs_data_get_string()`, `obs_data_get_int()`
 //! and the libobs source calls (`obs_get_source_by_name()`, the active-child
-//! add and remove, `obs_source_release()` and `blog()`); and
+//! add and remove, `obs_source_release()` and `blog()`);
 //! `libobs/obs-source-transition-slots.c.h`, the child slots of a
 //! transition, whose shims ([`ffi::source_transition_slots`]) implement
 //! `obs_source::transition_slots::Transition` over the same seam and the
 //! libobs source calls (`obs_source_get_ref()`, `obs_source_release()`, the
-//! active-child add and remove, `obs_source_get_name()` and `blog()`).
+//! active-child add and remove, `obs_source_get_name()` and `blog()`); and
+//! `libobs/obs-source-transition-access.c.h`, the getters and manual
+//! controls of a transition, whose shims
+//! ([`ffi::source_transition_access`]) implement
+//! `obs_source::transition_access::Transition` over the same seam,
+//! `obs_source_get_ref()` and `obs_transition_set()`.
 //!
 //! `libobs/obs-source-audio-settings.c.h`, the source audio settings, have
 //! their shims in [`ffi::source_audio_settings`], over

@@ -9,6 +9,7 @@ private libobs adapter and exports the C functions under their original names.
 | `libobs/obs-source-audio-input-path.c.h` | `obs_source::audio_input_path` | `ffi::source_audio_input_path` | `libobs/obs-source-audio-input-path-seam.h` |
 | `libobs/obs-source-audio-output.c.h` | `obs_source::audio_output` | `ffi::source_audio_output` | `libobs/obs-source-audio-output-seam.h` |
 | `libobs/obs-source-audio-settings.c.h` | `obs_source::audio_settings` | `ffi::source_audio_settings` | `libobs/obs-source-audio-settings-seam.h` |
+| `libobs/obs-source-transition-access.c.h` | `obs_source::transition_access` | `ffi::source_transition_access` | `libobs/obs-source-transition-seam.h`, and `obs_source_get_ref()` and `obs_transition_set()` through `Calls` |
 | `libobs/obs-source-transition-restore.c.h` | `obs_source::transition_load` (`load`) | `ffi::source_transition_restore` | `libobs/obs-source-transition-seam.h`, the `obs_data` reads, and the libobs source calls through `Calls` |
 | `libobs/obs-source-transition-settings.c.h` | `obs_source::transition_settings` | `ffi::source_transition_settings` | `libobs/obs-source-transition-seam.h` |
 | `libobs/obs-source-transition-size.c.h` | `obs_source::transition_size` | `ffi::source_transition_size` | `libobs/obs-source-transition-seam.h`, and the libobs source and render target calls through `Calls` |
