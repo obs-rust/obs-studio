@@ -2406,6 +2406,7 @@ fn canonical_remux_queue_runs_unchanged() {
     }
     assert_eq!(names, expected_names);
     if linux && qt_test_available {
+        assert_dock_proportions_properties(tests);
         let mnemonic = tests
             .iter()
             .find(|test| test["name"] == "test_hotkey_capture_mnemonic")
@@ -2418,9 +2419,6 @@ fn canonical_remux_queue_runs_unchanged() {
                 .any(|property| property["name"] == "RESOURCE_LOCK"
                     && property["value"] == serde_json::json!(["timing"]))
         );
-    }
-    if linux && qt_test_available {
-        assert_dock_proportions_properties(tests);
     }
     assert_ticker_ctest_properties(tests, linux);
     if linux {
