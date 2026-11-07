@@ -86,8 +86,6 @@ error:
 	bfree(name);
 }
 
-static bool ep_compile(struct effect_parser *ep);
-
 extern const char *gs_preprocessor_name(void);
 
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
@@ -157,8 +155,7 @@ static void debug_get_default_value(struct gs_effect_param *param, char *buffer,
 	}
 }
 
-static void debug_param(struct gs_effect_param *param, struct ep_param *param_in, unsigned long long idx,
-			const char *offset)
+void debug_param(struct gs_effect_param *param, struct ep_param *param_in, unsigned long long idx, const char *offset)
 {
 	char _debug_type[4096];
 	switch (param->type) {
@@ -224,7 +221,7 @@ static void debug_param_annotation(struct gs_effect_param *param, struct ep_para
 	     sizeof(_debug_buf), _debug_buf);
 }
 
-static void debug_print_string(const char *offset, const char *str)
+void debug_print_string(const char *offset, const char *str)
 {
 	// Bypass 4096 limit in def_log_handler.
 	char const *begin = str;
@@ -529,7 +526,7 @@ static inline bool ep_compile_technique(struct effect_parser *ep, size_t idx)
 	return success;
 }
 
-static bool ep_compile(struct effect_parser *ep)
+bool ep_compile(struct effect_parser *ep)
 {
 	bool success = true;
 	size_t i;

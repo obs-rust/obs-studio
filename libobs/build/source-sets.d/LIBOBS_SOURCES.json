@@ -171,6 +171,7 @@
   "graphics/device-exports.h",
   "graphics/effect-param-types.h",
   "graphics/effect-parser-blocks.h",
+  "graphics/effect-parser-compile.h",
   "graphics/effect-parser-funcs.h",
   "graphics/effect-parser-params.h",
   "graphics/effect-parser-passes.h",
