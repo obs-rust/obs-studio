@@ -210,7 +210,6 @@
   "build/libobs.core+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-source+.h.c",
-  "build/libobs.core-scene-item-crop+.h.c",
   "build/libobs.effect-parser-compile+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",
