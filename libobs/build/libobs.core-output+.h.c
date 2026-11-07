@@ -6,6 +6,7 @@
 #include "libobs/obs-encoder-counter-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
 #include "libobs/obs-encoder.c.h"
+#include "libobs/obs-output-can-pause-fields.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-state-adapter.c.h"
 #include "libobs/obs-service.c.h"

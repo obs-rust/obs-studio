@@ -756,11 +756,6 @@ obs_data_t *obs_output_get_settings(const obs_output_t *output)
 	return output->context.settings;
 }
 
-bool obs_output_can_pause(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_can_pause") ? !!(output->info.flags & OBS_OUTPUT_CAN_PAUSE) : false;
-}
-
 /* The flag and limits obs-output-pause.h copies. */
 _Static_assert(OBS_OUTPUT_PAUSE_CAN_PAUSE == OBS_OUTPUT_CAN_PAUSE, "OBS_OUTPUT_CAN_PAUSE");
 _Static_assert(OBS_OUTPUT_PAUSE_MAX_VIDEO_ENCODERS == MAX_OUTPUT_VIDEO_ENCODERS, "MAX_OUTPUT_VIDEO_ENCODERS");
