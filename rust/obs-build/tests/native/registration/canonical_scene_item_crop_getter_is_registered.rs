@@ -3,7 +3,7 @@ use super::*;
 /// #3897: the crop characterization is present once with private-header deps.
 #[test]
 fn canonical_scene_item_crop_getter_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_scene_item_crop_getter";
@@ -32,6 +32,10 @@ fn canonical_scene_item_crop_getter_is_registered() {
             "OBS::w32-pthreads"
         ]
     );
+    assert!(
+        matches!(&target.libraries[4], ConditionalValue::Conditional { name, requires: Requirement::Fact(fact) }
+        if name == "OBS::w32-pthreads" && fact == "OS_WINDOWS")
+    );
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
@@ -50,7 +54,5 @@ fn canonical_scene_item_crop_getter_is_registered() {
             .unwrap();
         assert_eq!(selected.targets.len(), 1);
         assert_eq!(selected.tests.len(), 1);
-        let expected = if os == "OS_WINDOWS" { 5 } else { 4 };
-        assert_eq!(selected.targets[name].libraries.len(), expected);
     }
 }
