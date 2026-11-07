@@ -132,6 +132,7 @@ pub mod encoder_metadata;
 pub mod encoder_packet_ts;
 pub mod encoder_pause;
 pub mod encoder_roi;
+pub mod encoder_scaling_enabled;
 pub mod encoder_size;
 pub mod interleave;
 pub mod output_begin;

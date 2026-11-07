@@ -2379,6 +2379,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_encoder_scaling_enabled": {
+      "sources": [
+        "test/cmocka/test_encoder_scaling_enabled.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_size_steps": {
       "sources": [
         "test/cmocka/test_encoder_size_steps.c",
@@ -11949,6 +11964,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_scaling_enabled": {
+      "target": "test_encoder_scaling_enabled",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_size_steps": {
