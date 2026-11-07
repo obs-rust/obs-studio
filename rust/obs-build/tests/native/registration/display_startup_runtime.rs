@@ -53,6 +53,7 @@ fn canonical_display_startup_runs_unchanged() {
         profile: Default::default(),
     };
     let core = built_core(&build, &root);
+    let core_path = core.dependency.artifacts[0].clone();
     let renderer = obs_build::graphics::build_opengl(
         &build,
         &root,
@@ -60,6 +61,7 @@ fn canonical_display_startup_runs_unchanged() {
         &Default::default(),
     )
     .unwrap();
+    assert_core_binding(&renderer, &core_path);
     let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
         ("OBS::libobs".into(), core.dependency),
         (
@@ -103,6 +105,7 @@ fn canonical_display_startup_runs_unchanged() {
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), CASES.len());
     for name in CASES {
+        assert_core_binding(&artifacts[name], &core_path);
         let result = checked(
             graph.tests[name]
                 .command_in(&root, &build.output, &artifacts[name], &runtime)
@@ -114,7 +117,7 @@ fn canonical_display_startup_runs_unchanged() {
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
     write_cmake(directory.path(), &root, &runtime, &core.cmake, &renderer);
-    replay_cmake(directory.path());
+    replay_cmake(directory.path(), &core_path);
 }
 
 fn write_cmake(directory: &Path, root: &Path, runtime: &Path, core: &str, renderer: &Path) {
@@ -128,6 +131,13 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 enable_testing()
 option(OS_LINUX "Original Linux guard" ON)
 option(HAVE_OBS_OPENGL "Original renderer guard" ON)
+option(DECLARE_XVFB_RUNNER "Root CMake declares its runtime Xvfb runner" ON)
+if(DECLARE_XVFB_RUNNER)
+  find_program(OBS_XVFB_RUN_REAL xvfb-run REQUIRED)
+  configure_file("{source}/test/cmocka/xvfb-run-or-display.sh.in" "${{CMAKE_CURRENT_BINARY_DIR}}/xvfb-run-or-display.sh" @ONLY)
+  set(XVFB_RUN "${{CMAKE_CURRENT_BINARY_DIR}}/xvfb-run-or-display.sh")
+  file(CHMOD "${{XVFB_RUN}}" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+endif()
 set(OBS_OUTPUT_DIR "{runtime}")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
@@ -148,28 +158,35 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
     .unwrap();
 }
 
-fn replay_cmake(directory: &Path) {
+fn replay_cmake(directory: &Path, core: &Path) {
     for (mode, options, expected) in [
         ("enabled", vec![], CASES.to_vec()),
         (
             "windows",
             vec!["-DOS_LINUX=OFF", "-DOS_WINDOWS=ON"],
-            vec!["test_startup_alloc_stable"],
+            vec![
+                "test_startup_alloc_stable",
+                "test_startup_cycle_stress",
+                "test_video_io_hidden",
+            ],
         ),
         (
             "macos",
             vec!["-DOS_LINUX=OFF", "-DOS_MACOS=ON"],
-            vec!["test_startup_alloc_stable"],
+            vec![
+                "test_startup_alloc_stable",
+                "test_startup_cycle_stress",
+                "test_video_io_hidden",
+            ],
         ),
-        ("no-display", vec![], vec![]),
+        ("no-display", vec!["-DDECLARE_XVFB_RUNNER=OFF"], vec![]),
+        ("declared-runner", vec![], CASES.to_vec()),
         (
             "no-renderer",
             vec!["-DHAVE_OBS_OPENGL=OFF"],
             CASES
                 .into_iter()
-                .filter(|name| {
-                    !name.starts_with("test_async_") && *name != "test_gl_dynamic_texture"
-                })
+                .filter(|name| *name != "test_gl_dynamic_texture")
                 .collect(),
         ),
     ] {
@@ -182,7 +199,7 @@ fn replay_cmake(directory: &Path) {
             .arg(&output)
             .arg("-DCMAKE_BUILD_TYPE=RelWithDebInfo")
             .args(options);
-        if mode == "no-display" {
+        if mode == "no-display" || mode == "declared-runner" {
             configure.env_remove("DISPLAY");
         }
         checked(&mut configure);
@@ -193,6 +210,9 @@ fn replay_cmake(directory: &Path) {
                     .arg(&output)
                     .args(["--parallel", "2"]),
             );
+            for name in CASES {
+                assert_core_binding(&output.join(name), core);
+            }
             let result = checked(
                 Command::new("ctest")
                     .arg("--test-dir")
@@ -208,7 +228,7 @@ fn replay_cmake(directory: &Path) {
                     .count(),
                 CASES.len()
             );
-            for count in [1, 2, 3, 4, 6] {
+            for count in [1, 2, 3, 4] {
                 assert!(
                     String::from_utf8_lossy(&result.stdout)
                         .contains(&format!("[  PASSED  ] {count} test(s)."))
@@ -235,12 +255,15 @@ fn check_inventory(output: &Path, expected: &[&str], built: bool) {
         assert!(expected.contains(&name));
         if built {
             let command = test["command"].as_array().unwrap();
-            let wrapped = name == "test_startup_alloc_stable";
+            let wrapped = matches!(
+                name,
+                "test_startup_alloc_stable" | "test_startup_cycle_stress" | "test_video_io_hidden"
+            );
             assert_eq!(command.len(), if wrapped { 3 } else { 1 });
             if wrapped {
                 assert_eq!(
                     Path::new(command[0].as_str().unwrap()).file_name().unwrap(),
-                    "xvfb-run"
+                    "xvfb-run-or-display.sh"
                 );
                 assert_eq!(command[1], "-a");
             }
@@ -275,23 +298,13 @@ fn check_inventory(output: &Path, expected: &[&str], built: bool) {
             .unwrap()
             .iter()
             .find(|p| p["name"] == "RESOURCE_LOCK");
-        if name.starts_with("test_async_") {
-            assert!(
-                locks.unwrap()["value"]
-                    .as_array()
-                    .unwrap()
-                    .contains(&serde_json::json!("timing"))
-            );
-        } else {
-            assert!(locks.is_none());
-        }
+        assert!(locks.is_none());
     }
 }
 
 fn expected_cases(name: &str) -> usize {
     match name {
-        "test_async_audio_own_clock" => 4,
-        "test_async_delay_audio" => 6,
+        "test_video_io_hidden" => 4,
         "test_gl_dynamic_texture" => 2,
         "test_nix_startup_log" => 3,
         _ => 1,
@@ -305,4 +318,16 @@ fn assert_cases(output: &std::process::Output, count: usize) {
         stdout.contains(&format!("[  PASSED  ] {count} test(s).")),
         "{stdout}"
     );
+}
+
+fn assert_core_binding(executable: &Path, core: &Path) {
+    let output = checked(Command::new("ldd").arg(executable));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains(core.to_str().unwrap()),
+        "{} must load {}: {stdout}",
+        executable.display(),
+        core.display()
+    );
+    eprintln!("Loader {}: {}", executable.display(), core.display());
 }
