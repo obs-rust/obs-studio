@@ -35,19 +35,10 @@ fn canonical_wayland_sdk_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let mut core = Dependency::package(&build.target, "libobs").unwrap();
-    let nested: Vec<_> = core
-        .include_dirs
-        .iter()
-        .map(|p| p.join("obs"))
-        .filter(|p| p.is_dir())
-        .collect();
-    core.include_dirs.extend(nested);
-    core.include_dirs.insert(0, root.join("libobs"));
-    core.compile_options.push("-fvisibility=hidden".into());
+    let core = built_core(&build, &root);
     let caption = obs_build::libobs::build_caption(&build, &root).unwrap();
     let interfaces = [
-        ("OBS::libobs".into(), core),
+        ("OBS::libobs".into(), core.dependency),
         (
             "OBS::caption".into(),
             Dependency {
@@ -93,11 +84,11 @@ fn canonical_wayland_sdk_runs_unchanged() {
         eprintln!("Cargo {name}: {}", String::from_utf8_lossy(&result.stdout));
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    write_cmake(directory.path(), &root, &caption);
+    write_cmake(directory.path(), &root, &core.cmake, &caption);
     replay_cmake(directory.path());
 }
 
-fn write_cmake(directory: &Path, root: &Path, caption: &Path) {
+fn write_cmake(directory: &Path, root: &Path, core: &str, caption: &Path) {
     let source = root.to_string_lossy().replace('\\', "/");
     let caption = caption.to_string_lossy().replace('\\', "/");
     fs::write(directory.join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
@@ -108,16 +99,8 @@ option(OS_LINUX "Linux guard" ON)
 option(OS_FREEBSD "FreeBSD guard" OFF)
 option(ENABLE_WAYLAND "Original feature guard" ON)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(CORE REQUIRED IMPORTED_TARGET libobs)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
-foreach(dir IN LISTS CORE_INCLUDE_DIRS)
-  if(IS_DIRECTORY "${{dir}}/obs")
-    target_include_directories(PkgConfig::CORE INTERFACE "${{dir}}/obs")
-  endif()
-endforeach()
-target_include_directories(PkgConfig::CORE BEFORE INTERFACE "{source}/libobs")
-add_library(OBS::libobs ALIAS PkgConfig::CORE)
-add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+{core}add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 add_library(OBS::caption STATIC IMPORTED)
 set_target_properties(OBS::caption PROPERTIES IMPORTED_LOCATION "{caption}" INTERFACE_INCLUDE_DIRECTORIES "{source}/deps/libcaption")
 find_package(ECM REQUIRED NO_MODULE)

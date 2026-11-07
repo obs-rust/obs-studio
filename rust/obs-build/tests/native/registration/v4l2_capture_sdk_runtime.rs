@@ -35,18 +35,9 @@ fn canonical_v4l2_capture_sdk_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let mut core = Dependency::package(&build.target, "libobs").unwrap();
-    let nested: Vec<_> = core
-        .include_dirs
-        .iter()
-        .map(|path| path.join("obs"))
-        .filter(|path| path.is_dir())
-        .collect();
-    core.include_dirs.extend(nested);
-    core.include_dirs.insert(0, root.join("libobs"));
-    core.compile_options.push("-fvisibility=hidden".into());
+    let core = built_core(&build, &root);
     let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
-        ("OBS::libobs".into(), core),
+        ("OBS::libobs".into(), core.dependency),
         (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
@@ -82,36 +73,29 @@ fn canonical_v4l2_capture_sdk_runs_unchanged() {
         eprintln!("Cargo {name}: {}", String::from_utf8_lossy(&result.stdout));
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    write_cmake(directory.path(), &root);
+    write_cmake(directory.path(), &root, &core.cmake);
     replay_cmake(directory.path());
 }
 
-fn write_cmake(directory: &Path, root: &Path) {
+fn write_cmake(directory: &Path, root: &Path, core: &str) {
     let source = root.to_string_lossy().replace('\\', "/");
-    fs::write(directory.join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
+    fs::write(
+        directory.join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
 project(v4l2-capture-sdk-contract C)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 enable_testing()
 option(OS_LINUX "Original Linux guard" ON)
 option(OS_FREEBSD "Original FreeBSD guard" OFF)
 option(OS_OPENBSD "Original OpenBSD guard" OFF)
-option(WITH_PLUGIN "Import the real installed owning plugin" ON)
+option(WITH_PLUGIN "Mark the owning plugin as built" ON)
 option(WITHOUT_PKG_CONFIG "Disable optional pkg-config discovery after importing core" OFF)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(CORE REQUIRED IMPORTED_TARGET libobs)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
-foreach(dir IN LISTS CORE_INCLUDE_DIRS)
-  if(IS_DIRECTORY "${{dir}}/obs")
-    target_include_directories(PkgConfig::CORE INTERFACE "${{dir}}/obs")
-  endif()
-endforeach()
-target_include_directories(PkgConfig::CORE BEFORE INTERFACE "{source}/libobs")
-add_library(OBS::libobs ALIAS PkgConfig::CORE)
-add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+{core}add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 if(WITH_PLUGIN)
-  find_file(v4l2_module NAMES linux-v4l2.so PATHS "${{CORE_LIBDIR}}/obs-plugins" REQUIRED NO_DEFAULT_PATH)
-  add_library(OBS::v4l2 MODULE IMPORTED)
-  set_property(TARGET OBS::v4l2 PROPERTY IMPORTED_LOCATION "${{v4l2_module}}")
+  add_library(OBS::v4l2 INTERFACE IMPORTED)
 endif()
 if(WITHOUT_PKG_CONFIG)
   set(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)
@@ -128,7 +112,10 @@ if(TARGET OBS::v4l2)
 endif()
 include("{source}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
-"#)).unwrap();
+"#
+        ),
+    )
+    .unwrap();
 }
 
 fn replay_cmake(directory: &Path) {
