@@ -88,6 +88,7 @@ pub mod canvas_rules;
 pub mod context_names;
 pub mod core_setup_rules;
 pub mod display_state;
+pub mod global_getters;
 pub mod module_failure_info;
 pub mod module_load_rules;
 pub mod module_locale;
