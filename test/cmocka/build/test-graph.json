@@ -7514,6 +7514,34 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_xcomposite_presence": {
+      "sources": [
+        "test/cmocka/test_xcomposite_presence.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/linux-capture/xcomposite-presence.h"
+      ]
+    },
+    "test_xcomposite_search_backoff": {
+      "sources": [
+        "test/cmocka/test_xcomposite_search_backoff.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/linux-capture/xcomposite-search.h"
+      ]
+    },
     "test_youtube_broadcast_settings": {
       "sources": [
         "test/cmocka/test_youtube_broadcast_settings.c",
@@ -10438,6 +10466,20 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_xcomposite_presence": {
+      "target": "test_xcomposite_presence",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_xcomposite_search_backoff": {
+      "target": "test_xcomposite_search_backoff",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",

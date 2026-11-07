@@ -2040,7 +2040,7 @@ fn canonical_frontend_utility_tests_are_registered() {
     }
 }
 
-/// #1390: run unchanged Qt-free frontend utility tests through both graph consumers.
+/// #1390: run unchanged display-free frontend/capture helpers through both consumers.
 /// Like the unchanged remux contract, this needs the native cmocka package.
 #[test]
 #[cfg(feature = "libobs-integration")]
@@ -2058,6 +2058,8 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
         "test_caption_unmappable",
+        "test_xcomposite_presence",
+        "test_xcomposite_search_backoff",
         "test_stream_service_select",
         "test_saved_transition",
         "test_record_disk_space",
@@ -2094,7 +2096,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     .collect();
     let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 6);
+    assert_eq!(artifacts.len(), 8);
     for (name, test) in &graph.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
@@ -2180,6 +2182,21 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         .map(|test| test["name"].as_str().unwrap())
         .collect();
     assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
+    for name in ["test_xcomposite_presence", "test_xcomposite_search_backoff"] {
+        let test = inventory["tests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|test| test["name"] == name)
+            .unwrap();
+        assert!(
+            test["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|property| property["name"] == "TIMEOUT" && property["value"] == 30.0)
+        );
+    }
 }
 
 #[test]
@@ -5700,4 +5717,51 @@ fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
             .any(|property| property["name"] == "RESOURCE_LOCK"
                 && property["value"] == serde_json::json!(["timing"]))
     );
+}
+
+/// #1390: keep both unchanged display-free XComposite decision suites.
+#[test]
+fn canonical_xcomposite_decisions_are_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.retain_suite("core");
+    for (name, header) in [
+        (
+            "test_xcomposite_presence",
+            "plugins/linux-capture/xcomposite-presence.h",
+        ),
+        (
+            "test_xcomposite_search_backoff",
+            "plugins/linux-capture/xcomposite-search.h",
+        ),
+    ] {
+        let target = graph
+            .targets
+            .get(name)
+            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        assert!(
+            matches!(&target.sources[..], [Source::Path(path)] if path == &format!("test/cmocka/{name}.c"))
+        );
+        assert!(
+            matches!(&target.libraries[..], [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
+        );
+        assert_eq!(target.includes, ["."]);
+        assert_eq!(target.watch_inputs, [header]);
+        let test = &graph.tests[name];
+        assert_eq!(test.target, name);
+        assert_eq!(test.command, ["${target}"]);
+        assert_eq!(test.timeout_seconds, Some(30));
+    }
+    graph
+        .targets
+        .retain(|name, _| name.starts_with("test_xcomposite_"));
+    graph
+        .tests
+        .retain(|name, _| name.starts_with("test_xcomposite_"));
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
+        assert_eq!(selected.targets.len(), 2);
+        assert_eq!(selected.tests.len(), 2);
+    }
 }
