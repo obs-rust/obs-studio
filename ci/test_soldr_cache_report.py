@@ -11,20 +11,21 @@ under `last_session`; a top-level parser reads them all as zero.
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import io
 import json
 import os
 import re
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "ci"))
-
-import soldr_cache_report as report  # noqa: E402
+SPEC = importlib.util.spec_from_file_location("soldr_cache_report", ROOT / "ci" / "soldr_cache_report.py")
+assert SPEC and SPEC.loader
+report = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(report)
 
 FIXTURE = ROOT / "ci" / "fixtures" / "soldr_cache_report_0.9.45.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"

@@ -133,7 +133,11 @@ class ProptestRegressionsTest(unittest.TestCase):
         for job_id, body in jobs(self.text).items():
             if not keepers(body):
                 continue
-            echo = [s for s in steps(body) if "GITHUB_STEP_SUMMARY" in runs(s)]
+            echo = [
+                s
+                for s in steps(body)
+                if "GITHUB_STEP_SUMMARY" in runs(s) and "proptest" in runs(s)
+            ]
             self.assertTrue(echo, f"{job_id}: no step writes the new seeds to the job summary")
             for step in echo:
                 self.assertIn("failure()", field(step, "if") or "", f"{job_id}: summary step")
