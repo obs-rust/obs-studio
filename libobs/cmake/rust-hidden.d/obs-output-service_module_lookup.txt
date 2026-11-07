@@ -1,0 +1,6 @@
+# Private service module lookup accessors.
+obs_service_module_first
+obs_service_module_next
+obs_service_module_service_count
+obs_service_module_service_id
+obs_service_module_load_state
