@@ -2,12 +2,10 @@
 
 /// A missing item is not selected.
 pub fn selected(value: Option<bool>) -> bool {
-    let _ = value;
-    todo!()
+    value.unwrap_or(false)
 }
 
 /// A missing item is not locked.
 pub fn locked(value: Option<bool>) -> bool {
-    let _ = value;
-    todo!()
+    value.unwrap_or(false)
 }
