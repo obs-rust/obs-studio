@@ -776,6 +776,12 @@ static EDGE_SHAPES: Fx = Fx {
             annotations: &[],
         },
         P {
+            ty: "float4x4",
+            name: "world",
+            default: &[],
+            annotations: &[],
+        },
+        P {
             ty: "int",
             name: "ViewProj",
             default: &[3, 0, 0, 0],
@@ -810,25 +816,29 @@ static EDGE_SHAPES: Fx = Fx {
 
 #[test]
 fn edge_params_and_empty_techniques() {
-    // The name decides view_proj and world, not the type; annotations get
+    // The name decides view_proj and world, not the type, and only by its
+    // case: a lower-case world is a plain param; annotations get
     // their own section and type; techniques with no pass compile to true.
     let mut m = Fake::new(&EDGE_SHAPES);
     assert!(compile(&mut m));
     assert_eq!(
         m.trace,
         [
-            "resize_params 2",
+            "resize_params 3",
             "resize_techniques 2",
             "link 0",
             "fill Param(0) 0 11",
             "world 0",
             "resize_annotations 0 0",
             "link 1",
-            "fill Param(1) 0 3",
-            "view_proj 1",
-            "resize_annotations 1 2",
-            "fill Annotation { param: 1, index: 0 } 4 4",
-            "fill Annotation { param: 1, index: 1 } 4 0",
+            "fill Param(1) 0 11",
+            "resize_annotations 1 0",
+            "link 2",
+            "fill Param(2) 0 3",
+            "view_proj 2",
+            "resize_annotations 2 2",
+            "fill Annotation { param: 2, index: 0 } 4 4",
+            "fill Annotation { param: 2, index: 1 } 4 0",
             "fill_technique 0",
             "resize_passes 0 0",
             "fill_technique 1",
@@ -837,7 +847,7 @@ fn edge_params_and_empty_techniques() {
     );
     let got = m.finish(true);
     assert!(
-        got.contains("view_proj=1:ViewProj world=0:World scale=-\n"),
+        got.contains("view_proj=2:ViewProj world=0:World scale=-\n"),
         "{got}"
     );
     assert!(
