@@ -919,10 +919,21 @@ pub fn native_test_thread_options(target: &str) -> Vec<String> {
 /// interface. Other static-test slices must declare any additional SDKs they use.
 pub fn native_test_rust_static_options(target: &str) -> Result<Vec<String>, String> {
     if !target.contains("linux") {
-        return Err(format!("Rust-static Cargo C tests for {target} are not implemented yet"));
+        return Err(format!(
+            "Rust-static Cargo C tests for {target} are not implemented yet"
+        ));
     }
-    Ok(["-lgcc_s", "-lutil", "-lrt", "-lpthread", "-lm", "-ldl", "-lc"]
-        .map(String::from).into())
+    Ok([
+        "-lgcc_s",
+        "-lutil",
+        "-lrt",
+        "-lpthread",
+        "-lm",
+        "-ldl",
+        "-lc",
+    ]
+    .map(String::from)
+    .into())
 }
 
 pub fn native_test_math_options(target: &str) -> Vec<String> {
