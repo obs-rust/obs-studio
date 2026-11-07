@@ -29,12 +29,9 @@ static void unverified_urls_are_unchanged(void **state)
 {
 	(void)state;
 	const char *urls[] = {
-		"rtmp://london.restream.io/live",
-		"rtmp://sanjose.restream.io/live",
-		"rtmp://live.restream.io.example.com/live",
-		"rtmp://live.restream.io:80/live",
-		"rtmp://live.restream.io:443/live",
-		"rtmp://live.restream.io:1937/live",
+		"rtmp://london.restream.io/live",           "rtmp://sanjose.restream.io/live",
+		"rtmp://live.restream.io.example.com/live", "rtmp://live.restream.io:80/live",
+		"rtmp://live.restream.io:443/live",         "rtmp://live.restream.io:1937/live",
 		"rtmps://live.restream.io:1937/live",
 	};
 	struct dstr result = {0};

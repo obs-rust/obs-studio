@@ -20,6 +20,11 @@ static const struct {
 	 * hosts have not been verified and must not be added by suffix matching. */
 	{"nanoStream Cloud / bintu", "bintu-stream.nanocosmos.de"},
 	{"nanoStream Cloud / bintu", "bintu-vtrans.nanocosmos.de"},
+	/* Restream's encoder guide shows live.restream.io:1937. Verified on
+	 * 2026-11-07: TLSv1.3, RTMP connect, same fake-key response as plain RTMP.
+	 * https://support.restream.io/en/articles/8523770-encrypt-your-stream-with-rtmps
+	 * Regional hosts have not been verified and stay unchanged (#2216). */
+	{"Restream.io", "live.restream.io"},
 	{"niconico (ニコニコ生放送)", "liveorigin.dlive.nicovideo.jp"},
 	{"Twitch", "apn10.contribute.live-video.net"},
 	{"Twitch", "apn20.contribute.live-video.net"},
@@ -122,7 +127,8 @@ bool rtmps_upgrade_url(const char *service, const char *url, struct dstr *out)
 
 	dstr_copy(out, "rtmps://");
 	dstr_ncat(out, host, host_len);
-	dstr_cat(out, strcmp(service, "nanoStream Cloud / bintu") == 0 ? ":1937" : ":443");
+	dstr_cat(out, strcmp(service, "nanoStream Cloud / bintu") == 0 || strcmp(service, "Restream.io") == 0 ? ":1937"
+													      : ":443");
 	dstr_cat(out, rest);
 	return true;
 }

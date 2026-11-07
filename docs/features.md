@@ -307,7 +307,9 @@ not get a line.
   Cloud / bintu global ingest and global transcoding ingest use their verified
   RTMPS endpoints on port 1937; regional hosts stay unchanged
   ([#2216](https://github.com/obs-rust/obs-studio/issues/2216),
-  PR [#3800](https://github.com/obs-rust/obs-studio/pull/3800)). If the encrypted
+  PR [#3800](https://github.com/obs-rust/obs-studio/pull/3800)). Restream.io's
+  Autodetect host (`live.restream.io`) also uses its verified RTMPS endpoint
+  on port 1937; its regional hosts stay unchanged (#2216). If the encrypted
   connection cannot be made, the shared fallback warning ("Streaming
   unencrypted (RTMP)") counts down three seconds and then streams to the same
   server over plain RTMP, unless you cancel; the fallback is written to the
