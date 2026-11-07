@@ -696,6 +696,17 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_canvas_readonly_getters": {
+      "sources": [
+        "test/cmocka/test_canvas_readonly_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_canvas_rules_callers": {
       "sources": [
         "test/cmocka/test_canvas_rules_callers.c"
@@ -9702,6 +9713,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_canvas_readonly_getters": {
+      "target": "test_canvas_readonly_getters",
+      "command": [
+        "${target}"
       ]
     },
     "test_canvas_rules_callers": {
