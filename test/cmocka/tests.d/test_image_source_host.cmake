@@ -5,11 +5,7 @@
 # fragment has defined its targets, so their own files stay unchanged.
 # The image-file-version tests declare their host sources in the shared graph.
 function(_image_source_host_attach)
-  foreach(
-    _test
-    IN
-    ITEMS test_slideshow_empty test_slideshow_manual_end
-  )
+  foreach(_test IN ITEMS test_slideshow_empty test_slideshow_manual_end)
     if(TARGET ${_test})
       target_sources(
         ${_test}
