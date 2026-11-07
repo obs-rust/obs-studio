@@ -9898,6 +9898,42 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_xcomposite_error_replies": {
+      "sources": [
+        "test/cmocka/test_xcomposite_error_replies.c",
+        "plugins/linux-capture/build/linux-capture.nix+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LINUX_CAPTURE",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-capture"
+      ]
+    },
     "test_xcomposite_presence": {
       "sources": [
         "test/cmocka/test_xcomposite_presence.c"
@@ -13576,6 +13612,22 @@
         "any": [
           "OS_LINUX",
           "OS_FREEBSD"
+        ]
+      }
+    },
+    "test_xcomposite_error_replies": {
+      "target": "test_xcomposite_error_replies",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LINUX_CAPTURE",
+          "HAVE_OBS_OPENGL"
         ]
       }
     },
