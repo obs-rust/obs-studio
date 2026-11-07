@@ -900,8 +900,10 @@ The Qt-free frontend stream-service selection, saved-transition lookup, recordin
 space decisions, multitrack ladder and encoder override tests also use the shared
 graph. The standalone caption round-trip suite also uses the shared graph,
 retaining its vendored libcaption and cmocka dependencies without needing libobs.
+The display-free XComposite presence and search-backoff decision suites retain
+unconditional cmocka linkage, helper-header tracking and 30-second timeouts.
 `canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
-all six original C tests through both the Cargo and CMake consumers and compares
+all eight original C tests through both the Cargo and CMake consumers and compares
 the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
 alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
