@@ -133,6 +133,7 @@ pub mod encoder_roi;
 pub mod encoder_size;
 pub mod interleave;
 pub mod output_begin;
+pub mod output_can_pause;
 pub mod output_caption;
 pub mod output_pause;
 pub mod output_reconnect;
