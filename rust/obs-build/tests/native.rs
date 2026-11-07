@@ -5330,3 +5330,6 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
 }
+
+#[path = "native/registration/canonical_display_render_is_registered.rs"]
+mod canonical_display_render_is_registered;
