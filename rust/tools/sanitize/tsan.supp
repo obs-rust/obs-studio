@@ -5,3 +5,9 @@
 called_from_lib:libglib-2.0.so
 called_from_lib:libgio-2.0.so
 called_from_lib:libgobject-2.0.so
+# Qt's uninstrumented event queue publishes this functor to the UI thread
+# without a hand-off TSan can see (#3809). Match its allocation helper and
+# this specific wait's template argument, not the callback or all Qt frames:
+# races on separately stored application state must remain visible.
+# Negative control: qt_queued_race.cpp (deliberately expects a TSan report).
+race:invokeMethodCallableHelper<WaitForOutputToStop
