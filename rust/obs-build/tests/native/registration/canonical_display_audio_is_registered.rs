@@ -6,7 +6,7 @@ const CASES: [&str; 6] = [
     "test_encoder_stop_packet_times",
     "test_obs_startup_failure_diagnostics",
     "test_scene_audio_actions",
-    "test_shutdown_leaked_scenes"
+    "test_shutdown_leaked_scenes",
 ];
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("display_audio_expected.json")).unwrap()
@@ -46,16 +46,28 @@ fn canonical_display_audio_guards() {
                         ("HAVE_STARTUP_X11".into(), x11),
                         ("HAVE_OBS_OPENGL".into(), renderer),
                     ]);
-                    if let Some(display) = display { facts.insert("HAVE_X11_DISPLAY".into(), display); }
+                    if let Some(display) = display {
+                        facts.insert("HAVE_X11_DISPLAY".into(), display);
+                    }
                     let selected = graph.select(&facts).unwrap();
                     for name in CASES {
                         let enabled = match name {
-                            "test_shutdown_leaked_scenes" => os != "OS_LINUX" || display == Some(true),
+                            "test_shutdown_leaked_scenes" => {
+                                os != "OS_LINUX" || display == Some(true)
+                            }
                             "test_obs_startup_failure_diagnostics" => os == "OS_LINUX" && x11,
                             _ => os == "OS_LINUX" && display == Some(true) && renderer,
                         };
-                        assert_eq!(selected.targets.contains_key(name), enabled, "{os}/{display:?}/{renderer}/{x11}/{name}");
-                        assert_eq!(selected.tests.contains_key(name), enabled, "{os}/{display:?}/{renderer}/{x11}/{name}");
+                        assert_eq!(
+                            selected.targets.contains_key(name),
+                            enabled,
+                            "{os}/{display:?}/{renderer}/{x11}/{name}"
+                        );
+                        assert_eq!(
+                            selected.tests.contains_key(name),
+                            enabled,
+                            "{os}/{display:?}/{renderer}/{x11}/{name}"
+                        );
                     }
                 }
             }

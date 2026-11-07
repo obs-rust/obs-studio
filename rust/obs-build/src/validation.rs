@@ -293,6 +293,7 @@ pub fn build_c_tests(
         ("HAVE_OBS_OPENGL".into(), false),
         ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
         ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
         ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),

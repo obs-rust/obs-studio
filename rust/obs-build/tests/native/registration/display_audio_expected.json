@@ -113,7 +113,10 @@
           "OS_LINUX",
           "HAVE_STARTUP_X11"
         ]
-      }
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-platform.h"
+      ]
     },
     "test_scene_audio_actions": {
       "sources": [
