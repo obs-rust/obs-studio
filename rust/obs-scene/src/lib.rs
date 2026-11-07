@@ -49,3 +49,5 @@ pub mod transform_update;
 
 #[allow(unsafe_code)]
 pub mod ffi;
+
+pub mod item_state_getters;
