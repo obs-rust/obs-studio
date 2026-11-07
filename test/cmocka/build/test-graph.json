@@ -1245,6 +1245,36 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_parser_compile": {
+      "sources": [
+        "libobs/graphics/effect-param-numbers.c.h",
+        "libobs/graphics/effect-param-types.c.h",
+        "libobs/graphics/effect-parser-blocks.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle.c.h",
+        "libobs/graphics/effect-parser-params.c.h",
+        "libobs/graphics/effect-parser-passes.c.h",
+        "libobs/graphics/effect-parser-writer.c.h",
+        "libobs/graphics/effect-parser.c.h",
+        "test/cmocka/test_effect_parser_compile.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "gs_pixelshader_create=test_pixelshader_create",
+        "gs_shader_destroy=test_shader_destroy",
+        "gs_shader_get_param_by_name=test_shader_get_param_by_name",
+        "gs_vertexshader_create=test_vertexshader_create"
+      ]
+    },
     "test_effect_parser_funcs": {
       "sources": [
         "libobs/graphics/effect-param-numbers.c.h",
@@ -7983,6 +8013,12 @@
     },
     "test_effect_parser_blocks": {
       "target": "test_effect_parser_blocks",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_effect_parser_compile": {
+      "target": "test_effect_parser_compile",
       "command": [
         "${target}"
       ]
