@@ -2297,6 +2297,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
         "test_volume_meter_ticker": graph["targets"].get("test_volume_meter_ticker").expect("canonical graph omits test_volume_meter_ticker"),
+        "test_dock_proportions": graph["targets"].get("test_dock_proportions").expect("canonical graph omits test_dock_proportions"),
         "test_close_top_level": graph["targets"].get("test_close_top_level").expect("canonical graph omits test_close_top_level"),
         "test_settings_track_rows": graph["targets"].get("test_settings_track_rows").expect("canonical graph omits test_settings_track_rows"),
         "test_replay_buffer_estimate": graph["targets"].get("test_replay_buffer_estimate").expect("canonical graph omits test_replay_buffer_estimate"),
@@ -2309,6 +2310,7 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
         "test_volume_meter_ticker": graph["tests"]["test_volume_meter_ticker"],
+        "test_dock_proportions": graph["tests"]["test_dock_proportions"],
         "test_close_top_level": graph["tests"]["test_close_top_level"],
         "test_settings_track_rows": graph["tests"]["test_settings_track_rows"],
         "test_replay_buffer_estimate": graph["tests"]["test_replay_buffer_estimate"],
@@ -2397,12 +2399,14 @@ fn canonical_remux_queue_runs_unchanged() {
         expected_names.insert("test_undo_stack_enable");
         if qt_test_available {
             expected_names.insert("test_hotkey_capture_mnemonic");
+            expected_names.insert("test_dock_proportions");
         }
         expected_names.insert("test_volume_meter_ticker");
         expected_names.insert("test_replay_buffer_estimate");
     }
     assert_eq!(names, expected_names);
     if linux && qt_test_available {
+        assert_dock_proportions_properties(tests);
         let mnemonic = tests
             .iter()
             .find(|test| test["name"] == "test_hotkey_capture_mnemonic")
@@ -5565,4 +5569,80 @@ fn canonical_youtube_broadcast_settings_is_registered() {
         assert!(selected.targets.contains_key(name));
         assert!(selected.tests.contains_key(name));
     }
+}
+
+/// #1390: the original nine dock cases need Linux, Widgets and Qt Test.
+#[test]
+fn canonical_dock_proportions_is_registered() {
+    use obs_build::validation::graph::Graph;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.retain_suite("qt");
+    let target = graph
+        .targets
+        .get("test_dock_proportions")
+        .expect("canonical graph omits test_dock_proportions");
+    assert_eq!(target.sources.len(), 1);
+    assert!(
+        matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_dock_proportions.cpp")
+    );
+    assert_eq!(target.includes, ["frontend/utility"]);
+    assert_eq!(
+        target
+            .libraries
+            .iter()
+            .map(|library| match library {
+                obs_build::validation::graph::Library::Name(name) => name.as_str(),
+                _ => panic!("dock libraries must be unconditional"),
+            })
+            .collect::<Vec<_>>(),
+        ["Qt6::Widgets", "Qt6::Test", "OBS::native-test-cmocka"]
+    );
+    assert_eq!(
+        target.watch_inputs,
+        ["frontend/utility/dock-proportions.hpp"]
+    );
+    let test = &graph.tests["test_dock_proportions"];
+    assert_eq!(test.timeout_seconds, Some(120));
+    assert_eq!(test.resource_locks, ["timing"]);
+    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
+    for linux in [false, true] {
+        for widgets in [false, true] {
+            for qt_test in [false, true] {
+                let facts = [
+                    ("OS_LINUX".into(), linux),
+                    ("HAVE_QT6_CORE".into(), false),
+                    ("HAVE_QT6_WIDGETS".into(), widgets),
+                    ("HAVE_QT6_TEST".into(), qt_test),
+                ]
+                .into();
+                let selected = graph.select(&facts).unwrap();
+                assert_eq!(
+                    selected.tests.contains_key("test_dock_proportions"),
+                    linux && widgets && qt_test
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "libobs-integration")]
+fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
+    let dock = tests
+        .iter()
+        .find(|test| test["name"] == "test_dock_proportions")
+        .unwrap();
+    let properties = dock["properties"].as_array().unwrap();
+    assert!(
+        properties
+            .iter()
+            .any(|property| property["name"] == "TIMEOUT"
+                && property["value"].as_f64() == Some(120.0))
+    );
+    assert!(
+        properties
+            .iter()
+            .any(|property| property["name"] == "RESOURCE_LOCK"
+                && property["value"] == serde_json::json!(["timing"]))
+    );
 }
