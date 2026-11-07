@@ -1,0 +1,3 @@
+obs_sceneitem_get_scale_filter
+obs_sceneitem_get_blending_method
+obs_sceneitem_get_blending_mode

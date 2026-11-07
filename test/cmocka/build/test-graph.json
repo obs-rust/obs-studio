@@ -6666,6 +6666,7 @@
     },
     "test_scene_render_plan_steps_rust": {
       "sources": [
+        "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_render_plan_steps.c"
       ],
       "includes": [

@@ -18,3 +18,5 @@ pub mod scene_transform_update;
 pub mod scene_bounds_place;
 
 pub mod item_state_getters;
+
+pub mod item_render_getters;
