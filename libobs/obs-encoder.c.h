@@ -986,6 +986,10 @@ static inline void obs_encoder_start_internal(obs_encoder_t *encoder, encoded_ca
 		os_atomic_set_bool(&encoder->paused, false);
 		pause_reset(&encoder->pause);
 
+		/* do_encode() appends without a lock on the delivering thread, so
+		 * this array can only be reset while the encoder is disconnected.
+		 * The PTS restarts here, so no old entry may match it. */
+		encoder->encoder_packet_times.num = 0;
 		encoder->cur_pts = 0;
 		add_connection(encoder);
 	} else if (added && !obs_encoder_audio_start_not_video((int)encoder->info.type) &&
@@ -1039,8 +1043,6 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 	}
 
 	pthread_mutex_unlock(&encoder->callbacks_mutex);
-
-	encoder->encoder_packet_times.num = 0;
 
 	if (last) {
 		remove_connection(encoder, true);
