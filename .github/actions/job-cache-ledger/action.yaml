@@ -1,0 +1,45 @@
+name: Cache Ledger
+description: Record one job's cache data as a JSON artifact and a summary line. Fail-open; changes no cache behaviour.
+inputs:
+  lane:
+    description: Lane name for the rollup in ci/cache_baseline.py
+    required: true
+  cache-dir:
+    description: zccache directory holding this job's journals, when the job's environment does not name it
+    required: false
+    default: ''
+  since:
+    description: Ignore journal rows older than this ISO time (a restored cache carries earlier runs' history)
+    required: false
+    default: ''
+  setup-phase-summary:
+    description: setup-soldr's setup-phase-summary output
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Write cache ledger 📒
+      continue-on-error: true
+      shell: bash
+      env:
+        CACHE_LEDGER_LANE: ${{ inputs.lane }}
+        CACHE_LEDGER_CACHE_DIR: ${{ inputs.cache-dir }}
+        CACHE_LEDGER_SINCE: ${{ inputs.since }}
+        CACHE_LEDGER_SETUP_PHASE_SUMMARY: ${{ inputs.setup-phase-summary }}
+        CACHE_LEDGER_BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        args=(--output "$RUNNER_TEMP/cache-ledger/ledger.json" --summary "$GITHUB_STEP_SUMMARY" --lane "$CACHE_LEDGER_LANE")
+        [ -z "$CACHE_LEDGER_CACHE_DIR" ] || args+=(--cache-dir "$CACHE_LEDGER_CACHE_DIR")
+        [ -z "$CACHE_LEDGER_SINCE" ] || args+=(--since "$CACHE_LEDGER_SINCE")
+        [ -z "$CACHE_LEDGER_BASE" ] || args+=(--base-sha "$CACHE_LEDGER_BASE")
+        uv run --no-project ci/cache_ledger.py "${args[@]}" || echo "- cache ledger unavailable" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload cache ledger 📒
+      continue-on-error: true
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: cache-ledger-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/cache-ledger/ledger.json
+        if-no-files-found: ignore
+        retention-days: 30

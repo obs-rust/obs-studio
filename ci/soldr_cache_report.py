@@ -47,9 +47,10 @@ def format_report(raw: str, wrapper: str | None) -> str:
     return "\n".join(lines)
 
 
-def main() -> int:
+def read_report() -> str:
+    """Raw `soldr cache report --json`, or "null" when it cannot be had."""
     try:
-        raw = subprocess.run(
+        return subprocess.run(
             ["soldr", "cache", "report", "--json"],
             capture_output=True,
             check=True,
@@ -57,8 +58,11 @@ def main() -> int:
             timeout=TIMEOUT_SECONDS,
         ).stdout
     except (OSError, subprocess.SubprocessError, UnicodeError):
-        raw = "null"
-    print(format_report(raw, os.environ.get("SOLDR_RUSTC_WRAPPER")))
+        return "null"
+
+
+def main() -> int:
+    print(format_report(read_report(), os.environ.get("SOLDR_RUSTC_WRAPPER")))
     return 0
 
 
