@@ -185,6 +185,25 @@ fn canonical_win_vmic_route_is_registered() {
     );
     assert!(target.header_libraries.is_empty());
     assert_eq!(target.watch_inputs, ["plugins/win-dshow/vmic-route.h"]);
+}
+
+/// #1390: the X11 reply-bit helper needs headers, not a display or XCB linkage.
+#[test]
+fn canonical_x11_keymap_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let name = "test_x11_keymap";
+    let target = graph.targets.get(name).expect("canonical graph omits test_x11_keymap");
+    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+        if path == "test/cmocka/test_x11_keymap.c"));
+    assert_eq!(target.includes, ["libobs"]);
+    assert_eq!(target.watch_inputs, ["libobs/obs-nix-x11-keymap.h"]);
+    assert_eq!(target.header_packages, ["xcb"]);
+    assert!(target.packages.is_empty());
+    assert!(target.header_libraries.is_empty());
+    assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
+        if library == "OBS::native-test-cmocka"));
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
