@@ -278,6 +278,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_async_upload_steps_rust": {
+      "sources": [
+        "test/cmocka/test_async_upload_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_audio_buffering_subsample": {
       "sources": [
         "test/cmocka/test_audio_buffering_subsample.c"
@@ -1078,6 +1101,29 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_deinterlace_draw_plan_steps_rust": {
+      "sources": [
+        "test/cmocka/test_deinterlace_draw_plan_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_deinterlace_mode_load": {
       "sources": [
@@ -5892,6 +5938,27 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_render_plan_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_render_plan_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": "UNIX"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_scene_rotated_scale_filter": {
       "sources": [
         "test/cmocka/test_scene_rotated_scale_filter.c"
@@ -6234,6 +6301,23 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_audio_place_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_audio_place_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_audio_ranges": {
       "sources": [
         "test/cmocka/test_source_audio_ranges.c"
@@ -6422,6 +6506,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_draw_plan_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_draw_plan_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_duplicate_steps": {
       "sources": [
         "test/cmocka/test_source_duplicate_steps.c",
@@ -6558,6 +6665,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_media_admission_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_media_admission_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_monitor_only_load": {
       "sources": [
         "test/cmocka/test_source_monitor_only_load.c"
@@ -6610,6 +6740,29 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_monitoring_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_monitoring_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_source_monitoring_type": {
       "sources": [
@@ -6723,6 +6876,29 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_render_route_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_render_route_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_source_size_route_steps": {
       "sources": [
@@ -6893,6 +7069,23 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_video_tick_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_video_tick_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_source_volume_apply_steps": {
       "sources": [
@@ -7251,6 +7444,23 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_transition_load_steps_rust": {
+      "sources": [
+        "test/cmocka/test_transition_load_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_transition_recursive_destination": {
       "sources": [
@@ -8493,6 +8703,10 @@
         "${target}"
       ]
     },
+    "test_async_upload_steps_rust": {
+      "target": "test_async_upload_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_audio_buffering_subsample": {
       "target": "test_audio_buffering_subsample"
     },
@@ -8843,6 +9057,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_deinterlace_draw_plan_steps_rust": {
+      "target": "test_deinterlace_draw_plan_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_deinterlace_mode_load": {
       "target": "test_deinterlace_mode_load",
@@ -10634,6 +10852,10 @@
         "${target}"
       ]
     },
+    "test_scene_render_plan_steps_rust": {
+      "target": "test_scene_render_plan_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_scene_rotated_scale_filter": {
       "target": "test_scene_rotated_scale_filter",
       "command": [
@@ -10846,6 +11068,10 @@
         "${target}"
       ]
     },
+    "test_source_audio_place_steps_rust": {
+      "target": "test_source_audio_place_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_audio_ranges": {
       "target": "test_source_audio_ranges",
       "command": [
@@ -10926,6 +11152,10 @@
         "${target}"
       ]
     },
+    "test_source_draw_plan_steps_rust": {
+      "target": "test_source_draw_plan_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_duplicate_steps": {
       "target": "test_source_duplicate_steps",
       "command": [
@@ -10977,6 +11207,10 @@
         "${target}"
       ]
     },
+    "test_source_media_admission_steps_rust": {
+      "target": "test_source_media_admission_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_monitor_only_load": {
       "target": "test_source_monitor_only_load",
       "command": [
@@ -10999,6 +11233,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_monitoring_steps_rust": {
+      "target": "test_source_monitoring_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_source_monitoring_type": {
       "target": "test_source_monitoring_type",
@@ -11058,6 +11296,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_render_route_steps_rust": {
+      "target": "test_source_render_route_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_source_size_route_steps": {
       "target": "test_source_size_route_steps",
@@ -11122,6 +11364,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_video_tick_steps_rust": {
+      "target": "test_source_video_tick_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_source_volume_apply_steps": {
       "target": "test_source_volume_apply_steps",
@@ -11239,6 +11485,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_transition_load_steps_rust": {
+      "target": "test_transition_load_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_transition_recursive_destination": {
       "target": "test_transition_recursive_destination",
