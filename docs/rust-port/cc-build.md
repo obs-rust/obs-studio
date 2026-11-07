@@ -924,6 +924,17 @@ header packages and libobs configuration-header interface without linking libobs
 The small runtime contract uses the existing oracle configuration fixture for
 that header interface; production validation uses its generated core configuration.
 This is helper coverage, not hardware NVENC or complete application parity (#1390).
+the selected original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
+alongside the existing remux contract; it proves these standalone helpers, not
+full frontend/application parity (#1390).
+
+The same contract includes unchanged fade-to-color gain math and four host-header
+checks: FFmpeg mux helper on `NOT OS_WINDOWS`, and obs-main, obsbasic and settings
+on `OS_LINUX`. The shared graph preserves those exact guards and the fade test's
+non-MSVC math link. Linux replays all eleven standalone executables; the other
+hosts select only their original applicable subset. These checks need no display
+or core library and do not establish native runtime coverage on another host.
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
 Its unchanged four cases exercise worker-thread profile creation/removal,
