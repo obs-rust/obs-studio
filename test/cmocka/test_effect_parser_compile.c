@@ -29,7 +29,7 @@
  *     pass <j> <name> section=<s> vert=<n|NULL> pixel=<n|NULL>
  *       vparams <i:eparam name|->/<n:sparam name|NULL>, ...
  *       pparams ...
- *   parser <i> <name> left=<bytes> param=<i:name|->   the parser's params
+ *   parser <i> <name> left=<bytes> param=<i:name|-|uncompiled>
  *     parser annotation <j> <name> left=<bytes>
  *   error <row>:<column> <level> <text>
  *   log <level> <text>                        everything blog() wrote
@@ -325,15 +325,20 @@ static void dump_effect(const gs_effect_t *effect)
 
 /* What the compile step leaves in the parser: each param's and annotation's
  * default value is moved out (none left), and each param points at its
- * gs_effect_param. An annotation's param pointer is never set (ep_param_init()
- * leaves it as it was), so it isn't written out. */
+ * gs_effect_param. ep_param_init() sets neither param pointer: the compile
+ * step sets a param's, never an annotation's. So an annotation's isn't
+ * written out, and a param's only when the compile step ran, which sized
+ * effect->params to the parser's params; after a parse error it is
+ * "uncompiled". */
 static void dump_parser(const struct effect_parser *ep, const gs_effect_t *effect)
 {
+	bool compiled = effect->params.num == ep->params.num;
+
 	for (size_t i = 0; i < ep->params.num; i++) {
 		const struct ep_param *param = ep->params.array + i;
 
 		dump_cat("parser %zu %s left=%zu param=%s\n", i, str_or_null(param->name), param->default_val.num,
-			 eparam_name(effect, param->param));
+			 compiled ? eparam_name(effect, param->param) : "uncompiled");
 		for (size_t j = 0; j < param->annotations.num; j++)
 			dump_cat("  parser annotation %zu %s left=%zu\n", j,
 				 str_or_null(param->annotations.array[j].name),
@@ -648,8 +653,8 @@ static const struct compile_case params_cases[] = {
 	 0, 0, 0, NULL, 0,
 	 "result 0\n"
 	 "view_proj=- world=- scale=-\n"
-	 "parser 0 ViewProj left=0 param=(foreign)\n"
-	 "parser 1 color left=0 param=(foreign)\n"
+	 "parser 0 ViewProj left=0 param=uncompiled\n"
+	 "parser 1 color left=0 param=uncompiled\n"
 	 "error 12:1 0 Unexpected code segment\n"
 	 "destroyed\n"
 	 "leaked 0\n"},
