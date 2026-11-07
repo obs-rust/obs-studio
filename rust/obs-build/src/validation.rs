@@ -372,6 +372,7 @@ pub fn build_c_tests(
         add_package(&mut dependency, &build.target, "libpulse")?;
         interfaces.insert("PulseAudio::PulseAudio".into(), dependency.into());
     }
+    configure_headless_plugin_sdks(build, &mut facts, &interfaces);
     if options.outputs {
         let mut happy = graph::Dependency {
             artifacts: vec![crate::deps::shared_archive(build, &root, "happy-eyeballs")?],
@@ -444,4 +445,26 @@ fn headers_only(library: &mut SharedLibrary, package: &str) -> Result<(), String
     definitions.sort();
     library.definitions.extend(definitions);
     Ok(())
+}
+
+// Match the optional CMake tests.d discovery. Never probe these Linux SDKs on
+// other hosts, or when their original owning-plugin guard is disabled.
+fn configure_headless_plugin_sdks(
+    build: &NativeBuild,
+    facts: &mut BTreeMap<String, bool>,
+    interfaces: &BTreeMap<String, graph::Dependency>,
+) {
+    if !facts["OS_LINUX"] {
+        return;
+    }
+    facts.insert(
+        "HAVE_PULSE_DEFAULT_RETRY_SDK".into(),
+        facts["HAVE_OBS_PULSEAUDIO"] && interfaces.contains_key("PulseAudio::PulseAudio"),
+    );
+    let layout = facts["HAVE_OBS_PIPEWIRE"]
+        && interfaces.contains_key("PipeWire::PipeWire")
+        && ["libdrm", "gio-2.0"]
+            .iter()
+            .all(|package| graph::Dependency::package(&build.target, package).is_ok());
+    facts.insert("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), layout);
 }

@@ -1,20 +1,14 @@
-# Where the PipeWire camera source points an async frame's planes in a
-# PipeWire buffer (obsproject/obs-studio#13823, NV12 green or crashing;
-# obsproject/obs-studio#13744, I420 and YV12 cameras). Fake spa_buffers only:
-# no PipeWire daemon, portal or display, so it runs in CI.
+# Unchanged plane-layout cases live in build/test-graph.json (#1390).
+# The production PCH also includes DRM, GIO/GLib and GLAD headers, even though
+# these cases need no GL implementation, display, device or PipeWire daemon.
+set(HAVE_PIPEWIRE_FRAME_LAYOUT_SDK FALSE)
 if(OS_LINUX AND TARGET OBS::pipewire)
-  get_target_property(_frame_layout_drm_includes Libdrm::Libdrm INTERFACE_INCLUDE_DIRECTORIES)
-  add_executable(
-    test_pipewire_frame_layout
-    test_pipewire_frame_layout.c
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/formats.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/frame-layout.c.h"
-  )
-  target_include_directories(
-    test_pipewire_frame_layout
-    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire" ${_frame_layout_drm_includes}
-  )
-  target_link_libraries(test_pipewire_frame_layout PRIVATE OBS::libobs PipeWire::PipeWire ${CMOCKA_LIBRARIES})
-  add_dependencies(cmocka-tests test_pipewire_frame_layout)
-  add_test(test_pipewire_frame_layout ${CMAKE_CURRENT_BINARY_DIR}/test_pipewire_frame_layout)
+  find_package(PipeWire QUIET)
+  find_package(PkgConfig QUIET)
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(_frame_layout_test_headers QUIET IMPORTED_TARGET libdrm gio-2.0)
+    if(TARGET PipeWire::PipeWire AND TARGET PkgConfig::_frame_layout_test_headers)
+      set(HAVE_PIPEWIRE_FRAME_LAYOUT_SDK TRUE)
+    endif()
+  endif()
 endif()
