@@ -178,6 +178,8 @@ mod canonical_encoder_group_null_is_registered;
 mod canonical_fade_and_host_tests_are_registered;
 #[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
 mod canonical_fake_device_graphics_is_registered;
+#[path = "native/registration/canonical_ffmpeg_mux_hosts_are_registered.rs"]
+mod canonical_ffmpeg_mux_hosts_are_registered;
 #[path = "native/registration/canonical_ffmpeg_packet_write_is_registered.rs"]
 mod canonical_ffmpeg_packet_write_is_registered;
 #[path = "native/registration/canonical_filter_clipboard_is_registered.rs"]
