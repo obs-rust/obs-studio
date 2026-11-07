@@ -189,11 +189,6 @@ pub unsafe extern "C" fn bnum_allocs() -> c_long {
 /// Always safe to call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn base_get_alignment() -> c_int {
-    #[cfg(windows)]
-    // SAFETY: deliberately undefined link probe; this fixture must never execute.
-    unsafe {
-        super::obs_ci_3637_missing();
-    }
     ALIGNMENT as c_int
 }
 
