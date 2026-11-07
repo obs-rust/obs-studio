@@ -70,6 +70,7 @@ pub mod effect_parser_blocks;
 pub mod effect_parser_lifecycle;
 pub mod effect_parser_params;
 pub mod effect_parser_passes;
+pub mod effect_parser_writer;
 pub mod effect_passes;
 pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;

@@ -2,7 +2,6 @@
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
     "effect-parser-funcs",
-    "effect-parser-writer",
     "graphics"
   ],
   "depends": []

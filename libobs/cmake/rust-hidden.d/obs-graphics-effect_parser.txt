@@ -1,8 +1,10 @@
-# graphics/effect-parser-blocks.c, graphics/effect-parser-params.c and
-# graphics/effect-parser-passes.c: ep_parse() in effect-parser.c calls them
-# inside libobs. Declared in effect-parser-blocks.h, effect-parser-params.h
-# and effect-parser-passes.h without EXPORT, so the shims stay hidden the
-# same way.
+# graphics/effect-parser-blocks.c, graphics/effect-parser-params.c,
+# graphics/effect-parser-passes.c and graphics/effect-parser-writer.c:
+# ep_parse() and the compile step in effect-parser.c call them inside libobs.
+# Declared in effect-parser-blocks.h, effect-parser-params.h,
+# effect-parser-passes.h and effect-parser-writer.h without EXPORT, so the
+# shims stay hidden the same way.
+ep_makeshaderstring
 ep_parse_param
 ep_parse_sampler_state
 ep_parse_struct

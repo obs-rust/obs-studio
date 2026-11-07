@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-effect-parser-writer.pch.h"
+#include "libobs/build/libobs-ported-effect-parser-writer.pch.h"
 
 static inline struct ep_func *ep_getfunc(struct effect_parser *ep, const char *name)
 {
