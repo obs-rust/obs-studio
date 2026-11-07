@@ -41,7 +41,15 @@ fn canonical_rust_static_header_steps_are_registered() {
             })
             .collect();
         let expected = format!("test/cmocka/{base}.c");
-        assert_eq!(sources, [expected.as_str()], "{name}");
+        let expected_sources = if base == "test_scene_render_plan_steps" {
+            vec![
+                "test/cmocka/scene-getter-log-link-stub.c",
+                expected.as_str(),
+            ]
+        } else {
+            vec![expected.as_str()]
+        };
+        assert_eq!(sources, expected_sources, "{name}");
         assert_eq!(target.includes, ["libobs"]);
         assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
         assert!(target.archives.is_empty());
