@@ -191,7 +191,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -252,7 +256,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -337,7 +345,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -1233,7 +1245,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -1292,7 +1308,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -1335,7 +1355,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7206,7 +7230,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7261,7 +7289,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -7328,7 +7360,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7396,7 +7432,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7438,7 +7478,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7500,7 +7544,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -7603,7 +7651,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7682,7 +7734,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -7762,7 +7818,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -7848,7 +7908,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -7910,7 +7974,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -7960,7 +8028,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -8130,7 +8202,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -8182,7 +8258,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -8586,7 +8666,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -8657,7 +8741,11 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -8794,7 +8882,11 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
