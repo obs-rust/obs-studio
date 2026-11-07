@@ -64,53 +64,7 @@ fn canonical_display_audio_runs_unchanged() {
     )
     .unwrap();
     assert_core_binding(&renderer, &core_path);
-    let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
-        ("OBS::libobs".into(), core.dependency),
-        (
-            "OBS::native-test-cmocka".into(),
-            Dependency::package(&build.target, "cmocka").unwrap(),
-        ),
-    ]
-    .into();
-    interfaces.insert(
-        "OBS::libobs-opengl".into(),
-        Dependency {
-            artifacts: vec![renderer.clone()],
-            ..Default::default()
-        },
-    );
-    interfaces.insert(
-        "m".into(),
-        Dependency {
-            link_options: vec!["-lm".into()],
-            ..Default::default()
-        },
-    );
-    interfaces.insert(
-        "ZLIB::ZLIB".into(),
-        Dependency::package(&build.target, "zlib").unwrap(),
-    );
-
-    for (name, package) in [
-        ("FFmpeg::avformat", "libavformat"),
-        ("FFmpeg::avutil", "libavutil"),
-        ("X11::X11", "x11"),
-    ] {
-        interfaces.insert(
-            name.into(),
-            Dependency::package(&build.target, package).unwrap(),
-        );
-    }
-    for name in ["OBS::caption", "Uthash::Uthash"] {
-        interfaces.insert(name.into(), Dependency::default());
-    }
-    interfaces.insert(
-        "dl".into(),
-        Dependency {
-            link_options: vec!["-ldl".into()],
-            ..Default::default()
-        },
-    );
+    let interfaces = interfaces(&build, core.dependency, renderer.clone());
     let facts = [
         ("OS_LINUX".into(), true),
         ("OS_WINDOWS".into(), false),
@@ -146,6 +100,61 @@ fn canonical_display_audio_runs_unchanged() {
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
     write_cmake(directory.path(), &root, &runtime, &core.cmake, &renderer);
     replay_cmake(directory.path(), &core_path);
+}
+
+fn interfaces(
+    build: &NativeBuild,
+    core: Dependency,
+    renderer: std::path::PathBuf,
+) -> std::collections::BTreeMap<String, Dependency> {
+    let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
+        ("OBS::libobs".into(), core),
+        (
+            "OBS::native-test-cmocka".into(),
+            Dependency::package(&build.target, "cmocka").unwrap(),
+        ),
+    ]
+    .into();
+    interfaces.insert(
+        "OBS::libobs-opengl".into(),
+        Dependency {
+            artifacts: vec![renderer],
+            ..Default::default()
+        },
+    );
+    interfaces.insert(
+        "m".into(),
+        Dependency {
+            link_options: vec!["-lm".into()],
+            ..Default::default()
+        },
+    );
+    interfaces.insert(
+        "ZLIB::ZLIB".into(),
+        Dependency::package(&build.target, "zlib").unwrap(),
+    );
+
+    for (name, package) in [
+        ("FFmpeg::avformat", "libavformat"),
+        ("FFmpeg::avutil", "libavutil"),
+        ("X11::X11", "x11"),
+    ] {
+        interfaces.insert(
+            name.into(),
+            Dependency::package(&build.target, package).unwrap(),
+        );
+    }
+    for name in ["OBS::caption", "Uthash::Uthash"] {
+        interfaces.insert(name.into(), Dependency::default());
+    }
+    interfaces.insert(
+        "dl".into(),
+        Dependency {
+            link_options: vec!["-ldl".into()],
+            ..Default::default()
+        },
+    );
+    interfaces
 }
 
 fn write_cmake(directory: &Path, root: &Path, runtime: &Path, core: &str, renderer: &Path) {
