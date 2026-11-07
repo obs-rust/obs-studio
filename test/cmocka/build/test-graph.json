@@ -2057,6 +2057,21 @@
         "libobs/data"
       ]
     },
+    "test_encoder_audio_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_audio_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_audio_start_frames_steps": {
       "sources": [
         "test/cmocka/test_encoder_audio_start_frames_steps.c",
@@ -11958,6 +11973,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_audio_getters": {
+      "target": "test_encoder_audio_getters",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_audio_start_frames_steps": {
