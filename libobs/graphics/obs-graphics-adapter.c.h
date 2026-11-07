@@ -19,6 +19,10 @@ void obs_graphics_cf_adderror(struct cf_parser *p, const char *error, int level,
 			      const char *val3);
 bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out);
 char *obs_graphics_cf_literal_to_str(const char *literal, size_t count);
+gs_shader_t *obs_graphics_vertexshader_create(const char *shader, const char *file, char **error_string);
+gs_shader_t *obs_graphics_pixelshader_create(const char *shader, const char *file, char **error_string);
+gs_sparam_t *obs_graphics_shader_get_param_by_name(gs_shader_t *shader, const char *name);
+void obs_graphics_effect_compile_error(int which, size_t idx, const char *name);
 
 void *obs_graphics_bmalloc(size_t size)
 {
@@ -126,4 +130,39 @@ bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out)
 char *obs_graphics_cf_literal_to_str(const char *literal, size_t count)
 {
 	return cf_literal_to_str(literal, count);
+}
+
+/* The graphics calls of the effect parser's compile step
+ * (effect-parser-compile.c), called where the C called them: an executable
+ * that compiles this file with the shader functions renamed
+ * (test_effect_parser_compile_rust) puts its stand-ins behind them. */
+gs_shader_t *obs_graphics_vertexshader_create(const char *shader, const char *file, char **error_string)
+{
+	return gs_vertexshader_create(shader, file, error_string);
+}
+
+gs_shader_t *obs_graphics_pixelshader_create(const char *shader, const char *file, char **error_string)
+{
+	return gs_pixelshader_create(shader, file, error_string);
+}
+
+gs_sparam_t *obs_graphics_shader_get_param_by_name(gs_shader_t *shader, const char *name)
+{
+	return gs_shader_get_param_by_name(shader, name);
+}
+
+/* The compile step's LOG_ERROR lines, with the C's literal formats. */
+void obs_graphics_effect_compile_error(int which, size_t idx, const char *name)
+{
+	switch (which) {
+	case 0:
+		blog(LOG_ERROR, "Effect shader parameter not found");
+		break;
+	case 1:
+		blog(LOG_ERROR, "Pass (%zu) <%s> missing vertex shader!", idx, name);
+		break;
+	case 2:
+		blog(LOG_ERROR, "Pass (%zu) <%s> missing pixel shader!", idx, name);
+		break;
+	}
 }

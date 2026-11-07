@@ -1,9 +1,10 @@
 //! C ABI for `libobs/graphics/effect-parser-blocks.c.h`,
 //! `libobs/graphics/effect-parser-passes.c.h`,
-//! `libobs/graphics/effect-parser-params.c.h` and
-//! `libobs/graphics/effect-parser-writer.c.h`: the effect parser's struct
+//! `libobs/graphics/effect-parser-params.c.h`,
+//! `libobs/graphics/effect-parser-writer.c.h` and
+//! `libobs/graphics/effect-parser-compile.c.h`: the effect parser's struct
 //! and sampler-state blocks, its passes and techniques, its parameter
-//! declarations and its shader writer.
+//! declarations, its shader writer and its compile step.
 //!
 //! `ep_parse()` (`effect-parser.c`) calls [`ep_parse_struct`],
 //! [`ep_parse_sampler_state`] and [`ep_parse_technique`] on the keyword
@@ -51,7 +52,7 @@
 //! adapters, and the invalid type error goes to `cf_adderror()` with the
 //! type, at the same token.
 //!
-//! The compile step (`effect-parser.c`) calls [`ep_makeshaderstring`] on
+//! The compile step calls [`ep_makeshaderstring`] on
 //! each pass's vertex and pixel call, declared in
 //! `graphics/effect-parser-writer.h` without `EXPORT` and hidden the same
 //! way. The writer reads `ep->params`, `structs`, `funcs` and `samplers`
@@ -65,12 +66,30 @@
 //! keeps in C, are the core's ports of them (the same first-match rules),
 //! so the shim names no C symbol beyond the allocator adapters.
 //!
-//! A null `ep` does nothing (`ep_parse()` never passes one; the C
-//! dereferences it).
+//! `ep_parse()` calls [`ep_compile`] once the text parsed with no error,
+//! declared in `graphics/effect-parser-compile.h` without `EXPORT` and
+//! hidden the same way. It fills `ep->effect` in place: each
+//! `gs_effect_param`, annotation, technique, pass and pass shader param
+//! array grown as `da_resize` grows it (new items zero), each name a
+//! `bstrdup` copy and each default value moved out of the parser as
+//! `da_move` moves it, on libobs's allocator; each parser param points at
+//! its effect param. The shader text is the writer shim's
+//! ([`ep_makeshaderstring`]), the effect param lookup the Rust
+//! `gs_effect_get_param_by_name`, and the shader creates, the shader param
+//! lookup and the three `LOG_ERROR` lines (with the C's literal formats)
+//! go through the private adapters `obs_graphics_vertexshader_create`,
+//! `obs_graphics_pixelshader_create`,
+//! `obs_graphics_shader_get_param_by_name` and
+//! `obs_graphics_effect_compile_error`; a shader's error text goes to
+//! `cf_adderror()`, and is freed. The `_DEBUG_SHADERS` lines are not
+//! written.
+//!
+//! A null `ep` does nothing, and `ep_compile` with a null `ep` or effect
+//! returns false (`ep_parse()` never passes one; the C dereferences it).
 
 use core::ffi::{CStr, c_char, c_int, c_void};
 use core::mem::size_of;
-use core::ptr;
+use core::ptr::{self, NonNull};
 
 use obs_util::ffi::cf_parser::cf_parser;
 use obs_util::ffi::cf_tokenizer::cf_token;
@@ -78,6 +97,10 @@ use obs_util::ffi::darray::darray;
 use obs_util::ffi::dstr::dstr;
 
 use crate::effect_param_types::{self, Route};
+use crate::effect_parser::compile::{
+    self, CompileLog, CompileModel, EFFECT_PASS, EFFECT_TECHNIQUE, ParamSlot, ShaderSlot,
+    ShaderType,
+};
 use crate::effect_parser::writer::{
     self, CallTokens, Deps, ShaderOut, VarType, VarsOf, WriterParser,
 };
@@ -85,7 +108,11 @@ use crate::effect_parser::{
     self as core_blocks, INVALID_TYPE, Param, ParamTokens, Pass, ProgramToken, Sampler, Struct,
     Technique,
 };
+use crate::ffi::effect_lookups::{
+    gs_effect, gs_effect_get_param_by_name, gs_effect_param, gs_effect_pass, gs_effect_technique,
+};
 use crate::ffi::effect_parser_lifecycle::effect_parser;
+use crate::ffi::effect_passes::pass_shaderparam;
 use crate::ffi::shader_param_values::libobs_strtod;
 use crate::ffi::shader_parser::{RawTokens, dup, empty_darray, push};
 use crate::shader_parser::{CFTOKEN_NONE, LEX_ERROR};
@@ -1004,4 +1031,511 @@ pub unsafe extern "C" fn ep_makeshaderstring(
         used_params,
     };
     writer::make_shader_string(&mut CParser(ep), &mut out, call.as_ref());
+}
+
+// ---------------------------------------------------------------------------
+// The compile step (effect-parser-compile.c).
+
+unsafe extern "C" {
+    // The graphics device and the compile step's log lines, through the
+    // private C adapters (libobs/graphics/obs-graphics-adapter.c.h).
+    #[link_name = "obs_graphics_vertexshader_create"]
+    fn gs_vertexshader_create(
+        shader: *const c_char,
+        file: *const c_char,
+        error_string: *mut *mut c_char,
+    ) -> *mut c_void;
+    #[link_name = "obs_graphics_pixelshader_create"]
+    fn gs_pixelshader_create(
+        shader: *const c_char,
+        file: *const c_char,
+        error_string: *mut *mut c_char,
+    ) -> *mut c_void;
+    #[link_name = "obs_graphics_shader_get_param_by_name"]
+    fn gs_shader_get_param_by_name(shader: *mut c_void, name: *const c_char) -> *mut c_void;
+    /// `blog(LOG_ERROR, ...)` with the C's literal formats.
+    fn obs_graphics_effect_compile_error(which: c_int, idx: usize, name: *const c_char);
+}
+
+/// `darray_resize` on libobs's allocator: the capacity grows as
+/// `darray_ensure_capacity` grows it (the old capacity's bytes copied into
+/// a new `bmalloc` buffer), and new items are zero.
+///
+/// # Safety
+///
+/// `da` is a valid darray of `elem`-byte items on libobs's allocator.
+unsafe fn da_resize(da: &mut darray, elem: usize, num: usize) {
+    if num == da.num {
+        return;
+    } else if num == 0 {
+        da.num = 0;
+        return;
+    }
+    let old_num = da.num;
+    if num > da.capacity {
+        let new_cap = if da.capacity == 0 {
+            num
+        } else {
+            da.capacity.saturating_mul(2).max(num)
+        };
+        // SAFETY: a plain allocation; the old buffer holds `capacity`
+        // items and the new one more, and they are distinct.
+        unsafe {
+            let p = bmalloc(elem.saturating_mul(new_cap));
+            if !da.array.is_null() {
+                if da.capacity != 0 {
+                    ptr::copy_nonoverlapping(
+                        da.array.cast::<u8>(),
+                        p.cast::<u8>(),
+                        elem.saturating_mul(da.capacity),
+                    );
+                }
+                bfree(da.array);
+            }
+            da.array = p;
+        }
+        da.capacity = new_cap;
+    }
+    da.num = num;
+    if num > old_num {
+        // SAFETY: the buffer holds `num` items.
+        unsafe {
+            ptr::write_bytes(
+                da.array.cast::<u8>().add(elem.saturating_mul(old_num)),
+                0,
+                elem.saturating_mul(num - old_num),
+            );
+        }
+    }
+}
+
+/// `bstrdup`: a `bmalloc` copy of a C string, `NULL` for `NULL`.
+///
+/// # Safety
+///
+/// `s` is null or a NUL-terminated string.
+unsafe fn bstrdup(s: *const c_char) -> *mut c_char {
+    if s.is_null() {
+        return ptr::null_mut();
+    }
+    // SAFETY: the caller's contract; the copy holds the bytes and the NUL.
+    unsafe {
+        let bytes = CStr::from_ptr(s).to_bytes_with_nul();
+        let dup = bmalloc(bytes.len()).cast::<u8>();
+        ptr::copy_nonoverlapping(bytes.as_ptr(), dup, bytes.len());
+        dup.cast()
+    }
+}
+
+/// The shader text and used params one call's `ep_makeshaderstring()`
+/// built, as the C's locals.
+struct CBuilt {
+    shader_str: dstr,
+    used_params: darray,
+}
+
+/// The parser and its effect, written in place.
+struct CCompile {
+    ep: *mut effect_parser,
+    effect: *mut gs_effect,
+}
+
+impl CCompile {
+    /// Item `i` of a darray of `T`.
+    ///
+    /// # Safety
+    ///
+    /// `da` holds more than `i` items of `T`.
+    unsafe fn at<T>(da: &darray, i: usize) -> *mut T {
+        // SAFETY: the caller's contract.
+        unsafe { da.array.cast::<T>().add(i) }
+    }
+
+    fn ep(&self) -> &effect_parser {
+        // SAFETY: the shim's contract: a valid parser.
+        unsafe { &*self.ep }
+    }
+
+    fn effect(&self) -> &gs_effect {
+        // SAFETY: the shim's contract: the parser's effect, valid.
+        unsafe { &*self.effect }
+    }
+
+    fn effect_mut(&mut self) -> &mut gs_effect {
+        // SAFETY: as effect(), with exclusive access during the call.
+        unsafe { &mut *self.effect }
+    }
+
+    /// The effect's param or annotation of `slot` and the parser's.
+    fn param_pair(&self, slot: ParamSlot) -> (*mut gs_effect_param, *mut ep_param) {
+        // SAFETY: the core asks only for params and annotations within the
+        // counts it sized the effect's arrays to, the parser's counts.
+        unsafe {
+            match slot {
+                ParamSlot::Param(i) => (
+                    Self::at(&self.effect().params, i),
+                    Self::at(&self.ep().params, i),
+                ),
+                ParamSlot::Annotation { param, index } => {
+                    let dst: *mut gs_effect_param = Self::at(&self.effect().params, param);
+                    let src: *mut ep_param = Self::at(&self.ep().params, param);
+                    (
+                        Self::at(&(*dst).annotations, index),
+                        Self::at(&(*src).annotations, index),
+                    )
+                }
+            }
+        }
+    }
+
+    fn technique(&self, t: usize) -> *mut gs_effect_technique {
+        // SAFETY: t is within the size the core gave the techniques.
+        unsafe { Self::at(&self.effect().techniques, t) }
+    }
+
+    fn technique_in(&self, t: usize) -> *mut ep_technique {
+        // SAFETY: t is within the parser's techniques.
+        unsafe { Self::at(&self.ep().techniques, t) }
+    }
+
+    fn pass(&self, t: usize, p: usize) -> *mut gs_effect_pass {
+        // SAFETY: p is within the size the core gave the passes.
+        unsafe { Self::at(&(*self.technique(t)).passes, p) }
+    }
+
+    fn pass_in(&self, t: usize, p: usize) -> *mut ep_pass {
+        // SAFETY: p is within the parser's passes of technique t.
+        unsafe { Self::at(&(*self.technique_in(t)).passes, p) }
+    }
+
+    /// The slot's `pass_shaderparam_array_t`.
+    fn shader_params(&self, slot: ShaderSlot) -> *mut darray {
+        let pass = self.pass(slot.tech, slot.pass);
+        // SAFETY: a valid pass of the effect.
+        unsafe {
+            match slot.kind {
+                ShaderType::Vertex => &raw mut (*pass).vertshader_params,
+                ShaderType::Pixel => &raw mut (*pass).pixelshader_params,
+            }
+        }
+    }
+
+    /// `used_params->array[i].array`.
+    fn used_name(built: &CBuilt, i: usize) -> *const c_char {
+        // SAFETY: the core asks only for i below used_params.num.
+        unsafe { (*Self::at::<dstr>(&built.used_params, i)).array }
+    }
+}
+
+impl CompileModel for CCompile {
+    type Shader = NonNull<c_void>;
+    type Built = CBuilt;
+    type Errors = *mut c_char;
+    type EParam = *mut gs_effect_param;
+    type SParam = NonNull<c_void>;
+
+    fn param_count(&self) -> usize {
+        self.ep().params.num
+    }
+    fn technique_count(&self) -> usize {
+        self.ep().techniques.num
+    }
+    fn resize_params(&mut self, num: usize) {
+        // SAFETY: the effect's DARRAY(struct gs_effect_param).
+        unsafe {
+            da_resize(
+                &mut self.effect_mut().params,
+                size_of::<gs_effect_param>(),
+                num,
+            )
+        }
+    }
+    fn resize_techniques(&mut self, num: usize) {
+        // SAFETY: the effect's DARRAY(struct gs_effect_technique).
+        unsafe {
+            da_resize(
+                &mut self.effect_mut().techniques,
+                size_of::<gs_effect_technique>(),
+                num,
+            );
+        }
+    }
+    fn link_param(&mut self, i: usize) {
+        let (dst, src) = self.param_pair(ParamSlot::Param(i));
+        // SAFETY: valid items of both arrays.
+        unsafe { (*src).param = dst.cast() };
+    }
+    fn param_type_name(&self, slot: ParamSlot) -> &[u8] {
+        let (_, src) = self.param_pair(slot);
+        // SAFETY: the parser's type, a C string (never NULL).
+        unsafe { c_text((*src).r#type) }
+    }
+    fn fill_param(&mut self, slot: ParamSlot, section: i32, type_: i32) {
+        let (dst, src) = self.param_pair(slot);
+        let effect = self.effect;
+        // SAFETY: valid, distinct items of the two arrays; the name is a C
+        // string or NULL; the default value moves as da_move moves it.
+        unsafe {
+            let dst = &mut *dst;
+            let src = &mut *src;
+            dst.name = bstrdup(src.name);
+            dst.section = section;
+            dst.effect = effect;
+            bfree(dst.default_val.array);
+            dst.default_val = core::mem::replace(&mut src.default_val, empty_darray());
+            dst.type_ = type_;
+        }
+    }
+    fn param_name(&self, i: usize) -> &[u8] {
+        let (_, src) = self.param_pair(ParamSlot::Param(i));
+        // SAFETY: the parser's name, a C string (never NULL).
+        unsafe { c_text((*src).name) }
+    }
+    fn set_view_proj(&mut self, i: usize) {
+        let (dst, _) = self.param_pair(ParamSlot::Param(i));
+        self.effect_mut().view_proj = dst;
+    }
+    fn set_world(&mut self, i: usize) {
+        let (dst, _) = self.param_pair(ParamSlot::Param(i));
+        self.effect_mut().world = dst;
+    }
+    fn annotation_count(&self, i: usize) -> usize {
+        let (_, src) = self.param_pair(ParamSlot::Param(i));
+        // SAFETY: a valid parser param.
+        unsafe { (*src).annotations.num }
+    }
+    fn resize_annotations(&mut self, i: usize, num: usize) {
+        let (dst, _) = self.param_pair(ParamSlot::Param(i));
+        // SAFETY: the param's gs_effect_param_array_t.
+        unsafe { da_resize(&mut (*dst).annotations, size_of::<gs_effect_param>(), num) }
+    }
+    fn fill_technique(&mut self, t: usize) {
+        let (dst, src, effect) = (self.technique(t), self.technique_in(t), self.effect);
+        // SAFETY: valid items; the name is a C string.
+        unsafe {
+            (*dst).name = bstrdup((*src).name);
+            (*dst).section = EFFECT_TECHNIQUE;
+            (*dst).effect = effect;
+        }
+    }
+    fn parser_pass_count(&self, t: usize) -> usize {
+        // SAFETY: a valid parser technique.
+        unsafe { (*self.technique_in(t)).passes.num }
+    }
+    fn resize_passes(&mut self, t: usize, num: usize) {
+        // SAFETY: the technique's DARRAY(struct gs_effect_pass).
+        unsafe {
+            da_resize(
+                &mut (*self.technique(t)).passes,
+                size_of::<gs_effect_pass>(),
+                num,
+            );
+        }
+    }
+    fn pass_count(&self, t: usize) -> usize {
+        // SAFETY: a valid technique.
+        unsafe { (*self.technique(t)).passes.num }
+    }
+    fn fill_pass(&mut self, t: usize, p: usize) {
+        let (dst, src) = (self.pass(t, p), self.pass_in(t, p));
+        // SAFETY: valid items; the name is a C string or NULL.
+        unsafe {
+            (*dst).name = bstrdup((*src).name);
+            (*dst).section = EFFECT_PASS;
+        }
+    }
+    fn pass_name(&self, t: usize, p: usize) -> Option<&[u8]> {
+        // SAFETY: a valid pass; its name a C string or NULL.
+        unsafe { c_mapping((*self.pass(t, p)).name) }
+    }
+    fn technique_name(&self, t: usize) -> Option<&[u8]> {
+        // SAFETY: a valid technique; its name a C string or NULL.
+        unsafe { c_mapping((*self.technique(t)).name) }
+    }
+    fn file(&self) -> Option<&[u8]> {
+        // SAFETY: the lexer's file name, a C string or NULL.
+        unsafe { c_mapping(self.ep().cfp.lex.file) }
+    }
+    fn make_shader(&mut self, slot: ShaderSlot) -> CBuilt {
+        let mut built = CBuilt {
+            shader_str: dstr {
+                array: ptr::null_mut(),
+                len: 0,
+                capacity: 0,
+            },
+            used_params: empty_darray(),
+        };
+        let pass_in = self.pass_in(slot.tech, slot.pass);
+        // SAFETY: the parser, the pass's program (a cf_token_array_t) and
+        // the two fresh locals, as the C passes them.
+        unsafe {
+            let call = match slot.kind {
+                ShaderType::Vertex => &raw mut (*pass_in).vertex_program,
+                ShaderType::Pixel => &raw mut (*pass_in).fragment_program,
+            };
+            ep_makeshaderstring(self.ep, &mut built.shader_str, call, &mut built.used_params);
+        }
+        built
+    }
+    fn create_shader(
+        &mut self,
+        slot: ShaderSlot,
+        built: &CBuilt,
+        location: &[u8],
+    ) -> (Option<NonNull<c_void>>, *mut c_char) {
+        let mut location = location.to_vec();
+        location.push(0);
+        let mut errors: *mut c_char = ptr::null_mut();
+        let pass = self.pass(slot.tech, slot.pass);
+        // SAFETY: the built text (a C string or NULL) and the location, a C
+        // string, outlive the call; the pass is valid.
+        unsafe {
+            let shader = match slot.kind {
+                ShaderType::Vertex => {
+                    let s = gs_vertexshader_create(
+                        built.shader_str.array,
+                        location.as_ptr().cast(),
+                        &mut errors,
+                    );
+                    (*pass).vertshader = s;
+                    s
+                }
+                ShaderType::Pixel => {
+                    let s = gs_pixelshader_create(
+                        built.shader_str.array,
+                        location.as_ptr().cast(),
+                        &mut errors,
+                    );
+                    (*pass).pixelshader = s;
+                    s
+                }
+            };
+            (NonNull::new(shader), errors)
+        }
+    }
+    fn errors_nonempty(&self, errors: &*mut c_char) -> bool {
+        // SAFETY: NULL or the C string the device handed back.
+        !errors.is_null() && unsafe { **errors } != 0
+    }
+    fn add_shader_error(&mut self, errors: &*mut c_char) {
+        // SAFETY: the parser, and a C string that outlives the call.
+        unsafe {
+            cf_adderror(
+                &raw mut (*self.ep).cfp,
+                c"Error creating shader: $1".as_ptr(),
+                LEX_ERROR,
+                *errors,
+                ptr::null(),
+                ptr::null(),
+            );
+        }
+    }
+    fn free_errors(&mut self, errors: *mut c_char) {
+        // SAFETY: NULL or the device's bmalloc'd string.
+        unsafe { bfree(errors.cast()) };
+    }
+    fn used_count(&self, built: &CBuilt) -> usize {
+        built.used_params.num
+    }
+    fn resize_shader_params(&mut self, slot: ShaderSlot, num: usize) {
+        // SAFETY: the pass's pass_shaderparam_array_t.
+        unsafe {
+            da_resize(
+                &mut *self.shader_params(slot),
+                size_of::<pass_shaderparam>(),
+                num,
+            );
+        }
+    }
+    fn shader_param_count(&self, slot: ShaderSlot) -> usize {
+        // SAFETY: as above.
+        unsafe { (*self.shader_params(slot)).num }
+    }
+    fn effect_param(&mut self, built: &CBuilt, i: usize) -> *mut gs_effect_param {
+        // SAFETY: the effect and a used param's name, a C string.
+        unsafe { gs_effect_get_param_by_name(self.effect, Self::used_name(built, i)) }
+    }
+    fn shader_param(
+        &mut self,
+        shader: NonNull<c_void>,
+        built: &CBuilt,
+        i: usize,
+    ) -> Option<NonNull<c_void>> {
+        // SAFETY: a shader the device created and a used param's name.
+        NonNull::new(unsafe {
+            gs_shader_get_param_by_name(shader.as_ptr(), Self::used_name(built, i))
+        })
+    }
+    fn set_shader_param(
+        &mut self,
+        slot: ShaderSlot,
+        i: usize,
+        eparam: *mut gs_effect_param,
+        sparam: Option<NonNull<c_void>>,
+    ) {
+        // SAFETY: i is below the size the core gave the array.
+        unsafe {
+            let param: *mut pass_shaderparam = Self::at(&*self.shader_params(slot), i);
+            (*param).eparam = eparam;
+            (*param).sparam = sparam.map_or(ptr::null_mut(), NonNull::as_ptr);
+        }
+    }
+    fn free_built(&mut self, built: CBuilt) {
+        // SAFETY: dstr_array_free, da_free and dstr_free of the locals,
+        // all on libobs's allocator.
+        unsafe {
+            for i in 0..built.used_params.num {
+                bfree((*Self::at::<dstr>(&built.used_params, i)).array.cast());
+            }
+            bfree(built.used_params.array);
+            bfree(built.shader_str.array.cast());
+        }
+    }
+    fn log(&mut self, line: CompileLog<'_>) {
+        let (which, idx, name) = match line {
+            CompileLog::ShaderParamNotFound => (0, 0, &[][..]),
+            CompileLog::MissingVertexShader { idx, name } => (1, idx, name),
+            CompileLog::MissingPixelShader { idx, name } => (2, idx, name),
+        };
+        let mut name = name.to_vec();
+        name.push(0);
+        // SAFETY: a C string that outlives the call.
+        unsafe { obs_graphics_effect_compile_error(which, idx, name.as_ptr().cast()) };
+    }
+}
+
+/// `bool ep_compile(struct effect_parser *ep)`.
+///
+/// `ep_parse()` calls it once the text parsed with no error. It fills
+/// `ep->effect` in place as the C does: its params, annotations,
+/// techniques, passes and pass shader params grown as `da_resize` grows
+/// them (new items zero), each name a `bstrdup` copy and each default value
+/// moved out of the parser as `da_move` moves it, all on libobs's
+/// allocator; each parser param points at its effect param. The shaders
+/// come from `gs_vertexshader_create()` and `gs_pixelshader_create()` on
+/// the text the writer builds, the shader params from
+/// `gs_shader_get_param_by_name()` and `gs_effect_get_param_by_name()`, a
+/// shader's error text goes to `cf_adderror()`, and the two missing-shader
+/// lines and the missing shader param line go to `blog()`. Whatever a
+/// failed pass created stays in the effect for `effect_free()`.
+///
+/// A null `ep`, or a parser with no effect, returns false (the C asserts
+/// and dereferences it; `ep_parse()` never passes one).
+///
+/// # Safety
+///
+/// `ep` is null or a valid parser as `ep_parse()` leaves it, with
+/// `ep->effect` null or a valid `struct gs_effect` it compiles into, on
+/// the graphics thread.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ep_compile(ep: *mut effect_parser) -> bool {
+    if ep.is_null() {
+        return false;
+    }
+    // SAFETY: the caller's contract.
+    let effect = unsafe { (*ep).effect }.cast::<gs_effect>();
+    if effect.is_null() {
+        return false;
+    }
+    compile::compile(&mut CCompile { ep, effect })
 }

@@ -3,15 +3,17 @@
 # the C writer (libobs/graphics/effect-parser-writer.c). Targets and tests are
 # declared in ../build/test-graph.json.
 #
-# test_effect_parser_shader_call again against the Rust writer, built and run
-# only with the hybrid backend (OBS_LIBOBS_BACKEND=C has no Rust target), with
-# the same file and expectations: ep_parse() runs ep_compile() through the two
-# renamed shader-create recorders, so the shader text it checks is the one
-# ep_makeshaderstring() writes. ep_parse(), the compile step and the function
-# parser (effect-parser.c, effect-parser-compile.c and effect-parser-funcs.c)
-# stay C and are compiled in; the writer, the blocks, the params, the passes, ep_free() and the
-# parameter type decisions, all hidden in the shared library, come from the
-# exact production staticlib at executable link time. The staticlib's
+# test_effect_parser_shader_call again against the Rust writer and compile
+# step, built and run only with the hybrid backend (OBS_LIBOBS_BACKEND=C has
+# no Rust target), with the same file and expectations: ep_parse() runs
+# ep_compile() through the two renamed shader-create recorders, so the shader
+# text it checks is the one ep_makeshaderstring() writes. ep_parse() and the
+# function parser (effect-parser.c and effect-parser-funcs.c) stay C and are
+# compiled in; the compile step, the writer, the blocks, the params, the
+# passes, ep_free() and the parameter type decisions, all hidden in the shared
+# library, come from the exact production staticlib at executable link time.
+# The compile step creates its shaders through the obs-graphics adapters
+# compiled in here, so the renames put the recorders behind them. The staticlib's
 # obs-graphics calls the private obs-graphics and effect parser adapters,
 # which libobs links but does not export, so this executable compiles its own
 # copies, as test_effect_parser_passes_rust does.
@@ -27,7 +29,6 @@ if(TARGET libobs_rust-static)
     test_effect_parser_shader_call_rust
     test_effect_parser_shader_call.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser.c.h"
-    "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-compile.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-funcs.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
