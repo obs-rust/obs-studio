@@ -2507,11 +2507,6 @@ void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
 	signal_parent(item->parent, command, &params);
 }
 
-bool obs_sceneitem_selected(const obs_sceneitem_t *item)
-{
-	return item ? item->selected : false;
-}
-
 #define do_update_transform(item)                                          \
 	do {                                                               \
 		if (!item->parent || item->parent->is_group)               \
@@ -2996,11 +2991,6 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 		set_visibility(item, visible);
 	}
 	return true;
-}
-
-bool obs_sceneitem_locked(const obs_sceneitem_t *item)
-{
-	return item ? item->locked : false;
 }
 
 bool obs_sceneitem_set_locked(obs_sceneitem_t *item, bool lock)

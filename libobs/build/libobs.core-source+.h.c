@@ -15,3 +15,5 @@
 #include "libobs/obs-source-transition.c.h"
 #include "libobs/obs-source.c.h"
 #include "libobs/obs-view.c.h"
+
+#include "libobs/obs-scene-item-state-getters.c.h"
