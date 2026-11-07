@@ -207,6 +207,11 @@ fn indices() -> impl Strategy<Value = Vec<usize>> {
     prop::collection::vec(0usize..16, 0..4)
 }
 
+/// Text already in the shader string, and spare capacity past it.
+fn prefix() -> impl Strategy<Value = Option<(Vec<u8>, usize)>> {
+    prop::option::weighted(0.2, (prop::collection::vec(any::<u8>(), 1..6), 0usize..8))
+}
+
 fn model() -> impl Strategy<Value = Model> {
     let param = (
         name(),
@@ -287,7 +292,7 @@ fn model() -> impl Strategy<Value = Model> {
         prop::collection::vec(func, 0..5),
         prop::collection::vec(sampler, 0..3),
         prop::option::weighted(0.95, prop::collection::vec(token, 0..10)),
-        prop::option::weighted(0.2, (prop::collection::vec(any::<u8>(), 1..6), 0usize..8)),
+        prefix(),
     )
         .prop_map(|(params, structs, funcs, samplers, call, prefix)| Model {
             params,
@@ -696,6 +701,27 @@ fn check(m: &Model) -> Result<(), TestCaseError> {
     }
     prop_assert_eq!(rust, oracle, "{:?}", m);
     Ok(())
+}
+
+/// A `struct dstr`'s `len` is the length of its text up to the NUL that
+/// ends it, and the dstr helpers the C writer calls rely on that, so the
+/// text already in the shader string never holds a NUL (#3802: with one,
+/// the C's appends land after the NUL and the strings differ by the
+/// generator, not the writer). Drawn from a fixed seed, so a prefix
+/// strategy that can make a NUL fails here every run.
+#[test]
+fn prefix_is_dstr_text() {
+    use proptest::strategy::ValueTree;
+    use proptest::test_runner::TestRunner;
+
+    let strategy = prefix();
+    let mut runner = TestRunner::deterministic();
+    for _ in 0..20_000 {
+        let tree = strategy.new_tree(&mut runner).expect("a prefix");
+        if let Some((bytes, _)) = tree.current() {
+            assert!(!bytes.contains(&0), "prefix {bytes:?} holds a NUL");
+        }
+    }
 }
 
 proptest! {
