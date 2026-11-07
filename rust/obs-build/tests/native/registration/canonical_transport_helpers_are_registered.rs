@@ -1,8 +1,21 @@
 use super::*;
 use obs_build::validation::graph::Graph;
 
-const CASES: [&str; 6] = ["test_rtmps_nanostream", "test_rtmps_restream", "test_rist_open_cleanup", "test_srt_open_close", "test_media_packet_eof_leak", "test_curl_accept_encoding"];
-const FACTS: [&str; 5] = ["HAVE_RTMPS_TEST_SDK", "HAVE_LIBRIST_TEST_SDK", "HAVE_SRT_TEST_SDK", "HAVE_MEDIA_PACKET_TEST_SDK", "HAVE_CURL_TEST_SDK"];
+const CASES: [&str; 6] = [
+    "test_rtmps_nanostream",
+    "test_rtmps_restream",
+    "test_rist_open_cleanup",
+    "test_srt_open_close",
+    "test_media_packet_eof_leak",
+    "test_curl_accept_encoding",
+];
+const FACTS: [&str; 5] = [
+    "HAVE_RTMPS_TEST_SDK",
+    "HAVE_LIBRIST_TEST_SDK",
+    "HAVE_SRT_TEST_SDK",
+    "HAVE_MEDIA_PACKET_TEST_SDK",
+    "HAVE_CURL_TEST_SDK",
+];
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 #[path = "transport_helpers_runtime.rs"]
@@ -16,13 +29,19 @@ fn expected() -> serde_json::Value {
 #[test]
 fn canonical_transport_helpers_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value = serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap()).unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
     let expected = expected();
     for name in CASES {
         for section in ["targets", "tests"] {
-            assert_eq!(raw[section][name], expected[section][name], "{section}/{name}");
+            assert_eq!(
+                raw[section][name], expected[section][name],
+                "{section}/{name}"
+            );
         }
-        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
         assert!(fragment.contains("test-graph.json"));
@@ -33,17 +52,28 @@ fn canonical_transport_helpers_are_registered() {
 fn canonical_transport_helpers_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.targets.retain(|name, _| CASES.contains(&name.as_str()));
+    graph
+        .targets
+        .retain(|name, _| CASES.contains(&name.as_str()));
     graph.tests.retain(|name, _| CASES.contains(&name.as_str()));
     assert_eq!(graph.targets.len(), CASES.len());
     for os in ["OS_LINUX", "OS_MACOS", "OS_FREEBSD", "OS_WINDOWS"] {
         for mask in 0..32 {
-            let mut facts = std::collections::BTreeMap::from([("OS_WINDOWS".into(), os == "OS_WINDOWS")]);
+            let mut facts =
+                std::collections::BTreeMap::from([("OS_WINDOWS".into(), os == "OS_WINDOWS")]);
             for (index, name) in FACTS.iter().enumerate() {
                 facts.insert((*name).into(), mask & (1 << index) != 0);
             }
             let selected = graph.select(&facts).unwrap();
-            let count = (0..5).map(|i| if mask & (1 << i) != 0 { if i == 0 { 2 } else { 1 } } else { 0 }).sum::<usize>();
+            let count = (0..5)
+                .map(|i| {
+                    if mask & (1 << i) != 0 {
+                        if i == 0 { 2 } else { 1 }
+                    } else {
+                        0
+                    }
+                })
+                .sum::<usize>();
             assert_eq!(selected.targets.len(), count, "{os}/{mask}");
             assert_eq!(selected.tests.len(), count, "{os}/{mask}");
         }
