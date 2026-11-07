@@ -1092,11 +1092,6 @@ enum obs_encoder_type obs_get_encoder_type(const char *id)
 	return info ? info->type : OBS_ENCODER_AUDIO;
 }
 
-uint32_t obs_encoder_get_encoded_frames(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_output_get_encoded_frames") ? encoder->encoded_frames : 0;
-}
-
 void obs_encoder_set_scaled_size(obs_encoder_t *encoder, uint32_t width, uint32_t height)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_scaled_size"))
@@ -2314,11 +2309,6 @@ char *obs_encoder_dup_last_error(obs_encoder_t *encoder)
 	char *message = bstrdup(encoder->last_error_message);
 	pthread_mutex_unlock(&encoder->last_error_mutex);
 	return message;
-}
-
-uint64_t obs_encoder_get_pause_offset(const obs_encoder_t *encoder)
-{
-	return encoder ? encoder->pause.ts_offset : 0;
 }
 
 bool obs_encoder_has_roi(const obs_encoder_t *encoder)
