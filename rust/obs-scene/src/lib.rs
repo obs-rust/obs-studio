@@ -40,6 +40,7 @@ pub mod coords;
 pub mod crop;
 pub mod extent;
 pub mod group_transform;
+pub mod item_id;
 pub mod item_names;
 pub mod item_order;
 pub mod item_transform;
@@ -52,4 +53,5 @@ pub mod ffi;
 
 pub mod item_state_getters;
 
+pub mod item_bounds_getters;
 pub mod item_render_getters;

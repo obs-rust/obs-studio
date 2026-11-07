@@ -110,13 +110,45 @@ class NativeB2Portability(unittest.TestCase):
         legacy = set()
         for fragment in (ROOT / "test/cmocka/tests.d").glob("test_scene*.cmake"):
             text = fragment.read_text()
-            for match in re.finditer(r"target_link_libraries\((test_scene\w+_rust)\s+([^)]*)\)", text):
+            for match in re.finditer(r"target_link_libraries\(\s*(test_scene\w+_rust)\s+([^)]*)\)", text):
                 name, libraries = match.groups()
                 if "libobs_rust-static" in libraries:
                     legacy.add(name)
                     with self.subTest(target=name):
                         self.assertIn("OBS::libobs", libraries)
         self.assertIn("test_scene_item_names_steps_rust", legacy)
+
+    def test_scene_static_consumers_supply_private_mutex_adapters(self):
+        # Hidden libobs adapters cannot resolve from its shared library. These
+        # pure-rule consumers must never call them; the abort-only stub proves it.
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        stub = "test/cmocka/scene-getter-log-link-stub.c"
+        text = (ROOT / stub).read_text()
+        for symbol in ("obs_sceneitem_fields_lock", "obs_sceneitem_fields_unlock"):
+            self.assertIn(symbol, text)
+        for name, target in graph["targets"].items():
+            if "libobs_rust-static" not in target.get("libraries", []):
+                continue
+            sources = target.get("sources", [])
+            if any(isinstance(source, str) and "obs_scene" in (ROOT / source).read_text()
+                   for source in sources):
+                with self.subTest(target=name):
+                    self.assertIn(stub, sources)
+        legacy = set()
+        for fragment in (ROOT / "test/cmocka/tests.d").glob("test_scene*.cmake"):
+            text = fragment.read_text()
+            for match in re.finditer(r"add_executable\(\s*(test_scene\w+_rust)\s+([^)]*)\)", text):
+                name, sources = match.groups()
+                legacy.add(name)
+                with self.subTest(target=name):
+                    if name == "test_scene_item_crop_rust":
+                        self.assertIn("scene-item-fields-link-support.c", sources)
+                        self.assertNotIn("scene-getter-log-link-stub.c", sources)
+                    else:
+                        self.assertIn("scene-getter-log-link-stub.c", sources)
+        self.assertEqual(legacy, {"test_scene_bounds_place_rust", "test_scene_item_crop_rust",
+                                 "test_scene_item_names_steps_rust", "test_scene_item_order_steps_rust",
+                                 "test_scene_item_transform_steps_rust", "test_scene_transform_update_steps_rust"})
 
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

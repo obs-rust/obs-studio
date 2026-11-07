@@ -2203,6 +2203,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_metadata_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_metadata_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_output_getters_characterization": {
       "sources": [
         "test/cmocka/test_encoder_output_getters_characterization.c"
@@ -3314,6 +3329,21 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_hotkey_object_getters": {
+      "sources": [
+        "test/cmocka/test_hotkey_object_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_hotkey_pair_latch": {
@@ -4833,6 +4863,24 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_output_can_pause": {
+      "sources": [
+        "test/cmocka/test_output_can_pause.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
     },
     "test_output_caption_codec": {
       "sources": [
@@ -7169,6 +7217,25 @@
         }
       ]
     },
+    "test_scene_item_bounds_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_bounds_getters.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_item_crop": {
       "sources": [
         "test/cmocka/test_scene_item_crop.c",
@@ -7211,6 +7278,15 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_scene_item_id": {
+      "sources": [
+        "test/cmocka/test_scene_item_id.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_scene_item_names_steps": {
@@ -11522,6 +11598,12 @@
         "${target}"
       ]
     },
+    "test_encoder_metadata_getters": {
+      "target": "test_encoder_metadata_getters",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_encoder_output_getters_characterization": {
       "target": "test_encoder_output_getters_characterization",
       "command": [
@@ -11925,6 +12007,13 @@
     },
     "test_hotkey_numpad_host": {
       "target": "test_hotkey_numpad_host"
+    },
+    "test_hotkey_object_getters": {
+      "target": "test_hotkey_object_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_hotkey_pair_latch": {
       "target": "test_hotkey_pair_latch",
@@ -12522,6 +12611,12 @@
     },
     "test_output_begin_steps": {
       "target": "test_output_begin_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_can_pause": {
+      "target": "test_output_can_pause",
       "command": [
         "${target}"
       ]
@@ -13282,6 +13377,14 @@
     "test_scene_group_transform": {
       "target": "test_scene_group_transform"
     },
+    "test_scene_item_bounds_getters": {
+      "target": "test_scene_item_bounds_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
     "test_scene_item_crop": {
       "target": "test_scene_item_crop",
       "command": [
@@ -13299,6 +13402,13 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_item_id": {
+      "target": "test_scene_item_id",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_scene_item_names_steps": {
       "target": "test_scene_item_names_steps",

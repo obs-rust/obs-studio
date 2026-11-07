@@ -42,6 +42,7 @@ if(TARGET libobs_rust-static)
       OBS::libobs
       OBS::caption
       Uthash::Uthash
+      $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>
       ${CMOCKA_LIBRARIES}
       libobs_rust-static
       jansson::jansson

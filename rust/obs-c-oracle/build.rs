@@ -586,6 +586,12 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-encoder-counter-fields.c.h")),
     )
     .expect("write encoder counter adapter extract");
+    // Reuse the production field adapter over the real private encoder layout.
+    std::fs::write(
+        extract_dir.join("encoder_metadata_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
+    )
+    .expect("write encoder metadata adapter extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
@@ -601,7 +607,19 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
     )
     .expect("write canvas field adapter extract");
+    std::fs::write(
+        extract_dir.join("hotkey_object_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-hotkey-object-fields.c.h")),
+    )
+    .expect("write hotkey field adapter extract");
     oracle.include(&extract_dir);
+
+    // Compile the production borrowed field seam without the full app PCH.
+    std::fs::write(
+        extract_dir.join("output-can-pause-fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-output-can-pause-fields.c.h")),
+    )
+    .expect("write output pause capability field seam");
 
     oracle
         .include(&libobs)

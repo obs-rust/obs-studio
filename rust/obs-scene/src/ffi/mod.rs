@@ -1,4 +1,5 @@
 //! C ABI shims, one module per C file.
+pub mod item_id;
 
 pub mod scene_audio_actions;
 pub mod scene_audio_mix;
@@ -19,4 +20,5 @@ pub mod scene_bounds_place;
 
 pub mod item_state_getters;
 
+pub mod item_bounds_getters;
 pub mod item_render_getters;

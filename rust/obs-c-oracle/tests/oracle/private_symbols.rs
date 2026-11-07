@@ -25,6 +25,37 @@ const PUBLIC_THREADING: [&str; 12] = [
 ];
 
 #[test]
+fn encoder_metadata_has_no_production_getter_dependencies() {
+    let archive = Path::new(obs_c_oracle::ORACLE_ARCHIVE_DIR).join("libobs_c_oracle.a");
+    let out = Command::new("nm")
+        .args(["-A", "-u"])
+        .arg(&archive)
+        .output()
+        .expect("run nm");
+    assert!(out.status.success(), "nm {} failed", archive.display());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("encoder_metadata.o"),
+        "nm did not identify the encoder metadata object"
+    );
+    let dependencies: Vec<_> = stdout
+        .lines()
+        .filter(|line| line.contains("encoder_metadata.o"))
+        .filter(|line| {
+            line.split_whitespace().last().is_some_and(|symbol| {
+                symbol
+                    .trim_start_matches('_')
+                    .starts_with("obs_encoder_get_")
+            })
+        })
+        .collect();
+    assert!(
+        dependencies.is_empty(),
+        "metadata oracle must link without obs-output: {dependencies:?}"
+    );
+}
+
+#[test]
 fn oracle_archive_keeps_threading_helpers_private() {
     let archive = Path::new(obs_c_oracle::ORACLE_ARCHIVE_DIR).join("libobs_c_oracle.a");
     let out = Command::new("nm")
