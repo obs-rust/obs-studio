@@ -17,6 +17,15 @@ class NativeB2Portability(unittest.TestCase):
 
     def test_evaluated_linux_core_inventory(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        self.assert_linux_core_inventory(graph)
+
+    def test_core_inventory_allows_additional_test(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph["targets"]["test_synthetic_core"] = {}
+        graph["tests"]["test_synthetic_core"] = {"target": "test_synthetic_core"}
+        self.assert_linux_core_inventory(graph)
+
+    def assert_linux_core_inventory(self, graph):
         facts = dict.fromkeys(("OS_WINDOWS", "OS_MACOS", "OS_FREEBSD", "OS_OPENBSD", "MSVC",
                                "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK", "HAVE_PULSE_DEFAULT_RETRY_SDK",
                                "C_COMPILER_CLANG", "HAVE_OBS_FFMPEG", "HAVE_OBS_QSV11", "HAVE_OBS_OPENGL"), False)
