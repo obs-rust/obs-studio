@@ -2,6 +2,65 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+#[test]
+fn native_test_graph_cmake_platform_requirements_allow_false_but_reject_unknown() {
+    let fixture = tempfile::tempdir().unwrap();
+    let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let consumer = repository
+        .join("test/cmocka/native-test-graph.cmake")
+        .to_string_lossy()
+        .replace('\\', "/");
+    let script = fixture.path().join("requirements.cmake");
+    fs::write(
+        &script,
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
+include("{consumer}")
+foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC)
+  unset(${{platform}})
+  unset(${{platform}} CACHE)
+  _obs_test_graph_requirement(selected "\"${{platform}}\"")
+  if(selected)
+    message(FATAL_ERROR "Undefined ${{platform}} selected")
+  endif()
+  _obs_test_graph_requirement(selected "{{\"not\":\"${{platform}}\"}}")
+  if(NOT selected)
+    message(FATAL_ERROR "Negated undefined ${{platform}} rejected")
+  endif()
+  foreach(value IN ITEMS TRUE FALSE)
+    set(${{platform}} ${{value}})
+    _obs_test_graph_requirement(selected "{{\"all\":[true,{{\"any\":[false,\"${{platform}}\"]}}]}}")
+    if(NOT selected STREQUAL value)
+      message(FATAL_ERROR "${{platform}}=${{value}} evaluated as ${{selected}}")
+    endif()
+  endforeach()
+endforeach()
+if(DEFINED UNKNOWN_REQUIREMENT)
+  _obs_test_graph_requirement(selected "{{\"all\":[false,{{\"any\":[true,\"${{UNKNOWN_REQUIREMENT}}\"]}}]}}")
+endif()
+"#
+        ),
+    )
+    .unwrap();
+    let result = std::process::Command::new("cmake")
+        .arg("-P")
+        .arg(&script)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    for unknown in ["UNXI", "GRAPH_FEATURE_TYPO"] {
+        let result = std::process::Command::new("cmake")
+            .arg(format!("-DUNKNOWN_REQUIREMENT={unknown}"))
+            .arg("-P")
+            .arg(&script)
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        assert!(String::from_utf8_lossy(&result.stderr)
+            .contains(&format!("Unknown native test requirement {unknown}")));
+    }
+}
+
 #[path = "native/registration/canonical_async_overflow_clock_is_registered.rs"]
 mod canonical_async_overflow_clock_is_registered;
 #[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
