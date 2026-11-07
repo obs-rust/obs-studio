@@ -186,6 +186,20 @@ struct obs_module_metadata {
 	char *name;
 };
 
+typedef const char *(*obs_module_metadata_callback_t)(void);
+
+/* Private field-pointer seam: Rust never mirrors struct obs_module. */
+const char *const *obs_module_metadata_file_field(obs_module_t *module);
+char *const *obs_module_metadata_binary_path_field(obs_module_t *module);
+char *const *obs_module_metadata_data_path_field(obs_module_t *module);
+void *const *obs_module_metadata_lib_field(obs_module_t *module);
+char *const *obs_module_metadata_id_field(obs_module_t *module);
+char *const *obs_module_metadata_version_field(obs_module_t *module);
+char *const *obs_module_metadata_display_field(obs_module_t *module);
+obs_module_metadata_callback_t const *obs_module_metadata_name_field(obs_module_t *module);
+obs_module_metadata_callback_t const *obs_module_metadata_author_field(obs_module_t *module);
+obs_module_metadata_callback_t const *obs_module_metadata_description_field(obs_module_t *module);
+
 static inline void free_module_metadata(struct obs_module_metadata *omi)
 {
 	if (omi) {

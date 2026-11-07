@@ -1,0 +1,9 @@
+obs_get_module_author
+obs_get_module_binary_path
+obs_get_module_data_path
+obs_get_module_description
+obs_get_module_file_name
+obs_get_module_id
+obs_get_module_lib
+obs_get_module_name
+obs_get_module_version
