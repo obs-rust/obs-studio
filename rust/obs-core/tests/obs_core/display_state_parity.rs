@@ -43,7 +43,11 @@ fn real_header_prefix_layout() {
     ];
     for (index, value) in rust.into_iter().enumerate() {
         // SAFETY: the helper only returns a real-header measurement.
-        assert_eq!(value, unsafe { oracle_display_state_layout(index) }, "layout {index}");
+        assert_eq!(
+            value,
+            unsafe { oracle_display_state_layout(index) },
+            "layout {index}"
+        );
     }
 }
 
@@ -59,11 +63,17 @@ fn compare(initial: bool, color: u32, seed: u32, ops: &[(bool, u32)]) {
     // SAFETY: both pointers are live complete C displays. Only this test owns
     // them, and the Rust shim accesses their measured scalar prefixes.
     unsafe {
-        assert_eq!(oracle_obs_display_enabled(c.0), shim::obs_display_enabled(rust.0.cast()));
+        assert_eq!(
+            oracle_obs_display_enabled(c.0),
+            shim::obs_display_enabled(rust.0.cast())
+        );
         for &(enable, color) in ops {
             oracle_obs_display_set_enabled(c.0, enable);
             shim::obs_display_set_enabled(rust.0.cast(), enable);
-            assert_eq!(oracle_obs_display_enabled(c.0), shim::obs_display_enabled(rust.0.cast()));
+            assert_eq!(
+                oracle_obs_display_enabled(c.0),
+                shim::obs_display_enabled(rust.0.cast())
+            );
             assert!(oracle_display_state_equal(c.0, rust.0));
             oracle_obs_display_set_background_color(c.0, color);
             shim::obs_display_set_background_color(rust.0.cast(), color);
@@ -76,7 +86,10 @@ fn compare(initial: bool, color: u32, seed: u32, ops: &[(bool, u32)]) {
 fn null_and_boundaries() {
     // SAFETY: NULL inputs are explicitly defined by these three C functions.
     unsafe {
-        assert_eq!(oracle_obs_display_enabled(core::ptr::null_mut()), shim::obs_display_enabled(core::ptr::null_mut()));
+        assert_eq!(
+            oracle_obs_display_enabled(core::ptr::null_mut()),
+            shim::obs_display_enabled(core::ptr::null_mut())
+        );
         for enable in [false, true] {
             oracle_obs_display_set_enabled(core::ptr::null_mut(), enable);
             shim::obs_display_set_enabled(core::ptr::null_mut(), enable);
@@ -85,8 +98,20 @@ fn null_and_boundaries() {
         shim::obs_display_set_background_color(core::ptr::null_mut(), u32::MAX);
     }
     for initial in [false, true] {
-        for color in [0, u32::MAX, 0x8000_0000, 0x0102_0304, 0xff00_0000, 0x00ff_ffff] {
-            compare(initial, color, !color, &[(false, 0), (true, u32::MAX), (true, color), (false, color)]);
+        for color in [
+            0,
+            u32::MAX,
+            0x8000_0000,
+            0x0102_0304,
+            0xff00_0000,
+            0x00ff_ffff,
+        ] {
+            compare(
+                initial,
+                color,
+                !color,
+                &[(false, 0), (true, u32::MAX), (true, color), (false, color)],
+            );
         }
     }
 }

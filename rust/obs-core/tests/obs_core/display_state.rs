@@ -21,7 +21,14 @@ fn test_enabled() {
 #[test]
 fn test_color() {
     let mut color = 0;
-    for value in [0, u32::MAX, 0x8000_0000, 0x0102_0304, 0xff00_0000, 0x00ff_ffff] {
+    for value in [
+        0,
+        u32::MAX,
+        0x8000_0000,
+        0x0102_0304,
+        0xff00_0000,
+        0x00ff_ffff,
+    ] {
         set_background_color(Some(&mut color), value);
         assert_eq!(color, value);
     }

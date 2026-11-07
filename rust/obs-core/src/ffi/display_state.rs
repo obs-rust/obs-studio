@@ -46,7 +46,10 @@ pub unsafe extern "C" fn obs_display_enabled(display: *mut DisplayStatePrefix) -
 /// A non-NULL pointer must name a live C display with exclusive access to
 /// its background_color field for this call.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_display_set_background_color(display: *mut DisplayStatePrefix, color: u32) {
+pub unsafe extern "C" fn obs_display_set_background_color(
+    display: *mut DisplayStatePrefix,
+    color: u32,
+) {
     // SAFETY: NULL becomes None; otherwise the caller guarantees a live field.
     let field = (!display.is_null()).then(|| unsafe { &mut (*display).background_color });
     display_state::set_background_color(field, color);
