@@ -704,7 +704,11 @@
         "OBS::libobs",
         "OBS::caption",
         "Uthash::Uthash",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_canvas_rules_callers": {
