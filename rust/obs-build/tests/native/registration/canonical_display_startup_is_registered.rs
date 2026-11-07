@@ -160,3 +160,20 @@ endif()
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+fn has_skipped_cases(text: &str) -> bool {
+    text.to_ascii_lowercase().contains("skipped")
+}
+
+#[test]
+fn canonical_display_startup_skip_detection() {
+    assert!(!has_skipped_cases("info: Video stopped, number of skipped frames due to encoding lag: 1/1 (100.0%)\n[  PASSED  ] 4 test(s)."));
+    for output in [
+        "[  SKIPPED ] test_startup_shutdown_cycles",
+        "1 SKIPPED TEST(S)",
+        "skipped: no display",
+        "core video failed; skipping",
+    ] {
+        assert!(has_skipped_cases(output), "{output}");
+    }
+}
