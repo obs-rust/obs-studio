@@ -20,7 +20,7 @@ class NativeB2Portability(unittest.TestCase):
         facts = dict.fromkeys(("OS_WINDOWS", "OS_MACOS", "OS_FREEBSD", "OS_OPENBSD", "MSVC",
                                "ENABLE_WAYLAND", "HAVE_WAYLAND_CLIENT_TEST_SDK", "HAVE_WAYLAND_SERVER_TEST_SDK",
                                "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK", "HAVE_PULSE_DEFAULT_RETRY_SDK",
-                               "HAVE_OBS_V4L2", "HAVE_V4L2_BUSY_SDK", "HAVE_V4L2_CAPTURE_SDK", "HAVE_V4L2_UDEV_SDK", "HAVE_FREETYPE_PLATFORM_SDK",
+                               "HAVE_OBS_V4L2", "HAVE_V4L2_BUSY_SDK", "HAVE_V4L2_CAPTURE_SDK", "HAVE_V4L2_UDEV_SDK", "HAVE_FREETYPE_PLATFORM_SDK", "HAVE_OBS_TEXT_FREETYPE2", "HAVE_FREETYPE_FILE_SDK",
                                "C_COMPILER_CLANG", "HAVE_OBS_FFMPEG", "HAVE_OBS_QSV11", "HAVE_OBS_OPENGL"), False)
         facts.update(dict.fromkeys(("OS_LINUX", "UNIX", "HAVE_LIBOBS", "HAVE_LIBOBS_RUST_STATIC",
                                     "HAVE_HAPPY_EYEBALLS", "HAVE_OBS_OUTPUTS", "HAVE_OBS_FILTERS",

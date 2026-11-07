@@ -2158,6 +2158,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_V4L2_CAPTURE_SDK".into(), false),
         ("HAVE_V4L2_UDEV_SDK".into(), false),
         ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
+        ("HAVE_OBS_TEXT_FREETYPE2".into(), false),
+        ("HAVE_FREETYPE_FILE_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
