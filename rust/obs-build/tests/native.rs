@@ -1,4 +1,6 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
+mod canonical_plugin_getters_is_registered;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/rust_static_entries.rs"]
