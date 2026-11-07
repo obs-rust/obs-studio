@@ -873,6 +873,13 @@ CTest inclusion/exclusion. Its minimal imported CMake target supplies the math
 dependency pulled by this archive member; it does not validate Corrosion’s full
 feature-dependent SDK interface. This is one static-link inventory slice, not overall
 native parity or new macOS/Windows Cargo core-test support (#1390).
+The unchanged `test_async_conversion_plan_rust` also shares this inventory:
+its thirteen C cases link directly to the production Rust archive and cmocka,
+with the original target-availability guard and non-MSVC math dependency.
+`canonical_rust_static_conversion_runs_unchanged` replays the real archive
+through Cargo and CMake on Linux, including evaluated CTest presence/absence.
+The original C characterization and Rust unit/differential tests remain intact;
+this does not complete broader native or application parity (#1390).
 
 The scene bounds placement characterization also uses the shared core graph.
 Both consumers compile its original C test and two private C helper sources,
