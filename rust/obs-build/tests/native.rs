@@ -91,7 +91,7 @@ fn canonical_nvenc_host_and_glyph_tests_are_registered() {
 /// #1390: standalone plugin configuration helpers must reach both native consumers.
 #[test]
 fn canonical_plugin_configuration_helpers_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     for (name, include, headers) in [
@@ -203,9 +203,16 @@ fn canonical_fade_and_host_tests_are_registered() {
         assert_eq!(sources, expected);
         assert_eq!(target.includes, [include]);
         assert_eq!(target.watch_inputs, headers);
-        assert!(
-            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
-        );
+        if name == "test_slideshow_size" {
+            assert!(matches!(target.libraries.as_slice(), [
+                ConditionalValue::Name(library),
+                ConditionalValue::Conditional { name, requires: Requirement::Fact(os) }
+            ] if library == "OBS::native-test-cmocka" && name == "OBS::w32-pthreads" && os == "OS_WINDOWS"));
+        } else {
+            assert!(
+                matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
+            );
+        }
         if name == "test_slideshow_size" {
             assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
         } else {
@@ -266,7 +273,16 @@ fn canonical_fade_and_host_tests_are_registered() {
         single.targets.retain(|key, _| key == name);
         single.tests.retain(|key, _| key == name);
         for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-            let selected = single.select(&[(os.into(), true)].into()).unwrap();
+            let selected = single
+                .select(
+                    &[
+                        ("OS_LINUX".into(), os == "OS_LINUX"),
+                        ("OS_MACOS".into(), os == "OS_MACOS"),
+                        ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                    ]
+                    .into(),
+                )
+                .unwrap();
             assert!(selected.targets.contains_key(name), "{os}");
             assert!(selected.tests.contains_key(name), "{os}");
         }
