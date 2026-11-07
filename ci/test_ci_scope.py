@@ -51,8 +51,8 @@ class CiScopeTest(unittest.TestCase):
             ["rust/obs-util/src/dstr.rs"], lambda path: path in CPP_TESTS, **master_push
         )
         self.assertEqual((got.core, got.macos, got.windows), (True, True, True))
-        # Non-master pushes retain path selection.
-        for event in ("push",):
+        # PRs add Windows; non-master pushes retain path selection.
+        for event, windows in (("pull_request", True), ("push", False)):
             got = scope(
                 ["libobs/obs.c.h"],
                 lambda path: path in CPP_TESTS,
@@ -60,7 +60,7 @@ class CiScopeTest(unittest.TestCase):
                 ref="fix/2910-x",
             )
             self.assertEqual(
-                (got.core, got.macos, got.windows), (True, False, False), (event, got)
+                (got.core, got.macos, got.windows), (True, False, windows), (event, got)
             )
         # Scope-policy changes validate their native push routing on real runners.
         got = scope(["ci/ci_scope.py"], lambda path: path in CPP_TESTS, **master_push)

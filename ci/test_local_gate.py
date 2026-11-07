@@ -185,7 +185,7 @@ class CrossTargetsTest(unittest.TestCase):
         self.assertIn("needs.rust-cross-lint.result == 'success'", proof)
         self.assertIn("name: ${{ needs.ci-mode.outputs.cross_name }}", proof)
 
-    def test_cross_lane_changes_select_both_targets_without_native_jobs(self):
+    def test_cross_lane_changes_select_both_targets_and_scope_policy_pr_windows(self):
         from ci_scope import scope
         for event in ("pull_request", "merge_group"):
             for path in ("ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",
@@ -193,7 +193,8 @@ class CrossTargetsTest(unittest.TestCase):
                 with self.subTest(event=event, path=path):
                     selected = scope([path], event=event)
                     self.assertTrue(selected.cross_lint)
-                    self.assertFalse(selected.macos or selected.windows)
+                    self.assertFalse(selected.macos)
+                    self.assertEqual(selected.windows, event == "pull_request" and path == "ci/ci_scope.py")
             for path in ("docs/ci-tooling.md", "rust/obs-util/src/dstr.rs"):
                 self.assertFalse(scope([path], event=event).cross_lint)
         workflow = (local_gate.ROOT / ".github/workflows/build-project.yaml").read_text()
