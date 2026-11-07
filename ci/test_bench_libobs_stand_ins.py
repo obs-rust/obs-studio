@@ -28,6 +28,7 @@ BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 # The undefined symbols lld-link reported for the bench with /ERRORLIMIT:0 (#3025).
 # obs_hotkey_binding_press() and _release() are absent: #3075 exports the real
 # shims from obs-hotkey, so a stand-in here is a duplicate definition (#3112).
+# Binding getters are absent too: #3851 exports their real Rust shims.
 SYMBOLS = (
     "obs_encoder_get_name",
     "obs_encoder_group_num_started",
@@ -35,8 +36,6 @@ SYMBOLS = (
     "obs_encoder_packet_create_instance",
     "obs_encoder_packet_release",
     "obs_hotkey_binding_fields",
-    "obs_hotkey_binding_get_hotkey_id",
-    "obs_hotkey_binding_get_key_combination",
     "obs_hotkey_get_id",
     "obs_hotkey_get_name",
     "obs_hotkey_key_is_pressed",

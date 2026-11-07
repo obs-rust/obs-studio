@@ -81,21 +81,6 @@ obs_hotkey_id obs_hotkey_get_pair_partner_id(const obs_hotkey_t *key)
 	return key->pair_partner_id;
 }
 
-obs_key_combination_t obs_hotkey_binding_get_key_combination(obs_hotkey_binding_t *binding)
-{
-	return binding->key;
-}
-
-obs_hotkey_id obs_hotkey_binding_get_hotkey_id(obs_hotkey_binding_t *binding)
-{
-	return binding->hotkey_id;
-}
-
-obs_hotkey_t *obs_hotkey_binding_get_hotkey(obs_hotkey_binding_t *binding)
-{
-	return binding->hotkey;
-}
-
 void obs_hotkey_set_name(obs_hotkey_id id, const char *name)
 {
 	obs_hotkey_t *hotkey;

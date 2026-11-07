@@ -48,11 +48,7 @@ struct FakePair {
     ids: [usize; 2],
 }
 
-#[derive(Clone, Copy)]
-struct FakeBinding {
-    combo: obs_key_combination,
-    hotkey_id: usize,
-}
+use obs_hotkey::ffi::binding_getters::obs_hotkey_binding as FakeBinding;
 
 /// A fake object: the ids in its context. The object is its own context.
 struct FakeContext {
@@ -177,7 +173,15 @@ pub unsafe extern "C" fn obs_hotkey_seam_add_binding(
     // SAFETY: per the caller.
     let hotkey_id = unsafe { (*hotkey.cast::<FakeHotkey>()).id };
     log(format!("add {hotkey_id} {}/{}", combo.modifiers, combo.key));
-    REGISTRY.with_borrow_mut(|r| r.bindings.push(Box::new(FakeBinding { combo, hotkey_id })));
+    REGISTRY.with_borrow_mut(|r| {
+        r.bindings.push(Box::new(FakeBinding {
+            key: combo,
+            pressed: false,
+            modifiers_match: false,
+            hotkey_id,
+            hotkey,
+        }))
+    });
 }
 
 #[unsafe(no_mangle)]
@@ -312,28 +316,6 @@ pub unsafe extern "C" fn obs_hotkey_get_id(key: *const obs_hotkey_t) -> usize {
 pub unsafe extern "C" fn obs_hotkey_get_name(key: *const obs_hotkey_t) -> *const c_char {
     // SAFETY: per the caller.
     unsafe { (*key.cast::<FakeHotkey>()).name.as_ptr() }
-}
-
-/// # Safety
-///
-/// `binding` is a [`FakeBinding`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_binding_get_key_combination(
-    binding: *mut obs_hotkey_binding,
-) -> obs_key_combination {
-    // SAFETY: per the caller.
-    unsafe { (*binding.cast::<FakeBinding>()).combo }
-}
-
-/// # Safety
-///
-/// `binding` is a [`FakeBinding`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_binding_get_hotkey_id(
-    binding: *mut obs_hotkey_binding,
-) -> usize {
-    // SAFETY: per the caller.
-    unsafe { (*binding.cast::<FakeBinding>()).hotkey_id }
 }
 
 // ---------------------------------------------------------------------------
@@ -584,7 +566,7 @@ fn run(side: Side, ops: &[Op], lock_ok: bool, swapped: bool) -> (Vec<String>, Ve
         for b in &r.bindings {
             results.push(format!(
                 "binding {} {}/{}",
-                b.hotkey_id, b.combo.modifiers, b.combo.key
+                b.hotkey_id, b.key.modifiers, b.key.key
             ));
         }
         (std::mem::take(&mut r.log), results)

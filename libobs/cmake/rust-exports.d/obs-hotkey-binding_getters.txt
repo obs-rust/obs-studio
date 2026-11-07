@@ -1,0 +1,3 @@
+obs_hotkey_binding_get_key_combination
+obs_hotkey_binding_get_hotkey_id
+obs_hotkey_binding_get_hotkey

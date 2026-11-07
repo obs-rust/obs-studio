@@ -78,6 +78,7 @@ and compares their exported symbols. `OBS_LIBOBS_BACKEND=C` is temporary rollbac
 
 | C source | Rust | Notes |
 |---|---|---|
+| `libobs/obs-hotkey-binding-getters.c.h` | `obs-hotkey::binding_getters` | Three public binding getters: exact stored combination, independent binding ID and pointer identity. No intentional differences. Null stored hotkeys are preserved; null binding inputs remain outside the C contract. Full real-header binding/combination layouts and differential parity, with actual-library C characterization. |
 | `libobs/util/bitstream.c` | `obs-util::bitstream` | C ABI keeps the `uint8_t pos` wrap past byte 255; the safe API does not wrap |
 | `libobs/util/path-extension.c` (extracted from `platform.c`) | `obs-util::path_extension` | NULL `path` returns NULL in Rust (C dereferences it). |
 | `libobs/util/array-serializer.c` | `obs-util::array_serializer` | `get_pos` returns `bytes.num`, not `cur_pos`, as in C. `serializer.h` is header-inline (layout test only). |

@@ -32,6 +32,7 @@ use obs_c_oracle as _; // blog
 #[cfg(test)]
 use obs_util as _; // base log handler
 
+pub mod binding_getters;
 pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
