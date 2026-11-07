@@ -287,6 +287,30 @@ mod canonical_xcomposite_decisions_are_registered;
 #[path = "native/registration/canonical_youtube_broadcast_settings_is_registered.rs"]
 mod canonical_youtube_broadcast_settings_is_registered;
 
+/// #1390: real-libobs graph runtimes link the core built from this checkout,
+/// never an installed libobs (whose ABI can predate these headers), in both
+/// the Cargo consumer and the CMake replay.
+#[test]
+fn graph_runtimes_never_link_an_installed_libobs() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../rust/obs-build/tests/native/registration");
+    let mut offenders = Vec::new();
+    for entry in fs::read_dir(&directory).unwrap() {
+        let path = entry.unwrap().path();
+        let text = fs::read_to_string(&path).unwrap();
+        for pattern in [
+            r#"Dependency::package(&build.target, "libobs")"#,
+            "IMPORTED_TARGET libobs)",
+            "CORE_LIBDIR",
+        ] {
+            if text.contains(pattern) {
+                offenders.push(format!("{}: {pattern}", path.display()));
+            }
+        }
+    }
+    assert!(offenders.is_empty(), "installed libobs: {offenders:#?}");
+}
+
 fn assert_group_lifecycle_registration(
     root: &Path,
     graph: &obs_build::validation::graph::Graph,
