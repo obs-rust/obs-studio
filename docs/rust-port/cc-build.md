@@ -945,6 +945,13 @@ non-MSVC math link. Linux replays all eleven standalone executables; the other
 hosts select only their original applicable subset. These checks need no display
 or core library and do not establish native runtime coverage on another host.
 
+The portable virtual-microphone clock and installation-policy helpers also use
+the shared graph, preserving their unconditional cmocka-only linkage and seven
+unchanged cases. Their common header directory is tracked for rebuilds. The
+frontend utility contract replays them through Cargo and CMake on Linux with
+GCC and Clang; this does not exercise the macOS HAL plug-in, installation or
+an audio device, nor establish cross-host runtime parity (#1390).
+
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
 Its unchanged four cases exercise worker-thread profile creation/removal,
 immediate UI-thread calls and nonblocking libobs-thread calls. The graph keeps
