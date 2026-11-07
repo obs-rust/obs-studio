@@ -138,3 +138,12 @@ obs_data_t *obs_service_get_context_settings(const obs_service_t *service)
 
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef get_weak
+
+/* Expose global roots together; Rust selects the enabled/disabled list.
+ * Module storage remains owned and synchronized by libobs. Hidden. */
+void obs_service_module_roots(obs_module_t **enabled, obs_module_t **disabled);
+void obs_service_module_roots(obs_module_t **enabled, obs_module_t **disabled)
+{
+    *enabled = obs->first_module;
+    *disabled = obs->first_disabled_module;
+}

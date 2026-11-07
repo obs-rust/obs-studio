@@ -91,14 +91,11 @@ static void trace_ev(const char *event, const obs_service_t *service)
 		oracle_trace_hook(event, service ? service->context.name : NULL);
 }
 
-static obs_module_t *oracle_first_module;
-static obs_module_t *oracle_first_disabled_module;
-
+void oracle_module_lookup_set_roots(obs_module_t *enabled, obs_module_t *disabled);
 void oracle_service_set_modules(obs_module_t *first, obs_module_t *first_disabled);
 void oracle_service_set_modules(obs_module_t *first, obs_module_t *first_disabled)
 {
-	oracle_first_module = first;
-	oracle_first_disabled_module = first_disabled;
+    oracle_module_lookup_set_roots(first, first_disabled);
 }
 
 /* A module that registered `num` service ids; `next` links the list. */
@@ -119,30 +116,7 @@ void oracle_module_free(obs_module_t *module)
 	free(module);
 }
 
-obs_module_t *obs_service_module_first(bool disabled)
-{
-	return disabled ? oracle_first_disabled_module : oracle_first_module;
-}
 
-obs_module_t *obs_service_module_next(obs_module_t *module)
-{
-	return module->next;
-}
-
-size_t obs_service_module_service_count(obs_module_t *module)
-{
-	return module->services.num;
-}
-
-const char *obs_service_module_service_id(obs_module_t *module, size_t i)
-{
-	return module->services.array[i];
-}
-
-enum obs_module_load_state obs_service_module_load_state(obs_module_t *module)
-{
-	return module->load_state;
-}
 
 static bool oracle_context_fails;
 

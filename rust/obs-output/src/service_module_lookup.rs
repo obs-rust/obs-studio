@@ -2,19 +2,28 @@
 
 /// Select the enabled or disabled module list without changing either list.
 pub fn first<T: Copy>(disabled: bool, enabled: T, unavailable: T) -> T {
-    let _ = (disabled, enabled, unavailable);
-    todo!("#3839")
+    if disabled { unavailable } else { enabled }
 }
 
 /// A borrowed module view; ownership and list lifetime stay with libobs.
-pub struct Module<'a, T> {
+pub struct Module<T> {
     pub next: T,
-    pub services: &'a [T],
+    pub service_count: usize,
     pub load_state: i32,
 }
-impl<T: Copy> Module<'_, T> {
-    pub fn next(&self) -> T { todo!("#3839") }
-    pub fn service_count(&self) -> usize { todo!("#3839") }
-    pub fn service_id(&self, index: usize) -> T { let _ = index; todo!("#3839") }
-    pub fn load_state(&self) -> i32 { todo!("#3839") }
+impl<T: Copy> Module<T> {
+    pub fn next(&self) -> T {
+        self.next
+    }
+    pub fn service_count(&self) -> usize {
+        self.service_count
+    }
+    pub fn load_state(&self) -> i32 {
+        self.load_state
+    }
+}
+
+/// Return an id from the caller's valid prefix of registered services.
+pub fn service_id<T: Copy>(ids: &[T], index: usize) -> T {
+    ids[index]
 }
