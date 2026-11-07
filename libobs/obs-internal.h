@@ -2062,6 +2062,14 @@ struct obs_encoder_counter_fields {
 };
 
 struct obs_encoder_counter_fields obs_encoder_counter_fields(const obs_encoder_t *encoder);
+/* Borrowed GPU scaling fields. No allocation, ownership or value conversion. */
+struct obs_encoder_gpu_scaling_getters_fields {
+	const enum obs_encoder_type *type;
+	const enum obs_scale_type *scale;
+	char *const *name;
+};
+struct obs_encoder_gpu_scaling_getters_fields obs_encoder_gpu_scaling_getters_fields(const obs_encoder_t *encoder);
+
 /* Borrowed metadata field addresses. C retains the encoder layout; no
  * allocation, ownership, synchronization or value conversion occurs here. */
 struct obs_encoder_metadata_fields {

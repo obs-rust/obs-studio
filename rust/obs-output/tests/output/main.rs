@@ -19,6 +19,8 @@ mod encoder_gpu_gates;
 mod encoder_gpu_gates_parity;
 mod encoder_gpu_rescale;
 mod encoder_gpu_rescale_parity;
+mod encoder_gpu_scaling_getters;
+mod encoder_gpu_scaling_getters_parity;
 mod encoder_group_reconfig;
 mod encoder_group_reconfig_parity;
 mod encoder_last_error;
