@@ -4130,6 +4130,48 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_obs_ffmpeg_host_linux": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "OBS_FFMPEG_HOST_SOURCE=\"plugins/obs-ffmpeg/obs-ffmpeg-host-linux.c.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-host-linux.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        "OBS::libobs"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_ffmpeg_host_posix": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "OBS_FFMPEG_HOST_SOURCE=\"plugins/obs-ffmpeg/obs-ffmpeg-host-posix.c.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        "OBS::libobs"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_obs_ffmpeg_net_host": {
       "sources": [
         "test/cmocka/test_obs_ffmpeg_net_host.c"
@@ -4340,6 +4382,50 @@
       ],
       "watch_inputs": [
         "shared/obs-scripting/obs-scripting-python-host-windows.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_python_import_host_macos": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_import_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_MACOS",
+        "OBS_PYTHON_IMPORT_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-import-host-macos.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-import-host-macos.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_python_import_host_windows": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_import_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_WINDOWS",
+        "OBS_PYTHON_IMPORT_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-import-host-windows.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-import-host-windows.c.h"
       ],
       "libraries": [
         "OBS::libobs",
@@ -11720,6 +11806,18 @@
       ],
       "timeout_seconds": 90
     },
+    "test_obs_ffmpeg_host_linux": {
+      "target": "test_obs_ffmpeg_host_linux",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_ffmpeg_host_posix": {
+      "target": "test_obs_ffmpeg_host_posix",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_obs_ffmpeg_net_host": {
       "target": "test_obs_ffmpeg_net_host",
       "requires": {
@@ -11812,6 +11910,18 @@
       "resource_locks": [
         "obs-scripting-host-plugins-dir"
       ]
+    },
+    "test_obs_scripting_python_import_host_macos": {
+      "target": "test_obs_scripting_python_import_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_python_import_host_windows": {
+      "target": "test_obs_scripting_python_import_host_windows",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
     },
     "test_os_path": {
       "target": "test_os_path"

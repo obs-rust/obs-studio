@@ -13,11 +13,21 @@ const CASES: [&str; 4] = [
 mod runtime;
 
 fn expected_target(name: &str) -> serde_json::Value {
-    let (helper, host) = name.strip_prefix("test_obs_").unwrap().split_once("_host_").unwrap();
+    let (helper, host) = name
+        .strip_prefix("test_obs_")
+        .unwrap()
+        .split_once("_host_")
+        .unwrap();
     let (source, macro_name) = if helper == "ffmpeg" {
-        (format!("plugins/obs-ffmpeg/obs-ffmpeg-host-{host}.c.h"), "OBS_FFMPEG_HOST_SOURCE")
+        (
+            format!("plugins/obs-ffmpeg/obs-ffmpeg-host-{host}.c.h"),
+            "OBS_FFMPEG_HOST_SOURCE",
+        )
     } else {
-        (format!("shared/obs-scripting/obs-scripting-python-import-host-{host}.c.h"), "OBS_PYTHON_IMPORT_HOST_SOURCE")
+        (
+            format!("shared/obs-scripting/obs-scripting-python-import-host-{host}.c.h"),
+            "OBS_PYTHON_IMPORT_HOST_SOURCE",
+        )
     };
     let mut definitions = vec![];
     if helper != "ffmpeg" {
@@ -58,9 +68,9 @@ fn canonical_import_ffmpeg_hosts_are_registered() {
         );
     }
     for helper in ["ffmpeg", "scripting_python_import"] {
-        let fragment = fs::read_to_string(root.join(format!(
-            "test/cmocka/tests.d/test_obs_{helper}_host.cmake"
-        )))
+        let fragment = fs::read_to_string(
+            root.join(format!("test/cmocka/tests.d/test_obs_{helper}_host.cmake")),
+        )
         .unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
