@@ -147,9 +147,11 @@ pub trait CompileModel {
     /// The parser's type name of the slot (`param_in->type`).
     fn param_type_name(&self, slot: ParamSlot) -> &[u8];
     /// The slot's name (`bstrdup(param_in->name)`), `section`, effect
-    /// (`ep->effect`), default value (`da_move` from the parser's) and
-    /// `type_`, in the C's order.
-    fn fill_param(&mut self, slot: ParamSlot, section: i32, type_: i32);
+    /// (`ep->effect`) and default value (`da_move` from the parser's), in
+    /// the C's order.
+    fn fill_param(&mut self, slot: ParamSlot, section: i32);
+    /// The slot's `type`, which the C sets after the default value.
+    fn set_param_type(&mut self, slot: ParamSlot, type_: i32);
     /// The parser's name of param `i` (`param_in->name`), for the
     /// `ViewProj` and `World` checks.
     fn param_name(&self, i: usize) -> &[u8];
@@ -220,14 +222,11 @@ pub trait CompileModel {
         built: &Self::Built,
         i: usize,
     ) -> Option<Self::SParam>;
-    /// Shader param `i` of the slot: `eparam` and `sparam`.
-    fn set_shader_param(
-        &mut self,
-        slot: ShaderSlot,
-        i: usize,
-        eparam: Self::EParam,
-        sparam: Option<Self::SParam>,
-    );
+    /// Shader param `i` of the slot's `eparam`, set before the shader
+    /// param lookup.
+    fn set_shader_eparam(&mut self, slot: ShaderSlot, i: usize, eparam: Self::EParam);
+    /// Shader param `i` of the slot's `sparam`.
+    fn set_shader_sparam(&mut self, slot: ShaderSlot, i: usize, sparam: Option<Self::SParam>);
     /// Frees the built text and used params.
     fn free_built(&mut self, built: Self::Built);
 
@@ -239,10 +238,13 @@ pub trait CompileModel {
 pub fn compile_annotations(m: &mut impl CompileModel, i: usize) {
     let num = m.annotation_count(i);
     m.resize_annotations(i, num);
-    for index in 0..num {
+    let mut index = 0;
+    while index < m.annotation_count(i) {
         let slot = ParamSlot::Annotation { param: i, index };
+        m.fill_param(slot, EFFECT_ANNOTATION);
         let type_ = effect_param_types::param_type(m.param_type_name(slot));
-        m.fill_param(slot, EFFECT_ANNOTATION, type_);
+        m.set_param_type(slot, type_);
+        index += 1;
     }
 }
 
@@ -250,14 +252,13 @@ pub fn compile_annotations(m: &mut impl CompileModel, i: usize) {
 pub fn compile_param(m: &mut impl CompileModel, i: usize) {
     m.link_param(i);
     let slot = ParamSlot::Param(i);
+    m.fill_param(slot, EFFECT_PARAM);
     let type_ = effect_param_types::param_type(m.param_type_name(slot));
-    m.fill_param(slot, EFFECT_PARAM, type_);
+    m.set_param_type(slot, type_);
 
-    let name = m.param_name(i);
-    let (view_proj, world) = (name == b"ViewProj", name == b"World");
-    if view_proj {
+    if m.param_name(i) == b"ViewProj" {
         m.set_view_proj(i);
-    } else if world {
+    } else if m.param_name(i) == b"World" {
         m.set_world(i);
     }
 
@@ -279,8 +280,9 @@ pub fn compile_pass_shaderparams<M: CompileModel>(
     let mut i = 0;
     while i < m.shader_param_count(slot) {
         let eparam = m.effect_param(built, i);
+        m.set_shader_eparam(slot, i, eparam);
         let sparam = m.shader_param(shader, built, i);
-        m.set_shader_param(slot, i, eparam, sparam);
+        m.set_shader_sparam(slot, i, sparam);
 
         if sparam.is_none() {
             m.log(CompileLog::ShaderParamNotFound);

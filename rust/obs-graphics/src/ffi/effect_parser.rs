@@ -1270,7 +1270,7 @@ impl CompileModel for CCompile {
         // SAFETY: the parser's type, a C string (never NULL).
         unsafe { c_text((*src).r#type) }
     }
-    fn fill_param(&mut self, slot: ParamSlot, section: i32, type_: i32) {
+    fn fill_param(&mut self, slot: ParamSlot, section: i32) {
         let (dst, src) = self.param_pair(slot);
         let effect = self.effect;
         // SAFETY: valid, distinct items of the two arrays; the name is a C
@@ -1283,8 +1283,12 @@ impl CompileModel for CCompile {
             dst.effect = effect;
             bfree(dst.default_val.array);
             dst.default_val = core::mem::replace(&mut src.default_val, empty_darray());
-            dst.type_ = type_;
         }
+    }
+    fn set_param_type(&mut self, slot: ParamSlot, type_: i32) {
+        let (dst, _) = self.param_pair(slot);
+        // SAFETY: a valid item of the effect's array.
+        unsafe { (*dst).type_ = type_ };
     }
     fn param_name(&self, i: usize) -> &[u8] {
         let (_, src) = self.param_pair(ParamSlot::Param(i));
@@ -1466,17 +1470,17 @@ impl CompileModel for CCompile {
             gs_shader_get_param_by_name(shader.as_ptr(), Self::used_name(built, i))
         })
     }
-    fn set_shader_param(
-        &mut self,
-        slot: ShaderSlot,
-        i: usize,
-        eparam: *mut gs_effect_param,
-        sparam: Option<NonNull<c_void>>,
-    ) {
+    fn set_shader_eparam(&mut self, slot: ShaderSlot, i: usize, eparam: *mut gs_effect_param) {
         // SAFETY: i is below the size the core gave the array.
         unsafe {
             let param: *mut pass_shaderparam = Self::at(&*self.shader_params(slot), i);
             (*param).eparam = eparam;
+        }
+    }
+    fn set_shader_sparam(&mut self, slot: ShaderSlot, i: usize, sparam: Option<NonNull<c_void>>) {
+        // SAFETY: as above.
+        unsafe {
+            let param: *mut pass_shaderparam = Self::at(&*self.shader_params(slot), i);
             (*param).sparam = sparam.map_or(ptr::null_mut(), NonNull::as_ptr);
         }
     }
