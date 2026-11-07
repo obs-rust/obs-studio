@@ -853,33 +853,18 @@ build and both test modes on `ca331a93d`.
 
 ## Building the C tests through Cargo
 
+Native graph parity notes live in [one file per slice](native-graph/), sorted by PR number.
+Add future slice notes there instead of appending shared prose here. Registration contracts
+live in `rust/obs-build/tests/native/registration/`, included as modules of the existing
+Application category binary; keep each slice in its own file and sort module declarations.
+
+
 The current shared inventory is `test/cmocka/build/test-graph.json`, consumed by
 both `validation::build_c_tests` and `test/cmocka/native-test-graph.cmake`. The
 independent Linux manifest described in the initial results below was retired
 in #1805. The graph remains a subset of the repository's native tests; target and test
 selection depends on the evaluated platform and feature requirements. Cargo
 compilation of the full selected test graph currently runs on Linux.
-
-The unchanged `test_async_frame_pacing_steps_rust` characterization is also
-shared. It links the real `libobs_rust-static` archive and cmocka, without a C
-implementation source or shared libobs. CMake retains the original target
-availability guard and Corrosion's native runtime interface. Cargo supplies the
-archive explicitly through `validation::Options::rust_archive`; absence excludes
-this Rust-only check, and an invalid supplied path fails rather than substituting
-C or a stub. The existing Linux dual-core integration passes its production
-archive. The focused Linux opt-in `canonical_rust_static_pacing_runs_unchanged` contract
-requires `OBS_BUILD_RUST_ARCHIVE`, replays both consumers and checks evaluated
-CTest inclusion/exclusion. Its minimal imported CMake target supplies the math
-dependency pulled by this archive member; it does not validate Corrosion’s full
-feature-dependent SDK interface. This is one static-link inventory slice, not overall
-native parity or new macOS/Windows Cargo core-test support (#1390).
-The unchanged `test_async_conversion_plan_rust` also shares this inventory:
-its thirteen C cases link directly to the production Rust archive and cmocka,
-with the original target-availability guard and non-MSVC math dependency.
-`canonical_rust_static_conversion_runs_unchanged` replays the real archive
-through Cargo and CMake on Linux, including evaluated CTest presence/absence.
-The original C characterization and Rust unit/differential tests remain intact;
-this does not complete broader native or application parity (#1390).
 
 The scene bounds placement characterization also uses the shared core graph.
 Both consumers compile its original C test and two private C helper sources,
@@ -924,83 +909,10 @@ retaining its vendored libcaption and cmocka dependencies without needing libobs
 The display-free XComposite presence and search-backoff decision suites retain
 unconditional cmocka linkage, helper-header tracking and 30-second timeouts.
 `canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
-the original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. It also runs the seven unchanged VAAPI device
-fallback cases on Linux, FreeBSD and OpenBSD, preserving their OS guard and
-cmocka-only linkage without a GPU or display. The guard is checked for selection;
-local runtime evidence for this addition is Linux with GCC and Clang. Native
-macOS and Windows Rust lanes run this contract alongside the existing remux contract; it proves these standalone helpers, not
+all eight original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
+alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
-all seven original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. The portable virtual microphone routing suite
-(`test_win_vmic_route`) retains its unconditional cmocka-only linkage, plugin
-include path and routing-header invalidation input. Its four unchanged cases
-need neither Win32 nor libobs. Linux GCC and Clang replay covers both consumers;
-native macOS/Windows replay is not claimed here (the hosted utility selectors
-still name the older contract). This proves standalone helpers, not full
-frontend/application parity (#1390).
-
-the selected original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. Local GCC and Clang replay covers Linux; graph
-selection checks preserve the host exclusions. This proves standalone helpers,
-not full frontend/application parity (#1390).
-
-The standalone NVENC override, glyph-atlas, non-macOS keypad-header and
-non-Windows reference-header tests also use the shared graph. Their unchanged
-sources run in the same Cargo/CMake utility contract, preserving the two host
-exclusions. Glyph-atlas declares its broad production PCH's FreeType and SIMDe
-header packages and libobs configuration-header interface without linking libobs.
-The small runtime contract uses the existing oracle configuration fixture for
-that header interface; production validation uses its generated core configuration.
-This is helper coverage, not hardware NVENC or complete application parity (#1390).
-the selected original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. Current native macOS and Windows workflow commands
-still select the earlier utility-only test name, so those commands do not prove
-this expanded contract ran. Local evidence covers standalone Linux helpers, not
-full frontend/application parity (#1390).
-
-The same contract includes unchanged fade-to-color gain math and four host-header
-checks: FFmpeg mux helper on `NOT OS_WINDOWS`, and obs-main, obsbasic and settings
-on `OS_LINUX`. The shared graph preserves those exact guards and the fade test's
-non-MSVC math link. Linux replays all eleven standalone executables; the other
-hosts select only their original applicable subset. These checks need no display
-or core library and do not establish native runtime coverage on another host.
-all selected original C tests through both the Cargo and CMake consumers and
-compares the evaluated CTest inventory. Local runtime evidence is Linux-only;
-the hosted macOS and Windows selectors still use the earlier utility-only
-contract name. This proves these standalone helpers, not full frontend/application
-parity (#1390).
-
-The portable virtual-microphone clock and installation-policy helpers also use
-the shared graph, preserving their unconditional cmocka-only linkage and seven
-unchanged cases. Their common header directory is tracked for rebuilds. The
-frontend utility contract replays them through Cargo and CMake on Linux with
-GCC and Clang; this does not exercise the macOS HAL plug-in, installation or
-an audio device, nor establish cross-host runtime parity (#1390).
-all six original C tests plus the two unchanged frontend-tools host helpers
-through both the Cargo and CMake consumers and compares the evaluated CTest
-inventory. The host helpers retain their original `NOT OS_WINDOWS` guard,
-cmocka-only linkage and tracked host implementation/PCH headers; they need no
-Python runtime or display. This is standalone helper coverage, not full
-frontend/application parity (#1390). Hosted native selectors still name the
-older utility-only contract, so this does not claim macOS/Windows runtime replay.
-the selected original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. The display-free X11 keymap reply-bit suite is
-included on Linux/FreeBSD, preserving cmocka-only linkage and declaring XCB as a
-header-only dependency. Its indirect helper header is tracked for invalidation.
-This checks the NULL-reply and key-bit cases without starting an X server.
-Hosted commands still select the utility contract's earlier name, so this
-contract alone does not establish native macOS/Windows runtime coverage. It
-proves the selected standalone helpers, not full frontend/application parity
-(#1390).
-the selected original C tests through both the Cargo and CMake consumers and
-compares the evaluated CTest inventory. It also covers the unchanged POSIX
-FFmpeg network-host and output-module helpers, preserving their `NOT OS_WINDOWS`
-guard and cmocka-only linkage. Indirect host headers, the included implementation
-and its PCH participate in native build invalidation. GCC and Clang runtime
-evidence for this slice is Linux-only. Hosted selectors still name the utility
-contract from before its caption rename; this paragraph does not claim native
-macOS/Windows replay or full frontend/application parity (#1390).
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
 Its unchanged four cases exercise worker-thread profile creation/removal,

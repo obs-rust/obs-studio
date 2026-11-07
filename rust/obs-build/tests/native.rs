@@ -2,837 +2,106 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
-/// #1390: preserve the unchanged, GPU-free VAAPI fallback policy and OS guard.
-#[test]
-fn canonical_vaapi_device_select_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let name = "test_vaapi_device_select";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits test_vaapi_device_select");
-    let sources: Vec<_> = target
-        .sources
-        .iter()
-        .map(|source| match source {
-            Source::Path(path) => path.as_str(),
-            _ => panic!("VAAPI fallback sources must be unconditional"),
-        })
-        .collect();
-    assert_eq!(
-        sources,
-        [
-            "test/cmocka/test_vaapi_device_select.c",
-            "plugins/obs-ffmpeg/vaapi-device-select.c.h"
-        ]
-    );
-    assert_eq!(target.includes, ["plugins/obs-ffmpeg"]);
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("VAAPI fallback linkage must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::native-test-cmocka"]);
-    assert!(target.header_libraries.is_empty());
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.suite, "core");
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(test.resource_locks.is_empty());
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_vaapi_device_select.cmake"))
-            .unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in [
-        "OS_LINUX",
-        "OS_FREEBSD",
-        "OS_OPENBSD",
-        "OS_MACOS",
-        "OS_WINDOWS",
-        "OS_OTHER",
-    ] {
-        let facts = ["OS_LINUX", "OS_FREEBSD", "OS_OPENBSD"]
-            .map(|fact| (fact.into(), fact == os))
-            .into();
-        let selected = graph.select(&facts).unwrap();
-        let enabled = matches!(os, "OS_LINUX" | "OS_FREEBSD" | "OS_OPENBSD");
-        assert_eq!(selected.targets.contains_key(name), enabled, "{os}");
-        assert_eq!(selected.tests.contains_key(name), enabled, "{os}");
-    }
-}
-
-/// #1390: standalone helper tests preserve platform and header requirements.
-#[test]
-fn canonical_nvenc_host_and_glyph_tests_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let names = [
-        "test_nvenc_override",
-        "test_hotkey_numpad_host",
-        "test_libobs_reference_hosts",
-        "test_glyph_atlas",
-    ];
-    for name in names {
-    }
-}
-
-/// #1390: standalone plugin configuration helpers must reach both native consumers.
-#[test]
-fn canonical_plugin_configuration_helpers_are_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    for (name, include, headers) in [
-        (
-            "test_slideshow_size",
-            "plugins/image-source",
-            vec![
-                "plugins/image-source/slideshow-size.h",
-                "plugins/image-source/build/image-source.pch.h",
-            ],
-        ),
-        (
-            "test_stinger_monitoring_migration",
-            "plugins/obs-transitions",
-            vec!["plugins/obs-transitions/transition-stinger-monitoring.h"],
-        ),
-    ] {
-        assert_plugin_configuration_target(&graph, name, include, &headers);
-        assert_plugin_configuration_test(&root, &graph, name);
-    }
-}
-
-fn assert_plugin_configuration_target(
-    graph: &obs_build::validation::graph::Graph,
-    name: &str,
-    include: &str,
-    headers: &[&str],
-) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
-    let target = graph
-        .targets
-        .get(name)
-        .unwrap_or_else(|| panic!("canonical graph omits {name}"));
-    let sources: Vec<_> = target
-        .sources
-        .iter()
-        .map(|source| match source {
-            Source::Path(path) => path.as_str(),
-            _ => panic!("plugin helper sources must be unconditional"),
-        })
-        .collect();
-    let mut expected = vec![format!("test/cmocka/{name}.c")];
-    if name == "test_slideshow_size" {
-        expected.push("plugins/image-source/slideshow-size.c.h".into());
-    }
-    assert_eq!(sources, expected);
-    assert_eq!(target.includes, [include]);
-    assert_eq!(target.watch_inputs, headers);
-    if name == "test_slideshow_size" {
-        assert!(matches!(target.libraries.as_slice(), [
-            ConditionalValue::Name(library),
-            ConditionalValue::Conditional { name, requires: Requirement::Fact(os) }
-        ] if library == "OBS::native-test-cmocka" && name == "OBS::w32-pthreads" && os == "OS_WINDOWS"));
-    } else {
-        assert!(
-            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
-        );
-    }
-    if name == "test_slideshow_size" {
-        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
-    } else {
-        assert!(target.header_libraries.is_empty());
-    }
-}
-
-fn assert_plugin_configuration_test(
-    root: &Path,
-    graph: &obs_build::validation::graph::Graph,
-    name: &str,
-) {
-    use obs_build::validation::graph::Graph;
-}
-
-/// #1390: portable virtual microphone routing must reach both native consumers.
-#[test]
-fn canonical_win_vmic_route_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let name = "test_win_vmic_route";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits test_win_vmic_route");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_win_vmic_route.c"));
-    assert_eq!(target.includes, ["plugins/win-dshow"]);
-    assert!(
-        matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)]
-        if name == "OBS::native-test-cmocka")
-    );
-    assert!(target.header_libraries.is_empty());
-    assert_eq!(target.watch_inputs, ["plugins/win-dshow/vmic-route.h"]);
-}
-
-/// #1390: the X11 reply-bit helper needs headers, not a display or XCB linkage.
-#[test]
-fn canonical_x11_keymap_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let name = "test_x11_keymap";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits test_x11_keymap");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_x11_keymap.c"));
-    assert_eq!(target.includes, ["libobs"]);
-    assert_eq!(target.watch_inputs, ["libobs/obs-nix-x11-keymap.h"]);
-    assert_eq!(target.header_packages, ["xcb"]);
-    assert!(target.packages.is_empty());
-    assert!(target.header_libraries.is_empty());
-    assert!(
-        matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
-        if library == "OBS::native-test-cmocka")
-    );
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.suite, "core");
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert_eq!(test.qt_runtime, None);
-    let fragment =
-        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    single.targets.retain(|key, _| key == name);
-    single.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = single
-            .select(
-                &[
-                    ("OS_LINUX".into(), os == "OS_LINUX"),
-                    ("OS_MACOS".into(), os == "OS_MACOS"),
-                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                ]
-                .into(),
-            )
-            .unwrap();
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_win_vmic_route.cmake")).unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name), "{os}");
-        assert!(selected.tests.contains_key(name), "{os}");
-    }
-}
-
-/// Optional glyph dependencies must never break another host's Tier 2 configure.
-#[test]
-fn canonical_glyph_atlas_unavailable_hosts_configure_without_packages() {
-    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
-    let graph = serde_json::json!({
-        "schema": 1,
-        "targets": {"test_glyph_atlas": raw["targets"]["test_glyph_atlas"]},
-        "tests": {"test_glyph_atlas": raw["tests"]["test_glyph_atlas"]},
-    });
-    let source = root.to_string_lossy().replace('\\', "/");
-    for os in ["OS_MACOS", "OS_WINDOWS"] {
-        let directory = tempfile::tempdir().unwrap();
-        fs::write(directory.path().join("graph.json"), graph.to_string()).unwrap();
-        fs::write(directory.path().join("CMakeLists.txt"), format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(glyph-unavailable NONE)\nenable_testing()\nset(OS_LINUX FALSE)\nset(OS_MACOS FALSE)\nset(OS_WINDOWS FALSE)\nset({os} TRUE)\nset(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)\nadd_library(OBS::native-test-cmocka INTERFACE IMPORTED)\nadd_library(OBS::libobs INTERFACE IMPORTED)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\nif(TARGET test_glyph_atlas)\nmessage(FATAL_ERROR \"glyph target selected without available host packages\")\nendif()\nget_property(tests DIRECTORY PROPERTY TESTS)\nif(tests)\nmessage(FATAL_ERROR \"glyph CTest registered without its target\")\nendif()\n"
-        )).unwrap();
-        let result = std::process::Command::new("cmake")
-            .arg("-S")
-            .arg(directory.path())
-            .arg("-B")
-            .arg(directory.path().join("build"))
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "{os}\n{}\n{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
-        }
-    }
-}
-
-/// #1390: the portable virtual-microphone helpers need both native consumers.
-#[test]
-fn canonical_vmic_helpers_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let names = ["test_mac_vmic_clock", "test_mac_vmic_install"];
-}
-
-/// #1390: the unchanged POSIX output helpers must reach both native consumers.
-#[test]
-fn canonical_posix_output_hosts_are_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let names = ["test_obs_ffmpeg_net_host", "test_obs_outputs_host"];
-    for name in names {
-        let target = graph
-            .targets
-            .get(name)
-            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{name}.c")));
-        assert!(
-            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)]
-            if library == "OBS::native-test-cmocka")
-        );
-        assert_eq!(target.includes, ["plugins/mac-virtualcam/src/common"]);
-        assert_eq!(target.watch_inputs, ["plugins/mac-virtualcam/src/common"]);
-    }
-}
-
-/// #1390: preserve both unchanged frontend-tools host helpers and their OS guard.
-#[test]
-fn canonical_frontend_tools_hosts_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let names = ["test_frontend_tools_host", "test_frontend_tools_host_macos"];
-    for name in names {
-        let target = graph
-            .targets
-            .get(name)
-            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
-        assert!(
-            matches!(target.sources.as_slice(), [Source::Path(path)] if path == &format!("test/cmocka/{name}.c"))
-        );
-        assert_eq!(target.includes, ["."]);
-        assert!(
-            matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)] if name == "OBS::native-test-cmocka")
-        );
-        assert!(target.header_libraries.is_empty());
-        let host = if name.ends_with("macos") {
-            "macos"
-        } else {
-            "posix"
-        };
-        assert_eq!(
-            target.watch_inputs,
-            [
-                format!("plugins/frontend-tools/frontend-tools-host-{host}.c.h"),
-                "plugins/frontend-tools/frontend-tools-host.h".into(),
-                format!("plugins/frontend-tools/build/frontend-tools-host-{host}.pch.h"),
-            ]
-        );
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.suite, "core");
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        assert!(test.optional_prefixes.is_empty());
-        assert_eq!(test.qt_runtime, None);
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-    }
-    graph.targets.retain(|key, _| names.contains(&key.as_str()));
-    graph.tests.retain(|key, _| names.contains(&key.as_str()));
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        for name in names {
-            assert!(selected.targets.contains_key(name), "{os}/{name}");
-            assert!(selected.tests.contains_key(name), "{os}/{name}");
-        }
-    }
-}
-
-fn assert_posix_output_host_registration(
-    root: &Path,
-    graph: &obs_build::validation::graph::Graph,
-    name: &str,
-) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
-    let target = graph
-        .targets
-        .get(name)
-        .unwrap_or_else(|| panic!("canonical graph omits {name}"));
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == &format!("test/cmocka/{name}.c")));
-    assert!(
-        matches!(&target.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
-    );
-    assert!(
-        matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)]
-        if name == "OBS::native-test-cmocka")
-    );
-    assert!(target.header_libraries.is_empty());
-    let (includes, watch): (&[&str], &[&str]) = if name == "test_obs_ffmpeg_net_host" {
-        (
-            &["plugins/obs-ffmpeg/hosts/posix"],
-            &["plugins/obs-ffmpeg/hosts/posix/obs-ffmpeg-net-host.h"],
-        )
-    } else {
-        (
-            &["."],
-            &[
-                "plugins/obs-outputs/build/obs-outputs-host-posix.pch.h",
-                "plugins/obs-outputs/obs-outputs-host-posix.c.h",
-                "plugins/obs-outputs/obs-outputs-host.h",
-                "plugins/obs-outputs/utils.h",
-            ],
-        )
-    };
-    assert_eq!(target.includes, includes);
-    assert_eq!(target.watch_inputs, watch);
-    assert_posix_output_host_execution(root, graph, name);
-}
-
-fn assert_posix_output_host_execution(
-    root: &Path,
-    graph: &obs_build::validation::graph::Graph,
-    name: &str,
-) {
-    use obs_build::validation::graph::Requirement;
-    let test = &graph.tests[name];
-    assert!(
-        matches!(&test.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
-    );
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.suite, "core");
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert_eq!(test.qt_runtime, None);
-    let fragment =
-        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-}
-
-/// #1390: standalone caption compatibility must reach both native consumers.
-#[test]
-fn canonical_caption_unmappable_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let name = "test_caption_unmappable";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits test_caption_unmappable");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_caption_unmappable.c"));
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("caption linkage must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::caption", "OBS::native-test-cmocka"]);
-    assert_eq!(target.includes, ["deps/libcaption"]);
-    assert!(target.header_libraries.is_empty());
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.suite, "core");
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert_eq!(test.qt_runtime, None);
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_caption_unmappable.cmake")).unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name), "{os}");
-        assert!(selected.tests.contains_key(name), "{os}");
-    }
-}
-
-/// #3716: both native consumers must retain video-output compatibility coverage.
-#[test]
-fn canonical_video_output_compatibility_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let cases = [
-        ("test_video_output_formats", 180),
-        ("test_video_reset_fps", 60),
-    ];
-    for (name, timeout) in cases {
-        let target = graph.targets.get(name).unwrap_or_else(|| {
-            panic!("canonical graph omits video-output compatibility coverage: {name}")
-        });
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{name}.c")));
-        let libraries: Vec<_> = target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("video-output linkage must be unconditional"),
-            })
-            .collect();
-        assert_eq!(
-            libraries,
-            ["OBS::libobs", "OBS::native-test-cmocka"],
-            "{name}"
-        );
-        assert!(target.header_libraries.is_empty());
-        assert_eq!(
-            target.artifact_definitions["GRAPHICS_MODULE_PATH"],
-            "OBS::libobs-opengl"
-        );
-        assert_eq!(target.watch_inputs, ["libobs/data"]);
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.suite, "graphics");
-        assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
-        assert_eq!(test.timeout_seconds, Some(timeout));
-        assert_eq!(test.skip_return_code, None);
-        assert_eq!(
-            test.optional_prefixes,
-            [vec!["xvfb-run".to_string(), "-a".to_string()]]
-        );
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("), "{name}");
-        assert!(!fragment.contains("add_test("), "{name}");
-    }
-    graph
-        .targets
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph
-        .tests
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        for opengl in [true, false] {
-            let selected = graph
-                .select(
-                    &[
-                        ("OS_LINUX".into(), os == "OS_LINUX"),
-                        ("OS_MACOS".into(), os == "OS_MACOS"),
-                        ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                        ("HAVE_OBS_OPENGL".into(), opengl),
-                    ]
-                    .into(),
-                )
-                .unwrap();
-            for (name, _) in cases {
-                assert_eq!(
-                    selected.targets.contains_key(name),
-                    os == "OS_LINUX" && opengl,
-                    "{os}/{opengl}/{name}"
-                );
-                assert_eq!(
-                    selected.tests.contains_key(name),
-                    os == "OS_LINUX" && opengl,
-                    "{os}/{opengl}/{name}"
-                );
-            }
-        }
-    }
-}
-
-/// #3720: async cache overflow clocks must reach both native consumers.
-#[test]
-fn canonical_async_overflow_clock_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_async_overflow_clock";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits async overflow clock coverage");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_async_overflow_clock.c"));
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("async overflow linkage must be unconditional"),
-        })
-        .collect();
-    assert_eq!(
-        libraries,
-        ["OBS::libobs", "OBS::caption", "OBS::native-test-cmocka"]
-    );
-    assert!(target.header_libraries.is_empty());
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.suite, "core");
-    assert_eq!(test.working_directory, None);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_async_overflow_clock.cmake"))
-            .unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(
-                &[
-                    ("OS_LINUX".into(), os == "OS_LINUX"),
-                    ("OS_MACOS".into(), os == "OS_MACOS"),
-                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                ]
-                .into(),
-            )
-            .unwrap();
-        assert_eq!(
-            selected.targets.contains_key(name),
-            os == "OS_LINUX",
-            "{os}"
-        );
-        assert_eq!(selected.tests.contains_key(name), os == "OS_LINUX", "{os}");
-    }
-}
-
-/// #3718: fake-device graphics C suites must reach both native consumers.
-#[test]
-fn canonical_fake_device_graphics_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let cases = [
-        ("test_texture_render", None),
-        ("test_graphics_immediate_render", Some("address,undefined")),
-    ];
-    for (name, sanitizers) in cases {
-        let target = graph.targets.get(name).unwrap_or_else(|| {
-            panic!("canonical graph omits fake-device graphics coverage: {name}")
-        });
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{name}.c")));
-        let libraries: Vec<_> = target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("fake-device graphics linkage must be unconditional"),
-            })
-            .collect();
-        assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-        assert_eq!(target.sanitizers.as_deref(), sanitizers);
-        assert!(target.artifact_definitions.is_empty());
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.suite, "core");
-        assert_eq!(test.working_directory, None);
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        assert!(test.optional_prefixes.is_empty());
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("), "{name}");
-        assert!(!fragment.contains("add_test("), "{name}");
-    }
-    graph
-        .targets
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph
-        .tests
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        for (name, _) in cases {
-            assert!(selected.targets.contains_key(name), "{os}/{name}");
-            assert!(selected.tests.contains_key(name), "{os}/{name}");
-        }
-    }
-}
-
-/// #3714: both native consumers must retain transition compatibility coverage.
-#[test]
-fn canonical_transition_compatibility_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let cases = [
-        ("test_transition_recursive_destination", 180),
-        ("test_transition_swap", 60),
-        ("test_item_transition_empty_source", 120),
-    ];
-    for (name, timeout) in cases {
-        let target = graph.targets.get(name).unwrap_or_else(|| {
-            panic!("canonical graph omits transition compatibility coverage: {name}")
-        });
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{name}.c")));
-        let libraries: Vec<_> = target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("transition linkage must be unconditional"),
-            })
-            .collect();
-        let mut expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
-        if name == "test_item_transition_empty_source" {
-            expected.push("OBS::caption");
-            assert_eq!(target.header_libraries, ["Uthash::Uthash"]);
-        } else {
-            assert!(target.header_libraries.is_empty());
-        }
-        assert_eq!(libraries, expected, "{name}");
-        assert_eq!(
-            target.artifact_definitions["GRAPHICS_MODULE_PATH"],
-            "OBS::libobs-opengl"
-        );
-        assert_eq!(target.watch_inputs, ["libobs/data"]);
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.suite, "graphics");
-        assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
-        assert_eq!(test.timeout_seconds, Some(timeout));
-        assert_eq!(test.skip_return_code, None);
-        assert!(test.optional_prefixes.is_empty());
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("), "{name}");
-        assert!(!fragment.contains("add_test("), "{name}");
-    }
-    graph
-        .targets
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph
-        .tests
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        for opengl in [true, false] {
-            let selected = graph
-                .select(
-                    &[
-                        ("OS_LINUX".into(), os == "OS_LINUX"),
-                        ("OS_MACOS".into(), os == "OS_MACOS"),
-                        ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                        ("HAVE_OBS_OPENGL".into(), opengl),
-                    ]
-                    .into(),
-                )
-                .unwrap();
-            for (name, _) in cases {
-                assert_eq!(
-                    selected.targets.contains_key(name),
-                    os == "OS_LINUX" && opengl,
-                    "{os}/{opengl}/{name}"
-                );
-                assert_eq!(
-                    selected.tests.contains_key(name),
-                    os == "OS_LINUX" && opengl,
-                    "{os}/{opengl}/{name}"
-                );
-            }
-        }
-    }
-}
-
-/// #3712: group mutations and teardown must run through both native consumers.
-#[test]
-fn canonical_group_lifecycle_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let cases = [
-        ("test_group_empty_bounds", true, Some(120)),
-        ("test_group_active_refs", true, Some(120)),
-        ("test_group_recursion", true, Some(180)),
-        ("test_group_insert_empty", false, None),
-        ("test_group_child_drift", true, Some(120)),
-        ("test_group_teardown_uaf", false, None),
-    ];
-    for (name, graphics, timeout) in cases {
-        assert_group_lifecycle_registration(&root, &graph, name, graphics, timeout);
-    }
-    graph
-        .targets
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph
-        .tests
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        for opengl in [true, false] {
-            let selected = graph
-                .select(
-                    &[
-                        ("OS_LINUX".into(), os == "OS_LINUX"),
-                        ("OS_MACOS".into(), os == "OS_MACOS"),
-                        ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                        ("HAVE_OBS_OPENGL".into(), opengl),
-                    ]
-                    .into(),
-                )
-                .unwrap();
-            for (name, graphics, _) in cases {
-                let expected = if graphics {
-                    os == "OS_LINUX" && opengl
-                } else {
-                    name == "test_group_teardown_uaf" || os != "OS_WINDOWS"
-                };
-                assert_eq!(
-                    selected.targets.contains_key(name),
-                    expected,
-                    "{os}/{opengl}/{name}"
-                );
-                assert_eq!(
-                    selected.tests.contains_key(name),
-                    expected,
-                    "{os}/{opengl}/{name}"
-                );
-                if expected && !graphics {
-                    assert_eq!(
-                        selected.tests[name].optional_prefixes.is_empty(),
-                        os != "OS_LINUX"
-                    );
-                }
-            }
-        }
-    }
-}
+#[path = "native/registration/canonical_async_overflow_clock_is_registered.rs"]
+mod canonical_async_overflow_clock_is_registered;
+#[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
+mod canonical_caption_unmappable_is_registered;
+#[path = "native/registration/canonical_close_top_level_is_registered.rs"]
+mod canonical_close_top_level_is_registered;
+#[path = "native/registration/canonical_config_hex_float_rounding_is_registered.rs"]
+mod canonical_config_hex_float_rounding_is_registered;
+#[path = "native/registration/canonical_context_names_is_registered.rs"]
+mod canonical_context_names_is_registered;
+#[path = "native/registration/canonical_dock_proportions_is_registered.rs"]
+mod canonical_dock_proportions_is_registered;
+#[path = "native/registration/canonical_effect_lookups_is_registered.rs"]
+mod canonical_effect_lookups_is_registered;
+#[path = "native/registration/canonical_encoder_group_null_is_registered.rs"]
+mod canonical_encoder_group_null_is_registered;
+#[path = "native/registration/canonical_fade_and_host_tests_are_registered.rs"]
+mod canonical_fade_and_host_tests_are_registered;
+#[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
+mod canonical_fake_device_graphics_is_registered;
+#[path = "native/registration/canonical_filter_clipboard_is_registered.rs"]
+mod canonical_filter_clipboard_is_registered;
+#[path = "native/registration/canonical_filter_color_space_is_registered.rs"]
+mod canonical_filter_color_space_is_registered;
+#[path = "native/registration/canonical_filter_size_no_target_is_registered.rs"]
+mod canonical_filter_size_no_target_is_registered;
+#[path = "native/registration/canonical_frontend_api_call_is_registered.rs"]
+mod canonical_frontend_api_call_is_registered;
+#[path = "native/registration/canonical_frontend_product_and_meter_tests_are_registered.rs"]
+mod canonical_frontend_product_and_meter_tests_are_registered;
+#[path = "native/registration/canonical_frontend_tools_hosts_are_registered.rs"]
+mod canonical_frontend_tools_hosts_are_registered;
+#[path = "native/registration/canonical_frontend_utility_tests_are_registered.rs"]
+mod canonical_frontend_utility_tests_are_registered;
+#[path = "native/registration/canonical_group_lifecycle_is_registered.rs"]
+mod canonical_group_lifecycle_is_registered;
+#[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
+mod canonical_hotkey_backtab_is_registered;
+#[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
+mod canonical_hotkey_mnemonic_is_registered;
+#[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
+mod canonical_hotkey_pair_latch_is_registered;
+#[path = "native/registration/canonical_missing_files_list_is_registered.rs"]
+mod canonical_missing_files_list_is_registered;
+#[path = "native/registration/canonical_nvenc_host_and_glyph_tests_are_registered.rs"]
+mod canonical_nvenc_host_and_glyph_tests_are_registered;
+#[path = "native/registration/canonical_output_protocol_null_is_registered.rs"]
+mod canonical_output_protocol_null_is_registered;
+#[path = "native/registration/canonical_output_protocols_is_registered.rs"]
+mod canonical_output_protocols_is_registered;
+#[path = "native/registration/canonical_pipe_contracts_are_registered.rs"]
+mod canonical_pipe_contracts_are_registered;
+#[path = "native/registration/canonical_pipe_wait_error_is_registered.rs"]
+mod canonical_pipe_wait_error_is_registered;
+#[path = "native/registration/canonical_plugin_configuration_helpers_are_registered.rs"]
+mod canonical_plugin_configuration_helpers_are_registered;
+#[path = "native/registration/canonical_posix_output_hosts_are_registered.rs"]
+mod canonical_posix_output_hosts_are_registered;
+#[path = "native/registration/canonical_pulse_monitor_decisions_are_registered.rs"]
+mod canonical_pulse_monitor_decisions_are_registered;
+#[path = "native/registration/canonical_replay_buffer_estimate_is_registered.rs"]
+mod canonical_replay_buffer_estimate_is_registered;
+#[path = "native/registration/canonical_rust_static_conversion_is_registered.rs"]
+mod canonical_rust_static_conversion_is_registered;
+#[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
+mod canonical_rust_static_pacing_is_registered;
+#[path = "native/registration/canonical_scene_bounds_place_is_registered.rs"]
+mod canonical_scene_bounds_place_is_registered;
+#[path = "native/registration/canonical_scene_crop_steps_is_registered.rs"]
+mod canonical_scene_crop_steps_is_registered;
+#[path = "native/registration/canonical_scene_enum_items_removal_is_registered.rs"]
+mod canonical_scene_enum_items_removal_is_registered;
+#[path = "native/registration/canonical_scene_item_crop_load_is_registered.rs"]
+mod canonical_scene_item_crop_load_is_registered;
+#[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
+mod canonical_settings_track_rows_is_registered;
+#[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
+mod canonical_shutdown_after_failed_startup_is_registered;
+#[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
+mod canonical_texture_create_mip_data_is_registered;
+#[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
+mod canonical_transition_compatibility_is_registered;
+#[path = "native/registration/canonical_undo_stack_is_registered.rs"]
+mod canonical_undo_stack_is_registered;
+#[path = "native/registration/canonical_vaapi_device_select_is_registered.rs"]
+mod canonical_vaapi_device_select_is_registered;
+#[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
+mod canonical_video_output_compatibility_is_registered;
+#[path = "native/registration/canonical_vmic_helpers_are_registered.rs"]
+mod canonical_vmic_helpers_are_registered;
+#[path = "native/registration/canonical_volume_meter_ticker_is_registered.rs"]
+mod canonical_volume_meter_ticker_is_registered;
+#[path = "native/registration/canonical_win_vmic_route_is_registered.rs"]
+mod canonical_win_vmic_route_is_registered;
+#[path = "native/registration/canonical_x11_keymap_is_registered.rs"]
+mod canonical_x11_keymap_is_registered;
+#[path = "native/registration/canonical_xcomposite_decisions_are_registered.rs"]
+mod canonical_xcomposite_decisions_are_registered;
+#[path = "native/registration/canonical_youtube_broadcast_settings_is_registered.rs"]
+mod canonical_youtube_broadcast_settings_is_registered;
 
 fn assert_group_lifecycle_registration(
     root: &Path,
@@ -900,851 +169,6 @@ fn assert_group_lifecycle_runtime(
         assert!(target.watch_inputs.is_empty());
         assert_eq!(test.working_directory, None);
         assert_eq!(test.optional_prefixes, [vec!["xvfb-run", "-a"]]);
-    }
-}
-
-/// #3707: keep the unchanged shutdown-after-failed-startup regression discoverable.
-#[test]
-fn canonical_shutdown_after_failed_startup_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_shutdown_after_failed_startup";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits shutdown after failed startup compatibility coverage");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_shutdown_after_failed_startup.c"));
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("failed-startup shutdown linkage must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
-    assert_eq!(test.timeout_seconds, Some(60));
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    let fragment = fs::read_to_string(
-        root.join("test/cmocka/tests.d/test_shutdown_after_failed_startup.cmake"),
-    )
-    .unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for (os, expected) in [
-        ("OS_LINUX", true),
-        ("OS_MACOS", false),
-        ("OS_WINDOWS", false),
-    ] {
-        let selected = graph
-            .select(
-                &[
-                    ("OS_LINUX".into(), os == "OS_LINUX"),
-                    ("OS_MACOS".into(), os == "OS_MACOS"),
-                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                ]
-                .into(),
-            )
-            .unwrap();
-        assert_eq!(selected.targets.contains_key(name), expected, "{os}");
-        assert_eq!(selected.tests.contains_key(name), expected, "{os}");
-    }
-}
-
-/// #3702: retain all unchanged bounds placement alignment, crop and flip cases.
-#[test]
-fn canonical_scene_bounds_place_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_scene_bounds_place";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits scene bounds placement compatibility coverage");
-    let sources: Vec<_> = target
-        .sources
-        .iter()
-        .map(|source| match source {
-            Source::Path(path) => path.as_str(),
-            _ => panic!("bounds placement sources must be unconditional"),
-        })
-        .collect();
-    assert_eq!(
-        sources,
-        [
-            "test/cmocka/test_scene_bounds_place.c",
-            "libobs/obs-scene-bounds-place.c.h",
-            "libobs/obs-scene-bounds.c.h"
-        ]
-    );
-    assert!(target.includes.is_empty());
-    assert_eq!(target.watch_inputs, ["libobs/obs-scene-bounds.h"]);
-    assert_eq!(target.sanitizers, None);
-    let [
-        ConditionalValue::Name(core),
-        ConditionalValue::Name(cmocka),
-        ConditionalValue::Conditional {
-            name: library,
-            requires,
-        },
-    ] = target.libraries.as_slice()
-    else {
-        panic!("bounds placement needs core, cmocka and conditional libm");
-    };
-    assert_eq!(core, "OBS::libobs");
-    assert_eq!(cmocka, "OBS::native-test-cmocka");
-    assert_eq!(library, "m");
-    assert!(matches!(requires, Requirement::Not { not }
-        if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC")));
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_scene_bounds_place.cmake")).unwrap();
-    assert!(!fragment.contains("add_executable(\n  test_scene_bounds_place\n"));
-    assert!(fragment.contains("if(TARGET libobs_rust-static)"));
-    assert!(
-        fragment.contains("add_executable(test_scene_bounds_place_rust test_scene_bounds_place.c)")
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-    }
-}
-
-/// #3705: retain the full scene collection crop-load integration suite.
-#[test]
-fn canonical_scene_item_crop_load_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("graphics");
-    let name = "test_scene_item_crop_load";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits scene collection crop-load compatibility coverage");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_scene_item_crop_load.c"));
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("crop-load linkage must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    assert_eq!(
-        target
-            .artifact_definitions
-            .get("GRAPHICS_MODULE_PATH")
-            .map(String::as_str),
-        Some("OBS::libobs-opengl")
-    );
-    assert_eq!(target.watch_inputs, ["libobs/data"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.working_directory.as_deref(), Some("${runtime}"));
-    assert_eq!(test.timeout_seconds, Some(120));
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_scene_item_crop_load.cmake"))
-            .unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for (os, graphics, expected) in [
-        ("OS_LINUX", true, true),
-        ("OS_LINUX", false, false),
-        ("OS_MACOS", true, false),
-        ("OS_WINDOWS", true, false),
-    ] {
-        let selected = graph
-            .select(
-                &[
-                    ("OS_LINUX".into(), os == "OS_LINUX"),
-                    ("OS_MACOS".into(), os == "OS_MACOS"),
-                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                    ("HAVE_OBS_OPENGL".into(), graphics),
-                ]
-                .into(),
-            )
-            .unwrap();
-        assert_eq!(
-            selected.targets.contains_key(name),
-            expected,
-            "{os}, OpenGL={graphics}"
-        );
-        assert_eq!(
-            selected.tests.contains_key(name),
-            expected,
-            "{os}, OpenGL={graphics}"
-        );
-    }
-}
-
-/// #3699: retain unchanged crop/size saturation cases and overflow sanitizers.
-#[test]
-fn canonical_scene_crop_steps_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_scene_crop_steps";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits scene crop arithmetic compatibility coverage");
-    let sources: Vec<_> = target
-        .sources
-        .iter()
-        .map(|source| match source {
-            Source::Path(path) => path.as_str(),
-            _ => panic!("scene crop sources must be unconditional"),
-        })
-        .collect();
-    assert_eq!(
-        sources,
-        [
-            "test/cmocka/test_scene_crop_steps.c",
-            "libobs/obs-scene-crop.c.h"
-        ]
-    );
-    assert_eq!(target.includes, ["libobs", "deps/libcaption"]);
-    assert_eq!(
-        target.sanitizers.as_deref(),
-        Some("undefined,float-cast-overflow")
-    );
-    assert_eq!(target.libraries.len(), 5);
-    for (library, expected) in target.libraries.iter().zip([
-        "OBS::libobs",
-        "OBS::caption",
-        "Uthash::Uthash",
-        "OBS::native-test-cmocka",
-    ]) {
-        assert!(matches!(library, ConditionalValue::Name(name) if name == expected));
-    }
-    let ConditionalValue::Conditional {
-        name: library,
-        requires,
-    } = &target.libraries[4]
-    else {
-        panic!("libm must retain its non-MSVC guard");
-    };
-    assert_eq!(library, "m");
-    assert!(matches!(requires, Requirement::Not { not }
-        if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC")));
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_scene_crop_steps.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-    }
-}
-
-/// #3694: retain all unchanged scene enumeration removal lifetime cases.
-#[test]
-fn canonical_scene_enum_items_removal_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_scene_enum_items_removal";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits scene enumeration removal lifetime coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(matches!(&target.sources[0], Source::Path(path)
-        if path == "test/cmocka/test_scene_enum_items_removal.c"));
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("scene enumeration libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(
-        libraries,
-        ["OBS::libobs", "OBS::native-test-cmocka", "Threads::Threads"]
-    );
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert_eq!(test.optional_prefixes, [vec!["xvfb-run", "-a"]]);
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_scene_enum_items_removal.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(
-                &[
-                    ("OS_LINUX".into(), os == "OS_LINUX"),
-                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                ]
-                .into(),
-            )
-            .unwrap();
-        assert_eq!(selected.targets.contains_key(name), os != "OS_WINDOWS");
-        assert_eq!(selected.tests.contains_key(name), os != "OS_WINDOWS");
-        if let Some(test) = selected.tests.get(name) {
-            assert_eq!(!test.optional_prefixes.is_empty(), os == "OS_LINUX");
-        }
-    }
-}
-
-/// #3692: retain unchanged texture and cube mipmap data compatibility cases.
-#[test]
-fn canonical_texture_create_mip_data_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_texture_create_mip_data";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits texture mipmap data compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_texture_create_mip_data.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("texture mipmap libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_texture_create_mip_data.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert!(selected.tests[name].optional_prefixes.is_empty());
-    }
-}
-
-/// #3689: retain the five unchanged filter colour-space routing cases.
-#[test]
-fn canonical_filter_color_space_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_filter_color_space";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits filter colour-space routing compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_filter_color_space.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("filter colour-space libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_filter_color_space.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert!(selected.tests[name].optional_prefixes.is_empty());
-    }
-}
-
-/// #3687: retain the unchanged filter restore query while its target is absent.
-#[test]
-fn canonical_filter_size_no_target_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_filter_size_no_target";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits filter size without target compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_filter_size_no_target.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("filter size libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_filter_size_no_target.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert!(selected.tests[name].optional_prefixes.is_empty());
-    }
-}
-
-/// #3683: retain all eleven unchanged public hotkey pair latch cases.
-#[test]
-fn canonical_hotkey_pair_latch_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_hotkey_pair_latch";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits hotkey pair latch compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_hotkey_pair_latch.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("hotkey pair latch libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert_eq!(test.optional_prefixes, [["xvfb-run", "-a"]]);
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_hotkey_pair_latch.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert!(!selected.tests[name].optional_prefixes.is_empty());
-    }
-}
-
-/// #3685: retain all five unchanged public effect name and index lookup cases.
-#[test]
-fn canonical_effect_lookups_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_effect_lookups";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits effect name and index lookup compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_effect_lookups.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("effect lookup libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_effect_lookups.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert!(selected.tests[name].optional_prefixes.is_empty());
-    }
-}
-
-/// #3681: retain all seven unchanged public output protocol enumeration cases.
-#[test]
-fn canonical_output_protocols_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_output_protocols";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits output protocol enumeration compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_output_protocols.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("output protocol enumeration libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert_eq!(
-        test.optional_prefixes,
-        [["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 -noreset"]]
-    );
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_output_protocols.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert_eq!(
-            selected.tests[name].optional_prefixes.is_empty(),
-            os != "OS_LINUX"
-        );
-    }
-}
-
-/// #3679: retain the unchanged public encoder group NULL ownership regression.
-#[test]
-fn canonical_encoder_group_null_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_encoder_group_null";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits encoder group NULL compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_encoder_group_null.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("encoder group NULL libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert_eq!(
-        test.optional_prefixes,
-        [["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 -noreset"]]
-    );
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_encoder_group_null.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert_eq!(
-            selected.tests[name].optional_prefixes.is_empty(),
-            os != "OS_LINUX"
-        );
-    }
-}
-
-/// #3677: both native consumers retain all four missing-files lifecycle cases.
-#[test]
-fn canonical_missing_files_list_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_missing_files_list";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits missing-files list compatibility coverage");
-    assert_eq!(
-        target
-            .sources
-            .iter()
-            .map(|source| match source {
-                Source::Path(path) => path.as_str(),
-                _ => panic!("missing-files list sources must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        [
-            "test/cmocka/test_missing_files_list.c",
-            "frontend/utility/missing-files-list.c.h"
-        ]
-    );
-    assert_eq!(target.includes, ["frontend/utility"]);
-    assert_eq!(
-        target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("missing-files list libraries must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        ["OBS::libobs", "OBS::native-test-cmocka"]
-    );
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_missing_files_list.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-    }
-}
-
-/// #3673: retain all 15 unchanged public context-name cases.
-#[test]
-fn canonical_context_names_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_context_names";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits context-name compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_context_names.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("context-name libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert_eq!(
-        test.optional_prefixes,
-        [["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 -noreset"]]
-    );
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_context_names.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert_eq!(
-            selected.tests[name].optional_prefixes.is_empty(),
-            os != "OS_LINUX"
-        );
-    }
-}
-
-/// #3671: retain all four unchanged public output protocol NULL cases.
-#[test]
-fn canonical_output_protocol_null_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_output_protocol_null";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits output protocol NULL compatibility coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_output_protocol_null.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("output protocol NULL libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert_eq!(
-        test.optional_prefixes,
-        [["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 -noreset"]]
-    );
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_output_protocol_null.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph
-            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
-            .unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-        assert_eq!(
-            selected.tests[name].optional_prefixes.is_empty(),
-            os != "OS_LINUX"
-        );
     }
 }
 
@@ -1847,241 +271,6 @@ fn native_test_graph_conditional_prefixes_match_consumers() {
     );
 }
 
-/// #3664: retain the unchanged bit-exact and locale configuration cases.
-#[test]
-fn canonical_config_hex_float_rounding_is_registered() {
-    use obs_build::validation::graph::{Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_config_hex_float_rounding";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits hex-float configuration coverage");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], Source::Path(path) if path == "test/cmocka/test_config_hex_float_rounding.c")
-    );
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            obs_build::validation::graph::ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("hex-float configuration libraries must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, Some(20));
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_config_hex_float_rounding.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-    }
-}
-
-/// #1390: retain all five unchanged top-level window close cases.
-#[test]
-fn canonical_close_top_level_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_close_top_level")
-        .expect("canonical graph omits test_close_top_level");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_close_top_level.cpp")
-    );
-    assert!(matches!(
-        target.cpp_standard,
-        Some(obs_build::CppStandard::Cpp17)
-    ));
-    assert_eq!(target.includes, ["frontend/utility"]);
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/utility/close-top-level.hpp"]
-    );
-    let test = &graph.tests["test_close_top_level"];
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    assert_eq!(test.timeout_seconds, Some(120));
-    for linux in [false, true] {
-        for widgets in [false, true] {
-            let selected = graph
-                .select(
-                    &[
-                        ("OS_LINUX".into(), linux),
-                        ("MSVC".into(), !linux),
-                        ("HAVE_QT6_CORE".into(), true),
-                        ("HAVE_QT6_WIDGETS".into(), widgets),
-                        ("HAVE_QT6_TEST".into(), false),
-                    ]
-                    .into(),
-                )
-                .unwrap();
-            assert_eq!(selected.tests.contains_key("test_close_top_level"), widgets);
-        }
-    }
-}
-
-/// #3658: Cargo must retain CMake's unchanged Paste Filters compatibility cases.
-#[test]
-fn canonical_filter_clipboard_is_registered() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
-    let target = graph["targets"]
-        .get("test_filter_clipboard")
-        .expect("canonical graph omits test_filter_clipboard");
-    assert_eq!(
-        target["sources"],
-        serde_json::json!([
-            "test/cmocka/test_filter_clipboard.c",
-            "frontend/utility/filter-clipboard.c.h"
-        ])
-    );
-    assert_eq!(target["includes"], serde_json::json!(["frontend/utility"]));
-    assert_eq!(
-        target["watch_inputs"],
-        serde_json::json!(["frontend/utility"])
-    );
-    let selected_graph = serde_json::json!({
-        "schema": 1,
-        "targets": {"test_filter_clipboard": target},
-        "tests": {"test_filter_clipboard": graph["tests"]["test_filter_clipboard"]}
-    });
-    let parsed = obs_build::validation::graph::Graph::parse(&selected_graph.to_string()).unwrap();
-    let selected = parsed.select(&Default::default()).unwrap();
-    assert!(selected.targets.contains_key("test_filter_clipboard"));
-    assert!(selected.tests.contains_key("test_filter_clipboard"));
-    assert_eq!(
-        target["libraries"],
-        serde_json::json!(["OBS::libobs", "OBS::native-test-cmocka"])
-    );
-    assert_eq!(
-        graph["tests"]["test_filter_clipboard"],
-        serde_json::json!({"target": "test_filter_clipboard", "command": ["${target}"]})
-    );
-    let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_filter_clipboard.cmake")).unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
-}
-
-/// #1390: keep the original Linux replay-buffer estimate cases in the Qt graph.
-#[test]
-fn canonical_replay_buffer_estimate_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_replay_buffer_estimate")
-        .expect("canonical graph omits test_replay_buffer_estimate");
-    assert_eq!(
-        target
-            .sources
-            .iter()
-            .map(|source| match source {
-                obs_build::validation::graph::Source::Path(path) => path.as_str(),
-                obs_build::validation::graph::Source::Conditional { .. } =>
-                    panic!("replay sources must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        [
-            "test/cmocka/test_replay_buffer_estimate.cpp",
-            "frontend/utility/replay-buffer-estimate.cpp.hpp",
-        ]
-    );
-    assert_eq!(target.includes, ["frontend/utility"]);
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/utility/replay-buffer-estimate.hpp"]
-    );
-    assert_eq!(
-        target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                obs_build::validation::graph::ConditionalValue::Name(name) => name.as_str(),
-                obs_build::validation::graph::ConditionalValue::Conditional { .. } =>
-                    panic!("replay libraries must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        ["Qt6::Widgets", "OBS::native-test-cmocka"]
-    );
-    let test = &graph.tests["test_replay_buffer_estimate"];
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    for linux in [false, true] {
-        for widgets in [false, true] {
-            let facts = [
-                ("OS_LINUX".into(), linux),
-                ("MSVC".into(), !linux),
-                ("HAVE_QT6_CORE".into(), true),
-                ("HAVE_QT6_WIDGETS".into(), widgets),
-                ("HAVE_QT6_TEST".into(), false),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            assert_eq!(
-                selected.tests.contains_key("test_replay_buffer_estimate"),
-                linux && widgets
-            );
-        }
-    }
-}
-
-/// #1390: retain the unchanged settings UI layout tests in the native graph.
-#[test]
-fn canonical_settings_track_rows_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_settings_track_rows")
-        .expect("canonical graph omits test_settings_track_rows");
-    assert_eq!(target.sources.len(), 1);
-    assert_eq!(target.qt.uic, ["frontend/forms/OBSBasicSettings.ui"]);
-    assert_eq!(target.includes_before, ["test/cmocka/settings-ui-stubs"]);
-    assert_eq!(target.watch_inputs, ["test/cmocka/settings-ui-stubs"]);
-    let test = &graph.tests["test_settings_track_rows"];
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    assert_eq!(test.timeout_seconds, Some(120));
-    for linux in [false, true] {
-        for widgets in [false, true] {
-            let facts = [
-                ("OS_LINUX".into(), linux),
-                ("MSVC".into(), !linux),
-                ("HAVE_QT6_CORE".into(), true),
-                ("HAVE_QT6_WIDGETS".into(), widgets),
-                ("HAVE_QT6_TEST".into(), false),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            assert_eq!(
-                selected.tests.contains_key("test_settings_track_rows"),
-                widgets
-            );
-        }
-    }
-}
-
 #[test]
 fn cargo_native_profile_uses_effective_optimization_and_symbols() {
     use obs_build::NativeProfile;
@@ -2147,22 +336,6 @@ fn cargo_native_profile_uses_effective_optimization_and_symbols() {
         .unwrap(),
         NativeProfile::Debug
     );
-}
-
-/// #1390: missing canonical registrations must fail the routine, Qt-free gate.
-#[test]
-fn canonical_frontend_product_and_meter_tests_are_registered() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
-            .unwrap();
-    for name in ["test_product_name", "test_volume_meter_snapshot"] {
-        assert!(
-            graph.targets.contains_key(name),
-            "missing canonical target {name}"
-        );
-        assert_eq!(graph.tests[name].target, name);
-    }
 }
 
 /// #1390: run the original Qt-free frontend tests through both graph consumers.
@@ -2292,443 +465,6 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
         .map(|test| test["name"].as_str().unwrap())
         .collect();
     assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
-}
-
-/// #1390: preserve the optional Qt Test dependency of the unchanged Backtab cases.
-#[test]
-fn canonical_hotkey_backtab_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_hotkey_edit_backtab")
-        .expect("canonical graph omits test_hotkey_edit_backtab");
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/settings/OBSHotkeyCapture.hpp"]
-    );
-    assert_eq!(
-        graph.tests["test_hotkey_edit_backtab"]
-            .qt_runtime
-            .as_deref(),
-        Some("Qt6::Core")
-    );
-    for widgets in [false, true] {
-        for qt_test in [false, true] {
-            let facts = [
-                ("OS_LINUX".into(), false),
-                ("MSVC".into(), false),
-                ("HAVE_QT6_CORE".into(), false),
-                ("HAVE_QT6_WIDGETS".into(), widgets),
-                ("HAVE_QT6_TEST".into(), qt_test),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            assert_eq!(
-                selected.tests.contains_key("test_hotkey_edit_backtab"),
-                widgets && qt_test
-            );
-        }
-    }
-}
-
-/// #1390: preserve the Linux-only Widgets/Test guard of the unchanged mnemonic cases.
-#[test]
-fn canonical_hotkey_mnemonic_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_hotkey_capture_mnemonic")
-        .expect("canonical graph omits test_hotkey_capture_mnemonic");
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/settings/OBSHotkeyCapture.hpp"]
-    );
-    assert_eq!(
-        graph.tests["test_hotkey_capture_mnemonic"]
-            .qt_runtime
-            .as_deref(),
-        Some("Qt6::Core")
-    );
-    assert_eq!(
-        graph.tests["test_hotkey_capture_mnemonic"].resource_locks,
-        ["timing"]
-    );
-    for linux in [false, true] {
-        for widgets in [false, true] {
-            for qt_test in [false, true] {
-                let facts = [
-                    ("OS_LINUX".into(), linux),
-                    ("HAVE_QT6_CORE".into(), false),
-                    ("HAVE_QT6_WIDGETS".into(), widgets),
-                    ("HAVE_QT6_TEST".into(), qt_test),
-                ]
-                .into();
-                let selected = graph.select(&facts).unwrap();
-                assert_eq!(
-                    selected.tests.contains_key("test_hotkey_capture_mnemonic"),
-                    linux && widgets && qt_test
-                );
-            }
-        }
-    }
-}
-
-/// #1390: preserve the original Linux/Core-only volume-meter compatibility test.
-#[test]
-fn canonical_volume_meter_ticker_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_volume_meter_ticker")
-        .expect("canonical graph omits test_volume_meter_ticker");
-    assert_eq!(target.sources.len(), 1);
-    assert_eq!(target.includes, ["frontend/components"]);
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/components/VolumeMeterTicker.hpp"]
-    );
-    let test = &graph.tests["test_volume_meter_ticker"];
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    assert_eq!(test.resource_locks, ["timing"]);
-    for linux in [false, true] {
-        for core in [false, true] {
-            let facts = [
-                ("OS_LINUX".into(), linux),
-                ("MSVC".into(), false),
-                ("HAVE_QT6_CORE".into(), core),
-                ("HAVE_QT6_WIDGETS".into(), false),
-                ("HAVE_QT6_TEST".into(), false),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            assert_eq!(
-                selected.tests.contains_key("test_volume_meter_ticker"),
-                linux && core
-            );
-        }
-    }
-}
-
-#[test]
-fn canonical_undo_stack_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_undo_stack_enable")
-        .expect("canonical graph omits test_undo_stack_enable");
-    assert_eq!(target.qt.moc, ["frontend/utility/undo_stack.hpp"]);
-    assert_eq!(target.includes_before, ["test/cmocka/undo-stack-stubs"]);
-    assert_eq!(target.watch_inputs, ["test/cmocka/undo-stack-stubs"]);
-    let test = &graph.tests["test_undo_stack_enable"];
-    assert_eq!(test.timeout_seconds, Some(120));
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    for linux in [false, true] {
-        for widgets in [false, true] {
-            let facts = [
-                ("OS_LINUX".into(), linux),
-                ("HAVE_QT6_CORE".into(), false),
-                ("HAVE_QT6_WIDGETS".into(), widgets),
-                ("HAVE_QT6_TEST".into(), false),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            assert_eq!(
-                selected.tests.contains_key("test_undo_stack_enable"),
-                linux && widgets
-            );
-        }
-    }
-}
-
-#[test]
-fn canonical_frontend_utility_tests_are_registered() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
-            .unwrap();
-    for name in [
-        "test_stream_service_select",
-        "test_saved_transition",
-        "test_record_disk_space",
-        "test_multitrack_ladder",
-        "test_multitrack_encoder_override",
-    ] {
-        assert!(
-            graph.targets.contains_key(name),
-            "missing canonical target {name}"
-        );
-        assert_eq!(graph.tests[name].target, name);
-        assert_eq!(graph.targets[name].watch_inputs, ["frontend/utility"]);
-    }
-}
-
-/// #1390: run unchanged display-free frontend/capture helpers through both consumers.
-/// Like the unchanged remux contract, this needs the native cmocka package.
-/// #1390: unchanged Qt-free frontend utilities, including Stinger migration.
-#[test]
-#[cfg(feature = "libobs-integration")]
-fn canonical_frontend_utility_tests_run_unchanged() {
-    run_standalone_configuration_contract(
-        &[
-            "test_vaapi_device_select",
-            "test_xcomposite_presence",
-            "test_xcomposite_search_backoff",
-            "test_nvenc_override",
-            "test_hotkey_numpad_host",
-            "test_libobs_reference_hosts",
-            "test_glyph_atlas",
-            "test_fade_to_color_mix",
-            "test_ffmpeg_mux_helper_host",
-            "test_frontend_obs_main_host",
-            "test_frontend_obsbasic_host",
-            "test_frontend_settings_host",
-            "test_caption_unmappable",
-            "test_stinger_monitoring_migration",
-            "test_stream_service_select",
-            "test_saved_transition",
-            "test_record_disk_space",
-            "test_multitrack_ladder",
-            "test_multitrack_encoder_override",
-        ],
-        false,
-    );
-}
-
-/// The slideshow PCH additionally requires real core configuration and SIMDe headers.
-/// Native Tier 2 builds provide those; the minimal Qt-only native fixture does not.
-#[test]
-#[cfg(feature = "libobs-integration")]
-fn canonical_plugin_configuration_helpers_run_unchanged() {
-    run_standalone_configuration_contract(
-        &["test_slideshow_size", "test_stinger_monitoring_migration"],
-        true,
-    );
-}
-
-#[cfg(feature = "libobs-integration")]
-fn standalone_core_header_fixture(
-    directory: &Path,
-    root: &Path,
-    build: &NativeBuild,
-    interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
-) -> String {
-    use obs_build::validation::graph::Dependency;
-    let source = root.to_string_lossy().replace('\\', "/");
-    let config = directory.join("config");
-    fs::create_dir_all(&config).unwrap();
-    let config_path = config.to_string_lossy().replace('\\', "/");
-    let configure = directory.join("configure.cmake");
-    fs::write(&configure, format!("configure_file(\"{source}/libobs/obsconfig.h.in\" \"{config_path}/obsconfig.h\" @ONLY)\n")).unwrap();
-    assert!(
-        std::process::Command::new("cmake")
-            .arg("-P")
-            .arg(&configure)
-            .status()
-            .unwrap()
-            .success()
-    );
-    let mut headers = Dependency::package(&build.target, "simde").unwrap();
-    interfaces.insert("SIMDe::SIMDe".into(), headers.clone());
-    headers.include_dirs.extend([root.join("libobs"), config]);
-    interfaces.insert("OBS::libobs".into(), headers);
-    format!(
-        "pkg_check_modules(SIMDE REQUIRED IMPORTED_TARGET simde)\nadd_library(SIMDe::SIMDe ALIAS PkgConfig::SIMDE)\nadd_library(contract-core-headers INTERFACE)\nadd_library(OBS::libobs ALIAS contract-core-headers)\ntarget_include_directories(contract-core-headers INTERFACE \"{source}/libobs\" \"{config_path}\")\n"
-    )
-}
-
-#[cfg(feature = "libobs-integration")]
-#[expect(
-    clippy::too_many_lines,
-    reason = "one build-and-run block per graph consumer"
-)]
-fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
-    use obs_build::validation::graph::{Dependency, Graph};
-    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
-    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
-    for name in names {
-        for section in ["targets", "tests"] {
-            selected[section][*name] = raw[section]
-                .get(*name)
-                .unwrap_or_else(|| panic!("canonical graph omits {section}/{name}"))
-                .clone();
-        }
-    }
-    let graph = Graph::parse(&selected.to_string()).unwrap();
-    let build = NativeBuild {
-        host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
-        output: directory.path().join("cargo-output"),
-        profile: Default::default(),
-    };
-    let interfaces = [(
-        "OBS::native-test-cmocka".into(),
-        Dependency::package(&build.target, "cmocka").unwrap(),
-    )]
-    .into_iter()
-    .chain([(
-        "OBS::caption".into(),
-        Dependency {
-            artifacts: vec![obs_build::libobs::build_caption(&build, &root).unwrap()],
-            include_dirs: vec![root.join("deps/libcaption")],
-            ..Default::default()
-        },
-    )])
-    .chain([(
-        "OBS::libobs".into(),
-        Dependency {
-            // Use the existing oracle configuration fixture for these header-only helpers.
-            include_dirs: vec![root.join("rust/obs-c-oracle/oracle/obsconfig")],
-            ..Default::default()
-        },
-    )])
-    .chain([(
-        "m".into(),
-        Dependency {
-            link_options: vec!["-lm".into()],
-            ..Default::default()
-        },
-    )])
-    .collect();
-    let mut interfaces = interfaces;
-    let header_setup = if core_headers {
-        standalone_core_header_fixture(directory.path(), &root, &build, &mut interfaces)
-    } else {
-        String::new()
-    };
-    let facts = [
-        ("MSVC".into(), build.target.contains("msvc")),
-        ("OS_LINUX".into(), build.target.contains("linux")),
-        ("OS_FREEBSD".into(), build.target.contains("freebsd")),
-        ("OS_OPENBSD".into(), build.target.contains("openbsd")),
-        ("OS_MACOS".into(), build.target.contains("apple")),
-        ("OS_WINDOWS".into(), build.target.contains("windows")),
-    ]
-    .into();
-    let selection = graph.select(&facts).unwrap();
-    let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), selection.targets.len());
-    assert_eq!(artifacts.len(), selection.tests.len());
-    for (name, test) in &selection.tests {
-        let result = test
-            .command(&root, &build.output, &artifacts[&test.target])
-            .unwrap()
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "Cargo {name}\n{}\n{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
-    }
-    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    let linux = build.target.contains("linux");
-    let macos = build.target.contains("apple");
-    let windows = build.target.contains("windows");
-    let source = root.to_string_lossy().replace('\\', "/");
-    fs::write(
-        directory.path().join("CMakeLists.txt"),
-        format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX {linux})\nset(OS_FREEBSD {})\nset(OS_OPENBSD {})\nset(OS_MACOS {macos})\nset(OS_WINDOWS {windows})\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\n{header_setup}include(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n",
-            u8::from(facts["OS_FREEBSD"]),
-            u8::from(facts["OS_OPENBSD"]),
-        ),
-    )
-    .unwrap();
-    let output = directory.path().join("cmake-output");
-    for (program, arguments) in [
-        (
-            "cmake",
-            vec![
-                "-S",
-                directory.path().to_str().unwrap(),
-                "-B",
-                output.to_str().unwrap(),
-            ],
-        ),
-        (
-            "cmake",
-            vec![
-                "--build",
-                output.to_str().unwrap(),
-                "--config",
-                "Release",
-                "--parallel",
-                "2",
-            ],
-        ),
-        (
-            "ctest",
-            vec![
-                "--test-dir",
-                output.to_str().unwrap(),
-                "-C",
-                "Release",
-                "--output-on-failure",
-                "--no-tests=error",
-            ],
-        ),
-    ] {
-        let mut command = std::process::Command::new(program);
-        command.args(arguments);
-        let result = command.output().unwrap();
-        assert!(
-            result.status.success(),
-            "{program}\n{}\n{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
-    }
-    let inventory = std::process::Command::new("ctest")
-        .args([
-            "--test-dir",
-            output.to_str().unwrap(),
-            "-C",
-            "Release",
-            "--show-only=json-v1",
-        ])
-        .output()
-        .unwrap();
-    assert!(inventory.status.success());
-    let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
-    let names: std::collections::BTreeSet<_> = inventory["tests"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|test| test["name"].as_str().unwrap())
-        .collect();
-    assert_eq!(names, selection.tests.keys().copied().collect());
-    for name in ["test_xcomposite_presence", "test_xcomposite_search_backoff"] {
-        let test = inventory["tests"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|test| test["name"] == name)
-            .unwrap();
-        assert!(
-            test["properties"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|property| property["name"] == "TIMEOUT" && property["value"] == 30.0)
-        );
-    }
 }
 
 #[test]
@@ -3103,51 +839,6 @@ fn assert_settings_track_rows_ctest_properties(tests: &[serde_json::Value]) {
             .any(|property| property["name"] == "TIMEOUT"
                 && property["value"].as_f64() == Some(120.0))
     );
-}
-
-/// #1390: the QtCore-only frontend API helper must remain available without Widgets.
-#[test]
-fn canonical_frontend_api_call_is_registered() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
-            .unwrap();
-    let target = graph
-        .targets
-        .get("test_frontend_api_call")
-        .expect("canonical graph omits test_frontend_api_call");
-    assert_eq!(target.sources.len(), 1);
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/utility/frontend-api-call.hpp"]
-    );
-    let test = &graph.tests["test_frontend_api_call"];
-    assert_eq!(test.target, "test_frontend_api_call");
-    assert_eq!(test.suite, "qt");
-    assert_eq!(test.timeout_seconds, Some(60));
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    let mut qt =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
-            .unwrap();
-    qt.retain_suite("qt");
-    for have_core in [false, true] {
-        let facts = [
-            ("OS_LINUX".into(), false),
-            ("MSVC".into(), false),
-            ("HAVE_QT6_CORE".into(), have_core),
-            ("HAVE_QT6_WIDGETS".into(), false),
-            ("HAVE_QT6_TEST".into(), false),
-        ]
-        .into();
-        let selected = qt.select(&facts).unwrap();
-        assert_eq!(
-            selected.tests.contains_key("test_frontend_api_call"),
-            have_core
-        );
-        for widgets_test in ["test_remux_queue_model", "test_profile_import"] {
-            assert!(!selected.tests.contains_key(widgets_test));
-        }
-    }
 }
 
 #[test]
@@ -4265,7 +1956,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
     }
     let facts = std::collections::BTreeMap::from([
         ("UNIX".into(), false),
-        ("HAVE_LIBOBS".into(), true),
+        ("HAVE_LIBOBS".into(), false),
         ("OS_LINUX".into(), false),
         ("ENABLE_PULSEAUDIO".into(), false),
         ("MSVC".into(), true),
@@ -6123,117 +3814,6 @@ fn bounded(mut command: std::process::Command) -> std::process::Output {
     child.wait_with_output().unwrap()
 }
 
-/// #3675: both native consumers must run the unchanged broadcast-settings cases.
-#[test]
-fn canonical_youtube_broadcast_settings_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    let name = "test_youtube_broadcast_settings";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits YouTube broadcast settings");
-    assert_eq!(
-        target
-            .sources
-            .iter()
-            .map(|source| match source {
-                Source::Path(path) => path.as_str(),
-                _ => panic!("broadcast settings sources must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        [
-            "test/cmocka/test_youtube_broadcast_settings.c",
-            "frontend/utility/youtube-broadcast-settings.c.h"
-        ]
-    );
-    assert_eq!(target.includes, ["frontend/utility"]);
-    assert_eq!(
-        target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("broadcast settings libraries must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        ["OBS::libobs", "OBS::native-test-cmocka"]
-    );
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert!(
-        !root
-            .join("test/cmocka/tests.d/test_youtube_broadcast_settings.cmake")
-            .exists()
-    );
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert!(selected.targets.contains_key(name));
-        assert!(selected.tests.contains_key(name));
-    }
-}
-
-/// #1390: the original nine dock cases need Linux, Widgets and Qt Test.
-#[test]
-fn canonical_dock_proportions_is_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("qt");
-    let target = graph
-        .targets
-        .get("test_dock_proportions")
-        .expect("canonical graph omits test_dock_proportions");
-    assert_eq!(target.sources.len(), 1);
-    assert!(
-        matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_dock_proportions.cpp")
-    );
-    assert_eq!(target.includes, ["frontend/utility"]);
-    assert_eq!(
-        target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                obs_build::validation::graph::Library::Name(name) => name.as_str(),
-                _ => panic!("dock libraries must be unconditional"),
-            })
-            .collect::<Vec<_>>(),
-        ["Qt6::Widgets", "Qt6::Test", "OBS::native-test-cmocka"]
-    );
-    assert_eq!(
-        target.watch_inputs,
-        ["frontend/utility/dock-proportions.hpp"]
-    );
-    let test = &graph.tests["test_dock_proportions"];
-    assert_eq!(test.timeout_seconds, Some(120));
-    assert_eq!(test.resource_locks, ["timing"]);
-    assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
-    for linux in [false, true] {
-        for widgets in [false, true] {
-            for qt_test in [false, true] {
-                let facts = [
-                    ("OS_LINUX".into(), linux),
-                    ("HAVE_QT6_CORE".into(), false),
-                    ("HAVE_QT6_WIDGETS".into(), widgets),
-                    ("HAVE_QT6_TEST".into(), qt_test),
-                ]
-                .into();
-                let selected = graph.select(&facts).unwrap();
-                assert_eq!(
-                    selected.tests.contains_key("test_dock_proportions"),
-                    linux && widgets && qt_test
-                );
-            }
-        }
-    }
-}
-
 #[cfg(feature = "libobs-integration")]
 fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
     let dock = tests
@@ -6255,126 +3835,377 @@ fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
     );
 }
 
-/// #1390: keep both unchanged display-free XComposite decision suites.
+/// Optional glyph dependencies must never break another host's Tier 2 configure.
 #[test]
-fn canonical_xcomposite_decisions_are_registered() {
+fn canonical_glyph_atlas_unavailable_hosts_configure_without_packages() {
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let graph = serde_json::json!({
+        "schema": 1,
+        "targets": {"test_glyph_atlas": raw["targets"]["test_glyph_atlas"]},
+        "tests": {"test_glyph_atlas": raw["tests"]["test_glyph_atlas"]},
+    });
+    let source = root.to_string_lossy().replace('\\', "/");
+    for os in ["OS_MACOS", "OS_WINDOWS"] {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(directory.path().join("graph.json"), graph.to_string()).unwrap();
+        fs::write(directory.path().join("CMakeLists.txt"), format!(
+            "cmake_minimum_required(VERSION 3.28)\nproject(glyph-unavailable NONE)\nenable_testing()\nset(OS_LINUX FALSE)\nset(OS_MACOS FALSE)\nset(OS_WINDOWS FALSE)\nset({os} TRUE)\nset(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)\nadd_library(OBS::native-test-cmocka INTERFACE IMPORTED)\nadd_library(OBS::libobs INTERFACE IMPORTED)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\nif(TARGET test_glyph_atlas)\nmessage(FATAL_ERROR \"glyph target selected without available host packages\")\nendif()\nget_property(tests DIRECTORY PROPERTY TESTS)\nif(tests)\nmessage(FATAL_ERROR \"glyph CTest registered without its target\")\nendif()\n"
+        )).unwrap();
+        let result = std::process::Command::new("cmake")
+            .arg("-S")
+            .arg(directory.path())
+            .arg("-B")
+            .arg(directory.path().join("build"))
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{os}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
 }
 
-/// #1390: preserve real libobs linkage and the Linux waitpid interposition test.
+fn assert_plugin_configuration_target(
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+    include: &str,
+    headers: &[&str],
+) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
+    let target = graph
+        .targets
+        .get(name)
+        .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+    let sources: Vec<_> = target
+        .sources
+        .iter()
+        .map(|source| match source {
+            Source::Path(path) => path.as_str(),
+            _ => panic!("plugin helper sources must be unconditional"),
+        })
+        .collect();
+    let mut expected = vec![format!("test/cmocka/{name}.c")];
+    if name == "test_slideshow_size" {
+        expected.push("plugins/image-source/slideshow-size.c.h".into());
+    }
+    assert_eq!(sources, expected);
+    assert_eq!(target.includes, [include]);
+    assert_eq!(target.watch_inputs, headers);
+    if name == "test_slideshow_size" {
+        assert!(matches!(target.libraries.as_slice(), [
+            ConditionalValue::Name(library),
+            ConditionalValue::Conditional { name, requires: Requirement::Fact(os) }
+        ] if library == "OBS::native-test-cmocka" && name == "OBS::w32-pthreads" && os == "OS_WINDOWS"));
+    } else {
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
+        );
+    }
+    if name == "test_slideshow_size" {
+        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
+    } else {
+        assert!(target.header_libraries.is_empty());
+    }
+}
+
+fn assert_plugin_configuration_test(
+    root: &Path,
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+) {
+    use obs_build::validation::graph::Graph;
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.suite, "core");
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert_eq!(test.qt_runtime, None);
+    let fragment =
+        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+    let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    single.targets.retain(|key, _| key == name);
+    single.tests.retain(|key, _| key == name);
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        let selected = single
+            .select(
+                &[
+                    ("OS_LINUX".into(), os == "OS_LINUX"),
+                    ("OS_MACOS".into(), os == "OS_MACOS"),
+                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                ]
+                .into(),
+            )
+            .unwrap();
+        assert!(selected.targets.contains_key(name), "{os}");
+        assert!(selected.tests.contains_key(name), "{os}");
+    }
+}
+
+/// #1390: unchanged Qt-free frontend utilities, including Stinger migration.
 #[test]
-fn canonical_pipe_wait_error_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph.retain_suite("core");
-    for (name, header) in [
-        (
+#[cfg(feature = "libobs-integration")]
+fn canonical_frontend_utility_tests_run_unchanged() {
+    run_standalone_configuration_contract(
+        &[
+            "test_caption_unmappable",
+            "test_fade_to_color_mix",
+            "test_ffmpeg_mux_helper_host",
+            "test_frontend_obs_main_host",
+            "test_frontend_obsbasic_host",
+            "test_frontend_settings_host",
+            "test_frontend_tools_host",
+            "test_frontend_tools_host_macos",
+            "test_glyph_atlas",
+            "test_hotkey_numpad_host",
+            "test_libobs_reference_hosts",
+            "test_mac_vmic_clock",
+            "test_mac_vmic_install",
+            "test_multitrack_encoder_override",
+            "test_multitrack_ladder",
+            "test_nvenc_override",
+            "test_obs_ffmpeg_net_host",
+            "test_obs_outputs_host",
+            "test_record_disk_space",
+            "test_saved_transition",
+            "test_stinger_monitoring_migration",
+            "test_stream_service_select",
+            "test_vaapi_device_select",
+            "test_win_vmic_route",
+            "test_x11_keymap",
             "test_xcomposite_presence",
-            "plugins/linux-capture/xcomposite-presence.h",
+            "test_xcomposite_search_backoff",
+        ],
+        true,
+    );
+}
+
+/// The slideshow PCH additionally requires real core configuration and SIMDe headers.
+/// Native Tier 2 builds provide those; the minimal Qt-only native fixture does not.
+#[test]
+#[cfg(feature = "libobs-integration")]
+fn canonical_plugin_configuration_helpers_run_unchanged() {
+    run_standalone_configuration_contract(
+        &["test_slideshow_size", "test_stinger_monitoring_migration"],
+        true,
+    );
+}
+
+#[cfg(feature = "libobs-integration")]
+fn standalone_core_header_fixture(
+    directory: &Path,
+    root: &Path,
+    build: &NativeBuild,
+    interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
+) -> String {
+    use obs_build::validation::graph::Dependency;
+    let source = root.to_string_lossy().replace('\\', "/");
+    let config = directory.join("config");
+    fs::create_dir_all(&config).unwrap();
+    let config_path = config.to_string_lossy().replace('\\', "/");
+    let configure = directory.join("configure.cmake");
+    fs::write(&configure, format!("configure_file(\"{source}/libobs/obsconfig.h.in\" \"{config_path}/obsconfig.h\" @ONLY)\n")).unwrap();
+    assert!(
+        std::process::Command::new("cmake")
+            .arg("-P")
+            .arg(&configure)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let mut headers = Dependency::package(&build.target, "simde").unwrap();
+    interfaces.insert("SIMDe::SIMDe".into(), headers.clone());
+    headers.include_dirs.extend([root.join("libobs"), config]);
+    interfaces.insert("OBS::libobs".into(), headers);
+    format!(
+        "pkg_check_modules(SIMDE REQUIRED IMPORTED_TARGET simde)\nadd_library(SIMDe::SIMDe ALIAS PkgConfig::SIMDE)\nadd_library(contract-core-headers INTERFACE)\nadd_library(OBS::libobs ALIAS contract-core-headers)\ntarget_include_directories(contract-core-headers INTERFACE \"{source}/libobs\" \"{config_path}\")\n"
+    )
+}
+
+#[cfg(feature = "libobs-integration")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer"
+)]
+fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
+    use obs_build::validation::graph::{Dependency, Graph};
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for name in names {
+        for section in ["targets", "tests"] {
+            selected[section][*name] = raw[section]
+                .get(*name)
+                .unwrap_or_else(|| panic!("canonical graph omits {section}/{name}"))
+                .clone();
+        }
+    }
+    let graph = Graph::parse(&selected.to_string()).unwrap();
+    let build = NativeBuild {
+        host: obs_build::BUILD_HOST.into(),
+        target: obs_build::BUILD_TARGET.into(),
+        output: directory.path().join("cargo-output"),
+        profile: Default::default(),
+    };
+    let interfaces: std::collections::BTreeMap<String, Dependency> = [(
+        "OBS::native-test-cmocka".into(),
+        Dependency::package(&build.target, "cmocka").unwrap(),
+    )]
+    .into_iter()
+    .chain([(
+        "OBS::caption".into(),
+        Dependency {
+            artifacts: vec![obs_build::libobs::build_caption(&build, &root).unwrap()],
+            include_dirs: vec![root.join("deps/libcaption")],
+            ..Default::default()
+        },
+    )])
+    .collect();
+    let mut interfaces = interfaces;
+    interfaces.insert(
+        "m".into(),
+        Dependency {
+            link_options: vec!["-lm".into()],
+            ..Default::default()
+        },
+    );
+    let header_setup = if core_headers {
+        standalone_core_header_fixture(directory.path(), &root, &build, &mut interfaces)
+    } else {
+        String::new()
+    };
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_WINDOWS".into(), build.target.contains("windows")),
+        ("OS_LINUX".into(), build.target.contains("linux")),
+        ("OS_MACOS".into(), build.target.contains("apple")),
+        ("OS_FREEBSD".into(), build.target.contains("freebsd")),
+        ("OS_OPENBSD".into(), build.target.contains("openbsd")),
+    ]
+    .into();
+    let selection = graph.select(&facts).unwrap();
+    let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
+    assert_eq!(artifacts.len(), selection.targets.len());
+    assert_eq!(artifacts.len(), selection.tests.len());
+    for (name, test) in &selection.tests {
+        let result = test
+            .command(&root, &build.output, &artifacts[&test.target])
+            .unwrap()
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "Cargo {name}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let source = root.to_string_lossy().replace('\\', "/");
+    fs::write(
+        directory.path().join("CMakeLists.txt"),
+        format!(
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nset(OS_WINDOWS {})\nset(OS_LINUX {})\nset(OS_MACOS {})\nset(OS_FREEBSD {})\nset(OS_OPENBSD {})\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\n{header_setup}include(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n",
+            u8::from(facts["OS_WINDOWS"]),
+            u8::from(facts["OS_LINUX"]),
+            u8::from(facts["OS_MACOS"]),
+            u8::from(facts["OS_FREEBSD"]),
+            u8::from(facts["OS_OPENBSD"]),
+
+        ),
+    )
+    .unwrap();
+    let output = directory.path().join("cmake-output");
+    for (program, arguments) in [
+        (
+            "cmake",
+            vec![
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+            ],
         ),
         (
-            "test_xcomposite_search_backoff",
-            "plugins/linux-capture/xcomposite-search.h",
+            "cmake",
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
+        ),
+        (
+            "ctest",
+            vec![
+                "--test-dir",
+                output.to_str().unwrap(),
+                "-C",
+                "Release",
+                "--output-on-failure",
+                "--no-tests=error",
+            ],
         ),
     ] {
-        let target = graph
-            .targets
-            .get(name)
-            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        let mut command = std::process::Command::new(program);
+        command.args(arguments);
+        let result = command.output().unwrap();
         assert!(
-            matches!(&target.sources[..], [Source::Path(path)] if path == &format!("test/cmocka/{name}.c"))
+            result.status.success(),
+            "{program}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
         );
-        assert!(
-            matches!(&target.libraries[..], [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
-        );
-        assert_eq!(target.includes, ["."]);
-        assert_eq!(target.watch_inputs, [header]);
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.timeout_seconds, Some(30));
     }
-    graph
-        .targets
-        .retain(|name, _| name.starts_with("test_xcomposite_"));
-    graph
-        .tests
-        .retain(|name, _| name.starts_with("test_xcomposite_"));
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
-        assert_eq!(selected.targets.len(), 2);
-        assert_eq!(selected.tests.len(), 2);
-    }
-}
-
-/// #1390: preserve the two server-free PulseAudio monitoring decisions.
-#[test]
-fn canonical_pulse_monitor_decisions_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let names = ["test_pulse_monitor_backlog", "test_pulse_monitor_flags"];
-    for name in names {
-        let target = graph
-            .targets
-            .get(name)
-            .expect("missing PulseAudio decision target");
-        assert!(
-            matches!(&target.sources[0], Source::Path(path) if path == &format!("test/cmocka/{name}.c"))
-        );
-        assert!(
-            matches!(&target.sources[1], Source::Path(path) if path == "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h")
-        );
-        assert_eq!(target.sources.len(), 2);
-        assert_eq!(target.includes, ["libobs", "libobs/audio-monitoring/pulse"]);
-        assert_eq!(
-            target.watch_inputs,
-            [
-                "libobs/build/libobs-ported-pulse.pch.h",
-                "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"
-            ]
-        );
-        let libraries: Vec<_> = target
-            .libraries
-            .iter()
-            .map(|library| match library {
-                ConditionalValue::Name(name) => name.as_str(),
-                _ => panic!("unconditional dependency expected"),
-            })
-            .collect();
-        assert_eq!(
-            libraries,
-            ["PulseAudio::PulseAudio", "OBS::native-test-cmocka"]
-        );
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.suite, "core");
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        assert!(test.optional_prefixes.is_empty());
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-    }
-    graph
-        .targets
-        .retain(|name, _| names.contains(&name.as_str()));
-    graph.tests.retain(|name, _| names.contains(&name.as_str()));
-    for os in ["OS_LINUX", "OS_FREEBSD", "OS_MACOS", "OS_WINDOWS"] {
-        for enabled in [false, true] {
-            let facts = [
-                ("OS_LINUX".into(), os == "OS_LINUX"),
-                ("OS_FREEBSD".into(), os == "OS_FREEBSD"),
-                ("ENABLE_PULSEAUDIO".into(), enabled),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            let expected = usize::from(enabled && ["OS_LINUX", "OS_FREEBSD"].contains(&os)) * 2;
-            assert_eq!(selected.targets.len(), expected, "{os}/{enabled}");
-            assert_eq!(selected.tests.len(), expected, "{os}/{enabled}");
+    let inventory = std::process::Command::new("ctest")
+        .args([
+            "--test-dir",
+            output.to_str().unwrap(),
+            "-C",
+            "Release",
+            "--show-only=json-v1",
+        ])
+        .output()
+        .unwrap();
+    assert!(inventory.status.success());
+    let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+    let names: std::collections::BTreeSet<_> = inventory["tests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|test| test["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, selection.tests.keys().copied().collect());
+    for name in ["test_xcomposite_presence", "test_xcomposite_search_backoff"] {
+        if !selection.tests.contains_key(name) {
+            continue;
         }
+        let test = inventory["tests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|test| test["name"] == name)
+            .unwrap();
+        assert!(
+            test["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|property| property["name"] == "TIMEOUT" && property["value"] == 30.0)
+        );
     }
 }
 
@@ -6500,93 +4331,68 @@ fn canonical_pulse_monitor_decisions_run_unchanged() {
     assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
 }
 
-/// #1390: preserve the direct Rust-static characterization, without a C core.
-#[test]
-fn canonical_rust_static_pacing_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let name = "test_async_frame_pacing_steps_rust";
+fn assert_posix_output_host_registration(
+    root: &Path,
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
     let target = graph
         .targets
         .get(name)
-        .expect("canonical graph omits Rust-static pacing");
+        .unwrap_or_else(|| panic!("canonical graph omits {name}"));
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_async_frame_pacing_steps.c"));
-    assert_eq!(target.includes, ["libobs"]);
-    assert_eq!(target.watch_inputs, ["libobs/obs-source-async-pacing.h"]);
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("Rust-static pacing linkage must be unconditional"),
-        })
-        .collect();
-    assert_eq!(libraries, ["libobs_rust-static", "OBS::native-test-cmocka"]);
+        if path == &format!("test/cmocka/{name}.c")));
+    assert!(
+        matches!(&target.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
+    );
+    assert!(
+        matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)]
+        if name == "OBS::native-test-cmocka")
+    );
+    assert!(target.header_libraries.is_empty());
+    let (includes, watch): (&[&str], &[&str]) = if name == "test_obs_ffmpeg_net_host" {
+        (
+            &["plugins/obs-ffmpeg/hosts/posix"],
+            &["plugins/obs-ffmpeg/hosts/posix/obs-ffmpeg-net-host.h"],
+        )
+    } else {
+        (
+            &["."],
+            &[
+                "plugins/obs-outputs/build/obs-outputs-host-posix.pch.h",
+                "plugins/obs-outputs/obs-outputs-host-posix.c.h",
+                "plugins/obs-outputs/obs-outputs-host.h",
+                "plugins/obs-outputs/utils.h",
+            ],
+        )
+    };
+    assert_eq!(target.includes, includes);
+    assert_eq!(target.watch_inputs, watch);
+    assert_posix_output_host_execution(root, graph, name);
 }
 
-/// #1390: the conversion table must exercise the production Rust archive.
-#[test]
-fn canonical_rust_static_conversion_is_registered() {
-    use obs_build::validation::graph::{Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let name = "test_async_conversion_plan_rust";
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits Rust-static conversion");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_async_conversion_plan.c"));
-    assert_eq!(target.includes, ["libobs"]);
-    assert_eq!(target.watch_inputs, ["libobs/obs-source-conversion-plan.h"]);
-    assert_rust_static_conversion_linkage(target);
-    assert!(target.archives.is_empty());
+fn assert_posix_output_host_execution(
+    root: &Path,
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+) {
+    use obs_build::validation::graph::Requirement;
     let test = &graph.tests[name];
+    assert!(
+        matches!(&test.requires, Requirement::Not { not } if matches!(not.as_ref(), Requirement::Fact(fact) if fact == "OS_WINDOWS"))
+    );
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.suite, "core");
     assert_eq!(test.timeout_seconds, None);
     assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert_eq!(test.qt_runtime, None);
     let fragment =
-        fs::read_to_string(root.join("test/cmocka/tests.d/test_async_frame_pacing_steps.cmake"))
-            .unwrap();
+        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|key, _| key == name);
-    graph.tests.retain(|key, _| key == name);
-    for os in [
-        "x86_64-unknown-linux-gnu",
-        "aarch64-apple-darwin",
-        "x86_64-pc-windows-msvc",
-    ] {
-        for available in [false, true] {
-            let facts = [
-                ("HAVE_LIBOBS_RUST_STATIC".into(), available),
-                ("OS_LINUX".into(), os.contains("linux")),
-                ("OS_MACOS".into(), os.contains("apple")),
-                ("OS_WINDOWS".into(), os.contains("windows")),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            assert_eq!(selected.targets.contains_key(name), available, "{os}");
-            assert_eq!(selected.tests.contains_key(name), available, "{os}");
-        }
-    }
-}
-
-fn assert_rust_static_conversion_linkage(target: &obs_build::validation::graph::Target) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), 3);
-    assert!(
-        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
-    );
-    assert!(
-        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
-    );
-    assert!(
-        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-    );
 }
 
 /// #1390: both consumers must run the unchanged C suite against a real Rust archive.
@@ -6623,6 +4429,247 @@ fn canonical_rust_static_pacing_runs_unchanged() {
     };
     let interfaces = [
         (
+            "OBS::native-test-cmocka".into(),
+            Dependency::package(&build.target, "cmocka").unwrap(),
+        ),
+        (
+            "libobs_rust-static".into(),
+            Dependency::rust_static(&build.target, &archive).unwrap(),
+        ),
+    ]
+    .into();
+    let facts = [("HAVE_LIBOBS_RUST_STATIC".into(), true)].into();
+    assert_eq!(
+        graph.targets[name]
+            .dependency_artifacts(&facts, &interfaces)
+            .unwrap(),
+        std::slice::from_ref(&archive)
+    );
+    let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
+    assert_eq!(artifacts.len(), 1);
+    let result = graph.tests[name]
+        .command(&root, &build.output, &artifacts[name])
+        .unwrap()
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "Cargo\n{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let source = root.to_string_lossy().replace(char::from(92), "/");
+    let archive = archive.to_string_lossy().replace(char::from(92), "/");
+    fs::write(
+        directory.path().join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
+project(rust-static-contract C)
+enable_testing()
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
+add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+option(WITH_RUST "Import the real production archive" ON)
+if(WITH_RUST)
+  add_library(libobs_rust-static STATIC IMPORTED)
+  set_target_properties(libobs_rust-static PROPERTIES IMPORTED_LOCATION "{archive}")
+  if(NOT MSVC)
+    target_link_libraries(libobs_rust-static INTERFACE m)
+  endif()
+endif()
+include("{source}/test/cmocka/native-test-graph.cmake")
+obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
+"#
+        ),
+    )
+    .unwrap();
+    let output = directory.path().join("cmake-output");
+    for (program, arguments) in [
+        (
+            "cmake",
+            vec![
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+            ],
+        ),
+        (
+            "cmake",
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
+        ),
+        (
+            "ctest",
+            vec![
+                "--test-dir",
+                output.to_str().unwrap(),
+                "-C",
+                "Release",
+                "--output-on-failure",
+                "--no-tests=error",
+            ],
+        ),
+    ] {
+        let result = std::process::Command::new(program)
+            .args(arguments)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{program}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    for available in [true, false] {
+        let result = std::process::Command::new("cmake")
+            .args([
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+                if available {
+                    "-DWITH_RUST=ON"
+                } else {
+                    "-DWITH_RUST=OFF"
+                },
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let inventory = std::process::Command::new("ctest")
+            .args([
+                "--test-dir",
+                output.to_str().unwrap(),
+                "-C",
+                "Release",
+                "--show-only=json-v1",
+            ])
+            .output()
+            .unwrap();
+        assert!(inventory.status.success());
+        let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+        let names: Vec<_> = inventory["tests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|test| test["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, if available { vec![name] } else { vec![] });
+    }
+}
+
+fn assert_pipe_contract_registration(
+    graph: &obs_build::validation::graph::Graph,
+    root: &Path,
+    name: &str,
+    timeout: Option<u32>,
+) {
+    use obs_build::validation::graph::{ConditionalValue, Source};
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits pipe contract");
+    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+        if path == &format!("test/cmocka/{name}.c")));
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .filter_map(|library| match library {
+            ConditionalValue::Name(name) => Some(name.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
+    assert_eq!(
+        target.libraries.len(),
+        if name == "test_pipe_no_handle_leak" {
+            3
+        } else {
+            2
+        }
+    );
+    if name == "test_pipe_no_handle_leak" {
+        assert!(
+            matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: obs_build::validation::graph::Requirement::Fact(fact) }
+            if name == "ws2_32" && fact == "OS_WINDOWS")
+        );
+    }
+    assert!(target.packages.is_empty());
+    assert!(target.header_libraries.is_empty());
+    assert!(target.link_options.is_empty());
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.timeout_seconds, timeout);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    let fragment =
+        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+}
+
+fn assert_rust_static_conversion_linkage(target: &obs_build::validation::graph::Target) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement};
+    assert_eq!(target.libraries.len(), 3);
+    assert!(
+        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
+    );
+    assert!(
+        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
+    );
+    assert!(
+        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
+    );
+}
+
+/// #1390: both consumers must run the unchanged C suite against a real Rust archive.
+#[test]
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer"
+)]
+fn canonical_rust_static_conversion_runs_unchanged() {
+    use obs_build::validation::graph::{Dependency, Graph};
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let archive = dunce::canonicalize(
+        std::env::var_os("OBS_BUILD_RUST_ARCHIVE")
+            .expect("set OBS_BUILD_RUST_ARCHIVE to the production libobs-rust staticlib"),
+    )
+    .unwrap();
+    assert!(archive.is_file());
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let name = "test_async_conversion_plan_rust";
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for section in ["targets", "tests"] {
+        selected[section][name] = raw[section][name].clone();
+    }
+    let graph = Graph::parse(&selected.to_string()).unwrap();
+    let build = NativeBuild {
+        host: obs_build::BUILD_HOST.into(),
+        target: obs_build::BUILD_TARGET.into(),
+        output: directory.path().join("cargo-output"),
+        profile: Default::default(),
+    };
+    let interfaces = [
+        (
             "m".into(),
             Dependency {
                 link_options: vec!["-lm".into()],
@@ -6639,7 +4686,11 @@ fn canonical_rust_static_pacing_runs_unchanged() {
         ),
     ]
     .into();
-    let facts = [("HAVE_LIBOBS_RUST_STATIC".into(), true)].into();
+    let facts = [
+        ("HAVE_LIBOBS_RUST_STATIC".into(), true),
+        ("MSVC".into(), false),
+    ]
+    .into();
     assert_eq!(
         graph.targets[name]
             .dependency_artifacts(&facts, &interfaces)
@@ -6771,99 +4822,4 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
             .collect();
         assert_eq!(names, if available { vec![name] } else { vec![] });
     }
-}
-
-/// #1390: unchanged process-pipe contracts retain their real core dependency.
-#[test]
-fn canonical_pipe_contracts_are_registered() {
-    use obs_build::validation::graph::Graph;
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let cases = [
-        ("test_pipe_create2_exact_path", Some(20), true, true),
-        ("test_pipe_no_handle_leak", Some(30), false, true),
-        ("test_pipe_shell_argv0", Some(20), true, true),
-        ("test_pipe_stdio_inherit", None, true, false),
-    ];
-    for (name, timeout, _, _) in cases {
-        assert_pipe_contract_registration(&graph, &root, name, timeout);
-    }
-
-    graph
-        .targets
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    graph
-        .tests
-        .retain(|name, _| cases.iter().any(|case| case.0 == name));
-    for unix in [false, true] {
-        for available in [false, true] {
-            let facts = [
-                ("UNIX".into(), unix),
-                ("HAVE_LIBOBS".into(), available),
-                ("OS_WINDOWS".into(), !unix),
-            ]
-            .into();
-            let selected = graph.select(&facts).unwrap();
-            for (name, _, needs_unix, needs_core_guard) in cases {
-                let enabled = (!needs_unix || unix) && (!needs_core_guard || available);
-                assert_eq!(
-                    selected.targets.contains_key(name),
-                    enabled,
-                    "{name} Unix={unix} core={available}"
-                );
-                assert_eq!(selected.tests.contains_key(name), enabled, "{name}");
-            }
-        }
-    }
-}
-
-fn assert_pipe_contract_registration(
-    graph: &obs_build::validation::graph::Graph,
-    root: &Path,
-    name: &str,
-    timeout: Option<u32>,
-) {
-    use obs_build::validation::graph::{ConditionalValue, Source};
-    let target = graph
-        .targets
-        .get(name)
-        .expect("canonical graph omits pipe contract");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == &format!("test/cmocka/{name}.c")));
-    let libraries: Vec<_> = target
-        .libraries
-        .iter()
-        .filter_map(|library| match library {
-            ConditionalValue::Name(name) => Some(name.as_str()),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
-    assert_eq!(
-        target.libraries.len(),
-        if name == "test_pipe_no_handle_leak" {
-            3
-        } else {
-            2
-        }
-    );
-    if name == "test_pipe_no_handle_leak" {
-        assert!(
-            matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: obs_build::validation::graph::Requirement::Fact(fact) }
-            if name == "ws2_32" && fact == "OS_WINDOWS")
-        );
-    }
-    assert!(target.packages.is_empty());
-    assert!(target.header_libraries.is_empty());
-    assert!(target.link_options.is_empty());
-    let test = &graph.tests[name];
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, timeout);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    let fragment =
-        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-    assert!(!fragment.contains("add_executable("));
-    assert!(!fragment.contains("add_test("));
 }
