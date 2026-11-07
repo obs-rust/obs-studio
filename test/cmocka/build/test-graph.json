@@ -877,6 +877,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_canvas_video_getter": {
+      "sources": [
+        "test/cmocka/test_canvas_video_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_caption_unmappable": {
       "sources": [
         "test/cmocka/test_caption_unmappable.c"
@@ -11553,6 +11568,12 @@
     },
     "test_canvas_rules_steps": {
       "target": "test_canvas_rules_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_canvas_video_getter": {
+      "target": "test_canvas_video_getter",
       "command": [
         "${target}"
       ]
