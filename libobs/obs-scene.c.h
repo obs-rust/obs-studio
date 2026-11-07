@@ -2796,7 +2796,6 @@ float obs_sceneitem_get_rot(const obs_sceneitem_t *item)
 	return value;
 }
 
-
 uint32_t obs_sceneitem_get_alignment(const obs_sceneitem_t *item)
 {
 	if (!item)

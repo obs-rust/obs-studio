@@ -10,12 +10,33 @@ fn canonical_scene_scale_getter_is_registered() {
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_scene_item_scale_getter.c"));
     assert_eq!(target.includes, ["libobs", "deps/libcaption"]);
-    let [ConditionalValue::Name(core), ConditionalValue::Name(caption),
-        ConditionalValue::Name(uthash), ConditionalValue::Name(cmocka),
-        ConditionalValue::Conditional { name: pthreads, requires }] = target.libraries.as_slice()
-    else { panic!("private scene header dependencies must be retained"); };
-    assert_eq!([core.as_str(), caption.as_str(), uthash.as_str(), cmocka.as_str()],
-        ["OBS::libobs", "OBS::caption", "Uthash::Uthash", "OBS::native-test-cmocka"]);
+    let [
+        ConditionalValue::Name(core),
+        ConditionalValue::Name(caption),
+        ConditionalValue::Name(uthash),
+        ConditionalValue::Name(cmocka),
+        ConditionalValue::Conditional {
+            name: pthreads,
+            requires,
+        },
+    ] = target.libraries.as_slice()
+    else {
+        panic!("private scene header dependencies must be retained");
+    };
+    assert_eq!(
+        [
+            core.as_str(),
+            caption.as_str(),
+            uthash.as_str(),
+            cmocka.as_str()
+        ],
+        [
+            "OBS::libobs",
+            "OBS::caption",
+            "Uthash::Uthash",
+            "OBS::native-test-cmocka"
+        ]
+    );
     assert_eq!(pthreads, "OBS::w32-pthreads");
     assert!(matches!(requires, Requirement::Fact(fact) if fact == "OS_WINDOWS"));
     let test = &graph.tests[name];
