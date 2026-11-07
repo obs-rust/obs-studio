@@ -61,6 +61,28 @@ def dedupe_key(row: dict) -> tuple:
     return tuple(json.dumps(row.get(k), sort_keys=True) for k in ("ts", "context_key", "latency_ns", "cwd", "session_id"))
 
 
+def journal_rows(path: Path) -> tuple[list[dict], int]:
+    """(parsed rows, malformed lines) of one journal; an unreadable file has neither."""
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return [], 0
+    rows, malformed = [], 0
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            malformed += 1
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+        else:
+            malformed += 1
+    return rows, malformed
+
+
 def read_journals(cache_dir: Path | None, since: datetime | None = None) -> tuple[list[dict], int, int]:
     """Return (unique rows, raw row count, malformed lines). Unreadable files are skipped."""
     if cache_dir is None:
@@ -72,21 +94,9 @@ def read_journals(cache_dir: Path | None, since: datetime | None = None) -> tupl
     except OSError:
         return [], 0, 0
     for path in paths:
-        try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        except OSError:
-            continue
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                row = json.loads(line)
-            except ValueError:
-                malformed += 1
-                continue
-            if not isinstance(row, dict):
-                malformed += 1
-                continue
+        rows, bad = journal_rows(path)
+        malformed += bad
+        for row in rows:
             if since is not None:
                 ts = parse_ts(row.get("ts"))
                 # Tier 2 restores earlier runs' history; undated rows cannot be claimed.
@@ -340,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         record = collect(args)
-    except Exception as error:  # noqa: BLE001 - observability must never fail the job
+    except Exception as error:  # observability must never fail the job
         record = {"schema": SCHEMA, "job": args.job, "lane": args.lane, "counter_source": "none",
                   "eligible_hit_rate": None, "eligible_hit_rate_display": "n/a (ledger error)",
                   "notes": [f"ledger error: {type(error).__name__}"]}
