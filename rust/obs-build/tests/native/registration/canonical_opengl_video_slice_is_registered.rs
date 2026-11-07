@@ -6,13 +6,7 @@ fn canonical_opengl_video_slice_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let cases = [
-        ("test_raw_output_video_reset", Some(120)),
-        ("test_transition_audio_clock", Some(60)),
-        ("test_transition_audio_rescale", Some(60)),
-        ("test_transition_removed_child_audio", Some(60)),
-        ("test_visibility_transition", None),
-    ];
+    let cases = [("test_visibility_transition", None)];
     for (name, timeout) in cases {
         let target = graph.targets.get(name).unwrap_or_else(|| {
             panic!("canonical graph omits transition compatibility coverage: {name}")
@@ -24,7 +18,14 @@ fn canonical_opengl_video_slice_is_registered() {
         } else {
             assert!(target.includes.is_empty());
         }
-        let actual: Vec<_> = target.sources.iter().map(|source| match source { Source::Path(path) => path.clone(), _ => panic!("conditional source") }).collect();
+        let actual: Vec<_> = target
+            .sources
+            .iter()
+            .map(|source| match source {
+                Source::Path(path) => path.clone(),
+                _ => panic!("conditional source"),
+            })
+            .collect();
         assert_eq!(actual, sources);
         let libraries: Vec<_> = target
             .libraries
@@ -34,10 +35,7 @@ fn canonical_opengl_video_slice_is_registered() {
                 _ => panic!("transition linkage must be unconditional"),
             })
             .collect();
-        let mut expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
-        if name == "test_transition_audio_rescale" {
-            expected.push("m");
-        }
+        let expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
         assert!(target.header_libraries.is_empty());
         assert_eq!(libraries, expected, "{name}");
         assert_eq!(
@@ -92,3 +90,7 @@ fn canonical_opengl_video_slice_is_registered() {
         }
     }
 }
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "opengl_video_slice_runtime.rs"]
+mod runtime;

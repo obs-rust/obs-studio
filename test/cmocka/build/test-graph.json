@@ -9327,6 +9327,31 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_visibility_transition": {
+      "sources": [
+        "test/cmocka/test_visibility_transition.c",
+        "frontend/utility/visibility-transition.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "includes": [
+        "frontend/utility"
+      ]
+    },
     "test_vlc_audio_pacing": {
       "sources": [
         "test/cmocka/test_vlc_audio_pacing.c"
@@ -13365,6 +13390,14 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_visibility_transition": {
+      "target": "test_visibility_transition",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}"
     },
     "test_vlc_audio_pacing": {
       "target": "test_vlc_audio_pacing",
