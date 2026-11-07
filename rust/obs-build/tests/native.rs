@@ -287,6 +287,69 @@ mod canonical_xcomposite_decisions_are_registered;
 #[path = "native/registration/canonical_youtube_broadcast_settings_is_registered.rs"]
 mod canonical_youtube_broadcast_settings_is_registered;
 
+/// #1390: the libobs built from this checkout for real-libobs graph runtimes.
+/// `OBS_GRAPH_LIBOBS` selects the Tier 2 implementation explicitly: `hybrid`
+/// (with `OBS_BUILD_RUST_ARCHIVE`) or `c-reference`. There is no fallback.
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+struct BuiltCore {
+    dependency: obs_build::validation::graph::Dependency,
+    /// CMake that imports the same artifact as `OBS::libobs`.
+    cmake: String,
+}
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+fn built_core(build: &NativeBuild, root: &Path) -> BuiltCore {
+    use obs_build::libobs;
+    let options = libobs::Options::default();
+    let library = match std::env::var("OBS_GRAPH_LIBOBS").as_deref() {
+        Ok("hybrid") => {
+            let archive = std::env::var_os("OBS_BUILD_RUST_ARCHIVE")
+                .expect("OBS_GRAPH_LIBOBS=hybrid needs OBS_BUILD_RUST_ARCHIVE");
+            libobs::build_hybrid_with_options(build, root, &options, Path::new(&archive))
+        }
+        Ok("c-reference") => libobs::build_c_reference_with_options(build, root, &options),
+        other => panic!(
+            "set OBS_GRAPH_LIBOBS to hybrid or c-reference (got {other:?}); \
+             graph runtimes never link an installed libobs"
+        ),
+    }
+    .unwrap();
+    let library = dunce::canonicalize(library).unwrap();
+    assert!(
+        library.starts_with(dunce::canonicalize(&build.output).unwrap()),
+        "libobs {} is not the one built in {}",
+        library.display(),
+        build.output.display()
+    );
+    let include_dirs = vec![
+        root.join("libobs"),
+        root.join("deps/libcaption"),
+        build.output.join("config"),
+    ];
+    let path = |path: &Path| path.to_string_lossy().replace('\\', "/");
+    let includes: Vec<_> = include_dirs.iter().map(|dir| path(dir)).collect();
+    let cmake = format!(
+        r#"if(NOT EXISTS "{lib}")
+  message(FATAL_ERROR "built libobs is missing: {lib}")
+endif()
+add_library(OBS::libobs SHARED IMPORTED)
+set_target_properties(OBS::libobs PROPERTIES IMPORTED_LOCATION "{lib}"
+  INTERFACE_INCLUDE_DIRECTORIES "{includes}" INTERFACE_COMPILE_OPTIONS "-fvisibility=hidden")
+"#,
+        lib = path(&library),
+        includes = includes.join(";"),
+    );
+    BuiltCore {
+        dependency: obs_build::validation::graph::Dependency {
+            artifacts: vec![library],
+            include_dirs,
+            compile_options: vec!["-fvisibility=hidden".into()],
+            ..Default::default()
+        },
+        cmake,
+    }
+}
+
 /// #1390: real-libobs graph runtimes link the core built from this checkout,
 /// never an installed libobs (whose ABI can predate these headers), in both
 /// the Cargo consumer and the CMake replay.
