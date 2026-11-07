@@ -656,6 +656,7 @@ jobs:
           echo 'ZCCACHE_SESSION_ID=' >> "${GITHUB_ENV}"
           uv run --no-project ci/native_cache_journal.py summarize \
             --workspace "${GITHUB_WORKSPACE}" \
+            --cache-dir "${ZCCACHE_CACHE_DIR}" \
             --journal "${RUNNER_TEMP}/native-cache-${{ matrix.rust }}.jsonl" \
             --build-outcome "${{ steps.ubuntu-native-build.outcome }}" \
             --output "${RUNNER_TEMP}/native-cache-${{ matrix.rust }}.json"

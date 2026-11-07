@@ -799,6 +799,21 @@ evidence is marked explicitly. Diagnostics are non-blocking; compilation and
 integrity tests retain their normal failure behavior. This full-build lane
 does not add work to PR or merge-group admission.
 
+The summary retains numeric compiler `child_peak_rss_bytes`, sampled
+`tree_peak_rss_bytes` and their source, exit codes and termination signals when
+the journal supplies them. The child high-water mark can be just the compiler
+driver; the sampled tree includes its compiler descendants. Neither measures
+the cache daemon's RSS or the simultaneous host peak. Missing fields are unknown,
+and requests lost before journaling have no completion measurement. It also
+retains bounded, allowlisted lifecycle events from the job-owned cache, without
+making daemon control requests. Missing death
+events cannot distinguish SIGKILL, a crash, or a connection-handler failure.
+In particular, run [41785304209](https://github.com/obs-rust/obs-studio/actions/runs/41785304209/job/126426654456)
+retained only 34 completed misses and simultaneous client disconnects: it does
+not establish OOM. Track the daemon investigation in
+[zccache#2064](https://github.com/forge-ci/zccache/issues/2064); a retry succeeding
+is not evidence that its cause was fixed.
+
 A restored archive does not imply compiler hits: one observed zccache
 rollout restored 278 MB but reported 772 cold compilations. Keep C/C++
 build totals separate from soldr session counters and ccache reports;
