@@ -893,6 +893,7 @@ pub fn native_test_facts(
     hevc: bool,
 ) -> std::collections::BTreeMap<String, bool> {
     std::collections::BTreeMap::from([
+        ("UNIX".into(), !target.contains("windows")),
         ("OS_LINUX".into(), target.contains("linux")),
         ("OS_FREEBSD".into(), target.contains("freebsd")),
         ("OS_WINDOWS".into(), target.contains("windows")),
