@@ -19,6 +19,8 @@ import subprocess
 import tempfile
 import unittest
 
+from tier2_matrix import matrix
+
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "rust/tools/linux-validate"
 WORKFLOW = ROOT / ".github/workflows/build-project.yaml"
@@ -103,7 +105,7 @@ class CompanionsTest(unittest.TestCase):
         n = companions["shards"]
         self.assertEqual(len(companions["companions"]), n)
         parts = [f"serial-{i}-of-{n}" for i in range(1, n + 1)]
-        self.assertIn('part: ["suite", ' + ", ".join(f'"{p}"' for p in parts) + "]", test_job())
+        self.assertEqual(matrix("push")["part"], ["suite", *parts])
         names = [name for shard in companions["companions"] for name in shard]
         self.assertEqual(len(names), len(set(names)))
         # Stays in the suite: it alone takes ~102 s and would run after the
@@ -140,8 +142,9 @@ class RuntimeTest(unittest.TestCase):
 class WorkflowTest(unittest.TestCase):
     def test_each_mode_runs_both_parts_on_separate_runners(self):
         job = test_job()
-        self.assertRegex(job, r'mode: \["OFF", "ON"\]')
-        self.assertRegex(job, r'part: \["suite", "serial-1-of-2", "serial-2-of-2"\]')
+        self.assertEqual(matrix("push")["mode"], ["OFF", "ON"])
+        self.assertEqual(matrix("push")["part"], ["suite", "serial-1-of-2", "serial-2-of-2"])
+        self.assertIn("matrix: ${{ fromJSON(needs.check-event.outputs.tier2_matrix) }}", job)
         self.assertIn("--part '${{ matrix.part }}'", job)
         # Two parts of one mode write timing artifacts; the names must differ.
         self.assertIn("name: tier2-cost-${{ matrix.mode }}-${{ matrix.part }}", job)

@@ -115,6 +115,7 @@ jobs:
       deferred: ${{ steps.native.outputs.deferred }}
       qt: ${{ steps.native.outputs.qt }}
       tier2: ${{ steps.native.outputs.tier2 }}
+      tier2_matrix: ${{ steps.tier2-matrix.outputs.matrix }}
       linux_targets: ${{ steps.native.outputs.linux_targets }}
       qt_sdk: ${{ steps.native.outputs.qt_sdk }}
       docs_only: ${{ steps.native.outputs.docs_only }}
@@ -130,6 +131,12 @@ jobs:
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      - name: Select Tier 2 Scheduling
+        id: tier2-matrix
+        env:
+          TIER2_FULL: ${{ inputs.full }}
+        run: uv run --no-project ci/tier2_matrix.py
 
       - name: Check Experimental Flatpak Inputs
         if: inputs.flatpak-dependency-transfer-probe
@@ -2712,15 +2719,12 @@ jobs:
     # remaining lint/Rust work; the caller's required gate still needs both.
     # Failed/skipped builds and workflow cancellation cannot start tests.
     if: ${{ always() && !cancelled() && needs.rust-linux-tier2-build.result == 'success' }}
-    # One suite per backend (#1662), less its RUN_SERIAL tests, which run
-    # on runners of their own: inside the suite the deinterlace test held
-    # the runner alone for 146 of 238 s (#1643, #2071). Its five rate entries
-    # run on two runners (#2072).
+    # PR/queue: one complete suite per backend; CTest honors RUN_SERIAL.
+    # Background/release: retain separate serial runners (#2071, #2072).
+    # Scheduling policy lives in ci/tier2_matrix.py, not YAML expressions.
     strategy:
       fail-fast: false
-      matrix:
-        mode: ["OFF", "ON"]
-        part: ["suite", "serial-1-of-2", "serial-2-of-2"]
+      matrix: ${{ fromJSON(needs.check-event.outputs.tier2_matrix) }}
     defaults:
       run:
         shell: bash
