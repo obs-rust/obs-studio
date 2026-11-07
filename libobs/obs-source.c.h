@@ -2454,16 +2454,6 @@ uint32_t obs_source_get_base_height(obs_source_t *source)
 	return get_base_height(source);
 }
 
-obs_source_t *obs_filter_get_parent(const obs_source_t *filter)
-{
-	return obs_ptr_valid(filter, "obs_filter_get_parent") ? filter->filter_parent : NULL;
-}
-
-obs_source_t *obs_filter_get_target(const obs_source_t *filter)
-{
-	return obs_ptr_valid(filter, "obs_filter_get_target") ? filter->filter_target : NULL;
-}
-
 _Static_assert(OBS_SOURCE_FILTER_CHAIN_VIDEO == OBS_SOURCE_VIDEO, "OBS_SOURCE_VIDEO");
 _Static_assert(OBS_SOURCE_FILTER_CHAIN_AUDIO == OBS_SOURCE_AUDIO, "OBS_SOURCE_AUDIO");
 _Static_assert(OBS_SOURCE_FILTER_CHAIN_ASYNC == OBS_SOURCE_ASYNC, "OBS_SOURCE_ASYNC");
