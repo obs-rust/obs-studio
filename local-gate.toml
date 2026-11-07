@@ -34,23 +34,84 @@ setup-steps = ["Save Tier 2 zccache 💾", "Mark Lane Proof 🧾", "Upload Lane 
 # clang-format 22.1.3 + gersemi 0.25.0 (pinned via uvx), rustfmt,
 # clippy -D warnings.
 [gate.lanes.lint]
-run = ["uv", "run", "ci/local_gate.py", "--lane", "lint"]
+# Compose the existing checks here so CI's unchanged --lane lint still runs
+# Dylint, while the local gate caches it independently below.
+run = ["uv", "run", "--no-project", "python", "-c", '''
+from ci import local_gate as g
+files = g.tracked_files()
+in_ci = bool(g.os.environ.get("GITHUB_ACTIONS"))
+fmt_files = g.format_scope(files, None if in_ci else g.changed_since_master(), in_ci)
+g.clang_format(fmt_files, False)
+g.gersemi(fmt_files, False)
+g.ruff_ratchet(files)
+g.self_test()
+g.check_test_binary_inventory()
+g.check_feature_sets()
+g.platform_ifdef_ratchet()
+g.perf_guard_lint()
+g.knowledge_lint(False)
+g.soldr_cargo(["fmt", "--all", "--check"])
+g.soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
+for args in g.FEATURE_SETS:
+    g.soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
+''']
 tools = ["uvx", "soldr"]
+exclude = ["dylints/**"]
 
 # Rust Tiers 1-3 (docs/rust-port/testing-policy.md).
 [gate.lanes.rust-test]
 run = ["uv", "run", "ci/local_gate.py", "--lane", "rust-test"]
 tools = ["soldr"]
 exclude = ["**"]
-keep = ["rust/**", "dylints/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**", "plugins/obs-nvenc/**", "deps/**", "ci/local_gate.py", "ci/nextest_tool.py", "ci/nextest.toml"]
+keep = ["rust/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**", "plugins/obs-nvenc/**", "deps/**", "ci/local_gate.py", "ci/nextest_tool.py", "ci/nextest.toml"]
 
-# Clippy and Dylint for x86_64-pc-windows-msvc and both macOS targets,
-# cross-checked from this host through soldr (#472).
+# Clippy and test links for the same PR targets as ci/local_gate.py (#472).
+# CI still calls its unchanged cross lane, including cross Dylint.
 [gate.lanes.cross]
-run = ["uv", "run", "ci/local_gate.py", "--lane", "cross"]
+run = ["uv", "run", "--no-project", "python", "-c", '''
+from ci import local_gate as g
+scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
+for target in g.CROSS_TARGETS:
+    g.add_target(target)
+    g.soldr_cargo(["clippy", *scope, "--locked", "--target", target, "--", "-D", "warnings"])
+    g.soldr_cargo(["test", "--workspace", "--no-run", "--locked", "--target", target])
+''']
 tools = ["soldr"]
 exclude = ["**"]
-keep = ["rust/**", "dylints/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**", "plugins/obs-nvenc/**", "deps/**"]
+keep = ["rust/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**", "plugins/obs-nvenc/**", "deps/**"]
+
+# Split Dylint from source-sensitive lanes so source-only edits reuse its
+# local pass. Cross builds remain opt-in until the store fix makes them cheap:
+# https://github.com/forge-ci/soldr/issues/4118
+[gate.lanes.dylint]
+run = ["uv", "run", "--no-project", "python", "-c", 'from ci import local_gate as g; g.soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"])']
+tools = ["soldr"]
+exclude = ["**"]
+keep = ["dylints/**", "rust-toolchain.toml", "Cargo.lock"]
+
+# Keep cross Dylint out of default local runs while its store is expensive:
+# https://github.com/forge-ci/soldr/issues/4118
+# The pinned schema has no default=false; opt in with OBS_GATE_DYLINT_CROSS=1.
+# Exit 75 is the gate's optional-lane protocol (never a cached/attested pass).
+# CI's rust-cross-lint and rust-cross-lint-release still run Dylint directly.
+[gate.lanes.dylint-cross]
+run = ["uv", "run", "--no-project", "python", "-c", '''
+import os
+import sys
+if os.environ.get("OBS_GATE_DYLINT_CROSS") != "1":
+    print("cross Dylint: opt in with OBS_GATE_DYLINT_CROSS=1; CI runs it separately", flush=True)
+    sys.exit(75)
+from ci import local_gate as g
+scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
+for target in (*g.CROSS_TARGETS, "x86_64-apple-darwin"):
+    g.add_target(target)
+    g.soldr_dylint(["--all", "--", *scope, "--target", target])
+''']
+tools = ["soldr"]
+optional = true
+env = ["OBS_GATE_DYLINT_CROSS"]
+exclude = ["**"]
+keep = ["dylints/**", "rust-toolchain.toml", "Cargo.lock"]
 
 # Tier 2: cmocka against libobs and libobs-c-reference (one build) in Docker
 # (ubuntu-26.04, the CI image), exported-symbol diff.
@@ -98,7 +159,7 @@ optional = true
 [gate.trust]
 mode = "enforce"
 skip = ["build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux-tier2", "build-project.yaml:rust-cross-lint", "build-project.yaml:rust-tests-macos", "build-project.yaml:rust-tests-windows", "build-project.yaml:rust-tier2-macos", "build-project.yaml:rust-tier2-windows"]
-covered-by = { "build-project.yaml:rust-tests-linux" = ["lint", "rust-test"], "build-project.yaml:rust-linux-tier2" = ["tier2-linux"], "build-project.yaml:rust-cross-lint" = ["cross"], "build-project.yaml:rust-tests-macos" = ["lint", "cross", "macos-native"], "build-project.yaml:rust-tests-windows" = ["lint", "cross", "windows-native"], "build-project.yaml:rust-tier2-macos" = ["macos-native"], "build-project.yaml:rust-tier2-windows" = ["windows-native"] }
+covered-by = { "build-project.yaml:rust-tests-linux" = ["lint", "dylint", "rust-test"], "build-project.yaml:rust-linux-tier2" = ["tier2-linux"], "build-project.yaml:rust-cross-lint" = ["cross", "dylint-cross"], "build-project.yaml:rust-tests-macos" = ["lint", "dylint", "cross", "dylint-cross", "macos-native"], "build-project.yaml:rust-tests-windows" = ["lint", "dylint", "cross", "dylint-cross", "windows-native"], "build-project.yaml:rust-tier2-macos" = ["macos-native"], "build-project.yaml:rust-tier2-windows" = ["windows-native"] }
 surfaces = [
   "ci/nextest_tool.py",
   "ci/nextest.toml",
