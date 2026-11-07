@@ -1,10 +1,11 @@
 use super::*;
 
-const CASES: [(&str, Option<u32>); 5] = [
+const CASES: [(&str, Option<u32>); 6] = [
     ("test_visibility_transition", None),
     ("test_preview_only_hide", Some(120)),
     ("test_raw_output_video_reset", Some(120)),
     ("test_transition_audio_clock", Some(60)),
+    ("test_transition_audio_rescale", Some(60)),
     ("test_transition_removed_child_audio", Some(60)),
 ];
 
