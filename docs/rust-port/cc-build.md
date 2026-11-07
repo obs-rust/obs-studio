@@ -901,10 +901,19 @@ space decisions, multitrack ladder and encoder override tests also use the share
 graph. The standalone caption round-trip suite also uses the shared graph,
 retaining its vendored libcaption and cmocka dependencies without needing libobs.
 `canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
-all six original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
-alongside the existing remux contract; it proves these standalone helpers, not
-full frontend/application parity (#1390).
+the selected original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. Local GCC and Clang replay covers Linux; graph
+selection checks preserve the host exclusions. This proves standalone helpers,
+not full frontend/application parity (#1390).
+
+The standalone NVENC override, glyph-atlas, non-macOS keypad-header and
+non-Windows reference-header tests also use the shared graph. Their unchanged
+sources run in the same Cargo/CMake utility contract, preserving the two host
+exclusions. Glyph-atlas declares its broad production PCH's FreeType and SIMDe
+header packages and libobs configuration-header interface without linking libobs.
+The small runtime contract uses the existing oracle configuration fixture for
+that header interface; production validation uses its generated core configuration.
+This is helper coverage, not hardware NVENC or complete application parity (#1390).
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.
 Its unchanged four cases exercise worker-thread profile creation/removal,

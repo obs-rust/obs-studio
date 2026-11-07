@@ -8,14 +8,25 @@ fn canonical_nvenc_host_and_glyph_tests_are_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let names = ["test_nvenc_override", "test_hotkey_numpad_host", "test_libobs_reference_hosts", "test_glyph_atlas"];
+    let names = [
+        "test_nvenc_override",
+        "test_hotkey_numpad_host",
+        "test_libobs_reference_hosts",
+        "test_glyph_atlas",
+    ];
     for name in names {
-        let target = graph.targets.get(name).unwrap_or_else(|| panic!("canonical graph omits {name}"));
-        assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka"));
+        let target = graph
+            .targets
+            .get(name)
+            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
+        );
         assert_eq!(graph.tests[name].target, name);
         assert_eq!(graph.tests[name].command, ["${target}"]);
         assert_eq!(graph.tests[name].timeout_seconds, None);
-        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
     }
@@ -23,10 +34,14 @@ fn canonical_nvenc_host_and_glyph_tests_are_registered() {
     assert_eq!(glyph.header_packages, ["freetype2", "simde"]);
     assert_eq!(glyph.header_libraries, ["OBS::libobs"]);
     assert_eq!(glyph.includes, ["libobs", "plugins/text-freetype2"]);
-    graph.targets.retain(|name, _| names.contains(&name.as_str()));
+    graph
+        .targets
+        .retain(|name, _| names.contains(&name.as_str()));
     graph.tests.retain(|name, _| names.contains(&name.as_str()));
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let facts = ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"].map(|key| (key.into(), key == os)).into();
+        let facts = ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"]
+            .map(|key| (key.into(), key == os))
+            .into();
         let selected = graph.select(&facts).unwrap();
         for name in names {
             let expected = match name {
@@ -2096,6 +2111,10 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
         "test_caption_unmappable",
+        "test_nvenc_override",
+        "test_hotkey_numpad_host",
+        "test_libobs_reference_hosts",
+        "test_glyph_atlas",
         "test_stream_service_select",
         "test_saved_transition",
         "test_record_disk_space",
@@ -2129,11 +2148,26 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
             ..Default::default()
         },
     )])
+    .chain([(
+        "OBS::libobs".into(),
+        Dependency {
+            // Use the existing oracle configuration fixture for these header-only helpers.
+            include_dirs: vec![root.join("rust/obs-c-oracle/oracle/obsconfig")],
+            ..Default::default()
+        },
+    )])
     .collect();
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_LINUX".into(), build.target.contains("linux")),
+        ("OS_MACOS".into(), build.target.contains("apple")),
+        ("OS_WINDOWS".into(), build.target.contains("windows")),
+    ]
+    .into();
+    let selection = graph.select(&facts).unwrap();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 6);
-    for (name, test) in &graph.tests {
+    assert_eq!(artifacts.len(), selection.tests.len());
+    for (name, test) in &selection.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
             .unwrap()
@@ -2147,11 +2181,14 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         );
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let linux = build.target.contains("linux");
+    let macos = build.target.contains("apple");
+    let windows = build.target.contains("windows");
     let source = root.to_string_lossy().replace('\\', "/");
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX {linux})\nset(OS_MACOS {macos})\nset(OS_WINDOWS {windows})\nenable_testing()\nadd_library(helper-core-headers INTERFACE)\ntarget_include_directories(helper-core-headers INTERFACE \"{source}/rust/obs-c-oracle/oracle/obsconfig\")\nadd_library(OBS::libobs ALIAS helper-core-headers)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();
@@ -2217,7 +2254,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         .iter()
         .map(|test| test["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
+    assert_eq!(names, selection.tests.keys().copied().collect());
 }
 
 #[test]
