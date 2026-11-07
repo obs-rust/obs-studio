@@ -55,7 +55,7 @@ VIA_PREFIXES = {
 # table (and ci.toml) moves the layers from "kept" to "deleted on the next
 # merge-queue run": #3061 pinned this commit on 2026-10-30 and v2 keys stopped
 # being written, while `deps` still resolved to cook-base-v2- (#3166).
-SETUP_SOLDR_PIN = "c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0"  # s3 remote cache
+SETUP_SOLDR_PIN = "d01d9bae0d5a42ceed086dab6f8f272a0c876ac2"  # s3 remote cache
 SETUP_SOLDR_COOK_PREFIX = "cook-base-v3-"  # src/lib/cook-cache.ts: COOK_BASE_KEY_PREFIX = "cook-base-v3"
 
 

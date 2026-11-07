@@ -255,7 +255,7 @@ jobs:
 
       # Corrosion runs cargo inside the CMake build; same soldr as build-project.yaml.
       - name: Set up soldr 🦀
-        uses: zackees/setup-soldr@c6f5541a9a528a5bd3a4dfee911dee3d61cf6db0 # s3 remote cache
+        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           version: 0.9.45
           build-cache: false
