@@ -8149,6 +8149,75 @@
         "frontend/utility"
       ]
     },
+    "test_text_aa_file": {
+      "sources": [
+        "test/cmocka/test_text_aa_file.c",
+        "plugins/text-freetype2/text-freetype2.c.h",
+        "plugins/text-freetype2/text-functionality.c.h",
+        "plugins/text-freetype2/text-file.c.h",
+        "plugins/text-freetype2/glyph-atlas.c.h",
+        "plugins/text-freetype2/obs-convenience.c.h",
+        "plugins/text-freetype2/find-font-unix.c.h",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/text-freetype2"
+      ],
+      "definitions": [
+        "TEST_FONT_PATH=\"${source}/test/cmocka/data/text-aa.ttf\""
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+        "test/cmocka/data/text-aa.ttf"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Freetype::Freetype",
+        "Fontconfig::Fontconfig",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_TEXT_FREETYPE2",
+          "HAVE_FREETYPE_FILE_SDK"
+        ]
+      }
+    },
+    "test_text_freetype2_platform": {
+      "sources": [
+        "test/cmocka/test_text_freetype2_platform.c",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "header_packages": [
+        "freetype2",
+        "fontconfig"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_FREETYPE_PLATFORM_SDK"
+        ]
+      }
+    },
     "test_text_lookup": {
       "sources": [
         "test/cmocka/test_text_lookup.c"
@@ -8634,6 +8703,212 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_v4l2_busy": {
+      "sources": [
+        "test/cmocka/test_v4l2_busy.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "header_packages": [
+        "libv4l2",
+        "libavcodec",
+        "libavformat",
+        "libavutil"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_BUSY_SDK"
+        ]
+      }
+    },
+    "test_v4l2_controls": {
+      "sources": [
+        "test/cmocka/test_v4l2_controls.c",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "definitions": [
+        "HAVE_UDEV=1"
+      ]
+    },
+    "test_v4l2_corrupt_frame": {
+      "sources": [
+        "test/cmocka/test_v4l2_corrupt_frame.c",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      }
+    },
+    "test_v4l2_dqbuf_error": {
+      "sources": [
+        "test/cmocka/test_v4l2_dqbuf_error.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      }
+    },
+    "test_v4l2_framerate": {
+      "sources": [
+        "test/cmocka/test_v4l2_framerate.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      }
+    },
+    "test_v4l2_udev_poll_error": {
+      "sources": [
+        "test/cmocka/test_v4l2_udev_poll_error.c"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix-udev.pch.h",
+        "plugins/linux-v4l2/v4l2-udev.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Libudev::Libudev",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_UDEV_SDK"
+        ]
+      }
     },
     "test_vaapi_device_select": {
       "sources": [
@@ -9263,6 +9538,126 @@
           }
         }
       ]
+    },
+    "test_wayland_keymap": {
+      "sources": [
+        "test/cmocka/test_wayland_keymap.c",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_multiseat": {
+      "sources": [
+        "test/cmocka/test_wayland_multiseat.c",
+        "libobs/obs-nix-wayland.c.h",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "Wayland::Server",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_SERVER_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_volume_keys": {
+      "sources": [
+        "test/cmocka/test_wayland_volume_keys.c",
+        "libobs/obs-nix-wayland.c.h",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
     },
     "test_whip_host_os_name": {
       "sources": [
@@ -12543,6 +12938,31 @@
         "${target}"
       ]
     },
+    "test_text_aa_file": {
+      "target": "test_text_aa_file",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_TEXT_FREETYPE2",
+          "HAVE_FREETYPE_FILE_SDK"
+        ]
+      }
+    },
+    "test_text_freetype2_platform": {
+      "target": "test_text_freetype2_platform",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_FREETYPE_PLATFORM_SDK"
+        ]
+      }
+    },
     "test_text_lookup": {
       "target": "test_text_lookup"
     },
@@ -12705,6 +13125,72 @@
     },
     "test_util_uint64": {
       "target": "test_util_uint64"
+    },
+    "test_v4l2_busy": {
+      "target": "test_v4l2_busy",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_BUSY_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_controls": {
+      "target": "test_v4l2_controls",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_corrupt_frame": {
+      "target": "test_v4l2_corrupt_frame",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_dqbuf_error": {
+      "target": "test_v4l2_dqbuf_error",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 90
+    },
+    "test_v4l2_framerate": {
+      "target": "test_v4l2_framerate",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_udev_poll_error": {
+      "target": "test_v4l2_udev_poll_error",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_UDEV_SDK"
+        ]
+      },
+      "timeout_seconds": 60
     },
     "test_vaapi_device_select": {
       "target": "test_vaapi_device_select",
@@ -12923,6 +13409,51 @@
       "resource_locks": [
         "timing"
       ]
+    },
+    "test_wayland_keymap": {
+      "target": "test_wayland_keymap",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_multiseat": {
+      "target": "test_wayland_multiseat",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_SERVER_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_volume_keys": {
+      "target": "test_wayland_volume_keys",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
     },
     "test_whip_host_os_name": {
       "target": "test_whip_host_os_name",

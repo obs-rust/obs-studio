@@ -14,7 +14,7 @@ fn checked(command: &mut std::process::Command) -> std::process::Output {
     result
 }
 
-/// Real installed libobs smoke contract; final-head OFF/ON parity is a rollup gate.
+/// Smoke contract against the libobs built from this checkout; final-head OFF/ON parity is a rollup gate.
 #[test]
 fn canonical_recording_shutdown_runs_unchanged() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
@@ -35,17 +35,9 @@ fn canonical_recording_shutdown_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let mut core = Dependency::package(&build.target, "libobs").unwrap();
-    // Nix's installed OBS package puts callback/ and util/ under include/obs.
-    let nested: Vec<_> = core
-        .include_dirs
-        .iter()
-        .map(|path| path.join("obs"))
-        .filter(|path| path.is_dir())
-        .collect();
-    core.include_dirs.extend(nested);
+    let core = built_core(&build, &root);
     let interfaces = [
-        ("OBS::libobs".into(), core),
+        ("OBS::libobs".into(), core.dependency),
         (
             "Qt6::Core".into(),
             Dependency::package(&build.target, "Qt6Core").unwrap(),
@@ -67,7 +59,7 @@ fn canonical_recording_shutdown_runs_unchanged() {
         );
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    write_cmake(directory.path(), &root);
+    write_cmake(directory.path(), &root, &core.cmake);
     let output = directory.path().join("cmake-output");
     checked(
         std::process::Command::new("cmake")
@@ -102,7 +94,7 @@ fn canonical_recording_shutdown_runs_unchanged() {
     }
 }
 
-fn write_cmake(directory: &Path, root: &Path) {
+fn write_cmake(directory: &Path, root: &Path, core: &str) {
     let source = root.to_string_lossy().replace('\\', "/");
     fs::write(
         directory.join("CMakeLists.txt"),
@@ -113,25 +105,8 @@ enable_testing()
 option(OS_LINUX "Select original Linux guard" ON)
 option(WITH_QT "Import optional QtCore" ON)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBOBS REQUIRED IMPORTED_TARGET libobs)
-# Installed libobs.pc contains its C standard flag, unlike the production
-# OBS::libobs target. Keep that flag scoped to C in this mixed-language fixture.
-get_target_property(core_options PkgConfig::LIBOBS INTERFACE_COMPILE_OPTIONS)
-set(scoped_options)
-foreach(flag IN LISTS core_options)
-  if(flag MATCHES "^-std=(gnu|c)[0-9]+$")
-    list(APPEND scoped_options "$<$<COMPILE_LANGUAGE:C>:${{flag}}>")
-  else()
-    list(APPEND scoped_options "${{flag}}")
-  endif()
-endforeach()
-set_property(TARGET PkgConfig::LIBOBS PROPERTY INTERFACE_COMPILE_OPTIONS "${{scoped_options}}")
-if(IS_DIRECTORY "${{LIBOBS_INCLUDEDIR}}/obs")
-  target_include_directories(PkgConfig::LIBOBS INTERFACE "${{LIBOBS_INCLUDEDIR}}/obs")
-endif()
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
-add_library(OBS::libobs ALIAS PkgConfig::LIBOBS)
-add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+{core}add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 if(WITH_QT)
   find_package(Qt6 REQUIRED COMPONENTS Core)
 endif()

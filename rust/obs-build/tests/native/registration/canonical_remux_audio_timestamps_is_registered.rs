@@ -46,7 +46,7 @@ fn canonical_remux_audio_timestamps_is_registered() {
     }
 }
 
-// This smoke contract requires installed real libobs/cmocka packages. Native
+// This smoke contract builds libobs from this checkout (OBS_GRAPH_LIBOBS). Native
 // Windows/macOS execution remains the Tier 2 host runner's responsibility.
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 #[test]
@@ -70,17 +70,9 @@ fn canonical_remux_audio_timestamps_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let mut core = Dependency::package(&build.target, "libobs").unwrap();
-    // Some installed libobs.pc files name include/ instead of include/obs/.
-    let nested: Vec<_> = core
-        .include_dirs
-        .iter()
-        .map(|path| path.join("obs"))
-        .filter(|path| path.is_dir())
-        .collect();
-    core.include_dirs.extend(nested);
+    let core = built_core(&build, &root);
     let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
-        ("OBS::libobs".into(), core),
+        ("OBS::libobs".into(), core.dependency),
         (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
@@ -125,6 +117,13 @@ fn canonical_remux_audio_timestamps_runs_unchanged() {
 fn canonical_remux_audio_timestamps_cmake_runs_unchanged() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
+    let build = NativeBuild {
+        host: obs_build::BUILD_HOST.into(),
+        target: obs_build::BUILD_TARGET.into(),
+        output: directory.path().join("core-output"),
+        profile: Default::default(),
+    };
+    let core = built_core(&build, &root);
     let raw: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
@@ -135,7 +134,7 @@ fn canonical_remux_audio_timestamps_cmake_runs_unchanged() {
         }
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    replay_cmake_helpers(directory.path(), &root);
+    replay_cmake_helpers(directory.path(), &root, &core.cmake);
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
@@ -149,7 +148,7 @@ fn assert_success(output: &std::process::Output, context: &str) {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-fn replay_cmake_helpers(directory: &Path, root: &Path) {
+fn replay_cmake_helpers(directory: &Path, root: &Path, core: &str) {
     use std::process::Command;
     let source = root.to_string_lossy().replace('\\', "/");
     fs::write(
@@ -163,15 +162,8 @@ set(OS_WINDOWS FALSE)
 set(OS_FREEBSD FALSE)
 set(OS_OPENBSD FALSE)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(CORE REQUIRED IMPORTED_TARGET libobs)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
-add_library(OBS::libobs ALIAS PkgConfig::CORE)
-foreach(dir IN LISTS CORE_INCLUDE_DIRS)
-  if(IS_DIRECTORY "${{dir}}/obs")
-    target_include_directories(PkgConfig::CORE INTERFACE "${{dir}}/obs")
-  endif()
-endforeach()
-add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+{core}add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 foreach(component avcodec avformat avutil)
   pkg_check_modules(${{component}} REQUIRED IMPORTED_TARGET lib${{component}})
   add_library(FFmpeg::${{component}} ALIAS PkgConfig::${{component}})

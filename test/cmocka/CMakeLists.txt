@@ -366,7 +366,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/native-test-graph.cmake")
 foreach(
   _graph_plugin
   IN
-  ITEMS ffmpeg filters pipewire pulseaudio outputs qsv11
+  ITEMS ffmpeg filters pipewire pulseaudio outputs qsv11 v4l2
 )
   string(TOUPPER "${_graph_plugin}" _graph_plugin_upper)
   if(TARGET OBS::${_graph_plugin})
