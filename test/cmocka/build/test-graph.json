@@ -2807,6 +2807,22 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_image_file": {
+      "sources": [
+        "test/cmocka/test_image_file.c"
+      ],
+      "definitions": [
+        "IMAGE_FILE_DATA_DIR=\"${source}/test/cmocka/data\""
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_image_file_version": {
       "sources": [
         "test/cmocka/test_image_file_version.c",
@@ -9410,6 +9426,10 @@
       "target": "test_image_exif_orientation",
       "suite": "core",
       "timeout_seconds": 60
+    },
+    "test_image_file": {
+      "target": "test_image_file",
+      "suite": "core"
     },
     "test_image_file_version": {
       "target": "test_image_file_version",
