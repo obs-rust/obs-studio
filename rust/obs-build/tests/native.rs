@@ -5772,23 +5772,43 @@ fn canonical_async_delay_pacing_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_async_delay_pacing";
-    let target = graph.targets.get(name).expect("canonical graph omits test_async_delay_pacing");
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_async_delay_pacing");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_async_delay_pacing.c"));
-    let libraries: Vec<_> = target.libraries.iter().map(|value| match value {
-        ConditionalValue::Name(name) => name.as_str(),
-        _ => panic!("delay linkage must be unconditional"),
-    }).collect();
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|value| match value {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("delay linkage must be unconditional"),
+        })
+        .collect();
     assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
     assert_eq!(target.includes, ["."]);
     assert!(target.header_libraries.is_empty());
     assert!(target.packages.is_empty());
     assert!(target.link_options.is_empty());
     assert!(target.compile_options.is_empty());
+    assert_eq!(
+        target.watch_inputs,
+        [
+            "plugins/obs-filters/async-delay-filter.c.h",
+            "plugins/obs-filters/build/obs-filters.pch.h",
+        ]
+    );
     assert_delay_pacing_execution(&root, &graph);
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS", "OS_FREEBSD", "OS_OPENBSD"] {
+    for os in [
+        "OS_LINUX",
+        "OS_MACOS",
+        "OS_WINDOWS",
+        "OS_FREEBSD",
+        "OS_OPENBSD",
+    ] {
         let selected = graph.select(&[(os.into(), true)].into()).unwrap();
         assert!(selected.targets.contains_key(name), "{os}");
         assert!(selected.tests.contains_key(name), "{os}");
@@ -5805,7 +5825,8 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
     assert_eq!(test.skip_return_code, None);
     assert!(test.optional_prefixes.is_empty());
     assert_eq!(test.qt_runtime, None);
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_async_delay_pacing.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_async_delay_pacing.cmake")).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
 }

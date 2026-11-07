@@ -168,6 +168,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_async_delay_pacing": {
+      "sources": [
+        "test/cmocka/test_async_delay_pacing.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-filters/async-delay-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h"
+      ]
+    },
     "test_async_frame_pacing_steps": {
       "sources": [
         "test/cmocka/test_async_frame_pacing_steps.c",
@@ -7586,6 +7602,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_async_delay_pacing": {
+      "target": "test_async_delay_pacing"
     },
     "test_async_frame_pacing_steps": {
       "target": "test_async_frame_pacing_steps",
