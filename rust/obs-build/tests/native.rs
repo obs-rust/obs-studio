@@ -374,6 +374,16 @@ fn graph_runtimes_never_link_an_installed_libobs() {
     assert!(offenders.is_empty(), "installed libobs: {offenders:#?}");
 }
 
+#[test]
+fn plugin_sdk_replay_uses_tier2_build_type() {
+    let replay = include_str!("native/registration/plugin_sdk_headless_runtime.rs");
+    let configure = replay.split("fn replay_cmake(").nth(1).unwrap();
+    assert!(
+        configure.contains(".arg(\"-DCMAKE_BUILD_TYPE=RelWithDebInfo\")"),
+        "plugin SDK CMake replay must use the Tier 2 build type"
+    );
+}
+
 fn assert_group_lifecycle_registration(
     root: &Path,
     graph: &obs_build::validation::graph::Graph,
