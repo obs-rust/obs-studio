@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-output",
+    "core-scene-item-crop",
     "core-source",
     "null-audio",
     "util-cf"
