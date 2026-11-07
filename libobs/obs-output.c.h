@@ -618,6 +618,18 @@ void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 		    !os_atomic_load_bool(&output->delivered_packet))
 			obs_output_end_data_capture(output);
 
+		/* Stopped while it waited to reconnect: its data capture ended
+		 * with the failure, so a stop that waits for its next packet
+		 * (ffmpeg_muxer) gets none and never ends, and
+		 * obs_output_destroy() would wait forever (#3739). Finish the
+		 * stop as for a delayed output, unless the output's stop did
+		 * (rtmp_output signals its own stop when it is not active). */
+		if (was_reconnecting && stopping(output) && !active(output)) {
+			output->stop_code = OBS_OUTPUT_SUCCESS;
+			signal_stop(output);
+			os_event_signal(output->stopping_event);
+		}
+
 	} else if (was_reconnecting) {
 		output->stop_code = OBS_OUTPUT_SUCCESS;
 		signal_stop(output);
