@@ -505,6 +505,23 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_avcapture_audio_planes": {
+      "sources": [
+        "test/cmocka/test_avcapture_audio_planes.c",
+        "plugins/mac-avcapture/avcapture-audio-planes.c.h"
+      ],
+      "requires": "HAVE_LIBOBS",
+      "includes": [
+        "plugins/mac-avcapture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-avcapture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_axisang": {
       "sources": [
         "test/cmocka/test_axisang.c"
@@ -1430,6 +1447,31 @@
         "Uthash::Uthash",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_effect_parser_lifecycle": {
+      "sources": [
+        "test/cmocka/test_effect_parser_lifecycle.c",
+        "libobs/graphics/effect-parser-lifecycle.c.h"
+      ],
+      "requires": true,
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-graphics.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
     },
     "test_effect_parser_params": {
       "sources": [
@@ -8355,6 +8397,10 @@
     "test_avc_parse": {
       "target": "test_avc_parse"
     },
+    "test_avcapture_audio_planes": {
+      "target": "test_avcapture_audio_planes",
+      "requires": "HAVE_LIBOBS"
+    },
     "test_axisang": {
       "target": "test_axisang"
     },
@@ -8729,6 +8775,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_effect_parser_lifecycle": {
+      "target": "test_effect_parser_lifecycle",
+      "requires": true
     },
     "test_effect_parser_params": {
       "target": "test_effect_parser_params",
