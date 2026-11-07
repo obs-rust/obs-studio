@@ -346,7 +346,8 @@ pub(crate) fn add_package(
     Ok(())
 }
 
-pub(crate) fn build_caption(build: &NativeBuild, root: &Path) -> Result<PathBuf, String> {
+/// Build the vendored caption archive for native consumers that do not need libobs.
+pub fn build_caption(build: &NativeBuild, root: &Path) -> Result<PathBuf, String> {
     let mut caption = SharedLibrary {
         name: "caption".into(),
         include_dirs: vec![

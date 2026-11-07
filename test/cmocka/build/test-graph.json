@@ -620,6 +620,18 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_caption_unmappable": {
+      "sources": [
+        "test/cmocka/test_caption_unmappable.c"
+      ],
+      "includes": [
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_cf_lexer": {
       "sources": [
         "test/cmocka/test_cf_lexer.c"
@@ -7751,6 +7763,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_caption_unmappable": {
+      "target": "test_caption_unmappable"
     },
     "test_cf_lexer": {
       "target": "test_cf_lexer"

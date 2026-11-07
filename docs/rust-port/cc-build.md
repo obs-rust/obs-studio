@@ -898,9 +898,11 @@ not establish complete application or platform parity.
 
 The Qt-free frontend stream-service selection, saved-transition lookup, recording
 space decisions, multitrack ladder and encoder override tests also use the shared
-graph. `canonical_frontend_utility_tests_run_unchanged` compiles and runs all five
-original C tests through both the Cargo and CMake consumers and compares the
-evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
+graph. The standalone caption round-trip suite also uses the shared graph,
+retaining its vendored libcaption and cmocka dependencies without needing libobs.
+`canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
+all six original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
 alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
 

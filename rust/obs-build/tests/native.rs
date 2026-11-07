@@ -2,6 +2,51 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+/// #1390: standalone caption compatibility must reach both native consumers.
+#[test]
+fn canonical_caption_unmappable_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let name = "test_caption_unmappable";
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_caption_unmappable");
+    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+        if path == "test/cmocka/test_caption_unmappable.c"));
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("caption linkage must be unconditional"),
+        })
+        .collect();
+    assert_eq!(libraries, ["OBS::caption", "OBS::native-test-cmocka"]);
+    assert_eq!(target.includes, ["deps/libcaption"]);
+    assert!(target.header_libraries.is_empty());
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.suite, "core");
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert_eq!(test.qt_runtime, None);
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_caption_unmappable.cmake")).unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        let selected = graph.select(&[(os.into(), true)].into()).unwrap();
+        assert!(selected.targets.contains_key(name), "{os}");
+        assert!(selected.tests.contains_key(name), "{os}");
+    }
+}
+
 /// #3716: both native consumers must retain video-output compatibility coverage.
 #[test]
 fn canonical_video_output_compatibility_is_registered() {
@@ -2003,7 +2048,7 @@ fn canonical_frontend_utility_tests_are_registered() {
     clippy::too_many_lines,
     reason = "one build-and-run block per graph consumer"
 )]
-fn canonical_frontend_utility_tests_run_unchanged() {
+fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
@@ -2012,6 +2057,7 @@ fn canonical_frontend_utility_tests_run_unchanged() {
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
+        "test_caption_unmappable",
         "test_stream_service_select",
         "test_saved_transition",
         "test_record_disk_space",
@@ -2036,10 +2082,19 @@ fn canonical_frontend_utility_tests_run_unchanged() {
         "OBS::native-test-cmocka".into(),
         Dependency::package(&build.target, "cmocka").unwrap(),
     )]
-    .into();
+    .into_iter()
+    .chain([(
+        "OBS::caption".into(),
+        Dependency {
+            artifacts: vec![obs_build::libobs::build_caption(&build, &root).unwrap()],
+            include_dirs: vec![root.join("deps/libcaption")],
+            ..Default::default()
+        },
+    )])
+    .collect();
     let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 5);
+    assert_eq!(artifacts.len(), 6);
     for (name, test) in &graph.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
@@ -2058,7 +2113,7 @@ fn canonical_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();
