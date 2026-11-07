@@ -171,6 +171,10 @@ fn runtime_interfaces(
     add_package(&mut cmocka, &build.target, "cmocka")?;
     Ok(BTreeMap::from([
         ("OBS::libobs".into(), core_interface.into()),
+        (
+            "SIMDe::SIMDe".into(),
+            graph::Dependency::package(&build.target, "simde")?,
+        ),
         ("OBS::native-test-cmocka".into(), cmocka.into()),
         // Graphics compatibility tests can inspect obs-internal.h, whose uthash
         // dependency is header-only and uses the core build's system search.
@@ -303,6 +307,10 @@ pub fn build_c_tests(
             },
         ),
         ("OBS::libobs".into(), core_interface.into()),
+        (
+            "SIMDe::SIMDe".into(),
+            graph::Dependency::package(&build.target, "simde")?,
+        ),
         ("OBS::native-test-cmocka".into(), cmocka_interface.into()),
         (
             "m".into(),

@@ -100,7 +100,7 @@ fn canonical_plugin_configuration_helpers_are_registered() {
             "plugins/image-source",
             vec![
                 "plugins/image-source/slideshow-size.h",
-                "plugins/image-source/slideshow-size.c.h",
+                "plugins/image-source/build/image-source.pch.h",
             ],
         ),
         (
@@ -206,7 +206,11 @@ fn canonical_fade_and_host_tests_are_registered() {
         assert!(
             matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
         );
-        assert!(target.header_libraries.is_empty());
+        if name == "test_slideshow_size" {
+            assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
+        } else {
+            assert!(target.header_libraries.is_empty());
+        }
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
@@ -2344,13 +2348,84 @@ fn canonical_frontend_utility_tests_are_registered() {
 
 /// #1390: run unchanged display-free frontend/capture helpers through both consumers.
 /// Like the unchanged remux contract, this needs the native cmocka package.
+/// #1390: unchanged Qt-free frontend utilities, including Stinger migration.
 #[test]
+#[cfg(feature = "libobs-integration")]
+fn canonical_frontend_utility_tests_run_unchanged() {
+    run_standalone_configuration_contract(
+        &[
+            "test_vaapi_device_select",
+            "test_xcomposite_presence",
+            "test_xcomposite_search_backoff",
+            "test_nvenc_override",
+            "test_hotkey_numpad_host",
+            "test_libobs_reference_hosts",
+            "test_glyph_atlas",
+            "test_fade_to_color_mix",
+            "test_ffmpeg_mux_helper_host",
+            "test_frontend_obs_main_host",
+            "test_frontend_obsbasic_host",
+            "test_frontend_settings_host",
+            "test_caption_unmappable",
+            "test_stinger_monitoring_migration",
+            "test_stream_service_select",
+            "test_saved_transition",
+            "test_record_disk_space",
+            "test_multitrack_ladder",
+            "test_multitrack_encoder_override",
+        ],
+        false,
+    );
+}
+
+/// The slideshow PCH additionally requires real core configuration and SIMDe headers.
+/// Native Tier 2 builds provide those; the minimal Qt-only native fixture does not.
+#[test]
+#[cfg(feature = "libobs-integration")]
+fn canonical_plugin_configuration_helpers_run_unchanged() {
+    run_standalone_configuration_contract(
+        &["test_slideshow_size", "test_stinger_monitoring_migration"],
+        true,
+    );
+}
+
+#[cfg(feature = "libobs-integration")]
+fn standalone_core_header_fixture(
+    directory: &Path,
+    root: &Path,
+    build: &NativeBuild,
+    interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
+) -> String {
+    use obs_build::validation::graph::Dependency;
+    let source = root.to_string_lossy().replace('\\', "/");
+    let config = directory.join("config");
+    fs::create_dir_all(&config).unwrap();
+    let config_path = config.to_string_lossy().replace('\\', "/");
+    let configure = directory.join("configure.cmake");
+    fs::write(&configure, format!("configure_file(\"{source}/libobs/obsconfig.h.in\" \"{config_path}/obsconfig.h\" @ONLY)\n")).unwrap();
+    assert!(
+        std::process::Command::new("cmake")
+            .arg("-P")
+            .arg(&configure)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let mut headers = Dependency::package(&build.target, "simde").unwrap();
+    interfaces.insert("SIMDe::SIMDe".into(), headers.clone());
+    headers.include_dirs.extend([root.join("libobs"), config]);
+    interfaces.insert("OBS::libobs".into(), headers);
+    format!(
+        "pkg_check_modules(SIMDE REQUIRED IMPORTED_TARGET simde)\nadd_library(SIMDe::SIMDe ALIAS PkgConfig::SIMDE)\nadd_library(contract-core-headers INTERFACE)\nadd_library(OBS::libobs ALIAS contract-core-headers)\ntarget_include_directories(contract-core-headers INTERFACE \"{source}/libobs\" \"{config_path}\")\n"
+    )
+}
+
 #[cfg(feature = "libobs-integration")]
 #[expect(
     clippy::too_many_lines,
     reason = "one build-and-run block per graph consumer"
 )]
-fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
+fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
@@ -2358,29 +2433,10 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
-    for name in [
-        "test_vaapi_device_select",
-        "test_caption_unmappable",
-        "test_xcomposite_presence",
-        "test_xcomposite_search_backoff",
-        "test_nvenc_override",
-        "test_hotkey_numpad_host",
-        "test_libobs_reference_hosts",
-        "test_glyph_atlas",
-        "test_fade_to_color_mix",
-        "test_ffmpeg_mux_helper_host",
-        "test_frontend_obs_main_host",
-        "test_frontend_obsbasic_host",
-        "test_frontend_settings_host",
-        "test_stream_service_select",
-        "test_saved_transition",
-        "test_record_disk_space",
-        "test_multitrack_ladder",
-        "test_multitrack_encoder_override",
-    ] {
+    for name in names {
         for section in ["targets", "tests"] {
-            selected[section][name] = raw[section]
-                .get(name)
+            selected[section][*name] = raw[section]
+                .get(*name)
                 .unwrap_or_else(|| panic!("canonical graph omits {section}/{name}"))
                 .clone();
         }
@@ -2421,6 +2477,12 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         },
     )])
     .collect();
+    let mut interfaces = interfaces;
+    let header_setup = if core_headers {
+        standalone_core_header_fixture(directory.path(), &root, &build, &mut interfaces)
+    } else {
+        String::new()
+    };
     let facts = [
         ("MSVC".into(), build.target.contains("msvc")),
         ("OS_LINUX".into(), build.target.contains("linux")),
@@ -2455,7 +2517,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX {linux})\nset(OS_FREEBSD {})\nset(OS_OPENBSD {})\nset(OS_MACOS {macos})\nset(OS_WINDOWS {windows})\nenable_testing()\nadd_library(helper-core-headers INTERFACE)\ntarget_include_directories(helper-core-headers INTERFACE \"{source}/rust/obs-c-oracle/oracle/obsconfig\")\nadd_library(OBS::libobs ALIAS helper-core-headers)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n",
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX {linux})\nset(OS_FREEBSD {})\nset(OS_OPENBSD {})\nset(OS_MACOS {macos})\nset(OS_WINDOWS {windows})\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\n{header_setup}include(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n",
             u8::from(facts["OS_FREEBSD"]),
             u8::from(facts["OS_OPENBSD"]),
         ),

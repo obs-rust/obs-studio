@@ -5667,6 +5667,26 @@
       ],
       "sanitizers": "address"
     },
+    "test_slideshow_size": {
+      "sources": [
+        "test/cmocka/test_slideshow_size.c",
+        "plugins/image-source/slideshow-size.c.h"
+      ],
+      "includes": [
+        "plugins/image-source"
+      ],
+      "watch_inputs": [
+        "plugins/image-source/slideshow-size.h",
+        "plugins/image-source/build/image-source.pch.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_source_audio_balance_mono": {
       "sources": [
         "test/cmocka/test_source_audio_balance_mono.c"
@@ -6386,6 +6406,20 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_stinger_monitoring_migration": {
+      "sources": [
+        "test/cmocka/test_stinger_monitoring_migration.c"
+      ],
+      "includes": [
+        "plugins/obs-transitions"
+      ],
+      "watch_inputs": [
+        "plugins/obs-transitions/transition-stinger-monitoring.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_stream_service_select": {
       "sources": [
@@ -9919,6 +9953,9 @@
         "${target}"
       ]
     },
+    "test_slideshow_size": {
+      "target": "test_slideshow_size"
+    },
     "test_source_audio_balance_mono": {
       "target": "test_source_audio_balance_mono",
       "command": [
@@ -10232,6 +10269,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_stinger_monitoring_migration": {
+      "target": "test_stinger_monitoring_migration"
     },
     "test_stream_service_select": {
       "target": "test_stream_service_select"
