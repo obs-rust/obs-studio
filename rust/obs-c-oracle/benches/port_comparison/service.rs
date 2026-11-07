@@ -149,14 +149,16 @@ pub fn benchmarks(criterion: &mut Criterion) {
 
     // #1920: a service with a control object, from the oracle's doubles
     // (create() returns NULL: one "Failed to create" line here), with a
-    // stand-in output so activation runs.
+    // stand-in output so activation runs: the oracle's static C output,
+    // since destroying the service clears the output's service field
+    // through it (#3886).
     // SAFETY: a registered id and a static name.
     let live =
         unsafe { rust::obs_service_create_private(id, c"bench_live".as_ptr(), ptr::null_mut()) };
-    let output = ptr::without_provenance_mut(0x07);
-    // SAFETY: a live service; the output is only compared with NULL. The
-    // oracle's static output links back to the service, as a real one
-    // does, and destroying the service clears that link (#3886).
+    // SAFETY: returns a static output; nothing else in this binary uses it.
+    let output = unsafe { c::oracle_service_state_test_output() };
+    // SAFETY: a live service and an output that outlives it, linked back
+    // to the service as a real output is.
     unsafe {
         c::oracle_service_set_state(live, false, output);
         c::oracle_service_state_test_output_set_service(live);
