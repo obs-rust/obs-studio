@@ -553,11 +553,6 @@ void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
 	bfree(prev_name);
 }
 
-uint32_t obs_canvas_get_flags(const obs_canvas_t *canvas)
-{
-	return canvas->flags;
-}
-
 static bool enum_move_cb(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	UNUSED_PARAMETER(scene);
