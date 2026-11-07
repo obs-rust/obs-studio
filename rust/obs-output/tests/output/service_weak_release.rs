@@ -30,17 +30,17 @@ fn test_weak_refs_outlive_service_and_balance_addref() {
 
 #[test]
 fn release_and_addref_boundaries_preserve_c_long_width() {
-    for start in [CLong::MIN + 1, -2, -1, 0, 1, CLong::MAX] {
+    for start in [CLong::MIN, CLong::MIN + 1, -2, -1, 0, 1, CLong::MAX] {
         let refs = CLongAtomic::new(start);
         assert_eq!(strong_release(&refs), start == 0);
-        assert_eq!(refs.load(SeqCst), start - 1);
+        assert_eq!(refs.load(SeqCst), start.wrapping_sub(1));
         let weak = CLongAtomic::new(start);
         assert_eq!(weak_release(&weak), start == 0);
-        assert_eq!(weak.load(SeqCst), start - 1);
+        assert_eq!(weak.load(SeqCst), start.wrapping_sub(1));
     }
-    for start in [CLong::MIN, -2, -1, 0, 1, CLong::MAX - 1] {
+    for start in [CLong::MIN, -2, -1, 0, 1, CLong::MAX - 1, CLong::MAX] {
         let weak = CLongAtomic::new(start);
         weak_addref(&weak);
-        assert_eq!(weak.load(SeqCst), start + 1);
+        assert_eq!(weak.load(SeqCst), start.wrapping_add(1));
     }
 }

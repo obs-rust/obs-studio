@@ -1,0 +1,5 @@
+# Hidden service weak-control release primitives (#3838).
+obs_weak_service_strong_release
+obs_weak_service_weak_addref
+obs_weak_service_weak_release
+obs_weak_service_free
