@@ -213,6 +213,8 @@ mod canonical_posix_output_hosts_are_registered;
 mod canonical_pulse_monitor_decisions_are_registered;
 #[path = "native/registration/canonical_pulse_monitor_format_is_registered.rs"]
 mod canonical_pulse_monitor_format_is_registered;
+#[path = "native/registration/canonical_recording_shutdown_waits_are_registered.rs"]
+mod canonical_recording_shutdown_waits_are_registered;
 #[path = "native/registration/canonical_remux_audio_timestamps_is_registered.rs"]
 mod canonical_remux_audio_timestamps_is_registered;
 #[path = "native/registration/canonical_replay_buffer_estimate_is_registered.rs"]
