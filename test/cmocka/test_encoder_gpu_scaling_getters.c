@@ -56,16 +56,18 @@ static void characterize(void **state)
 			assert_int_equal(log_count, type == OBS_ENCODER_VIDEO ? 0 : 1);
 			if (type == OBS_ENCODER_AUDIO) {
 				assert_int_equal(log_level, LOG_WARNING);
-				assert_string_equal(log_message,
-						    "obs_encoder_gpu_scaling_enabled: encoder 'gpu-scaling-%s' is not a video encoder");
+				assert_string_equal(
+					log_message,
+					"obs_encoder_gpu_scaling_enabled: encoder 'gpu-scaling-%s' is not a video encoder");
 			}
 			log_count = 0;
 			assert_int_equal(obs_encoder_get_scale_type(&encoder), type == OBS_ENCODER_VIDEO ? scale : 0);
 			assert_int_equal(log_count, type == OBS_ENCODER_VIDEO ? 0 : 1);
 			if (type == OBS_ENCODER_AUDIO) {
 				assert_int_equal(log_level, LOG_WARNING);
-				assert_string_equal(log_message,
-						    "obs_encoder_get_scale_type: encoder 'gpu-scaling-%s' is not a video encoder");
+				assert_string_equal(
+					log_message,
+					"obs_encoder_get_scale_type: encoder 'gpu-scaling-%s' is not a video encoder");
 			}
 			assert_memory_equal(&encoder, &before, sizeof(encoder));
 		}
