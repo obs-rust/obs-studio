@@ -250,16 +250,22 @@ class SanitizeHarnessTest(unittest.TestCase):
         on the child's exit code (#3701)."""
         self.assertIn("exitcode=0", self.module.sanitizer_options(self.out)["TSAN_OPTIONS"])
 
-    def test_tsan_suppressions_are_the_glib_family_only(self):
+    def test_tsan_suppressions_are_glib_and_the_wait_functor_only(self):
         """called_from_lib removes the reports from uninstrumented glib. For
         Mesa it makes more reports, because TSan does not see Mesa's mutexes
-        then (#3701)."""
+        then (#3701). The Qt exception matches only allocation of the wait
+        functor, leaving races on application state visible (#3809)."""
         options = self.module.sanitizer_options(self.out)["TSAN_OPTIONS"]
         path = next(o.split("=", 1)[1] for o in options.split(":") if o.startswith("suppressions="))
         lines = [line for line in Path(path).read_text().splitlines() if line and not line.startswith("#")]
         self.assertEqual(
             sorted(lines),
-            ["called_from_lib:libgio-2.0.so", "called_from_lib:libglib-2.0.so", "called_from_lib:libgobject-2.0.so"],
+            [
+                "called_from_lib:libgio-2.0.so",
+                "called_from_lib:libglib-2.0.so",
+                "called_from_lib:libgobject-2.0.so",
+                "race:invokeMethodCallableHelper<WaitForOutputToStop",
+            ],
         )
 
     def test_configure_names_zccache_and_the_libobs_backend(self):
