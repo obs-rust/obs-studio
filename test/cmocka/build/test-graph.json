@@ -1332,6 +1332,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_display_state": {
+      "sources": [
+        "test/cmocka/test_display_state.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_dock_proportions": {
       "sources": [
         "test/cmocka/test_dock_proportions.cpp"
@@ -9952,6 +9961,12 @@
     "test_display_reinit": {
       "target": "test_display_reinit",
       "requires": true
+    },
+    "test_display_state": {
+      "target": "test_display_state",
+      "command": [
+        "${target}"
+      ]
     },
     "test_dock_proportions": {
       "target": "test_dock_proportions",
