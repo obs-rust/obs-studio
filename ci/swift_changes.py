@@ -2,8 +2,10 @@
 """Whether this run has to check Swift formatting (#427, #962).
 
 swift-format needs a macOS runner, one of the five the plan allows, so it
-runs only when a Swift file changed. On a push and on a merge-queue run there
-is no base to compare with, so the check always runs.
+runs only when a Swift file changed. A pull request and a merge-queue run
+compare with their base and a push with its previous head. The check runs when
+there is nothing to compare with: a manual run, a push that creates the ref
+(an all-zero base), or a base a force push left unreachable.
 
     uv run --no-project ci/swift_changes.py
 
@@ -30,9 +32,20 @@ def swift_changed(base: str) -> bool:
     return bool(changed.stdout.strip())
 
 
+def comparable(base: str) -> bool:
+    """True when base names a commit in this clone."""
+    if not base.strip("0"):
+        return False
+    found = subprocess.run(
+        ["git", "cat-file", "-e", f"{base}^{{commit}}"],
+        capture_output=True,
+    )
+    return found.returncode == 0
+
+
 def main() -> int:
     base = os.environ.get("BASE", "")
-    needed = not base or swift_changed(base)
+    needed = not comparable(base) or swift_changed(base)
     if output := os.environ.get("GITHUB_OUTPUT"):
         with Path(output).open("a", encoding="utf-8") as handle:
             handle.write(f"swift={str(needed).lower()}\n")
