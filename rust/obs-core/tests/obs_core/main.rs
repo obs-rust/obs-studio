@@ -24,6 +24,7 @@ mod display_size;
 mod display_size_parity;
 mod display_state;
 mod display_state_parity;
+mod global_getters;
 mod module_failure_info;
 mod module_failure_info_parity;
 mod module_load_rules;
