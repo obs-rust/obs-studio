@@ -18,21 +18,4 @@
 # graphics/matrix4.h), so it links the archive alone: its obs-scene member
 # needs nothing from libobs or the other crates. Linking the archive directly
 # avoids exporting private symbols just for a test.
-if(TARGET libobs_rust-static)
-  add_executable(test_scene_render_plan_steps_rust test_scene_render_plan_steps.c)
-  target_include_directories(
-    test_scene_render_plan_steps_rust
-    PRIVATE
-      "${CMAKE_SOURCE_DIR}/libobs"
-      ${CMOCKA_INCLUDE_DIR}
-      # graphics/matrix4.h pulls in util/sse-intrin.h, which needs SIMDe: take
-      # libobs's include directories without linking libobs itself.
-      $<TARGET_PROPERTY:libobs,INTERFACE_INCLUDE_DIRECTORIES>
-  )
-  target_link_libraries(test_scene_render_plan_steps_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES})
-  if(UNIX)
-    target_link_libraries(test_scene_render_plan_steps_rust PRIVATE m)
-  endif()
-  add_dependencies(cmocka-tests test_scene_render_plan_steps_rust)
-  add_test(test_scene_render_plan_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_scene_render_plan_steps_rust)
-endif()
+# Rust-static target and test are declared in ../build/test-graph.json.

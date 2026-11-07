@@ -1,11 +1,1 @@
-# No audio device or running OBS instance: the test calls the scalar filter directly.
-add_executable(test_expander_unity test_expander_unity.c)
-target_link_libraries(test_expander_unity PRIVATE OBS::libobs)
-if(MSVC)
-  target_compile_options(test_expander_unity PRIVATE /fp:strict)
-else()
-  target_compile_options(test_expander_unity PRIVATE -fno-fast-math -ffp-contract=off)
-  target_link_libraries(test_expander_unity PRIVATE m)
-endif()
-add_dependencies(cmocka-tests test_expander_unity)
-add_test(NAME test_expander_unity COMMAND test_expander_unity)
+# Registered in build/test-graph.json for both Cargo and CMake (#1390).

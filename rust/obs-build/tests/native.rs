@@ -2,6 +2,72 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+/// #1390: retain the Linux QSV host check without a GPU or graphics context.
+#[test]
+fn canonical_qsv_host_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.retain_suite("core");
+    let name = "test_qsv_host";
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_qsv_host");
+    assert!(matches!(&target.sources[..], [Source::Path(path)]
+        if path == "test/cmocka/test_qsv_host.c"));
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("QSV host linkage must be unconditional"),
+        })
+        .collect();
+    assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
+    assert_eq!(target.includes, ["."]);
+    assert_eq!(
+        target.watch_inputs,
+        [
+            "plugins/obs-qsv11/qsv-host-linux.c.h",
+            "plugins/obs-qsv11/build/obs-qsv11-linux-c.pch.h",
+            "plugins/obs-qsv11/qsv-host.h",
+        ]
+    );
+    assert!(target.header_libraries.is_empty());
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert_eq!(test.qt_runtime, None);
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_qsv_host.cmake")).unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
+    for os in [
+        "OS_LINUX",
+        "OS_FREEBSD",
+        "OS_OPENBSD",
+        "OS_MACOS",
+        "OS_WINDOWS",
+    ] {
+        let selected = graph
+            .select(&[("OS_LINUX".into(), os == "OS_LINUX")].into())
+            .unwrap();
+        assert_eq!(
+            selected.targets.contains_key(name),
+            os == "OS_LINUX",
+            "{os}"
+        );
+        assert_eq!(selected.tests.contains_key(name), os == "OS_LINUX", "{os}");
+    }
+}
+
+/// #1390: standalone caption compatibility must reach both native consumers.
 #[test]
 fn native_test_graph_cmake_platform_requirements_allow_false_but_reject_unknown() {
     let fixture = tempfile::tempdir().unwrap();
@@ -69,8 +135,14 @@ endif()
 
 #[path = "native/registration/canonical_async_overflow_clock_is_registered.rs"]
 mod canonical_async_overflow_clock_is_registered;
+#[path = "native/registration/canonical_audio_filter_scalars_are_registered.rs"]
+mod canonical_audio_filter_scalars_are_registered;
 #[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
 mod canonical_caption_unmappable_is_registered;
+#[path = "native/registration/canonical_capture_helpers_are_registered.rs"]
+mod canonical_capture_helpers_are_registered;
+#[path = "native/registration/canonical_capture_planes_and_parser_lifecycle_are_registered.rs"]
+mod canonical_capture_planes_and_parser_lifecycle_are_registered;
 #[path = "native/registration/canonical_close_top_level_is_registered.rs"]
 mod canonical_close_top_level_is_registered;
 #[path = "native/registration/canonical_config_hex_float_rounding_is_registered.rs"]
@@ -87,6 +159,8 @@ mod canonical_encoder_group_null_is_registered;
 mod canonical_fade_and_host_tests_are_registered;
 #[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
 mod canonical_fake_device_graphics_is_registered;
+#[path = "native/registration/canonical_ffmpeg_packet_write_is_registered.rs"]
+mod canonical_ffmpeg_packet_write_is_registered;
 #[path = "native/registration/canonical_filter_clipboard_is_registered.rs"]
 mod canonical_filter_clipboard_is_registered;
 #[path = "native/registration/canonical_filter_color_space_is_registered.rs"]
@@ -109,6 +183,16 @@ mod canonical_hotkey_backtab_is_registered;
 mod canonical_hotkey_mnemonic_is_registered;
 #[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
 mod canonical_hotkey_pair_latch_is_registered;
+#[path = "native/registration/canonical_libobs_go2_is_registered.rs"]
+mod canonical_libobs_go2_is_registered;
+#[path = "native/registration/canonical_libobs_go3_is_registered.rs"]
+mod canonical_libobs_go3_is_registered;
+#[path = "native/registration/canonical_libobs_go4_is_registered.rs"]
+mod canonical_libobs_go4_is_registered;
+#[path = "native/registration/canonical_libobs_go5_is_registered.rs"]
+mod canonical_libobs_go5_is_registered;
+#[path = "native/registration/canonical_libobs_go_is_registered.rs"]
+mod canonical_libobs_go_is_registered;
 #[path = "native/registration/canonical_missing_files_list_is_registered.rs"]
 mod canonical_missing_files_list_is_registered;
 #[path = "native/registration/canonical_nvenc_host_and_glyph_tests_are_registered.rs"]
@@ -127,12 +211,26 @@ mod canonical_plugin_configuration_helpers_are_registered;
 mod canonical_posix_output_hosts_are_registered;
 #[path = "native/registration/canonical_pulse_monitor_decisions_are_registered.rs"]
 mod canonical_pulse_monitor_decisions_are_registered;
+#[path = "native/registration/canonical_pulse_monitor_format_is_registered.rs"]
+mod canonical_pulse_monitor_format_is_registered;
+#[path = "native/registration/canonical_remux_audio_timestamps_is_registered.rs"]
+mod canonical_remux_audio_timestamps_is_registered;
 #[path = "native/registration/canonical_replay_buffer_estimate_is_registered.rs"]
 mod canonical_replay_buffer_estimate_is_registered;
 #[path = "native/registration/canonical_rust_static_conversion_is_registered.rs"]
 mod canonical_rust_static_conversion_is_registered;
+#[path = "native/registration/canonical_rust_static_decision_steps_are_registered.rs"]
+mod canonical_rust_static_decision_steps_are_registered;
+#[path = "native/registration/canonical_rust_static_header_steps_are_registered.rs"]
+mod canonical_rust_static_header_steps_are_registered;
+#[path = "native/registration/canonical_rust_static_monitor_steps_are_registered.rs"]
+mod canonical_rust_static_monitor_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
 mod canonical_rust_static_pacing_is_registered;
+#[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
+mod canonical_rust_static_source_steps_are_registered;
+#[path = "native/registration/canonical_rust_static_transition_start_are_registered.rs"]
+mod canonical_rust_static_transition_start_are_registered;
 #[path = "native/registration/canonical_scene_bounds_place_is_registered.rs"]
 mod canonical_scene_bounds_place_is_registered;
 #[path = "native/registration/canonical_scene_crop_steps_is_registered.rs"]
@@ -141,6 +239,8 @@ mod canonical_scene_crop_steps_is_registered;
 mod canonical_scene_enum_items_removal_is_registered;
 #[path = "native/registration/canonical_scene_item_crop_load_is_registered.rs"]
 mod canonical_scene_item_crop_load_is_registered;
+#[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
+mod canonical_sck_vaapi_helpers_are_registered;
 #[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
@@ -155,6 +255,8 @@ mod canonical_undo_stack_is_registered;
 mod canonical_vaapi_device_select_is_registered;
 #[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
 mod canonical_video_output_compatibility_is_registered;
+#[path = "native/registration/canonical_video_scaler_direct_is_registered.rs"]
+mod canonical_video_scaler_direct_is_registered;
 #[path = "native/registration/canonical_vmic_helpers_are_registered.rs"]
 mod canonical_vmic_helpers_are_registered;
 #[path = "native/registration/canonical_volume_meter_ticker_is_registered.rs"]
@@ -2033,6 +2135,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_OPENGL".into(), false),
         ("HAVE_VLC_MODULE".into(), false),
         ("HAVE_OBS_OUTPUTS".into(), false),
+        ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
@@ -4106,7 +4209,7 @@ fn standalone_core_headers_unavailable_hosts_need_no_packages() {
 fn standalone_core_header_fixture(
     directory: &Path,
     root: &Path,
-    build: &NativeBuild,
+    _build: &NativeBuild,
     selection: &obs_build::validation::graph::Selection<'_>,
     interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
 ) -> String {
@@ -4136,12 +4239,37 @@ fn standalone_core_header_fixture(
             .unwrap()
             .success()
     );
-    let mut headers = Dependency::package(&build.target, "simde").unwrap();
+    let finder = directory.join("simde-finder");
+    fs::create_dir_all(&finder).unwrap();
+    fs::write(finder.join("CMakeLists.txt"), format!(
+        "cmake_minimum_required(VERSION 3.28)\nproject(simde-headers C)\nlist(APPEND CMAKE_MODULE_PATH \"{source}/cmake/finders\")\nfind_package(SIMDe REQUIRED)\nget_target_property(paths SIMDe::SIMDe INTERFACE_INCLUDE_DIRECTORIES)\nfile(WRITE \"${{CMAKE_CURRENT_BINARY_DIR}}/includes.txt\" \"${{paths}}\")\n"
+    )).unwrap();
+    let output = finder.join("output");
+    let result = std::process::Command::new("cmake")
+        .arg("-S")
+        .arg(&finder)
+        .arg("-B")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let mut headers = Dependency {
+        include_dirs: fs::read_to_string(output.join("includes.txt"))
+            .unwrap()
+            .split(';')
+            .map(std::path::PathBuf::from)
+            .collect(),
+        ..Default::default()
+    };
     interfaces.insert("SIMDe::SIMDe".into(), headers.clone());
     headers.include_dirs.extend([root.join("libobs"), config]);
     interfaces.insert("OBS::libobs".into(), headers);
     format!(
-        "pkg_check_modules(SIMDE REQUIRED IMPORTED_TARGET simde)\nadd_library(SIMDe::SIMDe ALIAS PkgConfig::SIMDE)\nadd_library(contract-core-headers INTERFACE)\nadd_library(OBS::libobs ALIAS contract-core-headers)\ntarget_include_directories(contract-core-headers INTERFACE \"{source}/libobs\" \"{config_path}\")\n"
+        "list(APPEND CMAKE_MODULE_PATH \"{source}/cmake/finders\")\nfind_package(SIMDe REQUIRED)\nadd_library(contract-core-headers INTERFACE)\nadd_library(OBS::libobs ALIAS contract-core-headers)\ntarget_include_directories(contract-core-headers INTERFACE \"{source}/libobs\" \"{config_path}\")\n"
     )
 }
 
@@ -4939,4 +5067,70 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
             .collect();
         assert_eq!(names, if available { vec![name] } else { vec![] });
     }
+}
+/// #1390: the timestamp-only delay regression keeps real core linkage.
+#[test]
+fn canonical_async_delay_pacing_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let name = "test_async_delay_pacing";
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_async_delay_pacing");
+    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+        if path == "test/cmocka/test_async_delay_pacing.c"));
+    assert_eq!(target.libraries.len(), 3);
+    assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "OBS::libobs"));
+    assert!(
+        matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
+    );
+    assert!(
+        matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: obs_build::validation::graph::Requirement::Fact(fact) } if name == "OBS::w32-pthreads" && fact == "OS_WINDOWS")
+    );
+    assert_eq!(target.includes, ["."]);
+    assert!(target.header_libraries.is_empty());
+    assert!(target.packages.is_empty());
+    assert!(target.link_options.is_empty());
+    assert!(target.compile_options.is_empty());
+    assert_eq!(
+        target.watch_inputs,
+        [
+            "plugins/obs-filters/async-delay-filter.c.h",
+            "plugins/obs-filters/build/obs-filters.pch.h",
+        ]
+    );
+    assert_delay_pacing_execution(&root, &graph);
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
+    for os in [
+        "OS_LINUX",
+        "OS_MACOS",
+        "OS_WINDOWS",
+        "OS_FREEBSD",
+        "OS_OPENBSD",
+    ] {
+        let selected = graph
+            .select(&[(os.into(), true), ("OS_WINDOWS".into(), os == "OS_WINDOWS")].into())
+            .unwrap();
+        assert!(selected.targets.contains_key(name), "{os}");
+        assert!(selected.tests.contains_key(name), "{os}");
+    }
+}
+
+fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::graph::Graph) {
+    let name = "test_async_delay_pacing";
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.suite, "core");
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert_eq!(test.qt_runtime, None);
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_async_delay_pacing.cmake")).unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
 }

@@ -29,8 +29,8 @@ fn canonical_nvenc_host_and_glyph_tests_are_registered() {
         assert!(!fragment.contains("add_test("));
     }
     let glyph = &graph.targets["test_glyph_atlas"];
-    assert_eq!(glyph.header_packages, ["freetype2", "simde"]);
-    assert_eq!(glyph.header_libraries, ["OBS::libobs"]);
+    assert_eq!(glyph.header_packages, ["freetype2"]);
+    assert_eq!(glyph.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
     assert_eq!(glyph.includes, ["libobs", "plugins/text-freetype2"]);
     graph
         .targets
