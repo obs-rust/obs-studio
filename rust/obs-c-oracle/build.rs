@@ -612,6 +612,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-hotkey-object-fields.c.h")),
     )
     .expect("write hotkey field adapter extract");
+    std::fs::write(
+        extract_dir.join("encoder_roi_state_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-encoder-roi-state-fields.c.h")),
+    )
+    .expect("write encoder ROI-state field adapter extract");
     oracle.include(&extract_dir);
 
     oracle
