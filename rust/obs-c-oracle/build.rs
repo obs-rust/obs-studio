@@ -119,6 +119,51 @@ fn extract_after_pch(src: &Path, pch_line: &str) -> String {
         src.display().to_string().replace('\\', "/")
     )
 }
+
+/// Discover the `libobs/obs-*-fields.c.h` glob without a per-port registry.
+/// Preserve hyphenated names when an oracle includes them; otherwise map
+/// hyphens to underscores, as the original oracle wrappers expect.
+fn write_field_adapter_extracts(libobs: &Path, extract_dir: &Path, oracle_dir: &Path) {
+    let mut sources = Vec::new();
+    collect_c_sources(oracle_dir, &mut sources);
+    let oracle_sources = sources
+        .iter()
+        .map(|path| std::fs::read_to_string(path).expect("read oracle source"))
+        .collect::<Vec<_>>();
+    let mut adapters: Vec<PathBuf> = std::fs::read_dir(libobs)
+        .expect("read libobs field adapters")
+        .map(|entry| entry.expect("libobs directory entry").path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("obs-") && name.ends_with("-fields.c.h"))
+        })
+        .collect();
+    adapters.sort();
+    for src in adapters {
+        let name = src.file_name().unwrap().to_str().unwrap();
+        let stem = name
+            .strip_prefix("obs-")
+            .unwrap()
+            .strip_suffix(".c.h")
+            .unwrap();
+        let hyphenated = format!("{stem}.inc");
+        let include = format!("#include \"{hyphenated}\"");
+        let output = if oracle_sources
+            .iter()
+            .any(|source| source.contains(&include))
+        {
+            hyphenated
+        } else {
+            format!("{}.inc", stem.replace('-', "_"))
+        };
+        std::fs::write(extract_dir.join(output), extract_after_libobs_pch(&src))
+            .expect("write field adapter extract");
+    }
+}
+
 /// The C optimization level the shipped libobs uses: RelWithDebInfo compiles
 /// with `-O2 -g` for GCC/Clang and `/O2` for MSVC (cmake/common/compiler_common.cmake,
 /// `build-project.yaml`). `cargo bench` instead builds this crate at opt-level 3,
@@ -579,19 +624,9 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
-    // Keep the encoder's field adapter verbatim, without the broad production
-    // PCH; the getter oracle already includes the real obs-internal.h.
-    std::fs::write(
-        extract_dir.join("encoder_counter_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-encoder-counter-fields.c.h")),
-    )
-    .expect("write encoder counter adapter extract");
-    // Reuse the production field adapter over the real private encoder layout.
-    std::fs::write(
-        extract_dir.join("encoder_metadata_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
-    )
-    .expect("write encoder metadata adapter extract");
+    // Reuse production field adapters over the real private layouts, without
+    // the broad production PCH; each getter oracle supplies its own headers.
+    write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
@@ -602,24 +637,7 @@ fn main() {
         ),
     )
     .expect("write media-remux adapter extract");
-    std::fs::write(
-        extract_dir.join("canvas_readonly_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
-    )
-    .expect("write canvas field adapter extract");
-    std::fs::write(
-        extract_dir.join("hotkey_object_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-hotkey-object-fields.c.h")),
-    )
-    .expect("write hotkey field adapter extract");
     oracle.include(&extract_dir);
-
-    // Compile the production borrowed field seam without the full app PCH.
-    std::fs::write(
-        extract_dir.join("output-can-pause-fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-output-can-pause-fields.c.h")),
-    )
-    .expect("write output pause capability field seam");
 
     oracle
         .include(&libobs)
