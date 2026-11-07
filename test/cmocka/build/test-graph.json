@@ -1001,6 +1001,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_color_correction_16f": {
+      "sources": [
+        "test/cmocka/test_color_correction_16f.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl",
+        "FILTERS_MODULE_PATH": "obs-filters"
+      },
+      "definitions": [
+        "FILTERS_DATA_PATH=\"${source}/plugins/obs-filters/data\""
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_FILTERS"
+        ]
+      },
+      "watch_inputs": [
+        "plugins/obs-filters/color-correction-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h",
+        "plugins/obs-filters/data/color_correction_filter.effect"
+      ]
+    },
     "test_config_double_window": {
       "sources": [
         "test/cmocka/test_config_double_window.c"
@@ -3242,6 +3272,37 @@
       "libraries": [
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_frontend_screenshot_srgb": {
+      "sources": [
+        "test/cmocka/test_frontend_screenshot_srgb.cpp",
+        "frontend/utility/screenshot-render.cpp.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "Qt6::Widgets"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "cpp_standard": "17",
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "frontend/build/frontend-utility-screenshot-render.pch.hpp",
+        "frontend/utility/screenshot-render.hpp",
+        "frontend/utility/display-helpers.hpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_QT6_WIDGETS"
+        ]
+      }
     },
     "test_frontend_settings_host": {
       "sources": [
@@ -8681,6 +8742,34 @@
         "plugins/rtmp-services/build/rtmp-services.pch.h"
       ]
     },
+    "test_rtmps_upgrade": {
+      "sources": [
+        "test/cmocka/test_rtmps_upgrade.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "RTMP_SERVICES_MODULE_PATH": "rtmp-services"
+      },
+      "includes": [
+        "plugins/rtmp-services"
+      ],
+      "definitions": [
+        "SERVICES_DATA_DIR=\"${build}/test_rtmps_upgrade_data\""
+      ],
+      "watch_inputs": [
+        "plugins/rtmp-services/rtmp-format-ver.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_RTMP_SERVICES_MODULE"
+        ]
+      }
+    },
     "test_saved_transition": {
       "sources": [
         "test/cmocka/test_saved_transition.c",
@@ -9506,6 +9595,35 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_scroll_filter_wide_source": {
+      "sources": [
+        "test/cmocka/test_scroll_filter_wide_source.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl",
+        "FILTERS_MODULE_PATH": "obs-filters"
+      },
+      "definitions": [
+        "FILTERS_DATA_PATH=\"${source}/plugins/obs-filters/data\""
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_FILTERS"
+        ]
+      },
+      "watch_inputs": [
+        "plugins/obs-filters/scroll-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h",
+        "libobs/data/default.effect"
+      ]
+    },
     "test_serializer": {
       "sources": [
         "test/cmocka/test_serializer.c"
@@ -9730,6 +9848,46 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address"
+    },
+    "test_slideshow_manual_end": {
+      "sources": [
+        "test/cmocka/test_slideshow_manual_end.c",
+        "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/slideshow-size.c.h",
+        "plugins/obs-transitions/transition-cut.c.h",
+        "plugins/image-source/build/image-source.posix+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/image-source",
+        "plugins/obs-transitions"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/obs-transitions/build/obs-transitions.pch.h",
+        "plugins/obs-transitions/fade-to-color-mix.h",
+        "plugins/obs-transitions/easings.h",
+        "plugins/obs-transitions/transition-stinger-monitoring.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/slideshow-size.h",
+        "plugins/image-source/build/image-source-posix.pch.h",
+        "plugins/image-source/image-source-host-posix.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_slideshow_size": {
       "sources": [
@@ -13378,6 +13536,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_x11_volume_keys": {
+      "sources": [
+        "test/cmocka/test_x11_volume_keys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "X11::X11"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-platform.h",
+        "libobs/obs-hotkey.h"
+      ]
+    },
     "test_xcomposite_error_replies": {
       "sources": [
         "test/cmocka/test_xcomposite_error_replies.c",
@@ -13850,6 +14029,20 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_color_correction_16f": {
+      "target": "test_color_correction_16f",
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_FILTERS"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_config_double_window": {
       "target": "test_config_double_window",
@@ -14717,6 +14910,19 @@
     "test_frontend_obsbasic_host": {
       "target": "test_frontend_obsbasic_host",
       "requires": "OS_LINUX"
+    },
+    "test_frontend_screenshot_srgb": {
+      "target": "test_frontend_screenshot_srgb",
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_QT6_WIDGETS"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_frontend_settings_host": {
       "target": "test_frontend_settings_host",
@@ -16503,6 +16709,18 @@
       "requires": "HAVE_RTMPS_TEST_SDK",
       "timeout_seconds": 10
     },
+    "test_rtmps_upgrade": {
+      "target": "test_rtmps_upgrade",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_RTMP_SERVICES_MODULE"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_saved_transition": {
       "target": "test_saved_transition"
     },
@@ -16833,6 +17051,20 @@
         "${target}"
       ]
     },
+    "test_scroll_filter_wide_source": {
+      "target": "test_scroll_filter_wide_source",
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_FILTERS"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_serializer": {
       "target": "test_serializer"
     },
@@ -16988,6 +17220,19 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_slideshow_manual_end": {
+      "target": "test_slideshow_manual_end",
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_slideshow_size": {
       "target": "test_slideshow_size"
@@ -18276,6 +18521,18 @@
           "OS_FREEBSD"
         ]
       }
+    },
+    "test_x11_volume_keys": {
+      "target": "test_x11_volume_keys",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_xcomposite_error_replies": {
       "target": "test_xcomposite_error_replies",

@@ -226,7 +226,15 @@ pub fn build_graphics_tests(
     let graph = load_suite(&root, "graphics")?;
     let interfaces = runtime_interfaces(build, &root, core, graphics)?;
     let mut facts = crate::platform::native_test_facts(&build.target, false, false);
-    facts.insert("HAVE_OBS_OPENGL".into(), true);
+    facts.extend([
+        ("HAVE_OBS_OPENGL".into(), true),
+        // This graphics-only builder has no optional plugin, X11 or Qt interfaces.
+        // Focused replays supply those owners and their capabilities explicitly.
+        ("HAVE_OBS_FILTERS".into(), false),
+        ("HAVE_RTMP_SERVICES_MODULE".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
+        ("HAVE_QT6_WIDGETS".into(), false),
+    ]);
     compile_suite(build, &root, &graph, &facts, &interfaces)
 }
 

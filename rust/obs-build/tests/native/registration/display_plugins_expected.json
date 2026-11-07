@@ -24,7 +24,12 @@
           "HAVE_X11_DISPLAY",
           "HAVE_OBS_FILTERS"
         ]
-      }
+      },
+      "watch_inputs": [
+        "plugins/obs-filters/color-correction-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h",
+        "plugins/obs-filters/data/color_correction_filter.effect"
+      ]
     },
     "test_frontend_screenshot_srgb": {
       "sources": [
@@ -107,7 +112,12 @@
           "HAVE_X11_DISPLAY",
           "HAVE_OBS_FILTERS"
         ]
-      }
+      },
+      "watch_inputs": [
+        "plugins/obs-filters/scroll-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h",
+        "libobs/data/default.effect"
+      ]
     },
     "test_slideshow_manual_end": {
       "sources": [
@@ -137,7 +147,9 @@
         "plugins/obs-transitions/easings.h",
         "plugins/obs-transitions/transition-stinger-monitoring.h",
         "plugins/image-source/build/image-source.pch.h",
-        "plugins/image-source/slideshow-size.h"
+        "plugins/image-source/slideshow-size.h",
+        "plugins/image-source/build/image-source-posix.pch.h",
+        "plugins/image-source/image-source-host-posix.c.h"
       ],
       "requires": {
         "all": [
@@ -162,7 +174,11 @@
           "HAVE_STARTUP_X11",
           "HAVE_X11_DISPLAY"
         ]
-      }
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-platform.h",
+        "libobs/obs-hotkey.h"
+      ]
     }
   },
   "tests": {
