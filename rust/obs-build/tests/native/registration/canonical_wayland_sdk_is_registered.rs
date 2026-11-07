@@ -252,9 +252,40 @@ mod runtime;
 fn canonical_wayland_sdk_absent_configures() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    // Re-serialize rather than relying on field order for the graph schema.
-    let mut graph: serde_json::Value = serde_json::from_str(EXPECTED).unwrap();
-    graph["schema"] = 1.into();
+    // Exercise every batch-4 SDK fact through its real fragment, without
+    // inventing values for options or package results absent on other hosts.
+    let names = [
+        "test_pulse_default_retry",
+        "test_pipewire_frame_layout",
+        "test_v4l2_busy",
+        "test_v4l2_udev_poll_error",
+        "test_v4l2_controls",
+        "test_v4l2_corrupt_frame",
+        "test_v4l2_dqbuf_error",
+        "test_v4l2_framerate",
+        "test_text_freetype2_platform",
+        "test_text_aa_file",
+        "test_wayland_keymap",
+        "test_wayland_volume_keys",
+        "test_wayland_multiseat",
+    ];
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut graph = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for section in ["targets", "tests"] {
+        for name in names {
+            graph[section][name] = raw[section][name].clone();
+        }
+    }
+    let fragments = names
+        .map(|name| {
+            format!(
+                "include(\"{}/test/cmocka/tests.d/{name}.cmake\")",
+                root.to_string_lossy().replace('\\', "/")
+            )
+        })
+        .join("\n");
     fs::write(directory.path().join("graph.json"), graph.to_string()).unwrap();
     let source = root.to_string_lossy().replace('\\', "/");
     fs::write(
@@ -263,12 +294,22 @@ fn canonical_wayland_sdk_absent_configures() {
             r#"cmake_minimum_required(VERSION 3.28)
 project(no-wayland-sdk NONE)
 enable_testing()
-set(ENABLE_WAYLAND ON)
+# Linux/FreeBSD declare the option; Windows/macOS leave it undefined.
+if(OS_LINUX OR OS_FREEBSD)
+  set(ENABLE_WAYLAND ON)
+endif()
+set(CMAKE_DISABLE_FIND_PACKAGE_PulseAudio TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_PipeWire TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_Libudev TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_Freetype TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_Fontconfig TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)
 set(CMAKE_DISABLE_FIND_PACKAGE_Wayland TRUE)
 set(CMAKE_DISABLE_FIND_PACKAGE_Xkbcommon TRUE)
-include("{source}/test/cmocka/tests.d/test_wayland_keymap.cmake")
-include("{source}/test/cmocka/tests.d/test_wayland_volume_keys.cmake")
-include("{source}/test/cmocka/tests.d/test_wayland_multiseat.cmake")
+{fragments}
+set(HAVE_OBS_PULSEAUDIO FALSE)
+set(HAVE_OBS_PIPEWIRE FALSE)
+set(HAVE_OBS_V4L2 FALSE)
 include("{source}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
 get_property(tests DIRECTORY PROPERTY TESTS)

@@ -90,7 +90,7 @@ fn native_test_graph_cmake_platform_requirements_allow_false_but_reject_unknown(
         format!(
             r#"cmake_minimum_required(VERSION 3.28)
 include("{consumer}")
-foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC)
+foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC ENABLE_WAYLAND)
   unset(${{platform}})
   unset(${{platform}} CACHE)
   _obs_test_graph_requirement(selected "\"${{platform}}\"")
@@ -126,7 +126,12 @@ endif()
         "{}",
         String::from_utf8_lossy(&result.stderr)
     );
-    for unknown in ["UNXI", "GRAPH_FEATURE_TYPO"] {
+    for unknown in [
+        "UNXI",
+        "GRAPH_FEATURE_TYPO",
+        "ENABLE_WAYLND",
+        "HAVE_WAYLAND_TYPO_SDK",
+    ] {
         let result = std::process::Command::new("cmake")
             .arg(format!("-DUNKNOWN_REQUIREMENT={unknown}"))
             .arg("-P")
