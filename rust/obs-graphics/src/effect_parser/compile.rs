@@ -237,14 +237,31 @@ pub trait CompileModel {
 
 /// `ep_compile_annotations()`: param `i`'s annotations.
 pub fn compile_annotations(m: &mut impl CompileModel, i: usize) {
-    let _ = (m, i);
-    todo!("ep_compile_annotations")
+    let num = m.annotation_count(i);
+    m.resize_annotations(i, num);
+    for index in 0..num {
+        let slot = ParamSlot::Annotation { param: i, index };
+        let type_ = effect_param_types::param_type(m.param_type_name(slot));
+        m.fill_param(slot, EFFECT_ANNOTATION, type_);
+    }
 }
 
 /// `ep_compile_param()`: param `i`, then its annotations.
 pub fn compile_param(m: &mut impl CompileModel, i: usize) {
-    let _ = (m, i);
-    todo!("ep_compile_param")
+    m.link_param(i);
+    let slot = ParamSlot::Param(i);
+    let type_ = effect_param_types::param_type(m.param_type_name(slot));
+    m.fill_param(slot, EFFECT_PARAM, type_);
+
+    let name = m.param_name(i);
+    let (view_proj, world) = (name == b"ViewProj", name == b"World");
+    if view_proj {
+        m.set_view_proj(i);
+    } else if world {
+        m.set_world(i);
+    }
+
+    compile_annotations(m, i);
 }
 
 /// `ep_compile_pass_shaderparams()`: pairs each param the built text uses
@@ -256,8 +273,23 @@ pub fn compile_pass_shaderparams<M: CompileModel>(
     built: &M::Built,
     shader: M::Shader,
 ) -> bool {
-    let _ = (m, slot, built, shader);
-    todo!("ep_compile_pass_shaderparams")
+    let num = m.used_count(built);
+    m.resize_shader_params(slot, num);
+
+    let mut i = 0;
+    while i < m.shader_param_count(slot) {
+        let eparam = m.effect_param(built, i);
+        let sparam = m.shader_param(shader, built, i);
+        m.set_shader_param(slot, i, eparam, sparam);
+
+        if sparam.is_none() {
+            m.log(CompileLog::ShaderParamNotFound);
+            return false;
+        }
+        i += 1;
+    }
+
+    true
 }
 
 /// The location `ep_compile_pass_shader()` names a shader with: `<file>
@@ -270,34 +302,113 @@ pub fn location(
     tech_name: Option<&[u8]>,
     pass: usize,
 ) -> Vec<u8> {
-    let _ = (file, kind, tech_name, pass);
-    todo!("ep_compile_pass_shader location")
+    let mut out = file.unwrap_or_default().to_vec();
+    out.extend_from_slice(match kind {
+        ShaderType::Vertex => b" (Vertex ",
+        ShaderType::Pixel => b" (Pixel ",
+    });
+    out.extend_from_slice(b"shader, technique ");
+    out.extend_from_slice(tech_name.unwrap_or(b"(null)"));
+    out.extend_from_slice(b", pass ");
+    // (unsigned)pass_idx, past the C's assert that it fits.
+    #[allow(clippy::cast_possible_truncation)]
+    let pass = pass as u32;
+    out.extend_from_slice(pass.to_string().as_bytes());
+    out.push(b')');
+    out
 }
 
 /// `ep_compile_pass_shader()`: one shader of a pass; false when it was not
 /// created or lacks a param.
 pub fn compile_pass_shader(m: &mut impl CompileModel, slot: ShaderSlot) -> bool {
-    let _ = (m, slot);
-    todo!("ep_compile_pass_shader")
+    let location = location(m.file(), slot.kind, m.technique_name(slot.tech), slot.pass);
+
+    let built = m.make_shader(slot);
+    let (shader, errors) = m.create_shader(slot, &built, &location);
+
+    if m.errors_nonempty(&errors) {
+        m.add_shader_error(&errors);
+    }
+    m.free_errors(errors);
+
+    let success = match shader {
+        Some(shader) => compile_pass_shaderparams(m, slot, &built, shader),
+        None => false,
+    };
+
+    m.free_built(built);
+    success
 }
 
 /// `ep_compile_pass()`: pass `p` of technique `t`; false when either
 /// shader failed.
 pub fn compile_pass(m: &mut impl CompileModel, t: usize, p: usize) -> bool {
-    let _ = (m, t, p);
-    todo!("ep_compile_pass")
+    let mut success = true;
+
+    m.fill_pass(t, p);
+
+    for kind in [ShaderType::Vertex, ShaderType::Pixel] {
+        let slot = ShaderSlot {
+            tech: t,
+            pass: p,
+            kind,
+        };
+        if !compile_pass_shader(m, slot) {
+            success = false;
+            let name = m.pass_name(t, p).unwrap_or_default().to_vec();
+            let name = name.as_slice();
+            m.log(match kind {
+                ShaderType::Vertex => CompileLog::MissingVertexShader { idx: p, name },
+                ShaderType::Pixel => CompileLog::MissingPixelShader { idx: p, name },
+            });
+        }
+    }
+    success
 }
 
 /// `ep_compile_technique()`: technique `t` and its passes; false when any
 /// pass failed (every pass is still compiled).
 pub fn compile_technique(m: &mut impl CompileModel, t: usize) -> bool {
-    let _ = (m, t);
-    todo!("ep_compile_technique")
+    let mut success = true;
+
+    m.fill_technique(t);
+
+    let num = m.parser_pass_count(t);
+    m.resize_passes(t, num);
+
+    let mut p = 0;
+    while p < m.pass_count(t) {
+        if !compile_pass(m, t, p) {
+            success = false;
+        }
+        p += 1;
+    }
+
+    success
 }
 
 /// `ep_compile()`: the whole effect; false when any technique failed.
 pub fn compile(m: &mut impl CompileModel) -> bool {
-    let _ = m;
-    let _ = effect_param_types::param_type;
-    todo!("ep_compile")
+    let mut success = true;
+
+    let params = m.param_count();
+    m.resize_params(params);
+    let techniques = m.technique_count();
+    m.resize_techniques(techniques);
+
+    let mut i = 0;
+    while i < m.param_count() {
+        compile_param(m, i);
+        i += 1;
+    }
+
+    let mut t = 0;
+    while t < m.technique_count() {
+        if !compile_technique(m, t) {
+            success = false;
+        }
+        t += 1;
+    }
+
+    success
 }
