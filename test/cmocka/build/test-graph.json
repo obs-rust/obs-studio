@@ -4792,6 +4792,24 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_remux_audio_timestamps": {
+      "sources": [
+        "test/cmocka/test_remux_audio_timestamps.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ]
+    },
     "test_remux_queue_model": {
       "sources": [
         "test/cmocka/test_remux_queue_model.cpp",
@@ -10030,6 +10048,10 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_remux_audio_timestamps": {
+      "target": "test_remux_audio_timestamps",
+      "timeout_seconds": 60
     },
     "test_remux_queue_model": {
       "target": "test_remux_queue_model",

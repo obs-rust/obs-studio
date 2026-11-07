@@ -93,6 +93,13 @@ fn canonical_remux_audio_timestamps_runs_unchanged() {
             Dependency::package(&build.target, &format!("lib{component}")).unwrap(),
         );
     }
+    interfaces.insert(
+        "m".into(),
+        Dependency {
+            link_options: vec!["-lm".into()],
+            ..Default::default()
+        },
+    );
     let facts = [
         ("OS_LINUX".into(), true),
         ("OS_FREEBSD".into(), false),
@@ -110,6 +117,22 @@ fn canonical_remux_audio_timestamps_runs_unchanged() {
             .unwrap();
         assert_success(&output, name);
         eprintln!("{}", String::from_utf8_lossy(&output.stdout));
+    }
+}
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[test]
+fn canonical_remux_audio_timestamps_cmake_runs_unchanged() {
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for name in NAMES {
+        for section in ["targets", "tests"] {
+            selected[section][name] = raw[section][name].clone();
+        }
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
     replay_cmake_helpers(directory.path(), &root);
@@ -175,15 +198,6 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
             "cmake",
             vec!["--build", build.to_str().unwrap(), "--parallel", "2"],
         ),
-        (
-            "ctest",
-            vec![
-                "--test-dir",
-                build.to_str().unwrap(),
-                "--output-on-failure",
-                "--no-tests=error",
-            ],
-        ),
     ] {
         assert_success(
             &Command::new(program).args(arguments).output().unwrap(),
@@ -209,4 +223,16 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
         assert_eq!(timeout["value"], 60.0);
         assert_eq!(test["command"].as_array().unwrap().len(), 1);
     }
+    assert_success(
+        &Command::new("ctest")
+            .args([
+                "--test-dir",
+                build.to_str().unwrap(),
+                "--output-on-failure",
+                "--no-tests=error",
+            ])
+            .output()
+            .unwrap(),
+        "CTest unchanged remux cases",
+    );
 }
