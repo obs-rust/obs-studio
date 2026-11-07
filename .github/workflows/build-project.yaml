@@ -1706,6 +1706,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -1939,6 +1940,14 @@ jobs:
             echo "- watermark: 50 GiB"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: fast-gate
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+
   # Compile-only cross check (cmake/cross/, #1294) of the Windows and macOS
   # host groups a change touches, on Linux with soldr's LLVM and SDKs. PR CI
   # builds no Windows or macOS app, so without it a broken host group first
@@ -2153,6 +2162,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -2275,6 +2285,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: rust-tests-macos
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
   # (including the enforced C/Rust export comparison, so a mismatch fails
@@ -2305,6 +2323,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -2433,6 +2452,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: rust-tests-windows
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
   # (including the enforced C/Rust export comparison, so a mismatch fails
@@ -2552,6 +2579,7 @@ jobs:
       # Production hybrid libobs builds the Rust ports through Corrosion;
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -2613,6 +2641,10 @@ jobs:
           uv run --no-project rust/tools/linux-validate/install_zccache.py "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # The restored .tier2-zccache carries earlier runs' journals.
+      - name: Mark Cache Ledger Start 📒
+        run: echo "CACHE_LEDGER_SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Build Tier 2 (libobs and libobs-c-reference) 🧱
         id: tier2-build
         env:
@@ -2658,6 +2690,16 @@ jobs:
           mode: save
           path: ${{ github.workspace }}/.tier2-zccache
           key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: tier2-linux-build
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+          cache-dir: ${{ github.workspace }}/.tier2-zccache
+          since: ${{ env.CACHE_LEDGER_SINCE }}
 
   rust-linux-tier2:
     name: Rust Tier 2 Linux 🐧 (tests ${{ matrix.mode }}${{ matrix.part != 'suite' && format(', {0}', matrix.part) || '' }})
