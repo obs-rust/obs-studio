@@ -450,6 +450,21 @@ jobs:
           codesignTeam: ${{ steps.codesign.outputs.codesignTeam }}
           provisioningProfileUUID: ${{ steps.codesign.outputs.provisioningProfileUUID }}
 
+      # The native-reuse uv step above is conditional; the report is not.
+      - name: Set Up uv for the soldr Cache Report
+        if: always() && inputs.native-cache-reuse-source == ''
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      # Cache observability: nothing else in CI says whether the compiler cache
+      # is helping. Fail-open: an unavailable report prints one line.
+      - name: Report soldr cache 📊
+        if: always()
+        shell: bash
+        run: uv run --no-project ci/soldr_cache_report.py >> "$GITHUB_STEP_SUMMARY" || echo "soldr cache report unavailable" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify Native Installed Binary Freshness
         if: inputs.native-cache-reuse-source != ''
         shell: bash
@@ -1887,6 +1902,42 @@ jobs:
           path: rust/*/tests/proptest-regressions/
           if-no-files-found: ignore
           retention-days: 7
+
+      # Cache observability: nothing else in CI says whether the compiler cache
+      # is helping. Fail-open: an unavailable report prints one line.
+      - name: Report soldr cache 📊
+        if: always()
+        shell: bash
+        run: uv run --no-project ci/soldr_cache_report.py >> "$GITHUB_STEP_SUMMARY" || echo "soldr cache report unavailable" >> "$GITHUB_STEP_SUMMARY"
+
+      # Storage on the Spaces account, with the remote cache's credentials, so the
+      # 50G watermark is visible instead of inferred. AWS CLI ships on ubuntu-26.04.
+      - name: Report S3 cache size 🗄️
+        if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          AWS_DEFAULT_REGION: nyc3
+        run: |
+          if ! command -v aws >/dev/null; then
+            echo "S3 cache size unavailable (aws CLI not on this runner)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          out=$(aws s3 ls "s3://forge-ci" --recursive --summarize \
+                  --endpoint-url "https://nyc3.digitaloceanspaces.com" 2>/dev/null || true)
+          if [ -z "$out" ]; then
+            echo "S3 cache size unavailable (credentials or endpoint)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          bytes=$(printf '%s\n' "$out" | awk '/Total Size:/ {print $3}')
+          objs=$(printf '%s\n' "$out" | awk '/Total Objects:/ {print $3}')
+          {
+            echo "### S3 cache (forge-ci @ nyc3)"
+            echo "- objects: ${objs:-?}"
+            echo "- size: ${bytes:-?} bytes ($(( (${bytes:-0}) / 1024 / 1024 / 1024 )) GiB)"
+            echo "- watermark: 50 GiB"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Compile-only cross check (cmake/cross/, #1294) of the Windows and macOS
   # host groups a change touches, on Linux with soldr's LLVM and SDKs. PR CI
