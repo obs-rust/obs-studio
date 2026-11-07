@@ -205,10 +205,10 @@ mod canonical_output_protocols_is_registered;
 mod canonical_pipe_contracts_are_registered;
 #[path = "native/registration/canonical_pipe_wait_error_is_registered.rs"]
 mod canonical_pipe_wait_error_is_registered;
-#[path = "native/registration/canonical_plugin_sdk_headless_is_registered.rs"]
-mod canonical_plugin_sdk_headless_is_registered;
 #[path = "native/registration/canonical_plugin_configuration_helpers_are_registered.rs"]
 mod canonical_plugin_configuration_helpers_are_registered;
+#[path = "native/registration/canonical_plugin_sdk_headless_is_registered.rs"]
+mod canonical_plugin_sdk_headless_is_registered;
 #[path = "native/registration/canonical_posix_output_hosts_are_registered.rs"]
 mod canonical_posix_output_hosts_are_registered;
 #[path = "native/registration/canonical_pulse_monitor_decisions_are_registered.rs"]
@@ -2143,6 +2143,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_FILTERS".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
+        ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
+        ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_LIBOBS_RUST_STATIC".into(), false),

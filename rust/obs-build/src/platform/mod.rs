@@ -901,6 +901,9 @@ pub fn native_test_facts(
         ("OS_OPENBSD".into(), target.contains("openbsd")),
         ("ENABLE_PULSEAUDIO".into(), pulseaudio),
         ("ENABLE_HEVC".into(), hevc),
+        // Optional headless plugin SDKs are false until the consumer probes them.
+        ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
+        ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
         ("MSVC".into(), target.contains("msvc")),
     ])
 }

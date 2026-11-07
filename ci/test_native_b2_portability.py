@@ -18,6 +18,7 @@ class NativeB2Portability(unittest.TestCase):
     def test_evaluated_linux_core_inventory(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         facts = dict.fromkeys(("OS_WINDOWS", "OS_MACOS", "OS_FREEBSD", "OS_OPENBSD", "MSVC",
+                               "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK", "HAVE_PULSE_DEFAULT_RETRY_SDK",
                                "C_COMPILER_CLANG", "HAVE_OBS_FFMPEG", "HAVE_OBS_QSV11", "HAVE_OBS_OPENGL"), False)
         facts.update(dict.fromkeys(("OS_LINUX", "UNIX", "HAVE_LIBOBS", "HAVE_LIBOBS_RUST_STATIC",
                                     "HAVE_HAPPY_EYEBALLS", "HAVE_OBS_OUTPUTS", "HAVE_OBS_FILTERS",
@@ -42,6 +43,15 @@ class NativeB2Portability(unittest.TestCase):
                             and enabled(test.get("requires", True))
                             and enabled(graph["targets"][test["target"]].get("requires", True))]
                 self.assertEqual(len(selected), 417 + 5 * pulse - (not hevc))
+        # Both SDK-enabled additions are independent of core PulseAudio/HEVC.
+        facts.update(HAVE_PIPEWIRE_FRAME_LAYOUT_SDK=True, HAVE_PULSE_DEFAULT_RETRY_SDK=True)
+        selected = [name for name, test in graph["tests"].items()
+                    if test.get("suite", "core") == "core"
+                    and enabled(test.get("requires", True))
+                    and enabled(graph["targets"][test["target"]].get("requires", True))]
+        self.assertIn("test_pipewire_frame_layout", selected)
+        self.assertIn("test_pulse_default_retry", selected)
+        self.assertEqual(len(selected), 424)
         consumer = (ROOT / "rust/obs-build/src/validation.rs").read_text()
         self.assertIn('("HAVE_OBS_OPENGL".into(), false)', consumer)
 

@@ -1,6 +1,10 @@
 use super::*;
 use obs_build::validation::graph::Graph;
 
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "plugin_sdk_headless_runtime.rs"]
+mod runtime;
+
 const CASES: [&str; 2] = ["test_pipewire_frame_layout", "test_pulse_default_retry"];
 
 fn requirement(name: &str) -> serde_json::Value {
@@ -61,9 +65,9 @@ fn expected_target(name: &str) -> serde_json::Value {
             "plugins/linux-pulseaudio/pulse-timing.c.h".into(),
         ]);
         target["link_options"] = serde_json::json!([
-            "LINKER:--wrap=obs_weak_source_addref,--wrap=obs_weak_source_release,--wrap=obs_weak_source_get_source",
-            "LINKER:--wrap=obs_obj_get_data,--wrap=obs_source_release,--wrap=obs_queue_task",
-            "LINKER:--wrap=obs_source_set_async_compensation"
+            "-Wl,--wrap=obs_weak_source_addref,--wrap=obs_weak_source_release,--wrap=obs_weak_source_get_source",
+            "-Wl,--wrap=obs_obj_get_data,--wrap=obs_source_release,--wrap=obs_queue_task",
+            "-Wl,--wrap=obs_source_set_async_compensation"
         ]);
     }
     target
@@ -99,5 +103,60 @@ fn canonical_plugin_sdk_headless_guards() {
                 assert_eq!(selected.tests.len(), count);
             }
         }
+    }
+}
+
+#[test]
+fn canonical_plugin_sdk_unavailable_hosts_configure_without_packages() {
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for section in ["targets", "tests"] {
+        for name in CASES {
+            selected[section][name] = raw[section][name].clone();
+        }
+    }
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let source = root.to_string_lossy().replace('\\', "/");
+    fs::write(
+        directory.path().join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
+project(no-plugin-sdk NONE)
+enable_testing()
+set(CMAKE_DISABLE_FIND_PACKAGE_PulseAudio TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_PipeWire TRUE)
+set(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)
+include("{source}/test/cmocka/tests.d/test_pulse_default_retry.cmake")
+include("{source}/test/cmocka/tests.d/test_pipewire_frame_layout.cmake")
+set(HAVE_OBS_PULSEAUDIO FALSE)
+set(HAVE_OBS_PIPEWIRE FALSE)
+include("{source}/test/cmocka/native-test-graph.cmake")
+obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
+if(TARGET test_pulse_default_retry OR TARGET test_pipewire_frame_layout)
+  message(FATAL_ERROR "Unavailable owning plugin selected a test")
+endif()
+"#
+        ),
+    )
+    .unwrap();
+    for linux in ["OFF", "ON"] {
+        let output = std::process::Command::new("cmake")
+            .arg("-S")
+            .arg(directory.path())
+            .arg("-B")
+            .arg(directory.path().join(linux))
+            .arg(format!("-DOS_LINUX={linux}"))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
