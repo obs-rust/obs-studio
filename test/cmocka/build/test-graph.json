@@ -3850,14 +3850,14 @@
       "libraries": [
         "OBS::libobs"
       ],
-      "compile_options": [
-        "-fvisibility=default"
-      ],
       "link_options": [
         "-Wl,--wrap=waitpid"
       ],
       "watch_inputs": [
         "libobs/build/libobs-ported-posix.pch.h"
+      ],
+      "compile_options_if_supported": [
+        "-fvisibility=default"
       ]
     },
     "test_pipewire_reconnect": {

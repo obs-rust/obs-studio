@@ -5739,9 +5739,8 @@ fn canonical_pipe_wait_error_is_registered() {
         ["libobs/build/libobs-ported-posix.pch.h"]
     );
     assert_eq!(target.link_options, ["-Wl,--wrap=waitpid"]);
-    assert!(
-        matches!(target.compile_options.as_slice(), [ConditionalValue::Name(flag)] if flag == "-fvisibility=default")
-    );
+    assert!(target.compile_options.is_empty());
+    assert_eq!(target.compile_options_if_supported, ["-fvisibility=default"]);
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
