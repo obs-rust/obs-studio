@@ -2132,6 +2132,8 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
         "test_caption_unmappable",
+        "test_obs_ffmpeg_net_host",
+        "test_obs_outputs_host",
         "test_stream_service_select",
         "test_saved_transition",
         "test_record_disk_space",
@@ -2166,9 +2168,22 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         },
     )])
     .collect();
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let windows = build.target.contains("windows");
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_WINDOWS".into(), windows),
+    ]
+    .into();
+    let selection = graph.select(&facts).unwrap();
+    let mut graph = Graph::parse(&selected.to_string()).unwrap();
+    graph
+        .targets
+        .retain(|name, _| selection.targets.contains_key(name.as_str()));
+    graph
+        .tests
+        .retain(|name, _| selection.tests.contains_key(name.as_str()));
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 6);
+    assert_eq!(artifacts.len(), if windows { 6 } else { 8 });
     for (name, test) in &graph.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
@@ -2187,7 +2202,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nset(OS_WINDOWS FALSE)\nif(WIN32)\nset(OS_WINDOWS TRUE)\nendif()\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();

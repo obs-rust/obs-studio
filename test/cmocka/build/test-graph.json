@@ -3183,6 +3183,43 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_obs_ffmpeg_net_host": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_net_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "plugins/obs-ffmpeg/hosts/posix"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/hosts/posix/obs-ffmpeg-net-host.h"
+      ]
+    },
+    "test_obs_outputs_host": {
+      "sources": [
+        "test/cmocka/test_obs_outputs_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-outputs/build/obs-outputs-host-posix.pch.h",
+        "plugins/obs-outputs/obs-outputs-host-posix.c.h",
+        "plugins/obs-outputs/obs-outputs-host.h",
+        "plugins/obs-outputs/utils.h"
+      ]
+    },
     "test_obs_properties": {
       "sources": [
         "test/cmocka/test_obs_properties.c"
@@ -8829,6 +8866,26 @@
         "${target}"
       ],
       "timeout_seconds": 90
+    },
+    "test_obs_ffmpeg_net_host": {
+      "target": "test_obs_ffmpeg_net_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    },
+    "test_obs_outputs_host": {
+      "target": "test_obs_outputs_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_obs_properties": {
       "target": "test_obs_properties",
