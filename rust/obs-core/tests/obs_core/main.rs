@@ -16,6 +16,7 @@ mod canvas_rules;
 mod canvas_rules_parity;
 mod context_names;
 mod context_names_parity;
+mod display_state;
 mod core_setup_rules;
 mod core_setup_rules_parity;
 mod module_failure_info;
