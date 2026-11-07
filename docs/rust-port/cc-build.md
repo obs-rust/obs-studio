@@ -860,6 +860,18 @@ in #1805. The graph remains a subset of the repository's native tests; target an
 selection depends on the evaluated platform and feature requirements. Cargo
 compilation of the full selected test graph currently runs on Linux.
 
+The unchanged `test_async_frame_pacing_steps_rust` characterization is also
+shared. It links the real `libobs_rust-static` archive and cmocka, without a C
+implementation source or shared libobs. CMake retains the original target
+availability guard and Corrosion's native runtime interface. Cargo supplies the
+archive explicitly through `validation::Options::rust_archive`; absence excludes
+this Rust-only check, and an invalid supplied path fails rather than substituting
+C or a stub. The existing Linux dual-core integration passes its production
+archive. The focused opt-in `canonical_rust_static_pacing_runs_unchanged` contract
+requires `OBS_BUILD_RUST_ARCHIVE`, replays both consumers and checks evaluated
+CTest inclusion/exclusion. This is one static-link inventory slice, not overall
+native parity or new macOS/Windows Cargo core-test support (#1390).
+
 The scene bounds placement characterization also uses the shared core graph.
 Both consumers compile its original C test and two private C helper sources,
 retaining libobs/cmocka linkage and non-MSVC libm. All 16 alignment, crop, flip

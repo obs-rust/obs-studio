@@ -185,6 +185,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_async_frame_pacing_steps_rust": {
+      "sources": [
+        "test/cmocka/test_async_frame_pacing_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-async-pacing.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_async_overflow_clock": {
       "sources": [
         "test/cmocka/test_async_overflow_clock.c"
@@ -7561,6 +7577,13 @@
     },
     "test_async_frame_pacing_steps": {
       "target": "test_async_frame_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_async_frame_pacing_steps_rust": {
+      "target": "test_async_frame_pacing_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

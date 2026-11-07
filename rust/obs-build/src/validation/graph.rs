@@ -379,6 +379,23 @@ impl From<SharedLibrary> for Dependency {
 }
 
 impl Dependency {
+    /// Import the production Rust staticlib and its native runtime interface.
+    pub fn rust_static(target: &str, archive: &Path) -> Result<Self, String> {
+        let archive = dunce::canonicalize(archive)
+            .map_err(|error| format!("Rust test archive {}: {error}", archive.display()))?;
+        if !archive.is_file() {
+            return Err(format!(
+                "Rust test archive is not a file: {}",
+                archive.display()
+            ));
+        }
+        Ok(Self {
+            artifacts: vec![archive],
+            link_options: crate::platform::native_test_rust_static_options(target),
+            ..Default::default()
+        })
+    }
+
     /// Resolve a native SDK package into its compile and link interface.
     /// Qt6 packages come from explicit SDK inputs when given (see [`crate::qt::package`]),
     /// carrying their loader paths; other callers supply runtime paths themselves.

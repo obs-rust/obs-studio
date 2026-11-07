@@ -914,6 +914,37 @@ pub fn native_test_thread_options(target: &str) -> Vec<String> {
     }
 }
 
+/// Native Rust runtime dependencies carried by Corrosion's staticlib interface.
+/// The Cargo C-test builder currently targets Linux; keep the other host
+/// interfaces explicit for callers replaying the standalone graph.
+pub fn native_test_rust_static_options(target: &str) -> Vec<String> {
+    if target.contains("msvc") {
+        [
+            "legacy_stdio_definitions.lib",
+            "ntdll.lib",
+            "userenv.lib",
+            "ws2_32.lib",
+            "dbghelp.lib",
+        ]
+        .map(String::from)
+        .into()
+    } else if target.contains("apple") {
+        ["-lSystem", "-lobjc", "-liconv"].map(String::from).into()
+    } else {
+        [
+            "-lgcc_s",
+            "-lutil",
+            "-lrt",
+            "-lpthread",
+            "-lm",
+            "-ldl",
+            "-lc",
+        ]
+        .map(String::from)
+        .into()
+    }
+}
+
 pub fn native_test_math_options(target: &str) -> Vec<String> {
     if target.contains("msvc") {
         vec![]
