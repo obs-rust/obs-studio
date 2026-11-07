@@ -1,6 +1,9 @@
 use super::*;
 use obs_build::validation::graph::{Dependency, Graph};
-const CASES: [&str; 1] = ["test_visibility_transition"];
+const CASES: [&str; 2] = [
+    "test_visibility_transition",
+    "test_xcomposite_error_replies",
+];
 use std::process::Command;
 
 fn checked(command: &mut Command) -> std::process::Output {
@@ -83,7 +86,13 @@ fn canonical_opengl_video_slice_runs_unchanged() {
             ..Default::default()
         },
     );
-    let facts = [("OS_LINUX".into(), true), ("HAVE_OBS_OPENGL".into(), true)].into();
+    add_x11_interfaces(&build, &root, &mut interfaces);
+    let facts = [
+        ("OS_LINUX".into(), true),
+        ("HAVE_OBS_OPENGL".into(), true),
+        ("HAVE_LINUX_CAPTURE".into(), true),
+    ]
+    .into();
     let runtime = directory.path().join("runtime");
     fs::create_dir_all(runtime.join("data")).unwrap();
     checked(
@@ -117,6 +126,15 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 enable_testing()
 option(OS_LINUX "Original Linux guard" ON)
 option(HAVE_OBS_OPENGL "Original renderer guard" ON)
+option(CAPTURE_OWNER "Original owning plugin guard" ON)
+find_package(ECM REQUIRED NO_MODULE)
+list(APPEND CMAKE_MODULE_PATH "${{ECM_FIND_MODULE_DIR}}")
+add_library(native-glad STATIC "{source}/deps/glad/src/glad.c")
+target_include_directories(native-glad PUBLIC "{source}/deps/glad/include")
+add_library(OBS::glad ALIAS native-glad)
+if(CAPTURE_OWNER)
+  add_library(linux-capture INTERFACE)
+endif()
 set(OBS_OUTPUT_DIR "{runtime}")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CORE REQUIRED IMPORTED_TARGET libobs)
@@ -133,6 +151,7 @@ if(HAVE_OBS_OPENGL)
   add_library(OBS::libobs-opengl MODULE IMPORTED)
   set_property(TARGET OBS::libobs-opengl PROPERTY IMPORTED_LOCATION "${{CORE_LIBDIR}}/libobs-opengl.so")
 endif()
+include("{source}/test/cmocka/tests.d/test_xcomposite_error_replies.cmake")
 include("{source}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
 "#, runtime=runtime.display())).unwrap();
@@ -141,7 +160,13 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
 fn replay_cmake(directory: &Path) {
     for (mode, options, expected) in [
         ("enabled", vec![], CASES.to_vec()),
-        ("non-linux", vec!["-DOS_LINUX=OFF"], vec![]),
+        ("windows", vec!["-DOS_LINUX=OFF", "-DOS_WINDOWS=ON"], vec![]),
+        ("macos", vec!["-DOS_LINUX=OFF", "-DOS_MACOS=ON"], vec![]),
+        (
+            "no-owner",
+            vec!["-DCAPTURE_OWNER=OFF"],
+            vec!["test_visibility_transition"],
+        ),
         ("no-renderer", vec!["-DHAVE_OBS_OPENGL=OFF"], vec![]),
     ] {
         let output = directory.join(mode);
@@ -207,4 +232,40 @@ fn check_inventory(output: &Path, expected: &[&str], built: bool) {
         };
         assert_eq!(timeout.map(|p| p["value"].as_f64().unwrap()), expected);
     }
+}
+
+fn add_x11_interfaces(
+    build: &NativeBuild,
+    root: &Path,
+    interfaces: &mut std::collections::BTreeMap<String, Dependency>,
+) {
+    for (name, package) in [
+        ("X11::X11", "x11"),
+        ("X11::XCB", "x11-xcb"),
+        ("XCB::XCB", "xcb"),
+        ("XCB::XFIXES", "xcb-xfixes"),
+        ("XCB::RANDR", "xcb-randr"),
+        ("XCB::SHM", "xcb-shm"),
+        ("XCB::XINERAMA", "xcb-xinerama"),
+        ("XCB::COMPOSITE", "xcb-composite"),
+    ] {
+        interfaces.insert(
+            name.into(),
+            Dependency::package(&build.target, package).unwrap(),
+        );
+    }
+    let glad = SharedLibrary {
+        name: "native-fixture-glad".into(),
+        sources: vec![root.join("deps/glad/src/glad.c")],
+        include_dirs: vec![root.join("deps/glad/include")],
+        ..Default::default()
+    };
+    interfaces.insert(
+        "OBS::glad".into(),
+        Dependency {
+            artifacts: vec![build.static_library(&glad).unwrap()],
+            include_dirs: glad.include_dirs,
+            ..Default::default()
+        },
+    );
 }

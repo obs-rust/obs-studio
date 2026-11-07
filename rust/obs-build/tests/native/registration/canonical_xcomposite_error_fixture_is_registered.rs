@@ -31,9 +31,19 @@ fn canonical_xcomposite_error_fixture_is_registered() {
                 _ => panic!("transition linkage must be unconditional"),
             })
             .collect();
-        let expected = vec!["OBS::libobs", "OBS::glad", "X11::X11", "X11::XCB",
-            "XCB::XCB", "XCB::XFIXES", "XCB::RANDR", "XCB::SHM", "XCB::XINERAMA",
-            "XCB::COMPOSITE", "OBS::native-test-cmocka"];
+        let expected = vec![
+            "OBS::libobs",
+            "OBS::glad",
+            "X11::X11",
+            "X11::XCB",
+            "XCB::XCB",
+            "XCB::XFIXES",
+            "XCB::RANDR",
+            "XCB::SHM",
+            "XCB::XINERAMA",
+            "XCB::COMPOSITE",
+            "OBS::native-test-cmocka",
+        ];
         assert!(target.header_libraries.is_empty());
         assert_eq!(libraries, expected, "{name}");
         assert_eq!(
@@ -61,7 +71,7 @@ fn canonical_xcomposite_error_fixture_is_registered() {
         .tests
         .retain(|name, _| cases.iter().any(|case| case.0 == name));
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        for opengl in [true, false] {
+        for (opengl, owner) in [(true, true), (true, false), (false, true)] {
             let selected = graph
                 .select(
                     &[
@@ -69,7 +79,7 @@ fn canonical_xcomposite_error_fixture_is_registered() {
                         ("OS_MACOS".into(), os == "OS_MACOS"),
                         ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
                         ("HAVE_OBS_OPENGL".into(), opengl),
-                        ("HAVE_LINUX_CAPTURE".into(), true),
+                        ("HAVE_LINUX_CAPTURE".into(), owner),
                     ]
                     .into(),
                 )
@@ -77,16 +87,15 @@ fn canonical_xcomposite_error_fixture_is_registered() {
             for (name, _) in cases {
                 assert_eq!(
                     selected.targets.contains_key(name),
-                    os == "OS_LINUX" && opengl,
+                    os == "OS_LINUX" && opengl && owner,
                     "{os}/{opengl}/{name}"
                 );
                 assert_eq!(
                     selected.tests.contains_key(name),
-                    os == "OS_LINUX" && opengl,
+                    os == "OS_LINUX" && opengl && owner,
                     "{os}/{opengl}/{name}"
                 );
             }
         }
     }
 }
-

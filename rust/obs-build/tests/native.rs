@@ -1,6 +1,4 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
-#[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
-mod canonical_xcomposite_error_fixture_is_registered;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
 #[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
@@ -11,6 +9,8 @@ mod canonical_v4l2_capture_sdk_is_registered;
 mod canonical_v4l2_freetype_sdk_is_registered;
 #[path = "native/registration/canonical_wayland_sdk_is_registered.rs"]
 mod canonical_wayland_sdk_is_registered;
+#[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
+mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
@@ -2266,6 +2266,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
         ("HAVE_OBS_TEXT_FREETYPE2".into(), false),
         ("HAVE_FREETYPE_FILE_SDK".into(), false),
+        ("HAVE_LINUX_CAPTURE".into(), false),
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
