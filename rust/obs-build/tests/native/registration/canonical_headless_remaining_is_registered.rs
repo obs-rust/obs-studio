@@ -8,6 +8,9 @@ const CASES: [&str; 6] = [
     "test_preflight_abi",
     "test_scripting_obs_defs",
 ];
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "headless_remaining_runtime.rs"]
+mod runtime;
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("headless_remaining_expected.json")).unwrap()
 }
@@ -68,7 +71,7 @@ fn canonical_headless_remaining_guards() {
                 0
             };
             assert_eq!(selected.targets.len(), count, "{os}/{enabled}");
-            assert_eq!(selected.tests.len(), if enabled { count + 6 } else { 0 });
+            assert_eq!(selected.tests.len(), if enabled { count + 5 } else { 0 });
         }
     }
 }

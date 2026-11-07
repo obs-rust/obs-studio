@@ -174,17 +174,6 @@
                 "${target}"
             ]
         },
-        "test_core_module_manifest_source": {
-            "target": "test_core_module_manifest",
-            "requires": "ENABLE_CORE_MODULES",
-            "command": [
-                "cmake",
-                "-DOBS_CORE_MODULES_CMAKE=${source}/libobs/cmake/obs-core-modules.cmake",
-                "-DTEST_FIXTURE_ROOT=${build}/core_module_manifest_source",
-                "-P",
-                "${source}/test/cmocka/check_core_module_manifest_source.cmake"
-            ]
-        },
         "test_preflight_abi": {
             "target": "test_preflight_abi",
             "requires": {

@@ -1,6 +1,21 @@
 {
   "schema": 1,
   "targets": {
+    "obs-x264-test": {
+      "sources": [
+        "plugins/obs-x264/build/obs-x264-test.core+.h.c"
+      ],
+      "requires": "HAVE_X264_TEST_OWNER",
+      "compile_options": [
+        {
+          "name": "-Wno-strict-prototypes",
+          "requires": "C_COMPILER_CLANG"
+        }
+      ],
+      "libraries": [
+        "OBS::opts-parser"
+      ]
+    },
     "test_alsa_capture_format": {
       "sources": [
         "test/cmocka/test_alsa_capture_format.c",
@@ -953,6 +968,19 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_config_migration": {
+      "sources": [
+        "frontend/tests/test_config_migration.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "includes": [
+        "frontend"
+      ],
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "frontend/utility/ConfigMigration.hpp"
+      ]
+    },
     "test_config_save": {
       "sources": [
         "test/cmocka/test_config_save.c"
@@ -995,6 +1023,16 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_core_module_manifest": {
+      "sources": [
+        "test/cmocka/test_core_module_manifest.c"
+      ],
+      "requires": "ENABLE_CORE_MODULES",
+      "libraries": [
+        "OBS::libobs-core-modules",
         "OBS::native-test-cmocka"
       ]
     },
@@ -2818,6 +2856,15 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_first_run_wizard": {
+      "sources": [
+        "frontend/tests/test_first_run_wizard.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/utility/FirstRunWizard.hpp"
       ]
     },
     "test_flv_mux": {
@@ -6905,6 +6952,34 @@
       },
       "sanitizers": "address,undefined"
     },
+    "test_preflight_abi": {
+      "sources": [
+        "test/cmocka/test_preflight_abi.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_MACOS"
+            ]
+          },
+          "HAVE_PREFLIGHT_TEST_ARCHIVE"
+        ]
+      },
+      "includes": [
+        "frontend/preflight"
+      ],
+      "libraries": [
+        "OBS::preflight-test-archive",
+        "OBS::native-test-cmocka",
+        "Threads::Threads",
+        {
+          "name": "dl",
+          "requires": "OS_LINUX"
+        }
+      ]
+    },
     "test_preview_only_hide": {
       "sources": [
         "test/cmocka/test_preview_only_hide.c"
@@ -8854,6 +8929,27 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         }
+      ]
+    },
+    "test_scripting_obs_defs": {
+      "sources": [
+        "test/cmocka/test_scripting_obs_defs.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_SCRIPTING_DEFS_TEST_SDK"
+        ]
+      },
+      "libraries": [
+        "OBS::scripting-defs-test",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_serializer": {
@@ -12660,6 +12756,13 @@
     }
   },
   "tests": {
+    "obs-x264-test": {
+      "target": "obs-x264-test",
+      "requires": "HAVE_X264_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_alsa_capture_format": {
       "target": "test_alsa_capture_format",
       "requires": "HAVE_OBS_ALSA",
@@ -12996,6 +13099,60 @@
       "target": "test_config_hex_float_rounding",
       "timeout_seconds": 20
     },
+    "test_config_migration_absent": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-absent",
+        "absent"
+      ]
+    },
+    "test_config_migration_custom": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-custom",
+        "custom"
+      ]
+    },
+    "test_config_migration_empty-custom": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-empty-custom",
+        "empty-custom"
+      ]
+    },
+    "test_config_migration_existing": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-existing",
+        "existing"
+      ]
+    },
+    "test_config_migration_failure": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-failure",
+        "failure"
+      ]
+    },
+    "test_config_migration_first": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-first",
+        "first"
+      ]
+    },
     "test_config_save": {
       "target": "test_config_save"
     },
@@ -13022,6 +13179,13 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_core_module_manifest": {
+      "target": "test_core_module_manifest",
+      "requires": "ENABLE_CORE_MODULES",
+      "command": [
+        "${target}"
+      ]
     },
     "test_core_setup_rules_ms_steps": {
       "target": "test_core_setup_rules_ms_steps",
@@ -13636,6 +13800,13 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_first_run_wizard": {
+      "target": "test_first_run_wizard",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
     },
     "test_flv_mux": {
       "target": "test_flv_mux",
@@ -15014,6 +15185,24 @@
         "${target}"
       ]
     },
+    "test_preflight_abi": {
+      "target": "test_preflight_abi",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_MACOS"
+            ]
+          },
+          "HAVE_PREFLIGHT_TEST_ARCHIVE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
     "test_preview_only_hide": {
       "target": "test_preview_only_hide",
       "command": [
@@ -15601,6 +15790,24 @@
     },
     "test_sck_stop_wait": {
       "target": "test_sck_stop_wait"
+    },
+    "test_scripting_obs_defs": {
+      "target": "test_scripting_obs_defs",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_SCRIPTING_DEFS_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
     },
     "test_serializer": {
       "target": "test_serializer"

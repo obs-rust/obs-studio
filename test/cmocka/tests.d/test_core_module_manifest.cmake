@@ -1,11 +1,6 @@
+# The manifest executable is registered by ../build/test-graph.json.
+# Keep this auxiliary configure regression with its original toolchain forwarding.
 if(ENABLE_CORE_MODULES)
-  add_executable(test_core_module_manifest test_core_module_manifest.c)
-  target_include_directories(test_core_module_manifest PRIVATE ${CMOCKA_INCLUDE_DIR})
-  target_link_libraries(test_core_module_manifest PRIVATE OBS::libobs-core-modules ${CMOCKA_LIBRARIES})
-
-  add_dependencies(cmocka-tests test_core_module_manifest)
-  add_test(test_core_module_manifest ${CMAKE_CURRENT_BINARY_DIR}/test_core_module_manifest)
-
   add_test(
     NAME test_core_module_manifest_source
     COMMAND
