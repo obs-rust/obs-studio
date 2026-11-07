@@ -20,6 +20,7 @@ mod effect_parser_writer;
 mod effect_parser_writer_parity;
 mod effect_passes;
 mod effect_passes_parity;
+mod linear_srgb;
 mod shader_param_names;
 mod shader_param_names_parity;
 mod shader_param_values;
