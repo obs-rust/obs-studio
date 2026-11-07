@@ -891,6 +891,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_core_global_getters": {
+      "sources": [
+        "test/cmocka/test_core_global_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_core_setup_rules_ms_steps": {
       "sources": [
         "test/cmocka/test_core_setup_rules_ms_steps.c",
@@ -10258,6 +10267,21 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_core_global_getters": {
+      "target": "test_core_global_getters",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_core_setup_rules_ms_steps": {
       "target": "test_core_setup_rules_ms_steps",
