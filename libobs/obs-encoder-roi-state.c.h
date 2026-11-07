@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 bool obs_encoder_has_roi(const obs_encoder_t *encoder)
 {
