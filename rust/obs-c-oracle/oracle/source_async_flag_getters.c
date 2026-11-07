@@ -11,8 +11,7 @@
 #undef obs_source_async_decoupled
 #include "source_async_flag_fields.inc"
 
-extern bool obs_source_async_unbuffered(const obs_source_t *source);
-extern bool obs_source_async_decoupled(const obs_source_t *source);
+typedef bool (*flag_getter)(const obs_source_t *source);
 
 void oracle_source_async_flag_layout(size_t *layout);
 void oracle_source_async_flag_layout(size_t *layout)
@@ -79,18 +78,18 @@ static void async_flag_capture(int level, const char *format, va_list args, void
 	vsnprintf(log->message, sizeof(log->message), format, args);
 }
 
-bool oracle_source_async_flag_null_log(bool rust);
-bool oracle_source_async_flag_null_log(bool rust)
+bool oracle_source_async_flag_null_log(flag_getter get_unbuffered, flag_getter get_decoupled);
+bool oracle_source_async_flag_null_log(flag_getter get_unbuffered, flag_getter get_decoupled)
 {
 	struct async_flag_log log = {0};
 	log_handler_t old_handler;
 	void *old_param;
 	base_get_log_handler(&old_handler, &old_param);
 	base_set_log_handler(async_flag_capture, &log);
-	bool unbuffered = rust ? obs_source_async_unbuffered(NULL) : oracle_obs_source_async_unbuffered(NULL);
+	bool unbuffered = get_unbuffered(NULL);
 	bool unbuffered_ok = !unbuffered && log.count == 1 && log.level == LOG_DEBUG &&
 			     strcmp(log.message, "obs_source_async_unbuffered: Null 'source' parameter") == 0;
-	bool decoupled = rust ? obs_source_async_decoupled(NULL) : oracle_obs_source_async_decoupled(NULL);
+	bool decoupled = get_decoupled(NULL);
 	base_set_log_handler(old_handler, old_param);
 	return unbuffered_ok && !decoupled && log.count == 2 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_source_async_decoupled: Null 'source' parameter") == 0;

@@ -11,7 +11,10 @@ unsafe extern "C" {
     fn oracle_source_async_flag_unchanged(source: *const c_void) -> bool;
     fn oracle_obs_source_async_unbuffered(source: *const c_void) -> bool;
     fn oracle_obs_source_async_decoupled(source: *const c_void) -> bool;
-    fn oracle_source_async_flag_null_log(rust: bool) -> bool;
+    fn oracle_source_async_flag_null_log(
+        unbuffered: unsafe extern "C" fn(*const c_void) -> bool,
+        decoupled: unsafe extern "C" fn(*const c_void) -> bool,
+    ) -> bool;
 }
 
 #[test]
@@ -88,8 +91,14 @@ fn null_defaults_and_historical_logs() {
     }
     // SAFETY: the isolated probes save and restore the process-global logger.
     unsafe {
-        assert!(oracle_source_async_flag_null_log(false));
-        assert!(oracle_source_async_flag_null_log(true));
+        assert!(oracle_source_async_flag_null_log(
+            oracle_obs_source_async_unbuffered,
+            oracle_obs_source_async_decoupled
+        ));
+        assert!(oracle_source_async_flag_null_log(
+            rust::obs_source_async_unbuffered,
+            rust::obs_source_async_decoupled
+        ));
     }
 }
 
