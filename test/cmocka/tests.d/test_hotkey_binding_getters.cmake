@@ -1,5 +1,1 @@
-add_executable(test_hotkey_binding_getters test_hotkey_binding_getters.c)
-target_include_directories(test_hotkey_binding_getters PRIVATE ${CMOCKA_INCLUDE_DIR})
-target_link_libraries(test_hotkey_binding_getters PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES})
-add_dependencies(cmocka-tests test_hotkey_binding_getters)
-add_test(test_hotkey_binding_getters ${CMAKE_CURRENT_BINARY_DIR}/test_hotkey_binding_getters)
+# Registered once in ../build/test-graph.json; both native consumers use that graph.

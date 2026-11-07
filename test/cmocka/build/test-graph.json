@@ -2302,6 +2302,28 @@
         "plugins/obs-transitions"
       ]
     },
+    "test_ffmpeg_encoder_missing": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_encoder_missing.c",
+        "shared/opts-parser/opts-parser.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "shared/opts-parser"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-video-encoders.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-video-encoders.pch.h"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_ffmpeg_mux_helper_host": {
       "sources": [
         "test/cmocka/test_ffmpeg_mux_helper_host.c"
@@ -2338,6 +2360,29 @@
       "watch_inputs": [
         "plugins/obs-ffmpeg"
       ]
+    },
+    "test_ffmpeg_output_connecting": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_output_connecting.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/obs-ffmpeg"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-output.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-output.pch.h"
+      ],
+      "requires": "OS_LINUX"
     },
     "test_file_serializer": {
       "sources": [
@@ -2995,6 +3040,20 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_binding_getters": {
+      "sources": [
+        "test/cmocka/test_hotkey_binding_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_hotkey_binding_press_steps": {
       "sources": [
         "test/cmocka/test_hotkey_binding_press_steps.c",
@@ -3628,6 +3687,15 @@
       "watch_inputs": [
         "frontend/utility",
         "test/cmocka"
+      ]
+    },
+    "test_module_failure_info": {
+      "sources": [
+        "test/cmocka/test_module_failure_info.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_module_load_rules_skip_steps": {
@@ -5807,6 +5875,24 @@
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_pulse_timing": {
+      "sources": [
+        "test/cmocka/test_pulse_timing.c",
+        "plugins/linux-pulseaudio/pulse-timing.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pulseaudio"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pulseaudio/build/linux-pulseaudio-nix.pch.h"
+      ],
+      "requires": "HAVE_OBS_PULSEAUDIO"
+    },
     "test_qsv_host": {
       "sources": [
         "test/cmocka/test_qsv_host.c"
@@ -6931,6 +7017,22 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         }
+      ]
+    },
+    "test_scene_item_state_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_state_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
       ]
     },
     "test_scene_item_transform_steps": {
@@ -11204,6 +11306,11 @@
       "target": "test_fade_to_color_mix",
       "requires": true
     },
+    "test_ffmpeg_encoder_missing": {
+      "target": "test_ffmpeg_encoder_missing",
+      "timeout_seconds": 60,
+      "requires": "OS_LINUX"
+    },
     "test_ffmpeg_mux_helper_host": {
       "target": "test_ffmpeg_mux_helper_host",
       "requires": {
@@ -11214,6 +11321,11 @@
       "target": "test_ffmpeg_mux_write_packet",
       "requires": "OS_LINUX",
       "timeout_seconds": 60
+    },
+    "test_ffmpeg_output_connecting": {
+      "target": "test_ffmpeg_output_connecting",
+      "timeout_seconds": 60,
+      "requires": "OS_LINUX"
     },
     "test_file_serializer": {
       "target": "test_file_serializer"
@@ -11448,6 +11560,9 @@
     },
     "test_hevc": {
       "target": "test_hevc"
+    },
+    "test_hotkey_binding_getters": {
+      "target": "test_hotkey_binding_getters"
     },
     "test_hotkey_binding_press_steps": {
       "target": "test_hotkey_binding_press_steps",
@@ -11701,6 +11816,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_module_failure_info": {
+      "target": "test_module_failure_info",
+      "timeout_seconds": 30
     },
     "test_module_load_rules_skip_steps": {
       "target": "test_module_load_rules_skip_steps",
@@ -12534,6 +12653,10 @@
     "test_pulse_reconnect": {
       "target": "test_pulse_reconnect"
     },
+    "test_pulse_timing": {
+      "target": "test_pulse_timing",
+      "requires": "HAVE_OBS_PULSEAUDIO"
+    },
     "test_qsv_host": {
       "target": "test_qsv_host",
       "command": [
@@ -12865,6 +12988,9 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_scene_item_state_getters": {
+      "target": "test_scene_item_state_getters"
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
