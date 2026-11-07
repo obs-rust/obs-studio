@@ -19,6 +19,8 @@ mod canonical_v4l2_freetype_sdk_is_registered;
 mod canonical_wayland_sdk_is_registered;
 #[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
 mod canonical_xcomposite_error_fixture_is_registered;
+#[path = "native/registration/canonical_headless_loop_is_registered.rs"]
+mod canonical_headless_loop_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
