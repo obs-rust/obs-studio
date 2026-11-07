@@ -7618,6 +7618,16 @@
         "libobs/data"
       ]
     },
+    "test_video_scaler_direct": {
+      "sources": [
+        "test/cmocka/test_video_scaler_direct.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_video_scaler_plan_steps": {
       "sources": [
         "test/cmocka/test_video_scaler_plan_steps.c",
@@ -11032,6 +11042,11 @@
           "-a"
         ]
       ]
+    },
+    "test_video_scaler_direct": {
+      "target": "test_video_scaler_direct",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 120
     },
     "test_video_scaler_plan_steps": {
       "target": "test_video_scaler_plan_steps",
