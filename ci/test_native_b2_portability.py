@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --script
 """Batch 2 native contracts must carry portable header dependencies."""
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -83,6 +84,39 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(graph["targets"][name]["sources"], [
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
                 ])
+
+    def test_all_scene_static_consumers_have_blog_provider(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        consumers = set()
+        stub = "test/cmocka/scene-getter-log-link-stub.c"
+        for name, target in graph["targets"].items():
+            libraries = target.get("libraries", [])
+            if "libobs_rust-static" not in libraries:
+                continue
+            sources = target.get("sources", [])
+            scene_sources = [source for source in sources if isinstance(source, str)
+                             and ("obs-scene" in (ROOT / source).read_text()
+                                  or "obs_scene" in (ROOT / source).read_text())]
+            if scene_sources:
+                consumers.add(name)
+                with self.subTest(target=name):
+                    self.assertTrue("OBS::libobs" in libraries or stub in sources,
+                                    "standalone scene archive consumer needs blog")
+        self.assertTrue({"test_scene_audio_window_steps_rust",
+                         "test_scene_render_plan_steps_rust"} <= consumers)
+
+        # Registrations not yet migrated into the graph still link libobs
+        # (some also carry the abort-only stub). Check their actual commands.
+        legacy = set()
+        for fragment in (ROOT / "test/cmocka/tests.d").glob("test_scene*.cmake"):
+            text = fragment.read_text()
+            for match in re.finditer(r"target_link_libraries\((test_scene\w+_rust)\s+([^)]*)\)", text):
+                name, libraries = match.groups()
+                if "libobs_rust-static" in libraries:
+                    legacy.add(name)
+                    with self.subTest(target=name):
+                        self.assertIn("OBS::libobs", libraries)
+        self.assertIn("test_scene_item_names_steps_rust", legacy)
 
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
