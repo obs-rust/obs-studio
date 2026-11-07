@@ -1402,19 +1402,10 @@ static inline void vt_add_prores_encoder_data_to_list(CFDictionaryRef encoder_di
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("mac-videotoolbox", "en-US")
-dispatch_group_t encoder_list_dispatch_group;
 CFArrayRef encoder_list;
 
 bool obs_module_load(void)
 {
-    dispatch_queue_t queue = dispatch_queue_create("Encoder list load queue", NULL);
-    encoder_list_dispatch_group = dispatch_group_create();
-    dispatch_group_async(encoder_list_dispatch_group, queue, ^{
-        VTCopyVideoEncoderList(NULL, &encoder_list);
-    });
-    // The group dispatch keeps a reference until it's finished
-    dispatch_release(queue);
-
 #ifndef __aarch64__
     is_apple_silicon = os_get_emulation_status();
 #endif
@@ -1439,8 +1430,16 @@ void obs_module_post_load(void)
     da_init(vt_prores_hardware_encoder_list);
     da_init(vt_prores_software_encoder_list);
 
-    dispatch_group_wait(encoder_list_dispatch_group, DISPATCH_TIME_FOREVER);
-    dispatch_release(encoder_list_dispatch_group);
+    /* Enumerate here, on the module thread: VTCopyVideoEncoderList validates the
+     * code signature of every registered encoder, and doing that on a background
+     * queue while other modules are still dlopen'ing traps in Security's
+     * CodeDirectory::validateSlot (#3168). */
+    OSStatus encoder_list_status = VTCopyVideoEncoderList(NULL, &encoder_list);
+    if (encoder_list_status != noErr || !encoder_list) {
+        VT_LOG(LOG_WARNING, "Failed to list the VideoToolbox encoders: %d", (int) encoder_list_status);
+        return;
+    }
+
     CFIndex size = CFArrayGetCount(encoder_list);
 
     for (CFIndex i = 0; i < size; i++) {
