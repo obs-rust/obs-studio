@@ -2021,7 +2021,7 @@ struct obs_service_state_fields {
 	obs_weak_object_t *const *control;
 };
 
-extern struct obs_service_state_fields obs_service_state_fields(const obs_service_t *service);
+extern struct obs_service_state_fields obs_service_state_fields(obs_service_t *service);
 extern obs_service_t **obs_service_output_service_field(obs_output_t *output);
 
 extern void obs_service_activate(struct obs_service *service);

@@ -199,49 +199,8 @@ void obs_service_context_free(obs_service_t *service)
 	trace_ev("free", service);
 }
 
-void obs_service_set_destroy(obs_service_t *service)
-{
-	trace_ev("set_destroy", service);
-	service->destroy = true;
-}
-
-bool obs_service_is_destroying(const obs_service_t *service)
-{
-	return service->destroy;
-}
-
-bool obs_service_is_active(const obs_service_t *service)
-{
-	return service->active;
-}
-
-void obs_service_set_active(obs_service_t *service, bool active)
-{
-	trace_ev(active ? "set_active" : "set_inactive", service);
-	service->active = active;
-}
-
-bool obs_service_has_output(const obs_service_t *service)
-{
-	return service->output != NULL;
-}
-
-void obs_service_clear_output(obs_service_t *service)
-{
-	trace_ev("clear_output", service);
-	service->output = NULL;
-}
-
-void obs_service_detach_from_output(obs_service_t *service)
-{
-	trace_ev("detach", service);
-}
-
-obs_weak_service_t *obs_service_get_control(const obs_service_t *service)
-{
-	return (obs_weak_service_t *)service->context.control;
-}
-
+/* State accessors now resolve to the real Rust seam (#3840).
+ * Independent C state parity lives in oracle/service_state.c. */
 bool obs_weak_service_strong_release(obs_weak_service_t *weak)
 {
 	trace_ev("ref_release", weak->service);

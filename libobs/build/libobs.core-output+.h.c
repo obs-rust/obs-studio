@@ -6,7 +6,6 @@
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-state-adapter.c.h"
-#include "libobs/obs-service-state.c.h"
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"
 #include "libobs/obs-video.c.h"

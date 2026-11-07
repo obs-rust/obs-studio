@@ -1,0 +1,9 @@
+# Hidden service state accessors (#3840).
+obs_service_set_destroy
+obs_service_is_destroying
+obs_service_is_active
+obs_service_set_active
+obs_service_has_output
+obs_service_clear_output
+obs_service_detach_from_output
+obs_service_get_control
