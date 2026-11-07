@@ -75,6 +75,9 @@ fn compile_suite(
     facts: &BTreeMap<String, bool>,
     interfaces: &BTreeMap<String, graph::Dependency>,
 ) -> Result<Vec<Executable>, String> {
+    let mut facts = facts.clone();
+    facts.insert("HAVE_LIBOBS".into(), interfaces.contains_key("OBS::libobs"));
+    let facts = &facts;
     let artifacts = graph.compile(build, root, facts, interfaces)?;
     graph
         .select(facts)?

@@ -3841,6 +3841,60 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_pipe_create2_exact_path": {
+      "sources": [
+        "test/cmocka/test_pipe_create2_exact_path.c"
+      ],
+      "requires": {
+        "all": [
+          "UNIX",
+          "HAVE_LIBOBS"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_pipe_no_handle_leak": {
+      "sources": [
+        "test/cmocka/test_pipe_no_handle_leak.c"
+      ],
+      "requires": "HAVE_LIBOBS",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
+    "test_pipe_shell_argv0": {
+      "sources": [
+        "test/cmocka/test_pipe_shell_argv0.c"
+      ],
+      "requires": {
+        "all": [
+          "UNIX",
+          "HAVE_LIBOBS"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_pipe_stdio_inherit": {
+      "sources": [
+        "test/cmocka/test_pipe_stdio_inherit.c"
+      ],
+      "requires": "UNIX",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_pipewire_reconnect": {
       "sources": [
         "test/cmocka/test_pipewire_reconnect.c",
@@ -9115,6 +9169,21 @@
     },
     "test_pipe": {
       "target": "test_pipe"
+    },
+    "test_pipe_create2_exact_path": {
+      "target": "test_pipe_create2_exact_path",
+      "timeout_seconds": 20
+    },
+    "test_pipe_no_handle_leak": {
+      "target": "test_pipe_no_handle_leak",
+      "timeout_seconds": 30
+    },
+    "test_pipe_shell_argv0": {
+      "target": "test_pipe_shell_argv0",
+      "timeout_seconds": 20
+    },
+    "test_pipe_stdio_inherit": {
+      "target": "test_pipe_stdio_inherit"
     },
     "test_pipewire_reconnect": {
       "target": "test_pipewire_reconnect"

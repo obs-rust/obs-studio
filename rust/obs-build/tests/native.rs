@@ -3715,6 +3715,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         assert!(graph.targets.contains_key(name), "missing canonical {name}");
     }
     let facts = std::collections::BTreeMap::from([
+        ("UNIX".into(), false),
+        ("HAVE_LIBOBS".into(), true),
         ("OS_LINUX".into(), false),
         ("ENABLE_PULSEAUDIO".into(), false),
         ("MSVC".into(), true),

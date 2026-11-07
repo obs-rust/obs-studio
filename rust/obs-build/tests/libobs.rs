@@ -186,7 +186,7 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
         .unwrap();
         assert_eq!(
             executables.len(),
-            137 + usize::from(options.pulseaudio) - usize::from(!options.hevc)
+            141 + usize::from(options.pulseaudio) - usize::from(!options.hevc)
         );
         for name in ["test_scene_group_transform", "test_shader_sampler_convert"] {
             assert!(executables.iter().any(|test| test.name == name));
