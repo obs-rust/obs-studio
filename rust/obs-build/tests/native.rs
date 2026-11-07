@@ -1,4 +1,6 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
+mod canonical_v4l2_freetype_sdk_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
