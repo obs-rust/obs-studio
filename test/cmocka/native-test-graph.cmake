@@ -57,9 +57,11 @@ function(_obs_test_graph_requirement output json)
     set(${output} "${value}" PARENT_SCOPE)
   elseif(kind STREQUAL "STRING")
     # CMake defines these built-in platform/compiler facts only when true.
-    # Project feature facts must still be declared, so misspellings stay fatal.
+    # Wayland is a host-only option, absent on Windows and macOS. SDK facts
+    # remain explicitly declared by their fragments; unknown names stay fatal.
     set(platform_facts UNIX APPLE WIN32 MSVC)
-    if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts)
+    set(host_options ENABLE_WAYLAND)
+    if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
     if(${value})
