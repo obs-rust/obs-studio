@@ -3,7 +3,7 @@ use super::*;
 /// #1390: preserve the direct Rust-static characterization, without a C core.
 #[test]
 fn canonical_rust_static_pacing_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    use obs_build::validation::graph::{ConditionalValue, Graph};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_async_frame_pacing_steps_rust";
@@ -11,12 +11,11 @@ fn canonical_rust_static_pacing_is_registered() {
         .targets
         .get(name)
         .expect("canonical graph omits Rust-static pacing");
-    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-        if path == "test/cmocka/test_async_frame_pacing_steps.c"));
+    assert_source_getter_link_support(target, "test_async_frame_pacing_steps", false);
     assert_eq!(target.includes, ["libobs"]);
     assert_eq!(target.watch_inputs, ["libobs/obs-source-async-pacing.h"]);
-    let libraries: Vec<_> = target
-        .libraries
+    assert_eq!(target.libraries.len(), 5);
+    let libraries: Vec<_> = target.libraries[..2]
         .iter()
         .map(|library| match library {
             ConditionalValue::Name(name) => name.as_str(),
