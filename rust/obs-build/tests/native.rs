@@ -280,10 +280,10 @@ mod canonical_settings_track_rows_is_registered;
 mod canonical_shutdown_after_failed_startup_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
 mod canonical_texture_create_mip_data_is_registered;
-#[path = "native/registration/canonical_transport_helpers_are_registered.rs"]
-mod canonical_transport_helpers_are_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
 mod canonical_transition_compatibility_is_registered;
+#[path = "native/registration/canonical_transport_helpers_are_registered.rs"]
+mod canonical_transport_helpers_are_registered;
 #[path = "native/registration/canonical_undo_stack_is_registered.rs"]
 mod canonical_undo_stack_is_registered;
 #[path = "native/registration/canonical_vaapi_device_select_is_registered.rs"]
@@ -2270,6 +2270,11 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
         ("HAVE_OBS_ALSA".into(), false),
+        ("HAVE_RTMPS_TEST_SDK".into(), false),
+        ("HAVE_LIBRIST_TEST_SDK".into(), false),
+        ("HAVE_CURL_TEST_SDK".into(), false),
+        ("HAVE_SRT_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PACKET_TEST_SDK".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),

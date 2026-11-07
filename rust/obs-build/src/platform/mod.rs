@@ -907,6 +907,11 @@ pub fn native_test_facts(
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         // Optional headless plugin SDKs are false until the consumer probes them.
+        ("HAVE_RTMPS_TEST_SDK".into(), false),
+        ("HAVE_LIBRIST_TEST_SDK".into(), false),
+        ("HAVE_CURL_TEST_SDK".into(), false),
+        ("HAVE_SRT_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PACKET_TEST_SDK".into(), false),
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
         ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
         ("HAVE_OBS_V4L2".into(), false),

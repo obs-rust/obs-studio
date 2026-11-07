@@ -375,6 +375,7 @@ pub fn build_c_tests(
         interfaces.insert("PulseAudio::PulseAudio".into(), dependency.into());
     }
     configure_headless_plugin_sdks(build, &mut facts, &interfaces);
+    configure_transport_test_sdks(build, &root, &mut facts, &mut interfaces)?;
     if options.outputs {
         let mut happy = graph::Dependency {
             artifacts: vec![crate::deps::shared_archive(build, &root, "happy-eyeballs")?],
@@ -476,4 +477,54 @@ fn configure_headless_plugin_sdks(
             .iter()
             .all(|package| graph::Dependency::package(&build.target, package).is_ok());
     facts.insert("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), layout);
+}
+
+// Preserve optional discovery; this Linux compatibility stage has no file-updater
+// or FFmpeg plugin owner. Focused replays supply those original owner facts.
+fn configure_transport_test_sdks(
+    build: &NativeBuild,
+    root: &Path,
+    facts: &mut BTreeMap<String, bool>,
+    interfaces: &mut BTreeMap<String, graph::Dependency>,
+) -> Result<(), String> {
+    interfaces.insert(
+        "OBS::ffmpeg-net-host".into(),
+        graph::Dependency {
+            include_dirs: vec![root.join("plugins/obs-ffmpeg/hosts/posix")],
+            ..Default::default()
+        },
+    );
+    for (fact, packages) in [
+        (
+            "HAVE_LIBRIST_TEST_SDK",
+            vec![("Librist::Librist", "librist")],
+        ),
+        ("HAVE_CURL_TEST_SDK", vec![("CURL::libcurl", "libcurl")]),
+    ] {
+        let dependencies = packages
+            .into_iter()
+            .map(|(name, package)| {
+                graph::Dependency::package(&build.target, package)
+                    .map(|dependency| (name.into(), dependency))
+            })
+            .collect::<Result<Vec<_>, _>>();
+        facts.insert(fact.into(), dependencies.is_ok());
+        if let Ok(dependencies) = dependencies {
+            interfaces.extend(dependencies);
+        }
+    }
+    // Unlike RIST/curl, the original core+avformat guard makes avdevice
+    // REQUIRED. A missing SDK is an error, never a silently omitted test.
+    for (name, package) in [
+        ("FFmpeg::avdevice", "libavdevice"),
+        ("FFmpeg::swscale", "libswscale"),
+        ("FFmpeg::swresample", "libswresample"),
+    ] {
+        interfaces.insert(
+            name.into(),
+            graph::Dependency::package(&build.target, package)?,
+        );
+    }
+    facts.insert("HAVE_MEDIA_PACKET_TEST_SDK".into(), true);
+    Ok(())
 }
