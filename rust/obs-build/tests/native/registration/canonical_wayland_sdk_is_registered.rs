@@ -278,16 +278,11 @@ fn canonical_wayland_sdk_absent_configures() {
             graph[section][name] = raw[section][name].clone();
         }
     }
+    let source = root.to_string_lossy().replace('\\', "/");
     let fragments = names
-        .map(|name| {
-            format!(
-                "include(\"{}/test/cmocka/tests.d/{name}.cmake\")",
-                root.to_string_lossy().replace('\\', "/")
-            )
-        })
+        .map(|name| format!("include(\"{source}/test/cmocka/tests.d/{name}.cmake\")"))
         .join("\n");
     fs::write(directory.path().join("graph.json"), graph.to_string()).unwrap();
-    let source = root.to_string_lossy().replace('\\', "/");
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
