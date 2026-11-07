@@ -8098,6 +8098,39 @@
         "frontend/utility"
       ]
     },
+    "test_text_freetype2_platform": {
+      "sources": [
+        "test/cmocka/test_text_freetype2_platform.c",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "header_packages": [
+        "freetype2",
+        "fontconfig"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_FREETYPE_PLATFORM_SDK"
+        ]
+      }
+    },
     "test_text_lookup": {
       "sources": [
         "test/cmocka/test_text_lookup.c"
@@ -8583,6 +8616,61 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_v4l2_busy": {
+      "sources": [
+        "test/cmocka/test_v4l2_busy.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "header_packages": [
+        "libv4l2",
+        "libavcodec",
+        "libavformat",
+        "libavutil"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_BUSY_SDK"
+        ]
+      }
+    },
+    "test_v4l2_udev_poll_error": {
+      "sources": [
+        "test/cmocka/test_v4l2_udev_poll_error.c"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix-udev.pch.h",
+        "plugins/linux-v4l2/v4l2-udev.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Libudev::Libudev",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_UDEV_SDK"
+        ]
+      }
     },
     "test_vaapi_device_select": {
       "sources": [
@@ -12471,6 +12559,21 @@
         "${target}"
       ]
     },
+    "test_text_freetype2_platform": {
+      "target": "test_text_freetype2_platform",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_FREETYPE_PLATFORM_SDK"
+        ]
+      }
+    },
     "test_text_lookup": {
       "target": "test_text_lookup"
     },
@@ -12633,6 +12736,28 @@
     },
     "test_util_uint64": {
       "target": "test_util_uint64"
+    },
+    "test_v4l2_busy": {
+      "target": "test_v4l2_busy",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_BUSY_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_udev_poll_error": {
+      "target": "test_v4l2_udev_poll_error",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_UDEV_SDK"
+        ]
+      },
+      "timeout_seconds": 60
     },
     "test_vaapi_device_select": {
       "target": "test_vaapi_device_select",
