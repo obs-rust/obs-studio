@@ -1,12 +1,21 @@
 use super::*;
 
+const CASES: [(&str, Option<u32>); 6] = [
+    ("test_visibility_transition", None),
+    ("test_preview_only_hide", Some(120)),
+    ("test_raw_output_video_reset", Some(120)),
+    ("test_transition_audio_clock", Some(60)),
+    ("test_transition_audio_rescale", Some(60)),
+    ("test_transition_removed_child_audio", Some(60)),
+];
+
 /// #1390: preserve real OpenGL video compatibility coverage in both consumers.
 #[test]
 fn canonical_opengl_video_slice_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let cases = [("test_visibility_transition", None)];
+    let cases = CASES;
     for (name, timeout) in cases {
         let target = graph.targets.get(name).unwrap_or_else(|| {
             panic!("canonical graph omits transition compatibility coverage: {name}")
@@ -35,7 +44,14 @@ fn canonical_opengl_video_slice_is_registered() {
                 _ => panic!("transition linkage must be unconditional"),
             })
             .collect();
-        let expected = vec!["OBS::libobs", "OBS::native-test-cmocka"];
+        let mut expected = vec!["OBS::libobs"];
+        if name == "test_preview_only_hide" {
+            expected.push("OBS::caption");
+        }
+        expected.push("OBS::native-test-cmocka");
+        if name == "test_transition_audio_rescale" {
+            expected.push("m");
+        }
         assert!(target.header_libraries.is_empty());
         assert_eq!(libraries, expected, "{name}");
         assert_eq!(
