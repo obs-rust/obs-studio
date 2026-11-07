@@ -28,6 +28,9 @@ fn canonical_rust_static_decision_steps_are_registered() {
             if path == &format!("test/cmocka/{base}.c")));
         assert_eq!(target.includes, ["libobs"]);
         assert!(target.header_libraries.is_empty());
+        assert!(target.header_packages.is_empty());
+        assert!(target.packages.is_empty());
+        assert!(target.includes_before.is_empty());
         assert!(target.archives.is_empty());
         assert!(target.definitions.is_empty());
         assert!(target.compile_options.is_empty());
@@ -39,6 +42,13 @@ fn canonical_rust_static_decision_steps_are_registered() {
         assert_eq!(test.command, ["${target}"]);
         assert_eq!(test.timeout_seconds, None);
         assert_eq!(test.skip_return_code, None);
+        assert!(test.optional_prefixes.is_empty());
+        assert!(test.environment.is_empty());
+        assert!(test.environment_path_prepend.is_empty());
+        assert!(test.resource_locks.is_empty());
+        assert!(!test.run_serial);
+        assert_eq!(test.working_directory, None);
+        assert_eq!(test.qt_runtime, None);
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{base}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));

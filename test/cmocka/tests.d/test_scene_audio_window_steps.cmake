@@ -17,16 +17,4 @@
 # alone: its obs-scene member needs nothing from libobs or the other crates.
 # Linking the archive directly avoids exporting private symbols just for a
 # test.
-if(TARGET libobs_rust-static)
-  add_executable(test_scene_audio_window_steps_rust test_scene_audio_window_steps.c)
-  target_include_directories(
-    test_scene_audio_window_steps_rust
-    PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR}
-  )
-  target_link_libraries(test_scene_audio_window_steps_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES})
-  if(NOT MSVC)
-    target_link_libraries(test_scene_audio_window_steps_rust PRIVATE m)
-  endif()
-  add_dependencies(cmocka-tests test_scene_audio_window_steps_rust)
-  add_test(test_scene_audio_window_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_scene_audio_window_steps_rust)
-endif()
+# Rust-static target and test are declared in ../build/test-graph.json.

@@ -1052,6 +1052,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_deinterlace_pacing_steps_rust": {
+      "sources": [
+        "test/cmocka/test_deinterlace_pacing_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-deinterlace-pacing.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_deinterlace_select_steps": {
       "sources": [
         "test/cmocka/test_deinterlace_select_steps.c",
@@ -1069,6 +1085,23 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_deinterlace_select_steps_rust": {
+      "sources": [
+        "test/cmocka/test_deinterlace_select_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-deinterlace-pacing.h",
+        "libobs/obs-source-deinterlace-select.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_deque": {
       "sources": [
@@ -5309,6 +5342,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_audio_window_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_audio_window_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-audio-window.h",
+        "libobs/media-io/audio-io.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_scene_blend": {
       "sources": [
         "test/cmocka/test_scene_blend.c"
@@ -6194,6 +6250,23 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_color_space_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_color_space_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-color-space.h",
+        "libobs/graphics/graphics.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_source_create_state": {
       "sources": [
@@ -8631,8 +8704,22 @@
         "${target}"
       ]
     },
+    "test_deinterlace_pacing_steps_rust": {
+      "target": "test_deinterlace_pacing_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_deinterlace_select_steps": {
       "target": "test_deinterlace_select_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_deinterlace_select_steps_rust": {
+      "target": "test_deinterlace_select_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -10191,6 +10278,13 @@
         "${target}"
       ]
     },
+    "test_scene_audio_window_steps_rust": {
+      "target": "test_scene_audio_window_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_scene_blend": {
       "target": "test_scene_blend"
     },
@@ -10609,6 +10703,13 @@
     },
     "test_source_color_space_steps": {
       "target": "test_source_color_space_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_color_space_steps_rust": {
+      "target": "test_source_color_space_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
