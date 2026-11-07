@@ -592,6 +592,12 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
     )
     .expect("write encoder metadata adapter extract");
+    // Borrow the real source fields through the exact production adapter.
+    std::fs::write(
+        extract_dir.join("source_deinterlace_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-deinterlace-fields.c.h")),
+    )
+    .expect("write source deinterlace adapter extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

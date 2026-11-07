@@ -22,6 +22,7 @@ mod conversion_plan_parity;
 mod deinterlace_draw;
 mod deinterlace_draw_parity;
 mod deinterlace_getters;
+mod deinterlace_getters_parity;
 mod deinterlace_pacing;
 mod deinterlace_pacing_parity;
 mod deinterlace_select;

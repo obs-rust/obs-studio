@@ -1367,6 +1367,15 @@ struct obs_source {
 	obs_weak_canvas_t *canvas;
 };
 
+/* Borrowed field addresses only: no Rust mirror of the private source layout,
+ * ownership, synchronization, or getter decisions in the C adapter. */
+struct obs_source_deinterlace_fields {
+	const enum obs_deinterlace_mode *mode;
+	const bool *top_first;
+};
+
+struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
+
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,

@@ -12690,7 +12690,7 @@
       "command": [
         "${target}"
       ],
-      "suite": "unit",
+      "suite": "core",
       "working_directory": "${runtime}"
     },
     "test_source_draw_plan_steps": {
