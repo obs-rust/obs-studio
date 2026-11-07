@@ -82,6 +82,11 @@ struct metadata_log {
 	char message[128];
 };
 
+/* va_list printf callback, matching the format-checked log-capture oracles. */
+#if defined(__GNUC__) || defined(__clang__)
+static void metadata_capture(int level, const char *format, va_list args, void *param)
+	__attribute__((format(printf, 2, 0)));
+#endif
 static void metadata_capture(int level, const char *format, va_list args, void *param)
 {
 	struct metadata_log *log = param;
