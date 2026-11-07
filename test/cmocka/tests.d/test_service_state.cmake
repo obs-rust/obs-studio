@@ -1,0 +1,15 @@
+# Hidden C-source characterization only; the public lifecycle suite tests the swap.
+file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-service-state.c.h" _service_state_source)
+string(FIND "${_service_state_source}" "void obs_service_set_destroy(" _service_state_start)
+string(FIND "${_service_state_source}" "#undef get_weak" _service_state_end)
+math(EXPR _service_state_length "${_service_state_end} - ${_service_state_start}")
+string(SUBSTRING "${_service_state_source}" ${_service_state_start} ${_service_state_length} _service_state_body)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/service-state-characterization.inc" "${_service_state_body}")
+add_executable(test_service_state test_service_state.c)
+target_include_directories(
+  test_service_state
+  PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/deps/libcaption"
+)
+target_link_libraries(test_service_state PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_service_state)
+add_test(NAME test_service_state COMMAND test_service_state)

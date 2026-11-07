@@ -55,6 +55,8 @@ mod service_lifecycle_parity;
 mod service_parity;
 mod service_settings;
 mod service_settings_parity;
+mod service_state;
+mod service_state_parity;
 mod service_weak_acquire;
 mod service_weak_acquire_parity;
 mod stop_stats;

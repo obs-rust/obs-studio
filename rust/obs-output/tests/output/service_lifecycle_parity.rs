@@ -94,11 +94,13 @@ unsafe extern "C" fn initialize(data: *mut c_void, output: *mut c_void) -> bool 
     INIT_RESULT.load(Ordering::Relaxed)
 }
 
-/// A stand-in `obs_output_t`: only compared, never read.
-static OUTPUT: u8 = 0;
+unsafe extern "C" {
+    fn oracle_service_state_test_output() -> *mut c_void;
+}
 
 fn output_ptr() -> *mut c_void {
-    ptr::from_ref(&OUTPUT).cast_mut().cast()
+    // SAFETY: a real, static C output used only under SERVICE_GLOBALS.
+    unsafe { oracle_service_state_test_output() }
 }
 
 const ID: &CStr = c"parity_service";

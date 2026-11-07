@@ -142,6 +142,7 @@ pub mod protocols;
 pub mod raw_audio;
 pub mod raw_audio_trim;
 pub mod service;
+pub mod service_state;
 pub mod service_weak_acquire;
 pub mod stop_stats;
 pub mod video_checks;
