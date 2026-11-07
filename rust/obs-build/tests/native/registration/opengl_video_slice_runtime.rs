@@ -1,11 +1,12 @@
 use super::*;
 use obs_build::validation::graph::{Dependency, Graph};
-const CASES: [&str; 6] = [
+const CASES: [&str; 7] = [
     "test_visibility_transition",
     "test_xcomposite_error_replies",
     "test_preview_only_hide",
     "test_raw_output_video_reset",
     "test_transition_audio_clock",
+    "test_transition_audio_rescale",
     "test_transition_removed_child_audio",
 ];
 use std::process::Command;
