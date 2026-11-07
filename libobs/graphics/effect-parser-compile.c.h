@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-effect-parser-compile.pch.h"
+#include "libobs/build/libobs-ported-effect-parser-compile.pch.h"
 
 static void ep_compile_annotations(ep_param_array_t *ep_annotations, gs_effect_param_array_t *gsp_annotations,
 				   struct effect_parser *ep)

@@ -49,8 +49,8 @@ fn canonical_rust_static_private_parsers_are_registered() {
                 ]
                 .into();
                 let selected = graph.select(&facts).unwrap();
-                assert_eq!(selected.targets.len(), if archive { 4 } else { 0 });
-                assert_eq!(selected.tests.len(), if archive { 4 } else { 0 });
+                assert_eq!(selected.targets.len(), if archive { 5 } else { 0 });
+                assert_eq!(selected.tests.len(), if archive { 5 } else { 0 });
             }
         }
     }

@@ -5,7 +5,6 @@
       "sources": [
         "test/cmocka/test_effect_parser_shader_call.c",
         "libobs/graphics/effect-parser.c.h",
-        "libobs/graphics/effect-parser-compile.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
