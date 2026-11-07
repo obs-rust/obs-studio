@@ -3887,6 +3887,30 @@
         "plugins/mac-virtualcam/src/common"
       ]
     },
+    "test_mac_vmic_shm": {
+      "sources": [
+        "test/cmocka/test_mac_vmic_shm.c"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/mac-virtualcam/src/common"
+      ],
+      "compile_options": [
+        {
+          "name": "/std:c11",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/experimental:c11atomics",
+          "requires": "MSVC"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/mac-virtualcam/src/common/vmic-shm.h"
+      ]
+    },
     "test_main_mix_before_video": {
       "sources": [
         "test/cmocka/test_main_mix_before_video.c"
@@ -5748,6 +5772,48 @@
         "-fvisibility=default"
       ]
     },
+    "test_pipewire_connect_start": {
+      "sources": [
+        "test/cmocka/test_pipewire_connect_start.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::native-test-glib",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_HEADLESS_SDK"
+        ]
+      },
+      "header_libraries": [
+        "Libdrm::Libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h",
+        "plugins/linux-pipewire/pipewire.c.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=pw_thread_loop_lock",
+        "-Wl,--wrap=pw_thread_loop_unlock",
+        "-Wl,--wrap=pw_thread_loop_start",
+        "-Wl,--wrap=pw_thread_loop_stop",
+        "-Wl,--wrap=pw_thread_loop_wait",
+        "-Wl,--wrap=pw_context_connect_fd"
+      ]
+    },
     "test_pipewire_frame_layout": {
       "sources": [
         "test/cmocka/test_pipewire_frame_layout.c",
@@ -5779,6 +5845,30 @@
         "gio-2.0"
       ]
     },
+    "test_pipewire_frame_pacing": {
+      "sources": [
+        "test/cmocka/test_pipewire_frame_pacing.c",
+        "plugins/linux-pipewire/frame-pacing.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": "HAVE_PIPEWIRE_HEADLESS_SDK",
+      "header_libraries": [
+        "Libdrm::Libdrm",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::glad"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h"
+      ]
+    },
     "test_pipewire_reconnect": {
       "sources": [
         "test/cmocka/test_pipewire_reconnect.c",
@@ -5798,6 +5888,46 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "HAVE_OBS_PIPEWIRE"
+    },
+    "test_pipewire_teardown_wait": {
+      "sources": [
+        "test/cmocka/test_pipewire_teardown_wait.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::native-test-glib",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_HEADLESS_SDK",
+          "HAVE_PIPEWIRE_LOOP_TEST_SDK"
+        ]
+      },
+      "header_libraries": [
+        "Libdrm::Libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h",
+        "plugins/linux-pipewire/pipewire.c.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=pw_thread_loop_lock",
+        "-Wl,--wrap=pw_thread_loop_unlock",
+        "-Wl,--wrap=pw_thread_loop_wait"
+      ]
     },
     "test_plane": {
       "sources": [
@@ -6562,6 +6692,34 @@
         "plugins/linux-pulseaudio/build/linux-pulseaudio-nix.pch.h"
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
+    },
+    "test_python_stdio": {
+      "sources": [
+        "test/cmocka/test_python_stdio.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Python::Python",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "shared/obs-scripting"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_PYTHON_EMBED_TEST_SDK"
+        ]
+      },
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-startup.h"
+      ]
     },
     "test_qsv_encode_bounds": {
       "sources": [
@@ -11711,6 +11869,40 @@
         "plugins/linux-capture/xcomposite-search.h"
       ]
     },
+    "test_xshm_capture_pipeline": {
+      "sources": [
+        "test/cmocka/test_xshm_capture_pipeline.c",
+        "plugins/linux-capture/xcursor-xcb.c.h",
+        "plugins/linux-capture/xhelpers.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-capture"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      },
+      "watch_inputs": [
+        "plugins/linux-capture/build/linux-capture-nix.pch.h",
+        "plugins/linux-capture/xshm-input.c.h"
+      ]
+    },
     "test_youtube_broadcast_settings": {
       "sources": [
         "test/cmocka/test_youtube_broadcast_settings.c",
@@ -13116,6 +13308,9 @@
     "test_mac_vmic_install": {
       "target": "test_mac_vmic_install"
     },
+    "test_mac_vmic_shm": {
+      "target": "test_mac_vmic_shm"
+    },
     "test_main_mix_before_video": {
       "target": "test_main_mix_before_video",
       "command": [
@@ -13874,6 +14069,10 @@
       "target": "test_pipe_wait_error",
       "timeout_seconds": 30
     },
+    "test_pipewire_connect_start": {
+      "target": "test_pipewire_connect_start",
+      "timeout_seconds": 15
+    },
     "test_pipewire_frame_layout": {
       "target": "test_pipewire_frame_layout",
       "requires": {
@@ -13884,8 +14083,14 @@
         ]
       }
     },
+    "test_pipewire_frame_pacing": {
+      "target": "test_pipewire_frame_pacing"
+    },
     "test_pipewire_reconnect": {
       "target": "test_pipewire_reconnect"
+    },
+    "test_pipewire_teardown_wait": {
+      "target": "test_pipewire_teardown_wait"
     },
     "test_plane": {
       "target": "test_plane",
@@ -14088,6 +14293,9 @@
     "test_pulse_timing": {
       "target": "test_pulse_timing",
       "requires": "HAVE_OBS_PULSEAUDIO"
+    },
+    "test_python_stdio": {
+      "target": "test_python_stdio"
     },
     "test_qsv_encode_bounds": {
       "target": "test_qsv_encode_bounds",
@@ -15854,6 +16062,10 @@
         "${target}"
       ],
       "timeout_seconds": 30
+    },
+    "test_xshm_capture_pipeline": {
+      "target": "test_xshm_capture_pipeline",
+      "timeout_seconds": 10
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
