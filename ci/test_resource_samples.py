@@ -16,6 +16,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -29,6 +30,73 @@ _SPEC.loader.exec_module(local_gate)
 
 
 class ResourceSampleTest(unittest.TestCase):
+    def test_run_waits_for_an_in_progress_sample(self):
+        started = threading.Event()
+        release = threading.Event()
+        cleanup = threading.Event()
+        returned = threading.Event()
+        threads = []
+        errors = []
+        real_thread = threading.Thread
+
+        def sample():
+            started.set()
+            if not release.wait(5):
+                raise TimeoutError("sample was not released")
+            return "resources: delayed sample"
+
+        def make_thread(*args, **kwargs):
+            thread = real_thread(*args, **kwargs)
+            join = thread.join
+
+            def finish(*args, **kwargs):
+                cleanup.set()
+                return join(*args, **kwargs)
+
+            thread.join = finish
+            threads.append(thread)
+            return thread
+
+        def output():
+            if not started.wait(5):
+                raise TimeoutError("sampler did not start")
+            return iter(())
+
+        def run():
+            try:
+                local_gate.run(["child"])
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                returned.set()
+                cleanup.set()
+
+        runner = real_thread(target=run)
+        out = io.StringIO()
+        with (
+            mock.patch.object(local_gate, "RESOURCE_SAMPLE_SECONDS", 0),
+            mock.patch.dict(os.environ, {"OBS_GATE_RESOURCE_SAMPLES": "1"}),
+            mock.patch.object(local_gate, "resource_sample", side_effect=sample),
+            mock.patch.object(local_gate.threading, "Thread", side_effect=make_thread),
+            mock.patch.object(local_gate.subprocess, "Popen") as popen,
+            contextlib.redirect_stdout(out),
+        ):
+            proc = popen.return_value.__enter__.return_value
+            proc.stdout.__iter__.side_effect = output
+            proc.returncode = 0
+            runner.start()
+            try:
+                self.assertTrue(cleanup.wait(5), "run never reached sampler cleanup")
+                self.assertFalse(returned.is_set(), "run returned while a sample was still in progress")
+            finally:
+                release.set()
+                runner.join(5)
+                for thread in threads:
+                    thread.join(5)
+            self.assertFalse(runner.is_alive())
+            self.assertEqual(errors, [])
+        self.assertIn("resources: delayed sample", out.getvalue())
+
     def test_sample_names_memory_and_disk(self):
         sample = local_gate.resource_sample()
         self.assertIn("resources:", sample)
