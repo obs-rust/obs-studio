@@ -6091,6 +6091,27 @@
         "libobs/data"
       ]
     },
+    "test_source_transition_switch": {
+      "sources": [
+        "test/cmocka/test_source_transition_switch.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_source_video_tick_steps": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
@@ -9916,6 +9937,15 @@
     },
     "test_source_transition_slots": {
       "target": "test_source_transition_slots",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_source_transition_switch": {
+      "target": "test_source_transition_switch",
       "command": [
         "${target}"
       ],
