@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 uint32_t obs_encoder_get_frame_rate_divisor(const obs_encoder_t *encoder)
 {

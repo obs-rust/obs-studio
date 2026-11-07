@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-encoder-frame-rate-divisor+.h.c"
+  ]
+}

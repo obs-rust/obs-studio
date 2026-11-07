@@ -183,6 +183,8 @@ mod canonical_effect_lookups_is_registered;
 mod canonical_encoder_audio_getters_is_registered;
 #[path = "native/registration/canonical_encoder_dimensions_is_registered.rs"]
 mod canonical_encoder_dimensions_is_registered;
+#[path = "native/registration/canonical_encoder_frame_rate_divisor_is_registered.rs"]
+mod canonical_encoder_frame_rate_divisor_is_registered;
 #[path = "native/registration/canonical_encoder_gpu_scaling_getters_is_registered.rs"]
 mod canonical_encoder_gpu_scaling_getters_is_registered;
 #[path = "native/registration/canonical_encoder_group_null_is_registered.rs"]
