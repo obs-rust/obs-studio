@@ -94,6 +94,7 @@
 //! The `int` and count reads' own intentional difference (#3464) is
 //! [`crate::effect_param_types`]'s.
 
+pub mod compile;
 pub mod writer;
 
 use crate::effect_param_types::{self, Route};
