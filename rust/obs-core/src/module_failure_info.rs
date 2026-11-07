@@ -3,6 +3,8 @@
 
 /// Release the table exactly once, retaining the C ordering (free, then clear).
 pub fn free_table<T: Copy + Default + PartialEq>(table: &mut T, mut free: impl FnMut(T)) {
-    let _ = (table, &mut free);
-    todo!()
+    if *table != T::default() {
+        free(*table);
+        *table = T::default();
+    }
 }
