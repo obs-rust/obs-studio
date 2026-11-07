@@ -28,3 +28,12 @@ void obs_sceneitem_fields_unlock(struct obs_scene *scene)
 	(void)scene;
 	abort();
 }
+
+struct vec2;
+void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const struct obs_scene_item *item);
+void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const struct obs_scene_item *item)
+{
+	(void)dst;
+	(void)item;
+	abort();
+}

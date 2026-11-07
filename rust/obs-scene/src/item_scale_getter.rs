@@ -7,6 +7,7 @@ pub fn read_scale(
     relative: impl FnOnce() -> [u32; 2],
     output: &mut [u32; 2],
 ) {
-    let _ = (value, relative, output);
-    todo!("#3897 scale getter")
+    if let Some((stored, absolute)) = value {
+        *output = if absolute { stored } else { relative() };
+    }
 }

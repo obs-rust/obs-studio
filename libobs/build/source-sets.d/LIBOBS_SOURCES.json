@@ -215,6 +215,5 @@
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
   "build/libobs.graphics-linear-srgb+.h.c",
-  "build/libobs.media+.h.c",
-  "build/libobs.scene-item-scale-fields+.h.c"
+  "build/libobs.media+.h.c"
 ]
