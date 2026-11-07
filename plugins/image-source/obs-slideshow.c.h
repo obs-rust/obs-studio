@@ -109,6 +109,10 @@ struct slideshow {
 
 	float elapsed;
 	size_t cur_item;
+	/* cur_item as the current_index procedure reports it. Next and
+	 * Previous publish it only once the slide's transition has started,
+	 * after an on-demand slide's decode (#3789). */
+	size_t published_item;
 	pthread_mutex_t index_mutex;
 
 	uint32_t cx;
@@ -141,6 +145,23 @@ static void ss_set_current_index(struct slideshow *ss, size_t index)
 {
 	pthread_mutex_lock(&ss->index_mutex);
 	ss->cur_item = index;
+	ss->published_item = index;
+	pthread_mutex_unlock(&ss->index_mutex);
+}
+
+/* Chooses the next slide without reporting it yet: run_transition()
+ * publishes it once its transition has started. */
+static void ss_choose_index(struct slideshow *ss, size_t index)
+{
+	pthread_mutex_lock(&ss->index_mutex);
+	ss->cur_item = index;
+	pthread_mutex_unlock(&ss->index_mutex);
+}
+
+static void ss_publish_index(struct slideshow *ss, size_t index)
+{
+	pthread_mutex_lock(&ss->index_mutex);
+	ss->published_item = index;
 	pthread_mutex_unlock(&ss->index_mutex);
 }
 
@@ -502,6 +523,9 @@ static void run_transition(struct slideshow *ss, struct transition_plan *plan)
 		obs_source_media_ended(ss->source);
 	}
 
+	if (plan->valid)
+		ss_publish_index(ss, plan->index);
+
 	if (plan->valid && !plan->to_null) {
 		calldata_set_int(&ss->cd, "index", (long long)plan->index);
 		calldata_set_string(&ss->cd, "path", plan->path);
@@ -807,9 +831,9 @@ static void ss_next_slide(void *data)
 	}
 
 	if (ss->randomize)
-		ss_set_current_index(ss, next_random_file(ss));
+		ss_choose_index(ss, next_random_file(ss));
 	else
-		ss_set_current_index(ss, (ss->cur_item + 1) % ss->files.num);
+		ss_choose_index(ss, (ss->cur_item + 1) % ss->files.num);
 
 	do_transition(ss, false);
 }
@@ -822,11 +846,11 @@ static void ss_previous_slide(void *data)
 		return;
 
 	if (ss->randomize)
-		ss_set_current_index(ss, next_random_file(ss));
+		ss_choose_index(ss, next_random_file(ss));
 	else if (ss->cur_item == 0)
-		ss_set_current_index(ss, ss->files.num - 1);
+		ss_choose_index(ss, ss->files.num - 1);
 	else
-		ss_set_current_index(ss, ss->cur_item - 1);
+		ss_choose_index(ss, ss->cur_item - 1);
 
 	do_transition(ss, false);
 }
@@ -896,7 +920,7 @@ static void current_slide_proc(void *data, calldata_t *cd)
 {
 	struct slideshow *ss = data;
 	pthread_mutex_lock(&ss->index_mutex);
-	size_t index = ss->cur_item;
+	size_t index = ss->published_item;
 	pthread_mutex_unlock(&ss->index_mutex);
 	calldata_set_int(cd, "current_index", (long long)index);
 }
