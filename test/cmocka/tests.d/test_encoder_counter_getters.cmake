@@ -1,0 +1,5 @@
+add_executable(test_encoder_counter_getters test_encoder_counter_getters.c)
+target_include_directories(test_encoder_counter_getters PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_encoder_counter_getters PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_encoder_counter_getters)
+add_test(NAME test_encoder_counter_getters COMMAND test_encoder_counter_getters)
