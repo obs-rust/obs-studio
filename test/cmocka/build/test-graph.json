@@ -3841,6 +3841,25 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_pipe_wait_error": {
+      "sources": [
+        "test/cmocka/test_pipe_wait_error.c",
+        "libobs/util/pipe-posix.c.h"
+      ],
+      "requires": "OS_LINUX",
+      "libraries": [
+        "OBS::libobs"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ],
+      "link_options": [
+        "-Wl,--wrap=waitpid"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-posix.pch.h"
+      ]
+    },
     "test_pipewire_reconnect": {
       "sources": [
         "test/cmocka/test_pipewire_reconnect.c",
@@ -9115,6 +9134,10 @@
     },
     "test_pipe": {
       "target": "test_pipe"
+    },
+    "test_pipe_wait_error": {
+      "target": "test_pipe_wait_error",
+      "timeout_seconds": 30
     },
     "test_pipewire_reconnect": {
       "target": "test_pipewire_reconnect"
