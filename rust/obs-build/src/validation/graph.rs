@@ -1,7 +1,8 @@
 //! Declarative native test targets and their execution contracts.
 //!
 //! Selection is explicit: callers provide platform, feature and dependency
-//! facts. An unknown fact is an error, never an implicit reason to drop a test.
+//! facts. Unknown facts are errors; the optional HAVE_X11_DISPLAY runtime fact
+//! alone defaults to false when no X server is declared.
 use crate::{NativeBuild, SharedLibrary};
 use serde::Deserialize;
 use std::{
@@ -34,6 +35,9 @@ impl Requirement {
             Self::Fact(name) => facts
                 .get(name)
                 .copied()
+                // No declared X server is a normal unsupported runtime, including
+                // non-X11 hosts. All other facts remain strict (including typos).
+                .or_else(|| (name == "HAVE_X11_DISPLAY").then_some(false))
                 .ok_or_else(|| format!("unknown native test requirement {name}")),
             Self::All { all } => {
                 let mut selected = true;
