@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 bool obs_weak_service_weak_get_ref(obs_weak_service_t *weak)
 {
