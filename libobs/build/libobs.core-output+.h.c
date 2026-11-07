@@ -5,7 +5,7 @@
 #include "libobs/obs-audio.c.h"
 #include "libobs/obs-encoder-counter-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
-#include "libobs/obs-encoder-scaling-enabled.c.h"
+#include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"
 #include "libobs/obs-output.c.h"

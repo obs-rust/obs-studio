@@ -30,6 +30,7 @@ mod encoder_pause_parity;
 mod encoder_roi;
 mod encoder_roi_parity;
 mod encoder_scaling_enabled;
+mod encoder_scaling_enabled_parity;
 mod encoder_size;
 mod encoder_size_parity;
 mod interleave;
