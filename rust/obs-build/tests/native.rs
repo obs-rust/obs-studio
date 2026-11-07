@@ -5,7 +5,7 @@ use std::{fs, path::Path};
 /// #1390: standalone plugin configuration helpers must reach both native consumers.
 #[test]
 fn canonical_plugin_configuration_helpers_are_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
+    use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     for (name, include, headers) in [
@@ -23,69 +23,88 @@ fn canonical_plugin_configuration_helpers_are_registered() {
             vec!["plugins/obs-transitions/transition-stinger-monitoring.h"],
         ),
     ] {
-        let target = graph
-            .targets
-            .get(name)
-            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
-        let sources: Vec<_> = target
-            .sources
-            .iter()
-            .map(|source| match source {
-                Source::Path(path) => path.as_str(),
-                _ => panic!("plugin helper sources must be unconditional"),
-            })
-            .collect();
-        let mut expected = vec![format!("test/cmocka/{name}.c")];
-        if name == "test_slideshow_size" {
-            expected.push("plugins/image-source/slideshow-size.c.h".into());
-        }
-        assert_eq!(sources, expected);
-        assert_eq!(target.includes, [include]);
-        assert_eq!(target.watch_inputs, headers);
-        if name == "test_slideshow_size" {
-            assert!(matches!(target.libraries.as_slice(), [
-                ConditionalValue::Name(library),
-                ConditionalValue::Conditional { name, requires: Requirement::Fact(os) }
-            ] if library == "OBS::native-test-cmocka" && name == "OBS::w32-pthreads" && os == "OS_WINDOWS"));
-        } else {
-            assert!(
-                matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
-            );
-        }
-        if name == "test_slideshow_size" {
-            assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
-        } else {
-            assert!(target.header_libraries.is_empty());
-        }
-        let test = &graph.tests[name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.suite, "core");
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        assert!(test.optional_prefixes.is_empty());
-        assert_eq!(test.qt_runtime, None);
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-        let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-        single.targets.retain(|key, _| key == name);
-        single.tests.retain(|key, _| key == name);
-        for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-            let selected = single
-                .select(
-                    &[
-                        ("OS_LINUX".into(), os == "OS_LINUX"),
-                        ("OS_MACOS".into(), os == "OS_MACOS"),
-                        ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
-                    ]
-                    .into(),
-                )
-                .unwrap();
-            assert!(selected.targets.contains_key(name), "{os}");
-            assert!(selected.tests.contains_key(name), "{os}");
-        }
+        assert_plugin_configuration_target(&graph, name, include, &headers);
+        assert_plugin_configuration_test(&root, &graph, name);
+    }
+}
+
+fn assert_plugin_configuration_target(
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+    include: &str,
+    headers: &[&str],
+) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
+    let target = graph
+        .targets
+        .get(name)
+        .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+    let sources: Vec<_> = target
+        .sources
+        .iter()
+        .map(|source| match source {
+            Source::Path(path) => path.as_str(),
+            _ => panic!("plugin helper sources must be unconditional"),
+        })
+        .collect();
+    let mut expected = vec![format!("test/cmocka/{name}.c")];
+    if name == "test_slideshow_size" {
+        expected.push("plugins/image-source/slideshow-size.c.h".into());
+    }
+    assert_eq!(sources, expected);
+    assert_eq!(target.includes, [include]);
+    assert_eq!(target.watch_inputs, headers);
+    if name == "test_slideshow_size" {
+        assert!(matches!(target.libraries.as_slice(), [
+            ConditionalValue::Name(library),
+            ConditionalValue::Conditional { name, requires: Requirement::Fact(os) }
+        ] if library == "OBS::native-test-cmocka" && name == "OBS::w32-pthreads" && os == "OS_WINDOWS"));
+    } else {
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
+        );
+    }
+    if name == "test_slideshow_size" {
+        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
+    } else {
+        assert!(target.header_libraries.is_empty());
+    }
+}
+
+fn assert_plugin_configuration_test(
+    root: &Path,
+    graph: &obs_build::validation::graph::Graph,
+    name: &str,
+) {
+    use obs_build::validation::graph::Graph;
+    let test = &graph.tests[name];
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.suite, "core");
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert_eq!(test.qt_runtime, None);
+    let fragment =
+        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+    let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    single.targets.retain(|key, _| key == name);
+    single.tests.retain(|key, _| key == name);
+    for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+        let selected = single
+            .select(
+                &[
+                    ("OS_LINUX".into(), os == "OS_LINUX"),
+                    ("OS_MACOS".into(), os == "OS_MACOS"),
+                    ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
+                ]
+                .into(),
+            )
+            .unwrap();
+        assert!(selected.targets.contains_key(name), "{os}");
+        assert!(selected.tests.contains_key(name), "{os}");
     }
 }
 
