@@ -41,6 +41,8 @@ enable_testing()
 set(OS_LINUX TRUE)
 set(OS_WINDOWS FALSE)
 set(HAVE_OBS_OPENGL TRUE)
+set(HAVE_MEDIA_PLAYBACK_TEST_OWNER TRUE)
+set(HAVE_X11_DISPLAY TRUE)
 set(HAVE_VLC_MODULE TRUE)
 set(PKG_CONFIG_FOUND TRUE)
 function(find_package)
@@ -52,7 +54,7 @@ function(add_executable target)
 endfunction()
 add_library(fixture INTERFACE)
 set_target_properties(fixture PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}")
-foreach(alias OBS::libobs OBS::caption OBS::native-test-cmocka OBS::media-playback OBS::pipewire OBS::glad
+foreach(alias OBS::libobs OBS::caption Uthash::Uthash OBS::native-test-cmocka OBS::media-playback OBS::pipewire OBS::glad
     FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil FFmpeg::swscale FFmpeg::swresample
     gio::gio PkgConfig::INHIBIT_TEST_GLIB PkgConfig::_portal_test_glib
     PkgConfig::_screencast_shm_test_glib PkgConfig::_screencast_resume_test_glib
