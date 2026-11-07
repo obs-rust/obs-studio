@@ -4211,6 +4211,144 @@
       ],
       "sanitizers": "address"
     },
+    "test_obs_scripting_lua_host_macos": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_lua_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_MACOS",
+        "SCRIPT_DIR=\"test-scripts\"",
+        "OBS_LUA_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-lua-host-macos.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-host-macos.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_lua_host_posix": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_lua_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_POSIX",
+        "SCRIPT_DIR=\"test-scripts\"",
+        "OBS_LUA_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-lua-host-posix.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_lua_host_windows": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_lua_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_WINDOWS",
+        "SCRIPT_DIR=\"test-scripts\"",
+        "OBS_LUA_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-lua-host-windows.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-host-windows.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_python_host_macos": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_MACOS",
+        "SCRIPT_DIR=\"test-python-scripts-macos\"",
+        "OBS_PYTHON_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-host-macos.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-host-macos.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_python_host_posix": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_POSIX",
+        "SCRIPT_DIR=\"test-python-scripts-posix\"",
+        "OBS_PYTHON_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-host-posix.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_scripting_python_host_windows": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_WINDOWS",
+        "SCRIPT_DIR=\"test-python-scripts-windows\"",
+        "OBS_PYTHON_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-host-windows.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-host-windows.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_os_path": {
       "sources": [
         "test/cmocka/test_os_path.c"
@@ -11619,6 +11757,60 @@
       "target": "test_obs_properties_leaks",
       "command": [
         "${target}"
+      ]
+    },
+    "test_obs_scripting_lua_host_macos": {
+      "target": "test_obs_scripting_lua_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    },
+    "test_obs_scripting_lua_host_posix": {
+      "target": "test_obs_scripting_lua_host_posix",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    },
+    "test_obs_scripting_lua_host_windows": {
+      "target": "test_obs_scripting_lua_host_windows",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    },
+    "test_obs_scripting_python_host_macos": {
+      "target": "test_obs_scripting_python_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    },
+    "test_obs_scripting_python_host_posix": {
+      "target": "test_obs_scripting_python_host_posix",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    },
+    "test_obs_scripting_python_host_windows": {
+      "target": "test_obs_scripting_python_host_windows",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
       ]
     },
     "test_os_path": {

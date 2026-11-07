@@ -256,8 +256,6 @@ mod canonical_rust_static_source_steps_are_registered;
 mod canonical_rust_static_transition_start_are_registered;
 #[path = "native/registration/canonical_scene_bounds_place_is_registered.rs"]
 mod canonical_scene_bounds_place_is_registered;
-#[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]
-mod canonical_scripting_hosts_are_registered;
 #[path = "native/registration/canonical_scene_crop_steps_is_registered.rs"]
 mod canonical_scene_crop_steps_is_registered;
 #[path = "native/registration/canonical_scene_enum_items_removal_is_registered.rs"]
@@ -266,6 +264,8 @@ mod canonical_scene_enum_items_removal_is_registered;
 mod canonical_scene_item_crop_load_is_registered;
 #[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
 mod canonical_sck_vaapi_helpers_are_registered;
+#[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]
+mod canonical_scripting_hosts_are_registered;
 #[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
