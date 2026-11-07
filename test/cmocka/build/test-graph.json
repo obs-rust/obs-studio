@@ -2762,6 +2762,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_linear_srgb": {
+      "sources": [
+        "test/cmocka/test_graphics_linear_srgb.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_graphics_no_context": {
       "sources": [
         "test/cmocka/test_graphics_no_context.c"
@@ -10931,6 +10946,12 @@
     },
     "test_graphics_immediate_steps": {
       "target": "test_graphics_immediate_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_linear_srgb": {
+      "target": "test_graphics_linear_srgb",
       "command": [
         "${target}"
       ]
