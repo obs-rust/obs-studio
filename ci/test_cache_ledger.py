@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 """Cache ledger and baseline rollup. No network.
 
-    uv run --no-project python -m unittest ci/test_cache_ledger.py
+    uv run --no-project python -m unittest discover -s ci -p test_cache_ledger.py
 """
 
 from __future__ import annotations
@@ -10,17 +10,15 @@ import contextlib
 import io
 import json
 import re
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "ci"))
+import cache_baseline
+import cache_ledger
 
-import cache_baseline  # noqa: E402
-import cache_ledger  # noqa: E402
+ROOT = Path(__file__).resolve().parent.parent
 
 FIXTURE = ROOT / "ci" / "fixtures" / "soldr_cache_report_0.9.45.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"
