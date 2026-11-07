@@ -2292,6 +2292,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_FREETYPE_FILE_SDK".into(), false),
         ("HAVE_LINUX_CAPTURE".into(), false),
         ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
+        ("HAVE_TEXT_FILE_OWNER".into(), false),
+        ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
         ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),

@@ -3151,6 +3151,68 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_background_ui": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_ui.cpp",
+        "frontend/settings/OBSHotkeyBackground.cpp.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "definitions": [
+        "HOTKEY_LOCALE_EN_US=\"${source}/frontend/data/locale/en-US.ini\""
+      ],
+      "watch_inputs": [
+        "frontend/build/frontend-settings-obshotkeybackground.pch.hpp",
+        "frontend/data/locale/en-US.ini"
+      ],
+      "cpp_standard": "17"
+    },
+    "test_hotkey_background_use_key": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_use_key.cpp",
+        "frontend/settings/OBSHotkeyBackground.cpp.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "watch_inputs": [
+        "frontend/build/frontend-settings-obshotkeybackground.pch.hpp"
+      ],
+      "cpp_standard": "17"
+    },
     "test_hotkey_binding_getters": {
       "sources": [
         "test/cmocka/test_hotkey_binding_getters.c"
@@ -9151,6 +9213,26 @@
         ]
       }
     },
+    "test_text_file": {
+      "sources": [
+        "test/cmocka/test_text_file.c",
+        "plugins/text-freetype2/text-file.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_TEXT_FILE_OWNER",
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2.pch.h"
+      ],
+      "header_libraries": [
+        "Freetype::Freetype"
+      ]
+    },
     "test_text_freetype2_platform": {
       "sources": [
         "test/cmocka/test_text_freetype2_platform.c",
@@ -9878,6 +9960,41 @@
         ]
       }
     },
+    "test_v4l2_fd_cloexec": {
+      "sources": [
+        "test/cmocka/test_v4l2_fd_cloexec.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ]
+    },
     "test_v4l2_framerate": {
       "sources": [
         "test/cmocka/test_v4l2_framerate.c",
@@ -9939,6 +10056,68 @@
           "HAVE_V4L2_UDEV_SDK"
         ]
       }
+    },
+    "test_v4l2_vcam_audio": {
+      "sources": [
+        "test/cmocka/test_v4l2_vcam_audio.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/v4l2-output.c.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix-output.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ]
+    },
+    "test_v4l2_vcam_write": {
+      "sources": [
+        "test/cmocka/test_v4l2_vcam_write.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "link_options": [
+        "-Wl,--wrap=write"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/v4l2-output.c.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix-output.pch.h"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ]
     },
     "test_vaapi_device_select": {
       "sources": [
@@ -12132,6 +12311,40 @@
     "test_hevc": {
       "target": "test_hevc"
     },
+    "test_hotkey_background_ui": {
+      "target": "test_hotkey_background_ui",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_hotkey_background_use_key": {
+      "target": "test_hotkey_background_use_key",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_hotkey_binding_getters": {
       "target": "test_hotkey_binding_getters"
     },
@@ -14281,6 +14494,13 @@
         ]
       }
     },
+    "test_text_file": {
+      "target": "test_text_file",
+      "requires": "HAVE_TEXT_FILE_OWNER",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_text_freetype2_platform": {
       "target": "test_text_freetype2_platform",
       "requires": {
@@ -14530,6 +14750,19 @@
       },
       "timeout_seconds": 90
     },
+    "test_v4l2_fd_cloexec": {
+      "target": "test_v4l2_fd_cloexec",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
     "test_v4l2_framerate": {
       "target": "test_v4l2_framerate",
       "requires": {
@@ -14550,6 +14783,32 @@
           "HAVE_V4L2_UDEV_SDK"
         ]
       },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_vcam_audio": {
+      "target": "test_v4l2_vcam_audio",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
+    "test_v4l2_vcam_write": {
+      "target": "test_v4l2_vcam_write",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
       "timeout_seconds": 60
     },
     "test_vaapi_device_select": {
