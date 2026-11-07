@@ -303,7 +303,11 @@ not get a line.
 - **Encrypted streaming where the service supports it.** Twitch, Vimeo,
   niconico, BoxCast, Bitmovin, Eventials and EventLive.pro stream over RTMPS
   (port 443) instead of plain RTMP, on every server checked to accept it;
-  existing profiles switch too, with no setting to change. If the encrypted
+  existing profiles switch too, with no setting to change. The nanoStream
+  Cloud / bintu global ingest and global transcoding ingest use their verified
+  RTMPS endpoints on port 1937; regional hosts stay unchanged
+  ([#2216](https://github.com/obs-rust/obs-studio/issues/2216),
+  PR [#3800](https://github.com/obs-rust/obs-studio/pull/3800)). If the encrypted
   connection cannot be made, the shared fallback warning ("Streaming
   unencrypted (RTMP)") counts down three seconds and then streams to the same
   server over plain RTMP, unless you cancel; the fallback is written to the

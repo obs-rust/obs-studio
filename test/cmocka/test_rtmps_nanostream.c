@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdio.h>
 #include <cmocka.h>
 
 #include "plugins/rtmp-services/service-specific/rtmps-upgrade.c.h"
@@ -27,8 +28,8 @@ static void default_port_case_and_query_are_preserved(void **state)
 {
 	(void)state;
 	struct dstr result = {0};
-	assert_true(rtmps_upgrade_url("nanoStream Cloud / bintu",
-				      "RTMP://BINTU-stream.nanocosmos.de:1935/live?x=1", &result));
+	assert_true(rtmps_upgrade_url("nanoStream Cloud / bintu", "RTMP://BINTU-stream.nanocosmos.de:1935/live?x=1",
+				      &result));
 	assert_string_equal(result.array, "rtmps://BINTU-stream.nanocosmos.de:1937/live?x=1");
 	dstr_free(&result);
 }
@@ -37,10 +38,8 @@ static void unverified_urls_are_unchanged(void **state)
 {
 	(void)state;
 	const char *urls[] = {
-		"rtmp://bintu-stream.nanocosmos.de:80/live",
-		"rtmp://bintu-stream.nanocosmos.de:1937/live",
-		"rtmps://bintu-stream.nanocosmos.de:1937/live",
-		"rtmp://bintu-stream-eu.nanocosmos.de/live",
+		"rtmp://bintu-stream.nanocosmos.de:80/live",          "rtmp://bintu-stream.nanocosmos.de:1937/live",
+		"rtmps://bintu-stream.nanocosmos.de:1937/live",       "rtmp://bintu-stream-eu.nanocosmos.de/live",
 		"rtmp://bintu-stream.nanocosmos.de.example.com/live",
 	};
 	struct dstr result = {0};

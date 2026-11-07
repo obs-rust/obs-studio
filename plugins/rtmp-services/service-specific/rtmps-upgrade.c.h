@@ -1,6 +1,6 @@
 #include "plugins/rtmp-services/build/rtmp-services.pch.h"
 
-/* Ingest hosts that answered on port 443 with a valid certificate for the
+/* Ingest hosts that answered on port 443 (except where noted) with a valid certificate for the
  * host name, completed the RTMP handshake and connect over TLS, and rejected a
  * publish with a made-up stream key the same way as over plain RTMP. Checked
  * on 2026-10-24 for every server of every built-in RTMP service and every
@@ -14,6 +14,12 @@ static const struct {
 	{"BoxCast", "rtmp.boxcast.com"},
 	{"Eventials", "transmission.eventials.com"},
 	{"EventLive.pro", "go.eventlive.pro"},
+	/* nanoStream uses port 1937: https://docs.nanocosmos.de/docs/cloud/security
+	 * Both global hosts passed the same checker on 2026-11-07 (#2216): verified
+	 * TLS, connect success, identical fake-key rejection on plain/TLS. Regional
+	 * hosts have not been verified and must not be added by suffix matching. */
+	{"nanoStream Cloud / bintu", "bintu-stream.nanocosmos.de"},
+	{"nanoStream Cloud / bintu", "bintu-vtrans.nanocosmos.de"},
 	{"niconico (ニコニコ生放送)", "liveorigin.dlive.nicovideo.jp"},
 	{"Twitch", "apn10.contribute.live-video.net"},
 	{"Twitch", "apn20.contribute.live-video.net"},
@@ -101,7 +107,7 @@ bool rtmps_upgrade_url(const char *service, const char *url, struct dstr *out)
 	size_t host_len = strcspn(host, ":/?");
 	const char *rest = host + host_len;
 
-	/* Only the default RTMP port maps to RTMPS on 443. */
+	/* Only the default RTMP port maps to the verified RTMPS port. */
 	if (*rest == ':') {
 		const char *port = rest + 1;
 		size_t port_len = strcspn(port, "/?");
@@ -116,7 +122,7 @@ bool rtmps_upgrade_url(const char *service, const char *url, struct dstr *out)
 
 	dstr_copy(out, "rtmps://");
 	dstr_ncat(out, host, host_len);
-	dstr_cat(out, ":443");
+	dstr_cat(out, strcmp(service, "nanoStream Cloud / bintu") == 0 ? ":1937" : ":443");
 	dstr_cat(out, rest);
 	return true;
 }
