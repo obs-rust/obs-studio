@@ -2309,6 +2309,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
         ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
         ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
         ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
         ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),
@@ -2333,9 +2335,18 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         partition.retain_suite(suite);
         assert!(!partition.tests.is_empty(), "{suite} has no tests");
         assert!(partition.tests.values().all(|test| test.suite == suite));
+        // Several modes may execute the same target; every target must still
+        // be covered, and every mode must reference a target in this suite.
         assert_eq!(
-            partition.targets.len(),
-            partition.tests.len(),
+            partition
+                .targets
+                .keys()
+                .collect::<std::collections::BTreeSet<_>>(),
+            partition
+                .tests
+                .values()
+                .map(|test| &test.target)
+                .collect::<std::collections::BTreeSet<_>>(),
             "{suite} targets"
         );
         covered_tests += partition.tests.len();

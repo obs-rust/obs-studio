@@ -8,238 +8,260 @@ const CASES: [&str; 6] = [
     "test_text_freetype2_face_index",
     "test_text_freetype2_bundled_font",
 ];
-fn expected() -> serde_json::Value {
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "headless_services_runtime.rs"]
+mod runtime;
+fn expected_test_inhibit_sleep() -> serde_json::Value {
     serde_json::json!({
-        "schema": 1,
-        "targets": {
-            "test_inhibit_sleep": {
-                "sources": [
-                    "test/cmocka/test_inhibit_sleep.c"
-                ],
-                "libraries": [
-                    "OBS::libobs",
-                    "OBS::native-test-cmocka"
-                ],
-                "requires": {
-                    "any": [
-                        "OS_LINUX",
-                        "OS_FREEBSD"
-                    ]
-                }
-            },
-            "test_file_updater_failure": {
-                "sources": [
-                    "test/cmocka/test_file_updater_failure.c",
-                    "shared/file-updater/build/file-updater.core+.h.c"
-                ],
-                "libraries": [
-                    "OBS::libobs",
-                    "CURL::libcurl",
-                    "OBS::native-test-cmocka"
-                ],
-                "requires": "OS_LINUX",
-                "includes": [
-                    "shared/file-updater"
-                ],
-                "watch_inputs": [
-                    "shared/file-updater/build/file-updater.pch.h",
-                    "shared/file-updater/file-updater/file-updater.c.h",
-                    "shared/file-updater/file-updater/file-updater.h",
-                    "shared/file-updater/file-updater/curl-accept-encoding.h"
-                ]
-            },
-            "test_file_updater_timeout": {
-                "sources": [
-                    "test/cmocka/test_file_updater_timeout.c",
-                    "shared/file-updater/build/file-updater.core+.h.c"
-                ],
-                "libraries": [
-                    "OBS::libobs",
-                    "CURL::libcurl",
-                    "OBS::native-test-cmocka"
-                ],
-                "requires": "OS_LINUX",
-                "includes": [
-                    "shared/file-updater"
-                ],
-                "watch_inputs": [
-                    "shared/file-updater/build/file-updater.pch.h",
-                    "shared/file-updater/file-updater/file-updater.c.h",
-                    "shared/file-updater/file-updater/file-updater.h",
-                    "shared/file-updater/file-updater/curl-accept-encoding.h"
-                ]
-            },
-            "test_frontend_warn_fallback": {
-                "sources": [
-                    "test/cmocka/test_frontend_warn_fallback.c"
-                ],
-                "libraries": [
-                    "OBS::libobs",
-                    "OBS::frontend-api",
-                    "OBS::native-test-cmocka"
-                ],
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FRONTEND_WARN_TEST_OWNER"
-                    ]
-                },
-                "watch_inputs": [
-                    "frontend/api/build/obs-frontend-api.core+.hpp.cpp",
-                    "frontend/api/build/obs-frontend-api.pch.hpp",
-                    "frontend/api/obs-frontend-api.cpp.hpp",
-                    "frontend/api/obs-frontend-internal.hpp"
-                ]
-            },
-            "test_text_freetype2_face_index": {
-                "sources": [
-                    "test/cmocka/test_text_freetype2_face_index.c",
-                    "plugins/text-freetype2/find-font-unix.c.h",
-                    "plugins/text-freetype2/text-freetype2-host-posix.c.h"
-                ],
-                "libraries": [
-                    "OBS::libobs",
-                    "Freetype::Freetype",
-                    "Fontconfig::Fontconfig",
-                    "OBS::native-test-cmocka"
-                ],
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FONTCONFIG_TEST_OWNER"
-                    ]
-                },
-                "includes": [
-                    "plugins/text-freetype2"
-                ],
-                "watch_inputs": [
-                    "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
-                    "plugins/text-freetype2/find-font.h",
-                    "plugins/text-freetype2/text-freetype2.h",
-                    "plugins/text-freetype2/text-freetype2-host.h",
-                    "test/cmocka/data/text-collection.ttc"
-                ],
-                "definitions": [
-                    "COLLECTION_FONTCONFIG=\"${build}/ft2-collection-fonts.conf\""
-                ]
-            },
-            "test_text_freetype2_bundled_font": {
-                "sources": [
-                    "test/cmocka/test_text_freetype2_bundled_font.c",
-                    "plugins/text-freetype2/find-font-unix.c.h",
-                    "plugins/text-freetype2/text-freetype2-host-posix.c.h"
-                ],
-                "libraries": [
-                    "OBS::libobs",
-                    "Freetype::Freetype",
-                    "Fontconfig::Fontconfig",
-                    "OBS::native-test-cmocka"
-                ],
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FONTCONFIG_TEST_OWNER"
-                    ]
-                },
-                "includes": [
-                    "plugins/text-freetype2"
-                ],
-                "watch_inputs": [
-                    "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
-                    "plugins/text-freetype2/find-font.h",
-                    "plugins/text-freetype2/text-freetype2.h",
-                    "plugins/text-freetype2/text-freetype2-host.h",
-                    "plugins/text-freetype2/data/fonts"
-                ],
-                "definitions": [
-                    "BUNDLED_FONT_DIR=\"${source}/plugins/text-freetype2/data/fonts\"",
-                    "ISOLATED_FONTCONFIG=\"${build}/ft2-isolated-fonts.conf\""
-                ]
-            }
-        },
-        "tests": {
-            "test_inhibit_sleep": {
-                "target": "test_inhibit_sleep",
-                "requires": {
-                    "any": [
-                        "OS_LINUX",
-                        "OS_FREEBSD"
-                    ]
-                },
-                "command": [
-                    "${target}"
-                ],
-                "timeout_seconds": 60
-            },
-            "test_file_updater_failure": {
-                "target": "test_file_updater_failure",
-                "requires": "OS_LINUX",
-                "command": [
-                    "${target}"
-                ],
-                "timeout_seconds": 60
-            },
-            "test_file_updater_timeout": {
-                "target": "test_file_updater_timeout",
-                "requires": "OS_LINUX",
-                "command": [
-                    "${target}"
-                ],
-                "timeout_seconds": 200
-            },
-            "test_frontend_warn_fallback": {
-                "target": "test_frontend_warn_fallback",
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FRONTEND_WARN_TEST_OWNER"
-                    ]
-                },
-                "command": [
-                    "${target}"
-                ]
-            },
-            "test_text_freetype2_face_index": {
-                "target": "test_text_freetype2_face_index",
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FONTCONFIG_TEST_OWNER"
-                    ]
-                },
-                "command": [
-                    "${target}"
-                ]
-            },
-            "test_text_freetype2_bundled_font": {
-                "target": "test_text_freetype2_bundled_font",
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FONTCONFIG_TEST_OWNER"
-                    ]
-                },
-                "command": [
-                    "${target}"
-                ]
-            },
-            "test_text_freetype2_bundled_font_host_font": {
-                "target": "test_text_freetype2_bundled_font",
-                "requires": {
-                    "all": [
-                        "OS_LINUX",
-                        "HAVE_FONTCONFIG_TEST_OWNER"
-                    ]
-                },
-                "command": [
-                    "${target}"
-                ],
-                "environment": {
-                    "FONTCONFIG_FILE": "${build}/ft2-host-fonts.conf"
-                }
-            }
+        "sources": [
+            "test/cmocka/test_inhibit_sleep.c"
+        ],
+        "libraries": [
+            "OBS::libobs",
+            "OBS::native-test-cmocka"
+        ],
+        "requires": {
+            "any": [
+                "OS_LINUX",
+                "OS_FREEBSD"
+            ]
         }
     })
+}
+
+fn expected_test_file_updater_failure() -> serde_json::Value {
+    serde_json::json!({
+        "sources": [
+            "test/cmocka/test_file_updater_failure.c",
+            "shared/file-updater/build/file-updater.core+.h.c"
+        ],
+        "libraries": [
+            "OBS::libobs",
+            "CURL::libcurl",
+            "OBS::native-test-cmocka"
+        ],
+        "requires": "OS_LINUX",
+        "includes": [
+            "shared/file-updater"
+        ],
+        "watch_inputs": [
+            "shared/file-updater/build/file-updater.pch.h",
+            "shared/file-updater/file-updater/file-updater.c.h",
+            "shared/file-updater/file-updater/file-updater.h",
+            "shared/file-updater/file-updater/curl-accept-encoding.h"
+        ]
+    })
+}
+
+fn expected_test_file_updater_timeout() -> serde_json::Value {
+    serde_json::json!({
+        "sources": [
+            "test/cmocka/test_file_updater_timeout.c",
+            "shared/file-updater/build/file-updater.core+.h.c"
+        ],
+        "libraries": [
+            "OBS::libobs",
+            "CURL::libcurl",
+            "OBS::native-test-cmocka"
+        ],
+        "requires": "OS_LINUX",
+        "includes": [
+            "shared/file-updater"
+        ],
+        "watch_inputs": [
+            "shared/file-updater/build/file-updater.pch.h",
+            "shared/file-updater/file-updater/file-updater.c.h",
+            "shared/file-updater/file-updater/file-updater.h",
+            "shared/file-updater/file-updater/curl-accept-encoding.h"
+        ]
+    })
+}
+
+fn expected_test_frontend_warn_fallback() -> serde_json::Value {
+    serde_json::json!({
+        "sources": [
+            "test/cmocka/test_frontend_warn_fallback.c"
+        ],
+        "libraries": [
+            "OBS::libobs",
+            "OBS::frontend-api",
+            "OBS::native-test-cmocka"
+        ],
+        "requires": {
+            "all": [
+                "OS_LINUX",
+                "HAVE_FRONTEND_WARN_TEST_OWNER"
+            ]
+        },
+        "watch_inputs": [
+            "frontend/api/build/obs-frontend-api.core+.hpp.cpp",
+            "frontend/api/build/obs-frontend-api.pch.hpp",
+            "frontend/api/obs-frontend-api.cpp.hpp",
+            "frontend/api/obs-frontend-internal.hpp"
+        ]
+    })
+}
+
+fn expected_test_text_freetype2_face_index() -> serde_json::Value {
+    serde_json::json!({
+        "sources": [
+            "test/cmocka/test_text_freetype2_face_index.c",
+            "plugins/text-freetype2/find-font-unix.c.h",
+            "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+        ],
+        "libraries": [
+            "OBS::libobs",
+            "Freetype::Freetype",
+            "Fontconfig::Fontconfig",
+            "OBS::native-test-cmocka"
+        ],
+        "requires": {
+            "all": [
+                "OS_LINUX",
+                "HAVE_FONTCONFIG_TEST_OWNER"
+            ]
+        },
+        "includes": [
+            "plugins/text-freetype2"
+        ],
+        "watch_inputs": [
+            "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+            "plugins/text-freetype2/find-font.h",
+            "plugins/text-freetype2/text-freetype2.h",
+            "plugins/text-freetype2/text-freetype2-host.h",
+            "test/cmocka/data/text-collection.ttc"
+        ],
+        "definitions": [
+            "COLLECTION_FONTCONFIG=\"${build}/ft2-collection-fonts.conf\""
+        ]
+    })
+}
+
+fn expected_test_text_freetype2_bundled_font() -> serde_json::Value {
+    serde_json::json!({
+        "sources": [
+            "test/cmocka/test_text_freetype2_bundled_font.c",
+            "plugins/text-freetype2/find-font-unix.c.h",
+            "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+        ],
+        "libraries": [
+            "OBS::libobs",
+            "Freetype::Freetype",
+            "Fontconfig::Fontconfig",
+            "OBS::native-test-cmocka"
+        ],
+        "requires": {
+            "all": [
+                "OS_LINUX",
+                "HAVE_FONTCONFIG_TEST_OWNER"
+            ]
+        },
+        "includes": [
+            "plugins/text-freetype2"
+        ],
+        "watch_inputs": [
+            "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+            "plugins/text-freetype2/find-font.h",
+            "plugins/text-freetype2/text-freetype2.h",
+            "plugins/text-freetype2/text-freetype2-host.h",
+            "plugins/text-freetype2/data/fonts"
+        ],
+        "definitions": [
+            "BUNDLED_FONT_DIR=\"${source}/plugins/text-freetype2/data/fonts\"",
+            "ISOLATED_FONTCONFIG=\"${build}/ft2-isolated-fonts.conf\""
+        ]
+    })
+}
+fn expected() -> serde_json::Value {
+    serde_json::json!({"schema": 1, "targets": {
+                "test_inhibit_sleep": expected_test_inhibit_sleep(),
+                "test_file_updater_failure": expected_test_file_updater_failure(),
+                "test_file_updater_timeout": expected_test_file_updater_timeout(),
+                "test_frontend_warn_fallback": expected_test_frontend_warn_fallback(),
+                "test_text_freetype2_face_index": expected_test_text_freetype2_face_index(),
+                "test_text_freetype2_bundled_font": expected_test_text_freetype2_bundled_font()
+            }, "tests": {
+        "test_inhibit_sleep": {
+            "target": "test_inhibit_sleep",
+            "requires": {
+                "any": [
+                    "OS_LINUX",
+                    "OS_FREEBSD"
+                ]
+            },
+            "command": [
+                "${target}"
+            ],
+            "timeout_seconds": 60
+        },
+        "test_file_updater_failure": {
+            "target": "test_file_updater_failure",
+            "requires": "OS_LINUX",
+            "command": [
+                "${target}"
+            ],
+            "timeout_seconds": 60
+        },
+        "test_file_updater_timeout": {
+            "target": "test_file_updater_timeout",
+            "requires": "OS_LINUX",
+            "command": [
+                "${target}"
+            ],
+            "timeout_seconds": 200
+        },
+        "test_frontend_warn_fallback": {
+            "target": "test_frontend_warn_fallback",
+            "requires": {
+                "all": [
+                    "OS_LINUX",
+                    "HAVE_FRONTEND_WARN_TEST_OWNER"
+                ]
+            },
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_text_freetype2_face_index": {
+            "target": "test_text_freetype2_face_index",
+            "requires": {
+                "all": [
+                    "OS_LINUX",
+                    "HAVE_FONTCONFIG_TEST_OWNER"
+                ]
+            },
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_text_freetype2_bundled_font": {
+            "target": "test_text_freetype2_bundled_font",
+            "requires": {
+                "all": [
+                    "OS_LINUX",
+                    "HAVE_FONTCONFIG_TEST_OWNER"
+                ]
+            },
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_text_freetype2_bundled_font_host_font": {
+            "target": "test_text_freetype2_bundled_font",
+            "requires": {
+                "all": [
+                    "OS_LINUX",
+                    "HAVE_FONTCONFIG_TEST_OWNER"
+                ]
+            },
+            "command": [
+                "${target}"
+            ],
+            "environment": {
+                "FONTCONFIG_FILE": "${build}/ft2-host-fonts.conf"
+            }
+        }
+    }})
 }
 #[test]
 fn canonical_headless_services_is_registered() {
