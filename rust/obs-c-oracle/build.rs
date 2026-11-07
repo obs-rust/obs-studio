@@ -601,6 +601,13 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
     )
     .expect("write canvas field adapter extract");
+    for stem in ["obs-core-global-getters", "obs-core-global-fields"] {
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_libobs_pch(&libobs.join(format!("{stem}.c.h"))),
+        )
+        .expect("write global getter extract");
+    }
     oracle.include(&extract_dir);
 
     oracle

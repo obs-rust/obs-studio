@@ -783,6 +783,11 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Private field-pointer seam: core initialization remains a caller precondition. */
+extern char *const *obs_core_global_locale_field(void);
+extern signal_handler_t *const *obs_core_global_signals_field(void);
+extern proc_handler_t *const *obs_core_global_procs_field(void);
+
 struct obs_graphics_context {
 	uint64_t last_time;
 	uint64_t interval;
