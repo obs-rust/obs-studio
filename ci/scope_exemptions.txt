@@ -1,0 +1,18 @@
+# Build inputs that legitimately select no CI lane. Glob patterns are allowed.
+# This list may only shrink: test_exemptions_are_still_uncovered fails when a
+# rule starts covering an entry, and test_exemptions_still_exists fails on a
+# pattern that matches nothing.
+#
+# AppImage packaging and verification scripts: exercised end-to-end by
+# appimage.yaml, which builds and runs the AppImage in distro containers.
+build-aux/appimage/**
+# Flatpak manifest and its generator: exercised by the flatpak workflows.
+build-aux/format-manifest.py
+build-aux/io.github.obs_rust.OBSStudioRust.json
+build-aux/prepare_flatpak_rust.py
+# Steam depot descriptors: consumed by the steam-upload job, not a compile.
+build-aux/steam/obs_build.vdf
+build-aux/steam/obs_playtest_build.vdf
+build-aux/README.md
+# Cosmetic tooling dotfile; no build reads it.
+shared/.clang-format
