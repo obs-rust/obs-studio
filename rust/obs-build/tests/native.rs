@@ -10,11 +10,31 @@ fn canonical_frontend_tools_hosts_are_registered() {
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let names = ["test_frontend_tools_host", "test_frontend_tools_host_macos"];
     for name in names {
-        let target = graph.targets.get(name).unwrap_or_else(|| panic!("canonical graph omits {name}"));
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)] if path == &format!("test/cmocka/{name}.c")));
+        let target = graph
+            .targets
+            .get(name)
+            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        assert!(
+            matches!(target.sources.as_slice(), [Source::Path(path)] if path == &format!("test/cmocka/{name}.c"))
+        );
         assert_eq!(target.includes, ["."]);
-        assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)] if name == "OBS::native-test-cmocka"));
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)] if name == "OBS::native-test-cmocka")
+        );
         assert!(target.header_libraries.is_empty());
+        let host = if name.ends_with("macos") {
+            "macos"
+        } else {
+            "posix"
+        };
+        assert_eq!(
+            target.watch_inputs,
+            [
+                format!("plugins/frontend-tools/frontend-tools-host-{host}.c.h"),
+                "plugins/frontend-tools/frontend-tools-host.h".into(),
+                format!("plugins/frontend-tools/build/frontend-tools-host-{host}.pch.h"),
+            ]
+        );
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
@@ -24,15 +44,24 @@ fn canonical_frontend_tools_hosts_are_registered() {
         assert!(test.optional_prefixes.is_empty());
         assert_eq!(test.qt_runtime, None);
     }
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_frontend_tools_host.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_frontend_tools_host.cmake"))
+            .unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
-    graph.targets.retain(|name, _| names.contains(&name.as_str()));
+    graph
+        .targets
+        .retain(|name, _| names.contains(&name.as_str()));
     graph.tests.retain(|name, _| names.contains(&name.as_str()));
     for windows in [false, true] {
         for linux in [false, true] {
             for macos in [false, true] {
-                let facts = [("OS_WINDOWS".into(), windows), ("OS_LINUX".into(), linux), ("OS_MACOS".into(), macos)].into();
+                let facts = [
+                    ("OS_WINDOWS".into(), windows),
+                    ("OS_LINUX".into(), linux),
+                    ("OS_MACOS".into(), macos),
+                ]
+                .into();
                 let selected = graph.select(&facts).unwrap();
                 for name in names {
                     assert_eq!(selected.targets.contains_key(name), !windows);
@@ -2099,6 +2128,8 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
         "test_caption_unmappable",
+        "test_frontend_tools_host",
+        "test_frontend_tools_host_macos",
         "test_stream_service_select",
         "test_saved_transition",
         "test_record_disk_space",
@@ -2133,10 +2164,16 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         },
     )])
     .collect();
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let windows = build.target.contains("windows");
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_WINDOWS".into(), windows),
+    ]
+    .into();
+    let selection = graph.select(&facts).unwrap();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 6);
-    for (name, test) in &graph.tests {
+    assert_eq!(artifacts.len(), if windows { 6 } else { 8 });
+    for (name, test) in &selection.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
             .unwrap()
@@ -2154,7 +2191,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_WINDOWS {windows})\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();
@@ -2220,7 +2257,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         .iter()
         .map(|test| test["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
+    assert_eq!(names, selection.tests.keys().copied().collect());
 }
 
 #[test]

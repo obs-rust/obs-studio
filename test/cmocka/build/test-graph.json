@@ -1976,6 +1976,44 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_frontend_tools_host": {
+      "sources": [
+        "test/cmocka/test_frontend_tools_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/frontend-tools/frontend-tools-host-posix.c.h",
+        "plugins/frontend-tools/frontend-tools-host.h",
+        "plugins/frontend-tools/build/frontend-tools-host-posix.pch.h"
+      ]
+    },
+    "test_frontend_tools_host_macos": {
+      "sources": [
+        "test/cmocka/test_frontend_tools_host_macos.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/frontend-tools/frontend-tools-host-macos.c.h",
+        "plugins/frontend-tools/frontend-tools-host.h",
+        "plugins/frontend-tools/build/frontend-tools-host-macos.pch.h"
+      ]
+    },
     "test_graphics_alias_ordinary": {
       "sources": [
         "test/cmocka/test_graphics_alias_ordinary.c"
@@ -8307,6 +8345,18 @@
       "suite": "qt",
       "timeout_seconds": 60,
       "qt_runtime": "Qt6::Core"
+    },
+    "test_frontend_tools_host": {
+      "target": "test_frontend_tools_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_frontend_tools_host_macos": {
+      "target": "test_frontend_tools_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
     },
     "test_graphics_alias_ordinary": {
       "target": "test_graphics_alias_ordinary",
