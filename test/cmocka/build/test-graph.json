@@ -1338,7 +1338,9 @@
       ],
       "libraries": [
         "OBS::libobs",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
       ]
     },
     "test_dock_proportions": {
