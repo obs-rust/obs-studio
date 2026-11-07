@@ -4019,38 +4019,35 @@ fn assert_plugin_configuration_test(
 #[test]
 #[cfg(feature = "libobs-integration")]
 fn canonical_frontend_utility_tests_run_unchanged() {
-    run_standalone_configuration_contract(
-        &[
-            "test_caption_unmappable",
-            "test_fade_to_color_mix",
-            "test_ffmpeg_mux_helper_host",
-            "test_frontend_obs_main_host",
-            "test_frontend_obsbasic_host",
-            "test_frontend_settings_host",
-            "test_frontend_tools_host",
-            "test_frontend_tools_host_macos",
-            "test_glyph_atlas",
-            "test_hotkey_numpad_host",
-            "test_libobs_reference_hosts",
-            "test_mac_vmic_clock",
-            "test_mac_vmic_install",
-            "test_multitrack_encoder_override",
-            "test_multitrack_ladder",
-            "test_nvenc_override",
-            "test_obs_ffmpeg_net_host",
-            "test_obs_outputs_host",
-            "test_record_disk_space",
-            "test_saved_transition",
-            "test_stinger_monitoring_migration",
-            "test_stream_service_select",
-            "test_vaapi_device_select",
-            "test_win_vmic_route",
-            "test_x11_keymap",
-            "test_xcomposite_presence",
-            "test_xcomposite_search_backoff",
-        ],
-        true,
-    );
+    run_standalone_configuration_contract(&[
+        "test_caption_unmappable",
+        "test_fade_to_color_mix",
+        "test_ffmpeg_mux_helper_host",
+        "test_frontend_obs_main_host",
+        "test_frontend_obsbasic_host",
+        "test_frontend_settings_host",
+        "test_frontend_tools_host",
+        "test_frontend_tools_host_macos",
+        "test_glyph_atlas",
+        "test_hotkey_numpad_host",
+        "test_libobs_reference_hosts",
+        "test_mac_vmic_clock",
+        "test_mac_vmic_install",
+        "test_multitrack_encoder_override",
+        "test_multitrack_ladder",
+        "test_nvenc_override",
+        "test_obs_ffmpeg_net_host",
+        "test_obs_outputs_host",
+        "test_record_disk_space",
+        "test_saved_transition",
+        "test_stinger_monitoring_migration",
+        "test_stream_service_select",
+        "test_vaapi_device_select",
+        "test_win_vmic_route",
+        "test_x11_keymap",
+        "test_xcomposite_presence",
+        "test_xcomposite_search_backoff",
+    ]);
 }
 
 /// The slideshow PCH additionally requires real core configuration and SIMDe headers.
@@ -4058,9 +4055,50 @@ fn canonical_frontend_utility_tests_run_unchanged() {
 #[test]
 #[cfg(feature = "libobs-integration")]
 fn canonical_plugin_configuration_helpers_run_unchanged() {
-    run_standalone_configuration_contract(
-        &["test_slideshow_size", "test_stinger_monitoring_migration"],
-        true,
+    run_standalone_configuration_contract(&[
+        "test_slideshow_size",
+        "test_stinger_monitoring_migration",
+    ]);
+}
+
+/// A Linux-only glyph target must not request core headers on other hosts.
+#[test]
+#[cfg(feature = "libobs-integration")]
+fn standalone_core_headers_unavailable_hosts_need_no_packages() {
+    use obs_build::validation::graph::Graph;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    graph.targets.retain(|name, _| name == "test_glyph_atlas");
+    graph.tests.retain(|name, _| name == "test_glyph_atlas");
+    for os in ["OS_MACOS", "OS_WINDOWS"] {
+        let directory = tempfile::tempdir().unwrap();
+        let build = NativeBuild {
+            host: obs_build::BUILD_HOST.into(),
+            target: obs_build::BUILD_TARGET.into(),
+            output: directory.path().join("output"),
+            profile: Default::default(),
+        };
+        let facts = ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"]
+            .map(|key| (key.into(), key == os))
+            .into();
+        let selection = graph.select(&facts).unwrap();
+        assert!(selection.targets.is_empty(), "{os}");
+        let mut interfaces = Default::default();
+        let setup = standalone_core_header_fixture(
+            directory.path(),
+            &root,
+            &build,
+            &selection,
+            &mut interfaces,
+        );
+        assert!(setup.is_empty(), "{os}: {setup}");
+        assert!(interfaces.is_empty(), "{os}: {interfaces:?}");
+        assert!(!directory.path().join("config").exists(), "{os}");
+    }
+    let selection = graph.select(&[("OS_LINUX".into(), true)].into()).unwrap();
+    assert_eq!(
+        selection.targets["test_glyph_atlas"].header_libraries,
+        ["OBS::libobs"]
     );
 }
 
@@ -4069,6 +4107,7 @@ fn standalone_core_header_fixture(
     directory: &Path,
     root: &Path,
     build: &NativeBuild,
+    _selection: &obs_build::validation::graph::Selection<'_>,
     interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
 ) -> String {
     use obs_build::validation::graph::Dependency;
@@ -4100,7 +4139,7 @@ fn standalone_core_header_fixture(
     clippy::too_many_lines,
     reason = "one build-and-run block per graph consumer"
 )]
-fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
+fn run_standalone_configuration_contract(names: &[&str]) {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
@@ -4145,11 +4184,6 @@ fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
             ..Default::default()
         },
     );
-    let header_setup = if core_headers {
-        standalone_core_header_fixture(directory.path(), &root, &build, &mut interfaces)
-    } else {
-        String::new()
-    };
     let facts = [
         ("MSVC".into(), build.target.contains("msvc")),
         ("OS_WINDOWS".into(), build.target.contains("windows")),
@@ -4160,6 +4194,13 @@ fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
     ]
     .into();
     let selection = graph.select(&facts).unwrap();
+    let header_setup = standalone_core_header_fixture(
+        directory.path(),
+        &root,
+        &build,
+        &selection,
+        &mut interfaces,
+    );
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), selection.targets.len());
     assert_eq!(artifacts.len(), selection.tests.len());
