@@ -97,7 +97,9 @@ fn assert_monitor_step_selection(graph: &obs_build::validation::graph::Graph, na
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         for available in [false, true] {
             let facts = [
-                (os.into(), true),
+                ("OS_LINUX".into(), os == "OS_LINUX"),
+                ("OS_MACOS".into(), os == "OS_MACOS"),
+                ("OS_WINDOWS".into(), os == "OS_WINDOWS"),
                 ("MSVC".into(), os == "OS_WINDOWS"),
                 ("HAVE_LIBOBS_RUST_STATIC".into(), available),
             ]

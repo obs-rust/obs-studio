@@ -389,6 +389,25 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_audio_monitor_delay_steps_rust": {
+      "sources": [
+        "test/cmocka/test_audio_monitor_delay_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_audio_resampler_drift_steps": {
       "sources": [
         "test/cmocka/test_audio_resampler_drift_steps.c",
@@ -873,6 +892,29 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_coreaudio_device_rules_rust": {
+      "sources": [
+        "test/cmocka/test_coreaudio_device_rules.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "definitions": [
+        "COREAUDIO_DEVICE_RULES_TEST_RUST"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_coreaudio_enum_alloc": {
       "sources": [
         "test/cmocka/test_coreaudio_enum_alloc.c",
@@ -914,6 +956,29 @@
             "not": "MSVC"
           }
         }
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_coreaudio_pacing_steps_rust": {
+      "sources": [
+        "test/cmocka/test_coreaudio_pacing_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "definitions": [
+        "COREAUDIO_PACING_TEST_RUST"
       ],
       "sanitizers": "address,undefined"
     },
@@ -3111,6 +3176,25 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_monitor_speaker_layout_rust": {
+      "sources": [
+        "test/cmocka/test_monitor_speaker_layout.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_monitor_video_sync": {
       "sources": [
         "test/cmocka/test_monitor_video_sync.c",
@@ -3124,6 +3208,25 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_monitor_video_sync_rust": {
+      "sources": [
+        "test/cmocka/test_monitor_video_sync.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_monitor_wasapi_steps": {
       "sources": [
         "test/cmocka/test_monitor_wasapi_steps.c",
@@ -3134,6 +3237,25 @@
         "libobs"
       ],
       "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_monitor_wasapi_steps_rust": {
+      "sources": [
+        "test/cmocka/test_monitor_wasapi_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
@@ -8428,6 +8550,18 @@
         "${target}"
       ]
     },
+    "test_audio_monitor_delay_steps_rust": {
+      "target": "test_audio_monitor_delay_steps_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_audio_resampler_drift_steps": {
       "target": "test_audio_resampler_drift_steps",
       "command": [
@@ -8644,6 +8778,18 @@
         "${target}"
       ]
     },
+    "test_coreaudio_device_rules_rust": {
+      "target": "test_coreaudio_device_rules_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_coreaudio_enum_alloc": {
       "target": "test_coreaudio_enum_alloc",
       "command": [
@@ -8652,6 +8798,18 @@
     },
     "test_coreaudio_pacing_steps": {
       "target": "test_coreaudio_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_coreaudio_pacing_steps_rust": {
+      "target": "test_coreaudio_pacing_steps_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
       "command": [
         "${target}"
       ]
@@ -9551,14 +9709,50 @@
         "${target}"
       ]
     },
+    "test_monitor_speaker_layout_rust": {
+      "target": "test_monitor_speaker_layout_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_monitor_video_sync": {
       "target": "test_monitor_video_sync",
       "command": [
         "${target}"
       ]
     },
+    "test_monitor_video_sync_rust": {
+      "target": "test_monitor_video_sync_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_monitor_wasapi_steps": {
       "target": "test_monitor_wasapi_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_monitor_wasapi_steps_rust": {
+      "target": "test_monitor_wasapi_steps_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
       "command": [
         "${target}"
       ]
