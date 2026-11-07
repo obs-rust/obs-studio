@@ -1070,20 +1070,10 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 	pthread_mutex_unlock(&encoder->init_mutex);
 }
 
-const char *obs_encoder_get_codec(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_codec") ? encoder->info.codec : NULL;
-}
-
 const char *obs_get_encoder_codec(const char *id)
 {
 	struct obs_encoder_info *info = find_encoder(id);
 	return info ? info->codec : NULL;
-}
-
-enum obs_encoder_type obs_encoder_get_type(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_type") ? encoder->info.type : OBS_ENCODER_AUDIO;
 }
 
 enum obs_encoder_type obs_get_encoder_type(const char *id)
@@ -2253,25 +2243,10 @@ bool obs_weak_encoder_references_encoder(obs_weak_encoder_t *weak, obs_encoder_t
 	return weak && encoder && weak->encoder == encoder;
 }
 
-void *obs_encoder_get_type_data(obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_type_data") ? encoder->orig_info.type_data : NULL;
-}
-
-const char *obs_encoder_get_id(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_id") ? encoder->orig_info.id : NULL;
-}
-
 uint32_t obs_get_encoder_caps(const char *encoder_id)
 {
 	struct obs_encoder_info *info = find_encoder(encoder_id);
 	return info ? info->caps : 0;
-}
-
-uint32_t obs_encoder_get_caps(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_caps") ? encoder->orig_info.caps : 0;
 }
 
 bool obs_encoder_paused(const obs_encoder_t *encoder)
