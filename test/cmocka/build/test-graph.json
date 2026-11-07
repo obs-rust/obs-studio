@@ -11959,7 +11959,11 @@
       ],
       "libraries": [
         "OBS::libobs",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": {
         "any": [
@@ -11971,6 +11975,10 @@
       },
       "watch_inputs": [
         "test/cmocka/xvfb-run-or-display.sh.in"
+      ],
+      "header_libraries": [
+        "OBS::caption",
+        "Uthash::Uthash"
       ]
     },
     "test_video_io_inlines": {

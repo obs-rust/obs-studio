@@ -1,5 +1,6 @@
 # #1275 production regression, separate from the preserved characterization.
 set(_lua_bounded_source "${CMAKE_CURRENT_LIST_DIR}/../../../shared/obs-scripting/obs-scripting-lua-source.c.h")
+cmake_path(NORMAL_PATH _lua_bounded_source)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_lua_bounded_source}")
 file(READ "${_lua_bounded_source}" _lua_bounded_text)
 string(FIND "${_lua_bounded_text}" "static bool lock_in_graphics(pthread_mutex_t *mutex)" _lua_bounded_start)

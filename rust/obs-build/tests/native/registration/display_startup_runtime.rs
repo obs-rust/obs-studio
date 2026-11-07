@@ -83,6 +83,7 @@ fn canonical_display_startup_runs_unchanged() {
         },
     );
     interfaces.insert("OBS::caption".into(), Dependency::default());
+    interfaces.insert("Uthash::Uthash".into(), Dependency::default());
 
     let facts = [
         ("OS_LINUX".into(), true),
@@ -142,6 +143,10 @@ pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
 {core}
 add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 add_library(OBS::caption INTERFACE IMPORTED)
+add_library(Uthash::Uthash INTERFACE IMPORTED)
+if(OS_WINDOWS)
+  add_library(OBS::w32-pthreads INTERFACE IMPORTED)
+endif()
 if(HAVE_OBS_OPENGL)
   add_library(OBS::libobs-opengl MODULE IMPORTED)
   set_property(TARGET OBS::libobs-opengl PROPERTY IMPORTED_LOCATION "{renderer}")
