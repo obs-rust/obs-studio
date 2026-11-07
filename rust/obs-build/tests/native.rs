@@ -115,6 +115,7 @@ fn canonical_nvenc_host_and_glyph_tests_are_registered() {
         let selected = graph.select(&facts).unwrap();
         for name in names {
             let expected = match name {
+                "test_glyph_atlas" => os == "OS_LINUX",
                 "test_hotkey_numpad_host" => os != "OS_MACOS",
                 "test_libobs_reference_hosts" => os != "OS_WINDOWS",
                 _ => true,
@@ -122,6 +123,41 @@ fn canonical_nvenc_host_and_glyph_tests_are_registered() {
             assert_eq!(selected.targets.contains_key(name), expected, "{os}/{name}");
             assert_eq!(selected.tests.contains_key(name), expected, "{os}/{name}");
         }
+    }
+}
+
+/// Optional glyph dependencies must never break another host's Tier 2 configure.
+#[test]
+fn canonical_glyph_atlas_unavailable_hosts_configure_without_packages() {
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let graph = serde_json::json!({
+        "schema": 1,
+        "targets": {"test_glyph_atlas": raw["targets"]["test_glyph_atlas"]},
+        "tests": {"test_glyph_atlas": raw["tests"]["test_glyph_atlas"]},
+    });
+    let source = root.to_string_lossy().replace('\\', "/");
+    for os in ["OS_MACOS", "OS_WINDOWS"] {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(directory.path().join("graph.json"), graph.to_string()).unwrap();
+        fs::write(directory.path().join("CMakeLists.txt"), format!(
+            "cmake_minimum_required(VERSION 3.28)\nproject(glyph-unavailable C)\nenable_testing()\nset(OS_LINUX FALSE)\nset(OS_MACOS FALSE)\nset(OS_WINDOWS FALSE)\nset({os} TRUE)\nset(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)\nadd_library(OBS::native-test-cmocka INTERFACE IMPORTED)\nadd_library(OBS::libobs INTERFACE IMPORTED)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\nif(TARGET test_glyph_atlas)\nmessage(FATAL_ERROR \"glyph target selected without available host packages\")\nendif()\nget_property(tests DIRECTORY PROPERTY TESTS)\nif(tests)\nmessage(FATAL_ERROR \"glyph CTest registered without its target\")\nendif()\n"
+        )).unwrap();
+        let result = std::process::Command::new("cmake")
+            .arg("-S")
+            .arg(directory.path())
+            .arg("-B")
+            .arg(directory.path().join("build"))
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{os}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
     }
 }
 
