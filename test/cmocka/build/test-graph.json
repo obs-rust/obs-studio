@@ -1976,6 +1976,26 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_glyph_atlas": {
+      "sources": [
+        "test/cmocka/test_glyph_atlas.c",
+        "plugins/text-freetype2/glyph-atlas.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "plugins/text-freetype2"
+      ],
+      "header_packages": [
+        "freetype2",
+        "simde"
+      ],
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_graphics_alias_ordinary": {
       "sources": [
         "test/cmocka/test_graphics_alias_ordinary.c"
@@ -2467,6 +2487,20 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_numpad_host": {
+      "sources": [
+        "test/cmocka/test_hotkey_numpad_host.c"
+      ],
+      "requires": {
+        "not": "OS_MACOS"
+      },
+      "watch_inputs": [
+        "libobs/obs-hotkey-translations-macos.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_hotkey_pair_latch": {
       "sources": [
         "test/cmocka/test_hotkey_pair_latch.c"
@@ -2605,6 +2639,24 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_libobs_reference_hosts": {
+      "sources": [
+        "test/cmocka/test_libobs_reference_hosts.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "watch_inputs": [
+        "libobs/util/bmem-windows.h",
+        "libobs/util/config-file-windows.h",
+        "libobs/media-io/audio-io-windows.h",
+        "libobs/util/base-windows.h",
+        "libobs/util/utf8-windows.h"
+      ],
+      "libraries": [
         "OBS::native-test-cmocka"
       ]
     },
@@ -3142,6 +3194,18 @@
       ],
       "link_options": [
         "-Wl,--wrap=obs_output_can_begin_data_capture,--wrap=obs_output_initialize_encoders,--wrap=obs_output_begin_data_capture,--wrap=obs_output_end_data_capture,--wrap=pthread_create,--wrap=pthread_join"
+      ]
+    },
+    "test_nvenc_override": {
+      "sources": [
+        "test/cmocka/test_nvenc_override.c",
+        "plugins/obs-nvenc/nvenc-override.c.h"
+      ],
+      "includes": [
+        "plugins/obs-nvenc"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
       ]
     },
     "test_obs_core_info_characterization": {
@@ -8355,6 +8419,9 @@
       "timeout_seconds": 60,
       "qt_runtime": "Qt6::Core"
     },
+    "test_glyph_atlas": {
+      "target": "test_glyph_atlas"
+    },
     "test_graphics_alias_ordinary": {
       "target": "test_graphics_alias_ordinary",
       "command": [
@@ -8554,6 +8621,9 @@
         "${target}"
       ]
     },
+    "test_hotkey_numpad_host": {
+      "target": "test_hotkey_numpad_host"
+    },
     "test_hotkey_pair_latch": {
       "target": "test_hotkey_pair_latch",
       "command": [
@@ -8626,6 +8696,9 @@
     },
     "test_lexer": {
       "target": "test_lexer"
+    },
+    "test_libobs_reference_hosts": {
+      "target": "test_libobs_reference_hosts"
     },
     "test_main_mix_before_video": {
       "target": "test_main_mix_before_video",
@@ -8843,6 +8916,9 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_nvenc_override": {
+      "target": "test_nvenc_override"
     },
     "test_obs_core_info_characterization": {
       "target": "test_obs_core_info_characterization",
