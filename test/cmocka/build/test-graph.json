@@ -2130,6 +2130,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_dimensions": {
+      "sources": [
+        "test/cmocka/test_encoder_dimensions.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_fallback": {
       "sources": [
         "test/cmocka/test_encoder_fallback.c",
@@ -11959,6 +11974,12 @@
     },
     "test_encoder_bind_steps": {
       "target": "test_encoder_bind_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_dimensions": {
+      "target": "test_encoder_dimensions",
       "command": [
         "${target}"
       ]

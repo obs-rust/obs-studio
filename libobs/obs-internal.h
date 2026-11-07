@@ -2020,6 +2020,16 @@ struct obs_encoder {
 	bool reconfigure_requested;
 };
 
+/* Borrowed dimension field addresses, with no allocation or value conversion. */
+struct obs_encoder_dimensions_fields {
+	const enum obs_encoder_type *type;
+	void *const *media;
+	const uint32_t *width;
+	const uint32_t *height;
+	char *const *name;
+};
+struct obs_encoder_dimensions_fields obs_encoder_dimensions_fields(const obs_encoder_t *encoder);
+
 /* Read-only field address for the borrowed last-error getter; not EXPORT. */
 struct obs_encoder_last_error_fields {
 	char *const *message;
