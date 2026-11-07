@@ -73,6 +73,8 @@ jobs:
   s3-cache-canary:
     timeout-minutes: 10
     name: S3 Cache Canary 🗄️
+    # A scheduled workflow also fires in every fork (#1258): skip there.
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     runs-on: ubuntu-latest
     # Never blocks the nightly: a cache probe that fails to authenticate is
     # information, not a build failure. The summary says which case it hit.
