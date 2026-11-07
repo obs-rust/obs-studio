@@ -197,6 +197,20 @@ void obs_weak_service_free(obs_weak_service_t *weak)
 	free(weak);
 }
 
+/* A zeroed output a service can link to: the service state accessors
+ * write its service field on deactivate (#3886). */
+void *oracle_service_output_new(void);
+void *oracle_service_output_new(void)
+{
+	return calloc(1, sizeof(struct obs_output));
+}
+
+void oracle_service_output_free(void *output);
+void oracle_service_output_free(void *output)
+{
+	free(output);
+}
+
 /* What the tests read and set on a service. */
 void oracle_service_set_state(obs_service_t *service, bool active, void *output);
 void oracle_service_set_state(obs_service_t *service, bool active, void *output)
