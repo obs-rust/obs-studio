@@ -21,6 +21,7 @@ mod encoder_group_reconfig;
 mod encoder_group_reconfig_parity;
 mod encoder_lifecycle;
 mod encoder_lifecycle_parity;
+mod encoder_metadata;
 mod encoder_packet_ts;
 mod encoder_packet_ts_parity;
 mod encoder_pause;
