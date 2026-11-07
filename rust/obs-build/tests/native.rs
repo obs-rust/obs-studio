@@ -10,19 +10,30 @@ fn canonical_qsv_host_is_registered() {
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph.retain_suite("core");
     let name = "test_qsv_host";
-    let target = graph.targets.get(name).expect("canonical graph omits test_qsv_host");
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_qsv_host");
     assert!(matches!(&target.sources[..], [Source::Path(path)]
         if path == "test/cmocka/test_qsv_host.c"));
-    let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-        ConditionalValue::Name(name) => name.as_str(),
-        _ => panic!("QSV host linkage must be unconditional"),
-    }).collect();
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("QSV host linkage must be unconditional"),
+        })
+        .collect();
     assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
     assert_eq!(target.includes, ["."]);
-    assert_eq!(target.watch_inputs, [
-        "plugins/obs-qsv11/qsv-host-linux.c.h",
-        "plugins/obs-qsv11/build/obs-qsv11-linux-c.pch.h",
-    ]);
+    assert_eq!(
+        target.watch_inputs,
+        [
+            "plugins/obs-qsv11/qsv-host-linux.c.h",
+            "plugins/obs-qsv11/build/obs-qsv11-linux-c.pch.h",
+            "plugins/obs-qsv11/qsv-host.h",
+        ]
+    );
     assert!(target.header_libraries.is_empty());
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
@@ -31,14 +42,27 @@ fn canonical_qsv_host_is_registered() {
     assert_eq!(test.skip_return_code, None);
     assert!(test.optional_prefixes.is_empty());
     assert_eq!(test.qt_runtime, None);
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_qsv_host.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_qsv_host.cmake")).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_FREEBSD", "OS_OPENBSD", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[("OS_LINUX".into(), os == "OS_LINUX")].into()).unwrap();
-        assert_eq!(selected.targets.contains_key(name), os == "OS_LINUX", "{os}");
+    for os in [
+        "OS_LINUX",
+        "OS_FREEBSD",
+        "OS_OPENBSD",
+        "OS_MACOS",
+        "OS_WINDOWS",
+    ] {
+        let selected = graph
+            .select(&[("OS_LINUX".into(), os == "OS_LINUX")].into())
+            .unwrap();
+        assert_eq!(
+            selected.targets.contains_key(name),
+            os == "OS_LINUX",
+            "{os}"
+        );
         assert_eq!(selected.tests.contains_key(name), os == "OS_LINUX", "{os}");
     }
 }

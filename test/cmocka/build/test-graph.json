@@ -4225,6 +4225,24 @@
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_qsv_host": {
+      "sources": [
+        "test/cmocka/test_qsv_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/qsv-host-linux.c.h",
+        "plugins/obs-qsv11/build/obs-qsv11-linux-c.pch.h",
+        "plugins/obs-qsv11/qsv-host.h"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_qsv_init_release": {
       "sources": [
         "test/cmocka/test_qsv_init_release.cpp",
@@ -9269,6 +9287,13 @@
     },
     "test_pulse_reconnect": {
       "target": "test_pulse_reconnect"
+    },
+    "test_qsv_host": {
+      "target": "test_qsv_host",
+      "command": [
+        "${target}"
+      ],
+      "requires": "OS_LINUX"
     },
     "test_qsv_init_release": {
       "target": "test_qsv_init_release",
