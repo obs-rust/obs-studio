@@ -1,0 +1,2 @@
+obs_module_get_locale_string
+obs_module_get_locale_text

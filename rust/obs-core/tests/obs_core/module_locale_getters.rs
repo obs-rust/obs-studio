@@ -82,3 +82,6 @@ fn locale_lookup_keeps_writes_even_when_callback_returns_false() {
     // A callback decides which inputs and output pointers it accepts.
     assert!(!get_string(Some(|| false)));
 }
+
+#[path = "module_locale_getters_parity.rs"]
+mod parity;
