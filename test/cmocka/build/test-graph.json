@@ -6561,6 +6561,17 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_render_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_render_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_scene_item_transform_steps": {
       "sources": [
         "test/cmocka/test_scene_item_transform_steps.c",
@@ -11837,6 +11848,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_item_render_getters": {
+      "target": "test_scene_item_render_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
