@@ -63,6 +63,8 @@ mod service_state;
 mod service_state_parity;
 mod service_weak_acquire;
 mod service_weak_acquire_parity;
+mod service_weak_release;
+mod service_weak_release_parity;
 mod stop_stats;
 mod stop_stats_parity;
 mod video_checks;

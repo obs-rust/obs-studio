@@ -146,6 +146,7 @@ pub mod service;
 pub mod service_module_lookup;
 pub mod service_state;
 pub mod service_weak_acquire;
+pub mod service_weak_release;
 pub mod stop_stats;
 pub mod video_checks;
 

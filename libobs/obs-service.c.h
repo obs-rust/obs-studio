@@ -77,26 +77,6 @@ void obs_service_context_free(obs_service_t *service)
 	bfree(service);
 }
 
-bool obs_weak_service_strong_release(obs_weak_service_t *weak)
-{
-	return obs_ref_release(&weak->ref);
-}
-
-void obs_weak_service_weak_addref(obs_weak_service_t *weak)
-{
-	obs_weak_ref_addref(&weak->ref);
-}
-
-bool obs_weak_service_weak_release(obs_weak_service_t *weak)
-{
-	return obs_weak_ref_release(&weak->ref);
-}
-
-void obs_weak_service_free(obs_weak_service_t *weak)
-{
-	bfree(weak);
-}
-
 signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service);
 signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service)
 {
