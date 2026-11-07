@@ -685,25 +685,16 @@ def lane_lint(fix: bool) -> None:
     perf_guard_lint()
     knowledge_lint(fix)
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
-    # Pre-expansion Dylints (dylints/*), so host-cfg'd code is checked on
-    # one Linux lane (obs-rust/obs-studio#323). They scan whole src/ files,
-    # inline test modules included, so lib + bins covers their scope;
-    # --all-targets would also type-check integration tests that need
-    # CARGO_BIN_EXE_* from a real build. The pass builds with the Dylint
-    # nightly in its own target dir, so it runs beside the stable Clippy
-    # steps instead of after them (#2293); its output prints once it ends.
-    dylint_output: list[str] = []
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        dylint = pool.submit(soldr_dylint, ["--all", "--", "--workspace", "--lib", "--bins"], dylint_output, beside_clippy=True)
-        try:
-            soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
-            for args in FEATURE_SETS:
-                soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
-        finally:
-            dylint_error = dylint.exception()
-            print("".join(dylint_output), end="", flush=True)
-    if dylint_error is not None:
-        raise dylint_error
+    soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
+    for args in FEATURE_SETS:
+        soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
+
+
+def lane_dylint(fix: bool) -> None:
+    # Pre-expansion Dylints scan whole source files, including inline tests;
+    # lib + bins avoids integration tests requiring CARGO_BIN_EXE_* (#323).
+    # Preserve the host pass's dedicated target root and warm artifacts (#2293).
+    soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"], beside_clippy=True)
 
 
 # Cross targets linted from this host (#472, #955): soldr provides the
@@ -904,7 +895,7 @@ def lane_windows_native(fix: bool) -> None:
          "-CMockaPrefix", prefix])
 
 
-LANES = {"lint": lane_lint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release,
+LANES = {"lint": lane_lint, "dylint": lane_dylint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release,
          "tier2-linux": lane_tier2_linux, "macos-native": lane_macos_native, "windows-native": lane_windows_native}
 
 # The lint lane's formatter checks on their own, for CI's format jobs: the

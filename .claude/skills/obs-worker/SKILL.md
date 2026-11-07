@@ -221,6 +221,13 @@ PR CI is the merge gate. Local runs give faster feedback:
   peak RSS over 20 to 50 runs for proptests (`/usr/bin/time -v` on Linux,
   `-l` on macOS) and cap every generated size that drives an allocation;
   state whether the test starts its own threads, and how many.
+- Dylint has its own gate lane: `ci/local_gate.py --lane dylint` (declared as
+  `[gate.lanes.dylint]` in `local-gate.toml`). It is keyed on `dylints/**`,
+  `rust-toolchain.toml` and `Cargo.lock` alone, so a change that touches none
+  of those reuses the previous pass instead of rebuilding the lint libraries.
+  CI runs it beside the lint lane in the Local Gate job; cross-target Dylint
+  still runs in the `Rust Cross Lint` jobs, so a local pre-push check does not
+  need the cross targets.
 - To let CI skip the Linux test jobs, commit, then stamp HEAD with the
   local gate (the pinned command is in AGENTS.md), and push the stamped
   commit **unchanged**. Any amend, rebase or "Update branch" drops the
