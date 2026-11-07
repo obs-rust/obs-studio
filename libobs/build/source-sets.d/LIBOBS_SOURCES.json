@@ -214,6 +214,5 @@
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
-  "build/libobs.media+.h.c",
-  "build/libobs.scene-item-bounds-getters+.h.c"
+  "build/libobs.media+.h.c"
 ]

@@ -23,7 +23,7 @@
 # test_scene_item_names_steps_rust does. Linking the archive directly avoids
 # exporting private symbols just for a test.
 if(TARGET libobs_rust-static)
-  add_executable(test_scene_item_transform_steps_rust test_scene_item_transform_steps.c)
+  add_executable(test_scene_item_transform_steps_rust test_scene_item_transform_steps.c scene-getter-log-link-stub.c)
   target_include_directories(
     test_scene_item_transform_steps_rust
     PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR}

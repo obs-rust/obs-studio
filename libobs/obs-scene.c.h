@@ -163,6 +163,21 @@ static inline void item_fields_unlock(obs_scene_t *scene)
 		video_unlock(scene);
 }
 
+/* Private C mutex boundary for the Rust field getters. Keep parent capture,
+ * locking and unlocking in the exact helpers used by the remaining C users. */
+obs_scene_t *obs_sceneitem_fields_lock(const obs_sceneitem_t *item);
+void obs_sceneitem_fields_unlock(obs_scene_t *scene);
+
+obs_scene_t *obs_sceneitem_fields_lock(const obs_sceneitem_t *item)
+{
+	return item_fields_lock(item);
+}
+
+void obs_sceneitem_fields_unlock(obs_scene_t *scene)
+{
+	item_fields_unlock(scene);
+}
+
 static void obs_sceneitem_remove_internal(obs_sceneitem_t *item);
 
 static void remove_all_items(struct obs_scene *scene)

@@ -5,8 +5,7 @@
     "core-output",
     "core-source",
     "null-audio",
-    "util-cf",
-    "scene-item-bounds-getters"
+    "util-cf"
   ],
   "depends": [
     "graphics",
