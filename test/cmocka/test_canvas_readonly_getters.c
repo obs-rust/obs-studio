@@ -14,7 +14,8 @@ static void borrowed_fields(void **state)
 	struct obs_canvas before;
 	char name[] = "canvas name";
 	char uuid[] = "12345678-1234-1234-1234-123456789abc";
-	_Alignas(max_align_t) unsigned char signal_token = 0;
+	/* MSVC's C headers lack max_align_t. This borrowed token is never dereferenced. */
+	_Alignas(long double) unsigned char signal_token = 0;
 	struct obs_core_video_mix mix = {0};
 	for (unsigned mask = 0; mask < 16; mask++) {
 		canvas.context.name = mask & 1 ? name : NULL;
