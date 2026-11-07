@@ -119,6 +119,36 @@ fn extract_after_pch(src: &Path, pch_line: &str) -> String {
         src.display().to_string().replace('\\', "/")
     )
 }
+
+/// Discover the `libobs/obs-*-fields.c.h` glob without a per-port registry.
+/// Strip only `obs-` and `.c.h`, then map hyphens to underscores to preserve
+/// the extract names consumed by the existing oracle wrappers.
+fn write_field_adapter_extracts(libobs: &Path, extract_dir: &Path) {
+    let mut adapters: Vec<PathBuf> = std::fs::read_dir(libobs)
+        .expect("read libobs field adapters")
+        .map(|entry| entry.expect("libobs directory entry").path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("obs-") && name.ends_with("-fields.c.h"))
+        })
+        .collect();
+    adapters.sort();
+    for src in adapters {
+        let name = src.file_name().unwrap().to_str().unwrap();
+        let stem = name
+            .strip_prefix("obs-")
+            .unwrap()
+            .strip_suffix(".c.h")
+            .unwrap();
+        let output = format!("{}.inc", stem.replace('-', "_"));
+        std::fs::write(extract_dir.join(output), extract_after_libobs_pch(&src))
+            .expect("write field adapter extract");
+    }
+}
+
 /// The C optimization level the shipped libobs uses: RelWithDebInfo compiles
 /// with `-O2 -g` for GCC/Clang and `/O2` for MSVC (cmake/common/compiler_common.cmake,
 /// `build-project.yaml`). `cargo bench` instead builds this crate at opt-level 3,
@@ -579,19 +609,9 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
-    // Keep the encoder's field adapter verbatim, without the broad production
-    // PCH; the getter oracle already includes the real obs-internal.h.
-    std::fs::write(
-        extract_dir.join("encoder_counter_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-encoder-counter-fields.c.h")),
-    )
-    .expect("write encoder counter adapter extract");
-    // Reuse the production field adapter over the real private encoder layout.
-    std::fs::write(
-        extract_dir.join("encoder_metadata_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
-    )
-    .expect("write encoder metadata adapter extract");
+    // Reuse production field adapters over the real private layouts, without
+    // the broad production PCH; each getter oracle supplies its own headers.
+    write_field_adapter_extracts(&libobs, &extract_dir);
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
@@ -602,16 +622,6 @@ fn main() {
         ),
     )
     .expect("write media-remux adapter extract");
-    std::fs::write(
-        extract_dir.join("canvas_readonly_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
-    )
-    .expect("write canvas field adapter extract");
-    std::fs::write(
-        extract_dir.join("hotkey_object_fields.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-hotkey-object-fields.c.h")),
-    )
-    .expect("write hotkey field adapter extract");
     oracle.include(&extract_dir);
 
     oracle
