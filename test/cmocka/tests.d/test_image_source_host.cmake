@@ -1,13 +1,14 @@
 # test_image_source_host is defined in build/test-graph.json.
 # The image-source tests that compile its shared files on their own
-# (test_image_file_version*, test_slideshow_*) need the host those files call
+# (test_slideshow_*) need the host those files call
 # now (#858). Attached at the end of this directory, once every tests.d
 # fragment has defined its targets, so their own files stay unchanged.
+# The image-file-version tests declare their host sources in the shared graph.
 function(_image_source_host_attach)
   foreach(
     _test
     IN
-    ITEMS test_image_file_version test_image_file_version_filetime test_slideshow_empty test_slideshow_manual_end
+    ITEMS test_slideshow_empty test_slideshow_manual_end
   )
     if(TARGET ${_test})
       target_sources(
