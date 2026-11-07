@@ -31,6 +31,7 @@ if(TARGET libobs_rust-static)
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-funcs.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/graphics/graphics-linear-srgb-fields.c.h"
   )
   target_include_directories(
     test_effect_parser_shader_call_rust
@@ -74,4 +75,8 @@ if(TARGET libobs_rust-static)
   obs_test_sanitize(test_effect_parser_shader_call_rust "address,undefined")
   add_dependencies(cmocka-tests test_effect_parser_shader_call_rust)
   add_test(test_effect_parser_shader_call_rust ${CMAKE_CURRENT_BINARY_DIR}/test_effect_parser_shader_call_rust)
+endif()
+
+if(TARGET test_effect_parser_shader_call_rust AND TARGET OBS::w32-pthreads)
+  target_link_libraries(test_effect_parser_shader_call_rust PRIVATE OBS::w32-pthreads)
 endif()

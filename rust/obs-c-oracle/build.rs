@@ -592,6 +592,17 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
     )
     .expect("write encoder metadata adapter extract");
+    for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
+        let src = libobs.join("graphics").join(format!("{stem}.c.h"));
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_pch(
+                &src,
+                "#include \"libobs/build/libobs-ported-graphics.pch.h\"",
+            ),
+        )
+        .expect("write linear-sRGB extract");
+    }
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

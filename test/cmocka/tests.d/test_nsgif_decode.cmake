@@ -18,6 +18,7 @@ if(TARGET libobs_rust-static)
     test_nsgif_decode.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/graphics/graphics-linear-srgb-fields.c.h"
   )
   target_compile_definitions(
     test_nsgif_decode_rust
@@ -34,4 +35,8 @@ if(TARGET libobs_rust-static)
   obs_test_sanitize(test_nsgif_decode_rust "address,undefined")
   add_dependencies(cmocka-tests test_nsgif_decode_rust)
   add_test(test_nsgif_decode_rust ${CMAKE_CURRENT_BINARY_DIR}/test_nsgif_decode_rust)
+endif()
+
+if(TARGET test_nsgif_decode_rust AND TARGET OBS::w32-pthreads)
+  target_link_libraries(test_nsgif_decode_rust PRIVATE OBS::w32-pthreads)
 endif()

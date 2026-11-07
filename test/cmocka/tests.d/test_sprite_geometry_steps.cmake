@@ -30,6 +30,7 @@ if(TARGET libobs_rust-static)
     test_sprite_geometry_steps.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/graphics/graphics-linear-srgb-fields.c.h"
   )
   target_include_directories(
     test_sprite_geometry_steps_rust
@@ -47,4 +48,8 @@ if(TARGET libobs_rust-static)
   obs_test_sanitize(test_sprite_geometry_steps_rust "address,undefined")
   add_dependencies(cmocka-tests test_sprite_geometry_steps_rust)
   add_test(test_sprite_geometry_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_sprite_geometry_steps_rust)
+endif()
+
+if(TARGET test_sprite_geometry_steps_rust AND TARGET OBS::w32-pthreads)
+  target_link_libraries(test_sprite_geometry_steps_rust PRIVATE OBS::w32-pthreads)
 endif()
