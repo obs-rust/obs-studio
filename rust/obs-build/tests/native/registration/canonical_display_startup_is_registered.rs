@@ -1,8 +1,8 @@
 use super::*;
 use obs_build::validation::graph::Graph;
 const CASES: [&str; 6] = [
-    "test_async_audio_own_clock",
-    "test_async_delay_audio",
+    "test_startup_cycle_stress",
+    "test_video_io_hidden",
     "test_gl_dynamic_texture",
     "test_nix_startup_log",
     "test_scene_size_race",
@@ -25,10 +25,15 @@ fn canonical_display_startup_is_registered() {
                 "{section}/{name}"
             );
         }
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("), "{name}");
-        assert!(!fragment.contains("add_test("), "{name}");
+        let fragment_name = if name == "test_video_io_hidden" { "test_video_io" } else { name };
+        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{fragment_name}.cmake"))).unwrap();
+        if name == "test_video_io_hidden" {
+            assert!(!fragment.contains("add_executable(test_video_io_hidden"));
+            assert!(!fragment.contains("add_test(test_video_io_hidden"));
+        } else {
+            assert!(!fragment.contains("add_executable("), "{name}");
+            assert!(!fragment.contains("add_test("), "{name}");
+        }
         assert!(fragment.contains("test-graph.json"));
     }
 }
@@ -47,14 +52,12 @@ fn canonical_display_startup_guards() {
                 }
                 let selected = graph.select(&facts).unwrap();
                 for name in CASES {
-                    let enabled = if name == "test_startup_alloc_stable" {
+                    let enabled = if matches!(name, "test_startup_alloc_stable" | "test_startup_cycle_stress" | "test_video_io_hidden") {
                         os != "OS_LINUX" || display == Some(true)
                     } else {
                         os == "OS_LINUX"
                             && display == Some(true)
-                            && (renderer
-                                || !name.starts_with("test_async_")
-                                    && name != "test_gl_dynamic_texture")
+                            && (renderer || name != "test_gl_dynamic_texture")
                     };
                     assert_eq!(
                         selected.targets.contains_key(name),
@@ -71,7 +74,7 @@ fn canonical_display_startup_guards() {
         }
     }
     let typo = Graph::parse(
-        r#"{"schema":1,"targets":{"test":{"sources":["test.c"],"requires":"HAVE_X11_DISPALY"}},"tests":{}}"#,
+        r#"{"schema":1,"targets":{"test":{"sources":["test.c"],"requires":"HAVE_X11_DISPALY"}},"tests":{"test":{"target":"test"}}}"#,
     )
     .unwrap();
     assert!(
@@ -85,3 +88,47 @@ fn canonical_display_startup_guards() {
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 #[path = "display_startup_runtime.rs"]
 mod runtime;
+
+#[test]
+fn canonical_display_startup_declared_runner() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let directory = tempfile::tempdir().unwrap();
+    let script = directory.path().join("display.cmake");
+    let consumer = root.join("test/cmocka/native-test-graph.cmake").to_string_lossy().replace('\\', "/");
+    fs::write(&script, format!(r#"cmake_minimum_required(VERSION 3.28)
+include("{consumer}")
+foreach(linux IN ITEMS TRUE FALSE)
+  set(OS_LINUX ${{linux}})
+  unset(HAVE_X11_DISPLAY)
+  unset(OBS_XVFB_RUN_REAL)
+  unset(XVFB_RUN)
+  _obs_test_graph_x11_display(selected)
+  if(selected)
+    message(FATAL_ERROR "No server was declared")
+  endif()
+  foreach(runner IN ITEMS OBS_XVFB_RUN_REAL XVFB_RUN)
+    set(${{runner}} "/declared/xvfb-run")
+    _obs_test_graph_x11_display(selected)
+    if(NOT selected STREQUAL linux)
+      message(FATAL_ERROR "Declared runner lost Linux guard")
+    endif()
+    set(HAVE_X11_DISPLAY FALSE)
+    _obs_test_graph_x11_display(selected)
+    if(selected)
+      message(FATAL_ERROR "Explicit false declaration ignored")
+    endif()
+    unset(HAVE_X11_DISPLAY)
+    unset(${{runner}})
+  endforeach()
+endforeach()
+set(OS_LINUX TRUE)
+set(ENV{{DISPLAY}} ":123")
+_obs_test_graph_x11_display(selected)
+if(NOT selected)
+  message(FATAL_ERROR "Declared display ignored")
+endif()
+"#)).unwrap();
+    let output = std::process::Command::new("cmake").arg("-P").arg(&script)
+        .env_remove("DISPLAY").output().unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+}
