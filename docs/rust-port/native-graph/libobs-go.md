@@ -70,3 +70,11 @@ Deferred candidates from the fragment/graph comparison:
 
 No existing C test, public header, WebSocket plugin, workflow or Rust test
 executable changed. No target pruning or Soldr garbage collection was run.
+
+Full `./lint` passes formatting, repository self-tests and workspace/feature
+Clippy lanes, then exits 1 at Soldr's documented refusal to build the Dylint
+v6.2.0 driver under clud for nightly-2026-05-28. Final lines were inspected
+in `local-test-nXYJxG.log`. No toolchain change or workaround was attempted;
+full lint is not claimed GREEN. Full unittest was not run because its wrapper
+prunes targets, prohibited for this assignment. Final rollup hosted validation
+remains the manager's responsibility.
