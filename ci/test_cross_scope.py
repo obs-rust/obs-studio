@@ -4,8 +4,8 @@
 cmake/cross/ compiles libobs and the Windows/macOS host groups of the
 components it lists (each `DIR` of its CMakeLists.txt) with soldr's LLVM and
 SDKs, on Linux. A PR that changes a Windows or macOS file in one of those
-components, or the cross check itself, runs it for that OS; nothing else
-does, so a PR with no host C/C++ change pays nothing.
+components, or the cross check itself (including its workflow), runs it for
+that OS; unrelated changes skip it.
 
     uv run python -m unittest ci/test_cross_scope.py
 """
@@ -60,7 +60,10 @@ class CrossScopeTest(unittest.TestCase):
             self.assertEqual(self.targets(path), "mac-arm64", path)
 
     def test_the_check_itself_selects_both(self):
-        for path in ("cmake/cross/CMakeLists.txt", "cmake/cross/docker.py", "cmake/common/soldr.cmake"):
+        for path in (
+            "cmake/cross/CMakeLists.txt", "cmake/cross/docker.py", "cmake/common/soldr.cmake",
+            ".github/workflows/build-project.yaml",
+        ):
             self.assertEqual(self.targets(path), "mac-arm64,win-x64", path)
 
     def test_pr_1292_selects_both(self):
