@@ -41,15 +41,13 @@ static int load_does_not_enumerate(void)
 
 	obs_module_load();
 	if (async_dispatches != 0) {
-		fprintf(stderr,
-			"load_does_not_enumerate: obs_module_load dispatched the encoder "
-			"list enumeration to a background queue\n");
+		fprintf(stderr, "load_does_not_enumerate: obs_module_load dispatched the encoder "
+				"list enumeration to a background queue\n");
 		failures++;
 	}
 	if (enumerations != 0) {
-		fprintf(stderr,
-			"load_does_not_enumerate: obs_module_load enumerated the encoder "
-			"list itself\n");
+		fprintf(stderr, "load_does_not_enumerate: obs_module_load enumerated the encoder "
+				"list itself\n");
 		failures++;
 	}
 	return failures;
