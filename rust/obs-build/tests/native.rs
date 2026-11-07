@@ -279,6 +279,21 @@ fn canonical_vmic_helpers_are_registered() {
         );
         assert_eq!(target.includes, ["plugins/mac-virtualcam/src/common"]);
         assert_eq!(target.watch_inputs, ["plugins/mac-virtualcam/src/common"]);
+    }
+}
+
+/// #1390: preserve both unchanged frontend-tools host helpers and their OS guard.
+#[test]
+fn canonical_frontend_tools_hosts_are_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let names = ["test_frontend_tools_host", "test_frontend_tools_host_macos"];
+    for name in names {
+        let target = graph.targets.get(name).unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        assert!(matches!(target.sources.as_slice(), [Source::Path(path)] if path == &format!("test/cmocka/{name}.c")));
+        assert_eq!(target.includes, ["."]);
+        assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)] if name == "OBS::native-test-cmocka"));
         assert!(target.header_libraries.is_empty());
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
