@@ -1,5 +1,12 @@
 //! C ABI shims replacing the original libobs `EXPORT` symbols.
 
+// Temporary #3637 hosted acceptance probe: only Windows links this absent library.
+// Remove after recording the native PR link failure; never enqueue this commit.
+#[cfg(windows)]
+#[allow(unsafe_code)]
+#[link(name = "obs_ci_3637_missing")]
+unsafe extern "C" {}
+
 pub mod array_serializer;
 pub mod base;
 pub mod bitstream;
