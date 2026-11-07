@@ -158,6 +158,7 @@ fn replay_cmake(directory: &Path) {
         let output = directory.join(mode);
         checked(
             Command::new("cmake")
+                .arg("-DCMAKE_BUILD_TYPE=RelWithDebInfo")
                 .arg("-S")
                 .arg(directory)
                 .arg("-B")
