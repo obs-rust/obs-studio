@@ -7317,6 +7317,17 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_deinterlace_getters": {
+      "sources": [
+        "test/cmocka/test_source_deinterlace_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_draw_plan_steps": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
@@ -12673,6 +12684,14 @@
           "-a"
         ]
       ]
+    },
+    "test_source_deinterlace_getters": {
+      "target": "test_source_deinterlace_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "unit",
+      "working_directory": "${runtime}"
     },
     "test_source_draw_plan_steps": {
       "target": "test_source_draw_plan_steps",
