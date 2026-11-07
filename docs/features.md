@@ -883,6 +883,10 @@ area.
   its own "OBS Virtual Microphone (2)" instead of a duplicate. *Linux*,
   2026-10-31. Issues [#3182](https://github.com/obs-rust/obs-studio/issues/3182),
   [#3185](https://github.com/obs-rust/obs-studio/issues/3185).
+- A silent OBS Virtual Microphone left by an OBS that died is cleared when the
+  Virtual Camera starts even with the microphone turned off, and the log says
+  when `pactl` itself cannot run. *Linux*, 2026-11-06.
+  Issue [#3797](https://github.com/obs-rust/obs-studio/issues/3797).
 - The OBS Virtual Microphone no longer turns into noise or swaps channels
   after the sound server falls behind: a packet the pipe takes only part of
   is finished before the next one. *Linux*, 2026-10-31.

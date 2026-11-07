@@ -298,7 +298,10 @@ static char *run_pactl(const char *args)
 /* Whether pactl itself can run at all, whatever the sound server would say (#3797). */
 static bool vmic_pactl_runs(void)
 {
-	return true;
+	char *version = run_pactl("--version");
+	bool runs = version != NULL;
+	bfree(version);
+	return runs;
 }
 
 static void vmic_stop(struct virtualcam_data *vcam)
@@ -387,6 +390,12 @@ static void vmic_start(struct virtualcam_data *vcam)
 {
 	if (!vcam->audio_enabled) {
 		blog(LOG_INFO, "Virtual microphone turned off in the Virtual Camera settings");
+		/* A dead OBS's silent device would stay listed in every app (#3797). */
+		const char *off_runtime = getenv("XDG_RUNTIME_DIR");
+		char off_dir[256];
+		if (off_runtime && *off_runtime &&
+		    snprintf(off_dir, sizeof(off_dir), "%s/" VMIC_DIR_NAME, off_runtime) < (int)sizeof(off_dir))
+			vmic_unload_stale(off_dir);
 		return;
 	}
 
@@ -477,8 +486,13 @@ static void vmic_start(struct virtualcam_data *vcam)
 	vcam->mic_loaded = vmic_parse_module_id(reply, &vcam->mic_module);
 	bfree(reply);
 	if (!vcam->mic_loaded) {
-		blog(LOG_WARNING, "Virtual microphone unavailable (pactl load-module module-pipe-source failed); "
-				  "the Virtual Camera sends video only");
+		if (vmic_pactl_runs())
+			blog(LOG_WARNING,
+			     "Virtual microphone unavailable (pactl load-module module-pipe-source failed); "
+			     "the Virtual Camera sends video only");
+		else
+			blog(LOG_WARNING, "Virtual microphone unavailable (pactl cannot run: install PulseAudio's "
+					  "client tools); the Virtual Camera sends video only");
 		vcam->mic_path[0] = 0;
 		return;
 	}

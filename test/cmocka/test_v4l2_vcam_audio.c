@@ -248,13 +248,14 @@ static void stale_module_is_unloaded_with_the_microphone_off(void **state)
 	assert_non_null(mkdtemp(dir));
 
 	char body[512];
-	snprintf(body, sizeof(body),
-		 "#!/bin/sh\n"
-		 "echo \"$*\" >> %s/calls\n"
-		 "if [ \"$1\" = list ]; then\n"
-		 "  printf '77\\tmodule-pipe-source\\tfile=%s/obs-virtual-microphone/obs-virtual-microphone-999 format=x\\t\\n'\n"
-		 "fi\n",
-		 dir, dir);
+	snprintf(
+		body, sizeof(body),
+		"#!/bin/sh\n"
+		"echo \"$*\" >> %s/calls\n"
+		"if [ \"$1\" = list ]; then\n"
+		"  printf '77\\tmodule-pipe-source\\tfile=%s/obs-virtual-microphone/obs-virtual-microphone-999 format=x\\t\\n'\n"
+		"fi\n",
+		dir, dir);
 	write_script(dir, "pactl", body);
 
 	/* The dead owner's lock: present, and nobody holds it. */
