@@ -87,6 +87,7 @@ pub mod canvas_rules;
 pub mod context_names;
 pub mod core_setup_rules;
 pub mod module_load_rules;
+pub mod module_failure_info;
 pub mod module_locale;
 pub mod module_names;
 pub mod module_paths;

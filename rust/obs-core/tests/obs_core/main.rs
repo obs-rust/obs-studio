@@ -19,6 +19,7 @@ mod context_names_parity;
 mod core_setup_rules;
 mod core_setup_rules_parity;
 mod module_load_rules;
+mod module_failure_info;
 mod module_load_rules_parity;
 mod module_load_rules_skip;
 mod module_locale;
