@@ -4107,10 +4107,21 @@ fn standalone_core_header_fixture(
     directory: &Path,
     root: &Path,
     build: &NativeBuild,
-    _selection: &obs_build::validation::graph::Selection<'_>,
+    selection: &obs_build::validation::graph::Selection<'_>,
     interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
 ) -> String {
     use obs_build::validation::graph::Dependency;
+    // The glyph target needs these headers only on Linux. Select first so
+    // macOS/Windows utility replays do not require an unused SIMDe package.
+    // Slideshow still requests its core/SIMDe interfaces on every host.
+    if !selection.targets.values().any(|target| {
+        target
+            .header_libraries
+            .iter()
+            .any(|name| name == "OBS::libobs" || name == "SIMDe::SIMDe")
+    }) {
+        return String::new();
+    }
     let source = root.to_string_lossy().replace('\\', "/");
     let config = directory.join("config");
     fs::create_dir_all(&config).unwrap();
