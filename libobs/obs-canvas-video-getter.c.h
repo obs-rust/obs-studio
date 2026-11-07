@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 video_t *obs_canvas_get_video(const obs_canvas_t *canvas)
 {

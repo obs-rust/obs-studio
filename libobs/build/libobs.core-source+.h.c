@@ -4,7 +4,7 @@
 
 #include "libobs/obs-canvas-flags-fields.c.h"
 #include "libobs/obs-canvas-readonly-fields.c.h"
-#include "libobs/obs-canvas-video-getter.c.h"
+#include "libobs/obs-canvas-video-fields.c.h"
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display-size-fields.c.h"
 #include "libobs/obs-display.c.h"
