@@ -1994,7 +1994,8 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
-      ]
+      ],
+      "requires": "OS_LINUX"
     },
     "test_graphics_alias_ordinary": {
       "sources": [
