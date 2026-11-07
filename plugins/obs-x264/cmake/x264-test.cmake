@@ -1,11 +1,18 @@
-add_executable(obs-x264-test)
-
-target_sources(obs-x264-test PRIVATE build/obs-x264-test.core+.h.c)
-
-target_compile_options(obs-x264-test PRIVATE $<$<COMPILE_LANG_AND_ID:C,AppleClang,Clang>:-Wno-strict-prototypes>)
-
-target_link_libraries(obs-x264-test PRIVATE OBS::opts-parser)
-
-add_test(NAME obs-x264-test COMMAND obs-x264-test)
-
+# Consume only this owner's canonical entry here: the executable predates
+# ENABLE_UNIT_TESTS and must exist before the parent's compile-options calls.
+file(READ "${CMAKE_SOURCE_DIR}/test/cmocka/build/test-graph.json" _x264_graph)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/test/cmocka/build/test-graph.json")
+set(_x264_slice "{\"schema\":1,\"targets\":{},\"tests\":{}}")
+foreach(section IN ITEMS targets tests)
+  string(JSON _x264_entry GET "${_x264_graph}" ${section} obs-x264-test)
+  string(JSON _x264_slice SET "${_x264_slice}" ${section} obs-x264-test "${_x264_entry}")
+endforeach()
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/x264-test-graph.json" "${_x264_slice}")
+set(HAVE_X264_TEST_OWNER TRUE)
+set(C_COMPILER_CLANG FALSE)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  set(C_COMPILER_CLANG TRUE)
+endif()
+include("${CMAKE_SOURCE_DIR}/test/cmocka/native-test-graph.cmake")
+obs_native_test_graph("${CMAKE_CURRENT_BINARY_DIR}/x264-test-graph.json" "${CMAKE_SOURCE_DIR}")
 set_target_properties(obs-x264-test PROPERTIES FOLDER plugins/obs-x264)

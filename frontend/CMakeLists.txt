@@ -61,20 +61,7 @@ endif()
 
 if(ENABLE_UNIT_TESTS)
   # Virtual-camera helper tests are registered by test/cmocka/build/test-graph.json.
-  add_executable(test_first_run_wizard tests/test_first_run_wizard.cpp)
-  add_test(NAME test_first_run_wizard COMMAND test_first_run_wizard)
-  add_executable(test_config_migration tests/test_config_migration.cpp)
-  target_include_directories(test_config_migration PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-  foreach(
-    mode
-    IN
-    ITEMS first existing absent custom empty-custom failure
-  )
-    add_test(
-      NAME test_config_migration_${mode}
-      COMMAND test_config_migration "${CMAKE_CURRENT_BINARY_DIR}/config-migration-${mode}" ${mode}
-    )
-  endforeach()
+  # Plain frontend helper tests are registered by the shared native graph.
 endif()
 
 target_link_libraries(
