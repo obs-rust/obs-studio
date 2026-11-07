@@ -7374,6 +7374,25 @@
         }
       ]
     },
+    "test_scene_item_scale_getter": {
+      "sources": [
+        "test/cmocka/test_scene_item_scale_getter.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_item_state_getters": {
       "sources": [
         "test/cmocka/test_scene_item_state_getters.c"
@@ -13473,6 +13492,14 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_scene_item_scale_getter": {
+      "target": "test_scene_item_scale_getter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_item_state_getters": {
       "target": "test_scene_item_state_getters"
