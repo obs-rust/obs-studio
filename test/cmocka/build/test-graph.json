@@ -1185,6 +1185,42 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_dynamics_threshold": {
+      "sources": [
+        "test/cmocka/test_dynamics_threshold.c"
+      ],
+      "requires": true,
+      "watch_inputs": [
+        "plugins/obs-filters"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/fp:strict",
+          "requires": "MSVC"
+        },
+        {
+          "name": "-fno-fast-math",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "-ffp-contract=off",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_effect_int_bool_defaults": {
       "sources": [
         "test/cmocka/test_effect_int_bool_defaults.c"
@@ -1873,6 +1909,42 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_expander_unity": {
+      "sources": [
+        "test/cmocka/test_expander_unity.c"
+      ],
+      "requires": true,
+      "watch_inputs": [
+        "plugins/obs-filters"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/fp:strict",
+          "requires": "MSVC"
+        },
+        {
+          "name": "-fno-fast-math",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "-ffp-contract=off",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
       ]
     },
     "test_fade_to_color_mix": {
@@ -8519,6 +8591,10 @@
     "test_dtostr_exponent": {
       "target": "test_dtostr_exponent"
     },
+    "test_dynamics_threshold": {
+      "target": "test_dynamics_threshold",
+      "requires": true
+    },
     "test_effect_int_bool_defaults": {
       "target": "test_effect_int_bool_defaults",
       "command": [
@@ -8808,6 +8884,10 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_expander_unity": {
+      "target": "test_expander_unity",
+      "requires": true
     },
     "test_fade_to_color_mix": {
       "target": "test_fade_to_color_mix",
