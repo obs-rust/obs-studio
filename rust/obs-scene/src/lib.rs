@@ -51,3 +51,5 @@ pub mod transform_update;
 pub mod ffi;
 
 pub mod item_state_getters;
+
+pub mod item_render_getters;
