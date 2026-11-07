@@ -2261,6 +2261,33 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_host_exports": {
+      "sources": [
+        "test/cmocka/test_graphics_host_exports.c"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_graphics_host_functions": {
+      "sources": [
+        "test/cmocka/test_graphics_host_functions.c"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_graphics_immediate_render": {
       "sources": [
         "test/cmocka/test_graphics_immediate_render.c"
@@ -2760,6 +2787,53 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_image_source_host": {
+      "sources": [
+        "test/cmocka/test_image_source_host.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          {
+            "not": "OS_MACOS"
+          }
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/image-source/image-source-host-posix.c.h",
+        "plugins/image-source/build/image-source-posix.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/image-source/image-file-version.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_ingest_refresh_wait": {
+      "sources": [
+        "test/cmocka/test_ingest_refresh_wait.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/rtmp-services/service-specific/ingest-refresh-wait.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
     },
     "test_item_transition_empty_source": {
       "sources": [
@@ -3375,6 +3449,26 @@
       ],
       "link_options": [
         "-Wl,--wrap=obs_output_can_begin_data_capture,--wrap=obs_output_initialize_encoders,--wrap=obs_output_begin_data_capture,--wrap=obs_output_end_data_capture,--wrap=pthread_create,--wrap=pthread_join"
+      ]
+    },
+    "test_nvenc_caps_cache": {
+      "sources": [
+        "test/cmocka/test_nvenc_caps_cache.c",
+        "plugins/obs-nvenc/nvenc-caps-cache.c.h",
+        "plugins/obs-nvenc/nvenc-caps-cache-linux.c.h"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "plugins/obs-nvenc"
+      ],
+      "watch_inputs": [
+        "plugins/obs-nvenc/nvenc-caps-cache.h",
+        "plugins/obs-nvenc/build/obs-nvenc-caps-cache.pch.h",
+        "plugins/obs-nvenc/build/obs-nvenc-caps-cache-linux.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_nvenc_override": {
@@ -8930,6 +9024,14 @@
         "${target}"
       ]
     },
+    "test_graphics_host_exports": {
+      "target": "test_graphics_host_exports",
+      "requires": "OS_LINUX"
+    },
+    "test_graphics_host_functions": {
+      "target": "test_graphics_host_functions",
+      "requires": "OS_LINUX"
+    },
     "test_graphics_immediate_render": {
       "target": "test_graphics_immediate_render",
       "command": [
@@ -9156,6 +9258,23 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_image_source_host": {
+      "target": "test_image_source_host",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          {
+            "not": "OS_MACOS"
+          }
+        ]
+      }
+    },
+    "test_ingest_refresh_wait": {
+      "target": "test_ingest_refresh_wait",
+      "timeout_seconds": 60
     },
     "test_item_transition_empty_source": {
       "target": "test_item_transition_empty_source",
@@ -9394,6 +9513,10 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_nvenc_caps_cache": {
+      "target": "test_nvenc_caps_cache",
+      "requires": "OS_LINUX"
     },
     "test_nvenc_override": {
       "target": "test_nvenc_override"
