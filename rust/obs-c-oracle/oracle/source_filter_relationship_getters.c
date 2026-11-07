@@ -65,6 +65,12 @@ struct relationship_log {
 	char message[128];
 };
 
+/* Retain printf checking when forwarding the callback format to vsnprintf. */
+#if defined(__GNUC__) || defined(__clang__)
+static void relationship_capture(int level, const char *format, va_list args, void *param)
+	__attribute__((format(printf, 2, 0)));
+#endif
+
 static void relationship_capture(int level, const char *format, va_list args, void *param)
 {
 	struct relationship_log *log = param;
