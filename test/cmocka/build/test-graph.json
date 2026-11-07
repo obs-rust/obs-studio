@@ -2082,6 +2082,24 @@
         "libobs/data"
       ]
     },
+    "test_encoder_last_error_getter": {
+      "sources": [
+        "test/cmocka/test_encoder_last_error_getter.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_lifecycle_steps": {
       "sources": [
         "test/cmocka/test_encoder_lifecycle_steps.c",
@@ -10700,6 +10718,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_encoder_last_error_getter": {
+      "target": "test_encoder_last_error_getter",
+      "command": [
+        "${target}"
+      ]
     },
     "test_encoder_lifecycle_steps": {
       "target": "test_encoder_lifecycle_steps",
