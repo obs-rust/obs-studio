@@ -65,28 +65,6 @@ jobs:
       - name: Compare the CEF pins with Chrome's extended stable 🔍
         run: uv run --no-project ci/cef_support.py
 
-  # Is the S3 remote cache actually reachable? Nothing else in CI proves it:
-  # the compile lanes run with build-cache: false, so the bucket is configured
-  # but never exercised. This writes a canary, reads it back, and reports the
-  # bucket's object count and size - the numbers that tell us whether the store
-  # is filling and whether the 50G watermark is near.
-  s3-cache-canary:
-    timeout-minutes: 10
-    name: S3 Cache Canary 🗄️
-    # A scheduled workflow also fires in every fork (#1258): skip there.
-    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
-    runs-on: ubuntu-latest
-    # Never blocks the nightly: a cache probe that fails to authenticate is
-    # information, not a build failure. The summary says which case it hit.
-    continue-on-error: true
-    steps:
-      - name: Probe the soldr S3 cache
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
-          AWS_DEFAULT_REGION: nyc3
-        run: bash ci/s3_cache_canary.sh
-
   build-project:
     name: Build 🧱
     uses: ./.github/workflows/build-project.yaml

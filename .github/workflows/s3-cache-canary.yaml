@@ -1,0 +1,41 @@
+name: S3 Cache Canary
+
+# The soldr S3 remote cache is configured on every setup-soldr callsite but
+# every lane runs build-cache: false, so nothing exercises the bucket. This
+# probe writes a canary, reads it back, and reports the bucket's object count
+# and size against the 50G watermark - the numbers that say whether the store
+# is reachable, filling, and near the limit.
+#
+# Its own workflow rather than a job in scheduled.yaml so it can be dispatched
+# alone (a dispatch there starts the whole nightly build).
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 47 0 * * *
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  canary:
+    timeout-minutes: 10
+    name: S3 Cache Canary 🗄️
+    # A scheduled workflow also fires in every fork (#1258): skip there.
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-latest
+    # A cache probe that cannot authenticate is information, not a build
+    # failure: the summary says which case it hit.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Probe the soldr S3 cache
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          AWS_DEFAULT_REGION: nyc3
+        run: bash ci/s3_cache_canary.sh
