@@ -56,3 +56,5 @@ pub mod item_state_getters;
 pub mod item_bounds_getters;
 pub mod item_render_getters;
 pub mod item_scale_getter;
+
+pub mod item_transform_getters;
