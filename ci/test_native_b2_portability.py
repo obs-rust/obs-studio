@@ -19,6 +19,7 @@ class NativeB2Portability(unittest.TestCase):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         facts = dict.fromkeys(("OS_WINDOWS", "OS_MACOS", "OS_FREEBSD", "OS_OPENBSD", "MSVC",
                                "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK", "HAVE_PULSE_DEFAULT_RETRY_SDK",
+                               "HAVE_OBS_V4L2", "HAVE_V4L2_BUSY_SDK", "HAVE_V4L2_UDEV_SDK", "HAVE_FREETYPE_PLATFORM_SDK",
                                "C_COMPILER_CLANG", "HAVE_OBS_FFMPEG", "HAVE_OBS_QSV11", "HAVE_OBS_OPENGL"), False)
         facts.update(dict.fromkeys(("OS_LINUX", "UNIX", "HAVE_LIBOBS", "HAVE_LIBOBS_RUST_STATIC",
                                     "HAVE_HAPPY_EYEBALLS", "HAVE_OBS_OUTPUTS", "HAVE_OBS_FILTERS",
