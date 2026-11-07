@@ -1,4 +1,6 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/graph_host_configurations.rs"]
+mod graph_host_configurations;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/rust_static_entries.rs"]
