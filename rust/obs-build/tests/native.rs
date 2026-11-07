@@ -7,6 +7,8 @@ mod canonical_freetype_file_sdk_is_registered;
 mod canonical_headless_devices_is_registered;
 #[path = "native/registration/canonical_headless_helpers_is_registered.rs"]
 mod canonical_headless_helpers_is_registered;
+#[path = "native/registration/canonical_headless_loop_is_registered.rs"]
+mod canonical_headless_loop_is_registered;
 #[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
 mod canonical_opengl_video_slice_is_registered;
 #[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
@@ -19,8 +21,6 @@ mod canonical_v4l2_freetype_sdk_is_registered;
 mod canonical_wayland_sdk_is_registered;
 #[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
 mod canonical_xcomposite_error_fixture_is_registered;
-#[path = "native/registration/canonical_headless_loop_is_registered.rs"]
-mod canonical_headless_loop_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
@@ -2298,6 +2298,9 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
         ("HAVE_TEXT_FILE_OWNER".into(), false),
         ("HAVE_QSV_TEST_SDK".into(), false),
+        ("HAVE_PIPEWIRE_HEADLESS_SDK".into(), false),
+        ("HAVE_PIPEWIRE_LOOP_TEST_SDK".into(), false),
+        ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
         ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
         ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),
