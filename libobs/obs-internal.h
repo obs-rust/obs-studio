@@ -1399,6 +1399,14 @@ struct obs_source_filter_relationship_fields {
 	obs_source_t *const *target;
 };
 struct obs_source_filter_relationship_fields obs_source_filter_relationship_fields(const obs_source_t *filter);
+/* Borrowed field addresses only: no Rust mirror of the private source layout,
+ * ownership, synchronization, or getter decisions in the C adapter. */
+struct obs_source_deinterlace_fields {
+	const enum obs_deinterlace_mode *mode;
+	const bool *top_first;
+};
+
+struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
 
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
