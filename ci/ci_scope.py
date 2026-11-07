@@ -447,7 +447,7 @@ def linux_target(path: str) -> str | None:
 # The cross-compile check (cmake/cross/, #1294) compiles libobs and the
 # components its CMakeLists.txt names by `DIR`, for these aliases.
 CROSS_LISTS = "cmake/cross/CMakeLists.txt"
-CROSS_SELF = ("cmake/cross/", "cmake/common/soldr.cmake")
+CROSS_SELF = ("cmake/cross/", "cmake/common/soldr.cmake", ".github/workflows/build-project.yaml")
 CROSS_ALIASES = {WINDOWS: "win-x64", MACOS: "mac-arm64"}
 
 

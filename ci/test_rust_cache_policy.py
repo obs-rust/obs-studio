@@ -23,8 +23,8 @@ class RustCachePolicyTest(unittest.TestCase):
                     self.assertNotRegex(step, r"(?m)^          cache: false$",
                                         "Preserve the other cache layers")
                     if any(issue in step for issue in ("(#3027)", "(#3034)", "(#3767)")):
-                        # Tier 2 builds Rust only through Corrosion and
-                        # --target-dir build trees: a cook there is never reused.
+                        # Tier 2 uses separate target trees; Cross Compile
+                        # has no host Rust consumer. Neither reuses this cook.
                         cook_free += 1
                         self.assertIn("prebuild-deps: none", step)
                         continue

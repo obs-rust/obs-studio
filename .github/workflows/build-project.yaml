@@ -1913,8 +1913,10 @@ jobs:
           verdict-scope: build-project
           version: 0.9.45
           build-cache: false
-          prebuild-deps-flags: --profile dev
-          cache-key-suffix: cross-compile-v1
+          # Compile-only C/C++ lane; opt-in Rust linking uses a cross-target
+          # release tree, not this host dev cook (#3767).
+          prebuild-deps: none
+          cargo-registry-cache: true
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The cross toolchain adds targets mid-job (cmake/common/soldr.cmake).
           solo-toolchain-cache: false

@@ -723,11 +723,22 @@ Each gap is a step toward the full protocol, and a good issue to pick up:
 
 ## Cook profiles and post-job snapshots
 
-All setup-soldr consumers declare their cook flags. Static-library and
+All setup-soldr consumers declare their cook policy. Static-library and
 release jobs cook release dependencies. Native test and cross-check jobs
 use the dev profile; cross checks still install their target standard
 libraries through the existing gate, and host cooking does not imply
 that a cross-target dependency tree is prebuilt.
+
+The Linux `cross-compile` job skips cooking (`prebuild-deps: none`) and keeps
+`cargo-registry-cache: true` (#3767). Its default C/C++ compile-only check has
+no Rust consumer; the optional `OBS_CROSS_LINK` path builds a cross-target
+release staticlib, not host dev artifacts. Baseline PR run
+[42310800738, job 128211841721](https://github.com/obs-rust/obs-studio/actions/runs/42310800738/job/128211841721)
+restored an 18.7 MB host cook, loaded 714 files in about 13 seconds, then
+cooked `--profile dev`; the subsequent compile-only check printed zero Rust
+`Compiling` lines. Edits to `build-project.yaml` select both cross aliases so
+PR CI validates this job's setup changes. The macOS/Windows app and release
+jobs retain their existing cooks pending measured consumer evidence.
 
 Fast Gate cooks the dev profile with `--tests`, on every event: its consumer
 is `cargo test`, so a release cook there is never reused. Measured on ten Fast
