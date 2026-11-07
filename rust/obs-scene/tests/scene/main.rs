@@ -48,3 +48,4 @@ mod item_transform_getters;
 
 #[allow(unsafe_code)]
 mod item_transform_getters_parity;
+mod item_crop_getter;
