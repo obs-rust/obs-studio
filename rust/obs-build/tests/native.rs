@@ -279,6 +279,8 @@ mod canonical_scene_enum_items_removal_is_registered;
 mod canonical_scene_item_crop_load_is_registered;
 #[path = "native/registration/canonical_scene_scale_getter_is_registered.rs"]
 mod canonical_scene_scale_getter_is_registered;
+#[path = "native/registration/canonical_scene_transform_getters_are_registered.rs"]
+mod canonical_scene_transform_getters_are_registered;
 #[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
 mod canonical_sck_vaapi_helpers_are_registered;
 #[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]

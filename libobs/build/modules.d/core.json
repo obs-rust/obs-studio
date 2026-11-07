@@ -5,8 +5,7 @@
     "core-output",
     "core-source",
     "null-audio",
-    "util-cf",
-    "scene-item-transform-fields"
+    "util-cf"
   ],
   "depends": [
     "graphics",
