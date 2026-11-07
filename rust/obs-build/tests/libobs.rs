@@ -178,6 +178,7 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
             &obs_build::validation::Options {
                 hevc: options.hevc,
                 pulseaudio: options.pulseaudio,
+                rust_archive: Some(archive.clone()),
                 per_target_sanitizers: std::env::var_os("OBS_BUILD_DISABLE_C_TEST_SANITIZERS")
                     .is_none(),
                 ..Default::default()
@@ -186,7 +187,7 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
         .unwrap();
         assert_eq!(
             executables.len(),
-            137 + usize::from(options.pulseaudio) - usize::from(!options.hevc)
+            138 + usize::from(options.pulseaudio) - usize::from(!options.hevc)
         );
         for name in ["test_scene_group_transform", "test_shader_sampler_convert"] {
             assert!(executables.iter().any(|test| test.name == name));
