@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_render_plan_steps_rust": {
+      "sources": [
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/test_scene_render_plan_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": "UNIX"
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_render_plan_steps_rust": {
+      "target": "test_scene_render_plan_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}
