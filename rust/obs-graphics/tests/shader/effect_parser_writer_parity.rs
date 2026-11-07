@@ -10,9 +10,10 @@
 //! array, or tokens with whitespace, `NULL`, names of the parser's items,
 //! punctuation, empty tokens whose next byte is or is not whitespace, and
 //! tokens holding a NUL, before the end token. The shader string may start
-//! with text already in it. The oracle is the original C with the lookups
-//! of `effect-parser-funcs.c.h` and the C `strref_cmp` and dstr; the shim
-//! is `ep_makeshaderstring`. The shader string (bytes, length, capacity),
+//! with text already in it, never holding a NUL (a dstr's `len` ends at its
+//! first one, and the C's dstr helpers rely on that). The oracle is the
+//! original C with the lookups of `effect-parser-funcs.c.h` and the C
+//! `strref_cmp` and dstr; the shim is `ep_makeshaderstring`. The shader string (bytes, length, capacity),
 //! every pushed `used_params` entry (bytes, length, capacity) with the
 //! list's count and capacity, and every `written` flag afterwards must
 //! match.
@@ -207,9 +208,10 @@ fn indices() -> impl Strategy<Value = Vec<usize>> {
     prop::collection::vec(0usize..16, 0..4)
 }
 
-/// Text already in the shader string, and spare capacity past it.
+/// Text already in the shader string, and spare capacity past it. No NUL:
+/// a dstr's `len` ends at its first one (see `prefix_is_dstr_text`).
 fn prefix() -> impl Strategy<Value = Option<(Vec<u8>, usize)>> {
-    prop::option::weighted(0.2, (prop::collection::vec(any::<u8>(), 1..6), 0usize..8))
+    prop::option::weighted(0.2, (prop::collection::vec(1u8..=255, 1..6), 0usize..8))
 }
 
 fn model() -> impl Strategy<Value = Model> {
