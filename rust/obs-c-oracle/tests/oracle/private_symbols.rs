@@ -38,9 +38,11 @@ fn encoder_metadata_has_no_production_getter_dependencies() {
         .lines()
         .filter(|line| line.contains("encoder_metadata.o:"))
         .filter(|line| {
-            line.split_whitespace()
-                .last()
-                .is_some_and(|symbol| symbol.trim_start_matches('_').starts_with("obs_encoder_get_"))
+            line.split_whitespace().last().is_some_and(|symbol| {
+                symbol
+                    .trim_start_matches('_')
+                    .starts_with("obs_encoder_get_")
+            })
         })
         .collect();
     assert!(
