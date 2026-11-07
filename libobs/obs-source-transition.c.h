@@ -78,29 +78,6 @@ void obs_transition_free(obs_source_t *transition)
 	gs_leave_context();
 }
 
-float transition_calc_time(obs_source_t *transition, uint64_t ts)
-{
-	return obs_source_transition_clock_time((int)transition->transition_mode, transition->transition_manual_val,
-						transition->transition_start_time, transition->transition_duration, ts);
-}
-
-float transition_get_video_time(obs_source_t *transition)
-{
-	uint64_t ts = obs_video_stats_frame_time(&obs->video.stats);
-	return transition_calc_time(transition, ts);
-}
-
-float obs_transition_get_time(obs_source_t *transition)
-{
-	/* Read under the lock that publishes a start's clock, as the render
-	 * functions do: a caller choosing what to draw from this value, then
-	 * rendering, must not pair a new start with the previous clock. */
-	lock_transition(transition);
-	float t = transition_get_video_time(transition);
-	unlock_transition(transition);
-	return t;
-}
-
 static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_transition_target target)
 {
 	size_t idx = (size_t)target;
@@ -157,32 +134,6 @@ static inline void render_child(obs_source_t *transition, obs_source_t *child, s
 
 		gs_texrender_end(transition->transition_texrender[idx]);
 	}
-}
-
-void transition_stop(obs_source_t *transition)
-{
-	obs_source_t *old_child = transition->transition_sources[0];
-
-	if (old_child && transition->transition_source_active[0])
-		obs_source_remove_active_child(transition, old_child);
-	obs_source_release(old_child);
-
-	transition->transition_source_active[0] = true;
-	transition->transition_source_active[1] = false;
-	transition->transition_sources[0] = transition->transition_sources[1];
-	transition->transition_sources[1] = NULL;
-}
-
-void transition_handle_stop(obs_source_t *transition)
-{
-	if (transition->info.transition_stop)
-		transition->info.transition_stop(transition->context.data);
-	obs_source_dosignal(transition, "source_transition_stop", "transition_stop");
-}
-
-void obs_transition_force_stop(obs_source_t *transition)
-{
-	transition_handle_stop(transition);
 }
 
 void obs_transition_video_render(obs_source_t *transition, obs_transition_video_render_callback_t callback)
