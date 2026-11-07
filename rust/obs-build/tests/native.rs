@@ -6524,6 +6524,23 @@ fn canonical_rust_static_pacing_is_registered() {
         })
         .collect();
     assert_eq!(libraries, ["libobs_rust-static", "OBS::native-test-cmocka"]);
+}
+
+/// #1390: the conversion table must exercise the production Rust archive.
+#[test]
+fn canonical_rust_static_conversion_is_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let name = "test_async_conversion_plan_rust";
+    let target = graph.targets.get(name).expect("canonical graph omits Rust-static conversion");
+    assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
+        if path == "test/cmocka/test_async_conversion_plan.c"));
+    assert_eq!(target.includes, ["libobs"]);
+    assert_eq!(target.watch_inputs, ["libobs/obs-source-conversion-plan.h"]);
+    assert_eq!(target.libraries.len(), 3);
+    assert!(matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static"));
+    assert!(matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka"));
     assert!(target.archives.is_empty());
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
