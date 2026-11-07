@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_monitor_wasapi_steps_rust": {
+      "sources": [
+        "test/cmocka/test_monitor_wasapi_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_monitor_wasapi_steps_rust": {
+      "target": "test_monitor_wasapi_steps_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

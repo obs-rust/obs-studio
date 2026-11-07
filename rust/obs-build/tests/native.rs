@@ -1,6 +1,9 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
+#[path = "native/registration/rust_static_entries.rs"]
+mod rust_static_entries;
+
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
 #[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
@@ -378,6 +381,9 @@ fn graph_runtimes_never_link_an_installed_libobs() {
     let mut offenders = Vec::new();
     for entry in fs::read_dir(&directory).unwrap() {
         let path = entry.unwrap().path();
+        if !path.is_file() {
+            continue;
+        }
         let text = fs::read_to_string(&path).unwrap();
         for pattern in [
             r#"Dependency::package(&build.target, "libobs")"#,
@@ -5016,20 +5022,6 @@ fn assert_pipe_contract_registration(
         fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
-}
-
-fn assert_rust_static_conversion_linkage(target: &obs_build::validation::graph::Target) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), 3);
-    assert!(
-        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
-    );
-    assert!(
-        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
-    );
-    assert!(
-        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-    );
 }
 
 /// #1390: both consumers must run the unchanged C suite against a real Rust archive.
