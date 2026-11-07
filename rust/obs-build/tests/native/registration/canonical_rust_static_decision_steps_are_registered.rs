@@ -37,24 +37,27 @@ fn canonical_rust_static_decision_steps_are_registered() {
         assert!(target.link_options.is_empty());
         assert_eq!(target.sanitizers, None);
         assert_decision_step_linkage(target, math);
-        let test = &graph.tests[&name];
-        assert_eq!(test.target, name);
-        assert_eq!(test.command, ["${target}"]);
-        assert_eq!(test.timeout_seconds, None);
-        assert_eq!(test.skip_return_code, None);
-        assert!(test.optional_prefixes.is_empty());
-        assert!(test.environment.is_empty());
-        assert!(test.environment_path_prepend.is_empty());
-        assert!(test.resource_locks.is_empty());
-        assert!(!test.run_serial);
-        assert_eq!(test.working_directory, None);
-        assert_eq!(test.qt_runtime, None);
+        assert_decision_test(&graph.tests[&name], &name);
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{base}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
         assert_decision_step_selection(&graph, &name);
     }
+}
+
+fn assert_decision_test(test: &obs_build::validation::graph::Test, name: &str) {
+    assert_eq!(test.target, name);
+    assert_eq!(test.command, ["${target}"]);
+    assert_eq!(test.timeout_seconds, None);
+    assert_eq!(test.skip_return_code, None);
+    assert!(test.optional_prefixes.is_empty());
+    assert!(test.environment.is_empty());
+    assert!(test.environment_path_prepend.is_empty());
+    assert!(test.resource_locks.is_empty());
+    assert!(!test.run_serial);
+    assert_eq!(test.working_directory, None);
+    assert_eq!(test.qt_runtime, None);
 }
 
 fn assert_decision_step_linkage(target: &obs_build::validation::graph::Target, math: bool) {
