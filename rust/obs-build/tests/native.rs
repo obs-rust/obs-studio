@@ -205,6 +205,8 @@ mod canonical_output_protocols_is_registered;
 mod canonical_pipe_contracts_are_registered;
 #[path = "native/registration/canonical_pipe_wait_error_is_registered.rs"]
 mod canonical_pipe_wait_error_is_registered;
+#[path = "native/registration/canonical_plugin_sdk_headless_is_registered.rs"]
+mod canonical_plugin_sdk_headless_is_registered;
 #[path = "native/registration/canonical_plugin_configuration_helpers_are_registered.rs"]
 mod canonical_plugin_configuration_helpers_are_registered;
 #[path = "native/registration/canonical_posix_output_hosts_are_registered.rs"]
