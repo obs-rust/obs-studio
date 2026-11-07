@@ -450,6 +450,58 @@ jobs:
           codesignTeam: ${{ steps.codesign.outputs.codesignTeam }}
           provisioningProfileUUID: ${{ steps.codesign.outputs.provisioningProfileUUID }}
 
+      # Cache observability: until this step existed nothing in CI reported
+      # whether the S3 remote cache was helping, so "are we getting hits" was
+      # unanswerable. soldr writes per-session stats; roll them up and publish.
+      - name: Report soldr cache 📊
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          json=$(soldr cache report --json 2>/dev/null || true)
+          if [ -z "$json" ]; then
+            echo "no soldr cache session recorded" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - "$json" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          d = json.loads(sys.argv[1])
+          rate = d.get("hit_rate", 0.0) or 0.0
+          hits, misses = d.get("hits", 0), d.get("misses", 0)
+          saved = d.get("time_saved_ms", 0) or 0
+          print("### soldr cache")
+          print(f"- hit rate: **{rate * 100:.1f}%** ({hits} hits / {misses} misses)")
+          print(f"- time saved: {saved / 1000:.1f} s")
+          print(f"- compilations: {d.get('compilations', 0)} (non-cacheable {d.get('non_cacheable', 0)})")
+          PY
+
+      # Storage on the Spaces account: the same credentials the remote cache
+      # uses, summarised once per master run so the 50G watermark is visible
+      # instead of inferred. Linux only (awscli is preinstalled there).
+      - name: Report S3 cache size 🗄️
+        if: matrix.os == 'linux' && github.ref == 'refs/heads/master'
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          AWS_DEFAULT_REGION: nyc3
+        run: |
+          set -o pipefail
+          out=$(aws s3 ls "s3://forge-ci" --recursive --summarize \
+                  --endpoint-url "https://nyc3.digitaloceanspaces.com" 2>/dev/null || true)
+          if [ -z "$out" ]; then
+            echo "S3 cache size unavailable (credentials or endpoint)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          bytes=$(printf '%s\n' "$out" | awk '/Total Size:/ {print $3}')
+          objs=$(printf '%s\n' "$out" | awk '/Total Objects:/ {print $3}')
+          {
+            echo "### S3 cache (forge-ci @ nyc3)"
+            echo "- objects: ${objs:-?}"
+            echo "- size: ${bytes:-?} bytes ($(( (${bytes:-0}) / 1024 / 1024 / 1024 )) GiB)"
+            echo "- watermark: 50 GiB"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify Native Installed Binary Freshness
         if: inputs.native-cache-reuse-source != ''
         shell: bash
