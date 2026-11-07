@@ -95,7 +95,7 @@ void oracle_module_lookup_set_roots(obs_module_t *enabled, obs_module_t *disable
 void oracle_service_set_modules(obs_module_t *first, obs_module_t *first_disabled);
 void oracle_service_set_modules(obs_module_t *first, obs_module_t *first_disabled)
 {
-    oracle_module_lookup_set_roots(first, first_disabled);
+	oracle_module_lookup_set_roots(first, first_disabled);
 }
 
 /* A module that registered `num` service ids; `next` links the list. */
@@ -115,8 +115,6 @@ void oracle_module_free(obs_module_t *module)
 {
 	free(module);
 }
-
-
 
 static bool oracle_context_fails;
 

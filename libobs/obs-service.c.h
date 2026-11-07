@@ -144,6 +144,6 @@ obs_data_t *obs_service_get_context_settings(const obs_service_t *service)
 void obs_service_module_roots(obs_module_t **enabled, obs_module_t **disabled);
 void obs_service_module_roots(obs_module_t **enabled, obs_module_t **disabled)
 {
-    *enabled = obs->first_module;
-    *disabled = obs->first_disabled_module;
+	*enabled = obs->first_module;
+	*disabled = obs->first_disabled_module;
 }

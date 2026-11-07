@@ -1,4 +1,8 @@
 //! Private module layout boundary, checked against obs-internal.h in Tier 3.
+//!
+//! Handles refer to fully initialized libobs-created modules; C retains their
+//! ownership and synchronization. Callback fields are layout placeholders only
+//! and are never invoked here. Registered service arrays contain initialized ids.
 use crate::service_module_lookup::{self, Module};
 use core::ffi::{c_char, c_int, c_void};
 
@@ -54,7 +58,7 @@ pub unsafe extern "C" fn obs_service_module_first(disabled: bool) -> *mut ObsMod
 }
 
 /// # Safety
-/// `module` is a live, non-null module with a valid service array.
+/// `module` is a live, non-null module.
 unsafe fn view(module: *mut ObsModule) -> Module<*mut ObsModule> {
     // SAFETY: caller supplies a live module. No service storage is read here.
     let module = unsafe { &*module };
@@ -66,14 +70,14 @@ unsafe fn view(module: *mut ObsModule) -> Module<*mut ObsModule> {
 }
 
 /// # Safety
-/// `module` is a live, non-null module with valid services.
+/// `module` is a live, non-null module.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_service_module_next(module: *mut ObsModule) -> *mut ObsModule {
     // SAFETY: forwarded caller contract.
     unsafe { view(module) }.next()
 }
 /// # Safety
-/// `module` is a live, non-null module with valid services.
+/// `module` is a live, non-null module.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_service_module_service_count(module: *mut ObsModule) -> usize {
     // SAFETY: forwarded caller contract.
@@ -91,11 +95,11 @@ pub unsafe extern "C" fn obs_service_module_service_id(
         // SAFETY: caller guarantees i indexes initialized service storage.
         // Only the prefix through i is needed, independently of services.num.
         let ids = unsafe { core::slice::from_raw_parts((*module).services.array, i + 1) };
-        service_module_lookup::service_id(ids, i)
+        service_module_lookup::service_id(ids, i).cast_const()
     }
 }
 /// # Safety
-/// `module` is a live, non-null module with valid services.
+/// `module` is a live, non-null module.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_service_module_load_state(module: *mut ObsModule) -> c_int {
     // SAFETY: forwarded caller contract.
