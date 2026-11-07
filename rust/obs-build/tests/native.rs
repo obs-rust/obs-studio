@@ -2,6 +2,8 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+#[path = "native/registration/canonical_audio_filter_scalars_are_registered.rs"]
+mod canonical_audio_filter_scalars_are_registered;
 #[path = "native/registration/canonical_async_overflow_clock_is_registered.rs"]
 mod canonical_async_overflow_clock_is_registered;
 #[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
