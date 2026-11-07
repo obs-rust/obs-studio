@@ -41,15 +41,12 @@ fn canonical_ffmpeg_mux_hosts_are_registered() {
             "{name}"
         );
     }
-    for helper in ["ffmpeg_mux"] {
-        let fragment = fs::read_to_string(
-            root.join(format!("test/cmocka/tests.d/test_obs_{helper}_host.cmake")),
-        )
-        .unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-        assert!(fragment.contains("test-graph.json"));
-    }
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_obs_ffmpeg_mux_host.cmake"))
+            .unwrap();
+    assert!(!fragment.contains("add_executable("));
+    assert!(!fragment.contains("add_test("));
+    assert!(fragment.contains("test-graph.json"));
 }
 
 #[test]
