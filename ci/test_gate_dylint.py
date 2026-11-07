@@ -23,7 +23,7 @@ GATE = Path(local_gate.__file__)
 
 
 class DylintProofTest(unittest.TestCase):
-    def exercise(self, ledger_key=None, error=False):
+    def exercise(self, ledger_key=None, error=False, *, dirty=False, token=True, surfaces=False):
         import lane_proof
         def fetch(path, token):
             if error:
@@ -39,9 +39,9 @@ class DylintProofTest(unittest.TestCase):
                     "created_at": datetime.now(timezone.utc).isoformat()}
         output = io.StringIO()
         with (
-            mock.patch.dict(os.environ, {"GH_TOKEN": "fake"}, clear=True),
-            mock.patch.object(lane_proof, "git", return_value=""),
-            mock.patch.object(lane_proof, "touches_surface", return_value=[]),
+            mock.patch.dict(os.environ, {"GH_TOKEN": "fake"} if token else {}, clear=True),
+            mock.patch.object(lane_proof, "git", return_value=" M dylints/lint/src/lib.rs" if dirty else ""),
+            mock.patch.object(lane_proof, "touches_surface", return_value=["local-gate.toml"] if surfaces else []),
             mock.patch.object(lane_proof, "lane_key", return_value="matching"),
             mock.patch.object(lane_proof, "api", side_effect=fetch),
             mock.patch.object(local_gate, "soldr_dylint") as run,
@@ -49,6 +49,12 @@ class DylintProofTest(unittest.TestCase):
         ):
             local_gate.lane_dylint(False)
         return run, output.getvalue()
+
+    def test_uncommitted_inputs_missing_token_and_surfaces_run_dylint(self):
+        for options in ({"dirty": True}, {"token": False}, {"surfaces": True}):
+            with self.subTest(options=options):
+                run, _ = self.exercise("matching", **options)
+                run.assert_called_once()
 
     def test_matching_ledger_key_skips_dylint(self):
         run, output = self.exercise("matching")
