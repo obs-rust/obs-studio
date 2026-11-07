@@ -8,9 +8,6 @@ ledger (soldr#3894) that replays a Dylint pass whose inputs already passed.
 """
 
 import os
-import contextlib
-import io
-import urllib.error
 import re
 import tempfile
 import unittest
@@ -20,54 +17,6 @@ from unittest import mock
 import local_gate
 
 GATE = Path(local_gate.__file__)
-
-
-class DylintProofTest(unittest.TestCase):
-    def exercise(self, ledger_key=None, error=False, *, dirty=False, token=True, surfaces=False):
-        import lane_proof
-        def fetch(path, token):
-            if error:
-                raise urllib.error.URLError("offline")
-            if "/artifacts?" in path:
-                return {"artifacts": [] if ledger_key is None else [{
-                    "name": lane_proof.artifact_name("dylint", ledger_key),
-                    "workflow_run": {"id": 1},
-                }]}
-            from datetime import datetime, timezone
-            return {"path": lane_proof.TRUSTED_WORKFLOW, "event": "pull_request",
-                    "head_repository": {"full_name": "obs-rust/obs-studio"},
-                    "created_at": datetime.now(timezone.utc).isoformat()}
-        output = io.StringIO()
-        with (
-            mock.patch.dict(os.environ, {"GH_TOKEN": "fake"} if token else {}, clear=True),
-            mock.patch.object(lane_proof, "git", return_value=" M dylints/lint/src/lib.rs" if dirty else ""),
-            mock.patch.object(lane_proof, "touches_surface", return_value=["local-gate.toml"] if surfaces else []),
-            mock.patch.object(lane_proof, "lane_key", return_value="matching"),
-            mock.patch.object(lane_proof, "api", side_effect=fetch),
-            mock.patch.object(local_gate, "soldr_dylint") as run,
-            contextlib.redirect_stdout(output),
-        ):
-            local_gate.lane_dylint(False)
-        return run, output.getvalue()
-
-    def test_uncommitted_inputs_missing_token_and_surfaces_run_dylint(self):
-        for options in ({"dirty": True}, {"token": False}, {"surfaces": True}):
-            with self.subTest(options=options):
-                run, _ = self.exercise("matching", **options)
-                run.assert_called_once()
-
-    def test_matching_ledger_key_skips_dylint(self):
-        run, output = self.exercise("matching")
-        run.assert_not_called()
-        self.assertEqual(output.strip(),
-                         "dylint: attested by lane-proof-v1-dylint-matching; skipping the local pass")
-
-    def test_different_key_or_ledger_error_runs_dylint(self):
-        for key, error in (("different", False), (None, True), (None, False)):
-            with self.subTest(key=key, error=error):
-                run, output = self.exercise(key, error)
-                run.assert_called_once()
-                self.assertNotIn("attested", output)
 
 
 class GateDylintTest(unittest.TestCase):

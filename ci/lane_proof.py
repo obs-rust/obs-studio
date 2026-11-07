@@ -165,25 +165,6 @@ def lookup(lane_id: str, key: str, repo: str, token: str, fetch=api, now: float 
     return False, "; ".join(reasons) or "no proof for this key"
 
 
-def check(lane_id: str, base: str, repo: str, head: str = "HEAD",
-          *, require_clean: bool = False) -> tuple[bool, str, str]:
-    """Return (proven, key, reason); unavailable evidence always runs the lane."""
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
-    if not token:
-        return False, "", "no ledger token"
-    try:
-        if require_clean and git("status", "--porcelain", "--untracked-files=all"):
-            return False, "", "working tree is not clean"
-        surfaces = touches_surface(base, head)
-        if surfaces:
-            return False, "", f"changes proof surfaces: {', '.join(surfaces[:5])}"
-        key = lane_key(lane_id, base, head)
-        hit, reason = lookup(lane_id, key, repo, token, fetch=api)
-        return hit, key, reason
-    except (LookupError, ImportError, OSError, ValueError, subprocess.CalledProcessError) as exc:
-        return False, "", f"proof unavailable: {exc}"
-
-
 def output(**values: str) -> None:
     lines = "".join(f"{k}={v}\n" for k, v in values.items())
     print(lines, end="")

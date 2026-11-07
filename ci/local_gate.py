@@ -1,7 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.14"
-# dependencies = ["ci-lint @ git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2"]
 # ///
 """Local gate for obs-rust/obs-studio (zackees/ci.yml GATE-001..010).
 
@@ -50,7 +49,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import host_platform
-import lane_proof
 from nextest_tool import ensure_nextest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -693,13 +691,6 @@ def lane_lint(fix: bool) -> None:
 
 
 def lane_dylint(fix: bool) -> None:
-    # Only committed, clean inputs can match a tree-keyed ledger proof.
-    hit, key, _ = lane_proof.check(
-        "dylint", "origin/master", "obs-rust/obs-studio", require_clean=True,
-    )
-    if hit:
-        print(f"dylint: attested by {lane_proof.artifact_name('dylint', key)}; skipping the local pass", flush=True)
-        return
     # Pre-expansion Dylints scan whole source files, including inline tests;
     # lib + bins avoids integration tests requiring CARGO_BIN_EXE_* (#323).
     # Preserve the host pass's dedicated target root and warm artifacts (#2293).
