@@ -1987,6 +1987,11 @@ area.
   so the shader failed with a syntax error in code the file doesn't
   contain. *All*, 2026-11-06. Issue
   [#3768](https://github.com/obs-rust/obs-studio/issues/3768).
+- A browser runtime that never finishes starting no longer leaves OBS waiting
+  forever at quit. A startup warning names the CEF version and explains why
+  browser sources and docks are unavailable. A slow runtime can still recover.
+  *Linux*, 2026-11-07. Issue
+  [#3833](https://github.com/obs-rust/obs-studio/issues/3833).
 
 ### Scenes and UI
 
