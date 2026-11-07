@@ -19,9 +19,7 @@ fn assert_no_skips(output: &std::process::Output) {
     assert!(
         ![output.stdout.as_slice(), output.stderr.as_slice()]
             .iter()
-            .any(|stream| String::from_utf8_lossy(stream)
-                .to_ascii_lowercase()
-                .contains("skipped")),
+            .any(|stream| has_skipped_cases(&String::from_utf8_lossy(stream))),
         "skipped native cases: {}\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
