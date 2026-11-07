@@ -77,6 +77,11 @@ fn load(directory: &Path) -> Result<Entries, String> {
         if cases.is_empty() {
             return Err(format!("missing entries for {family_name}"));
         }
+        if matches!(family_name.as_str(), "conversion" | "pacing") && cases.len() != 1 {
+            return Err(format!(
+                "{family_name}: extend its singleton runtime before adding cases"
+            ));
+        }
         families.insert(family_name, cases);
     }
     append_support(directory, &mut raw)?;
@@ -198,7 +203,8 @@ fn assert_coverage(expected: &Graph, actual: &Graph) {
         .filter(|(_, target)| {
             target.libraries.iter().any(|library| {
                 matches!(library,
-            ConditionalValue::Name(name) if name == "libobs_rust-static")
+            ConditionalValue::Name(name) | ConditionalValue::Conditional { name, .. }
+                if name == "libobs_rust-static")
             })
         })
         .map(|(name, _)| name)
@@ -276,4 +282,20 @@ fn missing_malformed_and_unknown_support_entries_are_rejected() {
     let mut missing = Graph::parse(r#"{"schema":1,"targets":{"test_fixture_rust":{"sources":["fixture.c"],"libraries":["libobs_rust-static"]}},"tests":{"test_fixture_rust":{"target":"test_fixture_rust"}}}"#).unwrap();
     missing.targets.clear();
     assert!(std::panic::catch_unwind(|| assert_coverage(&missing, &entries.graph)).is_err());
+    let singleton = directory.path().join("cases/pacing");
+    fs::create_dir(&singleton).unwrap();
+    let template = fs::read_to_string(&path).unwrap();
+    for base in ["test_first", "test_second"] {
+        fs::write(
+            singleton.join(format!("{base}.json")),
+            template.replace("test_fixture_rust", &format!("{base}_rust")),
+        )
+        .unwrap();
+    }
+    assert!(
+        load(directory.path())
+            .err()
+            .unwrap()
+            .contains("singleton runtime")
+    );
 }
