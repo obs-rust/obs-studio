@@ -944,6 +944,11 @@ on `OS_LINUX`. The shared graph preserves those exact guards and the fade test's
 non-MSVC math link. Linux replays all eleven standalone executables; the other
 hosts select only their original applicable subset. These checks need no display
 or core library and do not establish native runtime coverage on another host.
+all selected original C tests through both the Cargo and CMake consumers and
+compares the evaluated CTest inventory. Local runtime evidence is Linux-only;
+the hosted macOS and Windows selectors still use the earlier utility-only
+contract name. This proves these standalone helpers, not full frontend/application
+parity (#1390).
 
 The portable virtual-microphone clock and installation-policy helpers also use
 the shared graph, preserving their unconditional cmocka-only linkage and seven
