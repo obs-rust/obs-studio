@@ -44,6 +44,8 @@ pub struct Options {
     pub hevc: bool,
     pub pulseaudio: bool,
     pub per_target_sanitizers: bool,
+    /// Production staticlib for unchanged tests of hidden Rust shims.
+    pub rust_archive: Option<PathBuf>,
 }
 
 impl Default for Options {
@@ -56,6 +58,7 @@ impl Default for Options {
             hevc: true,
             pulseaudio: true,
             per_target_sanitizers: true,
+            rust_archive: None,
         }
     }
 }
@@ -75,6 +78,9 @@ fn compile_suite(
     facts: &BTreeMap<String, bool>,
     interfaces: &BTreeMap<String, graph::Dependency>,
 ) -> Result<Vec<Executable>, String> {
+    let mut facts = facts.clone();
+    facts.insert("HAVE_LIBOBS".into(), interfaces.contains_key("OBS::libobs"));
+    let facts = &facts;
     let artifacts = graph.compile(build, root, facts, interfaces)?;
     graph
         .select(facts)?
@@ -171,6 +177,10 @@ fn runtime_interfaces(
     add_package(&mut cmocka, &build.target, "cmocka")?;
     Ok(BTreeMap::from([
         ("OBS::libobs".into(), core_interface.into()),
+        (
+            "SIMDe::SIMDe".into(),
+            graph::Dependency::package(&build.target, "simde")?,
+        ),
         ("OBS::native-test-cmocka".into(), cmocka.into()),
         // Graphics compatibility tests can inspect obs-internal.h, whose uthash
         // dependency is header-only and uses the core build's system search.
@@ -303,6 +313,10 @@ pub fn build_c_tests(
             },
         ),
         ("OBS::libobs".into(), core_interface.into()),
+        (
+            "SIMDe::SIMDe".into(),
+            graph::Dependency::package(&build.target, "simde")?,
+        ),
         ("OBS::native-test-cmocka".into(), cmocka_interface.into()),
         (
             "m".into(),
@@ -312,6 +326,16 @@ pub fn build_c_tests(
             },
         ),
     ]);
+    facts.insert(
+        "HAVE_LIBOBS_RUST_STATIC".into(),
+        options.rust_archive.is_some(),
+    );
+    if let Some(archive) = &options.rust_archive {
+        interfaces.insert(
+            "libobs_rust-static".into(),
+            graph::Dependency::rust_static(&build.target, archive)?,
+        );
+    }
     let caption = crate::libobs::build_caption(build, &root)?;
     interfaces.insert(
         "OBS::caption".into(),
@@ -338,7 +362,7 @@ pub fn build_c_tests(
         add_package(&mut dependency, &build.target, "libpipewire-0.3")?;
         interfaces.insert("PipeWire::PipeWire".into(), dependency.into());
     }
-    if options.pulseaudio_plugin {
+    if options.pulseaudio || options.pulseaudio_plugin {
         let mut dependency = SharedLibrary::default();
         add_package(&mut dependency, &build.target, "libpulse")?;
         interfaces.insert("PulseAudio::PulseAudio".into(), dependency.into());

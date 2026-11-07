@@ -893,6 +893,7 @@ pub fn native_test_facts(
     hevc: bool,
 ) -> std::collections::BTreeMap<String, bool> {
     std::collections::BTreeMap::from([
+        ("UNIX".into(), !target.contains("windows")),
         ("OS_LINUX".into(), target.contains("linux")),
         ("OS_FREEBSD".into(), target.contains("freebsd")),
         ("OS_WINDOWS".into(), target.contains("windows")),
@@ -912,6 +913,28 @@ pub fn native_test_thread_options(target: &str) -> Vec<String> {
     } else {
         vec!["-pthread".into()]
     }
+}
+
+/// Standard/runtime link flags for the scoped Linux Rust-static pacing test.
+/// This is not the full production archive's feature-dependent native SDK
+/// interface. Other static-test slices must declare any additional SDKs they use.
+pub fn native_test_rust_static_options(target: &str) -> Result<Vec<String>, String> {
+    if !target.contains("linux") {
+        return Err(format!(
+            "Rust-static Cargo C tests for {target} are not implemented yet"
+        ));
+    }
+    Ok([
+        "-lgcc_s",
+        "-lutil",
+        "-lrt",
+        "-lpthread",
+        "-lm",
+        "-ldl",
+        "-lc",
+    ]
+    .map(String::from)
+    .into())
 }
 
 pub fn native_test_math_options(target: &str) -> Vec<String> {

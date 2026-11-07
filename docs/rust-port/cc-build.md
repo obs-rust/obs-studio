@@ -853,6 +853,12 @@ build and both test modes on `ca331a93d`.
 
 ## Building the C tests through Cargo
 
+Native graph parity notes live in [one file per slice](native-graph/), sorted by PR number.
+Add future slice notes there instead of appending shared prose here. Registration contracts
+live in `rust/obs-build/tests/native/registration/`, included as modules of the existing
+Application category binary; keep each slice in its own file and sort module declarations.
+
+
 The current shared inventory is `test/cmocka/build/test-graph.json`, consumed by
 both `validation::build_c_tests` and `test/cmocka/native-test-graph.cmake`. The
 independent Linux manifest described in the initial results below was retired
