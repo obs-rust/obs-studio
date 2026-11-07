@@ -130,5 +130,6 @@ covered-by."build-project.yaml:rust-tests-windows" = ["lint", "dylint", "cross",
 covered-by."build-project.yaml:rust-tier2-macos" = ["macos-native"]
 covered-by."build-project.yaml:rust-tier2-windows" = ["windows-native"]
 surfaces = [
+  "ci/tier2_matrix.py",
   "ci/nextest_tool.py", "ci/nextest.toml", "rust/tools/linux-validate/**", "rust-toolchain.toml",
 ]
