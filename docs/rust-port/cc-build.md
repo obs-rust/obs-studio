@@ -901,10 +901,11 @@ space decisions, multitrack ladder and encoder override tests also use the share
 graph. The standalone caption round-trip suite also uses the shared graph,
 retaining its vendored libcaption and cmocka dependencies without needing libobs.
 `canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
-all six original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
-alongside the existing remux contract; it proves these standalone helpers, not
-full frontend/application parity (#1390).
+all selected original C tests through both the Cargo and CMake consumers and
+compares the evaluated CTest inventory. Local runtime evidence is Linux-only;
+the hosted macOS and Windows selectors still use the earlier utility-only
+contract name. This proves these standalone helpers, not full frontend/application
+parity (#1390).
 
 The portable virtual-microphone clock and installation-policy helpers also use
 the shared graph, preserving their unconditional cmocka-only linkage and seven
