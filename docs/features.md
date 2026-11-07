@@ -2242,12 +2242,15 @@ area.
   restores the same clamp-safe layout, instead of its own copy taken from the
   live window. A start on a display too small for the saved layout also keeps
   that layout: the docks are squeezed for the session, and the next save
-  writes the layout from the ini instead of the squeeze. *All*,
+  writes the layout from the ini instead of the squeeze. Deliberate separator
+  drags still save the new widths and heights when a dock is at its minimum,
+  so restarting does not revert to an older arrangement (#3740). *All*,
   2026-10-24 (column: pending merge). Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
   [#2731](https://github.com/obs-rust/obs-studio/pull/2731),
-  [#2743](https://github.com/obs-rust/obs-studio/pull/2743).
+  [#2743](https://github.com/obs-rust/obs-studio/pull/2743),
+  [#3796](https://github.com/obs-rust/obs-studio/pull/3796).
 
 - Importing a profile from a folder path that ends in a slash (as the
   macOS folder dialog returns it) creates the profile in a folder of its

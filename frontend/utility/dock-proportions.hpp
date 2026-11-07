@@ -29,6 +29,7 @@
 #include <QEvent>
 #include <QList>
 #include <QMainWindow>
+#include <QMouseEvent>
 #include <QObject>
 
 #include <algorithm>
@@ -49,9 +50,9 @@ public:
 	/* The dock state to write to the user's ini (#2225). A layout that is
 	 * clamped by a narrow window serializes with every dock at its
 	 * minimum, and the next start restores that clamped layout at full
-	 * size. The state saved is therefore the widest layout this window
-	 * last showed unclamped; a window that is currently unclamped saves
-	 * itself. */
+	 * size. Keep the last unclamped layout, or a layout explicitly sized
+	 * by the user, even when a dock was deliberately made as narrow as
+	 * possible (#3740). A currently unclamped window saves itself. */
 	QByteArray StateToSave() const
 	{
 		if (!AnyDockAtMinimum()) {
@@ -81,6 +82,27 @@ protected:
 			if (auto *dock = qobject_cast<QDockWidget *>(child)) {
 				dock->installEventFilter(this);
 			}
+		} else if (obj == window && event->type() == QEvent::MouseButtonPress &&
+			   static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
+			/* QMainWindow handles dock separators. A minimum-sized dock
+			 * after a separator drag is intentional, not a window clamp. */
+			beforeDrag = window->saveState();
+			dragWindowSize = window->size();
+		} else if (obj == window && event->type() == QEvent::MouseButtonRelease &&
+			   static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton && !beforeDrag.isEmpty()) {
+			const QByteArray before = std::exchange(beforeDrag, {});
+			const QSize extent = dragWindowSize;
+			/* Run after Qt finishes the release. A click without a size
+			 * change must not replace a genuinely clamped layout. */
+			QMetaObject::invokeMethod(
+				this,
+				[this, before, extent] {
+					const QByteArray state = window->saveState();
+					if (window->size() == extent && state != before) {
+						unclamped = state;
+					}
+				},
+				Qt::QueuedConnection);
 		} else if (event->type() == QEvent::Resize && !updateQueued) {
 			/* The layout resizes the docks of a row one at a time:
 			 * look at the row once it has placed all of them. The
@@ -118,9 +140,11 @@ private:
 	};
 
 	QMainWindow *window;
-	/* The layout as it last was with no dock at its minimum: what a save
+	/* The last unclamped or explicitly user-sized layout: what a save
 	 * from a narrow window writes instead of the clamp. */
 	QByteArray unclamped;
+	QByteArray beforeDrag;
+	QSize dragWindowSize;
 	/* The layout this window was restored from: the baseline a clamped start
 	 * saves instead of the clamp (#2225). */
 	QByteArray restored;
