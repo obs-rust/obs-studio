@@ -914,6 +914,28 @@ pub fn native_test_thread_options(target: &str) -> Vec<String> {
     }
 }
 
+/// Standard/runtime link flags for the scoped Linux Rust-static pacing test.
+/// This is not the full production archive's feature-dependent native SDK
+/// interface. Other static-test slices must declare any additional SDKs they use.
+pub fn native_test_rust_static_options(target: &str) -> Result<Vec<String>, String> {
+    if !target.contains("linux") {
+        return Err(format!(
+            "Rust-static Cargo C tests for {target} are not implemented yet"
+        ));
+    }
+    Ok([
+        "-lgcc_s",
+        "-lutil",
+        "-lrt",
+        "-lpthread",
+        "-lm",
+        "-ldl",
+        "-lc",
+    ]
+    .map(String::from)
+    .into())
+}
+
 pub fn native_test_math_options(target: &str) -> Vec<String> {
     if target.contains("msvc") {
         vec![]

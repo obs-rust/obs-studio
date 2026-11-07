@@ -44,6 +44,8 @@ pub struct Options {
     pub hevc: bool,
     pub pulseaudio: bool,
     pub per_target_sanitizers: bool,
+    /// Production staticlib for unchanged tests of hidden Rust shims.
+    pub rust_archive: Option<PathBuf>,
 }
 
 impl Default for Options {
@@ -56,6 +58,7 @@ impl Default for Options {
             hevc: true,
             pulseaudio: true,
             per_target_sanitizers: true,
+            rust_archive: None,
         }
     }
 }
@@ -312,6 +315,16 @@ pub fn build_c_tests(
             },
         ),
     ]);
+    facts.insert(
+        "HAVE_LIBOBS_RUST_STATIC".into(),
+        options.rust_archive.is_some(),
+    );
+    if let Some(archive) = &options.rust_archive {
+        interfaces.insert(
+            "libobs_rust-static".into(),
+            graph::Dependency::rust_static(&build.target, archive)?,
+        );
+    }
     let caption = crate::libobs::build_caption(build, &root)?;
     interfaces.insert(
         "OBS::caption".into(),

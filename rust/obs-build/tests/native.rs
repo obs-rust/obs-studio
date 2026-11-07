@@ -3747,6 +3747,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_PULSEAUDIO".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
+        ("HAVE_LIBOBS_RUST_STATIC".into(), false),
         ("HAVE_QT6_CORE".into(), false),
         ("HAVE_QT6_WIDGETS".into(), false),
         ("HAVE_QT6_TEST".into(), false),
@@ -5769,36 +5770,238 @@ fn canonical_xcomposite_decisions_are_registered() {
 /// #1390: the conversion table must exercise the production Rust archive.
 #[test]
 fn canonical_rust_static_conversion_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_async_conversion_plan_rust";
-    let target = graph.targets.get(name).expect("canonical graph omits Rust-static conversion");
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits Rust-static conversion");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_async_conversion_plan.c"));
     assert_eq!(target.includes, ["libobs"]);
     assert_eq!(target.watch_inputs, ["libobs/obs-source-conversion-plan.h"]);
     assert_eq!(target.libraries.len(), 3);
-    assert!(matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static"));
-    assert!(matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka"));
+    assert!(
+        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
+    );
+    assert!(
+        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
+    );
+    assert!(
+        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
+    );
     assert!(target.archives.is_empty());
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
     assert_eq!(test.command, ["${target}"]);
     assert_eq!(test.timeout_seconds, None);
     assert_eq!(test.skip_return_code, None);
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_async_conversion_plan.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_async_conversion_plan.cmake"))
+            .unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
-    for os in ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-pc-windows-msvc"] {
+    for os in [
+        "x86_64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+    ] {
         for available in [false, true] {
             let msvc = os.contains("msvc");
-            let facts = [("HAVE_LIBOBS_RUST_STATIC".into(), available), ("MSVC".into(), msvc)].into();
+            let facts = [
+                ("HAVE_LIBOBS_RUST_STATIC".into(), available),
+                ("MSVC".into(), msvc),
+            ]
+            .into();
             let selected = graph.select(&facts).unwrap();
             assert_eq!(selected.targets.contains_key(name), available, "{os}");
             assert_eq!(selected.tests.contains_key(name), available, "{os}");
         }
+    }
+}
+
+/// #1390: both consumers must run the unchanged C suite against a real Rust archive.
+#[test]
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer"
+)]
+fn canonical_rust_static_conversion_runs_unchanged() {
+    use obs_build::validation::graph::{Dependency, Graph};
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let archive = dunce::canonicalize(
+        std::env::var_os("OBS_BUILD_RUST_ARCHIVE")
+            .expect("set OBS_BUILD_RUST_ARCHIVE to the production libobs-rust staticlib"),
+    )
+    .unwrap();
+    assert!(archive.is_file());
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let name = "test_async_conversion_plan_rust";
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for section in ["targets", "tests"] {
+        selected[section][name] = raw[section][name].clone();
+    }
+    let graph = Graph::parse(&selected.to_string()).unwrap();
+    let build = NativeBuild {
+        host: obs_build::BUILD_HOST.into(),
+        target: obs_build::BUILD_TARGET.into(),
+        output: directory.path().join("cargo-output"),
+        profile: Default::default(),
+    };
+    let interfaces = [
+        ("m".into(), Dependency { link_options: vec!["-lm".into()], ..Default::default() }),
+        (
+            "OBS::native-test-cmocka".into(),
+            Dependency::package(&build.target, "cmocka").unwrap(),
+        ),
+        (
+            "libobs_rust-static".into(),
+            Dependency::rust_static(&build.target, &archive).unwrap(),
+        ),
+    ]
+    .into();
+    let facts = [
+        ("HAVE_LIBOBS_RUST_STATIC".into(), true),
+        ("MSVC".into(), false),
+    ]
+    .into();
+    assert_eq!(
+        graph.targets[name]
+            .dependency_artifacts(&facts, &interfaces)
+            .unwrap(),
+        std::slice::from_ref(&archive)
+    );
+    let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
+    assert_eq!(artifacts.len(), 1);
+    let result = graph.tests[name]
+        .command(&root, &build.output, &artifacts[name])
+        .unwrap()
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "Cargo\n{}\n{}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let source = root.to_string_lossy().replace(char::from(92), "/");
+    let archive = archive.to_string_lossy().replace(char::from(92), "/");
+    fs::write(
+        directory.path().join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
+project(rust-static-contract C)
+set(MSVC FALSE)
+enable_testing()
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
+add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+option(WITH_RUST "Import the real production archive" ON)
+if(WITH_RUST)
+  add_library(libobs_rust-static STATIC IMPORTED)
+  set_target_properties(libobs_rust-static PROPERTIES IMPORTED_LOCATION "{archive}")
+  if(NOT MSVC)
+    target_link_libraries(libobs_rust-static INTERFACE m)
+  endif()
+endif()
+include("{source}/test/cmocka/native-test-graph.cmake")
+obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
+"#
+        ),
+    )
+    .unwrap();
+    let output = directory.path().join("cmake-output");
+    for (program, arguments) in [
+        (
+            "cmake",
+            vec![
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+            ],
+        ),
+        (
+            "cmake",
+            vec![
+                "--build",
+                output.to_str().unwrap(),
+                "--config",
+                "Release",
+                "--parallel",
+                "2",
+            ],
+        ),
+        (
+            "ctest",
+            vec![
+                "--test-dir",
+                output.to_str().unwrap(),
+                "-C",
+                "Release",
+                "--output-on-failure",
+                "--no-tests=error",
+            ],
+        ),
+    ] {
+        let result = std::process::Command::new(program)
+            .args(arguments)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{program}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    for available in [true, false] {
+        let result = std::process::Command::new("cmake")
+            .args([
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+                if available {
+                    "-DWITH_RUST=ON"
+                } else {
+                    "-DWITH_RUST=OFF"
+                },
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let inventory = std::process::Command::new("ctest")
+            .args([
+                "--test-dir",
+                output.to_str().unwrap(),
+                "-C",
+                "Release",
+                "--show-only=json-v1",
+            ])
+            .output()
+            .unwrap();
+        assert!(inventory.status.success());
+        let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+        let names: Vec<_> = inventory["tests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|test| test["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, if available { vec![name] } else { vec![] });
     }
 }

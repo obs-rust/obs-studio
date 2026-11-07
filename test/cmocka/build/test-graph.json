@@ -168,6 +168,28 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_async_conversion_plan_rust": {
+      "sources": [
+        "test/cmocka/test_async_conversion_plan.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-conversion-plan.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_async_frame_pacing_steps": {
       "sources": [
         "test/cmocka/test_async_frame_pacing_steps.c",
@@ -7583,6 +7605,13 @@
     },
     "test_async_conversion_plan": {
       "target": "test_async_conversion_plan",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_async_conversion_plan_rust": {
+      "target": "test_async_conversion_plan_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

@@ -860,6 +860,14 @@ in #1805. The graph remains a subset of the repository's native tests; target an
 selection depends on the evaluated platform and feature requirements. Cargo
 compilation of the full selected test graph currently runs on Linux.
 
+The unchanged `test_async_conversion_plan_rust` also shares this inventory:
+its thirteen C cases link directly to the production Rust archive and cmocka,
+with the original target-availability guard and non-MSVC math dependency.
+`canonical_rust_static_conversion_runs_unchanged` replays the real archive
+through Cargo and CMake on Linux, including evaluated CTest presence/absence.
+The original C characterization and Rust unit/differential tests remain intact;
+this does not complete broader native or application parity (#1390).
+
 The scene bounds placement characterization also uses the shared core graph.
 Both consumers compile its original C test and two private C helper sources,
 retaining libobs/cmocka linkage and non-MSVC libm. All 16 alignment, crop, flip
