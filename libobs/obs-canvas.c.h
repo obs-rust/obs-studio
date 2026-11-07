@@ -459,11 +459,6 @@ bool obs_canvas_get_video_info(const obs_canvas_t *canvas, struct obs_video_info
 	return true;
 }
 
-signal_handler_t *obs_canvas_get_signal_handler(obs_canvas_t *canvas)
-{
-	return canvas->context.signals;
-}
-
 void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t *source)
 {
 	assert(channel < MAX_CHANNELS);
@@ -558,16 +553,6 @@ void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
 	bfree(prev_name);
 }
 
-const char *obs_canvas_get_name(const obs_canvas_t *canvas)
-{
-	return canvas->context.name;
-}
-
-const char *obs_canvas_get_uuid(const obs_canvas_t *canvas)
-{
-	return canvas->context.uuid;
-}
-
 uint32_t obs_canvas_get_flags(const obs_canvas_t *canvas)
 {
 	return canvas->flags;
@@ -615,11 +600,6 @@ void obs_canvas_remove(obs_canvas_t *canvas)
 bool obs_canvas_removed(obs_canvas_t *canvas)
 {
 	return obs_canvas_rules_removed(canvas->flags);
-}
-
-bool obs_canvas_has_video(obs_canvas_t *canvas)
-{
-	return canvas->mix != NULL;
 }
 
 void obs_canvas_render(obs_canvas_t *canvas)
