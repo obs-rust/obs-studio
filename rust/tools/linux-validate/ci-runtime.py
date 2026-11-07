@@ -79,6 +79,10 @@ def download_prepared(descriptor: dict, root: Path) -> str | None:
 
 def part_env(part: str) -> list[str]:
     """The validate.sh environment for a Tier 2 part (#2071, #2072)."""
+    if part == 'all':
+        # No include/exclude/shard selector: execute the complete registry.
+        return ['OBS_CTEST_PART=', 'OBS_CTEST_SHARD=', 'OBS_CTEST_SERIAL_SHARD=',
+                'OBS_TIER2_SERIAL_CPUS=']
     if part in ('suite', 'serial'):
         return [f'OBS_CTEST_PART={part}']
     shard = re.fullmatch(r'serial-([1-9][0-9]*)-of-([1-9][0-9]*)', part)
@@ -155,7 +159,7 @@ def main() -> None:
     for name in ('descriptor', 'packages', 'source', 'build', 'cost', 'uv', 'archives', 'state'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--mode', choices=('OFF', 'ON'), required=True)
-    parser.add_argument('--part', required=True, help='suite, serial or serial-<i>-of-<n>')
+    parser.add_argument('--part', required=True, help='all, suite, serial or serial-<i>-of-<n>')
     args = parser.parse_args()
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         parser.error('Docker execution requires a disposable CI runner; local Docker work uses bosn')

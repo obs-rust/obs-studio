@@ -1,7 +1,12 @@
 """Runner-capacity regression for #2072: retain all tests on fewer runners."""
 
 import importlib.util
+import json
+import os
 from pathlib import Path
+import subprocess
+import tempfile
+import tomllib
 import unittest
 
 from tier2_matrix import matrix
@@ -40,6 +45,24 @@ class Tier2MatrixTest(unittest.TestCase):
         self.assertIn("tier2_matrix: ${{ steps.tier2-matrix.outputs.matrix }}", workflow)
         self.assertIn("matrix: ${{ fromJSON(needs.check-event.outputs.tier2_matrix) }}", workflow)
         self.assertIn("run: uv run --no-project ci/tier2_matrix.py", workflow)
+
+    def test_actions_output_is_a_parseable_matrix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "output"
+            subprocess.run([
+                "uv", "run", "--no-project", str(ROOT / "ci/tier2_matrix.py"),
+            ], check=True, capture_output=True, env={
+                **os.environ, "GITHUB_OUTPUT": str(output),
+                "GITHUB_EVENT_NAME": "merge_group", "TIER2_FULL": "false",
+            })
+            self.assertEqual(json.loads(output.read_text().removeprefix("matrix=")), matrix("merge_group"))
+
+    def test_scheduling_changes_invalidate_cached_proofs(self):
+        from lane_proof import SURFACES
+
+        self.assertIn("ci/tier2_matrix.py", SURFACES)
+        trust = tomllib.loads((ROOT / "local-gate.toml").read_text())["gate"]["trust"]
+        self.assertIn("ci/tier2_matrix.py", trust["surfaces"])
 
 
 if __name__ == "__main__":

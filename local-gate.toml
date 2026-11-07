@@ -100,6 +100,7 @@ mode = "enforce"
 skip = ["build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux-tier2", "build-project.yaml:rust-cross-lint", "build-project.yaml:rust-tests-macos", "build-project.yaml:rust-tests-windows", "build-project.yaml:rust-tier2-macos", "build-project.yaml:rust-tier2-windows"]
 covered-by = { "build-project.yaml:rust-tests-linux" = ["lint", "rust-test"], "build-project.yaml:rust-linux-tier2" = ["tier2-linux"], "build-project.yaml:rust-cross-lint" = ["cross"], "build-project.yaml:rust-tests-macos" = ["lint", "cross", "macos-native"], "build-project.yaml:rust-tests-windows" = ["lint", "cross", "windows-native"], "build-project.yaml:rust-tier2-macos" = ["macos-native"], "build-project.yaml:rust-tier2-windows" = ["windows-native"] }
 surfaces = [
+  "ci/tier2_matrix.py",
   "ci/nextest_tool.py",
   "ci/nextest.toml",
   "rust/tools/linux-validate/**",
