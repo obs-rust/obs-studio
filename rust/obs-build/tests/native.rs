@@ -198,6 +198,8 @@ mod canonical_frontend_tools_hosts_are_registered;
 mod canonical_frontend_utility_tests_are_registered;
 #[path = "native/registration/canonical_group_lifecycle_is_registered.rs"]
 mod canonical_group_lifecycle_is_registered;
+#[path = "native/registration/canonical_headless_abi_is_registered.rs"]
+mod canonical_headless_abi_is_registered;
 #[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
 mod canonical_hotkey_backtab_is_registered;
 #[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
