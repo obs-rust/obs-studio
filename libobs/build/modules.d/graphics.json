@@ -1,6 +1,7 @@
 {
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
+    "effect-parser-compile",
     "effect-parser-funcs",
     "graphics"
   ],
