@@ -35,12 +35,12 @@ fn encoder_metadata_has_no_production_getter_dependencies() {
     assert!(out.status.success(), "nm {} failed", archive.display());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
-        stdout.lines().any(|line| line.contains("encoder_metadata.o:")),
+        stdout.contains("encoder_metadata.o"),
         "nm did not identify the encoder metadata object"
     );
     let dependencies: Vec<_> = stdout
         .lines()
-        .filter(|line| line.contains("encoder_metadata.o:"))
+        .filter(|line| line.contains("encoder_metadata.o"))
         .filter(|line| {
             line.split_whitespace().last().is_some_and(|symbol| {
                 symbol
