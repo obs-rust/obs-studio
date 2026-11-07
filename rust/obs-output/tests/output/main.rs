@@ -13,6 +13,7 @@ mod encoder_bind;
 mod encoder_bind_parity;
 mod encoder_counters;
 mod encoder_counters_parity;
+mod encoder_dimensions;
 mod encoder_gpu_gates;
 mod encoder_gpu_gates_parity;
 mod encoder_gpu_rescale;
