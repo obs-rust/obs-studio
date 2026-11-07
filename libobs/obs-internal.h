@@ -1982,6 +1982,12 @@ struct obs_encoder {
 	bool reconfigure_requested;
 };
 
+/* Read-only field address for the borrowed last-error getter; not EXPORT. */
+struct obs_encoder_last_error_fields {
+	char *const *message;
+};
+extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+
 extern struct obs_encoder_info *find_encoder(const char *id);
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
