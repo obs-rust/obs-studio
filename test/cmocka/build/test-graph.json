@@ -5539,7 +5539,11 @@
         "plugins/image-source/build/image-source.pch.h"
       ],
       "libraries": [
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",

@@ -2235,7 +2235,11 @@ fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
     } else {
         String::new()
     };
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_WINDOWS".into(), build.target.contains("windows")),
+    ]
+    .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), names.len());
     for (name, test) in &graph.tests {
@@ -2256,7 +2260,7 @@ fn run_standalone_configuration_contract(names: &[&str], core_headers: bool) {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\n{header_setup}include(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nset(OS_WINDOWS FALSE)\nif(WIN32)\nset(OS_WINDOWS TRUE)\nendif()\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\n{header_setup}include(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
         ),
     )
     .unwrap();
