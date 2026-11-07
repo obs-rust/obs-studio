@@ -23,6 +23,7 @@ mod nix_x11_input;
 mod nix_x11_input_parity;
 mod nix_x11_keys;
 mod nix_x11_keys_parity;
+mod object_getters;
 mod pair;
 mod pair_parity;
 mod parity;
