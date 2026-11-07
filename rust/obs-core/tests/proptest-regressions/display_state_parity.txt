@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+# This seed killed the #3848 high-byte-discard mutant and passes GREEN.
+cc 74fe01a45478eecb2a79f1059e4f9a323f2188712a6c0d80d1d1a66e1be7e5d4 # shrinks to initial = false, color = 0, seed = 0, ops = [(false, 16777216)]
