@@ -65,6 +65,7 @@ SURFACES = (
     "ci/local_gate.py",
     "ci/nextest_tool.py",
     "ci/nextest.toml",
+    "ci/tier2_matrix.py",
     ".github/workflows/*",
     ".github/actions/*",
     "rust/tools/linux-validate/*",
