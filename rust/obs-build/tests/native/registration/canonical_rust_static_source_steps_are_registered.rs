@@ -13,7 +13,7 @@ const CASES: &[(&str, bool)] = &[
 
 #[test]
 fn canonical_rust_static_source_steps_are_registered() {
-    use obs_build::validation::graph::{Graph, Source};
+    use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph
@@ -28,10 +28,8 @@ fn canonical_rust_static_source_steps_are_registered() {
             .targets
             .get(&name)
             .expect("missing Rust-static source steps");
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{base}.c")));
+        assert_source_getter_link_support(target, base, false);
         assert_eq!(target.includes, ["libobs"]);
-        assert!(target.header_libraries.is_empty());
         assert!(target.archives.is_empty());
         assert!(target.definitions.is_empty());
         assert!(target.compile_options.is_empty());
@@ -53,7 +51,10 @@ fn canonical_rust_static_source_steps_are_registered() {
 
 fn assert_source_step_linkage(target: &obs_build::validation::graph::Target, math: bool) {
     use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), if math { 3 } else { 2 });
+    assert_eq!(
+        target.libraries.len(),
+        if math { 3 } else { 2 } + getter_link_library_count(target)
+    );
     assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static"));
     assert!(
         matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
