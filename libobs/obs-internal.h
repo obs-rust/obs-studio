@@ -465,6 +465,15 @@ struct obs_display {
 extern bool obs_display_init(struct obs_display *display, const struct gs_init_data *graphics_data);
 extern void obs_display_free(struct obs_display *display);
 
+/* Borrowed addresses only; the C-owned draw_info_mutex guards reads. */
+struct obs_display_size_fields {
+	uint32_t *cx;
+	uint32_t *cy;
+};
+struct obs_display_size_fields obs_display_size_fields(obs_display_t *display);
+void obs_display_size_lock(obs_display_t *display);
+void obs_display_size_unlock(obs_display_t *display);
+
 /* ------------------------------------------------------------------------- */
 /* core */
 
