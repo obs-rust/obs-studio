@@ -3072,18 +3072,6 @@ void obs_sceneitem_set_crop(obs_sceneitem_t *item, const struct obs_sceneitem_cr
 	os_atomic_set_bool(&item->update_transform, true);
 }
 
-void obs_sceneitem_get_crop(const obs_sceneitem_t *item, struct obs_sceneitem_crop *crop)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_get_crop"))
-		return;
-	if (!obs_ptr_valid(crop, "obs_sceneitem_get_crop"))
-		return;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	memcpy(crop, &item->crop, sizeof(*crop));
-	item_fields_unlock(scene);
-}
-
 void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type filter)
 {
 	if (!obs_ptr_valid(item, "obs_sceneitem_set_scale_filter"))
