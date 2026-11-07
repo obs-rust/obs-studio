@@ -39,6 +39,13 @@ Rust test binary counts change.
   all four SDK contracts successfully (`local-test-aLUuwB.log`). The first
   full lint found module ordering; the corrected ordering passes a scoped
   managed rustfmt check.
+- Final `SOLDR_PORCELAIN=0 SOLDR_RUSTC_WRAPPER=none ./lint` ran before the
+  final push (`local-test-AkTrTS.log`). Formatting, gersemi, Python guards,
+  workspace Clippy and all five Clippy feature sets passed. Exit 1 is solely
+  Soldr refusing to build the missing nightly-2026-05-28 Dylint driver under
+  clud; the final log lines were inspected. Dylint remains unverified; the
+  manager's hosted Fast Gate must cover it. No toolchain workaround or
+  attestation stamp was used.
 - Test cost, 25 reduced-debug runs each: registration longest 0.0292 s,
   selection 0.0473 s, package-free configure 0.3850 s; peak child RSS
   19,368 KiB. Fast contracts own no threads. Native compiler/CMake replay
@@ -63,7 +70,7 @@ QSV/VPL and VST). The original other exclusions remain 30 graphics fixtures,
 seven WebSocket, two X11 display and one services-plugin/display: 68 of the
 original 81 fragments remain deferred/excluded.
 
-Full workspace unittest, final-head dual-core Tier 2 and export parity,
+Full workspace unittest, Dylint, final-head dual-core Tier 2 and export parity,
 native Windows/macOS/BSD execution, application/profile/protocol/device and
 desktop behavior remain unverified. No PR, hosted CI or auto-merge is created
 for this branch-only assignment.
