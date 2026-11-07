@@ -29,6 +29,8 @@
  *     pass <j> <name> section=<s> vert=<n|NULL> pixel=<n|NULL>
  *       vparams <i:eparam name|->/<n:sparam name|NULL>, ...
  *       pparams ...
+ *   parser <i> <name> left=<bytes> param=<i:name|->   the parser's params
+ *     parser annotation <j> <name> left=<bytes>
  *   error <row>:<column> <level> <text>
  *   log <level> <text>                        everything blog() wrote
  *   destroyed <n> ...                         effect_free()'s destroy calls
@@ -321,6 +323,24 @@ static void dump_effect(const gs_effect_t *effect)
 	}
 }
 
+/* What the compile step leaves in the parser: each param's and annotation's
+ * default value is moved out (none left), and each param points at its
+ * gs_effect_param. An annotation's param pointer is never set (ep_param_init()
+ * leaves it as it was), so it isn't written out. */
+static void dump_parser(const struct effect_parser *ep, const gs_effect_t *effect)
+{
+	for (size_t i = 0; i < ep->params.num; i++) {
+		const struct ep_param *param = ep->params.array + i;
+
+		dump_cat("parser %zu %s left=%zu param=%s\n", i, str_or_null(param->name), param->default_val.num,
+			 eparam_name(effect, param->param));
+		for (size_t j = 0; j < param->annotations.num; j++)
+			dump_cat("  parser annotation %zu %s left=%zu\n", j,
+				 str_or_null(param->annotations.array[j].name),
+				 param->annotations.array[j].default_val.num);
+	}
+}
+
 static void dump_errors(const struct effect_parser *ep)
 {
 	for (size_t i = 0; i < ep->cfp.error_list.errors.num; i++) {
@@ -364,6 +384,7 @@ static void check_cases(const struct compile_case *cases, size_t count)
 
 		dump_cat("result %d\n", ok ? 1 : 0);
 		dump_effect(&effect);
+		dump_parser(&ep, &effect);
 		dump_errors(&ep);
 		dump_cat("%s", log_buf);
 		ep_free(&ep);
@@ -476,6 +497,25 @@ static const struct compile_case params_cases[] = {
 	 "  pass 0 (null) section=3 vert=0 pixel=1\n"
 	 "      vparams 0:ViewProj/0:ViewProj\n"
 	 "      pparams 3:color/1:color\n"
+	 "parser 0 ViewProj left=0 param=0:ViewProj\n"
+	 "parser 1 World left=0 param=1:World\n"
+	 "parser 2 viewproj left=0 param=2:viewproj\n"
+	 "parser 3 color left=0 param=3:color\n"
+	 "parser 4 gain left=0 param=4:gain\n"
+	 "  parser annotation 0 name left=0\n"
+	 "  parser annotation 1 minimum left=0\n"
+	 "  parser annotation 2 step left=0\n"
+	 "parser 5 size left=0 param=5:size\n"
+	 "parser 6 axis left=0 param=6:axis\n"
+	 "parser 7 count left=0 param=7:count\n"
+	 "parser 8 i2 left=0 param=8:i2\n"
+	 "parser 9 i3 left=0 param=9:i3\n"
+	 "parser 10 i4 left=0 param=10:i4\n"
+	 "parser 11 flag left=0 param=11:flag\n"
+	 "parser 12 image left=0 param=12:image\n"
+	 "parser 13 rect left=0 param=13:rect\n"
+	 "parser 14 label left=0 param=14:label\n"
+	 "parser 15 odd left=0 param=15:odd\n"
 	 "destroyed 0 1\n"
 	 "leaked 0\n"},
 	/* ViewProj and World declared twice: the last of each is kept (characterized, not endorsed: the writer
@@ -525,6 +565,62 @@ static const struct compile_case params_cases[] = {
 	 "  pass 0 (null) section=3 vert=0 pixel=1\n"
 	 "      vparams 0:ViewProj/0:ViewProj\n"
 	 "      pparams 4:color/1:color\n"
+	 "parser 0 ViewProj left=0 param=0:ViewProj\n"
+	 "parser 1 World left=0 param=1:World\n"
+	 "parser 2 ViewProj left=0 param=2:ViewProj\n"
+	 "parser 3 World left=0 param=3:World\n"
+	 "parser 4 color left=0 param=4:color\n"
+	 "destroyed 0 1\n"
+	 "leaked 0\n"},
+	/* a single annotation, with and without a value, and an annotation list on a param with no default */
+	{"uniform float4x4 ViewProj;\n"
+	 "uniform float4 color <string name = \"Color\";> = {0.0, 0.0, 0.0, 1.0};\n"
+	 "uniform float level <float maximum = 4.0;>;\n" SOLID_FUNCS "technique Solid { " SOLID_PASS " }",
+	 0, 0, 0, NULL, 0,
+	 "create vertex 0 test.effect (Vertex shader, technique Solid, pass 0)\n"
+	 "    | uniform float4x4 ViewProj;\n"
+	 "    | \n"
+	 "    | \n"
+	 "    | float4 VSSolid(float4 pos : POSITION)\n"
+	 "    | {\n"
+	 "    | \\treturn mul(pos, ViewProj);\n"
+	 "    | }\n"
+	 "    | \n"
+	 "    | float4 main(float4 pos : POSITION) : POSITION\n"
+	 "    | {\n"
+	 "    | \\treturn VSSolid(pos);\n"
+	 "    | }\n"
+	 "    -> shader 0\n"
+	 "create pixel 1 test.effect (Pixel shader, technique Solid, pass 0)\n"
+	 "    | uniform float4 color;\n"
+	 "    | \n"
+	 "    | \n"
+	 "    | float4 PSSolid(float4 pos : POSITION)\n"
+	 "    | {\n"
+	 "    | \\treturn color;\n"
+	 "    | }\n"
+	 "    | \n"
+	 "    | float4 main(float4 pos : POSITION) : TARGET\n"
+	 "    | {\n"
+	 "    | \\treturn PSSolid(pos);\n"
+	 "    | }\n"
+	 "    -> shader 1\n"
+	 "result 1\n"
+	 "param 0 ViewProj section=0 type=11 changed=0 cur=0 default= effect=self sampler=null\n"
+	 "param 1 color section=0 type=7 changed=0 cur=0 default=0000000000000000000000000000803f effect=self sampler=null\n"
+	 "  annotation 0 name section=4 type=4 changed=0 cur=0 default=436f6c6f7200 effect=self sampler=null\n"
+	 "param 2 level section=0 type=2 changed=0 cur=0 default= effect=self sampler=null\n"
+	 "  annotation 0 maximum section=4 type=2 changed=0 cur=0 default=00008040 effect=self sampler=null\n"
+	 "view_proj=0:ViewProj world=- scale=-\n"
+	 "technique 0 Solid section=1 effect=self passes=1\n"
+	 "  pass 0 (null) section=3 vert=0 pixel=1\n"
+	 "      vparams 0:ViewProj/0:ViewProj\n"
+	 "      pparams 1:color/1:color\n"
+	 "parser 0 ViewProj left=0 param=0:ViewProj\n"
+	 "parser 1 color left=0 param=1:color\n"
+	 "  parser annotation 0 name left=0\n"
+	 "parser 2 level left=0 param=2:level\n"
+	 "  parser annotation 0 maximum left=0\n"
 	 "destroyed 0 1\n"
 	 "leaked 0\n"},
 	/* params and no technique */
@@ -535,6 +631,8 @@ static const struct compile_case params_cases[] = {
 	 "param 0 ViewProj section=0 type=11 changed=0 cur=0 default= effect=self sampler=null\n"
 	 "param 1 color section=0 type=7 changed=0 cur=0 default= effect=self sampler=null\n"
 	 "view_proj=0:ViewProj world=- scale=-\n"
+	 "parser 0 ViewProj left=0 param=0:ViewProj\n"
+	 "parser 1 color left=0 param=1:color\n"
 	 "destroyed\n"
 	 "leaked 0\n"},
 	/* nothing at all */
@@ -550,6 +648,8 @@ static const struct compile_case params_cases[] = {
 	 0, 0, 0, NULL, 0,
 	 "result 0\n"
 	 "view_proj=- world=- scale=-\n"
+	 "parser 0 ViewProj left=0 param=(foreign)\n"
+	 "parser 1 color left=0 param=(foreign)\n"
 	 "error 12:1 0 Unexpected code segment\n"
 	 "destroyed\n"
 	 "leaked 0\n"},
@@ -640,6 +740,8 @@ static const struct compile_case techniques_cases[] = {
 	 "      vparams 0:ViewProj/2:ViewProj\n"
 	 "      pparams 1:color/3:color\n"
 	 "technique 1 Empty section=1 effect=self passes=0\n"
+	 "parser 0 ViewProj left=0 param=0:ViewProj\n"
+	 "parser 1 color left=0 param=1:color\n"
 	 "destroyed 0 1 2 3\n"
 	 "leaked 0\n"},
 	/* a NULL vertex call: the create call gets no text */
@@ -672,6 +774,8 @@ static const struct compile_case techniques_cases[] = {
 	 "  pass 0 (null) section=3 vert=0 pixel=1\n"
 	 "      vparams\n"
 	 "      pparams 1:color/1:color\n"
+	 "parser 0 ViewProj left=0 param=0:ViewProj\n"
+	 "parser 1 color left=0 param=1:color\n"
 	 "destroyed 0 1\n"
 	 "leaked 0\n"},
 	/* a pass with no calls at all */
@@ -689,6 +793,7 @@ static const struct compile_case techniques_cases[] = {
 	 "  pass 0 (null) section=3 vert=0 pixel=1\n"
 	 "      vparams\n"
 	 "      pparams\n"
+	 "parser 0 color left=0 param=0:color\n"
 	 "destroyed 0 1\n"
 	 "leaked 0\n"},
 	/* a function using three uniforms, two of them named twice: each name once, in the writer's order */
@@ -742,6 +847,9 @@ static const struct compile_case techniques_cases[] = {
 	 "  pass 0 (null) section=3 vert=0 pixel=1\n"
 	 "      vparams 2:c/0:c, 1:b/0:b, 0:a/0:a\n"
 	 "      pparams 2:c/1:c, 1:b/1:b, 0:a/1:a\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "destroyed 0 1\n"
 	 "leaked 0\n"},
 };
@@ -850,6 +958,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=2 pixel=3\n"
 	 "      vparams 0:a/2:a, 1:b/2:b, 2:c/2:c\n"
 	 "      pparams 0:a/3:a, 1:b/3:b, 2:c/3:c\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "log 100 Pass (0) <p0> missing vertex shader!\n"
 	 "destroyed 1 2 3\n"
 	 "leaked 0\n"},
@@ -931,6 +1042,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=2 pixel=3\n"
 	 "      vparams 0:a/2:a, 1:b/2:b, 2:c/2:c\n"
 	 "      pparams 0:a/3:a, 1:b/3:b, 2:c/3:c\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "error 13:1 0 Error creating shader: fail 1\n"
 	 "log 100 Pass (0) <p0> missing pixel shader!\n"
 	 "destroyed 0 2 3\n"
@@ -1014,6 +1128,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=2 pixel=3\n"
 	 "      vparams 0:a/2:a, 1:b/2:b, 2:c/2:c\n"
 	 "      pparams 0:a/3:a, 1:b/3:b, 2:c/3:c\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "error 13:1 0 Error creating shader: fail 2\n"
 	 "destroyed 0 1 2 3\n"
 	 "leaked 0\n"},
@@ -1095,6 +1212,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=2 pixel=3\n"
 	 "      vparams 0:a/2:a, 1:b/2:b, 2:c/2:c\n"
 	 "      pparams 0:a/3:a, 1:b/3:b, 2:c/3:c\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "destroyed 0 1 2 3\n"
 	 "leaked 0\n"},
 	/* the first vertex shader lacks b: its params stop there, b kept with no shader param and c left
@@ -1176,6 +1296,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=2 pixel=3\n"
 	 "      vparams 0:a/2:a, 1:b/2:b, 2:c/2:c\n"
 	 "      pparams 0:a/3:a, 1:b/3:b, 2:c/3:c\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "log 100 Effect shader parameter not found\n"
 	 "log 100 Pass (0) <p0> missing vertex shader!\n"
 	 "destroyed 0 1 2 3\n"
@@ -1258,6 +1381,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=2 pixel=3\n"
 	 "      vparams 0:a/2:a, 1:b/2:b, 2:c/2:c\n"
 	 "      pparams 0:a/NULL, -/NULL, -/NULL\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "log 100 Effect shader parameter not found\n"
 	 "log 100 Pass (1) <p1> missing pixel shader!\n"
 	 "destroyed 0 1 2 3\n"
@@ -1340,6 +1466,9 @@ static const struct compile_case shaders_cases[] = {
 	 "  pass 1 p1 section=3 vert=NULL pixel=NULL\n"
 	 "      vparams\n"
 	 "      pparams\n"
+	 "parser 0 a left=0 param=0:a\n"
+	 "parser 1 b left=0 param=1:b\n"
+	 "parser 2 c left=0 param=2:c\n"
 	 "error 13:1 0 Error creating shader: fail 0\n"
 	 "error 13:1 0 Error creating shader: fail 2\n"
 	 "log 100 Pass (0) <p0> missing vertex shader!\n"
