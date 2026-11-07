@@ -73,6 +73,17 @@ test_video_scaler_direct
 
 
 class NativeB2Portability(unittest.TestCase):
+    def test_scene_archive_consumers_supply_getter_logging(self):
+        # MSVC keeps the getters' blog reference in the scene archive member
+        # pulled by these pure rule tests (#3891, Windows LNK2019).
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        stub = "test/cmocka/scene-getter-log-link-stub.c"
+        for name in ("test_scene_audio_window_steps_rust", "test_scene_render_plan_steps_rust"):
+            with self.subTest(name=name):
+                self.assertEqual(graph["targets"][name]["sources"], [
+                    stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
+                ])
+
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
