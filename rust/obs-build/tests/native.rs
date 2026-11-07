@@ -1,4 +1,6 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/registration/canonical_media_clips_is_registered.rs"]
+mod canonical_media_clips_is_registered;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
