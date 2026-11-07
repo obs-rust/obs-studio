@@ -29,6 +29,7 @@ mod encoder_pause;
 mod encoder_pause_parity;
 mod encoder_roi;
 mod encoder_roi_parity;
+mod encoder_roi_state;
 mod encoder_size;
 mod encoder_size_parity;
 mod interleave;
