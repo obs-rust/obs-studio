@@ -65,6 +65,12 @@ struct deinterlace_log {
 	char message[128];
 };
 
+/* Like the other oracle printf forwarders, retain format checking at the call site. */
+#if defined(__GNUC__) || defined(__clang__)
+static void deinterlace_capture(int level, const char *format, va_list args, void *param)
+	__attribute__((format(printf, 2, 0)));
+#endif
+
 static void deinterlace_capture(int level, const char *format, va_list args, void *param)
 {
 	struct deinterlace_log *log = param;
