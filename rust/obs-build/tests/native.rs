@@ -6182,6 +6182,11 @@ fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
 /// #1390: keep both unchanged display-free XComposite decision suites.
 #[test]
 fn canonical_xcomposite_decisions_are_registered() {
+}
+
+/// #1390: preserve real libobs linkage and the Linux waitpid interposition test.
+#[test]
+fn canonical_pipe_wait_error_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
