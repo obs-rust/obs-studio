@@ -1837,6 +1837,41 @@
         "libobs/data"
       ]
     },
+    "test_fade_to_color_mix": {
+      "sources": [
+        "test/cmocka/test_fade_to_color_mix.c"
+      ],
+      "requires": true,
+      "watch_inputs": [
+        "plugins/obs-transitions/fade-to-color-mix.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "includes": [
+        "plugins/obs-transitions"
+      ]
+    },
+    "test_ffmpeg_mux_helper_host": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_mux_helper_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/ffmpeg-mux/ffmpeg-mux-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_file_serializer": {
       "sources": [
         "test/cmocka/test_file_serializer.c"
@@ -1973,6 +2008,47 @@
       ],
       "libraries": [
         "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_frontend_obs_main_host": {
+      "sources": [
+        "test/cmocka/test_frontend_obs_main_host.c"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "frontend/utility/obs-main-macos.hpp",
+        "frontend/utility/obs-main-windows.hpp"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_frontend_obsbasic_host": {
+      "sources": [
+        "test/cmocka/test_frontend_obsbasic_host.c"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "frontend/widgets/obsbasic-linux.hpp",
+        "frontend/widgets/obsbasic-macos.hpp",
+        "frontend/widgets/obsbasic-windows.hpp"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_frontend_settings_host": {
+      "sources": [
+        "test/cmocka/test_frontend_settings_host.c"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "frontend/settings/settings-linux.hpp",
+        "frontend/settings/settings-macos.hpp",
+        "frontend/settings/settings-windows.hpp"
+      ],
+      "libraries": [
         "OBS::native-test-cmocka"
       ]
     },
@@ -8260,6 +8336,16 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120
     },
+    "test_fade_to_color_mix": {
+      "target": "test_fade_to_color_mix",
+      "requires": true
+    },
+    "test_ffmpeg_mux_helper_host": {
+      "target": "test_ffmpeg_mux_helper_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_file_serializer": {
       "target": "test_file_serializer"
     },
@@ -8307,6 +8393,18 @@
       "suite": "qt",
       "timeout_seconds": 60,
       "qt_runtime": "Qt6::Core"
+    },
+    "test_frontend_obs_main_host": {
+      "target": "test_frontend_obs_main_host",
+      "requires": "OS_LINUX"
+    },
+    "test_frontend_obsbasic_host": {
+      "target": "test_frontend_obsbasic_host",
+      "requires": "OS_LINUX"
+    },
+    "test_frontend_settings_host": {
+      "target": "test_frontend_settings_host",
+      "requires": "OS_LINUX"
     },
     "test_graphics_alias_ordinary": {
       "target": "test_graphics_alias_ordinary",
