@@ -2,6 +2,73 @@
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+/// #1390: standalone plugin configuration helpers must reach both native consumers.
+#[test]
+fn canonical_plugin_configuration_helpers_are_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    for (name, include, headers) in [
+        (
+            "test_slideshow_size",
+            "plugins/image-source",
+            vec![
+                "plugins/image-source/slideshow-size.h",
+                "plugins/image-source/slideshow-size.c.h",
+            ],
+        ),
+        (
+            "test_stinger_monitoring_migration",
+            "plugins/obs-transitions",
+            vec!["plugins/obs-transitions/transition-stinger-monitoring.h"],
+        ),
+    ] {
+        let target = graph
+            .targets
+            .get(name)
+            .unwrap_or_else(|| panic!("canonical graph omits {name}"));
+        let sources: Vec<_> = target
+            .sources
+            .iter()
+            .map(|source| match source {
+                Source::Path(path) => path.as_str(),
+                _ => panic!("plugin helper sources must be unconditional"),
+            })
+            .collect();
+        let mut expected = vec![format!("test/cmocka/{name}.c")];
+        if name == "test_slideshow_size" {
+            expected.push("plugins/image-source/slideshow-size.c.h".into());
+        }
+        assert_eq!(sources, expected);
+        assert_eq!(target.includes, [include]);
+        assert_eq!(target.watch_inputs, headers);
+        assert!(
+            matches!(target.libraries.as_slice(), [ConditionalValue::Name(library)] if library == "OBS::native-test-cmocka")
+        );
+        assert!(target.header_libraries.is_empty());
+        let test = &graph.tests[name];
+        assert_eq!(test.target, name);
+        assert_eq!(test.command, ["${target}"]);
+        assert_eq!(test.suite, "core");
+        assert_eq!(test.timeout_seconds, None);
+        assert_eq!(test.skip_return_code, None);
+        assert!(test.optional_prefixes.is_empty());
+        assert_eq!(test.qt_runtime, None);
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        assert!(!fragment.contains("add_executable("));
+        assert!(!fragment.contains("add_test("));
+        let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+        single.targets.retain(|key, _| key == name);
+        single.tests.retain(|key, _| key == name);
+        for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
+            let selected = single.select(&[(os.into(), true)].into()).unwrap();
+            assert!(selected.targets.contains_key(name), "{os}");
+            assert!(selected.tests.contains_key(name), "{os}");
+        }
+    }
+}
+
 /// #1390: standalone caption compatibility must reach both native consumers.
 #[test]
 fn canonical_caption_unmappable_is_registered() {
