@@ -6,6 +6,8 @@ mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
+#[path = "native/registration/canonical_display_render_is_registered.rs"]
+mod canonical_display_render_is_registered;
 #[path = "native/registration/canonical_display_startup_is_registered.rs"]
 mod canonical_display_startup_is_registered;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
@@ -5330,6 +5332,3 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
 }
-
-#[path = "native/registration/canonical_display_render_is_registered.rs"]
-mod canonical_display_render_is_registered;

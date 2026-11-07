@@ -53,3 +53,7 @@ fn canonical_display_render_guards() {
         }
     }
 }
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "display_render_runtime.rs"]
+mod runtime;

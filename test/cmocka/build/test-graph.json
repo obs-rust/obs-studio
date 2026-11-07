@@ -1301,6 +1301,29 @@
         "shared/file-updater/file-updater/curl-accept-encoding.h"
       ]
     },
+    "test_darken_transparent": {
+      "sources": [
+        "test/cmocka/test_darken_transparent.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_darray": {
       "sources": [
         "test/cmocka/test_darray.c"
@@ -2533,6 +2556,28 @@
       "watch_inputs": [
         "libobs/data"
       ]
+    },
+    "test_encoding_lag_rescale": {
+      "sources": [
+        "test/cmocka/test_encoding_lag_rescale.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_expander_unity": {
       "sources": [
@@ -3990,6 +4035,29 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_image_size_precheck": {
+      "sources": [
+        "test/cmocka/test_image_size_precheck.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "ZLIB::ZLIB"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_image_source_host": {
       "sources": [
@@ -6388,6 +6456,28 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_stop_without_packets": {
+      "sources": [
+        "test/cmocka/test_output_stop_without_packets.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_output_video_checks_steps": {
       "sources": [
         "test/cmocka/test_output_video_checks_steps.c",
@@ -8340,6 +8430,29 @@
       "watch_inputs": [
         "frontend/utility"
       ]
+    },
+    "test_scaled_mix_alpha": {
+      "sources": [
+        "test/cmocka/test_scaled_mix_alpha.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_scene_audio_action_steps": {
       "sources": [
@@ -10414,6 +10527,28 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_sprite_flip_render": {
+      "sources": [
+        "test/cmocka/test_sprite_flip_render.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_sprite_geometry_steps": {
       "sources": [
@@ -13437,6 +13572,22 @@
       "target": "test_curl_accept_encoding",
       "requires": "HAVE_CURL_TEST_SDK"
     },
+    "test_darken_transparent": {
+      "target": "test_darken_transparent",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_darray": {
       "target": "test_darray"
     },
@@ -13883,6 +14034,22 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_encoding_lag_rescale": {
+      "target": "test_encoding_lag_rescale",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_expander_unity": {
       "target": "test_expander_unity",
@@ -14395,6 +14562,22 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_image_size_precheck": {
+      "target": "test_image_size_precheck",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_image_source_host": {
       "target": "test_image_source_host",
@@ -15249,6 +15432,22 @@
         "${target}"
       ]
     },
+    "test_output_stop_without_packets": {
+      "target": "test_output_stop_without_packets",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    },
     "test_output_video_checks_steps": {
       "target": "test_output_video_checks_steps",
       "command": [
@@ -15734,6 +15933,22 @@
     },
     "test_saved_transition": {
       "target": "test_saved_transition"
+    },
+    "test_scaled_mix_alpha": {
+      "target": "test_scaled_mix_alpha",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_scene_audio_action_steps": {
       "target": "test_scene_audio_action_steps",
@@ -16546,6 +16761,22 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_sprite_flip_render": {
+      "target": "test_sprite_flip_render",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_sprite_geometry_steps": {
       "target": "test_sprite_geometry_steps",
