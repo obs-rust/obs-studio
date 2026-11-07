@@ -2254,14 +2254,6 @@ bool obs_encoder_paused(const obs_encoder_t *encoder)
 	return obs_encoder_valid(encoder, "obs_encoder_paused") ? os_atomic_load_bool(&encoder->paused) : false;
 }
 
-const char *obs_encoder_get_last_error(obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_last_error"))
-		return NULL;
-
-	return encoder->last_error_message;
-}
-
 void obs_encoder_set_last_error(obs_encoder_t *encoder, const char *message)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_last_error"))
