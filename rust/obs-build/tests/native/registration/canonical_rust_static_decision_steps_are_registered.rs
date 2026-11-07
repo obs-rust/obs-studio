@@ -24,8 +24,20 @@ fn canonical_rust_static_decision_steps_are_registered() {
             .targets
             .get(&name)
             .expect("missing Rust-static decision steps");
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{base}.c")));
+        let mut expected_sources = Vec::new();
+        if base == "test_scene_audio_window_steps" {
+            expected_sources.push("test/cmocka/scene-getter-log-link-stub.c".to_owned());
+        }
+        expected_sources.push(format!("test/cmocka/{base}.c"));
+        let actual_sources: Vec<_> = target
+            .sources
+            .iter()
+            .map(|source| match source {
+                Source::Path(path) => path.clone(),
+                _ => panic!("decision step sources must be unconditional"),
+            })
+            .collect();
+        assert_eq!(actual_sources, expected_sources);
         assert_eq!(target.includes, ["libobs"]);
         assert!(target.header_libraries.is_empty());
         assert!(target.header_packages.is_empty());

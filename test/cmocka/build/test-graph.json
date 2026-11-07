@@ -6261,6 +6261,7 @@
     },
     "test_scene_audio_window_steps_rust": {
       "sources": [
+        "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_audio_window_steps.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
@@ -6595,6 +6596,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_render_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_render_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_item_transform_steps": {
       "sources": [
         "test/cmocka/test_scene_item_transform_steps.c",
@@ -6689,6 +6705,7 @@
     },
     "test_scene_render_plan_steps_rust": {
       "sources": [
+        "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_render_plan_steps.c"
       ],
       "includes": [
@@ -11885,6 +11902,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_item_render_getters": {
+      "target": "test_scene_item_render_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",

@@ -13,11 +13,13 @@
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the ten hidden functions, in the archive's obs-scene member,
-# which needs nothing else. It links OBS::libobs first (for obs.h's include
+# which also contains public getters with a logging dependency. The link-only
+# logger aborts if these pure-rule tests unexpectedly reach it. OBS::libobs
+# supplies obs.h's include
 # directories), as test_scene_item_names_steps_rust does. Linking the archive
 # directly avoids exporting private symbols just for a test.
 if(TARGET libobs_rust-static)
-  add_executable(test_scene_item_order_steps_rust test_scene_item_order_steps.c)
+  add_executable(test_scene_item_order_steps_rust test_scene_item_order_steps.c scene-getter-log-link-stub.c)
   target_include_directories(
     test_scene_item_order_steps_rust
     PRIVATE "${CMAKE_SOURCE_DIR}/libobs" ${CMOCKA_INCLUDE_DIR}

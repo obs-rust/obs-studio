@@ -32,8 +32,24 @@ fn canonical_rust_static_header_steps_are_registered() {
             .targets
             .get(&name)
             .expect("missing Rust-static header steps");
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{base}.c")));
+        let sources: Vec<_> = target
+            .sources
+            .iter()
+            .map(|source| match source {
+                Source::Path(path) => path.as_str(),
+                Source::Conditional { .. } => panic!("header-step sources must be unconditional"),
+            })
+            .collect();
+        let expected = format!("test/cmocka/{base}.c");
+        let expected_sources = if base == "test_scene_render_plan_steps" {
+            vec![
+                "test/cmocka/scene-getter-log-link-stub.c",
+                expected.as_str(),
+            ]
+        } else {
+            vec![expected.as_str()]
+        };
+        assert_eq!(sources, expected_sources, "{name}");
         assert_eq!(target.includes, ["libobs"]);
         assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
         assert!(target.archives.is_empty());
