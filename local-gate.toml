@@ -13,7 +13,7 @@
 #
 # ./lint and ./unittest run the same lanes without stamping.
 [gate]
-run = ["uv", "run", "ci/local_gate.py"]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")"]
 verify = "build-project.yaml:ci-mode"
 # Not skippable by a Linux attestation, so they start at once instead of
 # waiting on ci-mode: event data, the full OBS builds (themselves skipped for
@@ -31,13 +31,46 @@ mirrors = ["build-project.yaml:rust-tests-linux", "build-project.yaml:rust-linux
 # The lane-proof steps only publish a pass (ci/lane_proof.py, #699).
 setup-steps = ["Save Tier 2 zccache 💾", "Mark Lane Proof 🧾", "Upload Lane Proof 🧾"]
 
+# Split Dylint from source-sensitive lanes so source-only edits reuse its
+# local pass. Cross builds remain opt-in until the store fix makes them cheap:
+# https://github.com/forge-ci/soldr/issues/4118
+[gate.lanes.dylint]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", 'import sys; sys.path.insert(0, "ci"); import local_gate as g; g.soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"])']
+tools = ["soldr"]
+exclude = ["**"]
+keep = ["dylints/**", "rust-toolchain.toml", "Cargo.lock"]
+
+# Keep cross Dylint out of default local runs while its store is expensive:
+# https://github.com/forge-ci/soldr/issues/4118
+# The pinned schema has no default=false; opt in with OBS_GATE_DYLINT_CROSS=1.
+# Exit 75 is the gate's optional-lane protocol (never a cached/attested pass).
+# CI's rust-cross-lint and rust-cross-lint-release still run Dylint directly.
+[gate.lanes.dylint-cross]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", '''
+import os
+import sys
+if os.environ.get("OBS_GATE_DYLINT_CROSS") != "1":
+    print("cross Dylint: opt in with OBS_GATE_DYLINT_CROSS=1; CI runs it separately", flush=True)
+    sys.exit(75)
+import sys; sys.path.insert(0, "ci"); import local_gate as g
+scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
+for target in (*g.CROSS_TARGETS, "x86_64-apple-darwin"):
+    g.add_target(target)
+    g.soldr_dylint(["--all", "--", *scope, "--target", target])
+''']
+tools = ["soldr"]
+optional = true
+env = ["OBS_GATE_DYLINT_CROSS"]
+exclude = ["**"]
+keep = ["dylints/**", "rust-toolchain.toml", "Cargo.lock"]
+
 # clang-format 22.1.3 + gersemi 0.25.0 (pinned via uvx), rustfmt,
 # clippy -D warnings.
 [gate.lanes.lint]
 # Compose the existing checks here so CI's unchanged --lane lint still runs
 # Dylint, while the local gate caches it independently below.
-run = ["uv", "run", "--no-project", "python", "-c", '''
-from ci import local_gate as g
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", '''
+import sys; sys.path.insert(0, "ci"); import local_gate as g
 files = g.tracked_files()
 in_ci = bool(g.os.environ.get("GITHUB_ACTIONS"))
 fmt_files = g.format_scope(files, None if in_ci else g.changed_since_master(), in_ci)
@@ -60,7 +93,7 @@ exclude = ["dylints/**"]
 
 # Rust Tiers 1-3 (docs/rust-port/testing-policy.md).
 [gate.lanes.rust-test]
-run = ["uv", "run", "ci/local_gate.py", "--lane", "rust-test"]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", "import local_gate as g; sys.argv = [\"ci/local_gate.py\", \"--lane\", \"rust-test\"]; sys.exit(g.main())"]
 tools = ["soldr"]
 exclude = ["**"]
 keep = ["rust/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**", "plugins/obs-nvenc/**", "deps/**", "ci/local_gate.py", "ci/nextest_tool.py", "ci/nextest.toml"]
@@ -68,8 +101,8 @@ keep = ["rust/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**
 # Clippy and test links for the same PR targets as ci/local_gate.py (#472).
 # CI still calls its unchanged cross lane, including cross Dylint.
 [gate.lanes.cross]
-run = ["uv", "run", "--no-project", "python", "-c", '''
-from ci import local_gate as g
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", '''
+import sys; sys.path.insert(0, "ci"); import local_gate as g
 scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
 for target in g.CROSS_TARGETS:
     g.add_target(target)
@@ -80,43 +113,10 @@ tools = ["soldr"]
 exclude = ["**"]
 keep = ["rust/**", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/**", "libobs/**", "plugins/obs-nvenc/**", "deps/**"]
 
-# Split Dylint from source-sensitive lanes so source-only edits reuse its
-# local pass. Cross builds remain opt-in until the store fix makes them cheap:
-# https://github.com/forge-ci/soldr/issues/4118
-[gate.lanes.dylint]
-run = ["uv", "run", "--no-project", "python", "-c", 'from ci import local_gate as g; g.soldr_dylint(["--all", "--", "--workspace", "--lib", "--bins"])']
-tools = ["soldr"]
-exclude = ["**"]
-keep = ["dylints/**", "rust-toolchain.toml", "Cargo.lock"]
-
-# Keep cross Dylint out of default local runs while its store is expensive:
-# https://github.com/forge-ci/soldr/issues/4118
-# The pinned schema has no default=false; opt in with OBS_GATE_DYLINT_CROSS=1.
-# Exit 75 is the gate's optional-lane protocol (never a cached/attested pass).
-# CI's rust-cross-lint and rust-cross-lint-release still run Dylint directly.
-[gate.lanes.dylint-cross]
-run = ["uv", "run", "--no-project", "python", "-c", '''
-import os
-import sys
-if os.environ.get("OBS_GATE_DYLINT_CROSS") != "1":
-    print("cross Dylint: opt in with OBS_GATE_DYLINT_CROSS=1; CI runs it separately", flush=True)
-    sys.exit(75)
-from ci import local_gate as g
-scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
-for target in (*g.CROSS_TARGETS, "x86_64-apple-darwin"):
-    g.add_target(target)
-    g.soldr_dylint(["--all", "--", *scope, "--target", target])
-''']
-tools = ["soldr"]
-optional = true
-env = ["OBS_GATE_DYLINT_CROSS"]
-exclude = ["**"]
-keep = ["dylints/**", "rust-toolchain.toml", "Cargo.lock"]
-
 # Tier 2: cmocka against libobs and libobs-c-reference (one build) in Docker
 # (ubuntu-26.04, the CI image), exported-symbol diff.
 [gate.lanes.tier2-linux]
-run = ["uv", "run", "ci/local_gate.py", "--lane", "tier2-linux"]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", "import local_gate as g; sys.argv = [\"ci/local_gate.py\", \"--lane\", \"tier2-linux\"]; sys.exit(g.main())"]
 tools = ["docker"]
 # Its own heavy chain (#399): it builds in its own Docker container with its
 # own build and zccache volumes, so it overlaps the host lanes instead of
@@ -143,12 +143,12 @@ keep = ["rust/*/Cargo.toml", "rust/obs-mcp/tests/**", "rust/obs-studio-rust/test
 # file: a host that runs them has the tree and the caches, and the Linux hosts
 # that skip them never key them on anything.
 [gate.lanes.macos-native]
-run = ["uv", "run", "ci/local_gate.py", "--lane", "macos-native"]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", "import local_gate as g; sys.argv = [\"ci/local_gate.py\", \"--lane\", \"macos-native\"]; sys.exit(g.main())"]
 tools = ["soldr"]
 optional = true
 
 [gate.lanes.windows-native]
-run = ["uv", "run", "ci/local_gate.py", "--lane", "windows-native"]
+run = ["uv", "run", "--no-project", "python", "-c", "import runpy, sys; sys.path.insert(0, \"ci\"); exec(sys.argv[1]) if len(sys.argv) > 1 else runpy.run_path(\"ci/local_gate.py\", run_name=\"__main__\")", "import local_gate as g; sys.argv = [\"ci/local_gate.py\", \"--lane\", \"windows-native\"]; sys.exit(g.main())"]
 tools = ["soldr"]
 optional = true
 
