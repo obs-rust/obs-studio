@@ -906,6 +906,7 @@ pub fn native_test_facts(
         ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
         ("HAVE_OBS_V4L2".into(), false),
         ("HAVE_V4L2_BUSY_SDK".into(), false),
+        ("HAVE_V4L2_CAPTURE_SDK".into(), false),
         ("HAVE_V4L2_UDEV_SDK".into(), false),
         ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
         ("MSVC".into(), target.contains("msvc")),

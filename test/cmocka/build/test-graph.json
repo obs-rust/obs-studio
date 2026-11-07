@@ -8647,6 +8647,157 @@
         ]
       }
     },
+    "test_v4l2_controls": {
+      "sources": [
+        "test/cmocka/test_v4l2_controls.c",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "definitions": [
+        "HAVE_UDEV=1"
+      ]
+    },
+    "test_v4l2_corrupt_frame": {
+      "sources": [
+        "test/cmocka/test_v4l2_corrupt_frame.c",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      }
+    },
+    "test_v4l2_dqbuf_error": {
+      "sources": [
+        "test/cmocka/test_v4l2_dqbuf_error.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      }
+    },
+    "test_v4l2_framerate": {
+      "sources": [
+        "test/cmocka/test_v4l2_framerate.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_packages": [
+        "libv4l2"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      }
+    },
     "test_v4l2_udev_poll_error": {
       "sources": [
         "test/cmocka/test_v4l2_udev_poll_error.c"
@@ -12744,6 +12895,50 @@
           "OS_LINUX",
           "HAVE_OBS_V4L2",
           "HAVE_V4L2_BUSY_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_controls": {
+      "target": "test_v4l2_controls",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_corrupt_frame": {
+      "target": "test_v4l2_corrupt_frame",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_dqbuf_error": {
+      "target": "test_v4l2_dqbuf_error",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
+        ]
+      },
+      "timeout_seconds": 90
+    },
+    "test_v4l2_framerate": {
+      "target": "test_v4l2_framerate",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_CAPTURE_SDK"
         ]
       },
       "timeout_seconds": 60
