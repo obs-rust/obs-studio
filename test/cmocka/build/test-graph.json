@@ -5555,6 +5555,52 @@
         "frontend/utility"
       ]
     },
+    "test_recording_shutdown_inactive": {
+      "sources": [
+        "test/cmocka/test_recording_shutdown_inactive.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "includes": [
+        "frontend/widgets"
+      ],
+      "watch_inputs": [
+        "frontend/widgets/RecordingShutdown.hpp",
+        "frontend/widgets/RecordingShutdownWait.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_recording_shutdown_wait": {
+      "sources": [
+        "test/cmocka/test_recording_shutdown_wait.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "includes": [
+        "frontend/widgets"
+      ],
+      "watch_inputs": [
+        "frontend/widgets/RecordingShutdown.hpp",
+        "frontend/widgets/RecordingShutdownWait.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_register_partial_callbacks": {
       "sources": [
         "test/cmocka/test_register_partial_callbacks.c"
@@ -11428,6 +11474,34 @@
     },
     "test_record_disk_space": {
       "target": "test_record_disk_space"
+    },
+    "test_recording_shutdown_inactive": {
+      "target": "test_recording_shutdown_inactive",
+      "suite": "qt",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 15
+    },
+    "test_recording_shutdown_wait": {
+      "target": "test_recording_shutdown_wait",
+      "suite": "qt",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_register_partial_callbacks": {
       "target": "test_register_partial_callbacks",
