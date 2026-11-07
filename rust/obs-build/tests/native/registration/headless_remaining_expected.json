@@ -1,0 +1,225 @@
+{
+    "schema": 1,
+    "targets": {
+        "test_first_run_wizard": {
+            "sources": [
+                "frontend/tests/test_first_run_wizard.cpp"
+            ],
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "watch_inputs": [
+                "frontend/utility/FirstRunWizard.hpp"
+            ]
+        },
+        "test_config_migration": {
+            "sources": [
+                "frontend/tests/test_config_migration.cpp"
+            ],
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "includes": [
+                "frontend"
+            ],
+            "cpp_standard": "17",
+            "watch_inputs": [
+                "frontend/utility/ConfigMigration.hpp"
+            ]
+        },
+        "obs-x264-test": {
+            "sources": [
+                "plugins/obs-x264/build/obs-x264-test.core+.h.c"
+            ],
+            "requires": "HAVE_X264_TEST_OWNER",
+            "compile_options": [
+                {
+                    "name": "-Wno-strict-prototypes",
+                    "requires": "C_COMPILER_CLANG"
+                }
+            ],
+            "libraries": [
+                "OBS::opts-parser"
+            ]
+        },
+        "test_core_module_manifest": {
+            "sources": [
+                "test/cmocka/test_core_module_manifest.c"
+            ],
+            "requires": "ENABLE_CORE_MODULES",
+            "libraries": [
+                "OBS::libobs-core-modules",
+                "OBS::native-test-cmocka"
+            ]
+        },
+        "test_preflight_abi": {
+            "sources": [
+                "test/cmocka/test_preflight_abi.c"
+            ],
+            "requires": {
+                "all": [
+                    {
+                        "any": [
+                            "OS_LINUX",
+                            "OS_MACOS"
+                        ]
+                    },
+                    "HAVE_PREFLIGHT_TEST_ARCHIVE"
+                ]
+            },
+            "includes": [
+                "frontend/preflight"
+            ],
+            "libraries": [
+                "OBS::preflight-test-archive",
+                "OBS::native-test-cmocka",
+                "Threads::Threads",
+                {
+                    "name": "dl",
+                    "requires": "OS_LINUX"
+                }
+            ]
+        },
+        "test_scripting_obs_defs": {
+            "sources": [
+                "test/cmocka/test_scripting_obs_defs.c"
+            ],
+            "requires": {
+                "all": [
+                    {
+                        "any": [
+                            "OS_LINUX",
+                            "OS_FREEBSD",
+                            "OS_OPENBSD"
+                        ]
+                    },
+                    "HAVE_SCRIPTING_DEFS_TEST_SDK"
+                ]
+            },
+            "libraries": [
+                "OBS::scripting-defs-test",
+                "OBS::native-test-cmocka"
+            ]
+        }
+    },
+    "tests": {
+        "test_first_run_wizard": {
+            "target": "test_first_run_wizard",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_config_migration_first": {
+            "target": "test_config_migration",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}",
+                "${build}/config-migration-first",
+                "first"
+            ]
+        },
+        "test_config_migration_existing": {
+            "target": "test_config_migration",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}",
+                "${build}/config-migration-existing",
+                "existing"
+            ]
+        },
+        "test_config_migration_absent": {
+            "target": "test_config_migration",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}",
+                "${build}/config-migration-absent",
+                "absent"
+            ]
+        },
+        "test_config_migration_custom": {
+            "target": "test_config_migration",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}",
+                "${build}/config-migration-custom",
+                "custom"
+            ]
+        },
+        "test_config_migration_empty-custom": {
+            "target": "test_config_migration",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}",
+                "${build}/config-migration-empty-custom",
+                "empty-custom"
+            ]
+        },
+        "test_config_migration_failure": {
+            "target": "test_config_migration",
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "command": [
+                "${target}",
+                "${build}/config-migration-failure",
+                "failure"
+            ]
+        },
+        "obs-x264-test": {
+            "target": "obs-x264-test",
+            "requires": "HAVE_X264_TEST_OWNER",
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_core_module_manifest": {
+            "target": "test_core_module_manifest",
+            "requires": "ENABLE_CORE_MODULES",
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_core_module_manifest_source": {
+            "target": "test_core_module_manifest",
+            "requires": "ENABLE_CORE_MODULES",
+            "command": [
+                "cmake",
+                "-DOBS_CORE_MODULES_CMAKE=${source}/libobs/cmake/obs-core-modules.cmake",
+                "-DTEST_FIXTURE_ROOT=${build}/core_module_manifest_source",
+                "-P",
+                "${source}/test/cmocka/check_core_module_manifest_source.cmake"
+            ]
+        },
+        "test_preflight_abi": {
+            "target": "test_preflight_abi",
+            "requires": {
+                "all": [
+                    {
+                        "any": [
+                            "OS_LINUX",
+                            "OS_MACOS"
+                        ]
+                    },
+                    "HAVE_PREFLIGHT_TEST_ARCHIVE"
+                ]
+            },
+            "command": [
+                "${target}"
+            ],
+            "timeout_seconds": 60
+        },
+        "test_scripting_obs_defs": {
+            "target": "test_scripting_obs_defs",
+            "requires": {
+                "all": [
+                    {
+                        "any": [
+                            "OS_LINUX",
+                            "OS_FREEBSD",
+                            "OS_OPENBSD"
+                        ]
+                    },
+                    "HAVE_SCRIPTING_DEFS_TEST_SDK"
+                ]
+            },
+            "command": [
+                "${target}"
+            ]
+        }
+    }
+}

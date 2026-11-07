@@ -1,3 +1,5 @@
+#[path = "native/registration/canonical_headless_remaining_is_registered.rs"]
+mod canonical_headless_remaining_is_registered;
 //! Build-system integration contracts; these compile and load actual C artifacts.
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
