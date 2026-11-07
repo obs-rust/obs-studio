@@ -2303,6 +2303,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_PIPEWIRE_HEADLESS_SDK".into(), false),
         ("HAVE_PIPEWIRE_LOOP_TEST_SDK".into(), false),
         ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_STARTUP_GLAD".into(), false),
         ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
         ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),

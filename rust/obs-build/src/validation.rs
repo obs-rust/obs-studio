@@ -289,6 +289,8 @@ pub fn build_c_tests(
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_OBS_OPENGL".into(), false),
+        ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_STARTUP_GLAD".into(), false),
     ]);
     let mut core_interface = SharedLibrary {
         include_dirs: vec![
