@@ -447,13 +447,20 @@ fn headers_only(library: &mut SharedLibrary, package: &str) -> Result<(), String
     Ok(())
 }
 
-// Match the optional CMake tests.d discovery. Never probe these Linux SDKs on
-// other hosts, or when their original owning-plugin guard is disabled.
+// Match optional CMake tests.d discovery within each original host/owner guard.
+// FreeType platform defaults apply to Linux/BSD; PulseAudio/PipeWire to Linux.
 fn configure_headless_plugin_sdks(
     build: &NativeBuild,
     facts: &mut BTreeMap<String, bool>,
     interfaces: &BTreeMap<String, graph::Dependency>,
 ) {
+    let text_host = facts["OS_LINUX"] || facts["OS_FREEBSD"] || facts["OS_OPENBSD"];
+    let text_sdk = text_host
+        && ["freetype2", "fontconfig"]
+            .iter()
+            .all(|package| graph::Dependency::package(&build.target, package).is_ok());
+    facts.insert("HAVE_FREETYPE_PLATFORM_SDK".into(), text_sdk);
+    // This builder does not build linux-v4l2; keep its original owner guard off.
     if !facts["OS_LINUX"] {
         return;
     }
