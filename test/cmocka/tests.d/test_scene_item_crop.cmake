@@ -14,7 +14,7 @@
 # private symbols just for a test.
 if(TARGET libobs_rust-static)
   if(OS_LINUX AND TARGET OBS::libobs-opengl)
-    add_executable(test_scene_item_crop_rust test_scene_item_crop.c)
+    add_executable(test_scene_item_crop_rust test_scene_item_crop.c scene-item-fields-link-support.c)
     target_compile_definitions(
       test_scene_item_crop_rust
       PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>"

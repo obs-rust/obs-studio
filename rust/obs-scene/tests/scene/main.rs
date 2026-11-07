@@ -37,4 +37,7 @@ mod item_state_getters_parity;
 
 mod item_render_getters;
 
+mod item_bounds_getters;
 mod item_render_getters_parity;
+
+mod item_bounds_getters_parity;

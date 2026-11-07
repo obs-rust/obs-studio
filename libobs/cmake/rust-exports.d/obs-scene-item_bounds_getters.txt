@@ -1,0 +1,3 @@
+obs_sceneitem_get_bounds_type
+obs_sceneitem_get_bounds_alignment
+obs_sceneitem_get_bounds_crop

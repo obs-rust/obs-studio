@@ -11,3 +11,20 @@ void blog(int level, const char *format, ...)
 	(void)format;
 	abort();
 }
+
+/* Private mutex adapters are deliberately hidden in libobs. Pure scene-rule
+ * consumers must supply them too, even when linking the shared library. */
+struct obs_scene;
+struct obs_scene_item;
+struct obs_scene *obs_sceneitem_fields_lock(const struct obs_scene_item *item);
+void obs_sceneitem_fields_unlock(struct obs_scene *scene);
+struct obs_scene *obs_sceneitem_fields_lock(const struct obs_scene_item *item)
+{
+	(void)item;
+	abort();
+}
+void obs_sceneitem_fields_unlock(struct obs_scene *scene)
+{
+	(void)scene;
+	abort();
+}

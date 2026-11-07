@@ -163,6 +163,21 @@ static inline void item_fields_unlock(obs_scene_t *scene)
 		video_unlock(scene);
 }
 
+/* Private C mutex boundary for the Rust field getters. Keep parent capture,
+ * locking and unlocking in the exact helpers used by the remaining C users. */
+obs_scene_t *obs_sceneitem_fields_lock(const obs_sceneitem_t *item);
+void obs_sceneitem_fields_unlock(obs_scene_t *scene);
+
+obs_scene_t *obs_sceneitem_fields_lock(const obs_sceneitem_t *item)
+{
+	return item_fields_lock(item);
+}
+
+void obs_sceneitem_fields_unlock(obs_scene_t *scene)
+{
+	item_fields_unlock(scene);
+}
+
 static void obs_sceneitem_remove_internal(obs_sceneitem_t *item);
 
 static void remove_all_items(struct obs_scene *scene)
@@ -2794,39 +2809,6 @@ uint32_t obs_sceneitem_get_alignment(const obs_sceneitem_t *item)
 
 	obs_scene_t *scene = item_fields_lock(item);
 	uint32_t value = item->align;
-	item_fields_unlock(scene);
-	return value;
-}
-
-enum obs_bounds_type obs_sceneitem_get_bounds_type(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return OBS_BOUNDS_NONE;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	enum obs_bounds_type value = item->bounds_type;
-	item_fields_unlock(scene);
-	return value;
-}
-
-uint32_t obs_sceneitem_get_bounds_alignment(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return 0;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	uint32_t value = item->bounds_align;
-	item_fields_unlock(scene);
-	return value;
-}
-
-bool obs_sceneitem_get_bounds_crop(const obs_sceneitem_t *item)
-{
-	if (!item)
-		return false;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	bool value = item->crop_to_bounds;
 	item_fields_unlock(scene);
 	return value;
 }
