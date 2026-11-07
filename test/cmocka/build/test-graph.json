@@ -5121,6 +5121,28 @@
       },
       "sanitizers": "address,undefined"
     },
+    "test_preview_only_hide": {
+      "sources": [
+        "test/cmocka/test_preview_only_hide.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_proc": {
       "sources": [
         "test/cmocka/test_proc.c"
@@ -5601,6 +5623,27 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_LINUX"
+    },
+    "test_raw_output_video_reset": {
+      "sources": [
+        "test/cmocka/test_raw_output_video_reset.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
     },
     "test_record_disk_space": {
       "sources": [
@@ -8221,6 +8264,27 @@
         }
       ]
     },
+    "test_transition_audio_clock": {
+      "sources": [
+        "test/cmocka/test_transition_audio_clock.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_transition_clock_steps": {
       "sources": [
         "test/cmocka/test_transition_clock_steps.c",
@@ -8308,6 +8372,27 @@
     "test_transition_recursive_destination": {
       "sources": [
         "test/cmocka/test_transition_recursive_destination.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
+    "test_transition_removed_child_audio": {
+      "sources": [
+        "test/cmocka/test_transition_removed_child_audio.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -11863,6 +11948,15 @@
         "${target}"
       ]
     },
+    "test_preview_only_hide": {
+      "target": "test_preview_only_hide",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
     "test_proc": {
       "target": "test_proc",
       "command": [
@@ -12010,6 +12104,15 @@
     },
     "test_quick_write": {
       "target": "test_quick_write"
+    },
+    "test_raw_output_video_reset": {
+      "target": "test_raw_output_video_reset",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_record_disk_space": {
       "target": "test_record_disk_space"
@@ -12974,6 +13077,15 @@
     "test_threading": {
       "target": "test_threading"
     },
+    "test_transition_audio_clock": {
+      "target": "test_transition_audio_clock",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60
+    },
     "test_transition_clock_steps": {
       "target": "test_transition_clock_steps",
       "command": [
@@ -13007,6 +13119,15 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 180
+    },
+    "test_transition_removed_child_audio": {
+      "target": "test_transition_removed_child_audio",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60
     },
     "test_transition_render_steps": {
       "target": "test_transition_render_steps",
