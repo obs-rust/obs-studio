@@ -910,6 +910,14 @@ cmocka-only linkage without a GPU or display. The guard is checked for selection
 local runtime evidence for this addition is Linux with GCC and Clang. Native
 macOS and Windows Rust lanes run this contract alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
+all seven original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. The portable virtual microphone routing suite
+(`test_win_vmic_route`) retains its unconditional cmocka-only linkage, plugin
+include path and routing-header invalidation input. Its four unchanged cases
+need neither Win32 nor libobs. Linux GCC and Clang replay covers both consumers;
+native macOS/Windows replay is not claimed here (the hosted utility selectors
+still name the older contract). This proves standalone helpers, not full
+frontend/application parity (#1390).
 
 the selected original C tests through both the Cargo and CMake consumers and compares
 the evaluated CTest inventory. Local GCC and Clang replay covers Linux; graph

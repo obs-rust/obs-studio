@@ -172,12 +172,17 @@ fn canonical_win_vmic_route_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_win_vmic_route";
-    let target = graph.targets.get(name).expect("canonical graph omits test_win_vmic_route");
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_win_vmic_route");
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_win_vmic_route.c"));
     assert_eq!(target.includes, ["plugins/win-dshow"]);
-    assert!(matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)]
-        if name == "OBS::native-test-cmocka"));
+    assert!(
+        matches!(target.libraries.as_slice(), [ConditionalValue::Name(name)]
+        if name == "OBS::native-test-cmocka")
+    );
     assert!(target.header_libraries.is_empty());
     assert_eq!(target.watch_inputs, ["plugins/win-dshow/vmic-route.h"]);
     let test = &graph.tests[name];
