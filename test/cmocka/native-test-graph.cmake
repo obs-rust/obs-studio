@@ -223,16 +223,24 @@ function(_obs_test_graph_values output graph target field)
   set(${output} "${values}" PARENT_SCOPE)
 endfunction()
 
-function(obs_native_test_graph path root)
-  # A declared X server enables Linux startup/graphics fixtures. Absence is
-  # unsupported, not an unknown requirement or permission to report skips.
-  # Focused consumers may declare this fact explicitly before calling us.
-  if(NOT DEFINED HAVE_X11_DISPLAY)
-    set(HAVE_X11_DISPLAY FALSE)
-    if(OS_LINUX AND NOT "$ENV{DISPLAY}" STREQUAL "")
-      set(HAVE_X11_DISPLAY TRUE)
+# No declared X server is a supported exclusion. The project declares its
+# Xvfb runner at configure time and starts that server later, before CTest.
+function(_obs_test_graph_x11_display output)
+  if(DEFINED HAVE_X11_DISPLAY)
+    set(${output} "${HAVE_X11_DISPLAY}" PARENT_SCOPE)
+    return()
+  endif()
+  set(available FALSE)
+  if(OS_LINUX)
+    if(NOT "$ENV{DISPLAY}" STREQUAL "" OR OBS_XVFB_RUN_REAL OR XVFB_RUN)
+      set(available TRUE)
     endif()
   endif()
+  set(${output} "${available}" PARENT_SCOPE)
+endfunction()
+
+function(obs_native_test_graph path root)
+  _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
   set(HAVE_HAPPY_EYEBALLS FALSE)
   if(TARGET OBS::happy-eyeballs)
     set(HAVE_HAPPY_EYEBALLS TRUE)

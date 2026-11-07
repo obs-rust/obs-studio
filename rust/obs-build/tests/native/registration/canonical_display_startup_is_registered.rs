@@ -25,8 +25,14 @@ fn canonical_display_startup_is_registered() {
                 "{section}/{name}"
             );
         }
-        let fragment_name = if name == "test_video_io_hidden" { "test_video_io" } else { name };
-        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{fragment_name}.cmake"))).unwrap();
+        let fragment_name = if name == "test_video_io_hidden" {
+            "test_video_io"
+        } else {
+            name
+        };
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{fragment_name}.cmake")))
+                .unwrap();
         if name == "test_video_io_hidden" {
             assert!(!fragment.contains("add_executable(test_video_io_hidden"));
             assert!(!fragment.contains("add_test(test_video_io_hidden"));
@@ -52,7 +58,12 @@ fn canonical_display_startup_guards() {
                 }
                 let selected = graph.select(&facts).unwrap();
                 for name in CASES {
-                    let enabled = if matches!(name, "test_startup_alloc_stable" | "test_startup_cycle_stress" | "test_video_io_hidden") {
+                    let enabled = if matches!(
+                        name,
+                        "test_startup_alloc_stable"
+                            | "test_startup_cycle_stress"
+                            | "test_video_io_hidden"
+                    ) {
                         os != "OS_LINUX" || display == Some(true)
                     } else {
                         os == "OS_LINUX"
@@ -94,8 +105,14 @@ fn canonical_display_startup_declared_runner() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let directory = tempfile::tempdir().unwrap();
     let script = directory.path().join("display.cmake");
-    let consumer = root.join("test/cmocka/native-test-graph.cmake").to_string_lossy().replace('\\', "/");
-    fs::write(&script, format!(r#"cmake_minimum_required(VERSION 3.28)
+    let consumer = root
+        .join("test/cmocka/native-test-graph.cmake")
+        .to_string_lossy()
+        .replace('\\', "/");
+    fs::write(
+        &script,
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
 include("{consumer}")
 foreach(linux IN ITEMS TRUE FALSE)
   set(OS_LINUX ${{linux}})
@@ -127,8 +144,19 @@ _obs_test_graph_x11_display(selected)
 if(NOT selected)
   message(FATAL_ERROR "Declared display ignored")
 endif()
-"#)).unwrap();
-    let output = std::process::Command::new("cmake").arg("-P").arg(&script)
-        .env_remove("DISPLAY").output().unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+"#
+        ),
+    )
+    .unwrap();
+    let output = std::process::Command::new("cmake")
+        .arg("-P")
+        .arg(&script)
+        .env_remove("DISPLAY")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

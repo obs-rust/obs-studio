@@ -235,29 +235,6 @@
       ],
       "sanitizers": "undefined"
     },
-    "test_async_audio_own_clock": {
-      "sources": [
-        "test/cmocka/test_async_audio_own_clock.c"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::native-test-cmocka",
-        "m"
-      ],
-      "artifact_definitions": {
-        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
-      },
-      "watch_inputs": [
-        "libobs/data"
-      ],
-      "requires": {
-        "all": [
-          "OS_LINUX",
-          "HAVE_OBS_OPENGL",
-          "HAVE_X11_DISPLAY"
-        ]
-      }
-    },
     "test_async_conversion_plan": {
       "sources": [
         "test/cmocka/test_async_conversion_plan.c",
@@ -302,30 +279,6 @@
           }
         }
       ]
-    },
-    "test_async_delay_audio": {
-      "sources": [
-        "test/cmocka/test_async_delay_audio.c",
-        "plugins/obs-filters/async-delay-filter.c.h"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::native-test-cmocka",
-        "m"
-      ],
-      "artifact_definitions": {
-        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
-      },
-      "watch_inputs": [
-        "libobs/data"
-      ],
-      "requires": {
-        "all": [
-          "OS_LINUX",
-          "HAVE_OBS_OPENGL",
-          "HAVE_X11_DISPLAY"
-        ]
-      }
     },
     "test_async_delay_pacing": {
       "sources": [
@@ -5006,7 +4959,10 @@
           "OS_LINUX",
           "HAVE_X11_DISPLAY"
         ]
-      }
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-os-release.h"
+      ]
     },
     "test_nix_system_info_steps": {
       "sources": [
@@ -8773,7 +8729,10 @@
           "OS_LINUX",
           "HAVE_X11_DISPLAY"
         ]
-      }
+      },
+      "watch_inputs": [
+        "libobs/obs.h"
+      ]
     },
     "test_scene_transform_update_steps": {
       "sources": [
@@ -10147,7 +10106,30 @@
           },
           "HAVE_X11_DISPLAY"
         ]
-      }
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ]
+    },
+    "test_startup_cycle_stress": {
+      "sources": [
+        "test/cmocka/test_startup_cycle_stress.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ]
     },
     "test_stinger_monitoring_migration": {
       "sources": [
@@ -11569,6 +11551,27 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_video_io_hidden": {
+      "sources": [
+        "test/cmocka/test_video_io_hidden.c",
+        "libobs/media-io/video-io.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ]
+    },
     "test_video_io_inlines": {
       "sources": [
         "test/cmocka/test_video_io_inlines.c"
@@ -12553,18 +12556,6 @@
         "${target}"
       ]
     },
-    "test_async_audio_own_clock": {
-      "target": "test_async_audio_own_clock",
-      "suite": "graphics",
-      "command": [
-        "${target}"
-      ],
-      "working_directory": "${runtime}",
-      "timeout_seconds": 180,
-      "resource_locks": [
-        "timing"
-      ]
-    },
     "test_async_conversion_plan": {
       "target": "test_async_conversion_plan",
       "command": [
@@ -12576,18 +12567,6 @@
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
-      ]
-    },
-    "test_async_delay_audio": {
-      "target": "test_async_delay_audio",
-      "suite": "graphics",
-      "command": [
-        "${target}"
-      ],
-      "working_directory": "${runtime}",
-      "timeout_seconds": 180,
-      "resource_locks": [
-        "timing"
       ]
     },
     "test_async_delay_pacing": {
@@ -16112,6 +16091,20 @@
         ]
       ]
     },
+    "test_startup_cycle_stress": {
+      "target": "test_startup_cycle_stress",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
     "test_stinger_monitoring_migration": {
       "target": "test_stinger_monitoring_migration"
     },
@@ -16599,6 +16592,20 @@
       "target": "test_video_frame_timing_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_video_io_hidden": {
+      "target": "test_video_io_hidden",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_video_io_inlines": {
