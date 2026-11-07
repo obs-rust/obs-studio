@@ -185,9 +185,24 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
             },
         )
         .unwrap();
+        // Static-link slices share the importer and can land independently.
+        // Keep the pre-existing core count independent of their graph entries.
+        let rust_static_tests = obs_build::validation::graph::Graph::load(
+            &root.join("test/cmocka/build/test-graph.json"),
+        )
+        .unwrap()
+        .targets
+        .values()
+        .filter(|target| {
+            target.libraries.iter().any(|library| {
+                matches!(library, obs_build::validation::graph::ConditionalValue::Name(name)
+                    if name == "libobs_rust-static")
+            })
+        })
+        .count();
         assert_eq!(
             executables.len(),
-            138 + usize::from(options.pulseaudio) - usize::from(!options.hevc)
+            137 + rust_static_tests + usize::from(options.pulseaudio) - usize::from(!options.hevc)
         );
         for name in ["test_scene_group_transform", "test_shader_sampler_convert"] {
             assert!(executables.iter().any(|test| test.name == name));

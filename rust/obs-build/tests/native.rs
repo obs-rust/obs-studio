@@ -5770,7 +5770,7 @@ fn canonical_xcomposite_decisions_are_registered() {
 /// #1390: the conversion table must exercise the production Rust archive.
 #[test]
 fn canonical_rust_static_conversion_is_registered() {
-    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
+    use obs_build::validation::graph::{Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_async_conversion_plan_rust";
@@ -5782,16 +5782,7 @@ fn canonical_rust_static_conversion_is_registered() {
         if path == "test/cmocka/test_async_conversion_plan.c"));
     assert_eq!(target.includes, ["libobs"]);
     assert_eq!(target.watch_inputs, ["libobs/obs-source-conversion-plan.h"]);
-    assert_eq!(target.libraries.len(), 3);
-    assert!(
-        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
-    );
-    assert!(
-        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
-    );
-    assert!(
-        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-    );
+    assert_rust_static_conversion_linkage(target);
     assert!(target.archives.is_empty());
     let test = &graph.tests[name];
     assert_eq!(test.target, name);
@@ -5822,6 +5813,20 @@ fn canonical_rust_static_conversion_is_registered() {
             assert_eq!(selected.tests.contains_key(name), available, "{os}");
         }
     }
+}
+
+fn assert_rust_static_conversion_linkage(target: &obs_build::validation::graph::Target) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement};
+    assert_eq!(target.libraries.len(), 3);
+    assert!(
+        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
+    );
+    assert!(
+        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
+    );
+    assert!(
+        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
+    );
 }
 
 /// #1390: both consumers must run the unchanged C suite against a real Rust archive.
@@ -5857,7 +5862,13 @@ fn canonical_rust_static_conversion_runs_unchanged() {
         profile: Default::default(),
     };
     let interfaces = [
-        ("m".into(), Dependency { link_options: vec!["-lm".into()], ..Default::default() }),
+        (
+            "m".into(),
+            Dependency {
+                link_options: vec!["-lm".into()],
+                ..Default::default()
+            },
+        ),
         (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
