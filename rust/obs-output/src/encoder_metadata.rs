@@ -6,8 +6,13 @@ fn read<T: Default>(
     function: &'static CStr,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) -> T {
-    let _ = (value, function, log);
-    todo!("#3878")
+    match value {
+        Some(value) => value,
+        None => {
+            log(function, c"encoder");
+            T::default()
+        }
+    }
 }
 
 pub fn codec<T: Default>(value: Option<T>, log: impl FnOnce(&'static CStr, &'static CStr)) -> T {

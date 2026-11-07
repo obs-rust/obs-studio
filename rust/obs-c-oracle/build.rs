@@ -586,6 +586,12 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-encoder-counter-fields.c.h")),
     )
     .expect("write encoder counter adapter extract");
+    // Reuse the production field adapter over the real private encoder layout.
+    std::fs::write(
+        extract_dir.join("encoder_metadata_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
+    )
+    .expect("write encoder metadata adapter extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
