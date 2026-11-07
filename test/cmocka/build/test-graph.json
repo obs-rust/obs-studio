@@ -3642,6 +3642,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_module_metadata": {
+      "sources": [
+        "test/cmocka/test_module_metadata.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    },
     "test_module_register_copy_steps": {
       "sources": [
         "test/cmocka/test_module_register_copy_steps.c",
@@ -10816,6 +10831,14 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_module_metadata": {
+      "target": "test_module_metadata",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_module_register_copy_steps": {
       "target": "test_module_register_copy_steps",
