@@ -290,6 +290,15 @@ fn canonical_vmic_helpers_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let names = ["test_mac_vmic_clock", "test_mac_vmic_install"];
+}
+
+/// #1390: the unchanged POSIX output helpers must reach both native consumers.
+#[test]
+fn canonical_posix_output_hosts_are_registered() {
+    use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let names = ["test_obs_ffmpeg_net_host", "test_obs_outputs_host"];
     for name in names {
         let target = graph
             .targets
