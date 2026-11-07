@@ -9452,6 +9452,126 @@
         }
       ]
     },
+    "test_wayland_keymap": {
+      "sources": [
+        "test/cmocka/test_wayland_keymap.c",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_multiseat": {
+      "sources": [
+        "test/cmocka/test_wayland_multiseat.c",
+        "libobs/obs-nix-wayland.c.h",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "Wayland::Server",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_SERVER_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_volume_keys": {
+      "sources": [
+        "test/cmocka/test_wayland_volume_keys.c",
+        "libobs/obs-nix-wayland.c.h",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    },
     "test_whip_host_os_name": {
       "sources": [
         "test/cmocka/test_whip_host_os_name.cpp"
@@ -13171,6 +13291,51 @@
       "resource_locks": [
         "timing"
       ]
+    },
+    "test_wayland_keymap": {
+      "target": "test_wayland_keymap",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_multiseat": {
+      "target": "test_wayland_multiseat",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_SERVER_TEST_SDK"
+        ]
+      }
+    },
+    "test_wayland_volume_keys": {
+      "target": "test_wayland_volume_keys",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
     },
     "test_whip_host_os_name": {
       "target": "test_whip_host_os_name",
