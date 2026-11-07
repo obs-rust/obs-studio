@@ -1,8 +1,8 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
-#[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
-mod canonical_v4l2_freetype_sdk_is_registered;
 #[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
 mod canonical_v4l2_capture_sdk_is_registered;
+#[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
+mod canonical_v4l2_freetype_sdk_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
@@ -2151,6 +2151,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
         ("HAVE_OBS_V4L2".into(), false),
         ("HAVE_V4L2_BUSY_SDK".into(), false),
+        ("HAVE_V4L2_CAPTURE_SDK".into(), false),
         ("HAVE_V4L2_UDEV_SDK".into(), false),
         ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
