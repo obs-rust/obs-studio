@@ -25,6 +25,7 @@ mod module_load_rules_parity;
 mod module_load_rules_skip;
 mod module_locale;
 mod module_locale_parity;
+mod module_metadata;
 mod module_names;
 mod module_names_parity;
 mod module_paths;
