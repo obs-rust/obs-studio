@@ -9,17 +9,34 @@ fn canonical_vaapi_device_select_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_vaapi_device_select";
-    let target = graph.targets.get(name).expect("canonical graph omits test_vaapi_device_select");
-    let sources: Vec<_> = target.sources.iter().map(|source| match source {
-        Source::Path(path) => path.as_str(),
-        _ => panic!("VAAPI fallback sources must be unconditional"),
-    }).collect();
-    assert_eq!(sources, ["test/cmocka/test_vaapi_device_select.c", "plugins/obs-ffmpeg/vaapi-device-select.c.h"]);
+    let target = graph
+        .targets
+        .get(name)
+        .expect("canonical graph omits test_vaapi_device_select");
+    let sources: Vec<_> = target
+        .sources
+        .iter()
+        .map(|source| match source {
+            Source::Path(path) => path.as_str(),
+            _ => panic!("VAAPI fallback sources must be unconditional"),
+        })
+        .collect();
+    assert_eq!(
+        sources,
+        [
+            "test/cmocka/test_vaapi_device_select.c",
+            "plugins/obs-ffmpeg/vaapi-device-select.c.h"
+        ]
+    );
     assert_eq!(target.includes, ["plugins/obs-ffmpeg"]);
-    let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-        ConditionalValue::Name(name) => name.as_str(),
-        _ => panic!("VAAPI fallback linkage must be unconditional"),
-    }).collect();
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("VAAPI fallback linkage must be unconditional"),
+        })
+        .collect();
     assert_eq!(libraries, ["OBS::native-test-cmocka"]);
     assert!(target.header_libraries.is_empty());
     let test = &graph.tests[name];
@@ -30,13 +47,24 @@ fn canonical_vaapi_device_select_is_registered() {
     assert_eq!(test.skip_return_code, None);
     assert!(test.optional_prefixes.is_empty());
     assert!(test.resource_locks.is_empty());
-    let fragment = fs::read_to_string(root.join("test/cmocka/tests.d/test_vaapi_device_select.cmake")).unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/test_vaapi_device_select.cmake"))
+            .unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
-    for os in ["OS_LINUX", "OS_FREEBSD", "OS_OPENBSD", "OS_MACOS", "OS_WINDOWS", "OS_OTHER"] {
-        let facts = ["OS_LINUX", "OS_FREEBSD", "OS_OPENBSD"].map(|fact| (fact.into(), fact == os)).into();
+    for os in [
+        "OS_LINUX",
+        "OS_FREEBSD",
+        "OS_OPENBSD",
+        "OS_MACOS",
+        "OS_WINDOWS",
+        "OS_OTHER",
+    ] {
+        let facts = ["OS_LINUX", "OS_FREEBSD", "OS_OPENBSD"]
+            .map(|fact| (fact.into(), fact == os))
+            .into();
         let selected = graph.select(&facts).unwrap();
         let enabled = matches!(os, "OS_LINUX" | "OS_FREEBSD" | "OS_OPENBSD");
         assert_eq!(selected.targets.contains_key(name), enabled, "{os}");
@@ -2099,6 +2127,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in [
+        "test_vaapi_device_select",
         "test_caption_unmappable",
         "test_xcomposite_presence",
         "test_xcomposite_search_backoff",
@@ -2136,10 +2165,17 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         },
     )])
     .collect();
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let facts = [
+        ("MSVC".into(), build.target.contains("msvc")),
+        ("OS_LINUX".into(), build.target.contains("linux")),
+        ("OS_FREEBSD".into(), build.target.contains("freebsd")),
+        ("OS_OPENBSD".into(), build.target.contains("openbsd")),
+    ]
+    .into();
+    let selection = graph.select(&facts).unwrap();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 8);
-    for (name, test) in &graph.tests {
+    assert_eq!(artifacts.len(), selection.targets.len());
+    for (name, test) in &selection.tests {
         let result = test
             .command(&root, &build.output, &artifacts[&test.target])
             .unwrap()
@@ -2157,7 +2193,10 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
     fs::write(
         directory.path().join("CMakeLists.txt"),
         format!(
-            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+            "cmake_minimum_required(VERSION 3.28)\nproject(frontend-utility-contract C)\nif(NOT DEFINED OS_LINUX)\nset(OS_LINUX {})\nendif()\nif(NOT DEFINED OS_FREEBSD)\nset(OS_FREEBSD {})\nendif()\nif(NOT DEFINED OS_OPENBSD)\nset(OS_OPENBSD {})\nendif()\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nenable_testing()\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_subdirectory(\"{source}/deps/libcaption\" caption)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n",
+            u8::from(facts["OS_LINUX"]),
+            u8::from(facts["OS_FREEBSD"]),
+            u8::from(facts["OS_OPENBSD"]),
         ),
     )
     .unwrap();
@@ -2223,7 +2262,7 @@ fn canonical_caption_and_frontend_utility_tests_run_unchanged() {
         .iter()
         .map(|test| test["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
+    assert_eq!(names, selection.tests.keys().copied().collect());
     for name in ["test_xcomposite_presence", "test_xcomposite_search_backoff"] {
         let test = inventory["tests"]
             .as_array()
@@ -3779,6 +3818,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("MSVC".into(), true),
         ("ENABLE_HEVC".into(), false),
         ("OS_FREEBSD".into(), false),
+        ("OS_OPENBSD".into(), false),
         ("OS_WINDOWS".into(), true),
         ("OS_MACOS".into(), false),
         ("HAVE_OBS_OPENGL".into(), false),

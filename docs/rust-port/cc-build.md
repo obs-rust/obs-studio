@@ -903,9 +903,12 @@ retaining its vendored libcaption and cmocka dependencies without needing libobs
 The display-free XComposite presence and search-backoff decision suites retain
 unconditional cmocka linkage, helper-header tracking and 30-second timeouts.
 `canonical_caption_and_frontend_utility_tests_run_unchanged` compiles and runs
-all eight original C tests through both the Cargo and CMake consumers and compares
-the evaluated CTest inventory. Native macOS and Windows Rust lanes run this contract
-alongside the existing remux contract; it proves these standalone helpers, not
+the original C tests through both the Cargo and CMake consumers and compares
+the evaluated CTest inventory. It also runs the seven unchanged VAAPI device
+fallback cases on Linux, FreeBSD and OpenBSD, preserving their OS guard and
+cmocka-only linkage without a GPU or display. The guard is checked for selection;
+local runtime evidence for this addition is Linux with GCC and Clang. Native
+macOS and Windows Rust lanes run this contract alongside the existing remux contract; it proves these standalone helpers, not
 full frontend/application parity (#1390).
 
 The QtCore-only frontend API dispatch test is also in the shared Qt suite.

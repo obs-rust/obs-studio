@@ -6776,6 +6776,25 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_vaapi_device_select": {
+      "sources": [
+        "test/cmocka/test_vaapi_device_select.c",
+        "plugins/obs-ffmpeg/vaapi-device-select.c.h"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      },
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_vaapi_open_fd_leak": {
       "sources": [
         "test/cmocka/test_vaapi_open_fd_leak.c",
@@ -10215,6 +10234,16 @@
     },
     "test_util_uint64": {
       "target": "test_util_uint64"
+    },
+    "test_vaapi_device_select": {
+      "target": "test_vaapi_device_select",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      }
     },
     "test_vaapi_open_fd_leak": {
       "target": "test_vaapi_open_fd_leak",
