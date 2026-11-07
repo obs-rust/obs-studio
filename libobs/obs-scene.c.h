@@ -3072,7 +3072,6 @@ void obs_sceneitem_set_crop(obs_sceneitem_t *item, const struct obs_sceneitem_cr
 	os_atomic_set_bool(&item->update_transform, true);
 }
 
-
 void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type filter)
 {
 	if (!obs_ptr_valid(item, "obs_sceneitem_set_scale_filter"))
