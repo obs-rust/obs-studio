@@ -23,7 +23,11 @@ fn assert_cases(output: &std::process::Output, name: &str) {
     );
     assert!(!text.to_ascii_lowercase().contains("skipped"), "{text}");
     if name == "test_obs_outputs_rtmp_host" {
-        assert_eq!(text.matches("[  PASSED  ] 12 test(s).").count(), 1, "{text}");
+        assert_eq!(
+            text.matches("[  PASSED  ] 12 test(s).").count(),
+            1,
+            "{text}"
+        );
     }
     eprintln!("{text}");
 }
@@ -65,17 +69,32 @@ fn canonical_plugin_getters_run_unchanged() {
         ),
     ]
     .into();
+    interfaces.insert(
+        "m".into(),
+        Dependency {
+            link_options: vec!["-lm".into()],
+            ..Default::default()
+        },
+    );
     add_x11_interfaces(&build, &root, &mut interfaces);
-    interfaces.insert("MbedTLS::mbedtls".into(), Dependency {
-        libraries: vec!["mbedtls".into(), "mbedx509".into(), "mbedcrypto".into()],
-        ..Default::default()
-    });
+    interfaces.insert(
+        "MbedTLS::mbedtls".into(),
+        Dependency {
+            link_options: vec![
+                "-lmbedtls".into(),
+                "-lmbedx509".into(),
+                "-lmbedcrypto".into(),
+            ],
+            ..Default::default()
+        },
+    );
     let facts = [
         ("OS_WINDOWS".into(), false),
         ("OS_LINUX".into(), true),
         ("HAVE_PLUGIN_GETTER_OWNERS".into(), true),
         ("HAVE_MBEDTLS_TEST_SDK".into(), true),
-    ].into();
+    ]
+    .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), CASES.len());
     // Require every unchanged cmocka case without skips.

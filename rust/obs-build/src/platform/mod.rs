@@ -923,6 +923,8 @@ pub fn native_test_facts(
         ("HAVE_FREETYPE_FILE_SDK".into(), false),
         // The compatibility builder does not build the Linux capture plugin.
         ("HAVE_LINUX_CAPTURE".into(), false),
+        ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
+        ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("MSVC".into(), target.contains("msvc")),
     ])
 }
