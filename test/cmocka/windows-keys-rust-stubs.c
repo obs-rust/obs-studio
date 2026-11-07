@@ -26,6 +26,12 @@ void base_log_literal(log_handler_t handler, void *param, int level, const char 
 	abort();
 }
 
+struct obs_hotkey_object_fields obs_hotkey_object_fields(const obs_hotkey_t *key)
+{
+	(void)key;
+	abort();
+}
+
 struct obs_hotkey_binding_fields obs_hotkey_binding_fields(obs_hotkey_binding_t *binding)
 {
 	(void)binding;

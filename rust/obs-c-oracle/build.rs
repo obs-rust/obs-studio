@@ -607,6 +607,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
     )
     .expect("write canvas field adapter extract");
+    std::fs::write(
+        extract_dir.join("hotkey_object_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-hotkey-object-fields.c.h")),
+    )
+    .expect("write hotkey field adapter extract");
     oracle.include(&extract_dir);
 
     oracle

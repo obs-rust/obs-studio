@@ -3161,6 +3161,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_object_getters": {
+      "sources": [
+        "test/cmocka/test_hotkey_object_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_pair_latch": {
       "sources": [
         "test/cmocka/test_hotkey_pair_latch.c"
@@ -11107,6 +11122,13 @@
     },
     "test_hotkey_numpad_host": {
       "target": "test_hotkey_numpad_host"
+    },
+    "test_hotkey_object_getters": {
+      "target": "test_hotkey_object_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_hotkey_pair_latch": {
       "target": "test_hotkey_pair_latch",
