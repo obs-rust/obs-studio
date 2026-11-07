@@ -5271,7 +5271,10 @@ fn assert_source_getter_link_support(
     use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
     let support = !base.starts_with("test_scene_");
     let mut sources = Vec::new();
-    if matches!(base, "test_scene_audio_window_steps" | "test_scene_render_plan_steps") {
+    if matches!(
+        base,
+        "test_scene_audio_window_steps" | "test_scene_render_plan_steps"
+    ) {
         sources.push("test/cmocka/scene-getter-log-link-stub.c".into());
     }
     sources.push(format!("test/cmocka/{base}.c"));
