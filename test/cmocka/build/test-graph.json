@@ -803,6 +803,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_canvas_flags_getter": {
+      "sources": [
+        "test/cmocka/test_canvas_flags_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_canvas_readonly_getters": {
       "sources": [
         "test/cmocka/test_canvas_readonly_getters.c"
@@ -11390,6 +11405,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_canvas_flags_getter": {
+      "target": "test_canvas_flags_getter",
+      "command": [
+        "${target}"
       ]
     },
     "test_canvas_readonly_getters": {
