@@ -48,6 +48,8 @@ mod canonical_hotkey_pair_latch_is_registered;
 mod canonical_libobs_go2_is_registered;
 #[path = "native/registration/canonical_libobs_go3_is_registered.rs"]
 mod canonical_libobs_go3_is_registered;
+#[path = "native/registration/canonical_libobs_go4_is_registered.rs"]
+mod canonical_libobs_go4_is_registered;
 #[path = "native/registration/canonical_libobs_go_is_registered.rs"]
 mod canonical_libobs_go_is_registered;
 #[path = "native/registration/canonical_missing_files_list_is_registered.rs"]
