@@ -607,6 +607,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-readonly-fields.c.h")),
     )
     .expect("write canvas field adapter extract");
+    std::fs::write(
+        extract_dir.join("encoder_last_error_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-encoder-last-error-fields.c.h")),
+    )
+    .expect("write encoder last-error field adapter extract");
     oracle.include(&extract_dir);
 
     oracle
