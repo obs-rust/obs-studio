@@ -3,7 +3,7 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-audio.c.h"
-#include "libobs/obs-encoder-audio-getters.c.h"
+#include "libobs/obs-encoder-audio-getters-fields.c.h"
 #include "libobs/obs-encoder-counter-fields.c.h"
 #include "libobs/obs-encoder-dimensions-fields.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
