@@ -13,6 +13,7 @@ mod encoder_audio_start_frames_parity;
 mod encoder_audio_start_parity;
 mod encoder_bind;
 mod encoder_bind_parity;
+mod encoder_frame_rate_divisor;
 mod encoder_counters;
 mod encoder_counters_parity;
 mod encoder_dimensions;
