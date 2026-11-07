@@ -1424,11 +1424,6 @@ void obs_set_locale(const char *locale)
 	}
 }
 
-const char *obs_get_locale(void)
-{
-	return obs->locale;
-}
-
 /* A video mix freed by obs_reset_video(), and the canvas that owned it. */
 struct freed_video {
 	video_t *video;
@@ -2354,16 +2349,6 @@ gs_effect_t *obs_get_base_effect(enum obs_base_effect effect)
 	}
 
 	return NULL;
-}
-
-signal_handler_t *obs_get_signal_handler(void)
-{
-	return obs->signals;
-}
-
-proc_handler_t *obs_get_proc_handler(void)
-{
-	return obs->procs;
 }
 
 static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_blend_type src_c,
