@@ -1,0 +1,3 @@
+# Internal weak-control primitives; public export sets are unchanged.
+obs_weak_service_weak_get_ref
+obs_weak_service_target

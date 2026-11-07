@@ -260,16 +260,6 @@ bool obs_weak_service_weak_release(obs_weak_service_t *weak)
 	return obs_weak_ref_release(&weak->ref);
 }
 
-bool obs_weak_service_weak_get_ref(obs_weak_service_t *weak)
-{
-	return obs_weak_ref_get_ref(&weak->ref);
-}
-
-obs_service_t *obs_weak_service_target(const obs_weak_service_t *weak)
-{
-	return weak->service;
-}
-
 void obs_weak_service_free(obs_weak_service_t *weak)
 {
 	trace_ev("weak_free", weak->service);
