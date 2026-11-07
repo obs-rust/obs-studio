@@ -133,12 +133,11 @@ ZCCACHE_RESET = (
 # others; in Tier 2, ctest only keeps them from overlapping each other.
 TIMING_TESTS_D = (
     "test_async_delay_audio",
-    "test_dock_proportions",
     "test_media_cover_art_monitor",
     "test_media_sync_offset_restart",
     "test_slideshow_mem_cap",
 )
-TIMING_TESTS_GRAPH = ("test_deinterlace_mode_load", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker")
+TIMING_TESTS_GRAPH = ("test_dock_proportions", "test_deinterlace_mode_load", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker")
 TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 
 

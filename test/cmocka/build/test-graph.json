@@ -1048,6 +1048,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_dock_proportions": {
+      "sources": [
+        "test/cmocka/test_dock_proportions.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_WIDGETS",
+          "HAVE_QT6_TEST"
+        ]
+      },
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/dock-proportions.hpp"
+      ]
+    },
     "test_dshow_rotation": {
       "sources": [
         "test/cmocka/test_dshow_rotation.c"
@@ -7896,6 +7919,15 @@
       "target": "test_disk_space_monitor",
       "command": [
         "${target}"
+      ]
+    },
+    "test_dock_proportions": {
+      "target": "test_dock_proportions",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
       ]
     },
     "test_dshow_rotation": {
