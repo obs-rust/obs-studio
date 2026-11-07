@@ -1,0 +1,2 @@
+obs_hotkey_get_id
+obs_hotkey_get_name

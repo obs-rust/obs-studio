@@ -27,7 +27,12 @@
 # exported on every host, and the shims carry no host code, so one set of stubs
 # serves all three.
 if(TARGET libobs_rust-static)
-  add_executable(test_windows_keys_steps_rust test_windows_keys_steps.c windows-keys-rust-stubs.c)
+  add_executable(
+    test_windows_keys_steps_rust
+    test_windows_keys_steps.c
+    windows-keys-rust-stubs.c
+    hotkey-identity-rust-stubs.c
+  )
   target_include_directories(
     test_windows_keys_steps_rust
     PRIVATE

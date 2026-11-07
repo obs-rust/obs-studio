@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-binding-press.pch.h"
 
 obs_hotkey_id obs_hotkey_get_id(const obs_hotkey_t *key)
 {
