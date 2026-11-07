@@ -183,16 +183,6 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_hotkey_binding_get_hotkey_id() -> ! {
-        called("obs_hotkey_binding_get_hotkey_id")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn obs_hotkey_binding_get_key_combination() -> ! {
-        called("obs_hotkey_binding_get_key_combination")
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn obs_hotkey_get_id() -> ! {
         called("obs_hotkey_get_id")
     }

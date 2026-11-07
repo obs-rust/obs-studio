@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-binding-press.pch.h"
 
 obs_key_combination_t obs_hotkey_binding_get_key_combination(obs_hotkey_binding_t *binding)
 {
@@ -31,4 +31,3 @@ obs_hotkey_t *obs_hotkey_binding_get_hotkey(obs_hotkey_binding_t *binding)
 {
 	return binding->hotkey;
 }
-

@@ -3,14 +3,14 @@
 use crate::nix_hotkey_state::KeyCombination;
 
 /// Copy the stored combination, preserving all modifier bits.
-pub fn key_combination(_value: &KeyCombination) -> KeyCombination {
-    todo!()
+pub fn key_combination(value: &KeyCombination) -> KeyCombination {
+    *value
 }
 /// Read the binding's own ID independently of its hotkey.
-pub fn hotkey_id(_value: &usize) -> usize {
-    todo!()
+pub fn hotkey_id(value: &usize) -> usize {
+    *value
 }
 /// Return the stored handle without dereferencing or retaining it.
-pub fn hotkey<H: Copy>(_value: &H) -> H {
-    todo!()
+pub fn hotkey<H: Copy>(value: &H) -> H {
+    *value
 }
