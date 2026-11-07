@@ -3711,6 +3711,22 @@
         "plugins/obs-outputs/utils.h"
       ]
     },
+    "test_obs_outputs_net_if_host": {
+      "sources": [
+        "test/cmocka/test_obs_outputs_net_if_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        ".",
+        "plugins/obs-outputs/hosts/posix"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_obs_properties": {
       "sources": [
         "test/cmocka/test_obs_properties.c"
@@ -9771,6 +9787,13 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_obs_outputs_net_if_host": {
+      "target": "test_obs_outputs_net_if_host",
+      "suite": "core",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
     },
     "test_obs_properties": {
       "target": "test_obs_properties",
