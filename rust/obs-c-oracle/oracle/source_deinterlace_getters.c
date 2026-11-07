@@ -11,8 +11,8 @@
 #undef obs_source_get_deinterlace_field_order
 #include "source_deinterlace_fields.inc"
 
-extern enum obs_deinterlace_mode obs_source_get_deinterlace_mode(const obs_source_t *source);
-extern enum obs_deinterlace_field_order obs_source_get_deinterlace_field_order(const obs_source_t *source);
+typedef enum obs_deinterlace_mode (*mode_getter)(const obs_source_t *source);
+typedef enum obs_deinterlace_field_order (*order_getter)(const obs_source_t *source);
 
 void oracle_source_deinterlace_layout(size_t *layout);
 void oracle_source_deinterlace_layout(size_t *layout)
@@ -79,20 +79,18 @@ static void deinterlace_capture(int level, const char *format, va_list args, voi
 	vsnprintf(log->message, sizeof(log->message), format, args);
 }
 
-bool oracle_source_deinterlace_null_log(bool rust);
-bool oracle_source_deinterlace_null_log(bool rust)
+bool oracle_source_deinterlace_null_log(mode_getter get_mode, order_getter get_order);
+bool oracle_source_deinterlace_null_log(mode_getter get_mode, order_getter get_order)
 {
 	struct deinterlace_log log = {0};
 	log_handler_t old_handler;
 	void *old_param;
 	base_get_log_handler(&old_handler, &old_param);
 	base_set_log_handler(deinterlace_capture, &log);
-	enum obs_deinterlace_mode mode = rust ? obs_source_get_deinterlace_mode(NULL)
-					      : oracle_obs_source_get_deinterlace_mode(NULL);
+	enum obs_deinterlace_mode mode = get_mode(NULL);
 	bool mode_ok = mode == OBS_DEINTERLACE_MODE_DISABLE && log.count == 1 && log.level == LOG_DEBUG &&
 		       strcmp(log.message, "obs_source_set_deinterlace_mode: Null 'source' parameter") == 0;
-	enum obs_deinterlace_field_order order = rust ? obs_source_get_deinterlace_field_order(NULL)
-						      : oracle_obs_source_get_deinterlace_field_order(NULL);
+	enum obs_deinterlace_field_order order = get_order(NULL);
 	base_set_log_handler(old_handler, old_param);
 	return mode_ok && order == OBS_DEINTERLACE_FIELD_ORDER_TOP && log.count == 2 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_source_set_deinterlace_field_order: Null 'source' parameter") == 0;

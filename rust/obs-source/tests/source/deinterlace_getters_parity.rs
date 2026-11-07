@@ -11,7 +11,10 @@ unsafe extern "C" {
     fn oracle_source_deinterlace_unchanged(source: *const c_void) -> bool;
     fn oracle_obs_source_get_deinterlace_mode(source: *const c_void) -> u32;
     fn oracle_obs_source_get_deinterlace_field_order(source: *const c_void) -> u32;
-    fn oracle_source_deinterlace_null_log(rust: bool) -> bool;
+    fn oracle_source_deinterlace_null_log(
+        mode: unsafe extern "C" fn(*const c_void) -> u32,
+        order: unsafe extern "C" fn(*const c_void) -> u32,
+    ) -> bool;
 }
 
 #[test]
@@ -88,8 +91,14 @@ fn null_defaults_and_historical_logs() {
     }
     // SAFETY: the isolated probes save and restore the process-global logger.
     unsafe {
-        assert!(oracle_source_deinterlace_null_log(false));
-        assert!(oracle_source_deinterlace_null_log(true));
+        assert!(oracle_source_deinterlace_null_log(
+            oracle_obs_source_get_deinterlace_mode,
+            oracle_obs_source_get_deinterlace_field_order
+        ));
+        assert!(oracle_source_deinterlace_null_log(
+            rust::obs_source_get_deinterlace_mode,
+            rust::obs_source_get_deinterlace_field_order
+        ));
     }
 }
 
