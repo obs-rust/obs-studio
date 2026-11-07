@@ -162,12 +162,17 @@ endif()
 }
 
 fn has_skipped_cases(text: &str) -> bool {
-    text.to_ascii_lowercase().contains("skipped")
+    let text = text.to_ascii_lowercase();
+    ["skipped ]", "skipped test", "skipped:", "skipping"]
+        .iter()
+        .any(|marker| text.contains(marker))
 }
 
 #[test]
 fn canonical_display_startup_skip_detection() {
-    assert!(!has_skipped_cases("info: Video stopped, number of skipped frames due to encoding lag: 1/1 (100.0%)\n[  PASSED  ] 4 test(s)."));
+    assert!(!has_skipped_cases(
+        "info: Video stopped, number of skipped frames due to encoding lag: 1/1 (100.0%)\n[  PASSED  ] 4 test(s)."
+    ));
     for output in [
         "[  SKIPPED ] test_startup_shutdown_cycles",
         "1 SKIPPED TEST(S)",
