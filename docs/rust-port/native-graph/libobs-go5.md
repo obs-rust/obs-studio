@@ -47,7 +47,9 @@ No simde pkg-config package is required by the fixture.
 Focused graph-slice, sorted-list, sanitizer-harness and nextest-budget guards
 pass (`local-test-tR097H.log`). Scoped Application/obs-build Clippy and the
 whole-graph legacy replacement check are recorded in the worker response.
-Rustfmt and `git diff --check` pass.
+Rustfmt and `git diff --check` pass. One read-only review found missing
+plugin-header invalidation inputs for the network-interface executable; these
+are now explicit `watch_inputs`, covered by its registration assertion.
 
 Test cost: both registration checks over 25 reduced debug runs, longest 0.040594 s, peak child RSS 11576 KiB; no test-owned threads.
 

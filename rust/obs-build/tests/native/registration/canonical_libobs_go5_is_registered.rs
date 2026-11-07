@@ -59,7 +59,8 @@ fn canonical_libobs_go5_net_if_is_registered() {
             "sources": ["test/cmocka/test_obs_outputs_net_if_host.c"],
             "requires": {"not": "OS_WINDOWS"},
             "includes": [".", "plugins/obs-outputs/hosts/posix"],
-            "libraries": ["OBS::libobs", "OBS::native-test-cmocka"]
+            "libraries": ["OBS::libobs", "OBS::native-test-cmocka"],
+            "watch_inputs": ["plugins/obs-outputs/build/obs-outputs-net-if-host-posix.pch.h", "plugins/obs-outputs/build/obs-outputs-net-if.pch.h", "plugins/obs-outputs/hosts/posix/net-if-os.h", "plugins/obs-outputs/net-if-host-posix.c.h", "plugins/obs-outputs/net-if-host.h", "plugins/obs-outputs/net-if.c.h", "plugins/obs-outputs/net-if.h"]
         })
     );
     assert_eq!(
