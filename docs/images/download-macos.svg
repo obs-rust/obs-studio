@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="221" height="44" role="img" aria-label="Download OBS-Studio-Rust for macOS">
+  <title>Download OBS-Studio-Rust for macOS</title>
+  <defs>
+    <filter id="shb" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0" flood-color="#010101" flood-opacity=".30"/>
+    </filter>
+  </defs>
+  <linearGradient id="gb" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".10"/>
+    <stop offset="1" stop-opacity=".10"/>
+  </linearGradient>
+  <clipPath id="cb">
+    <rect width="221" height="44" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#cb)">
+    <rect width="100" height="44" fill="#555555"/>
+    <rect x="100" width="221" height="44" fill="#8957e5"/>
+    <rect width="221" height="44" fill="url(#gb)"/>
+  </g>
+  <g filter="url(#shb)">
+  <text x="50.0" y="26.6" font-family="Verdana, 'DejaVu Sans', Geneva, sans-serif"
+        font-size="11" font-weight="600" letter-spacing="1.0" fill="#ffffff"
+        text-anchor="middle">DOWNLOAD</text>
+  <g transform="translate(124.0 22.0)">
+    <g transform="scale(0.70) translate(0.8 -1.2)" fill="#ffffff">
+      <path d="M2.4-10.6c1.1-1.3 1.8-3.1 1.6-4.9-1.5.1-3.3 1-4.2 2.2-.9 1.1-1.7 2.9-1.4 4.6 1.6.1 3.1-.8 4-1.9z"/>
+      <path d="M4-1.4c-.1-2.8 2.3-4.2 2.4-4.3-1.3-1.9-3.4-2.2-4.1-2.3-1.7-.2-3.4 1-4.3 1-.9 0-2.3-1-3.8-.9-1.9.1-3.7 1.2-4.7 3-2 3.5-.5 8.7 1.4 11.5.9 1.3 2 2.8 3.5 2.8 1.4-.1 1.9-.9 3.6-.9s2.2.9 3.7.9c1.5 0 2.5-1.4 3.4-2.7 1.1-1.5 1.5-3 1.6-3.1-.1 0-3-1.2-3.1-4.3z"/>
+    </g>
+  </g>
+  <text x="207.0" y="26.6" font-family="Verdana, 'DejaVu Sans', Geneva, sans-serif"
+        font-size="13" font-weight="700" letter-spacing="0.8" fill="#ffffff"
+        text-anchor="end" text-rendering="geometricPrecision">MACOS</text>
+  </g>
+</svg>

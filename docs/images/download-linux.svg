@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="212" height="44" role="img" aria-label="Download OBS-Studio-Rust for Linux">
+  <title>Download OBS-Studio-Rust for Linux</title>
+  <defs>
+    <filter id="shc" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0" flood-color="#010101" flood-opacity=".30"/>
+    </filter>
+  </defs>
+  <linearGradient id="gc" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".10"/>
+    <stop offset="1" stop-opacity=".10"/>
+  </linearGradient>
+  <clipPath id="cc">
+    <rect width="212" height="44" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#cc)">
+    <rect width="100" height="44" fill="#555555"/>
+    <rect x="100" width="212" height="44" fill="#bc4c00"/>
+    <rect width="212" height="44" fill="url(#gc)"/>
+  </g>
+  <g filter="url(#shc)">
+  <text x="50.0" y="26.6" font-family="Verdana, 'DejaVu Sans', Geneva, sans-serif"
+        font-size="11" font-weight="600" letter-spacing="1.0" fill="#ffffff"
+        text-anchor="middle">DOWNLOAD</text>
+  <g transform="translate(124.0 22.0)">
+    <g transform="scale(0.80) translate(0 -1.2)">
+      <ellipse cx="-9.6" cy="-0.6" rx="2.6" ry="6.2" fill="#ffffff"/>
+      <ellipse cx="9.6" cy="-0.6" rx="2.6" ry="6.2" fill="#ffffff"/>
+      <ellipse cx="0" cy="1.4" rx="9.4" ry="11.6" fill="#ffffff"/>
+      <circle cx="-3.4" cy="-1.6" r="2.2" fill="#1b1f23"/>
+      <circle cx="3.4" cy="-1.6" r="2.2" fill="#1b1f23"/>
+      <path d="M-2.5 3.4h5.0l-2.5 3.5z" fill="#1b1f23"/>
+    </g>
+  </g>
+  <text x="198.5" y="26.6" font-family="Verdana, 'DejaVu Sans', Geneva, sans-serif"
+        font-size="13" font-weight="700" letter-spacing="0.8" fill="#ffffff"
+        text-anchor="end" text-rendering="geometricPrecision">LINUX</text>
+  </g>
+</svg>
