@@ -161,7 +161,7 @@ endif()
     );
 }
 
-fn has_skipped_cases(text: &str) -> bool {
+pub(super) fn has_skipped_cases(text: &str) -> bool {
     let text = text.to_ascii_lowercase();
     ["skipped ]", "skipped test", "skipped:", "skipping"]
         .iter()
