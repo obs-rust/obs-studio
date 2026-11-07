@@ -1974,6 +1974,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_OPENGL".into(), false),
         ("HAVE_VLC_MODULE".into(), false),
         ("HAVE_OBS_OUTPUTS".into(), false),
+        ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),

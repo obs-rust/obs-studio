@@ -2499,6 +2499,24 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_happy_eyeballs": {
+      "sources": [
+        "test/cmocka/test_happy_eyeballs.c"
+      ],
+      "requires": "HAVE_HAPPY_EYEBALLS",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "shared/happy-eyeballs"
+      ]
+    },
     "test_happy_eyeballs_cloexec": {
       "sources": [
         "test/cmocka/test_happy_eyeballs_cloexec.c"
@@ -2515,6 +2533,24 @@
         "OBS::libobs",
         "OBS::happy-eyeballs",
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "shared/happy-eyeballs"
+      ]
+    },
+    "test_happy_eyeballs_gai_error": {
+      "sources": [
+        "test/cmocka/test_happy_eyeballs_gai_error.c"
+      ],
+      "requires": "HAVE_HAPPY_EYEBALLS",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::happy-eyeballs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "watch_inputs": [
         "shared/happy-eyeballs"
@@ -9218,12 +9254,22 @@
       ],
       "optional_prefixes_requires": "OS_LINUX"
     },
+    "test_happy_eyeballs": {
+      "target": "test_happy_eyeballs",
+      "suite": "core",
+      "requires": "HAVE_HAPPY_EYEBALLS"
+    },
     "test_happy_eyeballs_cloexec": {
       "target": "test_happy_eyeballs_cloexec",
       "command": [
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_happy_eyeballs_gai_error": {
+      "target": "test_happy_eyeballs_gai_error",
+      "suite": "core",
+      "requires": "HAVE_HAPPY_EYEBALLS"
     },
     "test_hevc": {
       "target": "test_hevc"
