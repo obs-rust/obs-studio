@@ -51,13 +51,6 @@ static inline bool gs_valid(const char *f)
 	return true;
 }
 
-/* Private field seam: validation and its logging stay with context ownership. */
-bool *obs_graphics_linear_srgb_field(const char *function);
-bool *obs_graphics_linear_srgb_field(const char *function)
-{
-	return gs_valid(function) ? &thread_graphics->linear_srgb : NULL;
-}
-
 #define ptr_valid(ptr, func) gs_obj_valid(ptr, func, #ptr)
 
 #define gs_valid_p(func, param1) (gs_valid(func) && ptr_valid(param1, func))
