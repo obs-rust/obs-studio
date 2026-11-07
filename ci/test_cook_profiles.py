@@ -43,6 +43,9 @@ class CookProfilesTest(unittest.TestCase):
             # build/cargo-native-* and Corrosion: no cook (#3034).
             "rust-tier2-macos": None,
             "rust-tier2-windows": None,
+            # Compile-only C/C++ lane; the opt-in Rust link uses a cross
+            # release tree, never the host dev cook (#3767).
+            "cross-compile": None,
         }
         workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
         for name, flags in expected.items():
@@ -50,6 +53,7 @@ class CookProfilesTest(unittest.TestCase):
                 if flags is None:
                     self.assertIn("prebuild-deps: none", workflow[name])
                     self.assertNotIn("prebuild-deps-flags", workflow[name])
+                    self.assertIn("cargo-registry-cache: true", workflow[name])
                     continue
                 self.assertIn("prebuild-deps-flags: " + flags, workflow[name])
                 self.assertNotIn("prebuild-deps: none", workflow[name])

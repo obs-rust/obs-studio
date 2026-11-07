@@ -22,7 +22,7 @@ class RustCachePolicyTest(unittest.TestCase):
                                      "Do not transfer an embedded store while its Rust consumer is bypassed")
                     self.assertNotRegex(step, r"(?m)^          cache: false$",
                                         "Preserve the other cache layers")
-                    if "(#3027)" in step or "(#3034)" in step:
+                    if any(issue in step for issue in ("(#3027)", "(#3034)", "(#3767)")):
                         # Tier 2 builds Rust only through Corrosion and
                         # --target-dir build trees: a cook there is never reused.
                         cook_free += 1
@@ -31,7 +31,7 @@ class RustCachePolicyTest(unittest.TestCase):
                     self.assertIn("prebuild-deps-flags:", step)
                     self.assertNotIn("prebuild-deps: none", step)
         self.assertEqual(found, 12, "Audit new setup-soldr consumers explicitly")
-        self.assertEqual(cook_free, 3, "Audit each consumer that skips cook explicitly")
+        self.assertEqual(cook_free, 4, "Audit each consumer that skips cook explicitly")
 
     def test_all_consumers_inherit_the_rust_wrapper_bypass(self):
         for name in WORKFLOWS:
