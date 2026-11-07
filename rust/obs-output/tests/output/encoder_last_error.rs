@@ -22,7 +22,8 @@ fn borrowed_independent_messages() {
             (None, None) => {}
             _ => panic!("stored message changed"),
         }
-        let other_result: &[u8] = message(Some(other), || panic!("independent encoder must be silent"));
+        let other_result: &[u8] =
+            message(Some(other), || panic!("independent encoder must be silent"));
         assert!(std::ptr::eq(other_result, other));
         assert_eq!(values, before);
     }

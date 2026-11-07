@@ -20,6 +20,7 @@ mod encoder_gpu_rescale_parity;
 mod encoder_group_reconfig;
 mod encoder_group_reconfig_parity;
 mod encoder_last_error;
+mod encoder_last_error_parity;
 mod encoder_lifecycle;
 mod encoder_lifecycle_parity;
 mod encoder_metadata;
