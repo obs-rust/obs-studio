@@ -3932,6 +3932,47 @@
         }
       ]
     },
+    "test_media_alpha_network": {
+      "sources": [
+        "test/cmocka/test_media_alpha_network.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
     "test_media_cached_paused_seek": {
       "sources": [
         "test/cmocka/test_media_cached_paused_seek.c"
@@ -3977,6 +4018,126 @@
         "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
         "shared/media-playback/media-playback/platform-media-ffmpeg.h",
         "test/cmocka/data/media_cached_paused_seek.mkv"
+      ]
+    },
+    "test_media_format_change": {
+      "sources": [
+        "test/cmocka/test_media_format_change.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
+    "test_media_loop_start_time": {
+      "sources": [
+        "test/cmocka/test_media_loop_start_time.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
+    "test_media_network_timeout": {
+      "sources": [
+        "test/cmocka/test_media_network_timeout.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
       ]
     },
     "test_media_packet_eof_leak": {
@@ -4027,6 +4188,47 @@
         "FFmpeg::avformat",
         "FFmpeg::avutil",
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_media_seek_keyframe": {
+      "sources": [
+        "test/cmocka/test_media_seek_keyframe.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
       ]
     },
     "test_media_source_options_lifetime": {
@@ -4141,6 +4343,47 @@
       ],
       "watch_inputs": [
         "frontend/utility"
+      ]
+    },
+    "test_media_ts_start_time": {
+      "sources": [
+        "test/cmocka/test_media_ts_start_time.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
       ]
     },
     "test_menu_text": {
@@ -13197,6 +13440,10 @@
         "${target}"
       ]
     },
+    "test_media_alpha_network": {
+      "target": "test_media_alpha_network",
+      "timeout_seconds": 120
+    },
     "test_media_cached_paused_seek": {
       "target": "test_media_cached_paused_seek",
       "timeout_seconds": 20,
@@ -13205,6 +13452,18 @@
         "${source}/test/cmocka/data/media_cached_paused_seek.mkv"
       ],
       "working_directory": "${build}"
+    },
+    "test_media_format_change": {
+      "target": "test_media_format_change",
+      "timeout_seconds": 120
+    },
+    "test_media_loop_start_time": {
+      "target": "test_media_loop_start_time",
+      "timeout_seconds": 120
+    },
+    "test_media_network_timeout": {
+      "target": "test_media_network_timeout",
+      "timeout_seconds": 120
     },
     "test_media_packet_eof_leak": {
       "target": "test_media_packet_eof_leak",
@@ -13221,6 +13480,10 @@
       "suite": "core",
       "timeout_seconds": 60
     },
+    "test_media_seek_keyframe": {
+      "target": "test_media_seek_keyframe",
+      "timeout_seconds": 120
+    },
     "test_media_source_options_lifetime": {
       "target": "test_media_source_options_lifetime",
       "timeout_seconds": 30
@@ -13234,6 +13497,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_media_ts_start_time": {
+      "target": "test_media_ts_start_time",
+      "timeout_seconds": 120
     },
     "test_menu_text": {
       "target": "test_menu_text",
