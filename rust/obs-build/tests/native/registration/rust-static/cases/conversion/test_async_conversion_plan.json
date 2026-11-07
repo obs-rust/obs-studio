@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_async_conversion_plan_rust": {
+      "sources": [
+        "test/cmocka/test_async_conversion_plan.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-conversion-plan.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_async_conversion_plan_rust": {
+      "target": "test_async_conversion_plan_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_monitor_video_sync_rust": {
+      "sources": [
+        "test/cmocka/test_monitor_video_sync.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_monitor_video_sync_rust": {
+      "target": "test_monitor_video_sync_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}
