@@ -2232,6 +2232,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_gpu_scaling_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_gpu_scaling_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_group_move": {
       "sources": [
         "test/cmocka/test_encoder_group_move.c"
@@ -12015,6 +12030,12 @@
     },
     "test_encoder_gpu_rescale_steps": {
       "target": "test_encoder_gpu_rescale_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_gpu_scaling_getters": {
+      "target": "test_encoder_gpu_scaling_getters",
       "command": [
         "${target}"
       ]
