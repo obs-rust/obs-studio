@@ -1704,7 +1704,7 @@ jobs:
           prebuild-deps-flags: --profile dev -- --tests
           # Host/container archive paths have different Actions-cache versions.
           # Explicit identities stop the janitor treating them as duplicates.
-          cache-key-suffix: linux-host-v2
+          cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The lanes add x86_64-pc-windows-gnu mid-job; the toolchain cache
           # would save it without its std (zackees/setup-soldr#507, #969).
@@ -1987,7 +1987,7 @@ jobs:
           # One Linux layer with Fast Gate: a second profile is a second 1.2 GB
           # entry of the `deps` family (#2661).
           prebuild-deps-flags: --profile dev -- --tests
-          cache-key-suffix: linux-host-v2
+          cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The cross lane adds targets mid-job (see the Rust Tests job, #969).
           solo-toolchain-cache: false
@@ -2057,7 +2057,7 @@ jobs:
           # One Linux layer with Fast Gate: a second profile is a second 1.2 GB
           # entry of the `deps` family (#2661).
           prebuild-deps-flags: --profile dev -- --tests
-          cache-key-suffix: linux-host-v2
+          cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # cross-release installs target std libraries after setup (#507/#969).
           solo-toolchain-cache: false
