@@ -17,6 +17,7 @@ if(TARGET libobs_rust-static)
     test_graphics_state_stacks.c
     "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/graphics/graphics-linear-srgb-fields.c.h"
   )
   target_compile_definitions(test_graphics_state_stacks_rust PRIVATE GS_STATE_STACKS_TEST_RUST)
   target_include_directories(
@@ -43,4 +44,8 @@ if(TARGET libobs_rust-static)
   obs_test_sanitize(test_graphics_state_stacks_rust "address,undefined")
   add_dependencies(cmocka-tests test_graphics_state_stacks_rust)
   add_test(test_graphics_state_stacks_rust ${CMAKE_CURRENT_BINARY_DIR}/test_graphics_state_stacks_rust)
+endif()
+
+if(TARGET test_graphics_state_stacks_rust AND TARGET OBS::w32-pthreads)
+  target_link_libraries(test_graphics_state_stacks_rust PRIVATE OBS::w32-pthreads)
 endif()

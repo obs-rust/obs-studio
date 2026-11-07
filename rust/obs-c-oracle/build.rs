@@ -627,6 +627,17 @@ fn main() {
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
+    for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
+        let src = libobs.join("graphics").join(format!("{stem}.c.h"));
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_pch(
+                &src,
+                "#include \"libobs/build/libobs-ported-graphics.pch.h\"",
+            ),
+        )
+        .expect("write linear-sRGB extract");
+    }
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

@@ -17,6 +17,7 @@ if(TARGET libobs_rust-static)
     # is in the staticlib, ported). libobs links them but does not export
     # them, so this executable compiles its own copies, as libobs does.
     "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
+    "${CMAKE_SOURCE_DIR}/libobs/graphics/graphics-linear-srgb-fields.c.h"
   )
   target_include_directories(
     test_effect_parser_lifecycle_rust
@@ -29,4 +30,8 @@ if(TARGET libobs_rust-static)
   obs_test_sanitize(test_effect_parser_lifecycle_rust "address,undefined")
   add_dependencies(cmocka-tests test_effect_parser_lifecycle_rust)
   add_test(test_effect_parser_lifecycle_rust ${CMAKE_CURRENT_BINARY_DIR}/test_effect_parser_lifecycle_rust)
+endif()
+
+if(TARGET test_effect_parser_lifecycle_rust AND TARGET OBS::w32-pthreads)
+  target_link_libraries(test_effect_parser_lifecycle_rust PRIVATE OBS::w32-pthreads)
 endif()

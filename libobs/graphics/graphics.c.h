@@ -1680,16 +1680,6 @@ bool gs_framebuffer_srgb_enabled(void)
 	return graphics->exports.device_framebuffer_srgb_enabled(graphics->device);
 }
 
-bool gs_get_linear_srgb(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_linear_srgb"))
-		return false;
-
-	return graphics->linear_srgb;
-}
-
 bool gs_set_linear_srgb(bool linear_srgb)
 {
 	graphics_t *graphics = thread_graphics;
