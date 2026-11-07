@@ -20,11 +20,11 @@ struct obs_scene *obs_sceneitem_fields_lock(const struct obs_scene_item *item);
 void obs_sceneitem_fields_unlock(struct obs_scene *scene);
 struct obs_scene *obs_sceneitem_fields_lock(const struct obs_scene_item *item)
 {
-    (void)item;
-    abort();
+	(void)item;
+	abort();
 }
 void obs_sceneitem_fields_unlock(struct obs_scene *scene)
 {
-    (void)scene;
-    abort();
+	(void)scene;
+	abort();
 }

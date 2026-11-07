@@ -110,7 +110,7 @@ class NativeB2Portability(unittest.TestCase):
         legacy = set()
         for fragment in (ROOT / "test/cmocka/tests.d").glob("test_scene*.cmake"):
             text = fragment.read_text()
-            for match in re.finditer(r"target_link_libraries\((test_scene\w+_rust)\s+([^)]*)\)", text):
+            for match in re.finditer(r"target_link_libraries\(\s*(test_scene\w+_rust)\s+([^)]*)\)", text):
                 name, libraries = match.groups()
                 if "libobs_rust-static" in libraries:
                     legacy.add(name)
@@ -137,11 +137,15 @@ class NativeB2Portability(unittest.TestCase):
         legacy = set()
         for fragment in (ROOT / "test/cmocka/tests.d").glob("test_scene*.cmake"):
             text = fragment.read_text()
-            for match in re.finditer(r"add_executable\((test_scene\w+_rust)\s+([^)]*)\)", text):
+            for match in re.finditer(r"add_executable\(\s*(test_scene\w+_rust)\s+([^)]*)\)", text):
                 name, sources = match.groups()
                 legacy.add(name)
                 with self.subTest(target=name):
-                    self.assertIn("scene-getter-log-link-stub.c", sources)
+                    if name == "test_scene_item_crop_rust":
+                        self.assertIn("scene-item-fields-link-support.c", sources)
+                        self.assertNotIn("scene-getter-log-link-stub.c", sources)
+                    else:
+                        self.assertIn("scene-getter-log-link-stub.c", sources)
         self.assertEqual(legacy, {"test_scene_bounds_place_rust", "test_scene_item_crop_rust",
                                  "test_scene_item_names_steps_rust", "test_scene_item_order_steps_rust",
                                  "test_scene_item_transform_steps_rust", "test_scene_transform_update_steps_rust"})

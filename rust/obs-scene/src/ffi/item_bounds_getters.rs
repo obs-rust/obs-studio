@@ -1,9 +1,11 @@
 //! Scalar bounds fields, read under the captured parent's existing C mutex.
+use super::{
+    item_state_getters::SceneItemPrefix as StatePrefix, scene_bounds_place::SceneItemCrop,
+};
 use crate::item_bounds_getters;
 use core::ffi::c_void;
 use core::ptr;
 use obs_graphics::ffi::{matrix4::matrix4, vec2::vec2};
-use super::{item_state_getters::SceneItemPrefix as StatePrefix, scene_bounds_place::SceneItemCrop};
 
 /// Private C item prefix. Only the requested field is read, never this whole
 /// prefix: its final alignment padding may overlap the opaque C suffix.
