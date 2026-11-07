@@ -13,6 +13,8 @@ back to an older submodule commit silently reintroduces the C4456/C4457 findings
 from __future__ import annotations
 
 import subprocess
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -64,6 +66,20 @@ class BrowserSubmoduleTest(unittest.TestCase):
 
     def test_pointer_keeps_the_panel_renames(self) -> None:
         self._assert_pointer_at_least(WARNING_SHADOWING_FIX_PANEL, "the panel shadowing renames (#17)")
+
+    def test_startup_handshake_without_cef(self) -> None:
+        sub = ROOT / SUBMODULE
+        if not (sub / ".git").exists():
+            self.skipTest("browser submodule is not checked out")
+        compiler = shutil.which("c++")
+        if not compiler:
+            self.skipTest("C++ compiler is not available")
+        with tempfile.TemporaryDirectory(prefix="obs-browser-startup-") as output:
+            result = subprocess.run(
+                ["uv", "run", str(sub / "tests/startup_state.py"), "--compiler", compiler, "--output-dir", output],
+                cwd=ROOT, capture_output=True, text=True, timeout=60,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

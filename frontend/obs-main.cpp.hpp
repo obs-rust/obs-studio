@@ -20,6 +20,7 @@
 using namespace std;
 
 static log_handler_t def_log_handler;
+static void (*obs_main_finish_browser_shutdown)() = nullptr;
 
 extern string currentLogFile;
 extern string lastLogFile;
@@ -630,6 +631,18 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 			return 0;
 		}
 
+		if (obs_module_t *browser_module = obs_get_module("obs-browser")) {
+			void *library = obs_get_module_lib(browser_module);
+			auto prepare = reinterpret_cast<void (*)()>(os_dlsym(library, "obs_browser_prepare_shutdown"));
+			auto finish = reinterpret_cast<void (*)()>(os_dlsym(library, "obs_browser_finish_shutdown"));
+			if (prepare && finish) {
+				prepare();
+				// Libobs deliberately keeps module libraries loaded after
+				// unload, so this remains callable after application cleanup.
+				obs_main_finish_browser_shutdown = finish;
+			}
+		}
+
 		prof.Stop();
 
 		if (program.quitRequested()) {
@@ -829,6 +842,15 @@ int main(int argc, char *argv[])
 	if (restart || restart_safe) {
 		auto executable = arguments.takeFirst();
 		QProcess::startDetached(executable, arguments);
+	}
+
+	if (obs_main_finish_browser_shutdown) {
+		// A CEF stuck in initialization cannot safely run static destructors.
+		// Finish normal Qt, OBS and platform cleanup, and flush the log before
+		// letting the browser take its fatal quick-exit path, if necessary.
+		logFile.flush();
+		logFile.close();
+		obs_main_finish_browser_shutdown();
 	}
 
 	return ret;
