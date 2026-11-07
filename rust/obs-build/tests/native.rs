@@ -6,6 +6,8 @@ mod rust_static_entries;
 
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
+#[path = "native/registration/canonical_headless_helpers_is_registered.rs"]
+mod canonical_headless_helpers_is_registered;
 #[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
 mod canonical_opengl_video_slice_is_registered;
 #[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
