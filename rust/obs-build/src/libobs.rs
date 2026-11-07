@@ -1,4 +1,6 @@
 //! The native libobs graph, shared by bundled obs-sys and the application build.
+mod archive_path;
+
 use crate::{NativeBuild, SharedLibrary};
 use std::{
     collections::BTreeMap,
@@ -211,7 +213,7 @@ fn check_rust_input(
             "stale Rust archive {}: newer input {}; rebuild from {} with \
              soldr cargo build --locked --release -p libobs-rust before linking hybrid libobs",
             archive.display(),
-            input.strip_prefix(root).unwrap_or(input).display(),
+            archive_path::portable_input(input.strip_prefix(root).unwrap_or(input)),
             root.display(),
         ));
     }

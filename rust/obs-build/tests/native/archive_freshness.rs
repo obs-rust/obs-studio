@@ -1,3 +1,6 @@
+#[path = "../../src/libobs/archive_path.rs"]
+mod archive_path;
+
 use super::*;
 
 /// #1390: a persistent build volume must not silently pair old Rust with new C.
@@ -63,7 +66,7 @@ fn hybrid_rejects_stale_rust_archive_before_native_compilation() {
             };
             assert!(error.contains("stale Rust archive"), "{input}: {error}");
             assert!(
-                error.contains(&Path::new(input).display().to_string()),
+                error.contains(input),
                 "{input}: {error}"
             );
             assert!(error.contains("soldr cargo build"), "{error}");
