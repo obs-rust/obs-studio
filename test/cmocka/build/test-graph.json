@@ -4160,6 +4160,64 @@
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_pulse_monitor_backlog": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_backlog.c",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "libobs/audio-monitoring/pulse"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-pulse.pch.h",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"
+      ],
+      "libraries": [
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "ENABLE_PULSEAUDIO",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        ]
+      }
+    },
+    "test_pulse_monitor_flags": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_flags.c",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "libobs/audio-monitoring/pulse"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-pulse.pch.h",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"
+      ],
+      "libraries": [
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "ENABLE_PULSEAUDIO",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        ]
+      }
+    },
     "test_pulse_monitor_samples": {
       "sources": [
         "test/cmocka/test_pulse_monitor_samples.c"
@@ -9220,6 +9278,12 @@
     },
     "test_pulse_default_id": {
       "target": "test_pulse_default_id"
+    },
+    "test_pulse_monitor_backlog": {
+      "target": "test_pulse_monitor_backlog"
+    },
+    "test_pulse_monitor_flags": {
+      "target": "test_pulse_monitor_flags"
     },
     "test_pulse_monitor_samples": {
       "target": "test_pulse_monitor_samples",

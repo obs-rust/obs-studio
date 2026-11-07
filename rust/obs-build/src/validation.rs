@@ -338,7 +338,7 @@ pub fn build_c_tests(
         add_package(&mut dependency, &build.target, "libpipewire-0.3")?;
         interfaces.insert("PipeWire::PipeWire".into(), dependency.into());
     }
-    if options.pulseaudio_plugin {
+    if options.pulseaudio || options.pulseaudio_plugin {
         let mut dependency = SharedLibrary::default();
         add_package(&mut dependency, &build.target, "libpulse")?;
         interfaces.insert("PulseAudio::PulseAudio".into(), dependency.into());

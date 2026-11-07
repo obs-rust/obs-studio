@@ -5710,17 +5710,37 @@ fn canonical_pulse_monitor_decisions_are_registered() {
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let names = ["test_pulse_monitor_backlog", "test_pulse_monitor_flags"];
     for name in names {
-        let target = graph.targets.get(name).expect("missing PulseAudio decision target");
-        assert!(matches!(&target.sources[0], Source::Path(path) if path == &format!("test/cmocka/{name}.c")));
-        assert!(matches!(&target.sources[1], Source::Path(path) if path == "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h"));
+        let target = graph
+            .targets
+            .get(name)
+            .expect("missing PulseAudio decision target");
+        assert!(
+            matches!(&target.sources[0], Source::Path(path) if path == &format!("test/cmocka/{name}.c"))
+        );
+        assert!(
+            matches!(&target.sources[1], Source::Path(path) if path == "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h")
+        );
         assert_eq!(target.sources.len(), 2);
         assert_eq!(target.includes, ["libobs", "libobs/audio-monitoring/pulse"]);
-        assert_eq!(target.watch_inputs, ["libobs/build/libobs-ported-pulse.pch.h", "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"]);
-        let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-            ConditionalValue::Name(name) => name.as_str(),
-            _ => panic!("unconditional dependency expected"),
-        }).collect();
-        assert_eq!(libraries, ["PulseAudio::PulseAudio", "OBS::native-test-cmocka"]);
+        assert_eq!(
+            target.watch_inputs,
+            [
+                "libobs/build/libobs-ported-pulse.pch.h",
+                "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"
+            ]
+        );
+        let libraries: Vec<_> = target
+            .libraries
+            .iter()
+            .map(|library| match library {
+                ConditionalValue::Name(name) => name.as_str(),
+                _ => panic!("unconditional dependency expected"),
+            })
+            .collect();
+        assert_eq!(
+            libraries,
+            ["PulseAudio::PulseAudio", "OBS::native-test-cmocka"]
+        );
         let test = &graph.tests[name];
         assert_eq!(test.target, name);
         assert_eq!(test.command, ["${target}"]);
@@ -5728,19 +5748,149 @@ fn canonical_pulse_monitor_decisions_are_registered() {
         assert_eq!(test.timeout_seconds, None);
         assert_eq!(test.skip_return_code, None);
         assert!(test.optional_prefixes.is_empty());
-        let fragment = fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
+        let fragment =
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
     }
-    graph.targets.retain(|name, _| names.contains(&name.as_str()));
+    graph
+        .targets
+        .retain(|name, _| names.contains(&name.as_str()));
     graph.tests.retain(|name, _| names.contains(&name.as_str()));
     for os in ["OS_LINUX", "OS_FREEBSD", "OS_MACOS", "OS_WINDOWS"] {
         for enabled in [false, true] {
-            let facts = [("OS_LINUX".into(), os == "OS_LINUX"), ("OS_FREEBSD".into(), os == "OS_FREEBSD"), ("ENABLE_PULSEAUDIO".into(), enabled)].into();
+            let facts = [
+                ("OS_LINUX".into(), os == "OS_LINUX"),
+                ("OS_FREEBSD".into(), os == "OS_FREEBSD"),
+                ("ENABLE_PULSEAUDIO".into(), enabled),
+            ]
+            .into();
             let selected = graph.select(&facts).unwrap();
             let expected = usize::from(enabled && ["OS_LINUX", "OS_FREEBSD"].contains(&os)) * 2;
             assert_eq!(selected.targets.len(), expected, "{os}/{enabled}");
             assert_eq!(selected.tests.len(), expected, "{os}/{enabled}");
         }
     }
+}
+
+/// #1390: compile and run the original server-free monitoring tests with the real SDK.
+#[test]
+#[cfg(all(
+    feature = "libobs-integration",
+    any(target_os = "linux", target_os = "freebsd")
+))]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one build-and-run block per graph consumer"
+)]
+fn canonical_pulse_monitor_decisions_run_unchanged() {
+    use obs_build::validation::graph::{Dependency, Graph};
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+    for name in ["test_pulse_monitor_backlog", "test_pulse_monitor_flags"] {
+        for section in ["targets", "tests"] {
+            selected[section][name] = raw[section].get(name).unwrap().clone();
+        }
+    }
+    let graph = Graph::parse(&selected.to_string()).unwrap();
+    let build = NativeBuild {
+        host: obs_build::BUILD_HOST.into(),
+        target: obs_build::BUILD_TARGET.into(),
+        output: directory.path().join("cargo-output"),
+        profile: Default::default(),
+    };
+    let interfaces = [
+        (
+            "OBS::native-test-cmocka".into(),
+            Dependency::package(&build.target, "cmocka").unwrap(),
+        ),
+        (
+            "PulseAudio::PulseAudio".into(),
+            Dependency::package(&build.target, "libpulse").unwrap(),
+        ),
+    ]
+    .into();
+    let facts = [
+        ("OS_LINUX".into(), true),
+        ("OS_FREEBSD".into(), false),
+        ("ENABLE_PULSEAUDIO".into(), true),
+    ]
+    .into();
+    let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
+    assert_eq!(artifacts.len(), 2);
+    for (name, test) in &graph.tests {
+        let result = test
+            .command(&root, &build.output, &artifacts[&test.target])
+            .unwrap()
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "Cargo {name}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    let source = root.to_string_lossy().replace('\\', "/");
+    fs::write(directory.path().join("CMakeLists.txt"), format!(
+        "cmake_minimum_required(VERSION 3.28)\nproject(pulse-monitor-contract C)\nenable_testing()\nset(OS_LINUX TRUE)\nset(OS_FREEBSD FALSE)\nset(ENABLE_PULSEAUDIO TRUE)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\npkg_check_modules(PULSE REQUIRED IMPORTED_TARGET libpulse)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nadd_library(PulseAudio::PulseAudio ALIAS PkgConfig::PULSE)\ninclude(\"{source}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{source}\")\n"
+    )).unwrap();
+    let output = directory.path().join("cmake-output");
+    for (program, arguments) in [
+        (
+            "cmake",
+            vec![
+                "-S",
+                directory.path().to_str().unwrap(),
+                "-B",
+                output.to_str().unwrap(),
+            ],
+        ),
+        (
+            "cmake",
+            vec!["--build", output.to_str().unwrap(), "--parallel", "2"],
+        ),
+        (
+            "ctest",
+            vec![
+                "--test-dir",
+                output.to_str().unwrap(),
+                "--output-on-failure",
+                "--no-tests=error",
+            ],
+        ),
+    ] {
+        let result = std::process::Command::new(program)
+            .args(arguments)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{program}\n{}\n{}",
+            String::from_utf8_lossy(&result.stdout),
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    let inventory = std::process::Command::new("ctest")
+        .args([
+            "--test-dir",
+            output.to_str().unwrap(),
+            "--show-only=json-v1",
+        ])
+        .output()
+        .unwrap();
+    assert!(inventory.status.success());
+    let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
+    let names: std::collections::BTreeSet<_> = inventory["tests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|test| test["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, graph.tests.keys().map(String::as_str).collect());
 }
