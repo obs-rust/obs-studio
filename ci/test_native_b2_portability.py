@@ -42,7 +42,7 @@ class NativeB2Portability(unittest.TestCase):
                             if test.get("suite", "core") == "core"
                             and enabled(test.get("requires", True))
                             and enabled(graph["targets"][test["target"]].get("requires", True))]
-                self.assertEqual(len(selected), 417 + 5 * pulse - (not hevc))
+                self.assertEqual(len(selected), 418 + 5 * pulse - (not hevc))
         # Both SDK-enabled additions are independent of core PulseAudio/HEVC.
         facts.update(HAVE_PIPEWIRE_FRAME_LAYOUT_SDK=True, HAVE_PULSE_DEFAULT_RETRY_SDK=True)
         selected = [name for name, test in graph["tests"].items()
@@ -51,7 +51,7 @@ class NativeB2Portability(unittest.TestCase):
                     and enabled(graph["targets"][test["target"]].get("requires", True))]
         self.assertIn("test_pipewire_frame_layout", selected)
         self.assertIn("test_pulse_default_retry", selected)
-        self.assertEqual(len(selected), 424)
+        self.assertEqual(len(selected), 425)
         consumer = (ROOT / "rust/obs-build/src/validation.rs").read_text()
         self.assertIn('("HAVE_OBS_OPENGL".into(), false)', consumer)
 
