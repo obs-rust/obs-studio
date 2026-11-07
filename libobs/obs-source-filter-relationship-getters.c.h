@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 obs_source_t *obs_filter_get_parent(const obs_source_t *filter)
 {

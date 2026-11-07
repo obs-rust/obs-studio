@@ -28,6 +28,7 @@ mod deinterlace_select_parity;
 mod draw_plan;
 mod draw_plan_parity;
 mod filter_relationship_getters;
+mod filter_relationship_getters_parity;
 mod frame_copy;
 mod frame_copy_parity;
 mod media_admission;
