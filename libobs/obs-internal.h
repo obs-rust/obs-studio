@@ -244,6 +244,13 @@ struct obs_hotkey {
 	UT_hash_handle hh;
 };
 
+/* Borrowed identity fields keep getters independent of the hotkey layout. */
+struct obs_hotkey_identity_fields {
+	const obs_hotkey_id *id;
+	char *const *name;
+};
+struct obs_hotkey_identity_fields obs_hotkey_identity_fields(const obs_hotkey_t *key);
+
 /* Borrowed field pointers keep read-only getters independent of the hotkey layout. */
 struct obs_hotkey_object_fields {
 	char *const *description;
@@ -2034,6 +2041,13 @@ struct obs_encoder_metadata_fields {
 	const uint32_t *caps;
 };
 struct obs_encoder_metadata_fields obs_encoder_metadata_fields(const obs_encoder_t *encoder);
+
+/* Borrowed scaled-axis addresses, with no ownership or value conversion. */
+struct obs_encoder_scaling_enabled_fields {
+	const uint32_t *width;
+	const uint32_t *height;
+};
+struct obs_encoder_scaling_enabled_fields obs_encoder_scaling_enabled_fields(const obs_encoder_t *encoder);
 
 /* What the encoded packet interleaver reads from an encoder, as values: the
  * time base, the frame size and the encoder group (NULL without one). Not

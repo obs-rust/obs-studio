@@ -9,6 +9,8 @@ mod bindings_parity;
 mod cocoa_keys;
 mod cocoa_keys_parity;
 mod hotkey_name_map;
+mod identity_getters;
+mod identity_getters_parity;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
 mod nix_wayland_key_names;

@@ -2454,6 +2454,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_encoder_scaling_enabled": {
+      "sources": [
+        "test/cmocka/test_encoder_scaling_enabled.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_size_steps": {
       "sources": [
         "test/cmocka/test_encoder_size_steps.c",
@@ -3690,6 +3705,21 @@
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_hotkey_identity_getters": {
+      "sources": [
+        "test/cmocka/test_hotkey_identity_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_hotkey_load": {
@@ -13808,6 +13838,12 @@
         ]
       ]
     },
+    "test_encoder_scaling_enabled": {
+      "target": "test_encoder_scaling_enabled",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_encoder_size_steps": {
       "target": "test_encoder_size_steps",
       "command": [
@@ -14247,6 +14283,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_hotkey_identity_getters": {
+      "target": "test_hotkey_identity_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_hotkey_load": {
       "target": "test_hotkey_load"

@@ -198,6 +198,8 @@ mod canonical_dock_proportions_is_registered;
 mod canonical_effect_lookups_is_registered;
 #[path = "native/registration/canonical_encoder_group_null_is_registered.rs"]
 mod canonical_encoder_group_null_is_registered;
+#[path = "native/registration/canonical_encoder_scaling_enabled_is_registered.rs"]
+mod canonical_encoder_scaling_enabled_is_registered;
 #[path = "native/registration/canonical_fade_and_host_tests_are_registered.rs"]
 mod canonical_fade_and_host_tests_are_registered;
 #[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
@@ -228,6 +230,8 @@ mod canonical_headless_abi_is_registered;
 mod canonical_headless_audio_is_registered;
 #[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
 mod canonical_hotkey_backtab_is_registered;
+#[path = "native/registration/canonical_hotkey_identity_getters_is_registered.rs"]
+mod canonical_hotkey_identity_getters_is_registered;
 #[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
 mod canonical_hotkey_mnemonic_is_registered;
 #[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
