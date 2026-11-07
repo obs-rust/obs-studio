@@ -47,7 +47,11 @@ endif()
         .arg(&script)
         .output()
         .unwrap();
-    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
     for unknown in ["UNXI", "GRAPH_FEATURE_TYPO"] {
         let result = std::process::Command::new("cmake")
             .arg(format!("-DUNKNOWN_REQUIREMENT={unknown}"))
@@ -56,8 +60,10 @@ endif()
             .output()
             .unwrap();
         assert!(!result.status.success());
-        assert!(String::from_utf8_lossy(&result.stderr)
-            .contains(&format!("Unknown native test requirement {unknown}")));
+        assert!(
+            String::from_utf8_lossy(&result.stderr)
+                .contains(&format!("Unknown native test requirement {unknown}"))
+        );
     }
 }
 

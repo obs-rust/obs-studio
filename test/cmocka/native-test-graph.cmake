@@ -56,7 +56,10 @@ function(_obs_test_graph_requirement output json)
   if(kind STREQUAL "BOOLEAN")
     set(${output} "${value}" PARENT_SCOPE)
   elseif(kind STREQUAL "STRING")
-    if(NOT DEFINED ${value})
+    # CMake defines these built-in platform/compiler facts only when true.
+    # Project feature facts must still be declared, so misspellings stay fatal.
+    set(platform_facts UNIX APPLE WIN32 MSVC)
+    if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
     if(${value})
