@@ -38,8 +38,8 @@ unsigned oracle_state_bits(void *p);
 unsigned oracle_state_bits(void *p)
 {
 	struct state_fixture *f = p;
-	return f->service.active | (f->service.destroy << 1) | ((f->service.output != NULL) << 2) |
-	       ((f->service.context.control != NULL) << 3) | ((f->output.service != NULL) << 4);
+	return (unsigned)(f->service.active | (f->service.destroy << 1) | ((f->service.output != NULL) << 2) |
+			  ((f->service.context.control != NULL) << 3) | ((f->output.service != NULL) << 4));
 }
 void *oracle_state_control(void *p);
 void *oracle_state_control(void *p)
