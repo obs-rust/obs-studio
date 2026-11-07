@@ -1209,14 +1209,6 @@ bool obs_encoder_set_frame_rate_divisor(obs_encoder_t *encoder, uint32_t frame_r
 	return true;
 }
 
-bool obs_encoder_scaling_enabled(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_scaling_enabled"))
-		return false;
-
-	return obs_encoder_size_scaling(encoder->scaled_width, encoder->scaled_height);
-}
-
 uint32_t obs_encoder_get_width(const obs_encoder_t *encoder)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_get_width"))
