@@ -917,6 +917,42 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_coreaudio_retry": {
+      "sources": [
+        "test/cmocka/test_coreaudio_retry.c"
+      ],
+      "requires": true,
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
+    "test_coreaudio_zero_channels": {
+      "sources": [
+        "test/cmocka/test_coreaudio_zero_channels.c"
+      ],
+      "requires": true,
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_crash_sentinel_dir": {
       "sources": [
         "test/cmocka/test_crash_sentinel_dir.cpp",
@@ -1095,6 +1131,23 @@
       "libraries": [
         "OBS::libobs",
         "Threads::Threads",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_display_reinit": {
+      "sources": [
+        "test/cmocka/test_display_reinit.c",
+        "plugins/mac-capture/display-reinit.c.h"
+      ],
+      "requires": true,
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
     },
@@ -8494,6 +8547,14 @@
         "${target}"
       ]
     },
+    "test_coreaudio_retry": {
+      "target": "test_coreaudio_retry",
+      "requires": true
+    },
+    "test_coreaudio_zero_channels": {
+      "target": "test_coreaudio_zero_channels",
+      "requires": true
+    },
     "test_crash_sentinel_dir": {
       "target": "test_crash_sentinel_dir",
       "command": [
@@ -8556,6 +8617,10 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_display_reinit": {
+      "target": "test_display_reinit",
+      "requires": true
     },
     "test_dock_proportions": {
       "target": "test_dock_proportions",
