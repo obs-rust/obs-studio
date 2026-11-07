@@ -295,6 +295,12 @@ static char *run_pactl(const char *args)
 	return out;
 }
 
+/* Whether pactl itself can run at all, whatever the sound server would say (#3797). */
+static bool vmic_pactl_runs(void)
+{
+	return true;
+}
+
 static void vmic_stop(struct virtualcam_data *vcam)
 {
 	if (vcam->mic_fifo >= 0) {

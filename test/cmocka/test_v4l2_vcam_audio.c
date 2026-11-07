@@ -227,6 +227,132 @@ static void stale_is_decided_by_the_lock_not_the_pid(void **state)
 	rmdir(dir);
 }
 
+/* #3797: a helper dir with one executable script in it, put first on PATH. */
+static void write_script(const char *dir, const char *name, const char *body)
+{
+	char script[256];
+	snprintf(script, sizeof(script), "%s/%s", dir, name);
+	FILE *f = fopen(script, "w");
+	assert_non_null(f);
+	fputs(body, f);
+	fclose(f);
+	assert_int_equal(chmod(script, 0755), 0);
+}
+
+/* #3797: turning the microphone off must not keep a dead OBS's silent device
+ * listed in every app: stale modules go away with the microphone off too. */
+static void stale_module_is_unloaded_with_the_microphone_off(void **state)
+{
+	(void)state;
+	char dir[] = "/tmp/vmic-off-XXXXXX";
+	assert_non_null(mkdtemp(dir));
+
+	char body[512];
+	snprintf(body, sizeof(body),
+		 "#!/bin/sh\n"
+		 "echo \"$*\" >> %s/calls\n"
+		 "if [ \"$1\" = list ]; then\n"
+		 "  printf '77\\tmodule-pipe-source\\tfile=%s/obs-virtual-microphone/obs-virtual-microphone-999 format=x\\t\\n'\n"
+		 "fi\n",
+		 dir, dir);
+	write_script(dir, "pactl", body);
+
+	/* The dead owner's lock: present, and nobody holds it. */
+	char mic_dir[256];
+	snprintf(mic_dir, sizeof(mic_dir), "%s/obs-virtual-microphone", dir);
+	assert_int_equal(mkdir(mic_dir, 0700), 0);
+	char lock[320];
+	snprintf(lock, sizeof(lock), "%s/obs-virtual-microphone-999.lock", mic_dir);
+	int fd = open(lock, O_RDWR | O_CREAT, 0600);
+	assert_true(fd >= 0);
+	close(fd);
+
+	const char *old_path = getenv("PATH");
+	char *saved_path = old_path ? strdup(old_path) : NULL;
+	const char *old_runtime = getenv("XDG_RUNTIME_DIR");
+	char *saved_runtime = old_runtime ? strdup(old_runtime) : NULL;
+	char path[1024];
+	snprintf(path, sizeof(path), "%s:%s", dir, old_path ? old_path : "/usr/bin:/bin");
+	setenv("PATH", path, 1);
+	setenv("XDG_RUNTIME_DIR", dir, 1);
+
+	struct virtualcam_data vcam;
+	memset(&vcam, 0, sizeof(vcam));
+	vcam.mic_fifo = -1;
+	vcam.mic_lock = -1;
+	vcam.audio_enabled = false;
+	vmic_start(&vcam);
+
+	if (saved_path) {
+		setenv("PATH", saved_path, 1);
+		free(saved_path);
+	}
+	if (saved_runtime) {
+		setenv("XDG_RUNTIME_DIR", saved_runtime, 1);
+		free(saved_runtime);
+	} else {
+		unsetenv("XDG_RUNTIME_DIR");
+	}
+
+	char calls_path[256];
+	snprintf(calls_path, sizeof(calls_path), "%s/calls", dir);
+	char calls[1024] = {0};
+	FILE *f = fopen(calls_path, "r");
+	if (f) {
+		size_t got = fread(calls, 1, sizeof(calls) - 1, f);
+		calls[got] = 0;
+		fclose(f);
+	}
+	unlink(calls_path);
+	unlink(lock);
+	rmdir(mic_dir);
+	char script[256];
+	snprintf(script, sizeof(script), "%s/pactl", dir);
+	unlink(script);
+	rmdir(dir);
+
+	assert_non_null(strstr(calls, "unload-module 77"));
+	/* Off means off: no new device, and no lock kept for one. */
+	assert_null(strstr(calls, "load-module module-pipe-source"));
+	assert_int_equal(vcam.mic_lock, -1);
+}
+
+/* #3797: the log tells a pactl that cannot run from a load the server refused.
+ * The fake timeout answers like the real one does for a missing command. */
+static void pactl_that_cannot_run_is_told_apart(void **state)
+{
+	(void)state;
+	char dir[] = "/tmp/vmic-nopactl-XXXXXX";
+	assert_non_null(mkdtemp(dir));
+
+	const char *old = getenv("PATH");
+	char *saved = old ? strdup(old) : NULL;
+	char path[1024];
+	snprintf(path, sizeof(path), "%s:%s", dir, old ? old : "/usr/bin:/bin");
+	setenv("PATH", path, 1);
+
+	write_script(dir, "timeout", "#!/bin/sh\nexit 127\n");
+	bool missing_runs = vmic_pactl_runs();
+
+	write_script(dir, "timeout", "#!/bin/sh\nshift 3\nexec \"$@\"\n");
+	write_script(dir, "pactl", "#!/bin/sh\necho 'pactl 17.0'\n");
+	bool present_runs = vmic_pactl_runs();
+
+	if (saved) {
+		setenv("PATH", saved, 1);
+		free(saved);
+	}
+	char script[256];
+	snprintf(script, sizeof(script), "%s/timeout", dir);
+	unlink(script);
+	snprintf(script, sizeof(script), "%s/pactl", dir);
+	unlink(script);
+	rmdir(dir);
+
+	assert_false(missing_runs);
+	assert_true(present_runs);
+}
+
 /* #3181: pactl runs on the thread that starts the Virtual Camera. A sound
  * server that never answers must not freeze OBS: run_pactl gives up. */
 static void hung_pactl_is_given_up_on(void **state)
@@ -325,6 +451,8 @@ int main(void)
 		cmocka_unit_test(dialog_settings_choose_audio_and_track),
 		cmocka_unit_test(a_second_obs_gets_its_own_source_name),
 		cmocka_unit_test(hung_pactl_is_given_up_on),
+		cmocka_unit_test(stale_module_is_unloaded_with_the_microphone_off),
+		cmocka_unit_test(pactl_that_cannot_run_is_told_apart),
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
 		cmocka_unit_test(our_module_line_gives_id_and_pid),
