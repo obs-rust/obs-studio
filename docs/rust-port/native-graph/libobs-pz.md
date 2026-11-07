@@ -47,7 +47,7 @@ application behavior changes are made, so no new Tier 4 scenario applies;
 existing Rust unit/oracle differential tests remain intact.
 
 Focused exact registration and whole-graph legacy replacement pass. The
-GCC actual Cargo/CMake contract passes both Rust checks and all 16 unchanged
+GCC and Clang actual Cargo/CMake contracts each pass both Rust checks and all 16 unchanged
 C cases (7 stall, 4 stop-wait, 5 probe policy). Graph/sorted-list/slice,
 CMake-facade, Tier 2 concurrency and build-group guards pass (22 tests).
 Scoped Application-test Clippy with `libobs-integration` passes. The category
@@ -57,3 +57,11 @@ Test cost: 25 reduced/debug registration observations, longest 0.450 s,
 peak child RSS 14,576 KiB, no test-owned threads. The native compilation
 replay uses the existing named compilation-budget exception and CMake/compiler
 subprocesses; the unchanged stop-wait case waits 25 ms on a real event.
+
+Evidence artifacts (local-test-private under the clud tool-output directory):
+`local-test-4mXCUY.log` (GCC), `local-test-J2fPyH.log` (Clang),
+`local-test-DAPz2y.log` (whole-graph replacement), `local-test-bdSsGh.log`
+(22 focused Python guards), `local-test-QydytE.log` (scoped Clippy).
+The compiler replays took 91.65 s (GCC) and 137.69 s (Clang), including
+native toolchain/cache admission and all subprocesses, so no fast-runtime
+claim is made for that opt-in compilation contract.
