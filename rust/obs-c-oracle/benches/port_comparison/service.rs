@@ -154,8 +154,13 @@ pub fn benchmarks(criterion: &mut Criterion) {
     let live =
         unsafe { rust::obs_service_create_private(id, c"bench_live".as_ptr(), ptr::null_mut()) };
     let output = ptr::without_provenance_mut(0x07);
-    // SAFETY: a live service; the output is only compared with NULL.
-    unsafe { c::oracle_service_set_state(live, false, output) };
+    // SAFETY: a live service; the output is only compared with NULL. The
+    // oracle's static output links back to the service, as a real one
+    // does, and destroying the service clears that link (#3886).
+    unsafe {
+        c::oracle_service_set_state(live, false, output);
+        c::oracle_service_state_test_output_set_service(live);
+    }
     let weak = unsafe { rust::obs_service_get_weak_service(live) };
 
     // SAFETY, each call: a live service holding its own strong and weak ref,
@@ -214,6 +219,9 @@ pub fn benchmarks(criterion: &mut Criterion) {
         rust::obs_weak_service_release(weak);
         rust::obs_service_release(live);
     }
+    // SAFETY: reads a static output's field.
+    let linked = unsafe { c::oracle_service_state_test_output_service() };
+    assert!(linked.is_null(), "destroying the service left its output linked to it");
 
     // SAFETY: no types; from oracle_service_new, freed once.
     unsafe {

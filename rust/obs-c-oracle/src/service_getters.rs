@@ -38,6 +38,12 @@ unsafe extern "C" {
     /// Makes the next `obs_service_context_new()` fail.
     pub fn oracle_service_set_context_fails(fails: bool);
     pub fn oracle_service_set_state(service: *mut c_void, active: bool, output: *mut c_void);
+    /// A real, static C `struct obs_output` (oracle/service_state.c): a
+    /// stand-in output the service state accessors can write through.
+    pub fn oracle_service_state_test_output() -> *mut c_void;
+    /// Sets and reads that output's own service link.
+    pub fn oracle_service_state_test_output_set_service(service: *mut c_void);
+    pub fn oracle_service_state_test_output_service() -> *mut c_void;
     pub fn oracle_service_is_destroying(service: *const c_void) -> bool;
     pub fn oracle_service_is_active(service: *const c_void) -> bool;
     pub fn oracle_service_output(service: *const c_void) -> *mut c_void;

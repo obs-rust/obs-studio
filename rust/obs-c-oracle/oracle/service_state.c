@@ -82,9 +82,20 @@ bool oracle_state_field_addresses(void *p)
 }
 /* The lifecycle oracle formerly passed a one-byte token to a no-op detach
  * double. Its shared Rust seam now needs an actual output with its C layout. */
+static struct obs_output test_output;
 void *oracle_service_state_test_output(void);
 void *oracle_service_state_test_output(void)
 {
-	static struct obs_output output;
-	return &output;
+	return &test_output;
+}
+/* The static output's own service link, which destroying its service clears. */
+void oracle_service_state_test_output_set_service(void *service);
+void oracle_service_state_test_output_set_service(void *service)
+{
+	test_output.service = service;
+}
+void *oracle_service_state_test_output_service(void);
+void *oracle_service_state_test_output_service(void)
+{
+	return test_output.service;
 }
