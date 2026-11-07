@@ -1961,6 +1961,15 @@ extern void obs_encoder_rebind_video(obs_encoder_t *encoder, video_t *video);
 
 extern void obs_encoder_start(obs_encoder_t *encoder, encoded_callback_t new_packet, void *param);
 
+/* Borrowed counter addresses: avoid mirroring the private encoder layout in
+ * Rust. No ownership, allocation, synchronization or value conversion here. */
+struct obs_encoder_counter_fields {
+	const uint32_t *encoded_frames;
+	const uint64_t *pause_offset;
+};
+
+struct obs_encoder_counter_fields obs_encoder_counter_fields(const obs_encoder_t *encoder);
+
 /* What the encoded packet interleaver reads from an encoder, as values: the
  * time base, the frame size and the encoder group (NULL without one). Not
  * EXPORT. */
