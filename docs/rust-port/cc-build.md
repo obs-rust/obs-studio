@@ -867,9 +867,11 @@ availability guard and Corrosion's native runtime interface. Cargo supplies the
 archive explicitly through `validation::Options::rust_archive`; absence excludes
 this Rust-only check, and an invalid supplied path fails rather than substituting
 C or a stub. The existing Linux dual-core integration passes its production
-archive. The focused opt-in `canonical_rust_static_pacing_runs_unchanged` contract
+archive. The focused Linux opt-in `canonical_rust_static_pacing_runs_unchanged` contract
 requires `OBS_BUILD_RUST_ARCHIVE`, replays both consumers and checks evaluated
-CTest inclusion/exclusion. This is one static-link inventory slice, not overall
+CTest inclusion/exclusion. Its minimal imported CMake target supplies the math
+dependency pulled by this archive member; it does not validate Corrosion’s full
+feature-dependent SDK interface. This is one static-link inventory slice, not overall
 native parity or new macOS/Windows Cargo core-test support (#1390).
 
 The scene bounds placement characterization also uses the shared core graph.

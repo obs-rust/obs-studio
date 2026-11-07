@@ -5762,7 +5762,7 @@ fn canonical_rust_static_pacing_is_registered() {
 
 /// #1390: both consumers must run the unchanged C suite against a real Rust archive.
 #[test]
-#[cfg(feature = "libobs-integration")]
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 #[expect(
     clippy::too_many_lines,
     reason = "one build-and-run block per graph consumer"

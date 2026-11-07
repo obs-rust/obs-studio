@@ -379,7 +379,7 @@ impl From<SharedLibrary> for Dependency {
 }
 
 impl Dependency {
-    /// Import the production Rust staticlib and its native runtime interface.
+    /// Import the production archive for the scoped Linux pacing characterization.
     pub fn rust_static(target: &str, archive: &Path) -> Result<Self, String> {
         let archive = dunce::canonicalize(archive)
             .map_err(|error| format!("Rust test archive {}: {error}", archive.display()))?;
@@ -391,7 +391,7 @@ impl Dependency {
         }
         Ok(Self {
             artifacts: vec![archive],
-            link_options: crate::platform::native_test_rust_static_options(target),
+            link_options: crate::platform::native_test_rust_static_options(target)?,
             ..Default::default()
         })
     }
