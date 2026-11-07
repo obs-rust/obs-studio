@@ -4172,6 +4172,46 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_obs_ffmpeg_mux_host_macos": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_mux_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "OBS_FFMPEG_MUX_HOST_SOURCE=\"plugins/obs-ffmpeg/obs-ffmpeg-mux-host-macos.c.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-mux-host-macos.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_ffmpeg_mux_host_posix": {
+      "sources": [
+        "test/cmocka/test_obs_ffmpeg_mux_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "OBS_FFMPEG_MUX_HOST_SOURCE=\"plugins/obs-ffmpeg/obs-ffmpeg-mux-host-posix.c.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-mux-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_obs_ffmpeg_net_host": {
       "sources": [
         "test/cmocka/test_obs_ffmpeg_net_host.c"
@@ -11814,6 +11854,18 @@
     },
     "test_obs_ffmpeg_host_posix": {
       "target": "test_obs_ffmpeg_host_posix",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_ffmpeg_mux_host_macos": {
+      "target": "test_obs_ffmpeg_mux_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
+    "test_obs_ffmpeg_mux_host_posix": {
+      "target": "test_obs_ffmpeg_mux_host_posix",
       "requires": {
         "not": "OS_WINDOWS"
       }
