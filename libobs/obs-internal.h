@@ -1367,6 +1367,14 @@ struct obs_source {
 	obs_weak_canvas_t *canvas;
 };
 
+/* Borrowed addresses only; Rust owns the getter decisions and reads only the
+ * requested field under the original caller's synchronization contract. */
+struct obs_source_async_flag_fields {
+	const bool *unbuffered;
+	const bool *decoupled;
+};
+struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
+
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,

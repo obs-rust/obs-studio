@@ -4995,7 +4995,7 @@ fn assert_pipe_contract_registration(
 
 fn assert_rust_static_conversion_linkage(target: &obs_build::validation::graph::Target) {
     use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), 3);
+    assert_eq!(target.libraries.len(), 6);
     assert!(
         matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
     );
@@ -5259,4 +5259,60 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
         fs::read_to_string(root.join("test/cmocka/tests.d/test_async_delay_pacing.cmake")).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
+}
+
+// Preserve each fixture's exact original contract while checking the additional,
+// uncalled getter dependencies pulled from shared Rust archive members.
+fn assert_source_getter_link_support(
+    target: &obs_build::validation::graph::Target,
+    base: &str,
+    original_headers: bool,
+) {
+    use obs_build::validation::graph::{ConditionalValue, Requirement, Source};
+    let support = !base.starts_with("test_scene_");
+    let mut sources = Vec::new();
+    if matches!(
+        base,
+        "test_scene_audio_window_steps" | "test_scene_render_plan_steps"
+    ) {
+        sources.push("test/cmocka/scene-getter-log-link-stub.c".into());
+    }
+    sources.push(format!("test/cmocka/{base}.c"));
+    if support {
+        sources.extend([
+            "test/cmocka/source-async-flag-getter-link-stubs.c".into(),
+            "test/cmocka/source-getter-log-link-stub.c".into(),
+        ]);
+        let suffix = &target.libraries[target.libraries.len() - 3..];
+        assert!(matches!(&suffix[0], ConditionalValue::Name(name) if name == "OBS::caption"));
+        assert!(matches!(&suffix[1], ConditionalValue::Name(name) if name == "Uthash::Uthash"));
+        assert!(
+            matches!(&suffix[2], ConditionalValue::Conditional { name, requires: Requirement::Fact(fact) }
+            if name == "OBS::w32-pthreads" && fact == "OS_WINDOWS")
+        );
+    }
+    let actual: Vec<_> = target
+        .sources
+        .iter()
+        .map(|source| match source {
+            Source::Path(path) => path,
+            Source::Conditional { .. } => panic!("source-step inputs must be unconditional"),
+        })
+        .collect();
+    assert_eq!(actual, sources.iter().collect::<Vec<_>>());
+    let headers: &[&str] = if support || original_headers {
+        &["OBS::libobs", "SIMDe::SIMDe"]
+    } else {
+        &[]
+    };
+    assert_eq!(target.header_libraries, headers);
+}
+
+fn getter_link_library_count(target: &obs_build::validation::graph::Target) -> usize {
+    use obs_build::validation::graph::Source;
+    if target.sources.iter().any(|source| matches!(source, Source::Path(path) if path.starts_with("test/cmocka/test_scene_"))) {
+        0
+    } else {
+        3
+    }
 }

@@ -4778,11 +4778,6 @@ void obs_source_set_async_unbuffered(obs_source_t *source, bool unbuffered)
 	source->async_unbuffered = unbuffered;
 }
 
-bool obs_source_async_unbuffered(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_async_unbuffered") ? source->async_unbuffered : false;
-}
-
 void obs_source_set_async_compensation(obs_source_t *source, bool compensate)
 {
 	if (!obs_source_valid(source, "obs_source_set_async_compensation"))
@@ -4819,11 +4814,6 @@ void obs_source_set_async_decoupled(obs_source_t *source, bool decouple)
 		reset_audio_data(source, 0);
 		pthread_mutex_unlock(&source->audio_buf_mutex);
 	}
-}
-
-bool obs_source_async_decoupled(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_async_decoupled") ? source->async_decoupled : false;
 }
 
 /* hidden/undocumented export to allow source type redefinition for scripts */

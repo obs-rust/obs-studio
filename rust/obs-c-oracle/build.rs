@@ -592,6 +592,12 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-encoder-metadata-fields.c.h")),
     )
     .expect("write encoder metadata adapter extract");
+    // Compile the exact production field-pointer adapter over the real header.
+    std::fs::write(
+        extract_dir.join("source_async_flag_fields.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-async-flag-fields.c.h")),
+    )
+    .expect("write async flag field adapter extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

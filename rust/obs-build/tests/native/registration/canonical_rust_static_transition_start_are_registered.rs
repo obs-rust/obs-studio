@@ -6,7 +6,7 @@ const CASES: &[(&str, bool)] = &[("test_transition_start_steps", false)];
 
 #[test]
 fn canonical_rust_static_transition_start_are_registered() {
-    use obs_build::validation::graph::{Graph, Source};
+    use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     graph
@@ -21,17 +21,15 @@ fn canonical_rust_static_transition_start_are_registered() {
             .targets
             .get(&name)
             .expect("missing Rust-static transition start");
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{base}.c")));
+        assert_source_getter_link_support(target, base, true);
         assert_eq!(target.includes, ["libobs"]);
-        assert_eq!(target.header_libraries, ["OBS::libobs", "SIMDe::SIMDe"]);
         assert!(target.archives.is_empty());
         assert!(target.definitions.is_empty());
         assert!(target.compile_options.is_empty());
         assert!(target.link_options.is_empty());
         assert_eq!(target.sanitizers, None);
         use obs_build::validation::graph::ConditionalValue;
-        assert_eq!(target.libraries.len(), 2);
+        assert_eq!(target.libraries.len(), 5);
         assert!(
             matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static")
         );
