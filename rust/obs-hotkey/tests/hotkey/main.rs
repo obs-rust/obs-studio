@@ -1,5 +1,6 @@
 //! obs-hotkey integration tests: hotkey (one module per former tests/*.rs file, #968).
 
+mod binding_getters;
 mod binding_press;
 mod binding_press_parity;
 mod bindings;
