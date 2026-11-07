@@ -2267,6 +2267,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_OUTPUTS".into(), false),
         ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
+        ("HAVE_OBS_ALSA".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),

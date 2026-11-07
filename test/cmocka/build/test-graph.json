@@ -1,6 +1,81 @@
 {
   "schema": 1,
   "targets": {
+    "test_alsa_capture_format": {
+      "sources": [
+        "test/cmocka/test_alsa_capture_format.c",
+        "plugins/linux-alsa/alsa-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "ALSA::ALSA",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_ALSA",
+      "watch_inputs": [
+        "plugins/linux-alsa/build/linux-alsa-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio,--wrap=snd_pcm_hw_params_test_format,--wrap=snd_pcm_readi"
+      ]
+    },
+    "test_alsa_device_lost": {
+      "sources": [
+        "test/cmocka/test_alsa_device_lost.c",
+        "plugins/linux-alsa/alsa-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "ALSA::ALSA",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_ALSA",
+      "watch_inputs": [
+        "plugins/linux-alsa/build/linux-alsa-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio,--wrap=snd_pcm_open,--wrap=snd_pcm_readi"
+      ]
+    },
+    "test_alsa_early_stop": {
+      "sources": [
+        "test/cmocka/test_alsa_early_stop.c",
+        "plugins/linux-alsa/alsa-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "ALSA::ALSA",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_ALSA",
+      "watch_inputs": [
+        "plugins/linux-alsa/build/linux-alsa-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio,--wrap=pthread_create,--wrap=pthread_join"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ]
+    },
+    "test_alsa_reopen_destroy": {
+      "sources": [
+        "test/cmocka/test_alsa_reopen_destroy.c",
+        "plugins/linux-alsa/alsa-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "ALSA::ALSA",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_ALSA",
+      "watch_inputs": [
+        "plugins/linux-alsa/build/linux-alsa-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio"
+      ]
+    },
     "test_amf": {
       "sources": [
         "test/cmocka/test_amf.c",
@@ -2324,6 +2399,26 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_ffmpeg_mux_helper": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_mux_helper.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/ffmpeg-mux/ffmpeg-mux.c.h",
+        "plugins/obs-ffmpeg/ffmpeg-mux/build/ffmpeg-mux.pch.h"
+      ]
+    },
     "test_ffmpeg_mux_helper_host": {
       "sources": [
         "test/cmocka/test_ffmpeg_mux_helper_host.c"
@@ -3486,6 +3581,35 @@
       ],
       "header_libraries": [
         "Uthash::Uthash"
+      ]
+    },
+    "test_jack_input": {
+      "sources": [
+        "test/cmocka/test_jack_input.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "test/cmocka/jack-stubs",
+        ".",
+        "plugins/linux-jack"
+      ],
+      "compile_options": [
+        {
+          "name": "-Wno-error=sign-compare",
+          "requires": "C_COMPILER_CLANG"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/linux-jack/jack-input.c.h",
+        "plugins/linux-jack/jack-wrapper.c.h",
+        "plugins/linux-jack/build/linux-jack-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_get_name,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio"
       ]
     },
     "test_lexer": {
@@ -10450,6 +10574,26 @@
     }
   },
   "tests": {
+    "test_alsa_capture_format": {
+      "target": "test_alsa_capture_format",
+      "requires": "HAVE_OBS_ALSA",
+      "timeout_seconds": 60
+    },
+    "test_alsa_device_lost": {
+      "target": "test_alsa_device_lost",
+      "requires": "HAVE_OBS_ALSA",
+      "timeout_seconds": 120
+    },
+    "test_alsa_early_stop": {
+      "target": "test_alsa_early_stop",
+      "requires": "HAVE_OBS_ALSA",
+      "timeout_seconds": 60
+    },
+    "test_alsa_reopen_destroy": {
+      "target": "test_alsa_reopen_destroy",
+      "requires": "HAVE_OBS_ALSA",
+      "timeout_seconds": 60
+    },
     "test_amf": {
       "target": "test_amf",
       "command": [
@@ -11311,6 +11455,11 @@
       "timeout_seconds": 60,
       "requires": "OS_LINUX"
     },
+    "test_ffmpeg_mux_helper": {
+      "target": "test_ffmpeg_mux_helper",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 60
+    },
     "test_ffmpeg_mux_helper_host": {
       "target": "test_ffmpeg_mux_helper_host",
       "requires": {
@@ -11728,6 +11877,11 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_jack_input": {
+      "target": "test_jack_input",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 60
     },
     "test_lexer": {
       "target": "test_lexer"
