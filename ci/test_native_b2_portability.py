@@ -211,8 +211,10 @@ class NativeB2Portability(unittest.TestCase):
         stub = "test/cmocka/scene-source-getter-link-stubs.c"
         for name in names:
             with self.subTest(name=name):
-                self.assertEqual(support[name]["sources"], [stub])
-                self.assertEqual(graph["targets"][name]["sources"].count(stub), 1)
+                adapter = ("test/cmocka/scene-source-getter-link-support.c"
+                           if name == "test_scene_item_crop_rust" else stub)
+                self.assertEqual(support[name]["sources"], [adapter])
+                self.assertEqual(graph["targets"][name]["sources"].count(adapter), 1)
                 self.assertEqual(support[name]["includes"], ["libobs"])
                 self.assertIn("libobs", graph["targets"][name]["includes"])
         text = (ROOT / stub).read_text()
