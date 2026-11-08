@@ -12249,6 +12249,22 @@
         }
       ]
     },
+    "test_scene_item_visible": {
+      "sources": [
+        "test/cmocka/test_scene_item_visible.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_list_remove": {
       "sources": [
         "test/cmocka/test_scene_list_remove.c",
@@ -22312,6 +22328,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_item_visible": {
+      "target": "test_scene_item_visible",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_list_remove": {
       "target": "test_scene_list_remove",
