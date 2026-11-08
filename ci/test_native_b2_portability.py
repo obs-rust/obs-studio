@@ -91,6 +91,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
+                    "test/cmocka/output-pause-query-link-stubs.c",
                 ])
 
     def test_core_texture_activity_supplies_standalone_field_adapters(self):
@@ -141,6 +142,27 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
                 self.assertTrue(any(provider in support[name]["sources"] for provider in providers))
         self.assertIn("obs_output_handler_getters_fields", (ROOT / stub).read_text())
+
+    def test_output_pause_queries_supply_all_static_consumers(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-pause-queries.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if "libobs_rust-static" in target.get("libraries", [])
+                 and "OBS::libobs" not in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        stub = "test/cmocka/output-pause-query-link-stubs.c"
+        providers = ("test/cmocka/source-getter-log-link-stub.c",
+                     "test/cmocka/scene-getter-log-link-stub.c")
+        for name in names:
+            with self.subTest(name=name):
+                sources = graph["targets"][name]["sources"]
+                self.assertEqual(support[name]["sources"][0], stub)
+                self.assertEqual(sources.count(stub), 1)
+                self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
+        for symbol in ("obs_output_pause_queries_fields", "obs_output_pause_queries_lock",
+                       "obs_output_pause_queries_unlock"):
+            self.assertIn(symbol, (ROOT / stub).read_text())
 
     def test_scene_parent_getter_supplies_all_static_consumers(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
