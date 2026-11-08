@@ -297,7 +297,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -404,7 +405,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -499,7 +501,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -1691,7 +1694,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -1772,7 +1776,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -1830,7 +1835,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12425,7 +12431,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12496,7 +12503,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -12573,7 +12581,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12663,7 +12672,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12750,7 +12760,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12834,7 +12845,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -13017,7 +13029,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13167,7 +13180,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -13263,7 +13277,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -13371,7 +13386,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13458,7 +13474,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -13524,7 +13541,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13774,7 +13792,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -13835,7 +13854,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14591,7 +14611,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -14693,7 +14714,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14885,7 +14907,8 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c"
       ],
       "includes": [
         "libobs"
