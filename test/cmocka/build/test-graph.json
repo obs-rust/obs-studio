@@ -10444,6 +10444,22 @@
         "Threads::Threads"
       ]
     },
+    "test_scene_group_queries": {
+      "sources": [
+        "test/cmocka/test_scene_group_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_group_transform": {
       "sources": [
         "test/cmocka/test_scene_group_transform.c",
@@ -19233,6 +19249,14 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_scene_group_queries": {
+      "target": "test_scene_group_queries",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_group_transform": {
       "target": "test_scene_group_transform"
