@@ -2740,14 +2740,6 @@ bool obs_output_reconnecting(const obs_output_t *output)
 	return reconnecting(output);
 }
 
-const char *obs_output_get_protocols(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_protocols"))
-		return NULL;
-
-	return flag_service(output) ? output->info.protocols : NULL;
-}
-
 void obs_enum_output_types_with_protocol(const char *protocol, void *data, bool (*enum_cb)(void *data, const char *id))
 {
 	if (!obs_is_output_protocol_registered(protocol))

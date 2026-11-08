@@ -1895,6 +1895,13 @@ struct obs_output_identity_fields {
 };
 extern struct obs_output_identity_fields obs_output_identity_fields(const obs_output_t *output);
 
+/* Borrowed metadata fields; reject NULL before taking member addresses. */
+struct obs_output_protocol_getter_fields {
+	const uint32_t *flags;
+	const char *const *protocols;
+};
+extern struct obs_output_protocol_getter_fields obs_output_protocol_getter_fields(const obs_output_t *output);
+
 /* Private borrowed field addresses; callers must reject NULL before access. */
 struct obs_output_supported_codecs_fields {
 	const char *const *video;

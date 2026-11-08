@@ -150,6 +150,7 @@ pub mod output_identity;
 pub mod output_mixer_getters;
 pub mod output_pause;
 pub mod output_pause_queries;
+pub mod output_protocols;
 pub mod output_reconnect;
 pub mod output_service_getter;
 pub mod output_slots;
