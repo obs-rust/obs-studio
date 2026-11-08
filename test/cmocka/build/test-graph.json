@@ -10721,6 +10721,28 @@
         }
       ]
     },
+    "test_scene_bounds_place_rust": {
+      "sources": [
+        "test/cmocka/test_scene_bounds_place.c",
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_bounds_type_range": {
       "sources": [
         "test/cmocka/test_scene_bounds_type_range.c"
@@ -11025,6 +11047,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_names_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_names_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_item_order_steps": {
       "sources": [
         "test/cmocka/test_scene_item_order_steps.c",
@@ -11044,6 +11082,22 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_scene_item_order_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_order_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
     },
     "test_scene_item_render_getters": {
       "sources": [
@@ -11146,6 +11200,28 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_scene_item_transform_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_transform_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "includes": [
+        "libobs"
+      ]
     },
     "test_scene_list_remove": {
       "sources": [
@@ -11297,6 +11373,22 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_scene_transform_update_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_scene_transform_update_walk": {
       "sources": [
@@ -19827,6 +19919,13 @@
       ],
       "suite": "core"
     },
+    "test_scene_bounds_place_rust": {
+      "target": "test_scene_bounds_place_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_scene_bounds_type_range": {
       "target": "test_scene_bounds_type_range",
       "command": [
@@ -19964,8 +20063,22 @@
         "${target}"
       ]
     },
+    "test_scene_item_names_steps_rust": {
+      "target": "test_scene_item_names_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_scene_item_order_steps": {
       "target": "test_scene_item_order_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_order_steps_rust": {
+      "target": "test_scene_item_order_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -19998,6 +20111,13 @@
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_transform_steps_rust": {
+      "target": "test_scene_item_transform_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -20052,6 +20172,13 @@
     },
     "test_scene_transform_update_steps": {
       "target": "test_scene_transform_update_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_transform_update_steps_rust": {
+      "target": "test_scene_transform_update_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
