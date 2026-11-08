@@ -1943,6 +1943,10 @@ area.
   slideshows are unchanged. *All*, pending merge. Issue
   [#2279](https://github.com/obs-rust/obs-studio/issues/2279), upstream
   [obsproject/obs-studio#14076](https://github.com/obsproject/obs-studio/issues/14076).
+- In such a slideshow, Next and Previous report the new slide's index (the
+  `current_index` procedure) only once its transition has started, not
+  while a slide past the memory cap is still being decoded. *All*, pending
+  merge. Issue [#3789](https://github.com/obs-rust/obs-studio/issues/3789).
 - Shader effects that give an `int` or `bool` parameter a default value (in
   a plugin's shader filter or a custom `.effect` file) now draw with that
   default on Linux and macOS, instead of 0 or false with a "Size of shader
