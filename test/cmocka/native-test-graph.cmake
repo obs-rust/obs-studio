@@ -70,6 +70,7 @@ function(_obs_test_graph_requirement output json)
       HAVE_VST_EDITOR_TEST_OWNER
       HAVE_PRIVATE_DAEMON_TEST_OWNER
       HAVE_PIPEWIRE_CAMERA_TEST_OWNER
+      HAVE_V4L2_VMIC_TEST_OWNER
     )
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
@@ -312,6 +313,15 @@ function(obs_native_test_graph path root)
         )
           set(HAVE_PIPEWIRE_CAMERA_TEST_OWNER TRUE)
         endif()
+      endif()
+    endif()
+  endif()
+  if(NOT DEFINED HAVE_V4L2_VMIC_TEST_OWNER)
+    set(HAVE_V4L2_VMIC_TEST_OWNER FALSE)
+    if(OS_LINUX AND TARGET OBS::v4l2 AND HAVE_PRIVATE_DAEMON_TEST_OWNER)
+      find_program(_vmic_record pw-record)
+      if(_vmic_record)
+        set(HAVE_V4L2_VMIC_TEST_OWNER TRUE)
       endif()
     endif()
   endif()

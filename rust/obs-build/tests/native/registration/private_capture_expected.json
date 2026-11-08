@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipewire_camera_unplug": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_unplug.c",
+        "plugins/linux-pipewire/camera-portal.c.h",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "link_options": [
+        "-Wl,--wrap=bfree",
+        "-Wl,--wrap=g_hash_table_insert"
+      ]
+    },
+    "test_pipewire_cursor_hdr": {
+      "sources": [
+        "test/cmocka/test_pipewire_cursor_hdr.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h",
+        "plugins/linux-pipewire/screencast-portal.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      }
+    },
+    "test_v4l2_vmic_server": {
+      "sources": [
+        "test/cmocka/test_v4l2_vmic_server.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_V4L2_VMIC_TEST_OWNER"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ]
+    }
+  },
+  "tests": {
+    "test_pipewire_camera_unplug": {
+      "target": "test_pipewire_camera_unplug",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    },
+    "test_pipewire_cursor_hdr": {
+      "target": "test_pipewire_cursor_hdr",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 90,
+      "skip_return_code": 77,
+      "working_directory": "${runtime}"
+    },
+    "test_v4l2_vmic_server": {
+      "target": "test_v4l2_vmic_server",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_V4L2_VMIC_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120
+    }
+  }
+}
