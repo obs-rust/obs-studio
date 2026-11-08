@@ -64,10 +64,12 @@ fn canonical_private_capture_guards() {
                 if let Some(value) = display {
                     facts.insert("HAVE_X11_DISPLAY".into(), value);
                 }
-                facts.insert("HAVE_V4L2_VMIC_TEST_OWNER".into(), false);
+                if let Some(value) = owner {
+                    facts.insert("HAVE_V4L2_VMIC_TEST_OWNER".into(), value);
+                }
                 let selected = graph.select(&facts).unwrap();
-                let count = if linux && owner == Some(true) && display == Some(true) {
-                    3
+                let count = if linux && owner == Some(true) {
+                    if display == Some(true) { 4 } else { 1 }
                 } else {
                     0
                 };
