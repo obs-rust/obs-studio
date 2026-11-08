@@ -92,7 +92,9 @@ static bool vmic_parse_module_line(const char *line, uint32_t *id, long *pid)
 
 	errno = 0;
 	long value = strtol(fifo, &end, 10);
-	if (end == fifo || errno != 0 || value <= 0 || (*end != ' ' && *end != '\t' && *end != '\0'))
+	/* A module loaded through libpulse keeps its quotes (file='...', #4057). */
+	if (end == fifo || errno != 0 || value <= 0 ||
+	    (*end != ' ' && *end != '\t' && *end != '\0' && *end != '\'' && *end != '"'))
 		return false;
 
 	*id = (uint32_t)index;

@@ -130,6 +130,20 @@ static void our_module_line_gives_id_and_pid(void **state)
 	assert_int_equal(pid, 969296);
 }
 
+/* #4057: a module loaded through libpulse keeps the quotes around its path. */
+static void quoted_module_line_gives_id_and_pid(void **state)
+{
+	(void)state;
+	uint32_t id = 0;
+	long pid = 0;
+	assert_true(vmic_parse_module_line("536870917\tmodule-pipe-source\tsource_name=obs_virtual_microphone "
+					   "file='/run/user/1000/obs-virtual-microphone/obs-virtual-microphone-4242' "
+					   "format=float32le rate=48000 channels=2\t\n",
+					   &id, &pid));
+	assert_int_equal(id, 536870917u);
+	assert_int_equal(pid, 4242);
+}
+
 static void other_module_lines_are_ignored(void **state)
 {
 	(void)state;
@@ -276,6 +290,10 @@ static void stale_module_is_unloaded_with_the_microphone_off(void **state)
 	snprintf(path, sizeof(path), "%s:%s", dir, old_path ? old_path : "/usr/bin:/bin");
 	setenv("PATH", path, 1);
 	setenv("XDG_RUNTIME_DIR", dir, 1);
+	/* The fake pactl is the sound server here: keep libpulse off any real one. */
+	const char *old_server = getenv("PULSE_SERVER");
+	char *saved_server = old_server ? strdup(old_server) : NULL;
+	setenv("PULSE_SERVER", "unix:/nonexistent/native", 1);
 
 	struct virtualcam_data vcam;
 	memset(&vcam, 0, sizeof(vcam));
@@ -287,6 +305,12 @@ static void stale_module_is_unloaded_with_the_microphone_off(void **state)
 	if (saved_path) {
 		setenv("PATH", saved_path, 1);
 		free(saved_path);
+	}
+	if (saved_server) {
+		setenv("PULSE_SERVER", saved_server, 1);
+		free(saved_server);
+	} else {
+		unsetenv("PULSE_SERVER");
 	}
 	if (saved_runtime) {
 		setenv("XDG_RUNTIME_DIR", saved_runtime, 1);
@@ -517,6 +541,7 @@ int main(void)
 		cmocka_unit_test(closed_fifo_is_not_written),
 		cmocka_unit_test(module_index_is_parsed_from_pactl_reply),
 		cmocka_unit_test(our_module_line_gives_id_and_pid),
+		cmocka_unit_test(quoted_module_line_gives_id_and_pid),
 		cmocka_unit_test(other_module_lines_are_ignored),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
