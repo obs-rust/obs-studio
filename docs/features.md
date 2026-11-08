@@ -895,6 +895,9 @@ area.
   its own "OBS Virtual Microphone (2)" instead of a duplicate. *Linux*,
   2026-10-31. Issues [#3182](https://github.com/obs-rust/obs-studio/issues/3182),
   [#3185](https://github.com/obs-rust/obs-studio/issues/3185).
+- The Linux OBS Virtual Microphone talks to the sound server through libpulse,
+  so it works without `pactl` installed; `pactl` is only a fallback. *Linux*,
+  2026-11-08. Issue [#4057](https://github.com/obs-rust/obs-studio/issues/4057).
 - A silent OBS Virtual Microphone left by an OBS that died is cleared when the
   Virtual Camera starts even with the microphone turned off, and the log says
   when `pactl` itself cannot run. *Linux*, 2026-11-06.
