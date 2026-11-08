@@ -39,13 +39,13 @@ void oracle_canvas_channel_layout(size_t *layout)
 	layout[4] = sizeof(obs_view_t *);
 	layout[5] = _Alignof(obs_view_t *);
 	layout[6] = sizeof(((struct obs_canvas_channel_fields *)0)->get_source);
-	layout[7] = _Alignof(obs_source_t *(*)(obs_view_t *, uint32_t));
+	layout[7] = _Alignof(obs_source_t * (*)(obs_view_t *, uint32_t));
 }
 
 bool oracle_canvas_channel_probe(uint32_t channel, bool present, bool expired, unsigned initial,
-				obs_source_t *(*getter)(obs_canvas_t *, uint32_t));
+				 obs_source_t *(*getter)(obs_canvas_t *, uint32_t));
 bool oracle_canvas_channel_probe(uint32_t channel, bool present, bool expired, unsigned initial,
-				obs_source_t *(*getter)(obs_canvas_t *, uint32_t))
+				 obs_source_t *(*getter)(obs_canvas_t *, uint32_t))
 {
 	struct obs_canvas canvas = {0};
 	struct obs_source source = {0};
