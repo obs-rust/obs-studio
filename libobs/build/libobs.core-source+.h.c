@@ -2,6 +2,7 @@
 
 #include "libobs/build/libobs.pch.h"
 
+#include "libobs/obs-canvas-channel-getter.c.h"
 #include "libobs/obs-canvas-flags-fields.c.h"
 #include "libobs/obs-canvas-readonly-fields.c.h"
 #include "libobs/obs-canvas-video-fields.c.h"
