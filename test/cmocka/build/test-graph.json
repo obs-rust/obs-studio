@@ -9397,6 +9397,34 @@
         ]
       }
     },
+    "test_pulse_monitor_steps_rust": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring/pulse"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "header_libraries": [
+        "PulseAudio::PulseAudio"
+      ]
+    },
     "test_pulse_reconnect": {
       "sources": [
         "test/cmocka/test_pulse_reconnect.c",
@@ -11233,6 +11261,21 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_scene_transform_update_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_scene_transform_update_walk": {
       "sources": [
@@ -13080,6 +13123,36 @@
           "requires": {
             "not": "MSVC"
           }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_sprite_geometry_steps_rust": {
+      "sources": [
+        "test/cmocka/test_sprite_geometry_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
         }
       ],
       "sanitizers": "address,undefined"
@@ -19333,6 +19406,24 @@
         "${target}"
       ]
     },
+    "test_pulse_monitor_steps_rust": {
+      "target": "test_pulse_monitor_steps_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_pulse_reconnect": {
       "target": "test_pulse_reconnect"
     },
@@ -19913,6 +20004,13 @@
     },
     "test_scene_transform_update_steps": {
       "target": "test_scene_transform_update_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_transform_update_steps_rust": {
+      "target": "test_scene_transform_update_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -20643,6 +20741,13 @@
     },
     "test_sprite_geometry_steps": {
       "target": "test_sprite_geometry_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_sprite_geometry_steps_rust": {
+      "target": "test_sprite_geometry_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

@@ -239,7 +239,7 @@ class NativeB2Portability(unittest.TestCase):
                         self.assertNotIn("scene-getter-log-link-stub.c", sources)
                     else:
                         self.assertIn("scene-getter-log-link-stub.c", sources)
-        self.assertEqual(legacy, {"test_scene_item_crop_rust", "test_scene_transform_update_steps_rust"})
+        self.assertEqual(legacy, {"test_scene_item_crop_rust"})
 
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
@@ -310,7 +310,7 @@ class NativeB2Portability(unittest.TestCase):
                     self.assertEqual(len(sdk_selected), len(selected) + 2)
 
         for hevc in (False, True):
-            self.assertEqual(len(inventories[True, hevc]) - len(inventories[False, hevc]), 5)
+            self.assertEqual(len(inventories[True, hevc]) - len(inventories[False, hevc]), 6)
         for pulse in (False, True):
             self.assertEqual(len(inventories[pulse, True]) - len(inventories[pulse, False]), 1)
         self.assertGreaterEqual(len(inventories[False, True]), 417)
