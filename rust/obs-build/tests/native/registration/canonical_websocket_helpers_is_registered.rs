@@ -75,8 +75,16 @@ fn canonical_websocket_helpers_preserve_original_hosts() {
                 "test_ws_batch_order" | "test_ws_scene_count" => !windows,
                 _ => true,
             };
-            assert_eq!(selected.targets.contains_key(name), enabled, "{name}: {facts:?}");
-            assert_eq!(selected.tests.contains_key(name), enabled, "{name}: {facts:?}");
+            assert_eq!(
+                selected.targets.contains_key(name),
+                enabled,
+                "{name}: {facts:?}"
+            );
+            assert_eq!(
+                selected.tests.contains_key(name),
+                enabled,
+                "{name}: {facts:?}"
+            );
         }
     }
 }

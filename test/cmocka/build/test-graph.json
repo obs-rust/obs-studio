@@ -17408,7 +17408,14 @@
         "plugins/obs-websocket/src/requesthandler/rpc/RequestResult.cpp",
         "plugins/obs-websocket/src/utils/Compat.cpp"
       ],
-      "requires": "HAVE_WS_BATCH_ORDER_TEST_OWNER",
+      "requires": {
+        "all": [
+          "HAVE_WS_BATCH_ORDER_TEST_OWNER",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
       "includes": [
         "plugins/obs-websocket/src",
         "plugins/obs-websocket/src/utils",
@@ -17447,7 +17454,12 @@
         "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp",
         "plugins/obs-websocket/src/utils/Obs_SearchHelper.cpp"
       ],
-      "requires": "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER",
+      "requires": {
+        "all": [
+          "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER",
+          "OS_LINUX"
+        ]
+      },
       "includes": [
         "plugins/obs-websocket/src",
         "frontend/api"
@@ -17499,7 +17511,12 @@
         "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
         "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp"
       ],
-      "requires": "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER",
+      "requires": {
+        "all": [
+          "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER",
+          "OS_LINUX"
+        ]
+      },
       "includes": [
         "plugins/obs-websocket/src",
         "frontend/api"
@@ -17531,7 +17548,14 @@
         "test/cmocka/test_ws_scene_count.cpp",
         "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp"
       ],
-      "requires": "HAVE_WS_SCENE_COUNT_TEST_OWNER",
+      "requires": {
+        "all": [
+          "HAVE_WS_SCENE_COUNT_TEST_OWNER",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
       "includes": [
         "plugins/obs-websocket/src",
         "plugins/obs-websocket/src/utils",
