@@ -35,6 +35,7 @@ mod core_initialized_parity;
 mod core_setup_rules;
 mod core_setup_rules_parity;
 mod core_texture_activity;
+mod core_texture_activity_parity;
 mod display_size;
 mod display_size_parity;
 mod display_state;

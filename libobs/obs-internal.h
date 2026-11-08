@@ -809,6 +809,16 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Every field accessor requires a non-null owner, checked by the Rust shim. */
+struct obs_core_texture_activity_fields {
+	const bool *nv12;
+	const bool *p010;
+};
+extern const struct obs_core *obs_core_texture_activity_core(void);
+extern obs_canvas_t *const *obs_core_texture_activity_canvas(const struct obs_core *core);
+extern struct obs_core_video_mix *const *obs_core_texture_activity_mix(const obs_canvas_t *canvas);
+extern struct obs_core_texture_activity_fields obs_core_texture_activity_fields(const struct obs_core_video_mix *mix);
+
 /* Borrowed argument snapshot; setter/shutdown retain allocation ownership. */
 extern struct obs_cmdline_args *obs_core_cmdline_args_field(void);
 
