@@ -1249,32 +1249,33 @@ bool obs_startup(const char *locale, const char *module_config_path, profiler_na
 
 void obs_set_cmdline_args(int argc, const char *const *argv)
 {
+	struct obs_cmdline_args *args = obs_core_cmdline_args_field();
 	char *data;
 	size_t len;
 	int i;
 
 	/* Once argc is set (non-zero) we shouldn't call again */
-	if (obs_core_setup_rules_cmdline_set(cmdline_args.argc))
+	if (obs_core_setup_rules_cmdline_set(args->argc))
 		return;
 
-	cmdline_args.argc = argc;
+	args->argc = argc;
 
 	/* Safely copy over argv */
 	len = 0;
 	for (i = 0; i < argc; i++)
 		len = obs_core_setup_rules_cmdline_len(len, strlen(argv[i]));
 
-	cmdline_args.argv = bmalloc(obs_core_setup_rules_cmdline_table(argc, sizeof(char *)) + len);
-	data = (char *)cmdline_args.argv + obs_core_setup_rules_cmdline_table(argc, sizeof(char *));
+	args->argv = bmalloc(obs_core_setup_rules_cmdline_table(argc, sizeof(char *)) + len);
+	data = (char *)args->argv + obs_core_setup_rules_cmdline_table(argc, sizeof(char *));
 
 	for (i = 0; i < argc; i++) {
-		cmdline_args.argv[i] = data;
+		args->argv[i] = data;
 		len = strlen(argv[i]) + 1;
 		memcpy(data, argv[i], len);
 		data += len;
 	}
 
-	cmdline_args.argv[argc] = NULL;
+	args->argv[argc] = NULL;
 }
 
 void obs_shutdown(void)
@@ -1381,7 +1382,7 @@ void obs_shutdown(void)
 	bfree(obs->locale);
 	bfree(obs);
 	obs = NULL;
-	bfree(cmdline_args.argv);
+	bfree(obs_core_cmdline_args_field()->argv);
 
 	obs_host_shutdown();
 }
