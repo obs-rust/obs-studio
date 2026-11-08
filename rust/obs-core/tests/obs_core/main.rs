@@ -50,6 +50,8 @@ mod module_locale_getters;
 mod module_locale_parity;
 mod module_metadata;
 mod module_metadata_parity;
+mod module_name_lookups;
+mod module_name_lookups_parity;
 mod module_names;
 mod module_names_parity;
 mod module_paths;

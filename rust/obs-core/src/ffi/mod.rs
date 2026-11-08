@@ -24,6 +24,7 @@ pub mod module_load_rules;
 pub mod module_locale;
 pub mod module_locale_getters;
 pub mod module_metadata;
+pub mod module_name_lookups;
 pub mod module_names;
 pub mod module_paths;
 pub mod module_register_copy;
