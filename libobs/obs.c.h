@@ -1392,11 +1392,6 @@ void obs_shutdown(void)
 	obs_host_shutdown();
 }
 
-bool obs_initialized(void)
-{
-	return obs != NULL;
-}
-
 uint32_t obs_get_version(void)
 {
 	return LIBOBS_API_VER;

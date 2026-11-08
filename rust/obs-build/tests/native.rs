@@ -212,6 +212,8 @@ mod canonical_close_top_level_is_registered;
 mod canonical_config_hex_float_rounding_is_registered;
 #[path = "native/registration/canonical_context_names_is_registered.rs"]
 mod canonical_context_names_is_registered;
+#[path = "native/registration/canonical_core_initialized_is_registered.rs"]
+mod canonical_core_initialized_is_registered;
 #[path = "native/registration/canonical_dock_proportions_is_registered.rs"]
 mod canonical_dock_proportions_is_registered;
 #[path = "native/registration/canonical_effect_lookups_is_registered.rs"]

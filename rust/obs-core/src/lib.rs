@@ -90,6 +90,7 @@ pub mod canvas_rules;
 pub mod canvas_video_getter;
 pub mod canvas_video_info_getter;
 pub mod context_names;
+pub mod core_initialized;
 pub mod core_setup_rules;
 pub mod display_size;
 pub mod display_state;

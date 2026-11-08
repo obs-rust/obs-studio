@@ -809,6 +809,9 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Address of the global pointer; safe to obtain before startup and after shutdown. */
+extern struct obs_core *const *obs_core_initialized_field(void);
+
 /* Private field-pointer seam: core initialization remains a caller precondition. */
 extern char *const *obs_core_global_locale_field(void);
 extern signal_handler_t *const *obs_core_global_signals_field(void);
