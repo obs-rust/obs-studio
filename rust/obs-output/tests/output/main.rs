@@ -36,6 +36,7 @@ mod encoder_metadata_parity;
 mod encoder_packet_ts;
 mod encoder_packet_ts_parity;
 mod encoder_pause;
+mod encoder_preferred_format;
 mod encoder_pause_parity;
 mod encoder_roi;
 mod encoder_roi_parity;
