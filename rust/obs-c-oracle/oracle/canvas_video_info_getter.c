@@ -4,7 +4,13 @@
 #include <string.h>
 #include "obs-internal.h"
 
-static _Thread_local struct obs_core *canvas_info_current;
+#if defined(_MSC_VER)
+#define CANVAS_INFO_THREAD_LOCAL __declspec(thread)
+#else
+#define CANVAS_INFO_THREAD_LOCAL __thread
+#endif
+static CANVAS_INFO_THREAD_LOCAL struct obs_core *canvas_info_current;
+#undef CANVAS_INFO_THREAD_LOCAL
 #define obs canvas_info_current
 bool oracle_obs_canvas_get_video_info(const obs_canvas_t *canvas, struct obs_video_info *ovi);
 #define obs_canvas_get_video_info oracle_obs_canvas_get_video_info
@@ -37,9 +43,9 @@ void oracle_canvas_video_info_layout(size_t *layout)
 }
 
 bool oracle_canvas_video_info_check(canvas_info_getter candidate, bool graphics, bool mixed, bool null_canvas,
-				  bool null_output, uint8_t value, uint32_t word);
+				    bool null_output, uint8_t value, uint32_t word);
 bool oracle_canvas_video_info_check(canvas_info_getter candidate, bool graphics, bool mixed, bool null_canvas,
-				  bool null_output, uint8_t value, uint32_t word)
+				    bool null_output, uint8_t value, uint32_t word)
 {
 	struct obs_core *core = calloc(1, sizeof(*core));
 	struct obs_canvas canvas = {0}, before;
@@ -72,10 +78,9 @@ bool oracle_canvas_video_info_check(canvas_info_getter candidate, bool graphics,
 	bool rust = candidate(input, null_output ? NULL : &actual);
 	bool alias = !c || (oracle_obs_canvas_get_video_info(input, &mix.ovi) && candidate(input, &mix.ovi));
 	bool equal = alias && c == rust && c == (graphics && mixed) &&
-		     memcmp(&actual, &expected, sizeof(actual)) == 0 &&
-		     memcmp(&canvas, &before, sizeof(canvas)) == 0 &&
-		     memcmp(&mix, &mix_before, sizeof(mix)) == 0 &&
-		     memcmp(core, &core_before, sizeof(*core)) == 0 && *(uint8_t *)token == value;
+		     memcmp(&actual, &expected, sizeof(actual)) == 0 && memcmp(&canvas, &before, sizeof(canvas)) == 0 &&
+		     memcmp(&mix, &mix_before, sizeof(mix)) == 0 && memcmp(core, &core_before, sizeof(*core)) == 0 &&
+		     *(uint8_t *)token == value;
 	canvas_info_current = NULL;
 	free(token);
 	free(core);
