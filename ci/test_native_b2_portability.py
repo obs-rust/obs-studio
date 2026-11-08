@@ -83,12 +83,12 @@ class NativeB2Portability(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(graph["targets"][name]["sources"], [
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
+                    "test/cmocka/core-texture-activity-link-stubs.c",
                     "test/cmocka/module-name-lookup-link-stubs.c",
                     "test/cmocka/object-validity-query-link-stubs.c",
                     "test/cmocka/output-handler-getter-link-stubs.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
-                    "test/cmocka/core-texture-activity-link-stubs.c",
                 ])
 
     def test_core_texture_activity_supplies_standalone_field_adapters(self):
