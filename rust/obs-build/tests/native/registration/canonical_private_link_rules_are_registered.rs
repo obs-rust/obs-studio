@@ -8,7 +8,20 @@ const CASES: [&str; 2] = [
 ];
 
 fn expected() -> serde_json::Value {
-    serde_json::from_str(include_str!("private_link_rules_expected.json")).unwrap()
+    let mut combined = serde_json::json!({"targets": {}, "tests": {}});
+    for text in [
+        include_str!("rust-static/cases/private-link-rules/test_graphics_state_stacks.json"),
+        include_str!("rust-static/cases/private-link-rules/test_window_match_steps.json"),
+    ] {
+        let entry: serde_json::Value = serde_json::from_str(text).unwrap();
+        for section in ["targets", "tests"] {
+            combined[section]
+                .as_object_mut()
+                .unwrap()
+                .extend(entry[section].as_object().unwrap().clone());
+        }
+    }
+    combined
 }
 
 fn graph() -> Graph {
@@ -32,6 +45,7 @@ fn graph() -> Graph {
 
 #[test]
 fn canonical_private_link_rules_are_registered() {
+    rust_static_entries::assert_family("private-link-rules");
     let graph = graph();
     for os in ["OS_LINUX", "OS_FREEBSD", "OS_WINDOWS", "OS_MACOS"] {
         for archive in [false, true] {
