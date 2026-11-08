@@ -192,14 +192,15 @@ class NativeB2Portability(unittest.TestCase):
         adapter = ROOT / "test/cmocka/source-handler-getter-link-support.c"
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
-            lines = ["cmake_minimum_required(VERSION 3.28)", "project(handler_link NONE)",
+            (source / "dummy.c").write_text("int main(void) { return 0; }\n")
+            lines = ["cmake_minimum_required(VERSION 3.28)", "project(handler_link C)",
                      "add_library(libobs_rust-static INTERFACE)",
                      "add_library(OBS::caption INTERFACE IMPORTED)",
                      "add_library(Uthash::Uthash INTERFACE IMPORTED)",
                      f'set(CMAKE_CURRENT_SOURCE_DIR "{ROOT / "test/cmocka"}")']
             for name in (*names, "test_source_graph", "test_source_c_reference"):
                 lines.append(f'add_executable({name} "{adapter}")' if name == "test_source_graph"
-                             else f'add_executable({name} dummy.c)')
+                             else f'add_executable({name} "{source / "dummy.c"}")')
                 if name != "test_source_c_reference":
                     lines.append(f"target_link_libraries({name} PRIVATE libobs_rust-static)")
             lines += [f'include("{fragment}")', "function(check_sources)"]
