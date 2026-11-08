@@ -82,7 +82,9 @@ static void settle()
 
 static void move_to(QWidget &window, QScreen *screen)
 {
-	window.windowHandle()->setScreen(screen);
+	/* QWidget::setScreen: before the first show() the window has no
+	 * QWindow yet, so windowHandle() is null. */
+	window.setScreen(screen);
 	window.move(screen->geometry().topLeft() + QPoint(50, 50));
 	settle();
 }
