@@ -2,18 +2,21 @@
  * (obs-rust/obs-studio#4010).
  *
  * OBSQTDisplay lays out its scene from DisplayResized: the main preview, the
- * studio-mode program view, projectors. When the window moves to a screen
- * with another device pixel ratio, its size in points stays the same, so Qt
- * sends no resize event, but the size in pixels changes. The display resized
- * its obs_display on QWindow::screenChanged but did not emit DisplayResized,
- * so the studio-mode program view kept the scale and position of the old
- * pixel ratio until the window was resized by hand.
+ * studio-mode program view, projectors. On macOS, a window dragged to a
+ * screen with another pixel ratio keeps its size in points, so Qt sends no
+ * resize event, only QWindow::screenChanged; the size in pixels changes. The
+ * display resized its obs_display on screenChanged but did not emit
+ * DisplayResized, so the studio-mode program view kept the scale and
+ * position of the old pixel ratio until the window was resized by hand.
  *
  * The test builds the real OBSQTDisplay (its own unity group) on Qt's
- * offscreen platform with two screens, pixel ratio 1 and 2, moves the
- * window from one to the other without a resize, and expects DisplayResized.
- * FillPlatformGraphicsWindow fails here, so no obs_display is made and no
- * obs_startup() is needed. */
+ * offscreen platform with two screens. A real move there is no model of
+ * macOS: the offscreen platform keeps a window's size in pixels across a
+ * screen change, so its size in points changes and a resize event comes
+ * too, which would hide the bug. So the test sends the display's window
+ * what macOS sends, a screenChanged and no resize, and expects
+ * DisplayResized. FillPlatformGraphicsWindow fails here, so no obs_display
+ * is made and no obs_startup() is needed. */
 
 #include <QApplication>
 #include <QByteArray>
@@ -25,7 +28,6 @@
 #include <QWindow>
 
 #include "widgets/OBSQTDisplay.hpp"
-#include "utility/display-helpers.hpp"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -51,15 +53,15 @@ bool PlatformResetsHiddenDisplay()
 
 void HandlePlatformDisplayNativeEvent(OBSQTDisplay *, void *) {}
 
-/* Two screens side by side, the second with pixel ratio 2 (a Retina next to
- * a normal display). */
+/* Two screens side by side (a Retina next to a normal display); main() gives
+ * the second pixel ratio 2. */
 static const char screens_config[] = R"({
 	"synchronousWindowSystemEvents": true,
 	"screens": [
 		{ "name": "normal", "x": 0, "y": 0, "width": 1024, "height": 768,
 		  "logicalDpi": 96, "logicalBaseDpi": 96, "dpr": 1 },
 		{ "name": "retina", "x": 1024, "y": 0, "width": 1024, "height": 768,
-		  "logicalDpi": 96, "logicalBaseDpi": 96, "dpr": 2 }
+		  "logicalDpi": 96, "logicalBaseDpi": 96, "dpr": 1 }
 	]
 })";
 
@@ -80,15 +82,6 @@ static void settle()
 	}
 }
 
-static void move_to(QWidget &window, QScreen *screen)
-{
-	/* QWidget::setScreen: before the first show() the window has no
-	 * QWindow yet, so windowHandle() is null. */
-	window.setScreen(screen);
-	window.move(screen->geometry().topLeft() + QPoint(50, 50));
-	settle();
-}
-
 static void the_offscreen_platform_has_both_screens(void **)
 {
 	QScreen *normal = screen_named("normal");
@@ -99,33 +92,25 @@ static void the_offscreen_platform_has_both_screens(void **)
 	assert_true(retina->devicePixelRatio() == 2.0);
 }
 
-static void screen_change_reports_a_resize(void **)
+static void screen_change_without_resize_reports_a_resize(void **)
 {
 	QWidget window;
+	window.setScreen(screen_named("normal"));
 	window.resize(400, 300);
 	OBSQTDisplay *display = new OBSQTDisplay(&window);
 	display->setGeometry(0, 0, 400, 300);
-
-	move_to(window, screen_named("normal"));
 	window.show();
 	settle();
 
 	int resized = 0;
 	QObject::connect(display, &OBSQTDisplay::DisplayResized, [&resized] { resized++; });
 	const QSize points = display->size();
-	const QSize before = GetPixelSize(display);
 
-	move_to(window, screen_named("retina"));
+	/* What macOS sends when the window reaches the other screen. */
+	emit display->windowHandle()->screenChanged(screen_named("retina"));
+	settle();
 
-	/* The move changed the pixel size, not the size in points: Qt sent no
-	 * resize event, so only the screen change can report it. */
 	assert_true(display->size() == points);
-	assert_true(GetPixelSize(display) == before * 2);
-	assert_true(resized > 0);
-
-	resized = 0;
-	move_to(window, screen_named("normal"));
-	assert_true(GetPixelSize(display) == before);
 	assert_true(resized > 0);
 }
 
@@ -141,13 +126,17 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	file.close();
+	/* The offscreen platform gives a screen its "dpr" but not its windows;
+	 * Qt's per-screen scale factor gives both, as on a real high-DPI
+	 * desktop. */
+	qputenv("QT_SCREEN_SCALE_FACTORS", "normal=1;retina=2");
 	qputenv("QT_QPA_PLATFORM", QByteArray("offscreen:configfile=") + QDir::toNativeSeparators(config).toUtf8());
 
 	QApplication app(argc, argv);
 
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(the_offscreen_platform_has_both_screens),
-		cmocka_unit_test(screen_change_reports_a_resize),
+		cmocka_unit_test(screen_change_without_resize_reports_a_resize),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
