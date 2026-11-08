@@ -3,14 +3,22 @@ use obs_output::output_handler_getters::{Handlers, proc, signal};
 
 #[test]
 fn borrowed_handlers() {
-    let values = [None, Some(7_u32)];
+    let values = [None, Some(7_u32), Some(9_u32)];
     for v in values {
         for a in values {
-            let fields = Some(Handlers { signal: v, proc: a });
+            let fields = Handlers { signal: v, proc: a };
             for _ in 0..2 {
-                assert_eq!(signal(fields, |_| panic!("valid output must not log")), v);
-                assert_eq!(proc(fields, |_| panic!("valid output must not log")), a);
+                assert_eq!(
+                    signal(Some(fields), |_| panic!("valid output must not log")),
+                    v
+                );
+                assert_eq!(
+                    proc(Some(fields), |_| panic!("valid output must not log")),
+                    a
+                );
             }
+            assert_eq!(fields.signal, v);
+            assert_eq!(fields.proc, a);
         }
     }
 }

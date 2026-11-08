@@ -58,6 +58,7 @@ mod output_caption_parity;
 mod output_flags;
 mod output_flags_parity;
 mod output_handler_getters;
+mod output_handler_getters_parity;
 mod output_identity;
 mod output_identity_parity;
 mod output_mixer_getters;

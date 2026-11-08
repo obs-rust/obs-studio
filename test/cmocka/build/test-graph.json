@@ -288,6 +288,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -391,6 +392,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -482,6 +484,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -629,7 +632,9 @@
       "sources": [
         "test/cmocka/test_audio_monitor_delay_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -642,9 +647,19 @@
       ],
       "libraries": [
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_audio_resampler_drift_steps": {
       "sources": [
@@ -1365,7 +1380,9 @@
       "sources": [
         "test/cmocka/test_coreaudio_device_rules.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -1379,12 +1396,22 @@
       "libraries": [
         "libobs_rust-static",
         "OBS::native-test-cmocka",
-        "m"
+        "m",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "definitions": [
         "COREAUDIO_DEVICE_RULES_TEST_RUST"
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_coreaudio_enum_alloc": {
       "sources": [
@@ -1434,7 +1461,9 @@
       "sources": [
         "test/cmocka/test_coreaudio_pacing_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -1448,12 +1477,22 @@
       "libraries": [
         "libobs_rust-static",
         "OBS::native-test-cmocka",
-        "m"
+        "m",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "definitions": [
         "COREAUDIO_PACING_TEST_RUST"
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_coreaudio_retry": {
       "sources": [
@@ -1634,6 +1673,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -1711,6 +1751,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -1765,6 +1806,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -6251,7 +6293,9 @@
       "sources": [
         "test/cmocka/test_monitor_speaker_layout.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -6264,9 +6308,19 @@
       ],
       "libraries": [
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_monitor_video_sync": {
       "sources": [
@@ -6285,7 +6339,9 @@
       "sources": [
         "test/cmocka/test_monitor_video_sync.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -6298,9 +6354,19 @@
       ],
       "libraries": [
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_monitor_wasapi_steps": {
       "sources": [
@@ -6320,7 +6386,9 @@
       "sources": [
         "test/cmocka/test_monitor_wasapi_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -6333,9 +6401,19 @@
       ],
       "libraries": [
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_mp4_mux_multichannel": {
       "sources": [
@@ -9585,7 +9663,9 @@
     },
     "test_pulse_monitor_steps_rust": {
       "sources": [
-        "test/cmocka/test_pulse_monitor_steps.c"
+        "test/cmocka/test_pulse_monitor_steps.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -9605,10 +9685,18 @@
       "libraries": [
         "libobs_rust-static",
         "OBS::native-test-cmocka",
-        "m"
+        "m",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "header_libraries": [
-        "PulseAudio::PulseAudio"
+        "PulseAudio::PulseAudio",
+        "OBS::libobs",
+        "SIMDe::SIMDe"
       ]
     },
     "test_pulse_reconnect": {
@@ -10731,6 +10819,7 @@
         "test/cmocka/test_scene_audio_window_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c"
       ],
@@ -10750,6 +10839,12 @@
           "requires": {
             "not": "MSVC"
           }
+        },
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
         }
       ],
       "header_libraries": [
@@ -11395,6 +11490,7 @@
         "test/cmocka/test_scene_render_plan_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c"
       ],
@@ -11411,6 +11507,12 @@
         {
           "name": "m",
           "requires": "UNIX"
+        },
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
         }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
@@ -12055,6 +12157,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12122,6 +12225,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12195,6 +12299,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12281,6 +12386,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12349,6 +12455,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12429,6 +12536,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12604,6 +12712,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12750,6 +12859,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12842,6 +12952,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12946,6 +13057,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13014,6 +13126,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13076,6 +13189,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13322,6 +13436,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13379,6 +13494,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -14129,6 +14245,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -14227,6 +14344,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -14413,6 +14531,7 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",

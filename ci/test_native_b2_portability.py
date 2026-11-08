@@ -85,9 +85,30 @@ class NativeB2Portability(unittest.TestCase):
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
                     "test/cmocka/module-name-lookup-link-stubs.c",
                     "test/cmocka/object-validity-query-link-stubs.c",
+                    "test/cmocka/output-handler-getter-link-stubs.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
                 ])
+
+    def test_output_handler_getters_supply_standalone_field_adapter(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-handler-getters.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if "libobs_rust-static" in target.get("libraries", [])
+                 and "OBS::libobs" not in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        stub = "test/cmocka/output-handler-getter-link-stubs.c"
+        providers = ("test/cmocka/source-getter-log-link-stub.c",
+                     "test/cmocka/scene-getter-log-link-stub.c")
+        for name in names:
+            with self.subTest(name=name):
+                sources = graph["targets"][name]["sources"]
+                self.assertEqual(support[name]["sources"][0], stub)
+                self.assertEqual(sources.count(stub), 1)
+                self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
+                self.assertTrue(any(provider in support[name]["sources"] for provider in providers))
+        self.assertIn("obs_output_handler_getters_fields", (ROOT / stub).read_text())
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

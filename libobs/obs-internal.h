@@ -1824,6 +1824,13 @@ struct obs_output_flags_fields {
 };
 extern struct obs_output_flags_fields obs_output_flags_fields(const obs_output_t *output);
 
+/* Borrowed handler field addresses; callers must reject NULL before access. */
+struct obs_output_handler_getters_fields {
+	signal_handler_t *const *signal;
+	proc_handler_t *const *proc;
+};
+extern struct obs_output_handler_getters_fields obs_output_handler_getters_fields(const obs_output_t *output);
+
 /* Borrowed instance identity fields; reject NULL before taking member addresses. */
 struct obs_output_identity_fields {
 	const char *const *id;
