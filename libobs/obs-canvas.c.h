@@ -445,15 +445,6 @@ bool obs_canvas_reset_video(obs_canvas_t *canvas, struct obs_video_info *ovi)
 	return obs_canvas_reset_video_internal(canvas, ovi);
 }
 
-bool obs_canvas_get_video_info(const obs_canvas_t *canvas, struct obs_video_info *ovi)
-{
-	if (!obs->video.graphics || !canvas->mix)
-		return false;
-
-	*ovi = canvas->mix->ovi;
-	return true;
-}
-
 void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t *source)
 {
 	assert(channel < MAX_CHANNELS);
