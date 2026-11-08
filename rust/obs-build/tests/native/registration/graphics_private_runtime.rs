@@ -24,6 +24,9 @@ fn assert_cases(output: &Output, name: &str) {
         "test_effect_param_types_steps_rust" | "test_graphics_ffmpeg_route_steps_rust" => 10,
         "test_effect_parser_lifecycle_rust" => 8,
         "test_scene_item_crop_rust" => 11,
+        "test_effect_parser_blocks_rust" | "test_effect_parser_params_rust" => 7,
+        "test_effect_parser_passes_rust" => 5,
+        "test_effect_parser_shader_call_rust" => 3,
         "test_graphics_ffmpeg_pq_steps_rust" => 9,
         "test_graphics_ffmpeg_wic_checks_rust" => 4,
         "test_nsgif_decode_rust" => 39,
@@ -100,6 +103,48 @@ fn strict_graph(family: &str) -> Graph {
     graph
 }
 
+fn interfaces(
+    build: &NativeBuild,
+    root: &Path,
+    core: Dependency,
+    caption: &Path,
+    archive: &Path,
+) -> std::collections::BTreeMap<String, Dependency> {
+    [
+        ("OBS::libobs".into(), core),
+        ("Uthash::Uthash".into(), Dependency::default()),
+        ("SIMDe::SIMDe".into(), Dependency::default()),
+        (
+            "OBS::caption".into(),
+            Dependency {
+                artifacts: vec![caption.to_owned()],
+                include_dirs: vec![root.join("deps/libcaption")],
+                ..Default::default()
+            },
+        ),
+        (
+            "OBS::native-test-cmocka".into(),
+            Dependency::package(&build.target, "cmocka").unwrap(),
+        ),
+        (
+            "libobs_rust-static".into(),
+            Dependency::rust_static(&build.target, archive).unwrap(),
+        ),
+        (
+            "PulseAudio::PulseAudio".into(),
+            Dependency::package(&build.target, "libpulse").unwrap(),
+        ),
+        (
+            "m".into(),
+            Dependency {
+                link_options: vec!["-lm".into()],
+                ..Default::default()
+            },
+        ),
+    ]
+    .into()
+}
+
 pub(super) fn run(family: &str, cases: &[String]) {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let archive = dunce::canonicalize(
@@ -135,39 +180,7 @@ pub(super) fn run(family: &str, cases: &[String]) {
     } else {
         None
     };
-    let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
-        ("OBS::libobs".into(), core.dependency),
-        ("Uthash::Uthash".into(), Dependency::default()),
-        ("SIMDe::SIMDe".into(), Dependency::default()),
-        (
-            "OBS::caption".into(),
-            Dependency {
-                artifacts: vec![caption.clone()],
-                include_dirs: vec![root.join("deps/libcaption")],
-                ..Default::default()
-            },
-        ),
-        (
-            "OBS::native-test-cmocka".into(),
-            Dependency::package(&build.target, "cmocka").unwrap(),
-        ),
-        (
-            "libobs_rust-static".into(),
-            Dependency::rust_static(&build.target, &archive).unwrap(),
-        ),
-        (
-            "PulseAudio::PulseAudio".into(),
-            Dependency::package(&build.target, "libpulse").unwrap(),
-        ),
-        (
-            "m".into(),
-            Dependency {
-                link_options: vec!["-lm".into()],
-                ..Default::default()
-            },
-        ),
-    ]
-    .into();
+    let mut interfaces = interfaces(&build, &root, core.dependency, &caption, &archive);
     if let Some(renderer) = &renderer {
         interfaces.insert(
             "OBS::libobs-opengl".into(),
@@ -231,20 +244,14 @@ pub(super) fn run(family: &str, cases: &[String]) {
     );
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "replay the core, archive and optional renderer independently"
-)]
-fn replay_cmake(
+fn write_cmake(
     directory: &Path,
     root: &Path,
     archive: &Path,
     caption: &Path,
     core: &str,
-    core_path: &Path,
     renderer: Option<&Path>,
     runtime: &Path,
-    cases: &[String],
 ) {
     let policy = fs::read_to_string(root.join("test/cmocka/CMakeLists.txt")).unwrap();
     let policy = policy.split_once("function(obs_test_sanitize ").unwrap().1;
@@ -298,6 +305,24 @@ add_link_options("LINKER:--no-copy-dt-needed-entries" "LINKER:--as-needed")
 include("{root}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 "#, root=root.display(), archive=archive.display(), caption=caption.display(), runtime=runtime.display(), renderer_available=if renderer.is_some() { "ON" } else { "OFF" })).unwrap();
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replay the core, archive and optional renderer independently"
+)]
+fn replay_cmake(
+    directory: &Path,
+    root: &Path,
+    archive: &Path,
+    caption: &Path,
+    core: &str,
+    core_path: &Path,
+    renderer: Option<&Path>,
+    runtime: &Path,
+    cases: &[String],
+) {
+    write_cmake(directory, root, archive, caption, core, renderer, runtime);
     let mut modes = vec![("cmake-output", true, vec![]), ("no-rust", false, vec![])];
     if renderer.is_some() {
         modes.extend([

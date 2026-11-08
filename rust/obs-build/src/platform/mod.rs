@@ -294,6 +294,8 @@ pub fn configure_shared_link(
 }
 
 mod msvc_response;
+mod native_import;
+pub(crate) use native_import::build as native_test_import_library;
 mod shared_library;
 pub use qt_sdk::{
     qt_architecture, qt_binary_architectures, qt_check_target, qt_compiler_id,

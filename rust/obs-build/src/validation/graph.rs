@@ -128,10 +128,44 @@ pub struct Qt {
     pub rcc: Vec<String>,
 }
 
+/// A DATA-only import address library, generated before ordinary core linkage.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MsvcImportLibrary {
+    pub definition: String,
+    pub output: String,
+}
+
+impl MsvcImportLibrary {
+    fn validate(&self, name: &str) -> Result<(), String> {
+        if !self.definition.ends_with(".def")
+            || self.definition.contains(['\\', ':', ';'])
+            || self.definition.chars().any(char::is_control)
+            || self
+                .definition
+                .split('/')
+                .any(|part| matches!(part, "" | "." | ".."))
+            || self.output.strip_suffix(".lib").is_none_or(|stem| {
+                stem.is_empty()
+                    || !stem
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+            })
+        {
+            return Err(format!(
+                "invalid native test MSVC import library for {name}"
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Target {
     pub sources: Vec<Source>,
+    #[serde(default)]
+    pub msvc_import_library: Option<MsvcImportLibrary>,
     #[serde(default)]
     pub qt: Qt,
     #[serde(default)]
@@ -461,6 +495,9 @@ impl Graph {
                 }
             }
             validate_name(name)?;
+            if let Some(import) = &target.msvc_import_library {
+                import.validate(name)?;
+            }
             for input in &target.watch_inputs {
                 if input.is_empty()
                     || input.starts_with('/')
@@ -609,6 +646,21 @@ impl Graph {
                     .collect(),
                 ..Default::default()
             };
+            if let Some(import) = &spec.msvc_import_library
+                && Requirement::Fact("MSVC".into()).evaluate(facts)?
+            {
+                let output = build
+                    .output
+                    .join("native-tests")
+                    .join(name)
+                    .join(&import.output);
+                let library = crate::platform::native_test_import_library(
+                    build,
+                    &root.join(&import.definition),
+                    &output,
+                )?;
+                target.dependencies.insert(0, library);
+            }
             for source in &spec.sources {
                 if !source.selected(facts)? {
                     continue;

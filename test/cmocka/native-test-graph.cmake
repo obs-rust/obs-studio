@@ -369,7 +369,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${target_graph}"
         "targets;${name}"
-        "sources;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
+        "sources;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
       )
       string(JSON cpp_kind ERROR_VARIABLE cpp_error TYPE "${target_graph}" targets "${name}" cpp_standard)
       set(cpp_standard "")
@@ -435,6 +435,34 @@ function(obs_native_test_graph path root)
         endif()
       endforeach()
       add_executable(${name} ${inputs})
+      string(JSON import_kind ERROR_VARIABLE import_error TYPE "${target_graph}" targets "${name}" msvc_import_library)
+      if(NOT import_error AND NOT import_kind STREQUAL "NULL")
+        _obs_test_graph_fields("${target_graph}" "targets;${name};msvc_import_library" "definition;output")
+        string(JSON import_definition GET "${target_graph}" targets "${name}" msvc_import_library definition)
+        string(JSON import_output GET "${target_graph}" targets "${name}" msvc_import_library output)
+        if(
+          import_definition MATCHES "(^/|\\\\|:|;|(^|/)\\.\\.?(/|$))"
+          OR NOT import_definition MATCHES "\\.def$"
+          OR NOT import_output MATCHES "^[A-Za-z0-9_-]+\\.lib$"
+        )
+          message(FATAL_ERROR "Invalid native test MSVC import library for ${name}")
+        endif()
+        if(MSVC)
+          set(import_library "${CMAKE_CURRENT_BINARY_DIR}/${import_output}")
+          add_custom_command(
+            OUTPUT "${import_library}"
+            COMMAND
+              "${CMAKE_AR}" /nologo "/def:${root}/${import_definition}" "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}"
+              "/out:${import_library}"
+            DEPENDS "${root}/${import_definition}"
+            VERBATIM
+          )
+          target_sources(${name} PRIVATE "${import_library}")
+          # DATA-only address slot resolves before the ordinary libobs import library.
+          target_link_libraries(${name} PRIVATE "${import_library}")
+        endif()
+      endif()
+
       string(JSON qt_kind ERROR_VARIABLE qt_error TYPE "${target_graph}" targets "${name}" qt)
       if(NOT qt_error)
         _obs_test_graph_fields("${target_graph}" "targets;${name};qt" "moc;uic;rcc")
