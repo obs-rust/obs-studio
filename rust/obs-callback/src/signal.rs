@@ -38,6 +38,8 @@ use std::cell::{Cell, RefCell};
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 
+use obs_util::ffi::tsan;
+
 use crate::decl::{Decl, DeclParse, parse_decl};
 use crate::name_table::NameTable;
 
@@ -96,6 +98,9 @@ impl ReentrantLock {
             None
         } else {
             let guard = lock(&self.gate);
+            // TSan does not see this `Mutex`, so tell it what the recursive
+            // `pthread_mutex_t` of the C signal handler would (#3369).
+            tsan::acquire(&self.gate);
             self.owner.store(me, Ordering::Relaxed);
             Some(guard)
         };
@@ -111,6 +116,7 @@ impl Drop for ReentrantGuard<'_> {
             // identifies this thread's recursive entry, so relaxed suffices.
             // Clear it while still holding the gate, including during unwind.
             self.lock.owner.store(0, Ordering::Relaxed);
+            tsan::release(&self.lock.gate);
         }
     }
 }

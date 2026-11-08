@@ -1,77 +1,13 @@
 use super::*;
 
-const CASES: &[(&str, bool)] = &[
-    ("test_deinterlace_pacing_steps", false),
-    ("test_deinterlace_select_steps", false),
-    ("test_scene_audio_window_steps", true),
-    ("test_source_color_space_steps", false),
-];
+static CASES: std::sync::LazyLock<Vec<String>> =
+    std::sync::LazyLock::new(|| rust_static_entries::cases("decision"));
 
 #[test]
 fn canonical_rust_static_decision_steps_are_registered() {
-    use obs_build::validation::graph::{Graph, Source};
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    graph
-        .targets
-        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
-    graph
-        .tests
-        .retain(|key, _| CASES.iter().any(|(base, _)| key == &format!("{base}_rust")));
-    for &(base, math) in CASES {
-        let name = format!("{base}_rust");
-        let target = graph
-            .targets
-            .get(&name)
-            .expect("missing Rust-static decision steps");
-        assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
-            if path == &format!("test/cmocka/{base}.c")));
-        assert_eq!(target.includes, ["libobs"]);
-        assert!(target.header_libraries.is_empty());
-        assert!(target.header_packages.is_empty());
-        assert!(target.packages.is_empty());
-        assert!(target.includes_before.is_empty());
-        assert!(target.archives.is_empty());
-        assert!(target.definitions.is_empty());
-        assert!(target.compile_options.is_empty());
-        assert!(target.link_options.is_empty());
-        assert_eq!(target.sanitizers, None);
-        assert_decision_step_linkage(target, math);
-        assert_decision_test(&graph.tests[&name], &name);
-        let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{base}.cmake"))).unwrap();
-        assert!(!fragment.contains("add_executable("));
-        assert!(!fragment.contains("add_test("));
-        assert_decision_step_selection(&graph, &name);
-    }
-}
-
-fn assert_decision_test(test: &obs_build::validation::graph::Test, name: &str) {
-    assert_eq!(test.target, name);
-    assert_eq!(test.command, ["${target}"]);
-    assert_eq!(test.timeout_seconds, None);
-    assert_eq!(test.skip_return_code, None);
-    assert!(test.optional_prefixes.is_empty());
-    assert!(test.environment.is_empty());
-    assert!(test.environment_path_prepend.is_empty());
-    assert!(test.resource_locks.is_empty());
-    assert!(!test.run_serial);
-    assert_eq!(test.working_directory, None);
-    assert_eq!(test.qt_runtime, None);
-}
-
-fn assert_decision_step_linkage(target: &obs_build::validation::graph::Target, math: bool) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), if math { 3 } else { 2 });
-    assert!(matches!(&target.libraries[0], ConditionalValue::Name(n) if n == "libobs_rust-static"));
-    assert!(
-        matches!(&target.libraries[1], ConditionalValue::Name(n) if n == "OBS::native-test-cmocka")
-    );
-    if math {
-        assert!(
-            matches!(&target.libraries[2], ConditionalValue::Conditional { name, requires: Requirement::Not { not } }
-                if name == "m" && matches!(not.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-        );
+    let graph = rust_static_entries::assert_family("decision");
+    for base in CASES.iter() {
+        assert_decision_step_selection(&graph, &format!("{base}_rust"));
     }
 }
 
@@ -176,7 +112,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
             assert!(
                 CASES
                     .iter()
-                    .any(|(base, _)| test["name"] == format!("{base}_rust"))
+                    .any(|base| test["name"] == format!("{base}_rust"))
             );
             assert!(
                 !test["properties"]
@@ -206,7 +142,7 @@ fn canonical_rust_static_decision_steps_run_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
-    for &(base, _) in CASES {
+    for base in CASES.iter() {
         for section in ["targets", "tests"] {
             let name = format!("{base}_rust");
             selected[section][&name] = raw[section][&name].clone();

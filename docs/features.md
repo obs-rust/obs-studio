@@ -245,6 +245,12 @@ not get a line.
   source-record filter on it. *All*, pending merge. Issue
   [#3747](https://github.com/obs-rust/obs-studio/issues/3747), PR
   [#3752](https://github.com/obs-rust/obs-studio/pull/3752).
+- **NDI audio on its own clock stays clean on a busy machine.** Audio stamped
+  on a clock apart from its video keeps a timing of its own, so the video's
+  frames no longer re-place each packet by when it arrived: on a loaded CPU
+  the tone of such a source no longer breaks up into gaps and overlaps
+  (73–89 % of the program instead of 93 %). *All*, pending merge. Issue
+  [#3747](https://github.com/obs-rust/obs-studio/issues/3747).
 
 ### Encoding, streaming and recording
 
@@ -889,6 +895,9 @@ area.
   its own "OBS Virtual Microphone (2)" instead of a duplicate. *Linux*,
   2026-10-31. Issues [#3182](https://github.com/obs-rust/obs-studio/issues/3182),
   [#3185](https://github.com/obs-rust/obs-studio/issues/3185).
+- The Linux OBS Virtual Microphone talks to the sound server through libpulse,
+  so it works without `pactl` installed; `pactl` is only a fallback. *Linux*,
+  2026-11-08. Issue [#4057](https://github.com/obs-rust/obs-studio/issues/4057).
 - A silent OBS Virtual Microphone left by an OBS that died is cleared when the
   Virtual Camera starts even with the microphone turned off, and the log says
   when `pactl` itself cannot run. *Linux*, 2026-11-06.
@@ -1666,6 +1675,11 @@ area.
   not started yet. Such a recording now stops at once and can start
   again. *All*, 2026-11-06. Issue
   [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
+- OBS no longer hangs on exit after a stream was stopped while it waited to
+  reconnect, such as an SRT stream (from OBS or from a Source Record filter)
+  to a server that does not answer. The stop now finishes at once.
+  *All*, 2026-11-07. Issue
+  [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
 
 ### Sources and filters
 
@@ -2034,6 +2048,13 @@ area.
   [#345](https://github.com/obs-rust/obs-studio/issues/345), PR
   [#346](https://github.com/obs-rust/obs-studio/pull/346), upstream
   [obsproject/obs-studio#12171](https://github.com/obsproject/obs-studio/issues/12171).
+- In Studio Mode, the Program view follows the window to a screen with
+  another pixel ratio (for example from a Retina display to an external
+  display) and keeps its size and position, instead of keeping the old
+  layout until the window is resized. Projectors and other previews follow
+  too. *All* (seen on macOS), 2026-11-08. Issue
+  [#4010](https://github.com/obs-rust/obs-studio/issues/4010), PR
+  [#4052](https://github.com/obs-rust/obs-studio/pull/4052).
 - On X11 with a second keyboard layout, hotkeys on keys like [ and ] use the
   correct key instead of a number key. *Linux*, 2026-10-12. Issue
   [#349](https://github.com/obs-rust/obs-studio/issues/349), PR
@@ -2383,6 +2404,12 @@ area.
   transition now gets a debug log line naming obs_transition_get_size,
   instead of one naming obs_transition_set_size. *All*, 2026-11-03. Issue
   [#3540](https://github.com/obs-rust/obs-studio/issues/3540).
+- A plugin or script that hands obs_transition_get_time or
+  obs_transition_force_stop a missing transition no longer crashes OBS,
+  and one that hands them a source that is not a transition no longer
+  gets a made-up time or a stray transition stop on that source: the time
+  is 0 and the force stop does nothing. *All*, 2026-11-08. Issue
+  [#4032](https://github.com/obs-rust/obs-studio/issues/4032).
 
 ### Stability
 

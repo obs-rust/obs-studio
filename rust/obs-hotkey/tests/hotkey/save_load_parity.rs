@@ -5,7 +5,7 @@
 //! two implementations directly, on every OS.
 //!
 //! Both sides run on the same fake registry. This file defines the private seam
-//! (`obs-hotkey-seam.h`) and the public getters the C and the shims call, and
+//! (`obs-hotkey-seam.h`) and identity field pointers the getters read, and
 //! logs every call, per thread: the lock, each lookup, each binding added or
 //! removed, and each signal. Both sides read and write obs_data through the Rust
 //! obs-data port, and use the Rust binding codec; each has its own parity test.
@@ -41,7 +41,8 @@ use proptest::prelude::*;
 
 struct FakeHotkey {
     id: usize,
-    name: CString,
+    _name: CString,
+    name_ptr: *mut c_char,
 }
 
 struct FakePair {
@@ -87,9 +88,12 @@ fn reset(lock_ok: bool, swapped: bool) {
             ..Registry::default()
         };
         for id in 1..=4 {
+            let name = CString::new(format!("key.{id}")).expect("no NUL");
+            let name_ptr = name.as_ptr().cast_mut();
             r.hotkeys.push(Box::new(FakeHotkey {
                 id,
-                name: CString::new(format!("key.{id}")).expect("no NUL"),
+                _name: name,
+                name_ptr,
             }));
         }
         r.pairs.push((1, Box::new(FakePair { ids: [1, 2] })));
@@ -300,22 +304,21 @@ pub extern "C" fn obs_hotkey_seam_source_context(source: *mut c_void) -> *mut c_
     source
 }
 
-/// # Safety
-///
-/// `key` is a [`FakeHotkey`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_get_id(key: *const obs_hotkey_t) -> usize {
-    // SAFETY: per the caller.
-    unsafe { (*key.cast::<FakeHotkey>()).id }
-}
-
-/// # Safety
-///
-/// `key` is a [`FakeHotkey`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_get_name(key: *const obs_hotkey_t) -> *const c_char {
-    // SAFETY: per the caller.
-    unsafe { (*key.cast::<FakeHotkey>()).name.as_ptr() }
+/// Only return fields for pointers owned by this thread's fake registry.
+pub(super) fn identity_fields(
+    key: *const obs_hotkey_t,
+) -> Option<obs_hotkey::ffi::identity_getters::obs_hotkey_identity_fields> {
+    REGISTRY.with_borrow(|r| {
+        r.hotkeys
+            .iter()
+            .find(|h| std::ptr::eq((&***h as *const FakeHotkey).cast(), key))
+            .map(
+                |h| obs_hotkey::ffi::identity_getters::obs_hotkey_identity_fields {
+                    id: &raw const h.id,
+                    name: &raw const h.name_ptr,
+                },
+            )
+    })
 }
 
 // ---------------------------------------------------------------------------

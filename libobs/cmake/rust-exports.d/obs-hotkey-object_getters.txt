@@ -1,0 +1,4 @@
+obs_hotkey_get_description
+obs_hotkey_get_registerer_type
+obs_hotkey_get_registerer
+obs_hotkey_get_pair_partner_id

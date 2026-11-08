@@ -46,7 +46,7 @@ gib=$(( (${bytes:-0}) / 1024 / 1024 / 1024 ))
   echo "- bucket: $BUCKET @ nyc3"
   echo "- objects: ${objects:-?}"
   echo "- size: ${bytes:-?} bytes (${gib} GiB of 50 GiB)"
-} >>"$SUMMARY"
+} | tee -a "$SUMMARY"
 
 aws s3 rm "s3://$BUCKET/$key" --endpoint-url "$ENDPOINT" >/dev/null || true
 [ "$readback" = ok ]

@@ -1,5 +1,6 @@
 #!/usr/bin/env -S uv run --script
 """Pin the native build inputs for monitor EDID recovery (#2839)."""
+import json
 from pathlib import Path
 import unittest
 
@@ -15,9 +16,14 @@ class MonitorIdentityBuildTest(unittest.TestCase):
 
     def test_portable_regression_is_registered_without_windows_guard(self):
         fragment = (ROOT / 'test/cmocka/tests.d/test_windows_monitor_identity.cmake').read_text()
-        self.assertIn('add_dependencies(cmocka-tests test_windows_monitor_identity)', fragment)
-        self.assertIn('add_test(NAME test_windows_monitor_identity COMMAND test_windows_monitor_identity)', fragment)
-        self.assertNotIn('if(OS_WINDOWS)', fragment)
+        self.assertIn('test-graph.json', fragment)
+        graph = json.loads((ROOT / 'test/cmocka/build/test-graph.json').read_text())
+        name = 'test_windows_monitor_identity'
+        self.assertEqual(graph['targets'][name]['sources'], ['test/cmocka/test_windows_monitor_identity.c'])
+        self.assertEqual(graph['tests'][name], {'target': name, 'command': ['${target}']})
+        self.assertNotIn('requires', graph['targets'][name])
+        self.assertNotIn('add_executable(', fragment)
+        self.assertNotIn('add_test(', fragment)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,1 @@
+obs_obj_invalid

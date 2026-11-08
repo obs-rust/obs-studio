@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_async_upload_steps_rust": {
+      "sources": [
+        "test/cmocka/test_async_upload_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_async_upload_steps_rust": {
+      "target": "test_async_upload_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

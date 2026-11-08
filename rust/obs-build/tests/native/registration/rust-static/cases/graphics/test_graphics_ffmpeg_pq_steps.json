@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_ffmpeg_pq_steps_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_pq_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined",
+      "definitions": [
+        "GS_PQ_STEPS_TEST_RUST"
+      ]
+    }
+  },
+  "tests": {
+    "test_graphics_ffmpeg_pq_steps_rust": {
+      "target": "test_graphics_ffmpeg_pq_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,5 @@
+obs_encoder_get_caps
+obs_encoder_get_codec
+obs_encoder_get_id
+obs_encoder_get_type
+obs_encoder_get_type_data

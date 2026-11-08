@@ -20,10 +20,6 @@
 #define lock_transition(transition) pthread_mutex_lock(&transition->transition_mutex);
 #define unlock_transition(transition) pthread_mutex_unlock(&transition->transition_mutex);
 
-#define trylock_textures(transition) pthread_mutex_trylock(&transition->transition_tex_mutex)
-#define lock_textures(transition) pthread_mutex_lock(&transition->transition_tex_mutex)
-#define unlock_textures(transition) pthread_mutex_unlock(&transition->transition_tex_mutex)
-
 _Static_assert(OBS_SOURCE_TRANSITION_CLOCK_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
 _Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
 	       "OBS_TRANSITION_SCALE_MAX_ONLY");
@@ -76,312 +72,6 @@ void obs_transition_free(obs_source_t *transition)
 	gs_texrender_destroy(transition->transition_texrender[0]);
 	gs_texrender_destroy(transition->transition_texrender[1]);
 	gs_leave_context();
-}
-
-static float calc_time(obs_source_t *transition, uint64_t ts)
-{
-	return obs_source_transition_clock_time((int)transition->transition_mode, transition->transition_manual_val,
-						transition->transition_start_time, transition->transition_duration, ts);
-}
-
-static inline float get_video_time(obs_source_t *transition)
-{
-	uint64_t ts = obs_video_stats_frame_time(&obs->video.stats);
-	return calc_time(transition, ts);
-}
-
-float obs_transition_get_time(obs_source_t *transition)
-{
-	/* Read under the lock that publishes a start's clock, as the render
-	 * functions do: a caller choosing what to draw from this value, then
-	 * rendering, must not pair a new start with the previous clock. */
-	lock_transition(transition);
-	float t = get_video_time(transition);
-	unlock_transition(transition);
-	return t;
-}
-
-static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_transition_target target)
-{
-	size_t idx = (size_t)target;
-	return gs_texrender_get_texture(transition->transition_texrender[idx]);
-}
-
-struct transition_state {
-	obs_source_t *s[2];
-	bool transitioning_video;
-	bool transitioning_audio;
-
-	/* The clock, copied under the lock for an audio block (#3499): the mix
-	 * runs after the lock is dropped, and a write then must not split the
-	 * block between two positions. */
-	enum obs_transition_mode mode;
-	float manual_val;
-	uint64_t start_time;
-	uint64_t duration;
-};
-
-static inline void copy_transition_state(obs_source_t *transition, struct transition_state *state)
-{
-	state->s[0] = obs_source_get_ref(transition->transition_sources[0]);
-	state->s[1] = obs_source_get_ref(transition->transition_sources[1]);
-
-	state->transitioning_video = os_atomic_load_bool(&transition->transitioning_video);
-	state->transitioning_audio = os_atomic_load_bool(&transition->transitioning_audio);
-}
-
-static inline void render_child(obs_source_t *transition, obs_source_t *child, size_t idx, const struct matrix4 *matrix,
-				enum gs_color_space space)
-{
-	uint32_t cx = transition_get_cx(transition);
-	uint32_t cy = transition_get_cy(transition);
-	struct vec4 blank;
-	if (!child)
-		return;
-
-	enum gs_color_format format = gs_get_format_from_space(space);
-	if (gs_texrender_get_format(transition->transition_texrender[idx]) != format) {
-		gs_texrender_destroy(transition->transition_texrender[idx]);
-		transition->transition_texrender[idx] = gs_texrender_create(format, GS_ZS_NONE);
-	}
-
-	if (gs_texrender_begin_with_color_space(transition->transition_texrender[idx], cx, cy, space)) {
-		vec4_zero(&blank);
-		gs_clear(GS_CLEAR_COLOR, &blank, 0.0f, 0);
-		gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -100.0f, 100.0f);
-
-		gs_matrix_push();
-		gs_matrix_mul(matrix);
-		obs_source_video_render(child);
-		gs_matrix_pop();
-
-		gs_texrender_end(transition->transition_texrender[idx]);
-	}
-}
-
-static void obs_transition_stop(obs_source_t *transition)
-{
-	obs_source_t *old_child = transition->transition_sources[0];
-
-	if (old_child && transition->transition_source_active[0])
-		obs_source_remove_active_child(transition, old_child);
-	obs_source_release(old_child);
-
-	transition->transition_source_active[0] = true;
-	transition->transition_source_active[1] = false;
-	transition->transition_sources[0] = transition->transition_sources[1];
-	transition->transition_sources[1] = NULL;
-}
-
-static inline void handle_stop(obs_source_t *transition)
-{
-	if (transition->info.transition_stop)
-		transition->info.transition_stop(transition->context.data);
-	obs_source_dosignal(transition, "source_transition_stop", "transition_stop");
-}
-
-void obs_transition_force_stop(obs_source_t *transition)
-{
-	handle_stop(transition);
-}
-
-void obs_transition_video_render(obs_source_t *transition, obs_transition_video_render_callback_t callback)
-{
-	obs_transition_video_render2(transition, callback, obs->video.transparent_texture);
-}
-
-void obs_transition_video_render2(obs_source_t *transition, obs_transition_video_render_callback_t callback,
-				  gs_texture_t *placeholder_texture)
-{
-	struct transition_state state;
-	struct matrix4 matrices[2];
-	enum obs_source_transition_render_draw_step draw;
-	bool locked = false;
-	bool stopped = false;
-	bool video_stopped = false;
-	float t;
-
-	if (!transition_valid(transition, "obs_transition_video_render"))
-		return;
-
-	/* Starts write the clock under this lock with the transitioning flags;
-	 * reading it before the lock could pair a new start with an old clock. */
-	lock_transition(transition);
-
-	t = get_video_time(transition);
-
-	if (obs_source_transition_render_video_due(t, os_atomic_load_bool(&transition->transitioning_video))) {
-		enum obs_source_transition_render_video_step step;
-
-		os_atomic_store_bool(&transition->transitioning_video, false);
-		video_stopped = true;
-
-		/* no inactive rule here: active is true */
-		step = obs_source_transition_render_video_stop(os_atomic_load_bool(&transition->transitioning_audio),
-							       true);
-		if (step != OBS_SOURCE_TRANSITION_RENDER_VIDEO_END) {
-			obs_transition_stop(transition);
-			stopped = true;
-		}
-	}
-	copy_transition_state(transition, &state);
-	matrices[0] = transition->transition_matrices[0];
-	matrices[1] = transition->transition_matrices[1];
-
-	unlock_transition(transition);
-
-	if (state.transitioning_video)
-		locked = trylock_textures(transition) == 0;
-
-	draw = obs_source_transition_render_draw(state.transitioning_video, locked, callback != NULL,
-						 state.transitioning_audio);
-
-	if (draw == OBS_SOURCE_TRANSITION_RENDER_DRAW_CALLBACK) {
-		gs_texture_t *tex[2];
-		uint32_t cx;
-		uint32_t cy;
-
-		const enum gs_color_space current_space = gs_get_color_space();
-		const enum gs_color_space source_space = obs_source_get_color_space(transition, 1, &current_space);
-		for (size_t i = 0; i < 2; i++) {
-			if (state.s[i]) {
-				render_child(transition, state.s[i], i, &matrices[i], source_space);
-				tex[i] = get_texture(transition, (enum obs_transition_target)i);
-				if (!tex[i])
-					tex[i] = placeholder_texture;
-			} else {
-				tex[i] = placeholder_texture;
-			}
-		}
-
-		cx = transition_get_cx(transition);
-		cy = transition_get_cy(transition);
-		if (cx && cy) {
-			gs_blend_state_push();
-			gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
-
-			callback(transition->context.data, tex[0], tex[1], t, cx, cy);
-
-			gs_blend_state_pop();
-		}
-
-	} else if (draw == OBS_SOURCE_TRANSITION_RENDER_DRAW_B) {
-		if (state.s[1]) {
-			gs_matrix_push();
-			gs_matrix_mul(&matrices[1]);
-			obs_source_video_render(state.s[1]);
-			gs_matrix_pop();
-		}
-	} else {
-		if (state.s[0]) {
-			gs_matrix_push();
-			gs_matrix_mul(&matrices[0]);
-			obs_source_video_render(state.s[0]);
-			gs_matrix_pop();
-		}
-	}
-
-	if (locked)
-		unlock_textures(transition);
-
-	obs_source_release(state.s[0]);
-	obs_source_release(state.s[1]);
-
-	if (video_stopped)
-		obs_source_dosignal(transition, "source_transition_video_stop", "transition_video_stop");
-	if (stopped)
-		handle_stop(transition);
-}
-
-static enum gs_color_space mix_spaces(enum gs_color_space a, enum gs_color_space b)
-{
-	return (enum gs_color_space)obs_source_transition_clock_mix_spaces((int)a, (int)b);
-}
-
-enum gs_color_space obs_transition_video_get_color_space(obs_source_t *transition)
-{
-	obs_source_t *source0 = transition->transition_sources[0];
-	obs_source_t *source1 = transition->transition_sources[1];
-
-	const enum gs_color_space preferred_spaces[] = {
-		GS_CS_SRGB,
-		GS_CS_SRGB_16F,
-		GS_CS_709_EXTENDED,
-	};
-
-	enum gs_color_space space = GS_CS_SRGB;
-
-	if (source0) {
-		space = mix_spaces(space, obs_source_get_color_space(source0, OBS_COUNTOF(preferred_spaces),
-								     preferred_spaces));
-	}
-
-	if (source1) {
-		space = mix_spaces(space, obs_source_get_color_space(source1, OBS_COUNTOF(preferred_spaces),
-								     preferred_spaces));
-	}
-
-	return space;
-}
-
-bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_transition_target target)
-{
-	struct transition_state state;
-	struct matrix4 matrices[2];
-	bool stopped = false;
-	bool video_stopped = false;
-	bool transitioning;
-	float t;
-
-	if (!transition_valid(transition, "obs_transition_video_render"))
-		return false;
-
-	/* Starts write the clock under this lock with the transitioning flags;
-	 * reading it before the lock could pair a new start with an old clock. */
-	lock_transition(transition);
-
-	t = get_video_time(transition);
-
-	if (obs_source_transition_render_video_due(t, os_atomic_load_bool(&transition->transitioning_video))) {
-		enum obs_source_transition_render_video_step step;
-
-		os_atomic_store_bool(&transition->transitioning_video, false);
-		video_stopped = true;
-
-		step = obs_source_transition_render_video_stop(os_atomic_load_bool(&transition->transitioning_audio),
-							       obs_source_active(transition));
-		if (step == OBS_SOURCE_TRANSITION_RENDER_VIDEO_STOP_AUDIO)
-			os_atomic_store_bool(&transition->transitioning_audio, false);
-
-		if (step != OBS_SOURCE_TRANSITION_RENDER_VIDEO_END) {
-			obs_transition_stop(transition);
-			stopped = true;
-		}
-	}
-	copy_transition_state(transition, &state);
-	transitioning = state.transitioning_audio || state.transitioning_video;
-	matrices[0] = transition->transition_matrices[0];
-	matrices[1] = transition->transition_matrices[1];
-
-	unlock_transition(transition);
-
-	int idx = obs_source_transition_render_direct_index(transitioning, (int)target);
-	if (state.s[idx]) {
-		gs_matrix_push();
-		gs_matrix_mul(&matrices[idx]);
-		obs_source_video_render(state.s[idx]);
-		gs_matrix_pop();
-	}
-
-	obs_source_release(state.s[0]);
-	obs_source_release(state.s[1]);
-
-	if (video_stopped)
-		obs_source_dosignal(transition, "source_transition_video_stop", "transition_video_stop");
-	if (stopped)
-		handle_stop(transition);
-
-	return transitioning;
 }
 
 static inline void mix_child(obs_source_t *transition, const struct transition_state *state, float *out, float *in,
@@ -479,7 +169,7 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	min_ts = transition_calc_min_ts(sources);
 
 	if (min_ts)
-		t = calc_time(transition, min_ts);
+		t = transition_calc_time(transition, min_ts);
 
 	step = obs_source_transition_render_audio_stop(min_ts != 0, t,
 						       os_atomic_load_bool(&transition->transitioning_video),
@@ -487,7 +177,7 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	if (step != OBS_SOURCE_TRANSITION_RENDER_AUDIO_KEEP) {
 		os_atomic_store_bool(&transition->transitioning_audio, false);
 		if (step == OBS_SOURCE_TRANSITION_RENDER_AUDIO_STOP) {
-			obs_transition_stop(transition);
+			transition_stop(transition);
 			stopped = true;
 		}
 	}
@@ -527,7 +217,7 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	}
 
 	if (stopped)
-		handle_stop(transition);
+		transition_handle_stop(transition);
 
 	*ts_out = min_ts;
 	return !!min_ts;
@@ -536,6 +226,3 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef lock_transition
 #undef unlock_transition
-#undef trylock_textures
-#undef lock_textures
-#undef unlock_textures

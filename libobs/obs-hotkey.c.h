@@ -51,36 +51,6 @@ void obs_hotkeys_mutex_unlock(void)
 	pthread_mutex_unlock(&obs->hotkeys.mutex);
 }
 
-obs_hotkey_id obs_hotkey_get_id(const obs_hotkey_t *key)
-{
-	return key->id;
-}
-
-const char *obs_hotkey_get_name(const obs_hotkey_t *key)
-{
-	return key->name;
-}
-
-const char *obs_hotkey_get_description(const obs_hotkey_t *key)
-{
-	return key->description;
-}
-
-obs_hotkey_registerer_t obs_hotkey_get_registerer_type(const obs_hotkey_t *key)
-{
-	return key->registerer_type;
-}
-
-void *obs_hotkey_get_registerer(const obs_hotkey_t *key)
-{
-	return key->registerer;
-}
-
-obs_hotkey_id obs_hotkey_get_pair_partner_id(const obs_hotkey_t *key)
-{
-	return key->pair_partner_id;
-}
-
 void obs_hotkey_set_name(obs_hotkey_id id, const char *name)
 {
 	obs_hotkey_t *hotkey;
@@ -896,17 +866,6 @@ char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo)
 		return NULL;
 	}
 	return trigger.array;
-}
-
-bool obs_hotkey_combination_is_background(obs_key_combination_t combo)
-{
-	if (obs_hotkeys_get_background_state(NULL) == OBS_HOTKEYS_BACKGROUND_NATIVE)
-		return true;
-
-	char *id = obs_hotkey_combination_get_background_id(combo);
-	bool background = id != NULL;
-	bfree(id);
-	return background;
 }
 
 void obs_hotkeys_enum_background_shortcuts(obs_hotkey_background_enum_func func, void *data)

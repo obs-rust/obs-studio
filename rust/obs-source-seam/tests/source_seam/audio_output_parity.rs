@@ -238,6 +238,26 @@ fn the_reset_functions_match() {
     assert!(Pair::state(pair.rust).contains(&format!("ts {:016x}", 0)));
 }
 
+/// Audio on a clock of its own, hours from the source's video, takes and
+/// keeps its own timing while the video's moves (#3747).
+#[test]
+fn audio_on_its_own_clock_matches() {
+    let mut pair = Pair::new(Init {
+        timing_set: true,
+        timing_adjust: NOW.wrapping_sub(FAR) + 3 * SEC,
+        last_output_frame_ts: FAR + 14_191 * SEC,
+        ..Init::default()
+    });
+    pair.send(FAR, FRAMES, 1.0);
+    pair.now += DUR + 40 * MSEC;
+    pair.send(FAR + DUR, FRAMES, 2.0);
+    pair.now += DUR;
+    pair.send(FAR + 2 * DUR, FRAMES, 3.0);
+    let state = Pair::state(pair.rust);
+    let seeded = format!(" ownset{:016x}", NOW.wrapping_sub(FAR));
+    assert!(state.contains(&seeded), "{state}");
+}
+
 /// A stamp relative to the last one: every branch of the timing is near.
 #[derive(Debug, Clone, Copy)]
 enum Stamp {
@@ -270,11 +290,28 @@ fn init() -> impl Strategy<Value = Init> {
         0u64..1000,
         0i32..3,
         any::<[bool; 4]>(),
+        // no frame, one on the audio's clock (NOW, FAR), or hours away
+        prop_oneof![Just(0u64), Just(NOW), Just(FAR), any::<u64>()],
+        prop_oneof![Just(0u64), any::<u64>()],
+        any::<bool>(),
     )
         .prop_map(
-            |(timing_set, adjust, sync_offset, resample_offset, monitoring_type, flags)| Init {
+            |(
+                timing_set,
+                adjust,
+                sync_offset,
+                resample_offset,
+                monitoring_type,
+                flags,
+                frame_ts,
+                own,
+                own_set,
+            )| Init {
                 timing_set,
                 timing_adjust: adjust,
+                last_output_frame_ts: frame_ts,
+                own_clock_timing_adjust: own,
+                own_clock_timing_set: own_set,
                 sync_offset,
                 resample_offset,
                 monitoring_type,

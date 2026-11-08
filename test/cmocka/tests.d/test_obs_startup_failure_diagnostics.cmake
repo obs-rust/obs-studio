@@ -1,9 +1,1 @@
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET X11::X11)
-  add_executable(test_obs_startup_failure_diagnostics test_obs_startup_failure_diagnostics.c)
-  target_include_directories(test_obs_startup_failure_diagnostics PRIVATE ${CMOCKA_INCLUDE_DIR})
-  target_link_libraries(test_obs_startup_failure_diagnostics PRIVATE OBS::libobs X11::X11 ${CMOCKA_LIBRARIES})
-  target_link_options(test_obs_startup_failure_diagnostics PRIVATE "-Wl,--export-dynamic-symbol=XOpenDisplay")
-  add_dependencies(cmocka-tests test_obs_startup_failure_diagnostics)
-  add_test(NAME test_obs_startup_failure_diagnostics COMMAND test_obs_startup_failure_diagnostics)
-  set_tests_properties(test_obs_startup_failure_diagnostics PROPERTIES TIMEOUT 30)
-endif()
+# Registered once in build/test-graph.json, consumed by CMake and Cargo.

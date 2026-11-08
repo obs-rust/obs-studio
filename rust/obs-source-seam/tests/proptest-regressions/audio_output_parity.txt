@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 497312f271f6cc109f23760460e99a2f28ff98e972751dc6e00fde42cec03760 # shrinks to init = Init { timing_adjust: 0, next_audio_ts_min: 0, next_audio_sys_ts_min: 0, audio_ts: 0, resample_offset: 0, sync_offset: 0, last_sync_offset: 0, monitoring_type: 0, timing_set: false, async_unbuffered: false, async_decoupled: false, compensating: false, muted: false, last_output_frame_ts: 100000000000, own_clock_timing_adjust: 0, own_clock_timing_set: false }, start = 100000000000, channels = 1, steps = [(Any(0), 0, 55)]

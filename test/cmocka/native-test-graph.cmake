@@ -1,6 +1,7 @@
 # Consumer of the native test graph shared with obs-build. Paths in the graph
 # are repository-relative; runtime substitutions are deliberately limited.
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/native-test-groups.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/qt-runtime.cmake")
 
 function(_obs_test_graph_fields json path allowed)
@@ -57,9 +58,35 @@ function(_obs_test_graph_requirement output json)
     set(${output} "${value}" PARENT_SCOPE)
   elseif(kind STREQUAL "STRING")
     # CMake defines these built-in platform/compiler facts only when true.
-    # Project feature facts must still be declared, so misspellings stay fatal.
-    set(platform_facts UNIX APPLE WIN32 MSVC)
-    if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts)
+    # Wayland and the X11 display declaration may be absent on other hosts.
+    # SDK facts stay explicitly declared; unknown names (including typos) fail.
+    set(
+      platform_facts
+      UNIX
+      APPLE
+      WIN32
+      MSVC
+      OS_LINUX
+      OS_FREEBSD
+      OS_OPENBSD
+      OS_WINDOWS
+      OS_MACOS
+    )
+    set(
+      host_options
+      ENABLE_WAYLAND
+      HAVE_X11_DISPLAY
+      HAVE_QT_CORE_TEST_OWNER
+      HAVE_CRASH_LOG_TEST_OWNER
+      HAVE_QT_WIDGETS_TEST_OWNER
+      HAVE_QT_WIDGETS_TESTLIB_OWNER
+      HAVE_PLUGIN_MANAGER_TEST_OWNER
+      HAVE_VST_EDITOR_TEST_OWNER
+      HAVE_PRIVATE_DAEMON_TEST_OWNER
+      HAVE_PIPEWIRE_CAMERA_TEST_OWNER
+      HAVE_V4L2_VMIC_TEST_OWNER
+    )
+    if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
     if(${value})
@@ -115,10 +142,16 @@ function(_obs_test_graph_expand output value root target)
   string(REPLACE "\${source}" "${root}" value "${value}")
   string(REPLACE "\${build}" "${CMAKE_CURRENT_BINARY_DIR}" value "${value}")
   if(value MATCHES "\\$\\{runtime\\}")
-    if(NOT DEFINED OBS_OUTPUT_DIR)
+    if(DEFINED OBS_OUTPUT_DIR)
+      set(runtime "${OBS_OUTPUT_DIR}/$<CONFIG>")
+    elseif(OS_MACOS OR OS_WINDOWS)
+      # Portable startup tests originally used CTest's default working directory.
+      # macOS has no rundir, and standalone host configurations may omit it too.
+      set(runtime "${CMAKE_CURRENT_BINARY_DIR}")
+    else()
       message(FATAL_ERROR "Native test runtime directory OBS_OUTPUT_DIR is missing")
     endif()
-    string(REPLACE "\${runtime}" "${OBS_OUTPUT_DIR}/$<CONFIG>" value "${value}")
+    string(REPLACE "\${runtime}" "${runtime}" value "${value}")
   endif()
   string(REPLACE "\${target}" "$<TARGET_FILE:${target}>" value "${value}")
   if(value MATCHES "\\$\\{")
@@ -221,7 +254,113 @@ function(_obs_test_graph_values output graph target field)
   set(${output} "${values}" PARENT_SCOPE)
 endfunction()
 
+# No declared X server is a supported exclusion. The project declares its
+# Xvfb runner at configure time and starts that server later, before CTest.
+function(_obs_test_graph_x11_display output)
+  if(DEFINED HAVE_X11_DISPLAY)
+    set(${output} "${HAVE_X11_DISPLAY}" PARENT_SCOPE)
+    return()
+  endif()
+  set(available FALSE)
+  if(OS_LINUX)
+    if(NOT "$ENV{DISPLAY}" STREQUAL "" OR OBS_XVFB_RUN_REAL OR XVFB_RUN)
+      set(available TRUE)
+    endif()
+  endif()
+  set(${output} "${available}" PARENT_SCOPE)
+endfunction()
+
 function(obs_native_test_graph path root)
+  _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
+  set(HAVE_QT_CORE_TEST_OWNER FALSE)
+  set(HAVE_CRASH_LOG_TEST_OWNER FALSE)
+  if(TARGET Qt6::Core)
+    set(HAVE_QT_CORE_TEST_OWNER TRUE)
+    if(TARGET nlohmann_json::nlohmann_json)
+      set(HAVE_CRASH_LOG_TEST_OWNER TRUE)
+    endif()
+  endif()
+  # The original filename fixture adds its muxer branch only with the Linux
+  # renderer owner. Keep its artifact definition on that same conditional edge.
+  if(OS_LINUX AND TARGET OBS::libobs-opengl AND NOT TARGET OBS::output-filename-mux-test)
+    add_library(OBS::output-filename-mux-test INTERFACE IMPORTED)
+    set_property(
+      TARGET OBS::output-filename-mux-test
+      PROPERTY INTERFACE_COMPILE_DEFINITIONS TEST_FFMPEG_MUX GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>"
+    )
+    add_dependencies(OBS::output-filename-mux-test OBS::libobs-opengl)
+  endif()
+  # Qt helpers are optional even when another component imported a Qt target.
+  # An explicitly disabled UI/frontend must not enable their fixture owners.
+  set(HAVE_QT_WIDGETS_TEST_OWNER FALSE)
+  set(HAVE_QT_WIDGETS_TESTLIB_OWNER FALSE)
+  if((NOT DEFINED ENABLE_UI OR ENABLE_UI) AND (NOT DEFINED ENABLE_FRONTEND OR ENABLE_FRONTEND) AND TARGET Qt6::Widgets)
+    set(HAVE_QT_WIDGETS_TEST_OWNER TRUE)
+    if(TARGET Qt6::Test)
+      set(HAVE_QT_WIDGETS_TESTLIB_OWNER TRUE)
+    endif()
+  endif()
+  set(HAVE_PLUGIN_MANAGER_TEST_OWNER FALSE)
+  if(HAVE_QT_WIDGETS_TEST_OWNER AND TARGET Qt6::Svg AND TARGET OBS::idian AND TARGET nlohmann_json::nlohmann_json)
+    set(HAVE_PLUGIN_MANAGER_TEST_OWNER TRUE)
+  endif()
+  set(HAVE_VST_EDITOR_TEST_OWNER FALSE)
+  if(HAVE_QT_WIDGETS_TEST_OWNER AND TARGET test_vst_editor_close_module AND TARGET test_vst_editor_close_plugin)
+    set(HAVE_VST_EDITOR_TEST_OWNER TRUE)
+  endif()
+  if(NOT DEFINED HAVE_PRIVATE_DAEMON_TEST_OWNER)
+    set(HAVE_PRIVATE_DAEMON_TEST_OWNER FALSE)
+    if(OS_LINUX)
+      find_program(_graph_pipewire pipewire)
+      find_program(_graph_wireplumber wireplumber)
+      find_program(_graph_pipewire_pulse pipewire-pulse)
+      find_program(_graph_pactl pactl)
+      find_program(_graph_dbus_run_session dbus-run-session)
+      if(_graph_pipewire AND _graph_wireplumber AND _graph_pipewire_pulse AND _graph_pactl AND _graph_dbus_run_session)
+        set(HAVE_PRIVATE_DAEMON_TEST_OWNER TRUE)
+      endif()
+    endif()
+  endif()
+  # Camera fixtures create their own PipeWire daemon and fake D-Bus portal.
+  # Missing tools/SDKs and other hosts disable them without probing hardware.
+  if(NOT DEFINED HAVE_PIPEWIRE_CAMERA_TEST_OWNER)
+    set(HAVE_PIPEWIRE_CAMERA_TEST_OWNER FALSE)
+    if(OS_LINUX AND TARGET OBS::pipewire AND TARGET OBS::glad AND TARGET OBS::libobs-opengl)
+      find_package(PipeWire 0.3.60 QUIET)
+      find_package(X11 QUIET)
+      find_package(PkgConfig QUIET)
+      find_program(_camera_pipewire pipewire)
+      find_program(_camera_dbus dbus-daemon)
+      find_program(_camera_uv uv)
+      if(PKG_CONFIG_FOUND)
+        pkg_check_modules(_camera_test_sdk QUIET libdrm glib-2.0 gobject-2.0 gio-2.0)
+        if(
+          PipeWire_FOUND
+          AND X11_FOUND
+          AND _camera_test_sdk_FOUND
+          AND _camera_pipewire
+          AND _camera_dbus
+          AND _camera_uv
+          AND TARGET gio::gio
+        )
+          set(HAVE_PIPEWIRE_CAMERA_TEST_OWNER TRUE)
+        endif()
+      endif()
+    endif()
+  endif()
+  if(NOT DEFINED HAVE_V4L2_VMIC_TEST_OWNER)
+    set(HAVE_V4L2_VMIC_TEST_OWNER FALSE)
+    if(OS_LINUX AND TARGET OBS::v4l2 AND HAVE_PRIVATE_DAEMON_TEST_OWNER)
+      find_program(_vmic_record pw-record)
+      if(_vmic_record)
+        set(HAVE_V4L2_VMIC_TEST_OWNER TRUE)
+      endif()
+    endif()
+  endif()
+  set(HAVE_STARTUP_X11 FALSE)
+  if(TARGET X11::X11)
+    set(HAVE_STARTUP_X11 TRUE)
+  endif()
   set(HAVE_HAPPY_EYEBALLS FALSE)
   if(TARGET OBS::happy-eyeballs)
     set(HAVE_HAPPY_EYEBALLS TRUE)
@@ -233,6 +372,19 @@ function(obs_native_test_graph path root)
   set(HAVE_LIBOBS FALSE)
   if(TARGET OBS::libobs)
     set(HAVE_LIBOBS TRUE)
+  endif()
+  # Private portal fixtures create their own bus; SDK absence is an exclusion.
+  set(HAVE_PORTAL_TEST_GIO FALSE)
+  if(OS_LINUX OR OS_FREEBSD)
+    find_package(Gio QUIET)
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+      pkg_check_modules(PORTAL_TEST_GLIB QUIET IMPORTED_TARGET glib-2.0 gobject-2.0)
+      pkg_check_modules(INHIBIT_TEST_GLIB QUIET IMPORTED_TARGET glib-2.0 gobject-2.0)
+    endif()
+    if(TARGET gio::gio AND TARGET PkgConfig::PORTAL_TEST_GLIB AND TARGET PkgConfig::INHIBIT_TEST_GLIB)
+      set(HAVE_PORTAL_TEST_GIO TRUE)
+    endif()
   endif()
   file(READ "${path}" graph)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${path}")
@@ -262,7 +414,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${target_graph}"
         "targets;${name}"
-        "sources;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;sanitizers"
+        "sources;unity_groups;pch;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
       )
       string(JSON cpp_kind ERROR_VARIABLE cpp_error TYPE "${target_graph}" targets "${name}" cpp_standard)
       set(cpp_standard "")
@@ -328,6 +480,35 @@ function(obs_native_test_graph path root)
         endif()
       endforeach()
       add_executable(${name} ${inputs})
+      _obs_test_graph_groups("${name}" "${target_graph}" "${root}" "${sources}")
+      string(JSON import_kind ERROR_VARIABLE import_error TYPE "${target_graph}" targets "${name}" msvc_import_library)
+      if(NOT import_error AND NOT import_kind STREQUAL "NULL")
+        _obs_test_graph_fields("${target_graph}" "targets;${name};msvc_import_library" "definition;output")
+        string(JSON import_definition GET "${target_graph}" targets "${name}" msvc_import_library definition)
+        string(JSON import_output GET "${target_graph}" targets "${name}" msvc_import_library output)
+        if(
+          import_definition MATCHES "(^/|\\\\|:|;|(^|/)\\.\\.?(/|$))"
+          OR NOT import_definition MATCHES "\\.def$"
+          OR NOT import_output MATCHES "^[A-Za-z0-9_-]+\\.lib$"
+        )
+          message(FATAL_ERROR "Invalid native test MSVC import library for ${name}")
+        endif()
+        if(MSVC)
+          set(import_library "${CMAKE_CURRENT_BINARY_DIR}/${import_output}")
+          add_custom_command(
+            OUTPUT "${import_library}"
+            COMMAND
+              "${CMAKE_AR}" /nologo "/def:${root}/${import_definition}" "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}"
+              "/out:${import_library}"
+            DEPENDS "${root}/${import_definition}"
+            VERBATIM
+          )
+          target_sources(${name} PRIVATE "${import_library}")
+          # DATA-only address slot resolves before the ordinary libobs import library.
+          target_link_libraries(${name} PRIVATE "${import_library}")
+        endif()
+      endif()
+
       string(JSON qt_kind ERROR_VARIABLE qt_error TYPE "${target_graph}" targets "${name}" qt)
       if(NOT qt_error)
         _obs_test_graph_fields("${target_graph}" "targets;${name};qt" "moc;uic;rcc")
@@ -459,6 +640,10 @@ function(obs_native_test_graph path root)
           target_link_options(${name} PRIVATE ${values})
         endif()
       endforeach()
+      _obs_test_graph_values(link_flags "${target_graph}" "${name}" conditional_link_options)
+      if(link_flags)
+        target_link_options(${name} PRIVATE ${link_flags})
+      endif()
       _obs_test_graph_values(flags "${target_graph}" "${name}" compile_options)
       if(flags)
         target_compile_options(${name} PRIVATE ${flags})

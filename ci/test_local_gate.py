@@ -144,10 +144,12 @@ class EnvironmentHintTest(unittest.TestCase):
             raise FileNotFoundError(2, "No such file or directory", "soldr")
 
         out = []
-        with mock.patch.object(local_gate.subprocess, "Popen", side_effect=missing), \
+        with mock.patch.object(local_gate, "ensure_nextest", side_effect=AssertionError("tool acquisition must not run without soldr")) as acquire, \
+                mock.patch.object(local_gate.subprocess, "Popen", side_effect=missing), \
                 mock.patch("builtins.print", side_effect=lambda *a, **k: out.append(" ".join(map(str, a)))), \
                 mock.patch("sys.argv", ["local_gate.py", "--lane", "rust-test"]):
             self.assertEqual(local_gate.main(), 1)
+        acquire.assert_not_called()
         text = "\n".join(out)
         self.assertIn("lane rust-test: FAILED", text)
         self.assertIn("soldr is not on PATH", text)

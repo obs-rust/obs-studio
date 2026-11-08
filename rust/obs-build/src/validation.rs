@@ -1,5 +1,7 @@
 //! Build the unchanged native C tests through the Cargo native engine.
 pub mod graph;
+pub mod headless;
+pub mod sdk_helpers;
 
 use crate::{NativeBuild, SharedLibrary, libobs::add_package};
 use std::{
@@ -224,7 +226,16 @@ pub fn build_graphics_tests(
     let graph = load_suite(&root, "graphics")?;
     let interfaces = runtime_interfaces(build, &root, core, graphics)?;
     let mut facts = crate::platform::native_test_facts(&build.target, false, false);
-    facts.insert("HAVE_OBS_OPENGL".into(), true);
+    facts.extend([
+        ("HAVE_OBS_OPENGL".into(), true),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
+        // This graphics-only builder has no optional plugin, X11 or Qt interfaces.
+        // Focused replays supply those owners and their capabilities explicitly.
+        ("HAVE_OBS_FILTERS".into(), false),
+        ("HAVE_RTMP_SERVICES_MODULE".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
+        ("HAVE_QT6_WIDGETS".into(), false),
+    ]);
     compile_suite(build, &root, &graph, &facts, &interfaces)
 }
 
@@ -253,6 +264,7 @@ pub fn build_vlc_tests(
     let mut facts = crate::platform::native_test_facts(&build.target, false, false);
     facts.extend([
         ("HAVE_OBS_OPENGL".into(), true),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
         ("HAVE_VLC_MODULE".into(), true),
     ]);
     compile_suite(build, &root, &graph, &facts, &interfaces)
@@ -283,10 +295,24 @@ pub fn build_c_tests(
         ("HAVE_OBS_FILTERS".into(), options.filters),
         ("HAVE_OBS_PIPEWIRE".into(), options.pipewire),
         ("HAVE_OBS_PULSEAUDIO".into(), options.pulseaudio_plugin),
-        // obs-build builds neither plugin; their tests run under CMake.
+        // This compatibility stage does not build these plugin owners.
+        // Focused graph replays supply each owner and its SDK explicitly.
+        ("HAVE_OBS_ALSA".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_OBS_OPENGL".into(), false),
+        ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_TRANSITIONS_TEST_OWNER".into(), false),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
+        ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
+        ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),
+        ("HAVE_X264_TEST_OWNER".into(), false),
+        ("ENABLE_CORE_MODULES".into(), false),
+        ("HAVE_PREFLIGHT_TEST_ARCHIVE".into(), false),
+        ("HAVE_SCRIPTING_DEFS_TEST_SDK".into(), false),
     ]);
     let mut core_interface = SharedLibrary {
         include_dirs: vec![
@@ -341,6 +367,10 @@ pub fn build_c_tests(
             graph::Dependency::rust_static(&build.target, archive)?,
         );
     }
+    interfaces.insert(
+        "OBS::headless-characterization-headers".into(),
+        headless::prepare_headers(build, &root)?,
+    );
     let caption = crate::libobs::build_caption(build, &root)?;
     interfaces.insert(
         "OBS::caption".into(),
@@ -372,7 +402,48 @@ pub fn build_c_tests(
         add_package(&mut dependency, &build.target, "libpulse")?;
         interfaces.insert("PulseAudio::PulseAudio".into(), dependency.into());
     }
+    // Match the original Linux-only fragment: UUID is required, Gio optional.
+    // Keep this interface separate from any richer core Gio dependency.
+    if options.rust_archive.is_some() && facts["OS_LINUX"] {
+        interfaces.insert(
+            "LibUUID::LibUUID".into(),
+            graph::Dependency::package(&build.target, "uuid")?,
+        );
+        let mut gio = SharedLibrary::default();
+        let available = add_package(&mut gio, &build.target, "gio-2.0")
+            .and_then(|()| add_package(&mut gio, &build.target, "glib-2.0"))
+            .is_ok();
+        facts.insert("HAVE_WINDOW_MATCH_TEST_GIO".into(), available);
+        if available {
+            interfaces.insert("PkgConfig::_window_match_test_gio".into(), gio.into());
+        }
+    }
+    if facts["UNIX"] {
+        interfaces.insert(
+            "config_close_fault".into(),
+            graph::Dependency {
+                artifacts: vec![build_config_close_fault(build, &root)?],
+                ..Default::default()
+            },
+        );
+    }
+    if facts["OS_LINUX"] || facts["OS_FREEBSD"] {
+        let gio = graph::Dependency::package(&build.target, "gio-2.0");
+        let mut glib = SharedLibrary::default();
+        let available = add_package(&mut glib, &build.target, "glib-2.0")
+            .and_then(|()| add_package(&mut glib, &build.target, "gobject-2.0"))
+            .is_ok();
+        if let Ok(gio) = gio
+            && available
+        {
+            facts.insert("HAVE_PORTAL_TEST_GIO".into(), true);
+            interfaces.insert("gio::gio".into(), gio);
+            interfaces.insert("PkgConfig::PORTAL_TEST_GLIB".into(), glib.clone().into());
+            interfaces.insert("PkgConfig::INHIBIT_TEST_GLIB".into(), glib.into());
+        }
+    }
     configure_headless_plugin_sdks(build, &mut facts, &interfaces);
+    configure_transport_test_sdks(build, &root, &mut facts, &mut interfaces)?;
     if options.outputs {
         let mut happy = graph::Dependency {
             artifacts: vec![crate::deps::shared_archive(build, &root, "happy-eyeballs")?],
@@ -447,13 +518,20 @@ fn headers_only(library: &mut SharedLibrary, package: &str) -> Result<(), String
     Ok(())
 }
 
-// Match the optional CMake tests.d discovery. Never probe these Linux SDKs on
-// other hosts, or when their original owning-plugin guard is disabled.
+// Match optional CMake tests.d discovery within each original host/owner guard.
+// FreeType platform defaults apply to Linux/BSD; PulseAudio/PipeWire to Linux.
 fn configure_headless_plugin_sdks(
     build: &NativeBuild,
     facts: &mut BTreeMap<String, bool>,
     interfaces: &BTreeMap<String, graph::Dependency>,
 ) {
+    let text_host = facts["OS_LINUX"] || facts["OS_FREEBSD"] || facts["OS_OPENBSD"];
+    let text_sdk = text_host
+        && ["freetype2", "fontconfig"]
+            .iter()
+            .all(|package| graph::Dependency::package(&build.target, package).is_ok());
+    facts.insert("HAVE_FREETYPE_PLATFORM_SDK".into(), text_sdk);
+    // This builder does not build linux-v4l2; keep its original owner guard off.
     if !facts["OS_LINUX"] {
         return;
     }
@@ -467,4 +545,67 @@ fn configure_headless_plugin_sdks(
             .iter()
             .all(|package| graph::Dependency::package(&build.target, package).is_ok());
     facts.insert("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), layout);
+}
+
+// Preserve optional discovery; this Linux compatibility stage has no file-updater
+// or FFmpeg plugin owner. Focused replays supply those original owner facts.
+fn configure_transport_test_sdks(
+    build: &NativeBuild,
+    root: &Path,
+    facts: &mut BTreeMap<String, bool>,
+    interfaces: &mut BTreeMap<String, graph::Dependency>,
+) -> Result<(), String> {
+    interfaces.insert(
+        "OBS::ffmpeg-net-host".into(),
+        graph::Dependency {
+            include_dirs: vec![root.join("plugins/obs-ffmpeg/hosts/posix")],
+            ..Default::default()
+        },
+    );
+    for (fact, packages) in [
+        (
+            "HAVE_LIBRIST_TEST_SDK",
+            vec![("Librist::Librist", "librist")],
+        ),
+        ("HAVE_CURL_TEST_SDK", vec![("CURL::libcurl", "libcurl")]),
+    ] {
+        let dependencies = packages
+            .into_iter()
+            .map(|(name, package)| {
+                graph::Dependency::package(&build.target, package)
+                    .map(|dependency| (name.into(), dependency))
+            })
+            .collect::<Result<Vec<_>, _>>();
+        facts.insert(fact.into(), dependencies.is_ok());
+        if let Ok(dependencies) = dependencies {
+            interfaces.extend(dependencies);
+        }
+    }
+    // Unlike RIST/curl, the original core+avformat guard makes avdevice
+    // REQUIRED. A missing SDK is an error, never a silently omitted test.
+    for (name, package) in [
+        ("FFmpeg::avdevice", "libavdevice"),
+        ("FFmpeg::swscale", "libswscale"),
+        ("FFmpeg::swresample", "libswresample"),
+    ] {
+        interfaces.insert(
+            name.into(),
+            graph::Dependency::package(&build.target, package)?,
+        );
+    }
+    facts.insert("HAVE_MEDIA_PACKET_TEST_SDK".into(), true);
+    Ok(())
+}
+
+/// Build the original shared libc-interposition helper for graph consumers.
+pub fn build_config_close_fault(build: &NativeBuild, root: &Path) -> Result<PathBuf, String> {
+    let mut library = SharedLibrary {
+        name: "config_close_fault".into(),
+        file_name: Some("config_close_fault.preload".into()),
+        sources: vec![root.join("test/cmocka/config_close_fault.c")],
+        include_dirs: vec![root.into()],
+        ..Default::default()
+    };
+    crate::platform::configure_config_close_fault(&build.target, &mut library);
+    build.shared_library(&library)
 }

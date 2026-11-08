@@ -284,3 +284,29 @@ int obs_source_transition_seam_trylock_textures(obs_source_t *transition)
 {
 	return pthread_mutex_trylock(&transition->transition_tex_mutex);
 }
+
+bool obs_source_transition_seam_call_start(obs_source_t *transition)
+{
+	if (!transition->info.transition_start)
+		return false;
+	transition->info.transition_start(transition->context.data);
+	return true;
+}
+
+bool obs_source_transition_seam_call_stop(obs_source_t *transition)
+{
+	if (!transition->info.transition_stop)
+		return false;
+	transition->info.transition_stop(transition->context.data);
+	return true;
+}
+
+void obs_source_transition_seam_dosignal(obs_source_t *transition, const char *signal_obs, const char *signal_source)
+{
+	obs_source_dosignal(transition, signal_obs, signal_source);
+}
+
+uint64_t obs_source_transition_seam_get_video_time(void)
+{
+	return obs_video_stats_frame_time(&obs->video.stats);
+}

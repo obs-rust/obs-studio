@@ -1,0 +1,2 @@
+obs_source_get_deinterlace_mode
+obs_source_get_deinterlace_field_order

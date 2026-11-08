@@ -23,7 +23,7 @@ RUNTIME_TOOLS = (
     'libvlc-dev',
     'pipewire', 'dbus-daemon', 'vlc-plugin-base', 'libgl1-mesa-dri', 'libegl-mesa0', 'libglx-mesa0',
     # test_v4l2_vmic_server starts a private pipewire-pulse and records with pactl/pw-record (#3186).
-    'pipewire-pulse', 'wireplumber', 'pulseaudio-utils',
+    'pipewire-pulse', 'wireplumber', 'pulseaudio', 'pulseaudio-utils',
 )
 PACKAGE = re.compile(r'[a-z0-9][a-z0-9+.-]*(?::[a-z0-9][a-z0-9-]*)?\Z')
 VERSION = re.compile(r'[0-9][a-zA-Z0-9.+:~_-]*\Z')

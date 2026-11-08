@@ -66,23 +66,6 @@ static int load_module_exports(struct obs_module *mod, const char *path)
 	return MODULE_SUCCESS;
 }
 
-bool obs_module_get_locale_string(const obs_module_t *mod, const char *lookup_string, const char **translated_string)
-{
-	assert(mod);
-	if (mod && mod->get_string) {
-		return mod->get_string(lookup_string, translated_string);
-	}
-
-	return false;
-}
-
-const char *obs_module_get_locale_text(const obs_module_t *mod, const char *text)
-{
-	const char *str = text;
-	obs_module_get_locale_string(mod, text, &str);
-	return str;
-}
-
 static inline char *get_module_name(const char *file)
 {
 	return obs_module_names_module_name(file, get_module_extension());
@@ -246,50 +229,6 @@ void obs_log_loaded_modules(void)
 		blog(LOG_INFO, "    %s", mod->file);
 }
 
-const char *obs_get_module_file_name(obs_module_t *module)
-{
-	return module ? module->file : NULL;
-}
-
-const char *obs_get_module_name(obs_module_t *module)
-{
-	if (module && module->metadata && module->metadata->display_name) {
-		return module->metadata->display_name;
-	}
-
-	return (module && module->name) ? module->name() : NULL;
-}
-
-const char *obs_get_module_author(obs_module_t *module)
-{
-	return (module && module->author) ? module->author() : NULL;
-}
-
-const char *obs_get_module_description(obs_module_t *module)
-{
-	return (module && module->description) ? module->description() : NULL;
-}
-
-const char *obs_get_module_binary_path(obs_module_t *module)
-{
-	return module ? module->bin_path : NULL;
-}
-
-const char *obs_get_module_data_path(obs_module_t *module)
-{
-	return module ? module->data_path : NULL;
-}
-
-const char *obs_get_module_id(obs_module_t *module)
-{
-	return module && module->metadata ? module->metadata->id : NULL;
-}
-
-const char *obs_get_module_version(obs_module_t *module)
-{
-	return module && module->metadata ? module->metadata->version : NULL;
-}
-
 void obs_module_add_source(obs_module_t *module, const char *id)
 {
 	if (module) {
@@ -320,39 +259,6 @@ void obs_module_add_service(obs_module_t *module, const char *id)
 		char *service_id = bstrdup(id);
 		da_push_back(module->services, &service_id);
 	}
-}
-
-obs_module_t *obs_get_module(const char *name)
-{
-	obs_module_t *module = obs->first_module;
-	while (module) {
-		if (strcmp(module->mod_name, name) == 0) {
-			return module;
-		}
-
-		module = module->next;
-	}
-
-	return NULL;
-}
-
-obs_module_t *obs_get_disabled_module(const char *name)
-{
-	obs_module_t *module = obs->first_disabled_module;
-	while (module) {
-		if (strcmp(module->mod_name, name) == 0) {
-			return module;
-		}
-
-		module = module->next;
-	}
-
-	return NULL;
-}
-
-void *obs_get_module_lib(obs_module_t *module)
-{
-	return module ? module->module : NULL;
 }
 
 char *obs_find_module_file(obs_module_t *module, const char *file)
@@ -639,22 +545,6 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 
 	return obs_module_names_find_core(info->path_info.binary, name, info->path_info.data, info->type,
 					  get_module_extension(), callback, data);
-}
-
-bool obs_is_core_module(obs_module_t *module)
-{
-	if (!module)
-		return false;
-	return obs_module_load_rules_is_core((uint32_t)module->module_type);
-}
-
-bool obs_is_legacy_module(obs_module_t *module)
-{
-	if (!module) {
-		return false;
-	}
-
-	return obs_module_load_rules_is_legacy((uint32_t)module->module_type);
 }
 
 void obs_find_modules2(obs_find_module_callback2_t callback, void *param)

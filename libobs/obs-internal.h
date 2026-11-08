@@ -39,6 +39,7 @@
 #include "media-io/audio-io.h"
 
 #include "obs.h"
+#include "obs-canvas-flags-fields.h"
 #include "obs-video-stats.h"
 
 #include <obsversion.h>
@@ -186,6 +187,20 @@ struct obs_module_metadata {
 	char *name;
 };
 
+typedef const char *(*obs_module_metadata_callback_t)(void);
+
+/* Private field-pointer seam: Rust never mirrors struct obs_module. */
+const char *const *obs_module_metadata_file_field(obs_module_t *module);
+char *const *obs_module_metadata_binary_path_field(obs_module_t *module);
+char *const *obs_module_metadata_data_path_field(obs_module_t *module);
+void *const *obs_module_metadata_lib_field(obs_module_t *module);
+char *const *obs_module_metadata_id_field(obs_module_t *module);
+char *const *obs_module_metadata_version_field(obs_module_t *module);
+char *const *obs_module_metadata_display_field(obs_module_t *module);
+obs_module_metadata_callback_t const *obs_module_metadata_name_field(obs_module_t *module);
+obs_module_metadata_callback_t const *obs_module_metadata_author_field(obs_module_t *module);
+obs_module_metadata_callback_t const *obs_module_metadata_description_field(obs_module_t *module);
+
 static inline void free_module_metadata(struct obs_module_metadata *omi)
 {
 	if (omi) {
@@ -229,6 +244,22 @@ struct obs_hotkey {
 
 	UT_hash_handle hh;
 };
+
+/* Borrowed identity fields keep getters independent of the hotkey layout. */
+struct obs_hotkey_identity_fields {
+	const obs_hotkey_id *id;
+	char *const *name;
+};
+struct obs_hotkey_identity_fields obs_hotkey_identity_fields(const obs_hotkey_t *key);
+
+/* Borrowed field pointers keep read-only getters independent of the hotkey layout. */
+struct obs_hotkey_object_fields {
+	char *const *description;
+	const obs_hotkey_registerer_t *registerer_type;
+	void *const *registerer;
+	const obs_hotkey_id *pair_partner_id;
+};
+struct obs_hotkey_object_fields obs_hotkey_object_fields(const obs_hotkey_t *key);
 
 struct obs_hotkey_pair {
 	obs_hotkey_pair_id pair_id;
@@ -450,6 +481,15 @@ struct obs_display {
 
 extern bool obs_display_init(struct obs_display *display, const struct gs_init_data *graphics_data);
 extern void obs_display_free(struct obs_display *display);
+
+/* Borrowed addresses only; the C-owned draw_info_mutex guards reads. */
+struct obs_display_size_fields {
+	uint32_t *cx;
+	uint32_t *cy;
+};
+struct obs_display_size_fields obs_display_size_fields(obs_display_t *display);
+void obs_display_size_lock(obs_display_t *display);
+void obs_display_size_unlock(obs_display_t *display);
 
 /* ------------------------------------------------------------------------- */
 /* core */
@@ -769,6 +809,31 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Every field accessor requires a non-null owner, checked by the Rust shim. */
+struct obs_core_texture_activity_fields {
+	const bool *nv12;
+	const bool *p010;
+};
+extern const struct obs_core *obs_core_texture_activity_core(void);
+extern obs_canvas_t *const *obs_core_texture_activity_canvas(const struct obs_core *core);
+extern struct obs_core_video_mix *const *obs_core_texture_activity_mix(const obs_canvas_t *canvas);
+extern struct obs_core_texture_activity_fields obs_core_texture_activity_fields(const struct obs_core_video_mix *mix);
+
+/* Borrowed argument snapshot; setter/shutdown retain allocation ownership. */
+extern struct obs_cmdline_args *obs_core_cmdline_args_field(void);
+
+/* Frame interval seam: check core presence before obtaining the member address. */
+extern const struct obs_core *obs_core_frame_interval_core(void);
+extern const uint64_t *obs_core_frame_interval_field(const struct obs_core *core);
+
+/* Address of the global pointer; safe to obtain before startup and after shutdown. */
+extern struct obs_core *const *obs_core_initialized_field(void);
+
+/* Private field-pointer seam: core initialization remains a caller precondition. */
+extern char *const *obs_core_global_locale_field(void);
+extern signal_handler_t *const *obs_core_global_signals_field(void);
+extern proc_handler_t *const *obs_core_global_procs_field(void);
+
 struct obs_graphics_context {
 	uint64_t last_time;
 	uint64_t interval;
@@ -805,7 +870,21 @@ struct obs_weak_object {
 	struct obs_context_data *object;
 };
 
+/* Borrowed field address; callers reject NULL before this accessor. */
+struct obs_weak_object_identity_fields {
+	struct obs_context_data *const *object;
+};
+struct obs_weak_object_identity_fields obs_weak_object_identity_fields(const obs_weak_object_t *weak);
+
 typedef void (*obs_destroy_cb)(void *obj);
+
+#include "obs-object-query-fields.h"
+#include "obs-scene-group-query-fields.h"
+#include "obs-scene-item-parent-fields.h"
+#include "obs-scene-item-transition-fields.h"
+
+/* A non-NULL context is required; the Rust query guards it before this call. */
+extern void *const *obs_object_validity_field(const void *obj);
 
 struct obs_context_data {
 	char *name;
@@ -1052,6 +1131,19 @@ struct obs_canvas {
 	struct obs_core_video_mix *mix;
 };
 
+#include "libobs/obs-canvas-channel-fields.h"
+#include "libobs/obs-canvas-video-fields.h"
+#include "libobs/obs-canvas-video-info-fields.h"
+
+/* Private borrowed field addresses; the canvas layout remains owned by C. */
+struct obs_canvas_readonly_fields {
+	char *const *name;
+	const char *const *uuid;
+	signal_handler_t *const *signals;
+	struct obs_core_video_mix *const *mix;
+};
+extern struct obs_canvas_readonly_fields obs_canvas_readonly_fields(const obs_canvas_t *canvas);
+
 extern obs_canvas_t *obs_create_main_canvas(void);
 extern void obs_canvas_destroy(obs_canvas_t *canvas);
 extern void obs_canvas_clear_mix(obs_canvas_t *canvas);
@@ -1175,6 +1267,12 @@ struct obs_source {
 	 * filter, 0 for none: the clock of the source's video, which the audio
 	 * follows only when it runs on it too (#3747). Under audio_buf_mutex. */
 	uint64_t last_output_frame_ts;
+	/* the timing adjust of audio on a clock of its own (not within MAX_TS_VAR
+	 * of last_output_frame_ts), apart from the video's timing_adjust, which
+	 * every shown frame moves: else each packet after a frame would be placed
+	 * by when it arrived, not by its timestamp. Under audio_buf_mutex. */
+	uint64_t own_clock_timing_adjust;
+	bool own_clock_timing_set;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;
 
@@ -1343,6 +1441,87 @@ struct obs_source {
 	/* canvas this source belongs to (only used for scenes) */
 	obs_weak_canvas_t *canvas;
 };
+
+/* Borrowed field addresses only; no locking, type validation or references.
+ * The caller keeps the filter live and synchronizes exactly as for the C getters. */
+struct obs_source_filter_relationship_fields {
+	obs_source_t *const *parent;
+	obs_source_t *const *target;
+};
+struct obs_source_filter_relationship_fields obs_source_filter_relationship_fields(const obs_source_t *filter);
+/* Borrowed field addresses only: no Rust mirror of the private source layout,
+ * ownership, synchronization, or getter decisions in the C adapter. */
+struct obs_source_deinterlace_fields {
+	const enum obs_deinterlace_mode *mode;
+	const bool *top_first;
+};
+
+struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
+/* Borrowed addresses only; Rust owns the getter decisions and reads only the
+ * requested field under the original caller's synchronization contract. */
+struct obs_source_async_flag_fields {
+	const bool *unbuffered;
+	const bool *decoupled;
+};
+struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
+
+/* Borrowed addresses only; source must be non-NULL and live. No ownership or
+ * synchronization changes, and each getter reads only its requested field. */
+struct obs_source_boolean_query_fields {
+	const bool *texcoords_centered;
+	const bool *hidden;
+};
+struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
+
+/* Borrowed identity field addresses. Caller must reject NULL before access. */
+struct obs_source_identity_getter_fields {
+	const char *const *uuid;
+	const char *const *unversioned_id;
+};
+struct obs_source_identity_getter_fields obs_source_identity_getter_fields(const obs_source_t *source);
+
+/* Non-NULL live source only; caller loads the returned bool atomically. */
+extern const bool *obs_source_audio_active_field(const obs_source_t *source);
+
+/* Borrowed field addresses only. The caller checks non-NULL before this
+ * accessor and holds audio_mutex for every value read. */
+struct obs_source_push_query_fields {
+	void *audio_mutex;
+	const bool *mute_enabled;
+	const bool *talk_enabled;
+	const uint64_t *mute_delay;
+	const uint64_t *talk_delay;
+};
+struct obs_source_push_query_fields obs_source_push_query_fields(obs_source_t *source);
+
+/* Borrowed field addresses only. Caller checks non-NULL and keeps the source
+ * live under the original getters' synchronization contract. */
+struct obs_source_state_getter_fields {
+	const uint32_t *flags;
+	const bool *enabled;
+	const uint32_t *last_obs_version;
+};
+struct obs_source_state_getter_fields obs_source_state_getter_fields(const obs_source_t *source);
+
+struct obs_source_base_size_fields {
+	enum obs_source_type const *source_type;
+	void *const *data;
+	uint32_t (*const *get_width)(void *);
+	uint32_t (*const *get_height)(void *);
+	obs_source_t *const *filter_parent;
+	obs_source_t *const *filter_target;
+	bool const *enabled;
+	bool const volatile *async_active;
+	long const *async_rotation;
+	long const volatile *transition_width;
+	long const volatile *transition_height;
+	uint32_t const *async_width;
+	uint32_t const *async_height;
+};
+struct obs_source_base_size_fields obs_source_base_size_fields(const obs_source_t *source);
+
+uint32_t obs_source_base_width(const obs_source_t *source);
+uint32_t obs_source_base_height(const obs_source_t *source);
 
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
@@ -1696,6 +1875,61 @@ struct obs_output {
 	float audio_data[MAX_AUDIO_CHANNELS][AUDIO_OUTPUT_FRAMES];
 };
 
+/* Private field address; reject NULL before calling this adapter. */
+struct obs_output_flags_fields {
+	const uint32_t *flags;
+};
+extern struct obs_output_flags_fields obs_output_flags_fields(const obs_output_t *output);
+
+/* Borrowed handler field addresses; callers must reject NULL before access. */
+struct obs_output_handler_getters_fields {
+	signal_handler_t *const *signal;
+	proc_handler_t *const *proc;
+};
+extern struct obs_output_handler_getters_fields obs_output_handler_getters_fields(const obs_output_t *output);
+
+/* Borrowed service field address; reject NULL before taking member addresses. */
+struct obs_output_service_getter_fields {
+	obs_service_t *const *service;
+};
+extern struct obs_output_service_getter_fields obs_output_service_getter_fields(const obs_output_t *output);
+
+/* Borrowed instance identity fields; reject NULL before taking member addresses. */
+struct obs_output_identity_fields {
+	const char *const *id;
+	void *const *type_data;
+};
+extern struct obs_output_identity_fields obs_output_identity_fields(const obs_output_t *output);
+
+/* Borrowed metadata fields; reject NULL before taking member addresses. */
+struct obs_output_protocol_getter_fields {
+	const uint32_t *flags;
+	const char *const *protocols;
+};
+extern struct obs_output_protocol_getter_fields obs_output_protocol_getter_fields(const obs_output_t *output);
+
+/* Private borrowed field addresses; callers must reject NULL before access. */
+struct obs_output_supported_codecs_fields {
+	const char *const *video;
+	const char *const *audio;
+};
+extern struct obs_output_supported_codecs_fields obs_output_supported_codecs_fields(const obs_output_t *output);
+/* Borrowed field addresses; NULL must be rejected before calling. */
+struct obs_output_mixer_getters_fields {
+	const size_t *mask;
+};
+extern struct obs_output_mixer_getters_fields obs_output_mixer_getters_fields(const obs_output_t *output);
+
+/* Private member addresses; callers must reject NULL before taking them. */
+struct obs_output_pause_queries_fields {
+	const volatile bool *paused;
+	const uint64_t *offset;
+	void *mutex;
+};
+extern struct obs_output_pause_queries_fields obs_output_pause_queries_fields(obs_output_t *output);
+extern void obs_output_pause_queries_lock(void *mutex);
+extern void obs_output_pause_queries_unlock(void *mutex);
+
 static inline void do_output_signal(struct obs_output *output, const char *signal)
 {
 	struct calldata params = {0};
@@ -1950,6 +2184,52 @@ struct obs_encoder {
 	bool reconfigure_requested;
 };
 
+/* Borrowed atomic state addresses; callers reject NULL before this adapter. */
+/* Borrowed field address; callers reject NULL before this accessor. */
+struct obs_weak_encoder_identity_fields {
+	struct obs_encoder *const *encoder;
+};
+struct obs_weak_encoder_identity_fields obs_weak_encoder_identity_fields(const obs_weak_encoder_t *weak);
+
+struct obs_encoder_state_queries_fields {
+	const volatile bool *active;
+	const volatile bool *paused;
+};
+struct obs_encoder_state_queries_fields obs_encoder_state_queries_fields(const obs_encoder_t *encoder);
+
+/* Borrowed dimension field addresses, with no allocation or value conversion. */
+struct obs_encoder_dimensions_fields {
+	const enum obs_encoder_type *type;
+	void *const *media;
+	const uint32_t *width;
+	const uint32_t *height;
+	char *const *name;
+};
+struct obs_encoder_dimensions_fields obs_encoder_dimensions_fields(const obs_encoder_t *encoder);
+
+/* Borrowed audio field addresses, without allocation or value conversion. */
+struct obs_encoder_audio_getters_fields {
+	const enum obs_encoder_type *type;
+	void *const *media;
+	const uint32_t *rate;
+	const size_t *frame_size;
+	const size_t *mixer_index;
+	char *const *name;
+};
+struct obs_encoder_audio_getters_fields obs_encoder_audio_getters_fields(const obs_encoder_t *encoder);
+
+/* Read-only field address for the borrowed last-error getter; not EXPORT. */
+struct obs_encoder_last_error_fields {
+	char *const *message;
+};
+extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+/* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
+struct obs_encoder_roi_state_fields {
+	const size_t *count;
+	const uint32_t *increment;
+};
+extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
+
 extern struct obs_encoder_info *find_encoder(const char *id);
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
@@ -1960,6 +2240,48 @@ extern video_t *obs_encoder_unbind_video(obs_encoder_t *encoder, video_t *const 
 extern void obs_encoder_rebind_video(obs_encoder_t *encoder, video_t *video);
 
 extern void obs_encoder_start(obs_encoder_t *encoder, encoded_callback_t new_packet, void *param);
+
+/* Borrowed counter addresses: avoid mirroring the private encoder layout in
+ * Rust. No ownership, allocation, synchronization or value conversion here. */
+struct obs_encoder_counter_fields {
+	const uint32_t *encoded_frames;
+	const uint64_t *pause_offset;
+};
+
+struct obs_encoder_counter_fields obs_encoder_counter_fields(const obs_encoder_t *encoder);
+/* Borrowed GPU scaling fields. No allocation, ownership or value conversion. */
+struct obs_encoder_gpu_scaling_getters_fields {
+	const enum obs_encoder_type *type;
+	const enum obs_scale_type *scale;
+	char *const *name;
+};
+struct obs_encoder_gpu_scaling_getters_fields obs_encoder_gpu_scaling_getters_fields(const obs_encoder_t *encoder);
+
+/* Borrowed metadata field addresses. C retains the encoder layout; no
+ * allocation, ownership, synchronization or value conversion occurs here. */
+struct obs_encoder_metadata_fields {
+	const char *const *codec;
+	const enum obs_encoder_type *type;
+	const char *const *id;
+	void *const *type_data;
+	const uint32_t *caps;
+};
+struct obs_encoder_metadata_fields obs_encoder_metadata_fields(const obs_encoder_t *encoder);
+
+/* Borrowed scaled-axis addresses, with no ownership or value conversion. */
+struct obs_encoder_scaling_enabled_fields {
+	const uint32_t *width;
+	const uint32_t *height;
+};
+struct obs_encoder_scaling_enabled_fields obs_encoder_scaling_enabled_fields(const obs_encoder_t *encoder);
+
+/* Borrowed addresses only; C retains the complete encoder layout. */
+struct obs_encoder_frame_rate_divisor_fields {
+	const enum obs_encoder_type *type;
+	const uint32_t *divisor;
+	char *const *name;
+};
+struct obs_encoder_frame_rate_divisor_fields obs_encoder_frame_rate_divisor_fields(const obs_encoder_t *encoder);
 
 /* What the encoded packet interleaver reads from an encoder, as values: the
  * time base, the frame size and the encoder group (NULL without one). Not

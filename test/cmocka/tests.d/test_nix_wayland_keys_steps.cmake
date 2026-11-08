@@ -8,21 +8,11 @@
 # characterizes that C source; the test calls only them.
 # test_wayland_volume_keys, test_wayland_keymap and test_wayland_multiseat
 # cover the callers through the real platform.
+set(HAVE_NIX_WAYLAND_KEYS_TEST_SDK FALSE)
 if((OS_LINUX OR OS_FREEBSD) AND ENABLE_WAYLAND)
   find_package(Xkbcommon)
   if(TARGET xkbcommon::xkbcommon)
-    add_executable(
-      test_nix_wayland_keys_steps
-      test_nix_wayland_keys_steps.c
-      "${CMAKE_SOURCE_DIR}/libobs/obs-nix-wayland-keys.c.h"
-    )
-    target_include_directories(test_nix_wayland_keys_steps PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/libobs")
-    target_link_libraries(
-      test_nix_wayland_keys_steps
-      PRIVATE OBS::libobs OBS::caption xkbcommon::xkbcommon ${CMOCKA_LIBRARIES}
-    )
-    obs_test_sanitize(test_nix_wayland_keys_steps address,undefined)
-    add_dependencies(cmocka-tests test_nix_wayland_keys_steps)
-    add_test(test_nix_wayland_keys_steps ${CMAKE_CURRENT_BINARY_DIR}/test_nix_wayland_keys_steps)
+    set(HAVE_NIX_WAYLAND_KEYS_TEST_SDK TRUE)
   endif()
 endif()
+# Target and test are declared in ../build/test-graph.json.

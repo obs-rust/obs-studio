@@ -35,24 +35,9 @@ fn canonical_plugin_sdk_headless_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let mut core = Dependency::package(&build.target, "libobs").unwrap();
-    // Nix libobs.pc exposes include/, while its public headers are in include/obs/.
-    let nested: Vec<_> = core
-        .include_dirs
-        .iter()
-        .map(|path| path.join("obs"))
-        .filter(|path| path.is_dir())
-        .collect();
-    core.include_dirs.extend(nested);
-    // The unchanged plugin test uses current public declarations (including
-    // the async-compensation API it wraps), just as the production core does.
-    core.include_dirs.insert(0, root.join("libobs"));
-    // Both cmake/common/compiler_common.cmake and the production Cargo
-    // configure_c_tests interface hide symbols by default. Preserve that
-    // policy here too, rather than inheriting only libobs.pc's declarations.
-    core.compile_options.push("-fvisibility=hidden".into());
+    let core = built_core(&build, &root);
     let interfaces = [
-        ("OBS::libobs".into(), core),
+        ("OBS::libobs".into(), core.dependency),
         (
             "PipeWire::PipeWire".into(),
             Dependency::package(&build.target, "libpipewire-0.3").unwrap(),
@@ -88,11 +73,11 @@ fn canonical_plugin_sdk_headless_runs_unchanged() {
         eprintln!("Cargo {name}: {}", String::from_utf8_lossy(&output.stdout));
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    write_cmake(directory.path(), &root);
+    write_cmake(directory.path(), &root, &core.cmake);
     replay_cmake(directory.path());
 }
 
-fn write_cmake(directory: &Path, root: &Path) {
+fn write_cmake(directory: &Path, root: &Path, core: &str) {
     let source = root.to_string_lossy().replace('\\', "/");
     // Nix and cross SDK wrappers can restore role/target-specific paths.
     // Clear every such input inside this one CMake absence fixture only.
@@ -105,29 +90,22 @@ fn write_cmake(directory: &Path, root: &Path) {
         })
         .map(|name| format!("  set(ENV{{{name}}} \"\")\n"))
         .collect();
-    fs::write(directory.join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
+    fs::write(
+        directory.join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
 project(plugin-sdk-headless-contract C)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 enable_testing()
 option(OS_LINUX "Select original Linux guard" ON)
-option(WITH_PLUGINS "Import real installed owning plugins" ON)
+option(WITH_PLUGINS "Mark the owning plugins as built" ON)
 option(WITHOUT_TEST_HEADERS "Search an empty pkg-config SDK directory" OFF)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(CORE REQUIRED IMPORTED_TARGET libobs)
-pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
-foreach(dir IN LISTS CORE_INCLUDE_DIRS)
-  if(IS_DIRECTORY "${{dir}}/obs")
-    target_include_directories(PkgConfig::CORE INTERFACE "${{dir}}/obs")
-  endif()
-endforeach()
-target_include_directories(PkgConfig::CORE BEFORE INTERFACE "{source}/libobs")
-add_library(OBS::libobs ALIAS PkgConfig::CORE)
+{core}pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
 add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 if(WITH_PLUGINS)
   foreach(plugin IN ITEMS pipewire pulseaudio)
-    find_file(${{plugin}}_module NAMES linux-${{plugin}}.so PATHS "${{CORE_LIBDIR}}/obs-plugins" REQUIRED NO_DEFAULT_PATH)
-    add_library(OBS::${{plugin}} MODULE IMPORTED)
-    set_property(TARGET OBS::${{plugin}} PROPERTY IMPORTED_LOCATION "${{${{plugin}}_module}}")
+    add_library(OBS::${{plugin}} INTERFACE IMPORTED)
   endforeach()
 endif()
 if(WITHOUT_TEST_HEADERS)
@@ -150,7 +128,10 @@ if(TARGET OBS::pulseaudio)
 endif()
 include("{source}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
-"#)).unwrap();
+"#
+        ),
+    )
+    .unwrap();
 }
 
 fn replay_cmake(directory: &Path) {
@@ -177,6 +158,7 @@ fn replay_cmake(directory: &Path) {
         let output = directory.join(mode);
         checked(
             Command::new("cmake")
+                .arg("-DCMAKE_BUILD_TYPE=RelWithDebInfo")
                 .arg("-S")
                 .arg(directory)
                 .arg("-B")

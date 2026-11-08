@@ -23,6 +23,7 @@ callers running the Python through `uv run --script` -- is complete.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import signal
 import subprocess
@@ -280,7 +281,12 @@ class PipewireCursorHdrTest(unittest.TestCase):
         self.assertFalse(SHELL_SCRIPT.exists(), "test_pipewire_cursor_hdr.sh should be gone")
         self.assertTrue(MODULE.is_file(), "test_pipewire_cursor_hdr.py should exist")
         caller = CMAKE.read_text()
-        self.assertIn("uv run --script", caller)
+        self.assertIn("test-graph.json", caller)
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        self.assertEqual(graph["tests"]["test_pipewire_cursor_hdr"]["command"], [
+            "uv", "run", "--script",
+            "${source}/test/cmocka/test_pipewire_cursor_hdr.py", "${target}",
+        ])
         self.assertNotIn("test_pipewire_cursor_hdr.sh", caller)
         self.assertNotIn(
             EXCEPTION,

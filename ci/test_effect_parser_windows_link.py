@@ -6,6 +6,7 @@ This is a link regression, not a substitute for native Windows Tier 2.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import tempfile
@@ -13,7 +14,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRATION = ROOT / "test/cmocka/tests.d/test_effect_parser_blocks.cmake"
+REGISTRATION = ROOT / "test/cmocka/build/test-graph.json"
 BRIDGE = ROOT / "test/cmocka/hosts/windows/effect-parser-lookup-import.c"
 SYMBOL = "gs_effect_get_param_by_name"
 ALIAS = "obs_test_effect_get_param_by_name"
@@ -53,17 +54,42 @@ class EffectParserWindowsLinkTest(unittest.TestCase):
             # lookup. Modelling it in C keeps the reproduction SDK/toolchain free.
             compile_c("rust", header + implementation + "void ep_parse_struct(void) {}\n")
             run("llvm-lib", "/out:libobs_rust.lib", "rust.obj")
-            registration = REGISTRATION.read_text()
-            bridged = f"{SYMBOL}={ALIAS}" in registration
+            registrations = json.loads(REGISTRATION.read_text())["targets"]
+            bridge_source = {
+                "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
+                "requires": "MSVC",
+            }
+            bridge_define = {"name": f"/D{SYMBOL}={ALIAS}", "requires": "MSVC"}
+            for suffix, output in (
+                ("blocks", "effect-parser-lookup-import.lib"),
+                ("params", "effect-parser-params-lookup-import.lib"),
+                ("passes", "effect-parser-passes-lookup-import.lib"),
+                ("shader_call", "effect-parser-shader-call-lookup-import.lib"),
+            ):
+                target = registrations[f"test_effect_parser_{suffix}_rust"]
+                with self.subTest(fixture=suffix):
+                    self.assertIn(bridge_source, target["sources"])
+                    self.assertIn(bridge_define, target["compile_options"])
+                    self.assertEqual(target["msvc_import_library"], {
+                        "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
+                        "output": output,
+                    })
+                    self.assertEqual(target["libraries"][:5], [
+                        "OBS::libobs", "OBS::caption", "Uthash::Uthash",
+                        "OBS::native-test-cmocka", "libobs_rust-static",
+                    ])
+            registration = registrations["test_effect_parser_blocks_rust"]
+            bridged = bridge_define in registration["compile_options"]
             extra_objects = []
             defines = []
             if bridged:
-                self.assertIn("hosts/windows/effect-parser-lookup-import.c", registration)
+                self.assertIn(bridge_source, registration["sources"])
                 defines = [f"-D{SYMBOL}={ALIAS}"]
                 run("clang", "--target=x86_64-pc-windows-msvc", "-c", BRIDGE,
                     "-I", root, *defines, "-o", "bridge.obj")
                 extra_objects = ["bridge.obj"]
-                run("llvm-lib", f"/def:{BRIDGE.with_suffix('.def')}",
+                definition = ROOT / registration["msvc_import_library"]["definition"]
+                run("llvm-lib", f"/def:{definition}",
                     "/machine:x64", "/out:lookup-import.lib")
             compile_c("parser", header + "void ep_parse_struct(void);\n"
                       f"void mainCRTStartup(void) {{ {SYMBOL}(0, 0); ep_parse_struct(); }}\n", *defines)

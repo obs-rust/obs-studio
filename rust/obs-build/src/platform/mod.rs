@@ -228,18 +228,16 @@ pub fn configure_shared_link(
 ) -> Result<(), String> {
     if target.contains("windows") {
         if msvc {
-            command.arg("/LD").arg(msvc_response::msvc_response_file(
-                &artifact.with_extension("objects.rsp"),
+            return msvc_response::configure_msvc_link(
+                command,
+                artifact,
                 objects,
-            )?);
-            command.args(dependencies.iter().map(|p| dependency_link_name(p, true)));
-            command
-                .arg("/link")
-                .arg(format!("/OUT:{}", artifact.display()))
-                .arg(format!(
-                    "/IMPLIB:{}",
-                    artifact.with_extension("lib").display()
-                ));
+                &dependencies
+                    .iter()
+                    .map(|p| dependency_link_name(p, true))
+                    .collect::<Vec<_>>(),
+                true,
+            );
         } else {
             command.arg("-shared").args(objects);
             command.args(dependencies.iter().map(|p| dependency_link_name(p, false)));
@@ -294,6 +292,9 @@ pub fn configure_shared_link(
 }
 
 mod msvc_response;
+mod native_import;
+pub use msvc_response::configure_link_options;
+pub(crate) use native_import::build as native_test_import_library;
 mod shared_library;
 pub use qt_sdk::{
     qt_architecture, qt_binary_architectures, qt_check_target, qt_compiler_id,
@@ -516,26 +517,25 @@ pub fn configure_executable_link(
     msvc: bool,
 ) -> Result<(), String> {
     if target.contains("windows") && msvc {
-        command.arg(msvc_response::msvc_response_file(
-            &artifact.with_extension("objects.rsp"),
+        return msvc_response::configure_msvc_link(
+            command,
+            artifact,
             objects,
-        )?);
-    } else {
-        command.args(objects);
+            &dependencies
+                .iter()
+                .map(|p| dependency_link_name(p, true))
+                .collect::<Vec<_>>(),
+            false,
+        );
     }
+    command.args(objects);
     if target.contains("windows") {
         command.args(
             dependencies
                 .iter()
                 .map(|path| dependency_link_name(path, msvc)),
         );
-        if msvc {
-            command
-                .arg("/link")
-                .arg(format!("/OUT:{}", artifact.display()));
-        } else {
-            command.arg("-o").arg(artifact);
-        }
+        command.arg("-o").arg(artifact);
     } else {
         command.args(dependencies).arg("-o").arg(artifact);
         command.arg(if target.contains("apple") {
@@ -895,15 +895,50 @@ pub fn native_test_facts(
     std::collections::BTreeMap::from([
         ("UNIX".into(), !target.contains("windows")),
         ("OS_LINUX".into(), target.contains("linux")),
+        (
+            "HAVE_X11_DISPLAY".into(),
+            target.contains("linux")
+                && std::env::var_os("DISPLAY").is_some_and(|display| !display.is_empty()),
+        ),
         ("OS_FREEBSD".into(), target.contains("freebsd")),
         ("OS_WINDOWS".into(), target.contains("windows")),
         ("OS_MACOS".into(), target.contains("apple")),
         ("OS_OPENBSD".into(), target.contains("openbsd")),
         ("ENABLE_PULSEAUDIO".into(), pulseaudio),
         ("ENABLE_HEVC".into(), hevc),
+        // The compatibility builder has no Wayland option; explicit SDK contracts
+        // and CMake enable these fixtures with the original feature guard.
+        ("ENABLE_WAYLAND".into(), false),
+        ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
+        ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
+        ("HAVE_WINDOW_MATCH_TEST_GIO".into(), false),
+        ("HAVE_PORTAL_TEST_GIO".into(), false),
+        ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         // Optional headless plugin SDKs are false until the consumer probes them.
+        ("HAVE_RTMPS_TEST_SDK".into(), false),
+        ("HAVE_LIBRIST_TEST_SDK".into(), false),
+        ("HAVE_CURL_TEST_SDK".into(), false),
+        ("HAVE_SRT_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PACKET_TEST_SDK".into(), false),
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
         ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
+        ("HAVE_OBS_V4L2".into(), false),
+        ("HAVE_V4L2_BUSY_SDK".into(), false),
+        ("HAVE_V4L2_CAPTURE_SDK".into(), false),
+        ("HAVE_V4L2_UDEV_SDK".into(), false),
+        ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
+        ("HAVE_OBS_TEXT_FREETYPE2".into(), false),
+        ("HAVE_FREETYPE_FILE_SDK".into(), false),
+        // The compatibility builder does not build the Linux capture plugin.
+        ("HAVE_LINUX_CAPTURE".into(), false),
+        ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
+        ("HAVE_TEXT_FILE_OWNER".into(), false),
+        ("HAVE_QSV_TEST_SDK".into(), false),
+        ("HAVE_PIPEWIRE_HEADLESS_SDK".into(), false),
+        ("HAVE_PIPEWIRE_LOOP_TEST_SDK".into(), false),
+        ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
+        ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
+        ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("MSVC".into(), target.contains("msvc")),
     ])
 }
@@ -1393,4 +1428,12 @@ pub fn native_test_command_program(
     native_test_program(program)
         .map(|path| native_program_wrapper(program, &path, root, output))
         .transpose()
+}
+
+/// The unchanged config fault fixture interposes libc through a shared preload.
+pub fn configure_config_close_fault(target: &str, library: &mut crate::SharedLibrary) {
+    library.compile_options.push("-fvisibility=default".into());
+    if !target.contains("apple") {
+        library.link_options.push("-ldl".into());
+    }
 }

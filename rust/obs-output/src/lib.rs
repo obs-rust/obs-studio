@@ -119,25 +119,44 @@
 
 pub mod caption_text;
 pub mod delay;
+pub mod encoder_audio_getters;
 pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;
 pub mod encoder_bind;
+pub mod encoder_counters;
+pub mod encoder_dimensions;
+pub mod encoder_frame_rate_divisor;
 pub mod encoder_gpu_gates;
 pub mod encoder_gpu_rescale;
+pub mod encoder_gpu_scaling_getters;
 pub mod encoder_group_reconfig;
+pub mod encoder_last_error;
 pub mod encoder_lifecycle;
+pub mod encoder_metadata;
 pub mod encoder_packet_ts;
 pub mod encoder_pause;
 pub mod encoder_roi;
+pub mod encoder_roi_state;
+pub mod encoder_scaling_enabled;
 pub mod encoder_size;
+pub mod encoder_state_queries;
 pub mod interleave;
 pub mod output_begin;
+pub mod output_can_pause;
 pub mod output_caption;
+pub mod output_flags;
+pub mod output_handler_getters;
+pub mod output_identity;
+pub mod output_mixer_getters;
 pub mod output_pause;
+pub mod output_pause_queries;
+pub mod output_protocols;
 pub mod output_reconnect;
+pub mod output_service_getter;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
+pub mod output_supported_codecs;
 pub mod protocols;
 pub mod raw_audio;
 pub mod raw_audio_trim;
@@ -145,6 +164,7 @@ pub mod service;
 pub mod service_module_lookup;
 pub mod service_state;
 pub mod service_weak_acquire;
+pub mod service_weak_release;
 pub mod stop_stats;
 pub mod video_checks;
 
@@ -155,3 +175,5 @@ pub use delay::{
     Decision, DelayOutput, Entry, NS_PER_SEC, NullLog, OBS_OUTPUT_DELAY_PRESERVE,
     OBS_OUTPUT_ENCODED, SET_DELAY, Signal, active_delay_secs, pop_decision,
 };
+
+pub mod weak_encoder_identity;

@@ -55,7 +55,7 @@ unsafe extern "C" {
     /// Makes the add of `child` to `parent` fail, as for a child that
     /// contains it.
     pub fn oracle_slots_refuse(parent: *mut c_void, child: *mut c_void);
-    /// How many calls the trace holds (at most 128).
+    /// How many calls the trace holds (at most 512).
     pub fn oracle_slots_traced() -> usize;
     /// The trace's call `i`: its kind, the sources it names and its result.
     pub fn oracle_slots_event(
@@ -65,6 +65,10 @@ unsafe extern "C" {
         b: *mut *mut c_void,
         result: *mut c_int,
     );
+    /// Records a call of another oracle's stand-in (kinds above 4) in the
+    /// trace, in order with these (the transition start and set oracle,
+    /// `crate::source_transition_switch`).
+    pub fn oracle_slots_trace(kind: c_int, a: *mut c_void, b: *mut c_void, result: c_int);
 
     /// The stand-in for `obs_source_get_ref`.
     pub fn oracle_slots_get_ref(source: *mut c_void) -> *mut c_void;

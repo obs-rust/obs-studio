@@ -5,6 +5,8 @@ import re
 import tomllib
 import unittest
 
+from tier2_matrix import matrix
+
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "ci" / "fixtures"
@@ -54,7 +56,9 @@ class Tier2RetentionTest(unittest.TestCase):
         # C-reference and hybrid coverage stays in Tier 2.
         workflow = (ROOT / ".github/workflows/build-project.yaml").read_text()
         tier2 = re.search(r"^  rust-linux-tier2:\n(.*?)(?=^  [a-z0-9-]+:\n)", workflow, re.M | re.S)[1]
-        self.assertRegex(tier2, r'mode: \["OFF", "ON"\]')
+        self.assertIn("fromJSON(needs.check-event.outputs.tier2_matrix)", tier2)
+        for event in ("merge_group", "pull_request", "push", "schedule"):
+            self.assertEqual(matrix(event)["mode"], ["OFF", "ON"])
 
     def test_reduced_allowances_retain_measured_seeds_with_growth_room(self):
         snapshot = json.loads((FIXTURES / "cache-retention-families.json").read_text())

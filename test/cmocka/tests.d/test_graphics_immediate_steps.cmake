@@ -25,26 +25,4 @@
 # those but does not export them, so this executable compiles its own copies,
 # as test_sprite_geometry_steps_rust does. graphics-immediate.c is not
 # compiled in.
-if(TARGET libobs_rust-static)
-  add_executable(
-    test_graphics_immediate_steps_rust
-    test_graphics_immediate_steps.c
-    "${CMAKE_SOURCE_DIR}/libobs/graphics/effect-parser-lifecycle-adapter.c.h"
-    "${CMAKE_SOURCE_DIR}/libobs/graphics/obs-graphics-adapter.c.h"
-  )
-  target_compile_definitions(test_graphics_immediate_steps_rust PRIVATE GS_IMMEDIATE_TEST_RUST)
-  target_include_directories(
-    test_graphics_immediate_steps_rust
-    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
-  )
-  target_link_libraries(
-    test_graphics_immediate_steps_rust
-    PRIVATE OBS::libobs OBS::caption ${CMOCKA_LIBRARIES} libobs_rust-static
-  )
-  if(NOT MSVC)
-    target_link_libraries(test_graphics_immediate_steps_rust PRIVATE m)
-  endif()
-  obs_test_sanitize(test_graphics_immediate_steps_rust "address,undefined")
-  add_dependencies(cmocka-tests test_graphics_immediate_steps_rust)
-  add_test(test_graphics_immediate_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_graphics_immediate_steps_rust)
-endif()
+# Rust-static target and test are also declared in ../build/test-graph.json.

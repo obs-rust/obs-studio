@@ -1,0 +1,17 @@
+# Legacy scene-rule targets also pull unrelated getters from the Rust archive.
+# Native graph targets declare the same support in the per-port entry.
+function(_scene_item_transition_getter_link_support)
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if(_target MATCHES "^test_scene_" AND "libobs_rust-static" IN_LIST _links)
+      get_target_property(_sources ${_target} SOURCES)
+      set(_stub "${CMAKE_CURRENT_SOURCE_DIR}/scene-item-transition-getter-link-stub.c")
+      if(NOT _stub IN_LIST _sources)
+        target_sources(${_target} PRIVATE "${_stub}")
+        target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+      endif()
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _scene_item_transition_getter_link_support)

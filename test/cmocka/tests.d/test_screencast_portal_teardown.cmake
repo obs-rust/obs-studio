@@ -3,36 +3,11 @@
 # portal on a private D-Bus bus that the test starts itself, so it needs an X
 # display (xvfb-run) and dbus-daemon, but no session bus, PipeWire or portal.
 # Without them it exits with 77 and ctest reports it as skipped.
+set(HAVE_OBS_PIPEWIRE FALSE)
 if(TARGET OBS::pipewire)
+  set(HAVE_OBS_PIPEWIRE TRUE)
   find_package(X11 REQUIRED)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(_portal_test_glib REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0)
-  get_target_property(_pipewire_drm_includes Libdrm::Libdrm INTERFACE_INCLUDE_DIRECTORIES)
-  add_executable(
-    test_screencast_portal_teardown
-    test_screencast_portal_teardown.c
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/formats.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/frame-layout.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/frame-pacing.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/pipewire.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/portal.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/reconnect-policy.c.h"
-    "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire/screencast-portal.c.h"
-  )
-  target_include_directories(
-    test_screencast_portal_teardown
-    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/plugins/linux-pipewire" ${_pipewire_drm_includes}
-  )
-  target_link_libraries(
-    test_screencast_portal_teardown
-    PRIVATE OBS::libobs OBS::glad PipeWire::PipeWire gio::gio PkgConfig::_portal_test_glib X11::X11 ${CMOCKA_LIBRARIES}
-  )
-  add_dependencies(cmocka-tests test_screencast_portal_teardown)
-  add_test(test_screencast_portal_teardown ${CMAKE_CURRENT_BINARY_DIR}/test_screencast_portal_teardown)
-  # PORTAL_TEST_VERBOSE: print every libobs log line, so a run that hangs to
-  # its 20 s alarm shows how far it got (#2099; ctest prints it on failure).
-  set_tests_properties(
-    test_screencast_portal_teardown
-    PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 60 ENVIRONMENT "PORTAL_TEST_VERBOSE=1"
-  )
 endif()
+# Registered once in build/test-graph.json, consumed by CMake and Cargo.

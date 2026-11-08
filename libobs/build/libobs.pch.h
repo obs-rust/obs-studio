@@ -59,6 +59,7 @@
 #include "obs-audio-min-ts.h"
 #include "obs-audio-mix.h"
 #include "obs-audio-render.h"
+#include "obs-audio-seam.h"
 #include "util/util_uint64.h"
 
 /* obs-encoder-audio-start.c */
@@ -239,6 +240,8 @@
 #include "obs-source-transition-seam.h"
 #include "obs-source-transition-size.h"
 #include "obs-source-transition-start.h"
+#include "obs-source-transition-state.h"
+#include "obs-source-transition-stop.h"
 
 /* obs-source.c */
 

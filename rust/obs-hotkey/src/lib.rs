@@ -32,10 +32,12 @@ use obs_c_oracle as _; // blog
 #[cfg(test)]
 use obs_util as _; // base log handler
 
+pub mod background_query;
 pub mod binding_getters;
 pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
+pub mod identity_getters;
 mod key_route;
 pub mod name_map;
 pub mod nix_hotkey_state;
@@ -45,6 +47,7 @@ pub mod nix_wayland_seats;
 pub mod nix_x11_hotkeys;
 pub mod nix_x11_input;
 pub mod nix_x11_keys;
+pub mod object_getters;
 pub mod pair;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;

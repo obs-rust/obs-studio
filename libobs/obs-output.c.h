@@ -618,6 +618,18 @@ void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 		    !os_atomic_load_bool(&output->delivered_packet))
 			obs_output_end_data_capture(output);
 
+		/* Stopped while it waited to reconnect: its data capture ended
+		 * with the failure, so a stop that waits for its next packet
+		 * (ffmpeg_muxer) gets none and never ends, and
+		 * obs_output_destroy() would wait forever (#3739). Finish the
+		 * stop as for a delayed output, unless the output's stop did
+		 * (rtmp_output signals its own stop when it is not active). */
+		if (was_reconnecting && stopping(output) && !active(output)) {
+			output->stop_code = OBS_OUTPUT_SUCCESS;
+			signal_stop(output);
+			os_event_signal(output->stopping_event);
+		}
+
 	} else if (was_reconnecting) {
 		output->stop_code = OBS_OUTPUT_SUCCESS;
 		signal_stop(output);
@@ -679,11 +691,6 @@ void obs_output_force_stop(obs_output_t *output)
 bool obs_output_active(const obs_output_t *output)
 {
 	return (output != NULL) ? (active(output) || reconnecting(output)) : false;
-}
-
-uint32_t obs_output_get_flags(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_flags") ? output->info.flags : 0;
 }
 
 uint32_t obs_get_output_flags(const char *id)
@@ -754,11 +761,6 @@ obs_data_t *obs_output_get_settings(const obs_output_t *output)
 
 	obs_data_addref(output->context.settings);
 	return output->context.settings;
-}
-
-bool obs_output_can_pause(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_can_pause") ? !!(output->info.flags & OBS_OUTPUT_CAN_PAUSE) : false;
 }
 
 /* The flag and limits obs-output-pause.h copies. */
@@ -983,35 +985,6 @@ bool obs_output_pause(obs_output_t *output, bool pause)
 	return success;
 }
 
-bool obs_output_paused(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_paused") ? os_atomic_load_bool(&output->paused) : false;
-}
-
-uint64_t obs_output_get_pause_offset(obs_output_t *output)
-{
-	uint64_t offset;
-
-	if (!obs_output_valid(output, "obs_output_get_pause_offset"))
-		return 0;
-
-	pthread_mutex_lock(&output->pause.mutex);
-	offset = output->pause.ts_offset;
-	pthread_mutex_unlock(&output->pause.mutex);
-
-	return offset;
-}
-
-signal_handler_t *obs_output_get_signal_handler(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_signal_handler") ? output->context.signals : NULL;
-}
-
-proc_handler_t *obs_output_get_proc_handler(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_proc_handler") ? output->context.procs : NULL;
-}
-
 void obs_output_set_media(obs_output_t *output, video_t *video, audio_t *audio)
 {
 	if (!obs_output_valid(output, "obs_output_set_media"))
@@ -1074,14 +1047,6 @@ void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 	output->mixer_mask = obs_output_slots_mixer_mask(mixer_idx);
 }
 
-size_t obs_output_get_mixer(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_mixer"))
-		return 0;
-
-	return get_first_mixer(output);
-}
-
 void obs_output_set_mixers(obs_output_t *output, size_t mixers)
 {
 	if (!obs_output_valid(output, "obs_output_set_mixers"))
@@ -1092,11 +1057,6 @@ void obs_output_set_mixers(obs_output_t *output, size_t mixers)
 		return;
 
 	output->mixer_mask = mixers;
-}
-
-size_t obs_output_get_mixers(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_mixers") ? output->mixer_mask : 0;
 }
 
 void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_encoder *encoder)
@@ -1281,11 +1241,6 @@ void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 
 	output->service = service;
 	service->output = output;
-}
-
-obs_service_t *obs_output_get_service(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_service") ? output->service : NULL;
 }
 
 void obs_output_set_reconnect_settings(obs_output_t *output, int retry_count, int retry_sec)
@@ -2645,16 +2600,6 @@ bool obs_weak_output_references_output(obs_weak_output_t *weak, obs_output_t *ou
 	return weak && output && weak->output == output;
 }
 
-void *obs_output_get_type_data(obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_type_data") ? output->info.type_data : NULL;
-}
-
-const char *obs_output_get_id(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_id") ? output->info.id : NULL;
-}
-
 void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *captions)
 {
 	for (int i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
@@ -2793,24 +2738,6 @@ bool obs_output_reconnecting(const obs_output_t *output)
 		return false;
 
 	return reconnecting(output);
-}
-
-const char *obs_output_get_supported_video_codecs(const obs_output_t *output)
-{
-	return obs_output_valid(output, __func__) ? output->info.encoded_video_codecs : NULL;
-}
-
-const char *obs_output_get_supported_audio_codecs(const obs_output_t *output)
-{
-	return obs_output_valid(output, __func__) ? output->info.encoded_audio_codecs : NULL;
-}
-
-const char *obs_output_get_protocols(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_protocols"))
-		return NULL;
-
-	return flag_service(output) ? output->info.protocols : NULL;
 }
 
 void obs_enum_output_types_with_protocol(const char *protocol, void *data, bool (*enum_cb)(void *data, const char *id))

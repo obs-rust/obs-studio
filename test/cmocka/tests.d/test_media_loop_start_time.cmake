@@ -1,23 +1,8 @@
 # A looping Media Source must not leave a gap between the loops when the file
 # does not start at 0 (obsproject/obs-studio#12028). Plays generated clips
 # through media-playback directly, so it needs no display or graphics.
+# Registration is shared with Cargo in ../build/test-graph.json.
+set(HAVE_MEDIA_PLAYBACK_TEST_OWNER FALSE)
 if(TARGET OBS::media-playback)
-  add_executable(test_media_loop_start_time test_media_loop_start_time.c)
-  target_include_directories(test_media_loop_start_time PRIVATE ${CMOCKA_INCLUDE_DIR})
-  target_link_libraries(
-    test_media_loop_start_time
-    PRIVATE
-      OBS::libobs
-      OBS::media-playback
-      FFmpeg::avcodec
-      FFmpeg::avformat
-      FFmpeg::avutil
-      FFmpeg::swscale
-      FFmpeg::swresample
-      ${CMOCKA_LIBRARIES}
-      $<$<NOT:$<PLATFORM_ID:Windows>>:m>
-  )
-  add_dependencies(cmocka-tests test_media_loop_start_time)
-  add_test(test_media_loop_start_time ${CMAKE_CURRENT_BINARY_DIR}/test_media_loop_start_time)
-  set_tests_properties(test_media_loop_start_time PROPERTIES TIMEOUT 120)
+  set(HAVE_MEDIA_PLAYBACK_TEST_OWNER TRUE)
 endif()

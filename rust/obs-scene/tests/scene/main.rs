@@ -13,22 +13,51 @@ mod crop;
 mod crop_parity;
 mod extent;
 mod extent_parity;
+mod item_id;
+mod item_id_parity;
 mod item_names;
 mod item_names_parity;
 mod item_order;
 mod item_order_parity;
+mod item_parent_getter;
+mod item_parent_getter_parity;
 mod item_transform;
 mod item_transform_parity;
 mod render_plan;
 mod render_plan_parity;
+mod source_type_queries;
+mod source_type_queries_parity;
 mod transform_update;
 mod transform_update_parity;
 
 mod bounds_place;
 mod bounds_place_parity;
+mod group_queries;
+mod group_queries_parity;
 mod group_transform;
 mod group_transform_parity;
 
 mod item_state_getters;
 
 mod item_state_getters_parity;
+
+mod item_render_getters;
+
+mod item_bounds_getters;
+mod item_render_getters_parity;
+
+mod item_bounds_getters_parity;
+mod item_scale_getter;
+mod item_scale_getter_parity;
+
+mod item_transform_getters;
+
+mod item_crop_getter;
+#[allow(unsafe_code)]
+mod item_transform_getters_parity;
+
+mod item_crop_getter_parity;
+
+mod item_transition_getters;
+
+mod item_transition_getters_parity;

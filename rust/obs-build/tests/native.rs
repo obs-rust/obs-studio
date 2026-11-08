@@ -1,4 +1,74 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/archive_freshness.rs"]
+mod archive_freshness;
+#[path = "native/registration/canonical_portal_output_is_registered.rs"]
+mod canonical_portal_output_is_registered;
+#[path = "native/registration/canonical_qt_core_filename_is_registered.rs"]
+mod canonical_qt_core_filename_is_registered;
+#[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
+mod canonical_rust_static_windows_keys_are_registered;
+#[path = "native/graph_host_configurations.rs"]
+mod graph_host_configurations;
+#[path = "native/registration/rust_static_entries.rs"]
+mod rust_static_entries;
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "native/registration/graphics_private_runtime.rs"]
+mod graphics_private_runtime;
+
+#[cfg(target_os = "linux")]
+#[path = "native/registration/parser_import_library.rs"]
+mod parser_import_library;
+
+#[path = "native/registration/canonical_rust_static_private_renderer_is_registered.rs"]
+mod canonical_rust_static_private_renderer_is_registered;
+
+#[path = "native/registration/canonical_display_audio_is_registered.rs"]
+mod canonical_display_audio_is_registered;
+#[path = "native/registration/canonical_display_media_is_registered.rs"]
+mod canonical_display_media_is_registered;
+#[path = "native/registration/canonical_display_outputs_is_registered.rs"]
+mod canonical_display_outputs_is_registered;
+#[path = "native/registration/canonical_display_plugins_is_registered.rs"]
+mod canonical_display_plugins_is_registered;
+#[path = "native/registration/canonical_display_render_is_registered.rs"]
+mod canonical_display_render_is_registered;
+#[path = "native/registration/canonical_display_startup_is_registered.rs"]
+mod canonical_display_startup_is_registered;
+#[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
+mod canonical_freetype_file_sdk_is_registered;
+#[path = "native/registration/canonical_headless_characterizations_is_registered.rs"]
+mod canonical_headless_characterizations_is_registered;
+#[path = "native/registration/canonical_headless_devices_is_registered.rs"]
+mod canonical_headless_devices_is_registered;
+#[path = "native/registration/canonical_headless_helpers_is_registered.rs"]
+mod canonical_headless_helpers_is_registered;
+#[path = "native/registration/canonical_headless_loop_is_registered.rs"]
+mod canonical_headless_loop_is_registered;
+#[path = "native/registration/canonical_headless_media_is_registered.rs"]
+mod canonical_headless_media_is_registered;
+#[path = "native/registration/canonical_headless_remaining_is_registered.rs"]
+mod canonical_headless_remaining_is_registered;
+#[path = "native/registration/canonical_headless_services_is_registered.rs"]
+mod canonical_headless_services_is_registered;
+#[path = "native/registration/canonical_media_clips_is_registered.rs"]
+mod canonical_media_clips_is_registered;
+#[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
+mod canonical_opengl_video_slice_is_registered;
+#[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
+mod canonical_plugin_getters_is_registered;
+#[path = "native/registration/canonical_private_hosts_are_registered.rs"]
+mod canonical_private_hosts_are_registered;
+#[path = "native/registration/canonical_private_link_rules_are_registered.rs"]
+mod canonical_private_link_rules_are_registered;
+#[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
+mod canonical_v4l2_capture_sdk_is_registered;
+#[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
+mod canonical_v4l2_freetype_sdk_is_registered;
+#[path = "native/registration/canonical_wayland_sdk_is_registered.rs"]
+mod canonical_wayland_sdk_is_registered;
+#[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
+mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
@@ -82,7 +152,7 @@ fn native_test_graph_cmake_platform_requirements_allow_false_but_reject_unknown(
         format!(
             r#"cmake_minimum_required(VERSION 3.28)
 include("{consumer}")
-foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC)
+foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC ENABLE_WAYLAND HAVE_X11_DISPLAY)
   unset(${{platform}})
   unset(${{platform}} CACHE)
   _obs_test_graph_requirement(selected "\"${{platform}}\"")
@@ -118,7 +188,13 @@ endif()
         "{}",
         String::from_utf8_lossy(&result.stderr)
     );
-    for unknown in ["UNXI", "GRAPH_FEATURE_TYPO"] {
+    for unknown in [
+        "UNXI",
+        "GRAPH_FEATURE_TYPO",
+        "ENABLE_WAYLND",
+        "HAVE_WAYLAND_TYPO_SDK",
+        "HAVE_X11_DISPALY",
+    ] {
         let result = std::process::Command::new("cmake")
             .arg(format!("-DUNKNOWN_REQUIREMENT={unknown}"))
             .arg("-P")
@@ -137,6 +213,14 @@ endif()
 mod canonical_async_overflow_clock_is_registered;
 #[path = "native/registration/canonical_audio_filter_scalars_are_registered.rs"]
 mod canonical_audio_filter_scalars_are_registered;
+#[path = "native/registration/canonical_canvas_channel_getter_is_registered.rs"]
+mod canonical_canvas_channel_getter_is_registered;
+#[path = "native/registration/canonical_canvas_flags_getter_is_registered.rs"]
+mod canonical_canvas_flags_getter_is_registered;
+#[path = "native/registration/canonical_canvas_video_getter_is_registered.rs"]
+mod canonical_canvas_video_getter_is_registered;
+#[path = "native/registration/canonical_canvas_video_info_getter_is_registered.rs"]
+mod canonical_canvas_video_info_getter_is_registered;
 #[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
 mod canonical_caption_unmappable_is_registered;
 #[path = "native/registration/canonical_capture_helpers_are_registered.rs"]
@@ -149,16 +233,38 @@ mod canonical_close_top_level_is_registered;
 mod canonical_config_hex_float_rounding_is_registered;
 #[path = "native/registration/canonical_context_names_is_registered.rs"]
 mod canonical_context_names_is_registered;
+#[path = "native/registration/canonical_core_cmdline_getter_is_registered.rs"]
+mod canonical_core_cmdline_getter_is_registered;
+#[path = "native/registration/canonical_core_frame_interval_is_registered.rs"]
+mod canonical_core_frame_interval_is_registered;
+#[path = "native/registration/canonical_core_initialized_is_registered.rs"]
+mod canonical_core_initialized_is_registered;
+#[path = "native/registration/canonical_core_texture_activity_is_registered.rs"]
+mod canonical_core_texture_activity_is_registered;
 #[path = "native/registration/canonical_dock_proportions_is_registered.rs"]
 mod canonical_dock_proportions_is_registered;
 #[path = "native/registration/canonical_effect_lookups_is_registered.rs"]
 mod canonical_effect_lookups_is_registered;
+#[path = "native/registration/canonical_encoder_audio_getters_is_registered.rs"]
+mod canonical_encoder_audio_getters_is_registered;
+#[path = "native/registration/canonical_encoder_dimensions_is_registered.rs"]
+mod canonical_encoder_dimensions_is_registered;
+#[path = "native/registration/canonical_encoder_frame_rate_divisor_is_registered.rs"]
+mod canonical_encoder_frame_rate_divisor_is_registered;
+#[path = "native/registration/canonical_encoder_gpu_scaling_getters_is_registered.rs"]
+mod canonical_encoder_gpu_scaling_getters_is_registered;
 #[path = "native/registration/canonical_encoder_group_null_is_registered.rs"]
 mod canonical_encoder_group_null_is_registered;
+#[path = "native/registration/canonical_encoder_scaling_enabled_is_registered.rs"]
+mod canonical_encoder_scaling_enabled_is_registered;
+#[path = "native/registration/canonical_encoder_state_queries_is_registered.rs"]
+mod canonical_encoder_state_queries_is_registered;
 #[path = "native/registration/canonical_fade_and_host_tests_are_registered.rs"]
 mod canonical_fade_and_host_tests_are_registered;
 #[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
 mod canonical_fake_device_graphics_is_registered;
+#[path = "native/registration/canonical_ffmpeg_mux_hosts_are_registered.rs"]
+mod canonical_ffmpeg_mux_hosts_are_registered;
 #[path = "native/registration/canonical_ffmpeg_packet_write_is_registered.rs"]
 mod canonical_ffmpeg_packet_write_is_registered;
 #[path = "native/registration/canonical_filter_clipboard_is_registered.rs"]
@@ -177,12 +283,22 @@ mod canonical_frontend_tools_hosts_are_registered;
 mod canonical_frontend_utility_tests_are_registered;
 #[path = "native/registration/canonical_group_lifecycle_is_registered.rs"]
 mod canonical_group_lifecycle_is_registered;
+#[path = "native/registration/canonical_headless_abi_is_registered.rs"]
+mod canonical_headless_abi_is_registered;
+#[path = "native/registration/canonical_headless_audio_is_registered.rs"]
+mod canonical_headless_audio_is_registered;
+#[path = "native/registration/canonical_hotkey_background_query_is_registered.rs"]
+mod canonical_hotkey_background_query_is_registered;
 #[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
 mod canonical_hotkey_backtab_is_registered;
+#[path = "native/registration/canonical_hotkey_identity_getters_is_registered.rs"]
+mod canonical_hotkey_identity_getters_is_registered;
 #[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
 mod canonical_hotkey_mnemonic_is_registered;
 #[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
 mod canonical_hotkey_pair_latch_is_registered;
+#[path = "native/registration/canonical_import_ffmpeg_hosts_are_registered.rs"]
+mod canonical_import_ffmpeg_hosts_are_registered;
 #[path = "native/registration/canonical_libobs_go2_is_registered.rs"]
 mod canonical_libobs_go2_is_registered;
 #[path = "native/registration/canonical_libobs_go3_is_registered.rs"]
@@ -195,12 +311,32 @@ mod canonical_libobs_go5_is_registered;
 mod canonical_libobs_go_is_registered;
 #[path = "native/registration/canonical_missing_files_list_is_registered.rs"]
 mod canonical_missing_files_list_is_registered;
+#[path = "native/registration/canonical_module_name_lookups_is_registered.rs"]
+mod canonical_module_name_lookups_is_registered;
 #[path = "native/registration/canonical_nvenc_host_and_glyph_tests_are_registered.rs"]
 mod canonical_nvenc_host_and_glyph_tests_are_registered;
+#[path = "native/registration/canonical_object_queries_is_registered.rs"]
+mod canonical_object_queries_is_registered;
+#[path = "native/registration/canonical_object_validity_query_is_registered.rs"]
+mod canonical_object_validity_query_is_registered;
+#[path = "native/registration/canonical_output_flags_is_registered.rs"]
+mod canonical_output_flags_is_registered;
+#[path = "native/registration/canonical_output_handler_getters_is_registered.rs"]
+mod canonical_output_handler_getters_is_registered;
+#[path = "native/registration/canonical_output_identity_getters_is_registered.rs"]
+mod canonical_output_identity_getters_is_registered;
+#[path = "native/registration/canonical_output_mixer_getters_is_registered.rs"]
+mod canonical_output_mixer_getters_is_registered;
+#[path = "native/registration/canonical_output_protocol_getter_is_registered.rs"]
+mod canonical_output_protocol_getter_is_registered;
 #[path = "native/registration/canonical_output_protocol_null_is_registered.rs"]
 mod canonical_output_protocol_null_is_registered;
 #[path = "native/registration/canonical_output_protocols_is_registered.rs"]
 mod canonical_output_protocols_is_registered;
+#[path = "native/registration/canonical_output_service_getter_is_registered.rs"]
+mod canonical_output_service_getter_is_registered;
+#[path = "native/registration/canonical_output_supported_codecs_is_registered.rs"]
+mod canonical_output_supported_codecs_is_registered;
 #[path = "native/registration/canonical_pipe_contracts_are_registered.rs"]
 mod canonical_pipe_contracts_are_registered;
 #[path = "native/registration/canonical_pipe_wait_error_is_registered.rs"]
@@ -225,12 +361,20 @@ mod canonical_replay_buffer_estimate_is_registered;
 mod canonical_rust_static_conversion_is_registered;
 #[path = "native/registration/canonical_rust_static_decision_steps_are_registered.rs"]
 mod canonical_rust_static_decision_steps_are_registered;
+#[path = "native/registration/canonical_rust_static_graphics_are_registered.rs"]
+mod canonical_rust_static_graphics_are_registered;
 #[path = "native/registration/canonical_rust_static_header_steps_are_registered.rs"]
 mod canonical_rust_static_header_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_monitor_steps_are_registered.rs"]
 mod canonical_rust_static_monitor_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
 mod canonical_rust_static_pacing_is_registered;
+#[path = "native/registration/canonical_rust_static_private_rules_are_registered.rs"]
+mod canonical_rust_static_private_rules_are_registered;
+#[path = "native/registration/canonical_rust_static_private_source_are_registered.rs"]
+mod canonical_rust_static_private_source_are_registered;
+#[path = "native/registration/canonical_rust_static_private_steps_are_registered.rs"]
+mod canonical_rust_static_private_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
 mod canonical_rust_static_source_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_transition_start_are_registered.rs"]
@@ -241,18 +385,38 @@ mod canonical_scene_bounds_place_is_registered;
 mod canonical_scene_crop_steps_is_registered;
 #[path = "native/registration/canonical_scene_enum_items_removal_is_registered.rs"]
 mod canonical_scene_enum_items_removal_is_registered;
+#[path = "native/registration/canonical_scene_item_crop_getter_is_registered.rs"]
+mod canonical_scene_item_crop_getter_is_registered;
 #[path = "native/registration/canonical_scene_item_crop_load_is_registered.rs"]
 mod canonical_scene_item_crop_load_is_registered;
+#[path = "native/registration/canonical_scene_scale_getter_is_registered.rs"]
+mod canonical_scene_scale_getter_is_registered;
+#[path = "native/registration/canonical_scene_transform_getters_are_registered.rs"]
+mod canonical_scene_transform_getters_are_registered;
 #[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
 mod canonical_sck_vaapi_helpers_are_registered;
+#[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]
+mod canonical_scripting_hosts_are_registered;
 #[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
 mod canonical_shutdown_after_failed_startup_is_registered;
+#[path = "native/registration/canonical_source_audio_active_is_registered.rs"]
+mod canonical_source_audio_active_is_registered;
+#[path = "native/registration/canonical_source_boolean_queries_is_registered.rs"]
+mod canonical_source_boolean_queries_is_registered;
+#[path = "native/registration/canonical_source_identity_getters_is_registered.rs"]
+mod canonical_source_identity_getters_is_registered;
+#[path = "native/registration/canonical_source_push_queries_is_registered.rs"]
+mod canonical_source_push_queries_is_registered;
+#[path = "native/registration/canonical_source_state_getters_is_registered.rs"]
+mod canonical_source_state_getters_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
 mod canonical_texture_create_mip_data_is_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
 mod canonical_transition_compatibility_is_registered;
+#[path = "native/registration/canonical_transport_helpers_are_registered.rs"]
+mod canonical_transport_helpers_are_registered;
 #[path = "native/registration/canonical_undo_stack_is_registered.rs"]
 mod canonical_undo_stack_is_registered;
 #[path = "native/registration/canonical_vaapi_device_select_is_registered.rs"]
@@ -265,6 +429,10 @@ mod canonical_video_scaler_direct_is_registered;
 mod canonical_vmic_helpers_are_registered;
 #[path = "native/registration/canonical_volume_meter_ticker_is_registered.rs"]
 mod canonical_volume_meter_ticker_is_registered;
+#[path = "native/registration/canonical_weak_encoder_identity_is_registered.rs"]
+mod canonical_weak_encoder_identity_is_registered;
+#[path = "native/registration/canonical_weak_object_identity_is_registered.rs"]
+mod canonical_weak_object_identity_is_registered;
 #[path = "native/registration/canonical_win_vmic_route_is_registered.rs"]
 mod canonical_win_vmic_route_is_registered;
 #[path = "native/registration/canonical_x11_keymap_is_registered.rs"]
@@ -273,6 +441,106 @@ mod canonical_x11_keymap_is_registered;
 mod canonical_xcomposite_decisions_are_registered;
 #[path = "native/registration/canonical_youtube_broadcast_settings_is_registered.rs"]
 mod canonical_youtube_broadcast_settings_is_registered;
+
+/// #1390: the libobs built from this checkout for real-libobs graph runtimes.
+/// `OBS_GRAPH_LIBOBS` selects the Tier 2 implementation explicitly: `hybrid`
+/// (with `OBS_BUILD_RUST_ARCHIVE`) or `c-reference`. There is no fallback.
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+struct BuiltCore {
+    dependency: obs_build::validation::graph::Dependency,
+    /// CMake that imports the same artifact as `OBS::libobs`.
+    cmake: String,
+}
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+fn built_core(build: &NativeBuild, root: &Path) -> BuiltCore {
+    use obs_build::libobs;
+    let options = libobs::Options::default();
+    let library = match std::env::var("OBS_GRAPH_LIBOBS").as_deref() {
+        Ok("hybrid") => {
+            let archive = std::env::var_os("OBS_BUILD_RUST_ARCHIVE")
+                .expect("OBS_GRAPH_LIBOBS=hybrid needs OBS_BUILD_RUST_ARCHIVE");
+            libobs::build_hybrid_with_options(build, root, &options, Path::new(&archive))
+        }
+        Ok("c-reference") => libobs::build_c_reference_with_options(build, root, &options),
+        other => panic!(
+            "set OBS_GRAPH_LIBOBS to hybrid or c-reference (got {other:?}); \
+             graph runtimes never link an installed libobs"
+        ),
+    }
+    .unwrap();
+    let library = dunce::canonicalize(library).unwrap();
+    assert!(
+        library.starts_with(dunce::canonicalize(&build.output).unwrap()),
+        "libobs {} is not the one built in {}",
+        library.display(),
+        build.output.display()
+    );
+    let include_dirs = vec![
+        root.join("libobs"),
+        root.join("deps/libcaption"),
+        build.output.join("config"),
+    ];
+    let path = |path: &Path| path.to_string_lossy().replace('\\', "/");
+    let includes: Vec<_> = include_dirs.iter().map(|dir| path(dir)).collect();
+    let cmake = format!(
+        r#"if(NOT EXISTS "{lib}")
+  message(FATAL_ERROR "built libobs is missing: {lib}")
+endif()
+add_library(OBS::libobs SHARED IMPORTED)
+set_target_properties(OBS::libobs PROPERTIES IMPORTED_LOCATION "{lib}"
+  INTERFACE_INCLUDE_DIRECTORIES "{includes}" INTERFACE_COMPILE_OPTIONS "-fvisibility=hidden")
+"#,
+        lib = path(&library),
+        includes = includes.join(";"),
+    );
+    BuiltCore {
+        dependency: obs_build::validation::graph::Dependency {
+            artifacts: vec![library],
+            include_dirs,
+            compile_options: vec!["-fvisibility=hidden".into()],
+            ..Default::default()
+        },
+        cmake,
+    }
+}
+
+/// #1390: real-libobs graph runtimes link the core built from this checkout,
+/// never an installed libobs (whose ABI can predate these headers), in both
+/// the Cargo consumer and the CMake replay.
+#[test]
+fn graph_runtimes_never_link_an_installed_libobs() {
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../rust/obs-build/tests/native/registration");
+    let mut offenders = Vec::new();
+    for entry in fs::read_dir(&directory).unwrap() {
+        let path = entry.unwrap().path();
+        if !path.is_file() {
+            continue;
+        }
+        let text = fs::read_to_string(&path).unwrap();
+        for pattern in [
+            r#"Dependency::package(&build.target, "libobs")"#,
+            "IMPORTED_TARGET libobs)",
+            "CORE_LIBDIR",
+        ] {
+            if text.contains(pattern) {
+                offenders.push(format!("{}: {pattern}", path.display()));
+            }
+        }
+    }
+    assert!(offenders.is_empty(), "installed libobs: {offenders:#?}");
+}
+
+#[test]
+fn plugin_sdk_replay_uses_tier2_build_type() {
+    let replay = include_str!("native/registration/plugin_sdk_headless_runtime.rs");
+    let configure = replay.split("fn replay_cmake(").nth(1).unwrap();
+    assert!(
+        configure.contains(".arg(\"-DCMAKE_BUILD_TYPE=RelWithDebInfo\")"),
+        "plugin SDK CMake replay must use the Tier 2 build type"
+    );
+}
 
 fn assert_group_lifecycle_registration(
     root: &Path,
@@ -2141,10 +2409,50 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_OUTPUTS".into(), false),
         ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
+        ("HAVE_RTMP_SERVICES_MODULE".into(), false),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
+        ("HAVE_OBS_ALSA".into(), false),
+        ("HAVE_RTMPS_TEST_SDK".into(), false),
+        ("HAVE_LIBRIST_TEST_SDK".into(), false),
+        ("HAVE_CURL_TEST_SDK".into(), false),
+        ("HAVE_SRT_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PACKET_TEST_SDK".into(), false),
         ("HAVE_OBS_PIPEWIRE".into(), false),
         ("HAVE_OBS_PULSEAUDIO".into(), false),
         ("HAVE_PULSE_DEFAULT_RETRY_SDK".into(), false),
         ("HAVE_PIPEWIRE_FRAME_LAYOUT_SDK".into(), false),
+        ("HAVE_OBS_V4L2".into(), false),
+        ("HAVE_V4L2_BUSY_SDK".into(), false),
+        ("HAVE_V4L2_CAPTURE_SDK".into(), false),
+        ("HAVE_V4L2_UDEV_SDK".into(), false),
+        ("HAVE_FREETYPE_PLATFORM_SDK".into(), false),
+        ("HAVE_OBS_TEXT_FREETYPE2".into(), false),
+        ("HAVE_FREETYPE_FILE_SDK".into(), false),
+        ("HAVE_LINUX_CAPTURE".into(), false),
+        ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
+        ("HAVE_TEXT_FILE_OWNER".into(), false),
+        ("HAVE_QSV_TEST_SDK".into(), false),
+        ("HAVE_PIPEWIRE_HEADLESS_SDK".into(), false),
+        ("HAVE_PIPEWIRE_LOOP_TEST_SDK".into(), false),
+        ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_TRANSITIONS_TEST_OWNER".into(), false),
+        ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
+        ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),
+        ("HAVE_X264_TEST_OWNER".into(), false),
+        ("ENABLE_CORE_MODULES".into(), false),
+        ("HAVE_PREFLIGHT_TEST_ARCHIVE".into(), false),
+        ("HAVE_SCRIPTING_DEFS_TEST_SDK".into(), false),
+        ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
+        ("HAVE_MBEDTLS_TEST_SDK".into(), false),
+        ("ENABLE_WAYLAND".into(), false),
+        ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
+        ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
+        ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
+        ("HAVE_PORTAL_TEST_GIO".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_LIBOBS_RUST_STATIC".into(), false),
@@ -2164,9 +2472,18 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         partition.retain_suite(suite);
         assert!(!partition.tests.is_empty(), "{suite} has no tests");
         assert!(partition.tests.values().all(|test| test.suite == suite));
+        // Several modes may execute the same target; every target must still
+        // be covered, and every mode must reference a target in this suite.
         assert_eq!(
-            partition.targets.len(),
-            partition.tests.len(),
+            partition
+                .targets
+                .keys()
+                .collect::<std::collections::BTreeSet<_>>(),
+            partition
+                .tests
+                .values()
+                .map(|test| &test.target)
+                .collect::<std::collections::BTreeSet<_>>(),
             "{suite} targets"
         );
         covered_tests += partition.tests.len();
@@ -4873,20 +5190,6 @@ fn assert_pipe_contract_registration(
     assert!(!fragment.contains("add_test("));
 }
 
-fn assert_rust_static_conversion_linkage(target: &obs_build::validation::graph::Target) {
-    use obs_build::validation::graph::{ConditionalValue, Requirement};
-    assert_eq!(target.libraries.len(), 3);
-    assert!(
-        matches!(&target.libraries[0], ConditionalValue::Name(name) if name == "libobs_rust-static")
-    );
-    assert!(
-        matches!(&target.libraries[1], ConditionalValue::Name(name) if name == "OBS::native-test-cmocka")
-    );
-    assert!(
-        matches!(&target.libraries[2], ConditionalValue::Conditional {name, requires: Requirement::Not { not: inner }} if name == "m" && matches!(inner.as_ref(), Requirement::Fact(fact) if fact == "MSVC"))
-    );
-}
-
 /// #1390: both consumers must run the unchanged C suite against a real Rust archive.
 #[test]
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
@@ -5140,3 +5443,36 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
 }
+
+#[path = "native/registration/canonical_display_live_is_registered.rs"]
+mod canonical_display_live_is_registered;
+
+#[path = "native/registration/canonical_qt_widgets_is_registered.rs"]
+mod canonical_qt_widgets_is_registered;
+
+#[path = "native/registration/canonical_qt_daemons_is_registered.rs"]
+mod canonical_qt_daemons_is_registered;
+#[path = "native/registration/canonical_scene_group_queries_is_registered.rs"]
+mod canonical_scene_group_queries_is_registered;
+#[path = "native/registration/canonical_scene_source_type_queries_is_registered.rs"]
+mod canonical_scene_source_type_queries_is_registered;
+
+#[path = "native/registration/canonical_pipewire_cameras_is_registered.rs"]
+mod canonical_pipewire_cameras_is_registered;
+
+#[path = "native/registration/canonical_private_capture_is_registered.rs"]
+mod canonical_private_capture_is_registered;
+#[path = "native/registration/canonical_scene_item_transition_getters_is_registered.rs"]
+mod canonical_scene_item_transition_getters_is_registered;
+
+#[path = "native/registration/canonical_source_base_size_is_registered.rs"]
+mod canonical_source_base_size_is_registered;
+
+#[path = "native/registration/canonical_scene_item_parent_getter_is_registered.rs"]
+mod canonical_scene_item_parent_getter_is_registered;
+
+#[path = "native/registration/canonical_output_pause_queries_is_registered.rs"]
+mod canonical_output_pause_queries_is_registered;
+
+#[path = "native/registration/camera_wrap_boundary.rs"]
+mod camera_wrap_boundary;
