@@ -1097,6 +1097,8 @@ struct obs_canvas {
 	struct obs_core_video_mix *mix;
 };
 
+#include "libobs/obs-canvas-video-fields.h"
+
 /* Private borrowed field addresses; the canvas layout remains owned by C. */
 struct obs_canvas_readonly_fields {
 	char *const *name;
@@ -1413,6 +1415,13 @@ struct obs_source_deinterlace_fields {
 };
 
 struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
+/* Borrowed addresses only; Rust owns the getter decisions and reads only the
+ * requested field under the original caller's synchronization contract. */
+struct obs_source_async_flag_fields {
+	const bool *unbuffered;
+	const bool *decoupled;
+};
+struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
 
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
@@ -2030,11 +2039,28 @@ struct obs_encoder_dimensions_fields {
 };
 struct obs_encoder_dimensions_fields obs_encoder_dimensions_fields(const obs_encoder_t *encoder);
 
+/* Borrowed audio field addresses, without allocation or value conversion. */
+struct obs_encoder_audio_getters_fields {
+	const enum obs_encoder_type *type;
+	void *const *media;
+	const uint32_t *rate;
+	const size_t *frame_size;
+	const size_t *mixer_index;
+	char *const *name;
+};
+struct obs_encoder_audio_getters_fields obs_encoder_audio_getters_fields(const obs_encoder_t *encoder);
+
 /* Read-only field address for the borrowed last-error getter; not EXPORT. */
 struct obs_encoder_last_error_fields {
 	char *const *message;
 };
 extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+/* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
+struct obs_encoder_roi_state_fields {
+	const size_t *count;
+	const uint32_t *increment;
+};
+extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
 
 extern struct obs_encoder_info *find_encoder(const char *id);
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
@@ -2055,6 +2081,14 @@ struct obs_encoder_counter_fields {
 };
 
 struct obs_encoder_counter_fields obs_encoder_counter_fields(const obs_encoder_t *encoder);
+/* Borrowed GPU scaling fields. No allocation, ownership or value conversion. */
+struct obs_encoder_gpu_scaling_getters_fields {
+	const enum obs_encoder_type *type;
+	const enum obs_scale_type *scale;
+	char *const *name;
+};
+struct obs_encoder_gpu_scaling_getters_fields obs_encoder_gpu_scaling_getters_fields(const obs_encoder_t *encoder);
+
 /* Borrowed metadata field addresses. C retains the encoder layout; no
  * allocation, ownership, synchronization or value conversion occurs here. */
 struct obs_encoder_metadata_fields {

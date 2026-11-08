@@ -1,0 +1,2 @@
+obs_encoder_get_scale_type
+obs_encoder_gpu_scaling_enabled

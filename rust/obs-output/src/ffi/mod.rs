@@ -1,5 +1,6 @@
 //! C ABI, one module per C file.
 
+pub mod encoder_audio_getters;
 pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;
 pub mod encoder_bind;
@@ -7,6 +8,7 @@ pub mod encoder_counters;
 pub mod encoder_dimensions;
 pub mod encoder_gpu_gates;
 pub mod encoder_gpu_rescale;
+pub mod encoder_gpu_scaling_getters;
 pub mod encoder_group_reconfig;
 pub mod encoder_last_error;
 pub mod encoder_lifecycle;
@@ -14,6 +16,7 @@ pub mod encoder_metadata;
 pub mod encoder_packet_ts;
 pub mod encoder_pause;
 pub mod encoder_roi;
+pub mod encoder_roi_state;
 pub mod encoder_scaling_enabled;
 pub mod encoder_size;
 pub mod output_begin;

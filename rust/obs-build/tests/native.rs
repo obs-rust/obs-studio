@@ -184,6 +184,8 @@ mod canonical_async_overflow_clock_is_registered;
 mod canonical_audio_filter_scalars_are_registered;
 #[path = "native/registration/canonical_canvas_flags_getter_is_registered.rs"]
 mod canonical_canvas_flags_getter_is_registered;
+#[path = "native/registration/canonical_canvas_video_getter_is_registered.rs"]
+mod canonical_canvas_video_getter_is_registered;
 #[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
 mod canonical_caption_unmappable_is_registered;
 #[path = "native/registration/canonical_capture_helpers_are_registered.rs"]
@@ -200,8 +202,12 @@ mod canonical_context_names_is_registered;
 mod canonical_dock_proportions_is_registered;
 #[path = "native/registration/canonical_effect_lookups_is_registered.rs"]
 mod canonical_effect_lookups_is_registered;
+#[path = "native/registration/canonical_encoder_audio_getters_is_registered.rs"]
+mod canonical_encoder_audio_getters_is_registered;
 #[path = "native/registration/canonical_encoder_dimensions_is_registered.rs"]
 mod canonical_encoder_dimensions_is_registered;
+#[path = "native/registration/canonical_encoder_gpu_scaling_getters_is_registered.rs"]
+mod canonical_encoder_gpu_scaling_getters_is_registered;
 #[path = "native/registration/canonical_encoder_group_null_is_registered.rs"]
 mod canonical_encoder_group_null_is_registered;
 #[path = "native/registration/canonical_encoder_scaling_enabled_is_registered.rs"]
@@ -302,6 +308,8 @@ mod canonical_scene_bounds_place_is_registered;
 mod canonical_scene_crop_steps_is_registered;
 #[path = "native/registration/canonical_scene_enum_items_removal_is_registered.rs"]
 mod canonical_scene_enum_items_removal_is_registered;
+#[path = "native/registration/canonical_scene_item_crop_getter_is_registered.rs"]
+mod canonical_scene_item_crop_getter_is_registered;
 #[path = "native/registration/canonical_scene_item_crop_load_is_registered.rs"]
 mod canonical_scene_item_crop_load_is_registered;
 #[path = "native/registration/canonical_scene_scale_getter_is_registered.rs"]

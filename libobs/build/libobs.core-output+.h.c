@@ -3,10 +3,13 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-audio.c.h"
+#include "libobs/obs-encoder-audio-getters-fields.c.h"
 #include "libobs/obs-encoder-counter-fields.c.h"
 #include "libobs/obs-encoder-dimensions-fields.c.h"
+#include "libobs/obs-encoder-gpu-scaling-getters-fields.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
+#include "libobs/obs-encoder-roi-state-fields.c.h"
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"

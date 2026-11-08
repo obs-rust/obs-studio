@@ -86,6 +86,7 @@ pub mod canvas_draw;
 pub mod canvas_flags_getter;
 pub mod canvas_readonly_getters;
 pub mod canvas_rules;
+pub mod canvas_video_getter;
 pub mod context_names;
 pub mod core_setup_rules;
 pub mod display_size;

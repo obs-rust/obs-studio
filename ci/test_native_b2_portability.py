@@ -129,6 +129,18 @@ class NativeB2Portability(unittest.TestCase):
         legacy = (ROOT / "test/cmocka/tests.d/source_deinterlace_getter_link_support.cmake").read_text()
         self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
 
+    def test_async_flag_link_support_imports_windows_pthreads(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
+        supported = [name for name, target in graph["targets"].items()
+                     if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
+        self.assertEqual(len(supported), 23)
+        for name in supported:
+            with self.subTest(name=name):
+                self.assertIn(dependency, graph["targets"][name]["libraries"])
+        legacy = (ROOT / "test/cmocka/tests.d/source_async_flag_getter_link_support.cmake").read_text()
+        self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
+
     def test_filter_relationship_link_support_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}

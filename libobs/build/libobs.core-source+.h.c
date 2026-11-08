@@ -4,11 +4,13 @@
 
 #include "libobs/obs-canvas-flags-fields.c.h"
 #include "libobs/obs-canvas-readonly-fields.c.h"
+#include "libobs/obs-canvas-video-fields.c.h"
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display-size-fields.c.h"
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene.c.h"
+#include "libobs/obs-source-async-flag-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
