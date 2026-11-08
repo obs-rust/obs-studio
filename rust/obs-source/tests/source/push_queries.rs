@@ -7,6 +7,8 @@ struct Source {
     talk: bool,
     mute_delay: u64,
     talk_delay: u64,
+    mute_pressed: bool,
+    talk_pressed: bool,
 }
 impl PushFields for Source {
     fn lock(&mut self) {
@@ -73,6 +75,8 @@ fn mirrors_c_independent_fields_and_lock_order() {
                     talk: flags & 2 != 0,
                     mute_delay,
                     talk_delay,
+                    mute_pressed: flags & 1 == 0,
+                    talk_pressed: flags & 2 == 0,
                 };
                 for repeat in 0..2 {
                     assert_eq!(
@@ -96,6 +100,8 @@ fn mirrors_c_independent_fields_and_lock_order() {
                     );
                     assert!(!s.locked);
                     assert_eq!(s.locks, (repeat + 1) * 4);
+                    assert_eq!(s.mute_pressed, flags & 1 == 0);
+                    assert_eq!(s.talk_pressed, flags & 2 == 0);
                     assert_eq!(
                         (s.mute, s.talk, s.mute_delay, s.talk_delay),
                         (flags & 1 != 0, flags & 2 != 0, mute_delay, talk_delay)

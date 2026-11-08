@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 bool obs_source_push_to_mute_enabled(obs_source_t *source)
 {
