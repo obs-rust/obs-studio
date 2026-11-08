@@ -16,12 +16,10 @@ bool oracle_module_type_queries_check(uint32_t word, module_type_query_t core, m
 {
 	struct obs_module module = {0};
 	module.module_type = (enum obs_runtime_module_type)word;
-	return core(NULL) == oracle_obs_is_core_module(NULL) &&
-	       legacy(NULL) == oracle_obs_is_legacy_module(NULL) &&
+	return core(NULL) == oracle_obs_is_core_module(NULL) && legacy(NULL) == oracle_obs_is_legacy_module(NULL) &&
 	       core(&module) == oracle_obs_is_core_module(&module) &&
 	       legacy(&module) == oracle_obs_is_legacy_module(&module) &&
-	       obs_module_type_query_field(&module) == &module.module_type &&
-	       obs_module_type_query_field(NULL) == NULL;
+	       obs_module_type_query_field(&module) == &module.module_type && obs_module_type_query_field(NULL) == NULL;
 }
 void oracle_module_type_queries_layout(size_t *size, size_t *align);
 void oracle_module_type_queries_layout(size_t *size, size_t *align)
