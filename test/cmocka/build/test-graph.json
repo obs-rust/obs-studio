@@ -8157,6 +8157,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_output_pause_queries": {
+      "sources": [
+        "test/cmocka/test_output_pause_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_pause_steps": {
       "sources": [
         "test/cmocka/test_output_pause_steps.c",
@@ -20343,6 +20358,12 @@
     },
     "test_output_null_id": {
       "target": "test_output_null_id",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_pause_queries": {
+      "target": "test_output_pause_queries",
       "command": [
         "${target}"
       ]
