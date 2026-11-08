@@ -1,8 +1,8 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
-#[path = "native/registration/canonical_portal_output_is_registered.rs"]
-mod canonical_portal_output_is_registered;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
+#[path = "native/registration/canonical_portal_output_is_registered.rs"]
+mod canonical_portal_output_is_registered;
 #[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
 mod canonical_rust_static_windows_keys_are_registered;
 #[path = "native/graph_host_configurations.rs"]
@@ -2436,6 +2436,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
+        ("HAVE_PORTAL_TEST_GIO".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_LIBOBS_RUST_STATIC".into(), false),
