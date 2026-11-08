@@ -9,6 +9,7 @@ gates:
   rust/all/fmt: {lane: lint}
   rust/x86_64-unknown-linux-gnu/clippy: {lane: lint}
   rust/x86_64-unknown-linux-gnu/test: {lane: rust-test}
+  rust/x86_64-unknown-linux-gnu/dylint: {lane: dylint}
   cpp/linux-x64/tier2: {lane: tier2-linux}
   # Cross-checked from the Linux host (#472).
   rust/x86_64-pc-windows-msvc/clippy: {lane: cross}
@@ -23,7 +24,7 @@ gates:
   cpp/macos-arm64/tier2: {lane: macos-native}
   cpp/windows-x64/tier2: {lane: windows-native}
 jobs:
-  build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/test]
+  build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/dylint, rust/x86_64-unknown-linux-gnu/test]
   build-project.yaml:rust-linux-tier2: [cpp/linux-x64/tier2]
   build-project.yaml:rust-cross-lint: [rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/dylint, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/dylint]
   # The formatting and clippy gates these two run are the Linux lanes' (#427,
