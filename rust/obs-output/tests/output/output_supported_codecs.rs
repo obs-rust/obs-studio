@@ -20,5 +20,11 @@ fn null_output_logs_each_getter_name() {
     let mut logs = Vec::new();
     assert_eq!(video::<Option<&[u8]>>(None, |name| logs.push(name)), None);
     assert_eq!(audio::<Option<&[u8]>>(None, |name| logs.push(name)), None);
-    assert_eq!(logs, [c"obs_output_get_supported_video_codecs", c"obs_output_get_supported_audio_codecs"]);
+    assert_eq!(
+        logs,
+        [
+            c"obs_output_get_supported_video_codecs",
+            c"obs_output_get_supported_audio_codecs"
+        ]
+    );
 }

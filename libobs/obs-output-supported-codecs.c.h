@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 const char *obs_output_get_supported_video_codecs(const obs_output_t *output)
 {
