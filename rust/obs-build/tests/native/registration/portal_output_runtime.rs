@@ -74,13 +74,15 @@ fn canonical_portal_output_run_unchanged() {
     let renderer =
         obs_build::graphics::build_opengl(&build, &root, &core_path, &Default::default()).unwrap();
     let runtime = directory.path().join("runtime");
-    fs::create_dir_all(runtime.join("share/obs")).unwrap();
-    checked(
-        Command::new("cp")
-            .arg("-R")
-            .arg(root.join("libobs/data"))
-            .arg(runtime.join("share/obs/libobs")),
-    );
+    for data in ["share/obs", "RelWithDebInfo/share/obs"] {
+        fs::create_dir_all(runtime.join(data)).unwrap();
+        checked(
+            Command::new("cp")
+                .arg("-R")
+                .arg(root.join("libobs/data"))
+                .arg(runtime.join(data).join("libobs")),
+        );
+    }
     let shim = obs_build::validation::build_config_close_fault(&build, &root).unwrap();
     let interfaces = interfaces(&build, &root, core.dependency, &caption, &renderer, shim);
     let facts = std::collections::BTreeMap::from([
@@ -101,23 +103,6 @@ fn canonical_portal_output_run_unchanged() {
     }
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), 6);
-    for (name, artifact) in artifacts {
-        binding(&artifact, &core_path);
-        for iteration in 1..=5 {
-            let output = checked(
-                graph.tests[&name]
-                    .command_in(&root, &build.output, &artifact, &runtime)
-                    .unwrap()
-                    .env("CMOCKA_MESSAGE_OUTPUT", "STDOUT"),
-            );
-            assert_cases(&output, &name);
-            eprintln!(
-                "Cargo {name} iteration {iteration}: {}\n{}",
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
-    }
     let raw: serde_json::Value =
         serde_json::from_str(include_str!("portal_output_expected.json")).unwrap();
     fs::write(directory.path().join("graph.json"), raw.to_string()).unwrap();
@@ -156,6 +141,23 @@ fn canonical_portal_output_run_unchanged() {
         );
         assert_cases(&result, name);
         eprintln!("CMake {name}: {}", String::from_utf8_lossy(&result.stdout));
+    }
+    for (name, artifact) in artifacts {
+        binding(&artifact, &core_path);
+        for iteration in 1..=5 {
+            let output = checked(
+                graph.tests[&name]
+                    .command_in(&root, &build.output, &artifact, &runtime)
+                    .unwrap()
+                    .env("CMOCKA_MESSAGE_OUTPUT", "STDOUT"),
+            );
+            assert_cases(&output, &name);
+            eprintln!(
+                "Cargo {name} iteration {iteration}: {}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
     }
 }
 

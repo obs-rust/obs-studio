@@ -3,7 +3,7 @@ if(NOT UNIX)
 endif()
 
 # Inject final-close errors through libc, without changing libobs.
-add_library(config_close_fault SHARED config_close_fault.c)
+add_library(config_close_fault SHARED "${CMAKE_CURRENT_LIST_DIR}/../config_close_fault.c")
 set_target_properties(
   config_close_fault
   PROPERTIES C_VISIBILITY_PRESET default XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN NO
