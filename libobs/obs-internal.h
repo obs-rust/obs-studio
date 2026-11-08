@@ -1793,6 +1793,12 @@ struct obs_output {
 	float audio_data[MAX_AUDIO_CHANNELS][AUDIO_OUTPUT_FRAMES];
 };
 
+/* Private field address; reject NULL before calling this adapter. */
+struct obs_output_flags_fields {
+	const uint32_t *flags;
+};
+extern struct obs_output_flags_fields obs_output_flags_fields(const obs_output_t *output);
+
 /* Borrowed instance identity fields; reject NULL before taking member addresses. */
 struct obs_output_identity_fields {
 	const char *const *id;

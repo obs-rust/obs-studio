@@ -9,7 +9,10 @@ fn flags_match_characterization() {
     {
         let before = value;
         for _ in 0..2 {
-            assert_eq!(flags(Some(value), |_| panic!("valid output must not log")), value);
+            assert_eq!(
+                flags(Some(value), |_| panic!("valid output must not log")),
+                value
+            );
             assert_eq!(value, before);
         }
     }
