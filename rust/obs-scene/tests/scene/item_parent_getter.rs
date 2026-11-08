@@ -5,7 +5,11 @@ use obs_scene::item_parent_getter::parent;
 fn parent_getter_characterization() {
     assert_eq!(parent::<usize>(None), 0);
     for bits in 0..16 {
-        let stored = if bits & 4 != 0 { 1 + ((bits >> 3) & 1) } else { 0 };
+        let stored = if bits & 4 != 0 {
+            1 + ((bits >> 3) & 1)
+        } else {
+            0
+        };
         let before = (stored, bits & 1 != 0, bits & 2 != 0, -17);
         assert_eq!(parent(Some(stored)), stored);
         assert_eq!(parent(Some(stored)), stored);
