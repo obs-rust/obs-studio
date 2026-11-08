@@ -3,19 +3,4 @@
 # (upstream obsproject/obs-studio#13830). Builds async-delay-filter.c directly
 # so the obs-filters module is not loaded. Mixing needs core video, so it runs
 # (under xvfb-run) on Linux and skips without a display.
-if(OS_LINUX AND TARGET OBS::libobs-opengl)
-  add_executable(
-    test_async_delay_audio
-    test_async_delay_audio.c
-    "${CMAKE_SOURCE_DIR}/plugins/obs-filters/async-delay-filter.c.h"
-  )
-  target_compile_definitions(test_async_delay_audio PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>")
-  target_include_directories(test_async_delay_audio PRIVATE ${CMOCKA_INCLUDE_DIR})
-  target_link_libraries(test_async_delay_audio PRIVATE OBS::libobs ${CMOCKA_LIBRARIES} m)
-  add_dependencies(test_async_delay_audio libobs-opengl)
-  add_dependencies(cmocka-tests test_async_delay_audio)
-  # libobs finds its effect files relative to the working directory.
-  add_test(NAME test_async_delay_audio COMMAND test_async_delay_audio WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>")
-  # Its checks depend on wall-clock timing: the asan pool runs it alone (#3238).
-  set_tests_properties(test_async_delay_audio PROPERTIES TIMEOUT 180 RESOURCE_LOCK timing)
-endif()
+# Registered once in build/test-graph.json, consumed by CMake and Cargo.

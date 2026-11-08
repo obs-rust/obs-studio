@@ -6,6 +6,16 @@ mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
+#[path = "native/registration/canonical_display_audio_is_registered.rs"]
+mod canonical_display_audio_is_registered;
+#[path = "native/registration/canonical_display_media_is_registered.rs"]
+mod canonical_display_media_is_registered;
+#[path = "native/registration/canonical_display_outputs_is_registered.rs"]
+mod canonical_display_outputs_is_registered;
+#[path = "native/registration/canonical_display_plugins_is_registered.rs"]
+mod canonical_display_plugins_is_registered;
+#[path = "native/registration/canonical_display_render_is_registered.rs"]
+mod canonical_display_render_is_registered;
 #[path = "native/registration/canonical_display_startup_is_registered.rs"]
 mod canonical_display_startup_is_registered;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
@@ -2340,6 +2350,8 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_OUTPUTS".into(), false),
         ("HAVE_HAPPY_EYEBALLS".into(), false),
         ("HAVE_OBS_FILTERS".into(), false),
+        ("HAVE_RTMP_SERVICES_MODULE".into(), false),
+        ("HAVE_SLIDESHOW_TEST_OWNER".into(), false),
         ("HAVE_OBS_ALSA".into(), false),
         ("HAVE_RTMPS_TEST_SDK".into(), false),
         ("HAVE_LIBRIST_TEST_SDK".into(), false),
@@ -2365,7 +2377,9 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_PIPEWIRE_LOOP_TEST_SDK".into(), false),
         ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
         ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_TRANSITIONS_TEST_OWNER".into(), false),
         ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_STARTUP_X11".into(), false),
         ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
         ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),
@@ -5369,5 +5383,13 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
     assert!(!fragment.contains("add_test("));
 }
 
+#[path = "native/registration/canonical_display_live_is_registered.rs"]
+mod canonical_display_live_is_registered;
+
+#[path = "native/registration/canonical_qt_widgets_is_registered.rs"]
+mod canonical_qt_widgets_is_registered;
+
+#[path = "native/registration/canonical_qt_daemons_is_registered.rs"]
+mod canonical_qt_daemons_is_registered;
 #[path = "native/registration/canonical_scene_source_type_queries_is_registered.rs"]
 mod canonical_scene_source_type_queries_is_registered;

@@ -161,3 +161,82 @@ fn native_test_graph_video_io_hidden_imports_private_header_dependencies() {
         );
     }
 }
+
+#[test]
+fn native_test_graph_windows_slideshow_has_one_host_and_filetime_helper() {
+    use obs_build::validation::graph::Graph;
+    let repository =
+        dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let raw: serde_json::Value = serde_json::from_slice(
+        &fs::read(repository.join("test/cmocka/build/test-graph.json")).unwrap(),
+    )
+    .unwrap();
+    let graph = Graph::parse(
+        &serde_json::json!({
+            "schema": 1,
+            "targets": {"test_slideshow_empty": raw["targets"]["test_slideshow_empty"]},
+            "tests": {"test_slideshow_empty": raw["tests"]["test_slideshow_empty"]}
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let selected = graph
+        .select(&std::collections::BTreeMap::from([
+            ("OS_WINDOWS".into(), true),
+            ("OS_MACOS".into(), false),
+            ("OS_LINUX".into(), false),
+            ("HAVE_SLIDESHOW_TEST_OWNER".into(), true),
+        ]))
+        .unwrap();
+    assert!(selected.targets.contains_key("test_slideshow_empty"));
+    let source = repository.to_string_lossy().replace('\\', "/");
+    let fixture = graph_fixture(
+        &["test_slideshow_empty"],
+        &format!(
+            r#"
+set(OS_WINDOWS TRUE)
+set(CMAKE_SYSTEM_NAME Windows)
+set(HAVE_SLIDESHOW_TEST_OWNER TRUE)
+set(CMAKE_SOURCE_DIR "{source}")
+include("{source}/test/cmocka/tests.d/test_image_source_host.cmake")
+function(check_slideshow_sources)
+  file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/sources.txt"
+    CONTENT "$<JOIN:$<TARGET_PROPERTY:test_slideshow_empty,SOURCES>,\n>")
+endfunction()
+cmake_language(DEFER CALL check_slideshow_sources)
+"#
+        ),
+    );
+    configure(fixture.path());
+    let sources = fs::read_to_string(fixture.path().join("build/sources.txt")).unwrap();
+    let mut compiled = std::collections::BTreeSet::new();
+    for path in sources.lines() {
+        let path = Path::new(path);
+        let text = fs::read_to_string(path).unwrap();
+        let mut members = vec![path.to_path_buf()];
+        {
+            // Both explicit unity groups and generated .c.h wrappers compile members.
+            members.extend(text.lines().filter_map(|line| {
+                let member = line.strip_prefix("#include \"")?.strip_suffix('"')?;
+                member.ends_with(".c.h").then(|| repository.join(member))
+            }));
+        }
+        for member in members {
+            assert!(
+                compiled.insert(member.clone()),
+                "duplicate compiled source: {}",
+                member.display()
+            );
+        }
+    }
+    assert!(
+        compiled.contains(&repository.join("plugins/image-source/image-file-version.c.h")),
+        "Windows slideshow omits image_file_version_from_filetime helper: {sources}"
+    );
+    assert!(
+        compiled.contains(&repository.join("plugins/image-source/image-source-host-windows.c.h"))
+    );
+    assert!(
+        compiled.contains(&repository.join("plugins/image-source/image-file-version-win32.c.h"))
+    );
+}
