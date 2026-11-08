@@ -852,6 +852,8 @@ struct obs_weak_object {
 
 typedef void (*obs_destroy_cb)(void *obj);
 
+#include "obs-object-query-fields.h"
+
 struct obs_context_data {
 	char *name;
 	const char *uuid;

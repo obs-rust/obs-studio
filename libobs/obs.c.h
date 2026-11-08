@@ -3089,12 +3089,6 @@ uint64_t obs_get_frame_interval_ns(void)
 	return obs->video.video_frame_interval_ns;
 }
 
-enum obs_obj_type obs_obj_get_type(void *obj)
-{
-	struct obs_context_data *context = obj;
-	return context ? context->type : OBS_OBJ_TYPE_INVALID;
-}
-
 const char *obs_obj_get_id(void *obj)
 {
 	struct obs_context_data *context = obj;
@@ -3132,15 +3126,6 @@ void *obs_obj_get_data(void *obj)
 		return NULL;
 
 	return context->data;
-}
-
-bool obs_obj_is_private(void *obj)
-{
-	struct obs_context_data *context = obj;
-	if (!context)
-		return false;
-
-	return context->private;
 }
 
 void obs_reset_audio_monitoring(void)
