@@ -1,6 +1,21 @@
 {
   "schema": 1,
   "targets": {
+    "obs-x264-test": {
+      "sources": [
+        "plugins/obs-x264/build/obs-x264-test.core+.h.c"
+      ],
+      "requires": "HAVE_X264_TEST_OWNER",
+      "compile_options": [
+        {
+          "name": "-Wno-strict-prototypes",
+          "requires": "C_COMPILER_CLANG"
+        }
+      ],
+      "libraries": [
+        "OBS::opts-parser"
+      ]
+    },
     "test_alsa_capture_format": {
       "sources": [
         "test/cmocka/test_alsa_capture_format.c",
@@ -989,6 +1004,19 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_config_migration": {
+      "sources": [
+        "frontend/tests/test_config_migration.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "includes": [
+        "frontend"
+      ],
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "frontend/utility/ConfigMigration.hpp"
+      ]
+    },
     "test_config_save": {
       "sources": [
         "test/cmocka/test_config_save.c"
@@ -1040,6 +1068,16 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_core_module_manifest": {
+      "sources": [
+        "test/cmocka/test_core_module_manifest.c"
+      ],
+      "requires": "ENABLE_CORE_MODULES",
+      "libraries": [
+        "OBS::libobs-core-modules",
         "OBS::native-test-cmocka"
       ]
     },
@@ -1583,6 +1621,21 @@
         }
       ]
     },
+    "test_distribution_info": {
+      "sources": [
+        "test/cmocka/test_distribution_info.c",
+        "libobs/obs-nix-log-rules.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "libobs/obs-nix-os-release.h",
+        "libobs/build/libobs-ported-nix-system-info.pch.h"
+      ]
+    },
     "test_dock_proportions": {
       "sources": [
         "test/cmocka/test_dock_proportions.cpp"
@@ -2076,6 +2129,28 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_egl_init_error": {
+      "sources": [
+        "test/cmocka/test_egl_init_error.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_GLAD"
+        ]
+      },
+      "includes": [
+        "libobs-opengl"
+      ],
+      "watch_inputs": [
+        "libobs-opengl/gl-egl-errors.h"
       ]
     },
     "test_encoder_audio_getters": {
@@ -2751,6 +2826,66 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_ffmpeg_restart_close": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_restart_close.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_module_text",
+        "-Wl,--wrap=obs_source_get_name",
+        "-Wl,--wrap=obs_source_showing",
+        "-Wl,--wrap=obs_source_active",
+        "-Wl,--wrap=obs_source_media_ended",
+        "-Wl,--wrap=obs_source_media_started",
+        "-Wl,--wrap=obs_source_output_video",
+        "-Wl,--wrap=media_playback_create",
+        "-Wl,--wrap=media_playback_play",
+        "-Wl,--wrap=media_playback_has_video",
+        "-Wl,--wrap=media_playback_destroy"
+      ]
+    },
     "test_file_serializer": {
       "sources": [
         "test/cmocka/test_file_serializer.c"
@@ -2769,6 +2904,48 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_LINUX"
+    },
+    "test_file_updater_failure": {
+      "sources": [
+        "test/cmocka/test_file_updater_failure.c",
+        "shared/file-updater/build/file-updater.core+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "CURL::libcurl",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "shared/file-updater"
+      ],
+      "watch_inputs": [
+        "shared/file-updater/build/file-updater.pch.h",
+        "shared/file-updater/file-updater/file-updater.c.h",
+        "shared/file-updater/file-updater/file-updater.h",
+        "shared/file-updater/file-updater/curl-accept-encoding.h"
+      ]
+    },
+    "test_file_updater_timeout": {
+      "sources": [
+        "test/cmocka/test_file_updater_timeout.c",
+        "shared/file-updater/build/file-updater.core+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "CURL::libcurl",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "shared/file-updater"
+      ],
+      "watch_inputs": [
+        "shared/file-updater/build/file-updater.pch.h",
+        "shared/file-updater/file-updater/file-updater.c.h",
+        "shared/file-updater/file-updater/file-updater.h",
+        "shared/file-updater/file-updater/curl-accept-encoding.h"
+      ]
     },
     "test_filter_clipboard": {
       "sources": [
@@ -2823,6 +3000,15 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_first_run_wizard": {
+      "sources": [
+        "frontend/tests/test_first_run_wizard.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/utility/FirstRunWizard.hpp"
       ]
     },
     "test_flv_mux": {
@@ -2968,6 +3154,50 @@
         "plugins/frontend-tools/frontend-tools-host.h",
         "plugins/frontend-tools/build/frontend-tools-host-macos.pch.h"
       ]
+    },
+    "test_frontend_warn_fallback": {
+      "sources": [
+        "test/cmocka/test_frontend_warn_fallback.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::frontend-api",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FRONTEND_WARN_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "frontend/api/build/obs-frontend-api.core+.hpp.cpp",
+        "frontend/api/build/obs-frontend-api.pch.hpp",
+        "frontend/api/obs-frontend-api.cpp.hpp",
+        "frontend/api/obs-frontend-internal.hpp"
+      ]
+    },
+    "test_gl_dynamic_texture": {
+      "sources": [
+        "test/cmocka/test_gl_dynamic_texture.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
     },
     "test_glyph_atlas": {
       "sources": [
@@ -3422,6 +3652,68 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_background_ui": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_ui.cpp",
+        "frontend/settings/OBSHotkeyBackground.cpp.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "definitions": [
+        "HOTKEY_LOCALE_EN_US=\"${source}/frontend/data/locale/en-US.ini\""
+      ],
+      "watch_inputs": [
+        "frontend/build/frontend-settings-obshotkeybackground.pch.hpp",
+        "frontend/data/locale/en-US.ini"
+      ],
+      "cpp_standard": "17"
+    },
+    "test_hotkey_background_use_key": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_use_key.cpp",
+        "frontend/settings/OBSHotkeyBackground.cpp.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "watch_inputs": [
+        "frontend/build/frontend-settings-obshotkeybackground.pch.hpp"
+      ],
+      "cpp_standard": "17"
+    },
     "test_hotkey_binding_getters": {
       "sources": [
         "test/cmocka/test_hotkey_binding_getters.c"
@@ -3875,6 +4167,21 @@
         }
       ]
     },
+    "test_inhibit_sleep": {
+      "sources": [
+        "test/cmocka/test_inhibit_sleep.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
+    },
     "test_item_transition_empty_source": {
       "sources": [
         "test/cmocka/test_item_transition_empty_source.c"
@@ -3956,6 +4263,44 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_lua_graphics_lock": {
+      "sources": [
+        "test/cmocka/test_lua_graphics_lock.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "test/cmocka/fixtures/lua-graphics-lock-original.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_lua_graphics_lock_bounded": {
+      "sources": [
+        "test/cmocka/test_lua_graphics_lock_bounded.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-source.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ]
+    },
     "test_mac_vmic_clock": {
       "sources": [
         "test/cmocka/test_mac_vmic_clock.c"
@@ -3982,6 +4327,30 @@
       ],
       "watch_inputs": [
         "plugins/mac-virtualcam/src/common"
+      ]
+    },
+    "test_mac_vmic_shm": {
+      "sources": [
+        "test/cmocka/test_mac_vmic_shm.c"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/mac-virtualcam/src/common"
+      ],
+      "compile_options": [
+        {
+          "name": "/std:c11",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/experimental:c11atomics",
+          "requires": "MSVC"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/mac-virtualcam/src/common/vmic-shm.h"
       ]
     },
     "test_main_mix_before_video": {
@@ -4050,6 +4419,214 @@
         }
       ]
     },
+    "test_media_alpha_network": {
+      "sources": [
+        "test/cmocka/test_media_alpha_network.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
+    "test_media_cached_paused_seek": {
+      "sources": [
+        "test/cmocka/test_media_cached_paused_seek.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          }
+        }
+      ],
+      "requires": {
+        "all": [
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h",
+        "test/cmocka/data/media_cached_paused_seek.mkv"
+      ]
+    },
+    "test_media_format_change": {
+      "sources": [
+        "test/cmocka/test_media_format_change.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
+    "test_media_loop_start_time": {
+      "sources": [
+        "test/cmocka/test_media_loop_start_time.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
+    "test_media_network_timeout": {
+      "sources": [
+        "test/cmocka/test_media_network_timeout.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
     "test_media_packet_eof_leak": {
       "sources": [
         "test/cmocka/test_media_packet_eof_leak.c",
@@ -4100,6 +4677,146 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_media_seek_keyframe": {
+      "sources": [
+        "test/cmocka/test_media_seek_keyframe.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ]
+    },
+    "test_media_source_options_lifetime": {
+      "sources": [
+        "test/cmocka/test_media_source_options_lifetime.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=av_dict_parse_string",
+        "-Wl,--wrap=bfree",
+        "-Wl,--wrap=pthread_join"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ]
+    },
+    "test_media_status_threading": {
+      "sources": [
+        "test/cmocka/test_media_status_threading.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": {
+        "all": [
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "includes": [
+        "."
+      ]
+    },
     "test_media_time": {
       "sources": [
         "test/cmocka/test_media_time.c",
@@ -4113,6 +4830,47 @@
       ],
       "watch_inputs": [
         "frontend/utility"
+      ]
+    },
+    "test_media_ts_start_time": {
+      "sources": [
+        "test/cmocka/test_media_ts_start_time.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
       ]
     },
     "test_menu_text": {
@@ -4507,6 +5265,25 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_nix_startup_log": {
+      "sources": [
+        "test/cmocka/test_nix_startup_log.c",
+        "libobs/obs-nix-log-rules.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-os-release.h"
+      ]
+    },
     "test_nix_system_info_steps": {
       "sources": [
         "test/cmocka/test_nix_system_info_steps.c",
@@ -4887,6 +5664,36 @@
         "plugins/obs-outputs/net-if-host.h",
         "plugins/obs-outputs/net-if.c.h",
         "plugins/obs-outputs/net-if.h"
+      ]
+    },
+    "test_obs_outputs_rtmp_host": {
+      "sources": [
+        "test/cmocka/test_obs_outputs_rtmp_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "MbedTLS::mbedtls",
+          "requires": "HAVE_MBEDTLS_TEST_SDK"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "-DTEST_HAVE_MBEDTLS",
+          "requires": "HAVE_MBEDTLS_TEST_SDK"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/obs-outputs/rtmp-stream-host-posix.c.h",
+        "plugins/obs-outputs/rtmp-send-result.h",
+        "plugins/obs-outputs/build/obs-outputs-rtmp-host-posix.pch.h"
       ]
     },
     "test_obs_properties": {
@@ -5834,6 +6641,48 @@
         "-fvisibility=default"
       ]
     },
+    "test_pipewire_connect_start": {
+      "sources": [
+        "test/cmocka/test_pipewire_connect_start.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::native-test-glib",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_HEADLESS_SDK"
+        ]
+      },
+      "header_libraries": [
+        "Libdrm::Libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h",
+        "plugins/linux-pipewire/pipewire.c.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=pw_thread_loop_lock",
+        "-Wl,--wrap=pw_thread_loop_unlock",
+        "-Wl,--wrap=pw_thread_loop_start",
+        "-Wl,--wrap=pw_thread_loop_stop",
+        "-Wl,--wrap=pw_thread_loop_wait",
+        "-Wl,--wrap=pw_context_connect_fd"
+      ]
+    },
     "test_pipewire_frame_layout": {
       "sources": [
         "test/cmocka/test_pipewire_frame_layout.c",
@@ -5865,6 +6714,30 @@
         "gio-2.0"
       ]
     },
+    "test_pipewire_frame_pacing": {
+      "sources": [
+        "test/cmocka/test_pipewire_frame_pacing.c",
+        "plugins/linux-pipewire/frame-pacing.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": "HAVE_PIPEWIRE_HEADLESS_SDK",
+      "header_libraries": [
+        "Libdrm::Libdrm",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::glad"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h"
+      ]
+    },
     "test_pipewire_reconnect": {
       "sources": [
         "test/cmocka/test_pipewire_reconnect.c",
@@ -5884,6 +6757,46 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "HAVE_OBS_PIPEWIRE"
+    },
+    "test_pipewire_teardown_wait": {
+      "sources": [
+        "test/cmocka/test_pipewire_teardown_wait.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::native-test-glib",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_HEADLESS_SDK",
+          "HAVE_PIPEWIRE_LOOP_TEST_SDK"
+        ]
+      },
+      "header_libraries": [
+        "Libdrm::Libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h",
+        "plugins/linux-pipewire/pipewire.c.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=pw_thread_loop_lock",
+        "-Wl,--wrap=pw_thread_loop_unlock",
+        "-Wl,--wrap=pw_thread_loop_wait"
+      ]
     },
     "test_plane": {
       "sources": [
@@ -5954,6 +6867,246 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_plugin_getter_scroll": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_SCROLL",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/obs-filters/scroll-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h"
+      ]
+    },
+    "test_plugin_getter_slideshow": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c",
+        "plugins/image-source/build/image-source.core+.h.c",
+        "plugins/image-source/build/image-source.posix+.h.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_SLIDESHOW",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/build/image-source-posix.pch.h"
+      ]
+    },
+    "test_plugin_getter_slideshow_mk2": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c",
+        "plugins/image-source/build/image-source.slideshow+.h.c",
+        "plugins/image-source/build/image-source.posix+.h.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_SLIDESHOW_MK2",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/image-source/build/image-source.core+.h.c",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/build/image-source-posix.pch.h"
+      ]
+    },
+    "test_plugin_getter_stinger": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_STINGER",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/obs-transitions/transition-stinger.c.h",
+        "plugins/obs-transitions/build/obs-transitions.pch.h"
+      ]
+    },
+    "test_plugin_getter_xshm": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_XSHM",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/linux-capture/build/linux-capture.nix+.h.c",
+        "plugins/linux-capture/build/linux-capture-nix.pch.h",
+        "plugins/linux-capture/xshm-input.c.h"
+      ]
+    },
     "test_portal_shortcut_ids": {
       "sources": [
         "test/cmocka/test_portal_shortcut_ids.c",
@@ -6017,6 +7170,34 @@
         ]
       },
       "sanitizers": "address,undefined"
+    },
+    "test_preflight_abi": {
+      "sources": [
+        "test/cmocka/test_preflight_abi.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_MACOS"
+            ]
+          },
+          "HAVE_PREFLIGHT_TEST_ARCHIVE"
+        ]
+      },
+      "includes": [
+        "frontend/preflight"
+      ],
+      "libraries": [
+        "OBS::preflight-test-archive",
+        "OBS::native-test-cmocka",
+        "Threads::Threads",
+        {
+          "name": "dl",
+          "requires": "OS_LINUX"
+        }
+      ]
     },
     "test_preview_only_hide": {
       "sources": [
@@ -6409,6 +7590,79 @@
       ],
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_python_stdio": {
+      "sources": [
+        "test/cmocka/test_python_stdio.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Python::Python",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "shared/obs-scripting"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_PYTHON_EMBED_TEST_SDK"
+        ]
+      },
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-startup.h"
+      ]
+    },
+    "test_qsv_encode_bounds": {
+      "sources": [
+        "test/cmocka/test_qsv_encode_bounds.cpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "header_libraries": [
+        "VPL::VPL"
+      ],
+      "definitions": [
+        "OBS_QSV_HOST_DEFS=\"plugins/obs-qsv11/bits/linux_defs.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/QSV_Encoder.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder.h",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.h",
+        "plugins/obs-qsv11/bits/linux_defs.h",
+        "plugins/obs-qsv11/build/obs-qsv11-c.pch.h",
+        "plugins/obs-qsv11/build/obs-qsv11.core+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.linux+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.pch.hpp",
+        "plugins/obs-qsv11/common_directx11.cpp.hpp",
+        "plugins/obs-qsv11/common_directx11.h",
+        "plugins/obs-qsv11/common_utils.cpp.hpp",
+        "plugins/obs-qsv11/common_utils.h",
+        "plugins/obs-qsv11/obs-qsv11.c.h",
+        "plugins/obs-qsv11/qsv-host.h",
+        "plugins/obs-qsv11/qsv-probe.h"
+      ],
+      "compile_options_if_supported": [
+        "-Wno-error=switch"
+      ]
+    },
     "test_qsv_host": {
       "sources": [
         "test/cmocka/test_qsv_host.c"
@@ -6512,6 +7766,51 @@
       "watch_inputs": [
         "plugins/obs-qsv11",
         "test/cmocka"
+      ]
+    },
+    "test_qsv_update": {
+      "sources": [
+        "test/cmocka/test_qsv_update.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "header_libraries": [
+        "VPL::VPL"
+      ],
+      "definitions": [
+        "OBS_QSV_HOST_DEFS=\"plugins/obs-qsv11/bits/linux_defs.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/QSV_Encoder.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder.h",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.h",
+        "plugins/obs-qsv11/bits/linux_defs.h",
+        "plugins/obs-qsv11/build/obs-qsv11-c.pch.h",
+        "plugins/obs-qsv11/build/obs-qsv11.core+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.linux+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.pch.hpp",
+        "plugins/obs-qsv11/common_directx11.cpp.hpp",
+        "plugins/obs-qsv11/common_directx11.h",
+        "plugins/obs-qsv11/common_utils.cpp.hpp",
+        "plugins/obs-qsv11/common_utils.h",
+        "plugins/obs-qsv11/obs-qsv11.c.h",
+        "plugins/obs-qsv11/qsv-host.h",
+        "plugins/obs-qsv11/qsv-probe.h"
+      ],
+      "compile_options_if_supported": [
+        "-Wno-error=switch"
       ]
     },
     "test_quat": {
@@ -7840,6 +9139,24 @@
         "libobs/data"
       ]
     },
+    "test_scene_size_race": {
+      "sources": [
+        "test/cmocka/test_scene_size_race.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs.h"
+      ]
+    },
     "test_scene_transform_update_steps": {
       "sources": [
         "test/cmocka/test_scene_transform_update_steps.c",
@@ -7908,6 +9225,27 @@
         }
       ]
     },
+    "test_scripting_obs_defs": {
+      "sources": [
+        "test/cmocka/test_scripting_obs_defs.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_SCRIPTING_DEFS_TEST_SDK"
+        ]
+      },
+      "libraries": [
+        "OBS::scripting-defs-test",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_serializer": {
       "sources": [
         "test/cmocka/test_serializer.c"
@@ -7941,6 +9279,28 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_service_state": {
+      "sources": [
+        "test/cmocka/test_service_state.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "includes": [
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-state.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
         "OBS::native-test-cmocka"
       ]
     },
@@ -9363,6 +10723,46 @@
         "OBS::ffmpeg-net-host"
       ]
     },
+    "test_startup_alloc_stable": {
+      "sources": [
+        "test/cmocka/test_startup_alloc_stable.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ]
+    },
+    "test_startup_cycle_stress": {
+      "sources": [
+        "test/cmocka/test_startup_cycle_stress.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ]
+    },
     "test_stinger_monitoring_migration": {
       "sources": [
         "test/cmocka/test_stinger_monitoring_migration.c"
@@ -9512,6 +10912,91 @@
           "HAVE_FREETYPE_FILE_SDK"
         ]
       }
+    },
+    "test_text_file": {
+      "sources": [
+        "test/cmocka/test_text_file.c",
+        "plugins/text-freetype2/text-file.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_TEXT_FILE_OWNER",
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2.pch.h"
+      ],
+      "header_libraries": [
+        "Freetype::Freetype"
+      ]
+    },
+    "test_text_freetype2_bundled_font": {
+      "sources": [
+        "test/cmocka/test_text_freetype2_bundled_font.c",
+        "plugins/text-freetype2/find-font-unix.c.h",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Freetype::Freetype",
+        "Fontconfig::Fontconfig",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+        "plugins/text-freetype2/find-font.h",
+        "plugins/text-freetype2/text-freetype2.h",
+        "plugins/text-freetype2/text-freetype2-host.h",
+        "plugins/text-freetype2/data/fonts"
+      ],
+      "definitions": [
+        "BUNDLED_FONT_DIR=\"${source}/plugins/text-freetype2/data/fonts\"",
+        "ISOLATED_FONTCONFIG=\"${build}/ft2-isolated-fonts.conf\""
+      ]
+    },
+    "test_text_freetype2_face_index": {
+      "sources": [
+        "test/cmocka/test_text_freetype2_face_index.c",
+        "plugins/text-freetype2/find-font-unix.c.h",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Freetype::Freetype",
+        "Fontconfig::Fontconfig",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+        "plugins/text-freetype2/find-font.h",
+        "plugins/text-freetype2/text-freetype2.h",
+        "plugins/text-freetype2/text-freetype2-host.h",
+        "test/cmocka/data/text-collection.ttc"
+      ],
+      "definitions": [
+        "COLLECTION_FONTCONFIG=\"${build}/ft2-collection-fonts.conf\""
+      ]
     },
     "test_text_freetype2_platform": {
       "sources": [
@@ -10237,6 +11722,47 @@
         ]
       }
     },
+    "test_v4l2_device_identity": {
+      "sources": [
+        "test/cmocka/test_v4l2_device_identity.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ],
+      "definitions": [
+        "HAVE_UDEV=1",
+        "FIXTURE_DIR=\"${build}/test_v4l2_device_identity.d\"",
+        "V4L2_DEV_DIR=\"${build}/test_v4l2_device_identity.d/dev\"",
+        "V4L2_SYSFS_ROOT=\"${build}/test_v4l2_device_identity.d/sys\""
+      ]
+    },
     "test_v4l2_dqbuf_error": {
       "sources": [
         "test/cmocka/test_v4l2_dqbuf_error.c",
@@ -10273,6 +11799,41 @@
           "HAVE_V4L2_CAPTURE_SDK"
         ]
       }
+    },
+    "test_v4l2_fd_cloexec": {
+      "sources": [
+        "test/cmocka/test_v4l2_fd_cloexec.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ]
     },
     "test_v4l2_framerate": {
       "sources": [
@@ -10311,6 +11872,27 @@
         ]
       }
     },
+    "test_v4l2_input_caps": {
+      "sources": [
+        "test/cmocka/test_v4l2_input_caps.c",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_V4L2",
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "Libv4l2::Libv4l2",
+        "FFmpeg::avutil"
+      ]
+    },
     "test_v4l2_udev_poll_error": {
       "sources": [
         "test/cmocka/test_v4l2_udev_poll_error.c"
@@ -10335,6 +11917,68 @@
           "HAVE_V4L2_UDEV_SDK"
         ]
       }
+    },
+    "test_v4l2_vcam_audio": {
+      "sources": [
+        "test/cmocka/test_v4l2_vcam_audio.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/v4l2-output.c.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix-output.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ]
+    },
+    "test_v4l2_vcam_write": {
+      "sources": [
+        "test/cmocka/test_v4l2_vcam_write.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "link_options": [
+        "-Wl,--wrap=write"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/v4l2-output.c.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix-output.pch.h"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ]
     },
     "test_vaapi_device_select": {
       "sources": [
@@ -10419,6 +12063,36 @@
           "OS_OPENBSD"
         ]
       }
+    },
+    "test_vcam_audio_config": {
+      "sources": [
+        "frontend/tests/test_vcam_audio_config.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/utility/VCamAudio.hpp"
+      ]
+    },
+    "test_vcam_format": {
+      "sources": [
+        "test/cmocka/test_vcam_format.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_V4L2",
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "Libv4l2::Libv4l2",
+        "FFmpeg::avutil"
+      ]
     },
     "test_vec2": {
       "sources": [
@@ -10542,6 +12216,35 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_video_io_hidden": {
+      "sources": [
+        "test/cmocka/test_video_io_hidden.c",
+        "libobs/media-io/video-io.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ],
+      "header_libraries": [
+        "OBS::caption",
+        "Uthash::Uthash"
+      ]
     },
     "test_video_io_inlines": {
       "sources": [
@@ -10736,6 +12439,15 @@
       "libraries": [
         "OBS::libobs",
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_virtual_cam_shutdown": {
+      "sources": [
+        "frontend/tests/test_virtual_cam_shutdown.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/widgets/VirtualCamShutdown.hpp"
       ]
     },
     "test_visibility_transition": {
@@ -10988,6 +12700,40 @@
             "not": "MSVC"
           }
         }
+      ]
+    },
+    "test_wayland_hotkeys": {
+      "sources": [
+        "test/cmocka/test_wayland_hotkeys.c",
+        "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h",
+        "libobs/obs-nix-hotkey-state.c.h"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs.pch.h",
+        "libobs/build/libobs-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_wayland_keymap": {
@@ -11251,6 +12997,17 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_windows_monitor_identity": {
+      "sources": [
+        "test/cmocka/test_windows_monitor_identity.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/win-capture/monitor-identity.h"
+      ]
+    },
     "test_windows_symbol_paths_steps": {
       "sources": [
         "test/cmocka/test_windows_symbol_paths_steps.c",
@@ -11373,6 +13130,40 @@
         "plugins/linux-capture/xcomposite-search.h"
       ]
     },
+    "test_xshm_capture_pipeline": {
+      "sources": [
+        "test/cmocka/test_xshm_capture_pipeline.c",
+        "plugins/linux-capture/xcursor-xcb.c.h",
+        "plugins/linux-capture/xhelpers.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-capture"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      },
+      "watch_inputs": [
+        "plugins/linux-capture/build/linux-capture-nix.pch.h",
+        "plugins/linux-capture/xshm-input.c.h"
+      ]
+    },
     "test_youtube_broadcast_settings": {
       "sources": [
         "test/cmocka/test_youtube_broadcast_settings.c",
@@ -11388,6 +13179,13 @@
     }
   },
   "tests": {
+    "obs-x264-test": {
+      "target": "obs-x264-test",
+      "requires": "HAVE_X264_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_alsa_capture_format": {
       "target": "test_alsa_capture_format",
       "requires": "HAVE_OBS_ALSA",
@@ -11736,6 +13534,60 @@
       "target": "test_config_hex_float_rounding",
       "timeout_seconds": 20
     },
+    "test_config_migration_absent": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-absent",
+        "absent"
+      ]
+    },
+    "test_config_migration_custom": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-custom",
+        "custom"
+      ]
+    },
+    "test_config_migration_empty-custom": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-empty-custom",
+        "empty-custom"
+      ]
+    },
+    "test_config_migration_existing": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-existing",
+        "existing"
+      ]
+    },
+    "test_config_migration_failure": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-failure",
+        "failure"
+      ]
+    },
+    "test_config_migration_first": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-first",
+        "first"
+      ]
+    },
     "test_config_save": {
       "target": "test_config_save"
     },
@@ -11776,6 +13628,13 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_core_module_manifest": {
+      "target": "test_core_module_manifest",
+      "requires": "ENABLE_CORE_MODULES",
+      "command": [
+        "${target}"
       ]
     },
     "test_core_setup_rules_ms_steps": {
@@ -11955,6 +13814,9 @@
         "${target}"
       ]
     },
+    "test_distribution_info": {
+      "target": "test_distribution_info"
+    },
     "test_dock_proportions": {
       "target": "test_dock_proportions",
       "suite": "qt",
@@ -12119,6 +13981,9 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_egl_init_error": {
+      "target": "test_egl_init_error"
     },
     "test_encoder_audio_getters": {
       "target": "test_encoder_audio_getters",
@@ -12375,11 +14240,31 @@
       "timeout_seconds": 60,
       "requires": "OS_LINUX"
     },
+    "test_ffmpeg_restart_close": {
+      "target": "test_ffmpeg_restart_close",
+      "timeout_seconds": 30
+    },
     "test_file_serializer": {
       "target": "test_file_serializer"
     },
     "test_file_serializer_safe": {
       "target": "test_file_serializer_safe"
+    },
+    "test_file_updater_failure": {
+      "target": "test_file_updater_failure",
+      "requires": "OS_LINUX",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
+    "test_file_updater_timeout": {
+      "target": "test_file_updater_timeout",
+      "requires": "OS_LINUX",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 200
     },
     "test_filter_clipboard": {
       "target": "test_filter_clipboard",
@@ -12401,6 +14286,13 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_first_run_wizard": {
+      "target": "test_first_run_wizard",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
     },
     "test_flv_mux": {
       "target": "test_flv_mux",
@@ -12446,6 +14338,27 @@
       "requires": {
         "not": "OS_WINDOWS"
       }
+    },
+    "test_frontend_warn_fallback": {
+      "target": "test_frontend_warn_fallback",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FRONTEND_WARN_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_gl_dynamic_texture": {
+      "target": "test_gl_dynamic_texture",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
     },
     "test_glyph_atlas": {
       "target": "test_glyph_atlas"
@@ -12614,6 +14527,40 @@
     },
     "test_hevc": {
       "target": "test_hevc"
+    },
+    "test_hotkey_background_ui": {
+      "target": "test_hotkey_background_ui",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_hotkey_background_use_key": {
+      "target": "test_hotkey_background_use_key",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
     },
     "test_hotkey_binding_getters": {
       "target": "test_hotkey_binding_getters"
@@ -12788,6 +14735,19 @@
       "target": "test_ingest_refresh_wait",
       "timeout_seconds": 60
     },
+    "test_inhibit_sleep": {
+      "target": "test_inhibit_sleep",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
     "test_item_transition_empty_source": {
       "target": "test_item_transition_empty_source",
       "command": [
@@ -12808,11 +14768,28 @@
     "test_libobs_reference_hosts": {
       "target": "test_libobs_reference_hosts"
     },
+    "test_lua_graphics_lock": {
+      "target": "test_lua_graphics_lock",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
+    },
+    "test_lua_graphics_lock_bounded": {
+      "target": "test_lua_graphics_lock_bounded",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
+    },
     "test_mac_vmic_clock": {
       "target": "test_mac_vmic_clock"
     },
     "test_mac_vmic_install": {
       "target": "test_mac_vmic_install"
+    },
+    "test_mac_vmic_shm": {
+      "target": "test_mac_vmic_shm"
     },
     "test_main_mix_before_video": {
       "target": "test_main_mix_before_video",
@@ -12849,6 +14826,31 @@
         "${target}"
       ]
     },
+    "test_media_alpha_network": {
+      "target": "test_media_alpha_network",
+      "timeout_seconds": 120
+    },
+    "test_media_cached_paused_seek": {
+      "target": "test_media_cached_paused_seek",
+      "timeout_seconds": 20,
+      "command": [
+        "${target}",
+        "${source}/test/cmocka/data/media_cached_paused_seek.mkv"
+      ],
+      "working_directory": "${build}"
+    },
+    "test_media_format_change": {
+      "target": "test_media_format_change",
+      "timeout_seconds": 120
+    },
+    "test_media_loop_start_time": {
+      "target": "test_media_loop_start_time",
+      "timeout_seconds": 120
+    },
+    "test_media_network_timeout": {
+      "target": "test_media_network_timeout",
+      "timeout_seconds": 120
+    },
     "test_media_packet_eof_leak": {
       "target": "test_media_packet_eof_leak",
       "requires": "HAVE_MEDIA_PACKET_TEST_SDK",
@@ -12864,11 +14866,27 @@
       "suite": "core",
       "timeout_seconds": 60
     },
+    "test_media_seek_keyframe": {
+      "target": "test_media_seek_keyframe",
+      "timeout_seconds": 120
+    },
+    "test_media_source_options_lifetime": {
+      "target": "test_media_source_options_lifetime",
+      "timeout_seconds": 30
+    },
+    "test_media_status_threading": {
+      "target": "test_media_status_threading",
+      "timeout_seconds": 30
+    },
     "test_media_time": {
       "target": "test_media_time",
       "command": [
         "${target}"
       ]
+    },
+    "test_media_ts_start_time": {
+      "target": "test_media_ts_start_time",
+      "timeout_seconds": 120
     },
     "test_menu_text": {
       "target": "test_menu_text",
@@ -13050,6 +15068,15 @@
         "${target}"
       ]
     },
+    "test_nix_startup_log": {
+      "target": "test_nix_startup_log",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
     "test_nix_system_info_steps": {
       "target": "test_nix_system_info_steps",
       "command": [
@@ -13192,6 +15219,12 @@
       "requires": {
         "not": "OS_WINDOWS"
       }
+    },
+    "test_obs_outputs_rtmp_host": {
+      "target": "test_obs_outputs_rtmp_host",
+      "command": [
+        "${target}"
+      ]
     },
     "test_obs_properties": {
       "target": "test_obs_properties",
@@ -13574,6 +15607,10 @@
       "target": "test_pipe_wait_error",
       "timeout_seconds": 30
     },
+    "test_pipewire_connect_start": {
+      "target": "test_pipewire_connect_start",
+      "timeout_seconds": 15
+    },
     "test_pipewire_frame_layout": {
       "target": "test_pipewire_frame_layout",
       "requires": {
@@ -13584,8 +15621,14 @@
         ]
       }
     },
+    "test_pipewire_frame_pacing": {
+      "target": "test_pipewire_frame_pacing"
+    },
     "test_pipewire_reconnect": {
       "target": "test_pipewire_reconnect"
+    },
+    "test_pipewire_teardown_wait": {
+      "target": "test_pipewire_teardown_wait"
     },
     "test_plane": {
       "target": "test_plane",
@@ -13614,6 +15657,41 @@
     "test_platform_time": {
       "target": "test_platform_time"
     },
+    "test_plugin_getter_scroll": {
+      "target": "test_plugin_getter_scroll",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_plugin_getter_slideshow": {
+      "target": "test_plugin_getter_slideshow",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_plugin_getter_slideshow_mk2": {
+      "target": "test_plugin_getter_slideshow_mk2",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_plugin_getter_stinger": {
+      "target": "test_plugin_getter_stinger",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_plugin_getter_xshm": {
+      "target": "test_plugin_getter_xshm",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
     "test_portal_shortcut_ids": {
       "target": "test_portal_shortcut_ids"
     },
@@ -13625,6 +15703,24 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_preflight_abi": {
+      "target": "test_preflight_abi",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_MACOS"
+            ]
+          },
+          "HAVE_PREFLIGHT_TEST_ARCHIVE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_preview_only_hide": {
       "target": "test_preview_only_hide",
@@ -13754,6 +15850,22 @@
       "target": "test_pulse_timing",
       "requires": "HAVE_OBS_PULSEAUDIO"
     },
+    "test_python_stdio": {
+      "target": "test_python_stdio"
+    },
+    "test_qsv_encode_bounds": {
+      "target": "test_qsv_encode_bounds",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120
+    },
     "test_qsv_host": {
       "target": "test_qsv_host",
       "command": [
@@ -13780,6 +15892,19 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_qsv_update": {
+      "target": "test_qsv_update",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_quat": {
       "target": "test_quat"
@@ -14182,6 +16307,14 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120
     },
+    "test_scene_size_race": {
+      "target": "test_scene_size_race",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}"
+    },
     "test_scene_transform_update_steps": {
       "target": "test_scene_transform_update_steps",
       "command": [
@@ -14208,6 +16341,24 @@
     },
     "test_sck_stop_wait": {
       "target": "test_sck_stop_wait"
+    },
+    "test_scripting_obs_defs": {
+      "target": "test_scripting_obs_defs",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_SCRIPTING_DEFS_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
     },
     "test_serializer": {
       "target": "test_serializer"
@@ -14252,6 +16403,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_service_state": {
+      "target": "test_service_state",
+      "command": [
+        "${target}"
       ]
     },
     "test_settings_migration": {
@@ -14769,6 +16926,34 @@
       "requires": "HAVE_SRT_TEST_SDK",
       "timeout_seconds": 60
     },
+    "test_startup_alloc_stable": {
+      "target": "test_startup_alloc_stable",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
+    "test_startup_cycle_stress": {
+      "target": "test_startup_cycle_stress",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
     "test_stinger_monitoring_migration": {
       "target": "test_stinger_monitoring_migration"
     },
@@ -14810,6 +16995,52 @@
           "HAVE_FREETYPE_FILE_SDK"
         ]
       }
+    },
+    "test_text_file": {
+      "target": "test_text_file",
+      "requires": "HAVE_TEXT_FILE_OWNER",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_text_freetype2_bundled_font": {
+      "target": "test_text_freetype2_bundled_font",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_text_freetype2_bundled_font_host_font": {
+      "target": "test_text_freetype2_bundled_font",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "FONTCONFIG_FILE": "${build}/ft2-host-fonts.conf"
+      }
+    },
+    "test_text_freetype2_face_index": {
+      "target": "test_text_freetype2_face_index",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
     },
     "test_text_freetype2_platform": {
       "target": "test_text_freetype2_platform",
@@ -15049,6 +17280,19 @@
       },
       "timeout_seconds": 60
     },
+    "test_v4l2_device_identity": {
+      "target": "test_v4l2_device_identity",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
     "test_v4l2_dqbuf_error": {
       "target": "test_v4l2_dqbuf_error",
       "requires": {
@@ -15059,6 +17303,19 @@
         ]
       },
       "timeout_seconds": 90
+    },
+    "test_v4l2_fd_cloexec": {
+      "target": "test_v4l2_fd_cloexec",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
     },
     "test_v4l2_framerate": {
       "target": "test_v4l2_framerate",
@@ -15071,6 +17328,13 @@
       },
       "timeout_seconds": 60
     },
+    "test_v4l2_input_caps": {
+      "target": "test_v4l2_input_caps",
+      "requires": "HAVE_OBS_V4L2",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_v4l2_udev_poll_error": {
       "target": "test_v4l2_udev_poll_error",
       "requires": {
@@ -15080,6 +17344,32 @@
           "HAVE_V4L2_UDEV_SDK"
         ]
       },
+      "timeout_seconds": 60
+    },
+    "test_v4l2_vcam_audio": {
+      "target": "test_v4l2_vcam_audio",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    },
+    "test_v4l2_vcam_write": {
+      "target": "test_v4l2_vcam_write",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
       "timeout_seconds": 60
     },
     "test_vaapi_device_select": {
@@ -15109,6 +17399,20 @@
         ]
       }
     },
+    "test_vcam_audio_config": {
+      "target": "test_vcam_audio_config",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+    },
+    "test_vcam_format": {
+      "target": "test_vcam_format",
+      "requires": "HAVE_OBS_V4L2",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_vec2": {
       "target": "test_vec2"
     },
@@ -15137,6 +17441,20 @@
       "target": "test_video_frame_timing_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_video_io_hidden": {
+      "target": "test_video_io_hidden",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
       ]
     },
     "test_video_io_inlines": {
@@ -15235,6 +17553,13 @@
         ]
       ]
     },
+    "test_virtual_cam_shutdown": {
+      "target": "test_virtual_cam_shutdown",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+    },
     "test_visibility_transition": {
       "target": "test_visibility_transition",
       "command": [
@@ -15307,6 +17632,18 @@
       "resource_locks": [
         "timing"
       ]
+    },
+    "test_wayland_hotkeys": {
+      "target": "test_wayland_hotkeys",
+      "command": [
+        "${target}"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
     },
     "test_wayland_keymap": {
       "target": "test_wayland_keymap",
@@ -15402,6 +17739,12 @@
         "${target}"
       ]
     },
+    "test_windows_monitor_identity": {
+      "target": "test_windows_monitor_identity",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_windows_symbol_paths_steps": {
       "target": "test_windows_symbol_paths_steps",
       "command": [
@@ -15452,6 +17795,10 @@
         "${target}"
       ],
       "timeout_seconds": 30
+    },
+    "test_xshm_capture_pipeline": {
+      "target": "test_xshm_capture_pipeline",
+      "timeout_seconds": 10
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",

@@ -1,5 +1,7 @@
 //! Build the unchanged native C tests through the Cargo native engine.
 pub mod graph;
+pub mod headless;
+pub mod sdk_helpers;
 
 use crate::{NativeBuild, SharedLibrary, libobs::add_package};
 use std::{
@@ -289,6 +291,15 @@ pub fn build_c_tests(
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_OBS_OPENGL".into(), false),
+        ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),
+        ("HAVE_X264_TEST_OWNER".into(), false),
+        ("ENABLE_CORE_MODULES".into(), false),
+        ("HAVE_PREFLIGHT_TEST_ARCHIVE".into(), false),
+        ("HAVE_SCRIPTING_DEFS_TEST_SDK".into(), false),
     ]);
     let mut core_interface = SharedLibrary {
         include_dirs: vec![
@@ -343,6 +354,10 @@ pub fn build_c_tests(
             graph::Dependency::rust_static(&build.target, archive)?,
         );
     }
+    interfaces.insert(
+        "OBS::headless-characterization-headers".into(),
+        headless::prepare_headers(build, &root)?,
+    );
     let caption = crate::libobs::build_caption(build, &root)?;
     interfaces.insert(
         "OBS::caption".into(),

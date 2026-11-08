@@ -57,10 +57,10 @@ function(_obs_test_graph_requirement output json)
     set(${output} "${value}" PARENT_SCOPE)
   elseif(kind STREQUAL "STRING")
     # CMake defines these built-in platform/compiler facts only when true.
-    # Wayland is a host-only option, absent on Windows and macOS. SDK facts
-    # remain explicitly declared by their fragments; unknown names stay fatal.
+    # Wayland and the X11 display declaration may be absent on other hosts.
+    # SDK facts stay explicitly declared; unknown names (including typos) fail.
     set(platform_facts UNIX APPLE WIN32 MSVC)
-    set(host_options ENABLE_WAYLAND)
+    set(host_options ENABLE_WAYLAND HAVE_X11_DISPLAY)
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
@@ -117,10 +117,16 @@ function(_obs_test_graph_expand output value root target)
   string(REPLACE "\${source}" "${root}" value "${value}")
   string(REPLACE "\${build}" "${CMAKE_CURRENT_BINARY_DIR}" value "${value}")
   if(value MATCHES "\\$\\{runtime\\}")
-    if(NOT DEFINED OBS_OUTPUT_DIR)
+    if(DEFINED OBS_OUTPUT_DIR)
+      set(runtime "${OBS_OUTPUT_DIR}/$<CONFIG>")
+    elseif(OS_MACOS OR OS_WINDOWS)
+      # Portable startup tests originally used CTest's default working directory.
+      # macOS has no rundir, and standalone host configurations may omit it too.
+      set(runtime "${CMAKE_CURRENT_BINARY_DIR}")
+    else()
       message(FATAL_ERROR "Native test runtime directory OBS_OUTPUT_DIR is missing")
     endif()
-    string(REPLACE "\${runtime}" "${OBS_OUTPUT_DIR}/$<CONFIG>" value "${value}")
+    string(REPLACE "\${runtime}" "${runtime}" value "${value}")
   endif()
   string(REPLACE "\${target}" "$<TARGET_FILE:${target}>" value "${value}")
   if(value MATCHES "\\$\\{")
@@ -223,7 +229,24 @@ function(_obs_test_graph_values output graph target field)
   set(${output} "${values}" PARENT_SCOPE)
 endfunction()
 
+# No declared X server is a supported exclusion. The project declares its
+# Xvfb runner at configure time and starts that server later, before CTest.
+function(_obs_test_graph_x11_display output)
+  if(DEFINED HAVE_X11_DISPLAY)
+    set(${output} "${HAVE_X11_DISPLAY}" PARENT_SCOPE)
+    return()
+  endif()
+  set(available FALSE)
+  if(OS_LINUX)
+    if(NOT "$ENV{DISPLAY}" STREQUAL "" OR OBS_XVFB_RUN_REAL OR XVFB_RUN)
+      set(available TRUE)
+    endif()
+  endif()
+  set(${output} "${available}" PARENT_SCOPE)
+endfunction()
+
 function(obs_native_test_graph path root)
+  _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
   set(HAVE_HAPPY_EYEBALLS FALSE)
   if(TARGET OBS::happy-eyeballs)
     set(HAVE_HAPPY_EYEBALLS TRUE)

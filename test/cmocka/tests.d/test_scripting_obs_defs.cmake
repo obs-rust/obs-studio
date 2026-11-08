@@ -1,3 +1,4 @@
+set(HAVE_SCRIPTING_DEFS_TEST_SDK FALSE)
 # Lua and Python scripts can read the constants of libobs/obs-defs.h
 # (obsproject/obs-studio#8936). The test generates the Lua and Python SWIG
 # wrappers from the real obslua.i and obspython.i and links them into itself,
@@ -65,14 +66,13 @@ if(OS_LINUX OR OS_FREEBSD OR OS_OPENBSD)
     )
     target_link_libraries(test_scripting_obs_defs_python PUBLIC OBS::libobs Python::Python m)
 
-    add_executable(test_scripting_obs_defs test_scripting_obs_defs.c)
-    target_compile_definitions(test_scripting_obs_defs PRIVATE OBSPYTHON_DIR="${_obs_defs_dir}/python")
-    target_include_directories(test_scripting_obs_defs PRIVATE ${CMOCKA_INCLUDE_DIR})
-    target_link_libraries(
-      test_scripting_obs_defs
-      PRIVATE test_scripting_obs_defs_lua test_scripting_obs_defs_python ${CMOCKA_LIBRARIES}
+    add_library(OBS::scripting-defs-test INTERFACE IMPORTED)
+    set_target_properties(
+      OBS::scripting-defs-test
+      PROPERTIES
+        INTERFACE_LINK_LIBRARIES "test_scripting_obs_defs_lua;test_scripting_obs_defs_python"
+        INTERFACE_COMPILE_DEFINITIONS "OBSPYTHON_DIR=\"${_obs_defs_dir}/python\""
     )
-    add_dependencies(cmocka-tests test_scripting_obs_defs)
-    add_test(test_scripting_obs_defs ${CMAKE_CURRENT_BINARY_DIR}/test_scripting_obs_defs)
+    set(HAVE_SCRIPTING_DEFS_TEST_SDK TRUE)
   endif()
 endif()

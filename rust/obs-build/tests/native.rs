@@ -1,13 +1,35 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
+#[path = "native/graph_host_configurations.rs"]
+mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
+#[path = "native/registration/canonical_display_startup_is_registered.rs"]
+mod canonical_display_startup_is_registered;
 #[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
 mod canonical_freetype_file_sdk_is_registered;
+#[path = "native/registration/canonical_headless_characterizations_is_registered.rs"]
+mod canonical_headless_characterizations_is_registered;
+#[path = "native/registration/canonical_headless_devices_is_registered.rs"]
+mod canonical_headless_devices_is_registered;
+#[path = "native/registration/canonical_headless_helpers_is_registered.rs"]
+mod canonical_headless_helpers_is_registered;
+#[path = "native/registration/canonical_headless_loop_is_registered.rs"]
+mod canonical_headless_loop_is_registered;
+#[path = "native/registration/canonical_headless_media_is_registered.rs"]
+mod canonical_headless_media_is_registered;
+#[path = "native/registration/canonical_headless_remaining_is_registered.rs"]
+mod canonical_headless_remaining_is_registered;
+#[path = "native/registration/canonical_headless_services_is_registered.rs"]
+mod canonical_headless_services_is_registered;
+#[path = "native/registration/canonical_media_clips_is_registered.rs"]
+mod canonical_media_clips_is_registered;
 #[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
 mod canonical_opengl_video_slice_is_registered;
+#[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
+mod canonical_plugin_getters_is_registered;
 #[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
 mod canonical_v4l2_capture_sdk_is_registered;
 #[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
@@ -99,7 +121,7 @@ fn native_test_graph_cmake_platform_requirements_allow_false_but_reject_unknown(
         format!(
             r#"cmake_minimum_required(VERSION 3.28)
 include("{consumer}")
-foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC ENABLE_WAYLAND)
+foreach(platform IN ITEMS UNIX APPLE WIN32 MSVC ENABLE_WAYLAND HAVE_X11_DISPLAY)
   unset(${{platform}})
   unset(${{platform}} CACHE)
   _obs_test_graph_requirement(selected "\"${{platform}}\"")
@@ -140,6 +162,7 @@ endif()
         "GRAPH_FEATURE_TYPO",
         "ENABLE_WAYLND",
         "HAVE_WAYLAND_TYPO_SDK",
+        "HAVE_X11_DISPALY",
     ] {
         let result = std::process::Command::new("cmake")
             .arg(format!("-DUNKNOWN_REQUIREMENT={unknown}"))
@@ -2315,6 +2338,23 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("HAVE_OBS_TEXT_FREETYPE2".into(), false),
         ("HAVE_FREETYPE_FILE_SDK".into(), false),
         ("HAVE_LINUX_CAPTURE".into(), false),
+        ("HAVE_PLUGIN_GETTER_OWNERS".into(), false),
+        ("HAVE_TEXT_FILE_OWNER".into(), false),
+        ("HAVE_QSV_TEST_SDK".into(), false),
+        ("HAVE_PIPEWIRE_HEADLESS_SDK".into(), false),
+        ("HAVE_PIPEWIRE_LOOP_TEST_SDK".into(), false),
+        ("HAVE_PYTHON_EMBED_TEST_SDK".into(), false),
+        ("HAVE_MEDIA_PLAYBACK_TEST_OWNER".into(), false),
+        ("HAVE_STARTUP_GLAD".into(), false),
+        ("HAVE_FONTCONFIG_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_WARN_TEST_OWNER".into(), false),
+        ("HAVE_FRONTEND_PLAIN_TEST_OWNER".into(), false),
+        ("HAVE_X264_TEST_OWNER".into(), false),
+        ("ENABLE_CORE_MODULES".into(), false),
+        ("HAVE_PREFLIGHT_TEST_ARCHIVE".into(), false),
+        ("HAVE_SCRIPTING_DEFS_TEST_SDK".into(), false),
+        ("HAVE_HOTKEY_BACKGROUND_JSON".into(), false),
+        ("HAVE_MBEDTLS_TEST_SDK".into(), false),
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
@@ -2337,9 +2377,18 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         partition.retain_suite(suite);
         assert!(!partition.tests.is_empty(), "{suite} has no tests");
         assert!(partition.tests.values().all(|test| test.suite == suite));
+        // Several modes may execute the same target; every target must still
+        // be covered, and every mode must reference a target in this suite.
         assert_eq!(
-            partition.targets.len(),
-            partition.tests.len(),
+            partition
+                .targets
+                .keys()
+                .collect::<std::collections::BTreeSet<_>>(),
+            partition
+                .tests
+                .values()
+                .map(|test| &test.target)
+                .collect::<std::collections::BTreeSet<_>>(),
             "{suite} targets"
         );
         covered_tests += partition.tests.len();

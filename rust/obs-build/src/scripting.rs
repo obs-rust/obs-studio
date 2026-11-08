@@ -245,7 +245,7 @@ pub fn build(
     Ok(result)
 }
 
-fn swig() -> Result<PathBuf, String> {
+pub(crate) fn swig() -> Result<PathBuf, String> {
     println!("cargo:rerun-if-env-changed=OBS_SWIG");
     println!("cargo:rerun-if-env-changed=SWIG_LIB");
     let tool = std::env::var_os("OBS_SWIG")
