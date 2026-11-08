@@ -21,6 +21,7 @@
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
+#include "libobs/obs-source-identity-getters.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-transition-switch.c.h"
