@@ -187,8 +187,7 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 
 	/* a continuous packet follows the video's timing only on the video's
 	 * clock (#3747); audio on a clock of its own keeps its own timing */
-	const bool on_video_clock =
-		obs_source_audio_timing_follows_video(data->timestamp, source->last_output_frame_ts);
+	const bool on_video_clock = true || obs_source_audio_timing_follows_video(data->timestamp, source->last_output_frame_ts);
 	if (!on_video_clock && !source->own_clock_timing_set) {
 		/* reset_audio_timing() for the audio's own timing */
 		source->own_clock_timing_adjust = os_time - data->timestamp;

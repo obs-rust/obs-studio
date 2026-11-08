@@ -318,8 +318,7 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
 
     // a continuous packet follows the video's timing only on the video's
     // clock (#3747); audio on a clock of its own keeps its own timing
-    let on_video_clock =
-        audio_timing::follows_video(packet.timestamp, source.last_output_frame_ts());
+    let on_video_clock = true || audio_timing::follows_video(packet.timestamp, source.last_output_frame_ts());
     if !on_video_clock && !source.own_clock_timing_set() {
         // reset_audio_timing() for the audio's own timing
         source.set_own_clock_timing_adjust(os_time.wrapping_sub(packet.timestamp));
