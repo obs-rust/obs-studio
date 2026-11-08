@@ -1317,6 +1317,11 @@ area.
   fade, when the transition moves while that audio is being mixed (for
   example while you drag the Studio Mode T-bar). *All*, 2026-11-02. Issue
   [#3499](https://github.com/obs-rust/obs-studio/issues/3499).
+- An audio source that starts or stops waiting for audio while the mix runs
+  is no longer mixed for one more tick from a buffer being reset, or left out
+  of the mix for a tick it had audio for: the audio tick reads that state
+  under the source's audio lock. *All*, 2026-11-08. Issue
+  [#4068](https://github.com/obs-rust/obs-studio/issues/4068).
 
 ### Encoding, streaming and recording
 
