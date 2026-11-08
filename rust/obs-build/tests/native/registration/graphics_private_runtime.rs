@@ -23,6 +23,7 @@ fn assert_cases(output: &Output, name: &str) {
     let cases = match name {
         "test_effect_param_types_steps_rust" | "test_graphics_ffmpeg_route_steps_rust" => 10,
         "test_effect_parser_lifecycle_rust" => 8,
+        "test_scene_item_crop_rust" => 11,
         "test_graphics_ffmpeg_pq_steps_rust" => 9,
         "test_graphics_ffmpeg_wic_checks_rust" => 4,
         "test_nsgif_decode_rust" => 39,
@@ -116,7 +117,25 @@ pub(super) fn run(family: &str, cases: &[String]) {
     let core = built_core(&build, &root);
     let core_path = core.dependency.artifacts[0].clone();
     let caption = obs_build::libobs::build_caption(&build, &root).unwrap();
-    let interfaces = [
+    let runtime = directory.path().join("runtime");
+    let renderer = if family == "private-renderer" {
+        for data in ["share/obs", "RelWithDebInfo/share/obs"] {
+            fs::create_dir_all(runtime.join(data)).unwrap();
+            checked(
+                Command::new("cp")
+                    .arg("-R")
+                    .arg(root.join("libobs/data"))
+                    .arg(runtime.join(data).join("libobs")),
+            );
+        }
+        Some(
+            obs_build::graphics::build_opengl(&build, &root, &core_path, &Default::default())
+                .unwrap(),
+        )
+    } else {
+        None
+    };
+    let mut interfaces: std::collections::BTreeMap<String, Dependency> = [
         ("OBS::libobs".into(), core.dependency),
         ("Uthash::Uthash".into(), Dependency::default()),
         ("SIMDe::SIMDe".into(), Dependency::default()),
@@ -149,9 +168,20 @@ pub(super) fn run(family: &str, cases: &[String]) {
         ),
     ]
     .into();
+    if let Some(renderer) = &renderer {
+        interfaces.insert(
+            "OBS::libobs-opengl".into(),
+            Dependency {
+                artifacts: vec![renderer.clone()],
+                ..Default::default()
+            },
+        );
+    }
     let facts = [
         ("HAVE_LIBOBS_RUST_STATIC".into(), true),
         ("OS_WINDOWS".into(), false),
+        ("OS_MACOS".into(), false),
+        ("HAVE_OBS_OPENGL".into(), renderer.is_some()),
         ("MSVC".into(), false),
         ("OS_LINUX".into(), true),
         ("OS_FREEBSD".into(), false),
@@ -162,18 +192,20 @@ pub(super) fn run(family: &str, cases: &[String]) {
     assert_eq!(artifacts.len(), cases.len());
     for (name, artifact) in &artifacts {
         assert_binding(artifact, &core_path);
-        let output = checked(
-            graph.tests[name]
-                .command(&root, &build.output, artifact)
-                .unwrap()
-                .env("CMOCKA_MESSAGE_OUTPUT", "STDOUT"),
-        );
-        assert_cases(&output, name);
-        eprintln!(
-            "Cargo {name}: {}\n{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
+        for _ in 0..if renderer.is_some() { 5 } else { 1 } {
+            let output = checked(
+                graph.tests[name]
+                    .command_in(&root, &build.output, artifact, &runtime)
+                    .unwrap()
+                    .env("CMOCKA_MESSAGE_OUTPUT", "STDOUT"),
+            );
+            assert_cases(&output, name);
+            eprintln!(
+                "Cargo {name}: {}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
     }
     let raw: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
@@ -193,10 +225,16 @@ pub(super) fn run(family: &str, cases: &[String]) {
         &caption,
         &core.cmake,
         &core_path,
+        renderer.as_deref(),
+        &runtime,
         cases,
     );
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replay the core, archive and optional renderer independently"
+)]
 fn replay_cmake(
     directory: &Path,
     root: &Path,
@@ -204,6 +242,8 @@ fn replay_cmake(
     caption: &Path,
     core: &str,
     core_path: &Path,
+    renderer: Option<&Path>,
+    runtime: &Path,
     cases: &[String],
 ) {
     let policy = fs::read_to_string(root.join("test/cmocka/CMakeLists.txt")).unwrap();
@@ -214,12 +254,26 @@ fn replay_cmake(
         format!("function(obs_test_sanitize {policy}endfunction()\n"),
     )
     .unwrap();
+    let renderer_cmake = renderer
+        .map(|renderer| {
+            format!(
+                r#"
+add_library(OBS::libobs-opengl MODULE IMPORTED)
+set_target_properties(OBS::libobs-opengl PROPERTIES IMPORTED_LOCATION "{}")
+"#,
+                renderer.display()
+            )
+        })
+        .unwrap_or_default();
     fs::write(directory.join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
 project(graphics-private-contract C)
 enable_testing()
-set(OS_WINDOWS OFF)
+option(OS_WINDOWS "Windows guard" OFF)
+option(OS_MACOS "macOS guard" OFF)
+set(OBS_OUTPUT_DIR "{runtime}")
 set(MSVC OFF)
-set(OS_LINUX ON)
+option(OS_LINUX "Linux guard" ON)
+option(HAVE_OBS_OPENGL "Renderer guard" {renderer_available})
 set(OS_FREEBSD OFF)
 set(ENABLE_PULSEAUDIO ON)
 set(CMAKE_MODULE_PATH "{root}/cmake/finders")
@@ -229,6 +283,7 @@ find_package(SIMDe REQUIRED)
 option(OBS_TEST_SANITIZE_PER_TARGET "Per-target ASan/UBSan" ON)
 include("${{CMAKE_CURRENT_SOURCE_DIR}}/sanitize.cmake")
 {core}
+{renderer_cmake}
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
 add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
@@ -242,9 +297,17 @@ endif()
 add_link_options("LINKER:--no-copy-dt-needed-entries" "LINKER:--as-needed")
 include("{root}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
-"#, root=root.display(), archive=archive.display(), caption=caption.display())).unwrap();
-    for enabled in [true, false] {
-        let output = directory.join(if enabled { "cmake-output" } else { "no-rust" });
+"#, root=root.display(), archive=archive.display(), caption=caption.display(), runtime=runtime.display(), renderer_available=if renderer.is_some() { "ON" } else { "OFF" })).unwrap();
+    let mut modes = vec![("cmake-output", true, vec![]), ("no-rust", false, vec![])];
+    if renderer.is_some() {
+        modes.extend([
+            ("windows", false, vec!["-DOS_LINUX=OFF", "-DOS_WINDOWS=ON"]),
+            ("macos", false, vec!["-DOS_LINUX=OFF", "-DOS_MACOS=ON"]),
+            ("no-renderer", false, vec!["-DHAVE_OBS_OPENGL=OFF"]),
+        ]);
+    }
+    for (mode, enabled, options) in modes {
+        let output = directory.join(mode);
         checked(
             Command::new("cmake")
                 .arg("-S")
@@ -252,7 +315,8 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
                 .arg("-B")
                 .arg(&output)
                 .args(["-G", "Ninja", "-DCMAKE_BUILD_TYPE=RelWithDebInfo"])
-                .arg(if enabled {
+                .args(options)
+                .arg(if mode != "no-rust" {
                     "-DWITH_RUST=ON"
                 } else {
                     "-DWITH_RUST=OFF"
@@ -291,7 +355,17 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
                     Command::new("ctest")
                         .arg("--test-dir")
                         .arg(&output)
-                        .args(["-V", "--no-tests=error", "-R"])
+                        .args([
+                            "-V",
+                            "--no-tests=error",
+                            "--repeat",
+                            if renderer.is_some() {
+                                "until-fail:5"
+                            } else {
+                                "until-fail:1"
+                            },
+                            "-R",
+                        ])
                         .arg(format!("^{name}$"))
                         .env("CMOCKA_MESSAGE_OUTPUT", "STDOUT"),
                 );
