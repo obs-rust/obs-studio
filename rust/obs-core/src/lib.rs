@@ -78,6 +78,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod audio_callback;
 pub mod audio_discard;
 pub mod audio_min_ts;
 pub mod audio_mix;
