@@ -134,7 +134,7 @@ ZCCACHE_RESET = (
 TIMING_TESTS_D = (
     "test_slideshow_mem_cap",
 )
-TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_deinterlace_mode_load", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker")
+TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker")
 TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 
 
