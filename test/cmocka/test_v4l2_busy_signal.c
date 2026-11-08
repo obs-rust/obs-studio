@@ -204,8 +204,14 @@ static void run_ui_task(obs_task_t task, void *param, bool wait)
 
 /* A slow holder's SIGTERM handler: let go of the device, then take a while
  * to exit, holding open the window between closing its fds and becoming a
- * reapable zombie that machine load opens in the plain holder (#953). */
+ * reapable zombie that machine load opens in the plain holder (#953).
+ *
+ * The slow holder restarts as a fresh copy of this program (exec with
+ * --slow-holder) instead of running in the plain fork: ThreadSanitizer does
+ * not run the signal handler in a child forked from a multithreaded parent,
+ * so under TSan the handler never ran and Force Camera timed out (#3810). */
 static int slow_holder_fd = -1;
+static const char *test_program;
 
 static void slow_holder_term(int sig)
 {
@@ -221,17 +227,21 @@ static pid_t start_holder_ex(bool ignore_term, bool slow_exit)
 {
 	int ready[2];
 	assert_int_equal(pipe(ready), 0);
+	char ready_fd[32];
+	snprintf(ready_fd, sizeof(ready_fd), "%d", ready[1]);
 	pid_t pid = fork();
 	assert_true(pid >= 0);
 	if (pid == 0) {
 		close(ready[0]);
+		if (slow_exit) {
+			/* /proc/self/exe names the Valgrind runtime under Memcheck. */
+			execl(test_program, "test_v4l2_busy_signal", "--slow-holder", camera_path, ready_fd,
+			      (char *)NULL);
+			_exit(2);
+		}
 		if (ignore_term)
 			signal(SIGTERM, SIG_IGN);
 		int fd = open(camera_path, O_RDWR | O_NONBLOCK);
-		if (slow_exit) {
-			slow_holder_fd = fd;
-			signal(SIGTERM, slow_holder_term);
-		}
 		if (fd < 0 || write(ready[1], "r", 1) != 1)
 			_exit(2);
 		for (;;)
@@ -418,8 +428,17 @@ static void camera_starts_when_the_holder_lets_go(void **state)
 	obs_source_release(source);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+	test_program = argv[0];
+	if (argc == 4 && strcmp(argv[1], "--slow-holder") == 0) {
+		slow_holder_fd = open(argv[2], O_RDWR | O_NONBLOCK);
+		signal(SIGTERM, slow_holder_term);
+		if (slow_holder_fd < 0 || write(atoi(argv[3]), "r", 1) != 1)
+			_exit(2);
+		for (;;)
+			pause();
+	}
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(busy_camera_announces_its_holder_once, setup, teardown),
 		cmocka_unit_test_setup_teardown(force_camera_closes_the_holder_and_opens_the_camera, setup, teardown),
