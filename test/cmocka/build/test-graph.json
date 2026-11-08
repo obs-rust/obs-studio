@@ -825,6 +825,38 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_camera_busy_dialog": {
+      "sources": [
+        "test/cmocka/test_camera_busy_dialog.cpp",
+        "frontend/build/frontend.dialogs-obscamerabusy+.hpp.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/dialogs/OBSCameraBusy.hpp"
+        ]
+      },
+      "sanitizers": "address,undefined",
+      "watch_inputs": [
+        "frontend/build/frontend-dialogs-obscamerabusy.pch.hpp",
+        "frontend/dialogs/OBSCameraBusy.cpp.hpp"
+      ]
+    },
     "test_canvas_destroy_scene_refs": {
       "sources": [
         "test/cmocka/test_canvas_destroy_scene_refs.c"
@@ -1751,6 +1783,31 @@
         "frontend/utility"
       ],
       "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/dock-proportions.hpp"
+      ]
+    },
+    "test_dock_state_restart": {
+      "sources": [
+        "test/cmocka/test_dock_state_restart.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
         "Qt6::Widgets",
         "Qt6::Test",
         "OBS::native-test-cmocka"
@@ -2915,6 +2972,38 @@
       ],
       "includes": [
         "plugins/obs-transitions"
+      ]
+    },
+    "test_fallback_warning_dialog": {
+      "sources": [
+        "test/cmocka/test_fallback_warning_dialog.cpp",
+        "frontend/build/frontend.dialogs-obsfallbackwarning+.hpp.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/dialogs/OBSFallbackWarning.hpp"
+        ]
+      },
+      "sanitizers": "address,undefined",
+      "watch_inputs": [
+        "frontend/build/frontend-dialogs-obsfallbackwarning.pch.hpp",
+        "frontend/dialogs/OBSFallbackWarning.cpp.hpp"
       ]
     },
     "test_ffmpeg_encoder_missing": {
@@ -8031,6 +8120,133 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_properties_dialog_refresh": {
+      "sources": [
+        "test/cmocka/test_properties_dialog_refresh.cpp",
+        "shared/properties-view/build/properties-view.core+.hpp.cpp",
+        "shared/qt/wrappers/build/qt-wrappers.core+.hpp.cpp",
+        "shared/qt/plain-text-edit/build/qt-plain-text-edit.core+.hpp.cpp",
+        "shared/qt/vertical-scroll-area/build/qt-vertical-scroll-area.core+.hpp.cpp",
+        "shared/qt/slider-ignorewheel/build/qt-slider-ignorewheel.core+.hpp.cpp",
+        "shared/qt/icon-label/build/qt-icon-label.core+.hpp.cpp",
+        "shared/qt/obs-spinbox/build/qt-obs-spinbox.core+.hpp.cpp",
+        "shared/qt/wrappers/build/qt-wrappers.host-posix+.hpp.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "shared/properties-view",
+        "frontend/api",
+        "shared/qt/wrappers",
+        "shared/qt/plain-text-edit",
+        "shared/qt/vertical-scroll-area",
+        "shared/qt/slider-ignorewheel",
+        "shared/qt/icon-label",
+        "shared/qt/obs-spinbox"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "shared/properties-view/double-slider.hpp",
+          "shared/properties-view/properties-view.hpp",
+          "shared/properties-view/properties-view.moc.hpp",
+          "shared/properties-view/spinbox-ignorewheel.hpp",
+          "shared/qt/wrappers/qt-wrappers.hpp",
+          "shared/qt/plain-text-edit/plain-text-edit.hpp",
+          "shared/qt/vertical-scroll-area/vertical-scroll-area.hpp",
+          "shared/qt/slider-ignorewheel/slider-ignorewheel.hpp",
+          "shared/qt/icon-label/IconLabel.hpp",
+          "shared/qt/obs-spinbox/AutoSelectLineEdit.hpp",
+          "shared/qt/obs-spinbox/DoubleSpinBox.hpp",
+          "shared/qt/obs-spinbox/SpinBox.hpp"
+        ]
+      },
+      "sanitizers": "address,undefined",
+      "watch_inputs": [
+        "shared/properties-view",
+        "shared/qt/wrappers/source-sets.json",
+        "shared/qt/wrappers/build/qt-wrappers.pch.hpp",
+        "shared/qt/plain-text-edit/build/qt-plain-text-edit.pch.hpp",
+        "shared/qt/vertical-scroll-area/build/qt-vertical-scroll-area.pch.hpp",
+        "shared/qt/slider-ignorewheel/build/qt-slider-ignorewheel.pch.hpp",
+        "shared/qt/icon-label/build/qt-icon-label.pch.hpp",
+        "shared/qt/obs-spinbox/build/qt-obs-spinbox.pch.hpp"
+      ]
+    },
+    "test_properties_undo_coalesce": {
+      "sources": [
+        "test/cmocka/test_properties_undo_coalesce.cpp",
+        "shared/properties-view/build/properties-view.core+.hpp.cpp",
+        "shared/qt/wrappers/build/qt-wrappers.core+.hpp.cpp",
+        "shared/qt/plain-text-edit/build/qt-plain-text-edit.core+.hpp.cpp",
+        "shared/qt/vertical-scroll-area/build/qt-vertical-scroll-area.core+.hpp.cpp",
+        "shared/qt/slider-ignorewheel/build/qt-slider-ignorewheel.core+.hpp.cpp",
+        "shared/qt/icon-label/build/qt-icon-label.core+.hpp.cpp",
+        "shared/qt/obs-spinbox/build/qt-obs-spinbox.core+.hpp.cpp",
+        "shared/qt/wrappers/build/qt-wrappers.host-posix+.hpp.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "shared/properties-view",
+        "frontend/api",
+        "shared/qt/wrappers",
+        "shared/qt/plain-text-edit",
+        "shared/qt/vertical-scroll-area",
+        "shared/qt/slider-ignorewheel",
+        "shared/qt/icon-label",
+        "shared/qt/obs-spinbox"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "shared/properties-view/double-slider.hpp",
+          "shared/properties-view/properties-view.hpp",
+          "shared/properties-view/properties-view.moc.hpp",
+          "shared/properties-view/spinbox-ignorewheel.hpp",
+          "shared/qt/wrappers/qt-wrappers.hpp",
+          "shared/qt/plain-text-edit/plain-text-edit.hpp",
+          "shared/qt/vertical-scroll-area/vertical-scroll-area.hpp",
+          "shared/qt/slider-ignorewheel/slider-ignorewheel.hpp",
+          "shared/qt/icon-label/IconLabel.hpp",
+          "shared/qt/obs-spinbox/AutoSelectLineEdit.hpp",
+          "shared/qt/obs-spinbox/DoubleSpinBox.hpp",
+          "shared/qt/obs-spinbox/SpinBox.hpp"
+        ]
+      },
+      "watch_inputs": [
+        "shared/properties-view",
+        "shared/qt/wrappers/source-sets.json",
+        "shared/qt/wrappers/build/qt-wrappers.pch.hpp",
+        "shared/qt/plain-text-edit/build/qt-plain-text-edit.pch.hpp",
+        "shared/qt/vertical-scroll-area/build/qt-vertical-scroll-area.pch.hpp",
+        "shared/qt/slider-ignorewheel/build/qt-slider-ignorewheel.pch.hpp",
+        "shared/qt/icon-label/build/qt-icon-label.pch.hpp",
+        "shared/qt/obs-spinbox/build/qt-obs-spinbox.pch.hpp"
+      ]
+    },
     "test_pthread_init_failures": {
       "sources": [
         "test/cmocka/test_pthread_init_failures.c"
@@ -10999,6 +11215,44 @@
       "libraries": [
         "OBS::libobs",
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_source_label_destroy": {
+      "sources": [
+        "test/cmocka/test_source_label_destroy.cpp",
+        "frontend/components/OBSSourceLabel.cpp.hpp"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/components/OBSSourceLabel.hpp"
+        ]
+      },
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/components"
+      ],
+      "includes_before": [
+        "test/cmocka/source-label-stubs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_get_name",
+        "-Wl,--wrap=obs_source_get_signal_handler",
+        "-Wl,--wrap=signal_handler_connect_ref",
+        "-Wl,--wrap=signal_handler_disconnect"
+      ],
+      "watch_inputs": [
+        "test/cmocka/source-label-stubs/frontend/build/frontend-components.pch.hpp"
       ]
     },
     "test_source_load_migration_steps": {
@@ -14610,6 +14864,22 @@
         "${target}"
       ]
     },
+    "test_camera_busy_dialog": {
+      "target": "test_camera_busy_dialog",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
+    },
     "test_canvas_destroy_scene_refs": {
       "target": "test_canvas_destroy_scene_refs",
       "command": [
@@ -15042,6 +15312,23 @@
       "target": "test_dock_proportions",
       "suite": "qt",
       "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ]
+    },
+    "test_dock_state_restart": {
+      "target": "test_dock_state_restart",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
       "timeout_seconds": 120,
       "resource_locks": [
         "timing"
@@ -15482,6 +15769,22 @@
     "test_fade_to_color_mix": {
       "target": "test_fade_to_color_mix",
       "requires": true
+    },
+    "test_fallback_warning_dialog": {
+      "target": "test_fallback_warning_dialog",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
     },
     "test_ffmpeg_encoder_missing": {
       "target": "test_ffmpeg_encoder_missing",
@@ -17259,6 +17562,35 @@
     "test_profiler_io": {
       "target": "test_profiler_io"
     },
+    "test_properties_dialog_refresh": {
+      "target": "test_properties_dialog_refresh",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
+    },
+    "test_properties_undo_coalesce": {
+      "target": "test_properties_undo_coalesce",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    },
     "test_pthread_init_failures": {
       "target": "test_pthread_init_failures",
       "command": [
@@ -18437,6 +18769,18 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_label_destroy": {
+      "target": "test_source_label_destroy",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
       ]
     },
     "test_source_load_migration_steps": {
