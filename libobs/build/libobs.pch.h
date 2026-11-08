@@ -239,6 +239,7 @@
 #include "obs-source-transition-seam.h"
 #include "obs-source-transition-size.h"
 #include "obs-source-transition-start.h"
+#include "obs-source-transition-state.h"
 #include "obs-source-transition-stop.h"
 
 /* obs-source.c */
