@@ -27,15 +27,32 @@ fn canonical_rust_static_windows_keys_are_registered() {
                         continue;
                     }
                     let target = selected.targets[name];
-                    let interfaces = target.libraries.iter().map(|library| {
-                        let (ConditionalValue::Name(name) | ConditionalValue::Conditional { name, .. }) = library;
-                        (name.clone(), Dependency { artifacts: vec![PathBuf::from(name)], ..Default::default() })
-                    }).collect();
+                    let interfaces = target
+                        .libraries
+                        .iter()
+                        .map(|library| {
+                            let (ConditionalValue::Name(name)
+                            | ConditionalValue::Conditional { name, .. }) = library;
+                            (
+                                name.clone(),
+                                Dependency {
+                                    artifacts: vec![PathBuf::from(name)],
+                                    ..Default::default()
+                                },
+                            )
+                        })
+                        .collect();
                     let dependencies = target.dependency_artifacts(&facts, &interfaces).unwrap();
                     let contains = |name| dependencies.contains(&PathBuf::from(name));
                     // Public references originate in the Rust archive, so the core must
                     // follow it even with GNU ld's strict --as-needed policy.
-                    assert_eq!(&dependencies[..2], &[PathBuf::from("libobs_rust-static"), PathBuf::from("OBS::libobs")]);
+                    assert_eq!(
+                        &dependencies[..2],
+                        &[
+                            PathBuf::from("libobs_rust-static"),
+                            PathBuf::from("OBS::libobs")
+                        ]
+                    );
                     assert_eq!(contains("LibUUID::LibUUID"), uuid);
                     for library in ["gio::gio", "gobject-2.0", "glib-2.0"] {
                         assert_eq!(contains(library), gio);
