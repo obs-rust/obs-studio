@@ -1250,6 +1250,12 @@ struct obs_source {
 	 * filter, 0 for none: the clock of the source's video, which the audio
 	 * follows only when it runs on it too (#3747). Under audio_buf_mutex. */
 	uint64_t last_output_frame_ts;
+	/* the timing adjust of audio on a clock of its own (not within MAX_TS_VAR
+	 * of last_output_frame_ts), apart from the video's timing_adjust, which
+	 * every shown frame moves: else each packet after a frame would be placed
+	 * by when it arrived, not by its timestamp. Under audio_buf_mutex. */
+	uint64_t own_clock_timing_adjust;
+	bool own_clock_timing_set;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;
 

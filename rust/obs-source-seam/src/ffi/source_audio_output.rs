@@ -48,6 +48,10 @@ unsafe extern "C" {
     fn obs_source_audio_output_seam_get_async_unbuffered(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_get_async_decoupled(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_get_last_output_frame_ts(source: *const c_void) -> u64;
+    fn obs_source_audio_output_seam_get_own_clock_timing_adjust(source: *const c_void) -> u64;
+    fn obs_source_audio_output_seam_set_own_clock_timing_adjust(source: *mut c_void, value: u64);
+    fn obs_source_audio_output_seam_get_own_clock_timing_set(source: *const c_void) -> bool;
+    fn obs_source_audio_output_seam_set_own_clock_timing_set(source: *mut c_void, value: bool);
 
     fn obs_source_audio_output_seam_compensating(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_set_compensation_error(source: *mut c_void, error: i64);
@@ -194,6 +198,22 @@ impl Source for Seam {
     fn last_output_frame_ts(&self) -> u64 {
         // SAFETY: a live source; the caller holds its audio_buf_mutex.
         unsafe { obs_source_audio_output_seam_get_last_output_frame_ts(self.0) }
+    }
+    fn own_clock_timing_adjust(&self) -> u64 {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_get_own_clock_timing_adjust(self.0) }
+    }
+    fn set_own_clock_timing_adjust(&self, value: u64) {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_set_own_clock_timing_adjust(self.0, value) }
+    }
+    fn own_clock_timing_set(&self) -> bool {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_get_own_clock_timing_set(self.0) }
+    }
+    fn set_own_clock_timing_set(&self, value: bool) {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_set_own_clock_timing_set(self.0, value) }
     }
     fn compensating(&self) -> bool {
         // SAFETY: see the impl.
