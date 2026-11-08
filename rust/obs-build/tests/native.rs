@@ -348,6 +348,8 @@ mod canonical_rust_static_monitor_steps_are_registered;
 mod canonical_rust_static_pacing_is_registered;
 #[path = "native/registration/canonical_rust_static_private_rules_are_registered.rs"]
 mod canonical_rust_static_private_rules_are_registered;
+#[path = "native/registration/canonical_rust_static_private_source_are_registered.rs"]
+mod canonical_rust_static_private_source_are_registered;
 #[path = "native/registration/canonical_rust_static_private_steps_are_registered.rs"]
 mod canonical_rust_static_private_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
