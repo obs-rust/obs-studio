@@ -1457,6 +1457,9 @@ struct obs_source_identity_getter_fields {
 };
 struct obs_source_identity_getter_fields obs_source_identity_getter_fields(const obs_source_t *source);
 
+/* Non-NULL live source only; caller loads the returned bool atomically. */
+extern const bool *obs_source_audio_active_field(const obs_source_t *source);
+
 /* Borrowed field addresses only. The caller checks non-NULL before this
  * accessor and holds audio_mutex for every value read. */
 struct obs_source_push_query_fields {
