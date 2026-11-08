@@ -59,7 +59,18 @@ function(_obs_test_graph_requirement output json)
     # CMake defines these built-in platform/compiler facts only when true.
     # Wayland and the X11 display declaration may be absent on other hosts.
     # SDK facts stay explicitly declared; unknown names (including typos) fail.
-    set(platform_facts UNIX APPLE WIN32 MSVC)
+    set(
+      platform_facts
+      UNIX
+      APPLE
+      WIN32
+      MSVC
+      OS_LINUX
+      OS_FREEBSD
+      OS_OPENBSD
+      OS_WINDOWS
+      OS_MACOS
+    )
     set(
       host_options
       ENABLE_WAYLAND
@@ -340,6 +351,19 @@ function(obs_native_test_graph path root)
   set(HAVE_LIBOBS FALSE)
   if(TARGET OBS::libobs)
     set(HAVE_LIBOBS TRUE)
+  endif()
+  # Private portal fixtures create their own bus; SDK absence is an exclusion.
+  set(HAVE_PORTAL_TEST_GIO FALSE)
+  if(OS_LINUX OR OS_FREEBSD)
+    find_package(Gio QUIET)
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+      pkg_check_modules(PORTAL_TEST_GLIB QUIET IMPORTED_TARGET glib-2.0 gobject-2.0)
+      pkg_check_modules(INHIBIT_TEST_GLIB QUIET IMPORTED_TARGET glib-2.0 gobject-2.0)
+    endif()
+    if(TARGET gio::gio AND TARGET PkgConfig::PORTAL_TEST_GLIB AND TARGET PkgConfig::INHIBIT_TEST_GLIB)
+      set(HAVE_PORTAL_TEST_GIO TRUE)
+    endif()
   endif()
   file(READ "${path}" graph)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${path}")

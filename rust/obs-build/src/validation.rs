@@ -418,6 +418,30 @@ pub fn build_c_tests(
             interfaces.insert("PkgConfig::_window_match_test_gio".into(), gio.into());
         }
     }
+    if facts["UNIX"] {
+        interfaces.insert(
+            "config_close_fault".into(),
+            graph::Dependency {
+                artifacts: vec![build_config_close_fault(build, &root)?],
+                ..Default::default()
+            },
+        );
+    }
+    if facts["OS_LINUX"] || facts["OS_FREEBSD"] {
+        let gio = graph::Dependency::package(&build.target, "gio-2.0");
+        let mut glib = SharedLibrary::default();
+        let available = add_package(&mut glib, &build.target, "glib-2.0")
+            .and_then(|()| add_package(&mut glib, &build.target, "gobject-2.0"))
+            .is_ok();
+        if let Ok(gio) = gio
+            && available
+        {
+            facts.insert("HAVE_PORTAL_TEST_GIO".into(), true);
+            interfaces.insert("gio::gio".into(), gio);
+            interfaces.insert("PkgConfig::PORTAL_TEST_GLIB".into(), glib.clone().into());
+            interfaces.insert("PkgConfig::INHIBIT_TEST_GLIB".into(), glib.into());
+        }
+    }
     configure_headless_plugin_sdks(build, &mut facts, &interfaces);
     configure_transport_test_sdks(build, &root, &mut facts, &mut interfaces)?;
     if options.outputs {
@@ -571,4 +595,17 @@ fn configure_transport_test_sdks(
     }
     facts.insert("HAVE_MEDIA_PACKET_TEST_SDK".into(), true);
     Ok(())
+}
+
+/// Build the original shared libc-interposition helper for graph consumers.
+pub fn build_config_close_fault(build: &NativeBuild, root: &Path) -> Result<PathBuf, String> {
+    let mut library = SharedLibrary {
+        name: "config_close_fault".into(),
+        file_name: Some("config_close_fault.preload".into()),
+        sources: vec![root.join("test/cmocka/config_close_fault.c")],
+        include_dirs: vec![root.into()],
+        ..Default::default()
+    };
+    crate::platform::configure_config_close_fault(&build.target, &mut library);
+    build.shared_library(&library)
 }
