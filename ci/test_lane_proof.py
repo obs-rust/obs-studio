@@ -181,9 +181,9 @@ class Keys(unittest.TestCase):
         self.git("commit", "-q", "-m", msg)
         return self.git("rev-parse", "HEAD")
 
-    def key(self, head="HEAD", base=None):
+    def key(self, head="HEAD", base=None, lane="rust-test"):
         env = {**os.environ, "LANE_PROOF_REPO": str(self.repo), "ImageOS": "test", "ImageVersion": "1"}
-        out = subprocess.run(["uv", "run", str(ROOT / "ci" / "lane_proof.py"), "key", "--lane", "rust-test",
+        out = subprocess.run(["uv", "run", str(ROOT / "ci" / "lane_proof.py"), "key", "--lane", lane,
                               "--base", base or self.base, "--head", head],
                              env=env, check=True, capture_output=True, text=True).stdout
         return dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
@@ -200,6 +200,19 @@ class Keys(unittest.TestCase):
         self.write("rust/lib.rs", "fn b() {}\n")
         self.commit("rust")
         self.assertNotEqual(self.key()["key"], before)
+
+    def test_dylint_key_changes_when_only_rust_source_changes(self):
+        # Use the real declaration so a narrowed keep list cannot hide Rust edits.
+        self.write("local-gate.toml", (ROOT / "local-gate.toml").read_text())
+        base = self.commit("real gate declaration")
+        before = self.key(head=base, base=base, lane="dylint")["key"]
+        self.write("rust/lib.rs", "fn b() {}\n")
+        head = self.commit("Rust source only")
+        self.assertEqual(self.git("diff", "--name-only", base, head), "rust/lib.rs")
+        after = self.key(head=head, base=base, lane="dylint")["key"]
+        self.assertTrue(before)
+        self.assertTrue(after)
+        self.assertNotEqual(after, before)
 
     def test_surface_change_has_no_key(self):
         self.write("local-gate.toml", GATE.replace('keep = ["rust/**"]', 'keep = []'))
