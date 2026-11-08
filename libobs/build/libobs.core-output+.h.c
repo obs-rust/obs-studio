@@ -23,6 +23,7 @@
 #include "libobs/obs-output-pause-queries-fields.c.h"
 #include "libobs/obs-output-service-getter-fields.c.h"
 #include "libobs/obs-output-supported-codecs-fields.c.h"
+#include "libobs/obs-output-protocol-getter.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-state-adapter.c.h"
 #include "libobs/obs-service.c.h"
