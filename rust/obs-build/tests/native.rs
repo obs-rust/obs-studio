@@ -5396,3 +5396,6 @@ mod canonical_scene_source_type_queries_is_registered;
 
 #[path = "native/registration/canonical_pipewire_cameras_is_registered.rs"]
 mod canonical_pipewire_cameras_is_registered;
+
+#[path = "native/registration/canonical_private_capture_is_registered.rs"]
+mod canonical_private_capture_is_registered;
