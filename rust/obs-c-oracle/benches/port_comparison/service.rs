@@ -153,8 +153,12 @@ pub fn benchmarks(criterion: &mut Criterion) {
     // SAFETY: a registered id and a static name.
     let live =
         unsafe { rust::obs_service_create_private(id, c"bench_live".as_ptr(), ptr::null_mut()) };
-    let output = ptr::without_provenance_mut(0x07);
-    // SAFETY: a live service; the output is only compared with NULL.
+    // A real zeroed output: deactivate detaches the service from it, which
+    // writes the output's service field (#3886). Freed below.
+    // SAFETY: no preconditions.
+    let output = unsafe { c::oracle_service_output_new() };
+    assert!(!output.is_null());
+    // SAFETY: a live service and a live output.
     unsafe { c::oracle_service_set_state(live, false, output) };
     let weak = unsafe { rust::obs_service_get_weak_service(live) };
 
@@ -213,6 +217,7 @@ pub fn benchmarks(criterion: &mut Criterion) {
         c::oracle_module_free(m2);
         rust::obs_weak_service_release(weak);
         rust::obs_service_release(live);
+        c::oracle_service_output_free(output);
     }
 
     // SAFETY: no types; from oracle_service_new, freed once.
