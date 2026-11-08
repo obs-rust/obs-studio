@@ -93,6 +93,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
                     "test/cmocka/scene-source-getter-link-stubs.c",
+                    "test/cmocka/source-handler-getter-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                 ])
 
@@ -158,6 +159,27 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
                 self.assertTrue(any(provider in support[name]["sources"] for provider in providers))
         self.assertIn("obs_output_handler_getters_fields", (ROOT / stub).read_text())
+
+    def test_source_handler_getter_supplies_live_standalone_adapter(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/source-handler-getters.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if "libobs_rust-static" in target.get("libraries", [])
+                 and "OBS::libobs" not in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        adapter = "test/cmocka/source-handler-getter-link-support.c"
+        providers = ("test/cmocka/source-getter-log-link-stub.c",
+                     "test/cmocka/scene-getter-log-link-stub.c")
+        for name in names:
+            with self.subTest(name=name):
+                sources = graph["targets"][name]["sources"]
+                self.assertEqual(support[name]["sources"][0], adapter)
+                self.assertEqual(sources.count(adapter), 1)
+                self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
+        body = (ROOT / adapter).read_text()
+        self.assertIn("&source->context.procs", body)
+        self.assertNotIn("abort()", body)
 
     def test_output_pause_queries_supply_all_static_consumers(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

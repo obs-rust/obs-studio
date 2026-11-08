@@ -7,7 +7,10 @@ fn borrowed_handlers() {
         for handler in [None, Some(9_u32)] {
             let before = (signal, handler);
             for _ in 0..2 {
-                assert_eq!(proc(Some(handler), |_| panic!("valid source must not log")), handler);
+                assert_eq!(
+                    proc(Some(handler), |_| panic!("valid source must not log")),
+                    handler
+                );
             }
             assert_eq!((signal, handler), before);
         }

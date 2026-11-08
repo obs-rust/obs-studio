@@ -42,6 +42,7 @@ mod filter_relationship_getters_parity;
 mod frame_copy;
 mod frame_copy_parity;
 mod handler_getters;
+mod handler_getters_parity;
 mod media_admission;
 mod media_admission_parity;
 mod monitoring;

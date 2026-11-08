@@ -323,8 +323,6 @@ mod canonical_object_validity_query_is_registered;
 mod canonical_output_flags_is_registered;
 #[path = "native/registration/canonical_output_handler_getters_is_registered.rs"]
 mod canonical_output_handler_getters_is_registered;
-#[path = "native/registration/canonical_source_handler_getters_is_registered.rs"]
-mod canonical_source_handler_getters_is_registered;
 #[path = "native/registration/canonical_output_identity_getters_is_registered.rs"]
 mod canonical_output_identity_getters_is_registered;
 #[path = "native/registration/canonical_output_mixer_getters_is_registered.rs"]
@@ -407,6 +405,8 @@ mod canonical_shutdown_after_failed_startup_is_registered;
 mod canonical_source_audio_active_is_registered;
 #[path = "native/registration/canonical_source_boolean_queries_is_registered.rs"]
 mod canonical_source_boolean_queries_is_registered;
+#[path = "native/registration/canonical_source_handler_getters_is_registered.rs"]
+mod canonical_source_handler_getters_is_registered;
 #[path = "native/registration/canonical_source_identity_getters_is_registered.rs"]
 mod canonical_source_identity_getters_is_registered;
 #[path = "native/registration/canonical_source_push_queries_is_registered.rs"]
