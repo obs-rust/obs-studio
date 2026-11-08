@@ -6585,6 +6585,21 @@
         }
       ]
     },
+    "test_object_validity_query": {
+      "sources": [
+        "test/cmocka/test_object_validity_query.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_obs_core_info_characterization": {
       "sources": [
         "test/cmocka/test_obs_core_info_characterization.c"
@@ -18239,6 +18254,12 @@
     },
     "test_object_queries": {
       "target": "test_object_queries",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_object_validity_query": {
+      "target": "test_object_validity_query",
       "command": [
         "${target}"
       ]
