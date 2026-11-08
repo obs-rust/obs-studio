@@ -351,6 +351,37 @@ class Check(unittest.TestCase):
 
 
 class MissDiagnostic(unittest.TestCase):
+    def test_queue_ref_finds_pr_branch_proof_in_partial_history(self):
+        calls = []
+
+        def fetch(path, token):
+            calls.append(path)
+            if path == f"/repos/{REPO}/pulls/42":
+                return {
+                    "head": {"ref": "fix/the-bug", "repo": {"id": 123}},
+                    "base": {"sha": "old", "repo": {"id": 123}},
+                }
+            self.assertEqual(path, f"/repos/{REPO}/actions/artifacts?per_page=100")
+            return {
+                "total_count": 9040,
+                "artifacts": [{
+                    "name": lane_proof.artifact_name("rust-test", "b" * 64),
+                    "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(NOW - 3600)),
+                    "workflow_run": {
+                        "id": 7, "head_branch": "fix/the-bug",
+                        "repository_id": 123, "head_repository_id": 123,
+                    },
+                }],
+            }
+
+        with patch.dict(os.environ, {}, clear=True):
+            line = lane_proof.miss_diagnostic(
+                "rust-test", "a" * 64, "queue",
+                "gh-readonly-queue/master/pr-42-abc", REPO, "t", fetch=fetch, now=NOW,
+            )
+        self.assertEqual(line, "nearest=bbbbbbbbbbbb run=7 pr_base=old queue_base=queue verdict=stale-base")
+        self.assertEqual(len(calls), 2)
+
     def test_diagnostic_stdout_matches_summary_after_decision(self):
         diagnostic = self.diagnose()
         for summary_options in (
