@@ -45,6 +45,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "pacing"
                 | "transition-start"
                 | "monitor"
+                | "graphics"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }
