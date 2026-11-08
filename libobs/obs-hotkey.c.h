@@ -824,15 +824,6 @@ char *obs_hotkeys_get_background_error(void)
 	return error;
 }
 
-const char *obs_hotkeys_get_background_app_id(void)
-{
-	if (!lock())
-		return NULL;
-
-	const char *app_id = obs->hotkeys.background.app_id;
-	unlock();
-	return app_id;
-}
 
 char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 {
