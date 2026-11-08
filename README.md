@@ -122,6 +122,12 @@ the app can stay C++ in the hybrid build. Measured by
 [tools/conversion/measure.py](tools/conversion/measure.py); click the card
 for the full breakdown.
 
+[![converted to Rust, with source data date](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fobs-rust%2Fobs-studio%2Fleaderboard%2Fconversion-badge.json)](https://obs-rust.github.io/obs-studio/conversion.html)
+[![Conversion tracker refresh](https://github.com/obs-rust/obs-studio/actions/workflows/leaderboard.yml/badge.svg?branch=master)](https://github.com/obs-rust/obs-studio/actions/workflows/leaderboard.yml)
+
+The badge date identifies the measured source revision. If it stops advancing,
+check the refresh status beside it.
+
 [![libobs port progress, click for the full breakdown](https://raw.githubusercontent.com/obs-rust/obs-studio/leaderboard/conversion-minimal.jpg)](https://obs-rust.github.io/obs-studio/conversion.html)
 
 > [!TIP]

@@ -2883,6 +2883,11 @@ area.
 
 ## Development builds
 
+- **Dated conversion tracker.** The README shows the libobs Rust percentage,
+  source date and refresh workflow status beside the conversion graph, making
+  a stalled tracker visible. *All*, 2026-11-08.
+  Issue [#4086](https://github.com/obs-rust/obs-studio/issues/4086).
+
 - **Cargo application command.** `uv run --script ci/native_build.py` builds and
   stages a Linux hybrid OBS development application with selectable profiles and
   plugin features, including default NVENC support and its capability helper.
