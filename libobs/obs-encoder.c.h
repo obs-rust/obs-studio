@@ -1347,11 +1347,6 @@ audio_t *obs_encoder_audio(const obs_encoder_t *encoder)
 	return encoder->media;
 }
 
-bool obs_encoder_active(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_active") ? encoder_active(encoder) : false;
-}
-
 static inline bool get_sei(const struct obs_encoder *encoder, uint8_t **sei, size_t *size)
 {
 	if (encoder->info.get_sei_data)
@@ -2096,11 +2091,6 @@ uint32_t obs_get_encoder_caps(const char *encoder_id)
 {
 	struct obs_encoder_info *info = find_encoder(encoder_id);
 	return info ? info->caps : 0;
-}
-
-bool obs_encoder_paused(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_paused") ? os_atomic_load_bool(&encoder->paused) : false;
 }
 
 void obs_encoder_set_last_error(obs_encoder_t *encoder, const char *message)

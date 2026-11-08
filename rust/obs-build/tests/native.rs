@@ -234,6 +234,8 @@ mod canonical_encoder_gpu_scaling_getters_is_registered;
 mod canonical_encoder_group_null_is_registered;
 #[path = "native/registration/canonical_encoder_scaling_enabled_is_registered.rs"]
 mod canonical_encoder_scaling_enabled_is_registered;
+#[path = "native/registration/canonical_encoder_state_queries_is_registered.rs"]
+mod canonical_encoder_state_queries_is_registered;
 #[path = "native/registration/canonical_fade_and_host_tests_are_registered.rs"]
 mod canonical_fade_and_host_tests_are_registered;
 #[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
