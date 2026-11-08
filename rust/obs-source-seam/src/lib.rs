@@ -24,7 +24,13 @@
 //! controls of a transition, whose shims
 //! ([`ffi::source_transition_access`]) implement
 //! `obs_source::transition_access::Transition` over the same seam,
-//! `obs_source_get_ref()` and `obs_transition_set()`; and
+//! `obs_source_get_ref()` and `obs_transition_set()`;
+//! `libobs/obs-source-transition-stop.c.h`, the clock read and stop of a
+//! transition, whose shims ([`ffi::source_transition_stop`]) implement
+//! `obs_source::transition_stop::Transition` over the same seam (with the
+//! plugin's `transition_stop`, the signals and the video frame time
+//! through it), `obs_source_remove_active_child()` and
+//! `obs_source_release()`; and
 //! `libobs/obs-source-transition-switch.c.h`, the start and set of a
 //! transition, whose shims ([`ffi::source_transition_switch`]) implement
 //! `obs_source::transition_switch::Transition` over the same seam (with the
