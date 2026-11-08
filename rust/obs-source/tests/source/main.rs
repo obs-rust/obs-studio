@@ -17,6 +17,7 @@ mod audio_render_plan_parity;
 mod audio_settings;
 mod audio_timing;
 mod audio_timing_parity;
+mod base_size;
 mod boolean_queries;
 mod boolean_queries_parity;
 mod color_space;
