@@ -71,7 +71,6 @@ static void output_protocol_getter_capture(int level, const char *format, va_lis
 	log->count++;
 	log->level = level;
 	vsnprintf(log->message, sizeof(log->message), format, args);
-
 }
 
 typedef const char *(*output_protocol_getter_getter)(const obs_output_t *);
