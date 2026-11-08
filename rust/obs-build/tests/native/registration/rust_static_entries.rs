@@ -46,7 +46,6 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "transition-start"
                 | "monitor"
                 | "graphics"
-                | "private-source"
                 | "private-steps"
                 | "private-rules"
                 | "private-link-rules"

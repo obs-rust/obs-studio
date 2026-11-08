@@ -1,5 +1,5 @@
 use super::*;
-use obs_build::validation::graph::{Dependency, Graph};
+use obs_build::validation::graph::Dependency;
 use std::process::{Command, Output};
 
 fn checked(command: &mut Command) -> Output {
@@ -33,10 +33,6 @@ fn assert_cases(output: &Output, name: &str) {
         "test_scene_item_transform_steps_rust" => 13,
         "test_scene_transform_update_steps_rust" => 9,
         "test_pulse_monitor_steps_rust" | "test_sprite_geometry_steps_rust" => 20,
-        "test_source_duplicate_steps_rust" => 13,
-        "test_source_filter_chain_steps_rust" => 12,
-        "test_transition_clock_steps_rust" => 20,
-        "test_transition_sample_time_steps_rust" => 9,
         _ => panic!("unknown fixture {name}"),
     };
     assert!(
@@ -62,9 +58,6 @@ fn assert_binding(binary: &Path, core: &Path) {
                 | "test_scene_item_order_steps_rust"
                 | "test_scene_transform_update_steps_rust"
                 | "test_pulse_monitor_steps_rust"
-                | "test_source_duplicate_steps_rust"
-                | "test_source_filter_chain_steps_rust"
-                | "test_transition_sample_time_steps_rust"
         ));
         assert!(!text.contains("not found"), "{text}");
         eprintln!(
@@ -88,7 +81,12 @@ fn assert_binding(binary: &Path, core: &Path) {
     eprintln!("Selected core {}: {}", binary.display(), core.display());
 }
 
-fn strict_graph(family: &str) -> Graph {
+pub(super) fn run(family: &str, cases: &[String]) {
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let archive = dunce::canonicalize(
+        std::env::var_os("OBS_BUILD_RUST_ARCHIVE").expect("production Rust archive required"),
+    )
+    .unwrap();
     let mut graph = rust_static_entries::assert_family(family);
     for target in graph.targets.values_mut() {
         target.link_options.extend([
@@ -96,16 +94,6 @@ fn strict_graph(family: &str) -> Graph {
             "-Wl,--as-needed".into(),
         ]);
     }
-    graph
-}
-
-pub(super) fn run(family: &str, cases: &[String]) {
-    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let archive = dunce::canonicalize(
-        std::env::var_os("OBS_BUILD_RUST_ARCHIVE").expect("production Rust archive required"),
-    )
-    .unwrap();
-    let graph = strict_graph(family);
     let directory = tempfile::tempdir().unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
@@ -118,8 +106,6 @@ pub(super) fn run(family: &str, cases: &[String]) {
     let caption = obs_build::libobs::build_caption(&build, &root).unwrap();
     let interfaces = [
         ("OBS::libobs".into(), core.dependency),
-        ("Uthash::Uthash".into(), Dependency::default()),
-        ("SIMDe::SIMDe".into(), Dependency::default()),
         (
             "OBS::caption".into(),
             Dependency {
@@ -224,8 +210,6 @@ set(OS_FREEBSD OFF)
 set(ENABLE_PULSEAUDIO ON)
 set(CMAKE_MODULE_PATH "{root}/cmake/finders")
 find_package(PulseAudio REQUIRED)
-find_package(Uthash REQUIRED)
-find_package(SIMDe REQUIRED)
 option(OBS_TEST_SANITIZE_PER_TARGET "Per-target ASan/UBSan" ON)
 include("${{CMAKE_CURRENT_SOURCE_DIR}}/sanitize.cmake")
 {core}

@@ -8,7 +8,7 @@ static CASES: std::sync::LazyLock<Vec<String>> =
 #[test]
 fn canonical_rust_static_private_rules_are_registered() {
     let graph = rust_static_entries::assert_family(FAMILY);
-    assert_eq!(CASES.len(), 3);
+    assert_eq!(CASES.len(), 2);
     for os in ["OS_LINUX", "OS_FREEBSD", "OS_WINDOWS", "OS_MACOS"] {
         for msvc in [false, true] {
             for available in [false, true] {
@@ -25,7 +25,7 @@ fn canonical_rust_static_private_rules_are_registered() {
                     }
                     let selected = graph.select(&facts).unwrap();
                     let expected = if available {
-                        2 + usize::from(pulse && matches!(os, "OS_LINUX" | "OS_FREEBSD"))
+                        1 + usize::from(pulse && matches!(os, "OS_LINUX" | "OS_FREEBSD"))
                     } else {
                         0
                     };

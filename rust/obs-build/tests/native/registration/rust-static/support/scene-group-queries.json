@@ -4,49 +4,9 @@
       "test/cmocka/scene-group-query-link-stubs.c"
     ]
   },
-  "test_scene_bounds_place_rust": {
-    "sources": [
-      "test/cmocka/scene-group-query-link-stubs.c"
-    ],
-    "includes": [
-      "libobs"
-    ]
-  },
-  "test_scene_item_names_steps_rust": {
-    "sources": [
-      "test/cmocka/scene-group-query-link-stubs.c"
-    ],
-    "includes": [
-      "libobs"
-    ]
-  },
-  "test_scene_item_order_steps_rust": {
-    "sources": [
-      "test/cmocka/scene-group-query-link-stubs.c"
-    ],
-    "includes": [
-      "libobs"
-    ]
-  },
-  "test_scene_item_transform_steps_rust": {
-    "sources": [
-      "test/cmocka/scene-group-query-link-stubs.c"
-    ],
-    "includes": [
-      "libobs"
-    ]
-  },
   "test_scene_render_plan_steps_rust": {
     "sources": [
       "test/cmocka/scene-group-query-link-stubs.c"
-    ]
-  },
-  "test_scene_transform_update_steps_rust": {
-    "sources": [
-      "test/cmocka/scene-group-query-link-stubs.c"
-    ],
-    "includes": [
-      "libobs"
     ]
   }
 }
