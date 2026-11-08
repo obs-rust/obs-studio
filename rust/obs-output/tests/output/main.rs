@@ -67,6 +67,7 @@ mod output_pause;
 mod output_pause_parity;
 mod output_reconnect;
 mod output_reconnect_parity;
+mod output_service_getter;
 mod output_slots;
 mod output_slots_parity;
 mod output_start;
