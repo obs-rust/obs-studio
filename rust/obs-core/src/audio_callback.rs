@@ -43,7 +43,11 @@
     clippy::unreachable
 )]
 
+use crate::audio_min_ts::{self, BufferingChoice};
 use crate::audio_mix::{AUDIO_OUTPUT_FRAMES, Step, TsInfo};
+use crate::audio_render::{
+    BackwardsChoice, MonitorDedup, TreeChoice, backwards, clear_mixes, silence, tree,
+};
 
 /// `MAX_CHANNELS`: the source channels of a view (not audio channels).
 pub const MAX_CHANNELS: u32 = 64;
@@ -278,15 +282,426 @@ pub trait Tick {
     fn log_adding(&mut self, ms: i32, total_ms: i32, name: Option<Self::Name>);
 }
 
-/// `push_audio_tree2`: one source of a channel's active tree.
+/// `push_audio_tree`: a source not yet in the render order is added, with a
+/// reference, and its duplicate tag reset.
+fn push_tree<T: Tick + ?Sized>(t: &mut T, source: T::Source) {
+    if t.render_order_find(source).is_none()
+        && let Some(s) = t.get_ref(source)
+    {
+        t.render_order_push(s);
+        t.set_is_duplicated(s, false);
+    }
+}
+
+/// `push_audio_tree2`: one source of a channel's active tree. A source not
+/// yet in the render order is added; an individual audio source reached
+/// again is tagged and mixed as a root node (the choice is
+/// [`crate::audio_render::tree`]).
 pub fn push_tree2<T: Tick + ?Sized>(t: &mut T, source: T::Source) {
-    let _ = (t, source);
-    todo!()
+    let removed = t.removed(source);
+    let idx = if removed {
+        None
+    } else {
+        t.render_order_find(source)
+    };
+    let present = idx.is_some();
+    let s = match idx {
+        Some(idx) => t.render_order_get(idx),
+        None => source,
+    };
+    let kind = t.kind(s);
+    let output_flags = t.output_flags(s);
+    let duplicated = t.is_duplicated(s);
+
+    match tree(removed, present, kind, output_flags, duplicated) {
+        TreeChoice::Add => {
+            if let Some(s) = t.get_ref(source) {
+                t.render_order_push(s);
+                t.set_is_duplicated(s, false);
+            }
+        }
+        TreeChoice::Duplicate => {
+            t.root_nodes_push(source);
+            t.set_is_duplicated(s, true);
+        }
+        TreeChoice::Skip | TreeChoice::None => {}
+    }
+}
+
+/// `ignore_audio`: drops the audio of a source that has gone backward in
+/// time, under its buffer lock; whether it is rendered again.
+fn ignore_audio<T: Tick + ?Sized>(
+    t: &mut T,
+    source: T::Source,
+    channels: usize,
+    sample_rate: usize,
+    start_ts: u64,
+) -> bool {
+    let name = t.name(source);
+    let step = t.ignore(source, channels, sample_rate, start_ts);
+
+    if step.no_timestamp {
+        return false;
+    }
+    if step.buffered != 0 {
+        t.log_ts_lag(name, step.lag);
+    }
+    if step.warn {
+        t.log_lagging(name, step.warn_lag);
+    }
+    step.rerender
+}
+
+/// `set_fixed_audio_buffering`.
+fn set_fixed_buffering<T: Tick + ?Sized>(t: &mut T, sample_rate: usize, ts: &mut TsInfo) {
+    let step = t.buffering_fixed(sample_rate, ts);
+    if !step.added {
+        return;
+    }
+    t.log_fixed(c_int(step.total_ms));
+}
+
+/// `add_audio_buffering`.
+fn add_buffering<T: Tick + ?Sized>(
+    t: &mut T,
+    sample_rate: usize,
+    ts: &mut TsInfo,
+    min_ts: u64,
+    buffering_name: Option<T::Name>,
+) {
+    let step = t.buffering_add(sample_rate, ts, min_ts);
+    if !step.added {
+        return;
+    }
+    if step.max_reached {
+        t.log_max_reached();
+    }
+    t.log_adding(c_int(step.ms), c_int(step.total_ms), buffering_name);
+}
+
+/// The C's `(int)` cast of a `size_t`: the low 32 bits.
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+fn c_int(value: usize) -> i32 {
+    value as i32
+}
+
+/// `audio_buffer_insufficient`: whether a source is short for a tick at
+/// `min_ts` (marking it pending), under its buffer lock.
+fn buffer_insufficient<T: Tick + ?Sized>(
+    t: &mut T,
+    source: T::Source,
+    sample_rate: usize,
+    min_ts: u64,
+) -> bool {
+    t.lock_buf(source);
+    let audio_render = t.has_audio_render(source);
+    let mut pending = t.pending(source);
+    let audio_ts = t.audio_ts(source);
+    let size = t.input_size(source);
+    let insufficient = audio_min_ts::insufficient(
+        audio_render,
+        &mut pending,
+        audio_ts,
+        size,
+        sample_rate,
+        min_ts,
+    );
+    if insufficient {
+        t.set_pending(source, pending);
+    }
+    t.unlock_buf(source);
+    insufficient
+}
+
+/// `find_min_ts`: lowers `min_ts` to the earliest audio source; the name of
+/// the last source that lowered it.
+fn find_min_ts<T: Tick + ?Sized>(t: &mut T, min_ts: &mut u64) -> Option<T::Name> {
+    let mut buffering_source = None;
+    let mut source = t.first_audio_source();
+    while let Some(s) = source {
+        t.lock_buf(s);
+        let pending = t.pending(s);
+        let audio_ts = t.audio_ts(s);
+        if audio_min_ts::earlier(pending, audio_ts, min_ts) {
+            buffering_source = Some(s);
+        }
+        t.unlock_buf(s);
+
+        source = t.next_audio_source(s);
+    }
+    buffering_source.map(|s| t.name(s))
+}
+
+/// `mark_invalid_sources`: marks the short sources pending; whether any
+/// was.
+fn mark_invalid_sources<T: Tick + ?Sized>(t: &mut T, sample_rate: usize, min_ts: u64) -> bool {
+    let mut recalculate = false;
+    let mut source = t.first_audio_source();
+    while let Some(s) = source {
+        recalculate |= buffer_insufficient(t, s, sample_rate, min_ts);
+        source = t.next_audio_source(s);
+    }
+    recalculate
+}
+
+/// `calc_min_ts`, under `audio_sources_mutex`.
+fn calc_min_ts<T: Tick + ?Sized>(
+    t: &mut T,
+    sample_rate: usize,
+    min_ts: &mut u64,
+) -> Option<T::Name> {
+    let mut buffering_name = find_min_ts(t, min_ts);
+    if mark_invalid_sources(t, sample_rate, *min_ts) {
+        buffering_name = find_min_ts(t, min_ts);
+    }
+    buffering_name
+}
+
+/// `release_audio_sources`.
+fn release_audio_sources<T: Tick + ?Sized>(t: &mut T) {
+    let mut i = 0;
+    while i < t.render_order_len() {
+        let s = t.render_order_get(i);
+        t.release(s);
+        i = i.wrapping_add(1);
+    }
+}
+
+/// `execute_audio_tasks`: `task_mutex` is let go around each task, so a
+/// task that queues another sees it run.
+fn execute_audio_tasks<T: Tick + ?Sized>(t: &mut T) {
+    t.lock_tasks();
+    while t.tasks_size() != 0 {
+        let task = t.pop_task();
+        t.unlock_tasks();
+        t.run_task(task);
+        t.lock_tasks();
+    }
+    t.unlock_tasks();
+}
+
+/// `monitor_dedup`: the deduplication source's fields.
+fn monitor_dedup<T: Tick + ?Sized>(t: &mut T) -> MonitorDedup {
+    let dup_src = t.monitoring_duplicating_source();
+    let mut dedup = MonitorDedup {
+        set: dup_src.is_some(),
+        ..MonitorDedup::default()
+    };
+    if let Some(d) = dup_src {
+        dedup.active = t.active(d);
+        dedup.muted = t.muted(d);
+        dedup.volume = t.volume(d);
+        dedup.mixers = t.audio_mixers(d);
+    }
+    dedup
+}
+
+/// `should_silence_monitored_source`.
+fn should_silence_monitored_source<T: Tick + ?Sized>(t: &mut T, source: T::Source) -> bool {
+    let dedup = monitor_dedup(t);
+    let monitoring_enabled = t.monitoring_enabled(source);
+    let is_dedup_source = t.monitoring_duplicating_source() == Some(source);
+    silence(&dedup, monitoring_enabled, is_dedup_source)
+}
+
+/// `clear_audio_output_buf`.
+fn clear_audio_output_buf<T: Tick + ?Sized>(t: &mut T, source: T::Source) {
+    let Some(dup_src) = t.monitoring_duplicating_source() else {
+        return;
+    };
+    let dup_mixers = t.audio_mixers(dup_src);
+    let source_mixers = t.audio_mixers(source);
+    t.clear_output(source, clear_mixes(dup_mixers, source_mixers));
+}
+
+/// The render order and root nodes over the views of the mixes, under
+/// `mixes_mutex` and each view's `channels_mutex`.
+fn build_from_views<T: Tick + ?Sized>(t: &mut T) {
+    t.lock_mixes();
+    let mut j = 0;
+    while j < t.mixes_len() {
+        let view = t.mix_view(j);
+        let mut duplicate_view = false;
+        let mut k = 0;
+        while k < j {
+            if t.mix_view(k) == view {
+                duplicate_view = true;
+                break;
+            }
+            k = k.wrapping_add(1);
+        }
+        if let Some(view) = view
+            && !duplicate_view
+        {
+            t.lock_channels(view);
+            for i in 0..MAX_CHANNELS {
+                let Some(channel_source) = t.channel(view, i) else {
+                    continue;
+                };
+                if !t.active(channel_source) {
+                    continue;
+                }
+                if t.removed(channel_source) {
+                    continue;
+                }
+
+                if t.mix_audio(j) {
+                    t.root_nodes_push(channel_source);
+                }
+                t.enum_active_tree(channel_source);
+                push_tree(t, channel_source);
+            }
+            t.unlock_channels(view);
+        }
+        j = j.wrapping_add(1);
+    }
+    t.unlock_mixes();
+}
+
+/// The render pass: each source of the render order is rendered, silenced
+/// when monitored, and its audio dropped when it has gone backward in time.
+fn render<T: Tick + ?Sized>(
+    t: &mut T,
+    mixers: u32,
+    channels: usize,
+    sample_rate: usize,
+    ts: TsInfo,
+) {
+    let mut i = 0;
+    while i < t.render_order_len() {
+        let render_source = t.render_order_get(i);
+        t.audio_render(render_source, mixers, channels, sample_rate, AUDIO_SIZE);
+        if should_silence_monitored_source(t, render_source) {
+            clear_audio_output_buf(t, render_source);
+        }
+
+        let mut rerender = false;
+        t.lock_buf(render_source);
+        let maxed = t.buffering_maxed();
+        let audio_ts = t.audio_ts(render_source);
+        let audio_render = t.has_audio_render(render_source);
+        match backwards(maxed, audio_ts, ts.start, audio_render) {
+            BackwardsChoice::Pending => {
+                let name = t.name(render_source);
+                t.log_backwards(name);
+                t.set_pending(render_source, true);
+            }
+            BackwardsChoice::Ignore => {
+                rerender = ignore_audio(t, render_source, channels, sample_rate, ts.start);
+            }
+            BackwardsChoice::None => {}
+        }
+        t.unlock_buf(render_source);
+
+        /* Rendering can call plugins; the buffer lock is let go first. */
+        if rerender {
+            t.audio_render(render_source, mixers, channels, sample_rate, AUDIO_SIZE);
+        }
+        i = i.wrapping_add(1);
+    }
+}
+
+/// The mix of the root nodes. A root source's `audio_pending` is read
+/// under its buffer lock (the C reads it before taking the lock).
+fn mix_roots<T: Tick + ?Sized>(
+    t: &mut T,
+    mixers: u32,
+    channels: usize,
+    sample_rate: usize,
+    ts: TsInfo,
+) {
+    let mut i = 0;
+    while i < t.root_nodes_len() {
+        let root_source = t.root_nodes_get(i);
+
+        t.lock_buf(root_source);
+        if !t.pending(root_source) && t.has_output_buf(root_source) && t.audio_ts(root_source) != 0
+        {
+            t.mix(root_source, channels, sample_rate, ts, mixers);
+        }
+        t.unlock_buf(root_source);
+        i = i.wrapping_add(1);
+    }
 }
 
 /// `audio_callback()`: one tick from `start_ts` to `end_ts`, mixed into the
 /// mixes in `mixers`. Returns the result and `*out_ts`.
 pub fn audio_callback<T: Tick>(t: &mut T, start_ts: u64, end_ts: u64, mixers: u32) -> (bool, u64) {
-    let _ = (t, start_ts, end_ts, mixers);
-    todo!()
+    let sample_rate = t.sample_rate();
+    let channels = t.channels();
+    let mut ts = TsInfo {
+        start: start_ts,
+        end: end_ts,
+    };
+
+    t.render_order_clear();
+    t.root_nodes_clear();
+
+    t.timestamps_push_back(ts);
+    ts = t.timestamps_peek_front();
+    let mut min_ts = ts.start;
+
+    /* build audio render order */
+    build_from_views(t);
+
+    t.lock_audio_sources();
+    let mut source = t.first_audio_source();
+    while let Some(s) = source {
+        if !t.removed(s) {
+            push_tree(t, s);
+        }
+        source = t.next_audio_source(s);
+    }
+    t.unlock_audio_sources();
+
+    /* render audio data */
+    render(t, mixers, channels, sample_rate, ts);
+
+    /* get minimum audio timestamp */
+    t.lock_audio_sources();
+    let buffering_name = calc_min_ts(t, sample_rate, &mut min_ts);
+    t.unlock_audio_sources();
+
+    /* if a source has gone backward in time, buffer */
+    let fixed_buffer = t.fixed_buffer();
+    let maxed = t.fixed_buffer() && t.buffering_maxed();
+    match audio_min_ts::buffering(fixed_buffer, maxed, min_ts, ts.start) {
+        BufferingChoice::Fixed => set_fixed_buffering(t, sample_rate, &mut ts),
+        BufferingChoice::Add => add_buffering(t, sample_rate, &mut ts, min_ts, buffering_name),
+        BufferingChoice::None => {}
+    }
+
+    /* mix audio */
+    if t.wait_ticks() == 0 {
+        mix_roots(t, mixers, channels, sample_rate, ts);
+    }
+
+    /* discard audio */
+    t.lock_audio_sources();
+    let mut source = t.first_audio_source();
+    while let Some(s) = source {
+        t.lock_buf(s);
+        let audio_render = t.has_audio_render(s);
+        t.discard_tick(s, audio_render, channels, sample_rate, ts);
+        t.unlock_buf(s);
+
+        source = t.next_audio_source(s);
+    }
+    t.unlock_audio_sources();
+
+    /* release audio sources */
+    release_audio_sources(t);
+
+    t.timestamps_pop_front();
+
+    let out_ts = ts.start;
+
+    let wait = t.wait_ticks();
+    if wait != 0 {
+        t.set_wait_ticks(wait.wrapping_sub(1));
+        return (false, out_ts);
+    }
+
+    execute_audio_tasks(t);
+    (true, out_ts)
 }
