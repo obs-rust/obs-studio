@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """Generate the platform download badges for the obs-rust README.
 
 Dialect matches docs/images/discussions.svg and merge-queue.svg: flat two-tone
