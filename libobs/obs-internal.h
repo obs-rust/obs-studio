@@ -2107,6 +2107,14 @@ struct obs_encoder_scaling_enabled_fields {
 };
 struct obs_encoder_scaling_enabled_fields obs_encoder_scaling_enabled_fields(const obs_encoder_t *encoder);
 
+/* Borrowed addresses only; C retains the complete encoder layout. */
+struct obs_encoder_frame_rate_divisor_fields {
+	const enum obs_encoder_type *type;
+	const uint32_t *divisor;
+	char *const *name;
+};
+struct obs_encoder_frame_rate_divisor_fields obs_encoder_frame_rate_divisor_fields(const obs_encoder_t *encoder);
+
 /* What the encoded packet interleaver reads from an encoder, as values: the
  * time base, the frame size and the encoder group (NULL without one). Not
  * EXPORT. */
