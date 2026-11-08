@@ -2082,11 +2082,6 @@ obs_encoder_t *obs_weak_encoder_get_encoder(obs_weak_encoder_t *weak)
 	return NULL;
 }
 
-bool obs_weak_encoder_references_encoder(obs_weak_encoder_t *weak, obs_encoder_t *encoder)
-{
-	return weak && encoder && weak->encoder == encoder;
-}
-
 uint32_t obs_get_encoder_caps(const char *encoder_id)
 {
 	struct obs_encoder_info *info = find_encoder(encoder_id);
