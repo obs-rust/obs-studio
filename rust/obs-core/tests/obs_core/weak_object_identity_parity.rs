@@ -1,9 +1,7 @@
 //! Real-header layout and exact differential parity; no input exclusions.
 use core::ffi::c_void;
 use core::mem::{align_of, offset_of, size_of};
-use obs_core::ffi::weak_object_identity::{
-    Fields, obs_weak_object_references_object as query,
-};
+use obs_core::ffi::weak_object_identity::{Fields, obs_weak_object_references_object as query};
 use proptest::prelude::*;
 
 unsafe extern "C" {
