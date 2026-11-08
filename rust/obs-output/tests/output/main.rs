@@ -65,6 +65,8 @@ mod output_mixer_getters;
 mod output_mixer_getters_parity;
 mod output_pause;
 mod output_pause_parity;
+mod output_pause_queries;
+mod output_pause_queries_parity;
 mod output_reconnect;
 mod output_reconnect_parity;
 mod output_service_getter;

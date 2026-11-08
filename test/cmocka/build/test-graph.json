@@ -290,6 +290,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -400,6 +401,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -498,6 +500,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -654,6 +657,7 @@
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -1430,6 +1434,7 @@
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -1513,6 +1518,7 @@
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -1761,6 +1767,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -1845,6 +1852,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -1906,6 +1914,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -6726,6 +6735,7 @@
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -6774,6 +6784,7 @@
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -6823,6 +6834,7 @@
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -8155,6 +8167,21 @@
       "libraries": [
         "OBS::libobs",
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_output_pause_queries": {
+      "sources": [
+        "test/cmocka/test_output_pause_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_output_pause_steps": {
@@ -10255,6 +10282,7 @@
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c"
       ],
       "requires": {
@@ -11441,6 +11469,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
@@ -12166,6 +12195,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
@@ -12852,6 +12882,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -12926,6 +12957,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13006,6 +13038,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13099,6 +13132,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13189,6 +13223,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13276,6 +13311,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13462,6 +13498,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13615,6 +13652,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13714,6 +13752,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13825,6 +13864,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -13915,6 +13955,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -14000,6 +14041,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -14253,6 +14295,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -14317,6 +14360,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -15076,6 +15120,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -15181,6 +15226,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -15376,6 +15422,7 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-audio-active-link-stubs.c",
@@ -20343,6 +20390,12 @@
     },
     "test_output_null_id": {
       "target": "test_output_null_id",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_pause_queries": {
+      "target": "test_output_pause_queries",
       "command": [
         "${target}"
       ]

@@ -1907,6 +1907,16 @@ struct obs_output_mixer_getters_fields {
 };
 extern struct obs_output_mixer_getters_fields obs_output_mixer_getters_fields(const obs_output_t *output);
 
+/* Private member addresses; callers must reject NULL before taking them. */
+struct obs_output_pause_queries_fields {
+	const volatile bool *paused;
+	const uint64_t *offset;
+	void *mutex;
+};
+extern struct obs_output_pause_queries_fields obs_output_pause_queries_fields(obs_output_t *output);
+extern void obs_output_pause_queries_lock(void *mutex);
+extern void obs_output_pause_queries_unlock(void *mutex);
+
 static inline void do_output_signal(struct obs_output *output, const char *signal)
 {
 	struct calldata params = {0};
