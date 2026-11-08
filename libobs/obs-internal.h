@@ -852,6 +852,8 @@ struct obs_weak_object {
 
 typedef void (*obs_destroy_cb)(void *obj);
 
+#include "obs-object-query-fields.h"
+
 struct obs_context_data {
 	char *name;
 	const char *uuid;
@@ -1776,6 +1778,13 @@ struct obs_output {
 
 	float audio_data[MAX_AUDIO_CHANNELS][AUDIO_OUTPUT_FRAMES];
 };
+
+/* Private borrowed field addresses; callers must reject NULL before access. */
+struct obs_output_supported_codecs_fields {
+	const char *const *video;
+	const char *const *audio;
+};
+extern struct obs_output_supported_codecs_fields obs_output_supported_codecs_fields(const obs_output_t *output);
 
 static inline void do_output_signal(struct obs_output *output, const char *signal)
 {

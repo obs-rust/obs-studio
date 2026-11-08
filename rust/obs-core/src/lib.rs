@@ -105,6 +105,7 @@ pub mod module_register_copy;
 pub mod module_source_rules;
 pub mod module_type_rules;
 pub mod nix_system_info;
+pub mod object_queries;
 mod platform;
 pub mod source_load;
 pub mod source_profiler;

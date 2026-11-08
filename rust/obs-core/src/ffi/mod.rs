@@ -27,6 +27,7 @@ pub mod module_register_copy;
 pub mod module_source_rules;
 pub mod module_type_rules;
 pub mod nix_system_info;
+pub mod object_queries;
 pub mod source_load;
 pub mod source_profiler;
 pub mod video_copy_plan;
