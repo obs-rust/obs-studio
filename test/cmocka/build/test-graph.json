@@ -16383,6 +16383,21 @@
         ]
       }
     },
+    "test_weak_encoder_identity": {
+      "sources": [
+        "test/cmocka/test_weak_encoder_identity.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_whip_host_os_name": {
       "sources": [
         "test/cmocka/test_whip_host_os_name.cpp"
@@ -22767,6 +22782,12 @@
           "HAVE_WAYLAND_CLIENT_TEST_SDK"
         ]
       }
+    },
+    "test_weak_encoder_identity": {
+      "target": "test_weak_encoder_identity",
+      "command": [
+        "${target}"
+      ]
     },
     "test_whip_host_os_name": {
       "target": "test_whip_host_os_name",
