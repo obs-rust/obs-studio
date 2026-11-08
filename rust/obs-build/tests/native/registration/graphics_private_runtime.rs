@@ -26,6 +26,11 @@ fn assert_cases(output: &Output, name: &str) {
         "test_graphics_ffmpeg_pq_steps_rust" => 9,
         "test_graphics_ffmpeg_wic_checks_rust" => 4,
         "test_nsgif_decode_rust" => 39,
+        "test_graphics_immediate_steps_rust" => 11,
+        "test_graphics_state_stacks_rust" => 5,
+        "test_scene_bounds_place_rust" | "test_scene_item_order_steps_rust" => 16,
+        "test_scene_item_names_steps_rust" => 14,
+        "test_scene_item_transform_steps_rust" => 13,
         _ => panic!("unknown fixture {name}"),
     };
     assert!(
@@ -41,8 +46,21 @@ fn assert_binding(binary: &Path, core: &Path) {
     let text = String::from_utf8_lossy(&result.stdout);
     let selected = text
         .lines()
-        .find(|line| line.trim_start().starts_with("libobs.so"))
-        .expect("fixture must dynamically load libobs");
+        .find(|line| line.trim_start().starts_with("libobs.so"));
+    let Some(selected) = selected else {
+        // Strict as-needed matches the original private-only scene fixtures:
+        // no public libobs symbol is referenced, so the DSO is not retained.
+        assert!(matches!(
+            binary.file_name().unwrap().to_str().unwrap(),
+            "test_scene_bounds_place_rust" | "test_scene_item_order_steps_rust"
+        ));
+        assert!(!text.contains("not found"), "{text}");
+        eprintln!(
+            "Static-only fixture {}: no libobs DSO retained",
+            binary.display()
+        );
+        return;
+    };
     let loaded = selected
         .split_once("=>")
         .unwrap()
@@ -65,7 +83,7 @@ fn canonical_graphics_private_runs_unchanged() {
         std::env::var_os("OBS_BUILD_RUST_ARCHIVE").expect("production Rust archive required"),
     )
     .unwrap();
-    let mut graph = rust_static_entries::assert_family("graphics");
+    let mut graph = rust_static_entries::assert_family(FAMILY);
     for target in graph.targets.values_mut() {
         target.link_options.extend([
             "-Wl,--no-copy-dt-needed-entries".into(),
@@ -116,7 +134,7 @@ fn canonical_graphics_private_runs_unchanged() {
     ]
     .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), 6);
+    assert_eq!(artifacts.len(), CASES.len());
     for (name, artifact) in &artifacts {
         assert_binding(artifact, &core_path);
         let output = checked(
