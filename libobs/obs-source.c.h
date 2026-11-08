@@ -4690,11 +4690,6 @@ void obs_source_set_audio_active(obs_source_t *source, bool active)
 	}
 }
 
-bool obs_source_audio_active(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_audio_active") ? os_atomic_load_bool(&source->audio_active) : false;
-}
-
 enum obs_icon_type obs_source_get_icon_type(const char *id)
 {
 	const struct obs_source_info *info = get_source_info(id);
