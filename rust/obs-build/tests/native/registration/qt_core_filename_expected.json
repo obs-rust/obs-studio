@@ -1,0 +1,239 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_crash_log_upload": {
+      "sources": [
+        "test/cmocka/test_crash_log_upload.cpp",
+        "frontend/utility/CrashHandler.cpp.hpp",
+        "frontend/utility/CrashHandler_Linux.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_CRASH_LOG_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility",
+        "frontend"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/utility/CrashHandler.hpp",
+          "frontend/utility/RemoteTextThread.hpp"
+        ]
+      },
+      "includes_before": [
+        "test/cmocka/crash-handler-stubs"
+      ],
+      "watch_inputs": [
+        "test/cmocka/crash-handler-stubs"
+      ]
+    },
+    "test_output_filename_reserve": {
+      "sources": [
+        "test/cmocka/test_output_filename_reserve.c",
+        "frontend/utility/output-filename-reserve.c.h",
+        {
+          "path": "plugins/obs-ffmpeg/obs-ffmpeg-mux.c.h",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "path": "plugins/obs-ffmpeg/build/obs-ffmpeg.mux-host-posix+.h.c",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        }
+      ],
+      "includes": [
+        "frontend/utility",
+        "plugins/obs-ffmpeg"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "FFmpeg::avformat",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "name": "FFmpeg::avutil",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "name": "OBS::output-filename-mux-test",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        }
+      ]
+    },
+    "test_preview_audio_sources": {
+      "sources": [
+        "test/cmocka/test_preview_audio_sources.cpp",
+        "frontend/utility/preview-audio-sources.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_rtmps_fallback_warning": {
+      "sources": [
+        "test/cmocka/test_rtmps_fallback_warning.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_QT_CORE_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility",
+        "frontend/api"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "FRONTEND_LOCALE=\"${source}/frontend/data/locale/en-US.ini\""
+      ],
+      "watch_inputs": [
+        "frontend/utility/RtmpsFallback.hpp",
+        "frontend/data/locale/en-US.ini"
+      ]
+    },
+    "test_source_select_list": {
+      "sources": [
+        "test/cmocka/test_source_select_list.cpp",
+        "frontend/utility/source-select-list.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_crash_log_upload": {
+      "target": "test_crash_log_upload",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_CRASH_LOG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 60
+    },
+    "test_output_filename_reserve": {
+      "target": "test_output_filename_reserve",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_preview_audio_sources": {
+      "target": "test_preview_audio_sources",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_rtmps_fallback_warning": {
+      "target": "test_rtmps_fallback_warning",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_QT_CORE_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 30
+    },
+    "test_source_select_list": {
+      "target": "test_source_select_list",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}
