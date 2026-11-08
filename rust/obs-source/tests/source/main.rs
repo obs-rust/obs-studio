@@ -43,6 +43,8 @@ mod monitoring;
 mod monitoring_parity;
 mod ptm_gate;
 mod ptm_gate_parity;
+mod push_queries;
+mod push_queries_parity;
 mod render_route;
 mod render_route_parity;
 mod size_route;

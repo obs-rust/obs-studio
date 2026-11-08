@@ -1457,6 +1457,17 @@ struct obs_source_identity_getter_fields {
 };
 struct obs_source_identity_getter_fields obs_source_identity_getter_fields(const obs_source_t *source);
 
+/* Borrowed field addresses only. The caller checks non-NULL before this
+ * accessor and holds audio_mutex for every value read. */
+struct obs_source_push_query_fields {
+	void *audio_mutex;
+	const bool *mute_enabled;
+	const bool *talk_enabled;
+	const uint64_t *mute_delay;
+	const uint64_t *talk_delay;
+};
+struct obs_source_push_query_fields obs_source_push_query_fields(obs_source_t *source);
+
 /* Borrowed field addresses only. Caller checks non-NULL and keeps the source
  * live under the original getters' synchronization contract. */
 struct obs_source_state_getter_fields {
