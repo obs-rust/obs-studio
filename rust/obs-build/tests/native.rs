@@ -1,4 +1,6 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/registration/canonical_portal_output_is_registered.rs"]
+mod canonical_portal_output_is_registered;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
