@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-audio.pch.h"
 
 #define DEBUG_AUDIO 0
 #define DEBUG_LAGGED_AUDIO 0

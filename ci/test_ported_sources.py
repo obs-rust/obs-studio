@@ -42,7 +42,6 @@ PORTED_ON_LINUX = (
 # The unported remainder of a split file: still compiled as C.
 NOT_PORTED = (
     "graphics/graphics.c.h.o",
-    "obs-audio.c.h.o",
     "obs-encoder.c.h.o",
     "obs-module.c.h.o",
     "obs-scene-item-audio-actions.c.h.o",

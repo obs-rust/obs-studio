@@ -3,6 +3,7 @@
 
 mod alloc_count;
 mod audio_callback;
+mod audio_callback_parity;
 mod audio_discard;
 mod audio_discard_parity;
 mod audio_min_ts;

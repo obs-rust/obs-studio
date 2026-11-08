@@ -1,0 +1,4 @@
+# obs-audio.c: the audio output calls audio_callback(), which
+# obs_reset_audio2() hands it. Declared in obs-internal.h without EXPORT,
+# so the shim stays hidden.
+audio_callback
