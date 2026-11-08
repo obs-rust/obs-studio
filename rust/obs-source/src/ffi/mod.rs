@@ -25,6 +25,7 @@ pub mod source_monitoring;
 pub mod source_ptm_gate;
 pub mod source_render_route;
 pub mod source_size;
+pub mod source_state_getters;
 pub mod source_transition_clock;
 pub mod source_transition_load;
 pub mod source_transition_render;

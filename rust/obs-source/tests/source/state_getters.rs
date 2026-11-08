@@ -6,9 +6,14 @@ fn mirrors_c_null_defaults() {
     assert_eq!(flags(None, |f, p| logs.push((f, p))), 0);
     assert!(!enabled(None, |f, p| logs.push((f, p))));
     assert_eq!(last_obs_version(None, |f, p| logs.push((f, p))), 0);
-    assert_eq!(logs, [(c"obs_source_get_flags", c"source"),
-        (c"obs_source_enabled", c"source"),
-        (c"obs_source_get_last_obs_version", c"source")]);
+    assert_eq!(
+        logs,
+        [
+            (c"obs_source_get_flags", c"source"),
+            (c"obs_source_enabled", c"source"),
+            (c"obs_source_get_last_obs_version", c"source")
+        ]
+    );
 }
 
 #[test]
@@ -20,7 +25,10 @@ fn mirrors_c_independent_fields() {
                 for _ in 0..2 {
                     assert_eq!(flags(Some(f), |_, _| panic!("unexpected log")), f);
                     assert_eq!(enabled(Some(e), |_, _| panic!("unexpected log")), e);
-                    assert_eq!(last_obs_version(Some(v), |_, _| panic!("unexpected log")), v);
+                    assert_eq!(
+                        last_obs_version(Some(v), |_, _| panic!("unexpected log")),
+                        v
+                    );
                 }
             }
         }
