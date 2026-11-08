@@ -82,46 +82,7 @@ fn canonical_portal_output_run_unchanged() {
             .arg(runtime.join("share/obs/libobs")),
     );
     let shim = obs_build::validation::build_config_close_fault(&build, &root).unwrap();
-    let mut interfaces = std::collections::BTreeMap::from([
-        ("OBS::libobs".into(), core.dependency),
-        (
-            "OBS::caption".into(),
-            Dependency {
-                artifacts: vec![caption.clone()],
-                include_dirs: vec![root.join("deps/libcaption")],
-                ..Default::default()
-            },
-        ),
-        ("Uthash::Uthash".into(), Dependency::default()),
-        (
-            "OBS::libobs-opengl".into(),
-            Dependency {
-                artifacts: vec![renderer.clone()],
-                ..Default::default()
-            },
-        ),
-        (
-            "config_close_fault".into(),
-            Dependency {
-                artifacts: vec![shim],
-                ..Default::default()
-            },
-        ),
-    ]);
-    for (name, package) in [
-        ("OBS::native-test-cmocka", "cmocka"),
-        ("gio::gio", "gio-2.0"),
-        ("PkgConfig::PORTAL_TEST_GLIB", "glib-2.0"),
-        ("PkgConfig::INHIBIT_TEST_GLIB", "glib-2.0"),
-    ] {
-        let mut dependency = Dependency::package(&build.target, package).unwrap();
-        if package == "glib-2.0" {
-            let object = Dependency::package(&build.target, "gobject-2.0").unwrap();
-            dependency.link_options.extend(object.link_options);
-            dependency.include_dirs.extend(object.include_dirs);
-        }
-        interfaces.insert(name.into(), dependency);
-    }
+    let interfaces = interfaces(&build, &root, core.dependency, &caption, &renderer, shim);
     let facts = std::collections::BTreeMap::from([
         ("UNIX".into(), true),
         ("OS_LINUX".into(), true),
@@ -160,39 +121,14 @@ fn canonical_portal_output_run_unchanged() {
     let raw: serde_json::Value =
         serde_json::from_str(include_str!("portal_output_expected.json")).unwrap();
     fs::write(directory.path().join("graph.json"), raw.to_string()).unwrap();
-    let cmake = format!(
-        r#"cmake_minimum_required(VERSION 3.28)
-project(portal-output-contract C)
-enable_testing()
-set(OS_LINUX ON)
-set(OS_FREEBSD OFF)
-set(OS_WINDOWS OFF)
-set(OS_MACOS OFF)
-set(OBS_OUTPUT_DIR "{runtime}")
-set(CMAKE_MODULE_PATH "{root}/cmake/finders")
-{core}
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
-add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
-find_package(Uthash REQUIRED)
-add_library(OBS::caption STATIC IMPORTED)
-set_target_properties(OBS::caption PROPERTIES IMPORTED_LOCATION "{caption}" INTERFACE_INCLUDE_DIRECTORIES "{root}/deps/libcaption")
-add_library(OBS::libobs-opengl MODULE IMPORTED)
-set_target_properties(OBS::libobs-opengl PROPERTIES IMPORTED_LOCATION "{renderer}")
-set(HAVE_OBS_OPENGL ON)
-set(CMAKE_SOURCE_DIR "{root}")
-include("{root}/test/cmocka/tests.d/test_config_close_fault.cmake")
-include("{root}/test/cmocka/native-test-graph.cmake")
-add_link_options("LINKER:--as-needed" "LINKER:--no-copy-dt-needed-entries")
-obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
-"#,
-        root = root.display(),
-        core = core.cmake,
-        runtime = runtime.display(),
-        caption = caption.display(),
-        renderer = renderer.display()
+    write_cmake(
+        directory.path(),
+        &root,
+        &core.cmake,
+        &caption,
+        &renderer,
+        &runtime,
     );
-    fs::write(directory.path().join("CMakeLists.txt"), cmake).unwrap();
     let output = directory.path().join("cmake-output");
     checked(
         Command::new("cmake")
@@ -221,4 +157,98 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
         assert_cases(&result, name);
         eprintln!("CMake {name}: {}", String::from_utf8_lossy(&result.stdout));
     }
+}
+
+fn interfaces(
+    build: &NativeBuild,
+    root: &Path,
+    core: Dependency,
+    caption: &Path,
+    renderer: &Path,
+    shim: std::path::PathBuf,
+) -> std::collections::BTreeMap<String, Dependency> {
+    let mut interfaces = std::collections::BTreeMap::from([
+        ("OBS::libobs".into(), core),
+        (
+            "OBS::caption".into(),
+            Dependency {
+                artifacts: vec![caption.to_owned()],
+                include_dirs: vec![root.join("deps/libcaption")],
+                ..Default::default()
+            },
+        ),
+        ("Uthash::Uthash".into(), Dependency::default()),
+        (
+            "OBS::libobs-opengl".into(),
+            Dependency {
+                artifacts: vec![renderer.to_owned()],
+                ..Default::default()
+            },
+        ),
+        (
+            "config_close_fault".into(),
+            Dependency {
+                artifacts: vec![shim],
+                ..Default::default()
+            },
+        ),
+    ]);
+    for (name, package) in [
+        ("OBS::native-test-cmocka", "cmocka"),
+        ("gio::gio", "gio-2.0"),
+        ("PkgConfig::PORTAL_TEST_GLIB", "glib-2.0"),
+        ("PkgConfig::INHIBIT_TEST_GLIB", "glib-2.0"),
+    ] {
+        let mut dependency = Dependency::package(&build.target, package).unwrap();
+        if package == "glib-2.0" {
+            let object = Dependency::package(&build.target, "gobject-2.0").unwrap();
+            dependency.link_options.extend(object.link_options);
+            dependency.include_dirs.extend(object.include_dirs);
+        }
+        interfaces.insert(name.into(), dependency);
+    }
+    interfaces
+}
+
+fn write_cmake(
+    directory: &Path,
+    root: &Path,
+    core: &str,
+    caption: &Path,
+    renderer: &Path,
+    runtime: &Path,
+) {
+    let cmake = format!(
+        r#"cmake_minimum_required(VERSION 3.28)
+project(portal-output-contract C)
+enable_testing()
+set(OS_LINUX ON)
+set(OS_FREEBSD OFF)
+set(OS_WINDOWS OFF)
+set(OS_MACOS OFF)
+set(OBS_OUTPUT_DIR "{runtime}")
+set(CMAKE_MODULE_PATH "{root}/cmake/finders")
+{core}
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
+add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+find_package(Uthash REQUIRED)
+add_library(OBS::caption STATIC IMPORTED)
+set_target_properties(OBS::caption PROPERTIES IMPORTED_LOCATION "{caption}" INTERFACE_INCLUDE_DIRECTORIES "{root}/deps/libcaption")
+add_library(OBS::libobs-opengl MODULE IMPORTED)
+set_target_properties(OBS::libobs-opengl PROPERTIES IMPORTED_LOCATION "{renderer}")
+set(HAVE_OBS_OPENGL ON)
+set(CMAKE_SOURCE_DIR "{root}")
+include("{root}/test/cmocka/tests.d/test_config_close_fault.cmake")
+include("{root}/test/cmocka/native-test-graph.cmake")
+add_link_options("LINKER:--as-needed" "LINKER:--no-copy-dt-needed-entries")
+obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
+"#,
+        root = root.display(),
+        core = core,
+        runtime = runtime.display(),
+        caption = caption.display(),
+        renderer = renderer.display()
+    );
+    fs::write(directory.join("CMakeLists.txt"), cmake).unwrap();
 }
