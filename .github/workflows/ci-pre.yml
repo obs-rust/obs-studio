@@ -48,3 +48,40 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PYTHONPATH: .ci-lint
         run: python3 -P -m ci_lint cache janitor --repo . --default-branch master
+
+  # The client-attestation report (GATE-010 client half). A PR head carrying
+  # Ci-Attestation trailers for its host gates may skip their remote jobs; this
+  # says so out loud. It only reports -- it never touches skip_* -- and it runs
+  # on the same runner as the janitor, under the same approved fleet exception.
+  #
+  # Off by default: runs only when the repository variable ATTEST_MODE is `warn`
+  # (annotate, pass) or `enforce` (annotate, fail).
+  attest-check:
+    name: Client Attestation 🧾
+    if: >-
+      github.event_name == 'pull_request' &&
+      vars.ATTEST_MODE != '' &&
+      vars.ATTEST_MODE != 'off'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+          sparse-checkout: ci-attestations.yml
+          sparse-checkout-cone-mode: false
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: zackees/ci.yml
+          ref: 24362f3e60248ebe72ffd261e5585640228cbc5d
+          path: .ci-lint
+          persist-credentials: false
+          sparse-checkout: ci_lint
+      - name: Report client attestations 🧾
+        env:
+          PYTHONPATH: .ci-lint
+          ATTEST_MODE: ${{ vars.ATTEST_MODE }}
+        run: python3 -P -m ci_lint attest verify --repo . --commit "${{ github.event.pull_request.head.sha }}" --base "${{ github.event.pull_request.base.sha }}" --required "rust/all/fmt,rust/x86_64-unknown-linux-gnu/clippy,rust/x86_64-unknown-linux-gnu/dylint,rust/x86_64-unknown-linux-gnu/test" --mode "$ATTEST_MODE"
