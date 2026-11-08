@@ -144,7 +144,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 }
 
 fn frontend_owner_output(output: &str) -> String {
-    output.trim().to_owned()
+    output.trim().replace("\r\n", "\n")
 }
 
 #[test]

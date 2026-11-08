@@ -7573,8 +7573,7 @@
         "OBS::libobs",
         "OBS::native-test-cmocka",
         "OBS::glad",
-        "PipeWire::PipeWire",
-        "gio::gio"
+        "PipeWire::PipeWire"
       ],
       "includes": [
         "plugins/linux-pipewire"
@@ -7584,6 +7583,10 @@
       ],
       "watch_inputs": [
         "test/cmocka/test_pipewire_context_fail.py"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0"
       ]
     },
     "test_pipewire_frame_layout": {
