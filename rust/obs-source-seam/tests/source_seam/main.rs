@@ -10,3 +10,4 @@ mod transition_settings_parity;
 mod transition_size_layout;
 mod transition_size_parity;
 mod transition_slots_parity;
+mod transition_switch_parity;

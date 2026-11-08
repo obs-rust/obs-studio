@@ -8,3 +8,4 @@ pub mod source_transition_restore;
 pub mod source_transition_settings;
 pub mod source_transition_size;
 pub mod source_transition_slots;
+pub mod source_transition_switch;
