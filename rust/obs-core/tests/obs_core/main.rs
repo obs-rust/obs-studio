@@ -62,6 +62,7 @@ mod module_register_copy;
 mod module_register_copy_parity;
 mod module_source_rules;
 mod module_source_rules_parity;
+mod module_type_queries;
 mod module_type_rules;
 mod module_type_rules_parity;
 mod nix_log_rules;
