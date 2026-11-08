@@ -11061,6 +11061,36 @@
         "libobs/data"
       ]
     },
+    "test_scene_item_crop_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_crop.c",
+        "test/cmocka/scene-item-fields-link-support.c",
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_scene_item_id": {
       "sources": [
         "test/cmocka/test_scene_item_id.c"
@@ -20332,6 +20362,22 @@
     },
     "test_scene_item_crop_load": {
       "target": "test_scene_item_crop_load",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_scene_item_crop_rust": {
+      "target": "test_scene_item_crop_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
       "command": [
         "${target}"
       ],
