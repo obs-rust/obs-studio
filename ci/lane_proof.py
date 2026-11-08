@@ -287,11 +287,13 @@ def summarize_miss(
         diagnostic = miss_diagnostic(lane, key, base, head, repo, token)
     except Exception:
         pass  # Even an unexpected diagnostic failure leaves all outputs untouched.
+    diagnostic = " ".join(diagnostic.splitlines())
+    print(diagnostic)
     try:
         summary = os.environ.get("GITHUB_STEP_SUMMARY")
         if summary:
             with open(summary, "a", encoding="utf-8") as f:
-                f.write(" ".join(diagnostic.splitlines()) + "\n")
+                f.write(diagnostic + "\n")
     except Exception:
         pass
 
