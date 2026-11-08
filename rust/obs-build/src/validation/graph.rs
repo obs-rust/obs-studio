@@ -41,6 +41,8 @@ impl Requirement {
                     matches!(
                         name.as_str(),
                         "HAVE_X11_DISPLAY"
+                            | "HAVE_QT_CORE_TEST_OWNER"
+                            | "HAVE_CRASH_LOG_TEST_OWNER"
                             | "HAVE_QT_WIDGETS_TEST_OWNER"
                             | "HAVE_QT_WIDGETS_TESTLIB_OWNER"
                             | "HAVE_PLUGIN_MANAGER_TEST_OWNER"
