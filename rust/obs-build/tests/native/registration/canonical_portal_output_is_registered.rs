@@ -64,22 +64,7 @@ fn portal_output_other_hosts_configure_without_daemon_sdks() {
             include_str!("portal_output_expected.json"),
         )
         .unwrap();
-        fs::write(directory.path().join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
-project(portal-host-guards C)
-enable_testing()
-set(OS_LINUX OFF)
-set(OS_FREEBSD OFF)
-set(OS_WINDOWS OFF)
-set(OS_MACOS OFF)
-set({host} ON)
-set(UNIX {unix})
-set(HAVE_OBS_OPENGL OFF)
-foreach(name IN ITEMS OBS::libobs OBS::caption Uthash::Uthash OBS::w32-pthreads OBS::native-test-cmocka)
-  add_library(${{name}} INTERFACE IMPORTED)
-endforeach()
-include("{root}/test/cmocka/native-test-graph.cmake")
-obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
-"#, root=root.display())).unwrap();
+        fs::write(directory.path().join("CMakeLists.txt"), host_cmake(&root, host, unix)).unwrap();
         let result = std::process::Command::new("cmake")
             .arg("-S")
             .arg(directory.path())
@@ -109,4 +94,30 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
         names.sort();
         assert_eq!(names, expected_names);
     }
+}
+
+fn host_cmake(root: &Path, host: &str, unix: &str) -> String {
+    format!(r#"cmake_minimum_required(VERSION 3.28)
+project(portal-host-guards C)
+enable_testing()
+set(OS_LINUX OFF)
+set(OS_FREEBSD OFF)
+set(OS_WINDOWS OFF)
+set(OS_MACOS OFF)
+set({host} ON)
+set(UNIX {unix})
+set(HAVE_OBS_OPENGL OFF)
+foreach(name IN ITEMS OBS::libobs OBS::caption Uthash::Uthash OBS::w32-pthreads OBS::native-test-cmocka)
+  add_library(${{name}} INTERFACE IMPORTED)
+endforeach()
+include("{root}/test/cmocka/native-test-graph.cmake")
+obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
+"#, root=root.display())
+}
+
+#[test]
+fn portal_output_cmake_normalizes_windows_paths() {
+    let text = host_cmake(Path::new(r"D:\a\obs-studio\test"), "OS_WINDOWS", "OFF");
+    assert!(text.contains(r#"include("D:/a/obs-studio/test/test/cmocka/native-test-graph.cmake")"#), "{text}");
+    assert!(!text.contains('\\'), "CMake quoted paths must not contain Windows escapes: {text}");
 }
