@@ -138,7 +138,7 @@ class NativeB2Portability(unittest.TestCase):
                     legacy.add(name)
                     with self.subTest(target=name):
                         self.assertIn("OBS::libobs", libraries)
-        self.assertIn("test_scene_item_names_steps_rust", legacy)
+        self.assertIn("test_scene_item_names_steps_rust", legacy | consumers)
     def test_source_boolean_queries_supply_standalone_field_adapter(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         consumers = [name for name, target in graph["targets"].items()
@@ -241,9 +241,7 @@ class NativeB2Portability(unittest.TestCase):
                         self.assertNotIn("scene-getter-log-link-stub.c", sources)
                     else:
                         self.assertIn("scene-getter-log-link-stub.c", sources)
-        self.assertEqual(legacy, {"test_scene_bounds_place_rust", "test_scene_item_crop_rust",
-                                 "test_scene_item_names_steps_rust", "test_scene_item_order_steps_rust",
-                                 "test_scene_item_transform_steps_rust", "test_scene_transform_update_steps_rust"})
+        self.assertEqual(legacy, {"test_scene_bounds_place_rust", "test_scene_item_crop_rust", "test_scene_item_names_steps_rust", "test_scene_item_order_steps_rust", "test_scene_item_transform_steps_rust", "test_scene_transform_update_steps_rust"})
 
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
@@ -264,7 +262,7 @@ class NativeB2Portability(unittest.TestCase):
 
     def assert_linux_core_inventory(self, graph):
         facts = dict.fromkeys(("OS_WINDOWS", "OS_MACOS", "OS_FREEBSD", "OS_OPENBSD", "MSVC",
-                               "ENABLE_WAYLAND", "HAVE_WAYLAND_CLIENT_TEST_SDK", "HAVE_WAYLAND_SERVER_TEST_SDK",
+                               "ENABLE_WAYLAND", "HAVE_WAYLAND_CLIENT_TEST_SDK", "HAVE_WAYLAND_SERVER_TEST_SDK", "HAVE_NIX_WAYLAND_KEYS_TEST_SDK",
                                "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK", "HAVE_PULSE_DEFAULT_RETRY_SDK",
                                "HAVE_OBS_V4L2", "HAVE_V4L2_BUSY_SDK", "HAVE_V4L2_CAPTURE_SDK", "HAVE_V4L2_UDEV_SDK", "HAVE_FREETYPE_PLATFORM_SDK", "HAVE_OBS_TEXT_FREETYPE2", "HAVE_FREETYPE_FILE_SDK",
                                "HAVE_LINUX_CAPTURE", "HAVE_PIPEWIRE_HEADLESS_SDK", "HAVE_PIPEWIRE_LOOP_TEST_SDK", "HAVE_PYTHON_EMBED_TEST_SDK", "HAVE_QSV_TEST_SDK", "HAVE_TEXT_FILE_OWNER", "HAVE_HOTKEY_BACKGROUND_JSON", "HAVE_PLUGIN_GETTER_OWNERS", "HAVE_MBEDTLS_TEST_SDK", "HAVE_RTMPS_TEST_SDK", "HAVE_LIBRIST_TEST_SDK", "HAVE_CURL_TEST_SDK",
@@ -314,7 +312,7 @@ class NativeB2Portability(unittest.TestCase):
                     self.assertEqual(len(sdk_selected), len(selected) + 2)
 
         for hevc in (False, True):
-            self.assertEqual(len(inventories[True, hevc]) - len(inventories[False, hevc]), 5)
+            self.assertEqual(len(inventories[True, hevc]) - len(inventories[False, hevc]), 6)
         for pulse in (False, True):
             self.assertEqual(len(inventories[pulse, True]) - len(inventories[pulse, False]), 1)
         self.assertGreaterEqual(len(inventories[False, True]), 417)

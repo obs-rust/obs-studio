@@ -402,6 +402,22 @@ pub fn build_c_tests(
         add_package(&mut dependency, &build.target, "libpulse")?;
         interfaces.insert("PulseAudio::PulseAudio".into(), dependency.into());
     }
+    // Match the original Linux-only fragment: UUID is required, Gio optional.
+    // Keep this interface separate from any richer core Gio dependency.
+    if options.rust_archive.is_some() && facts["OS_LINUX"] {
+        interfaces.insert(
+            "LibUUID::LibUUID".into(),
+            graph::Dependency::package(&build.target, "uuid")?,
+        );
+        let mut gio = SharedLibrary::default();
+        let available = add_package(&mut gio, &build.target, "gio-2.0")
+            .and_then(|()| add_package(&mut gio, &build.target, "glib-2.0"))
+            .is_ok();
+        facts.insert("HAVE_WINDOW_MATCH_TEST_GIO".into(), available);
+        if available {
+            interfaces.insert("PkgConfig::_window_match_test_gio".into(), gio.into());
+        }
+    }
     configure_headless_plugin_sdks(build, &mut facts, &interfaces);
     configure_transport_test_sdks(build, &root, &mut facts, &mut interfaces)?;
     if options.outputs {

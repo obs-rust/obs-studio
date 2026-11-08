@@ -3881,6 +3881,25 @@
         }
       ]
     },
+    "test_graphics_ffmpeg_host": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "libobs/graphics/graphics-ffmpeg-host-posix.c.h",
+        "libobs/build/libobs-graphics-ffmpeg-host-posix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_graphics_ffmpeg_pq_steps": {
       "sources": [
         "test/cmocka/test_graphics_ffmpeg_pq_steps.c"
@@ -4113,6 +4132,39 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_immediate_steps_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_immediate_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "GS_IMMEDIATE_TEST_RUST"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_linear_srgb": {
       "sources": [
         "test/cmocka/test_graphics_linear_srgb.c"
@@ -4156,6 +4208,61 @@
           "requires": {
             "not": "MSVC"
           }
+        }
+      ]
+    },
+    "test_graphics_state_stacks_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_state_stacks.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "GS_STATE_STACKS_TEST_RUST"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined",
+      "conditional_link_options": [
+        {
+          "name": "/FORCE:MULTIPLE",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/INCREMENTAL:NO",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/WX:NO",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/IGNORE:4006",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/IGNORE:4075",
+          "requires": "MSVC"
         }
       ]
     },
@@ -6373,6 +6480,37 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_nix_wayland_keys_steps": {
+      "sources": [
+        "test/cmocka/test_nix_wayland_keys_steps.c",
+        "libobs/obs-nix-wayland-keys.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_NIX_WAYLAND_KEYS_TEST_SDK"
+        ]
+      }
     },
     "test_nix_wayland_seats_steps": {
       "sources": [
@@ -9396,6 +9534,34 @@
           }
         ]
       }
+    },
+    "test_pulse_monitor_steps_rust": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring/pulse"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "header_libraries": [
+        "PulseAudio::PulseAudio"
+      ]
     },
     "test_pulse_reconnect": {
       "sources": [
@@ -13124,6 +13290,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_sprite_geometry_steps_rust": {
+      "sources": [
+        "test/cmocka/test_sprite_geometry_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_srt_open_close": {
       "sources": [
         "test/cmocka/test_srt_open_close.c"
@@ -15547,6 +15743,33 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_window_match_steps_rust": {
+      "sources": [
+        "test/cmocka/test_window_match_steps.c",
+        "libobs/util/base-variadic.c.h"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        "LibUUID::LibUUID",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        }
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX"
+        ]
+      },
+      "sanitizers": "address,undefined"
+    },
     "test_windows_keys_steps": {
       "sources": [
         "test/cmocka/test_windows_keys_steps.c",
@@ -17315,6 +17538,12 @@
         "${target}"
       ]
     },
+    "test_graphics_ffmpeg_host": {
+      "target": "test_graphics_ffmpeg_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_graphics_ffmpeg_pq_steps": {
       "target": "test_graphics_ffmpeg_pq_steps",
       "command": [
@@ -17380,6 +17609,13 @@
         "${target}"
       ]
     },
+    "test_graphics_immediate_steps_rust": {
+      "target": "test_graphics_immediate_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_graphics_linear_srgb": {
       "target": "test_graphics_linear_srgb",
       "command": [
@@ -17394,6 +17630,13 @@
     },
     "test_graphics_state_stacks": {
       "target": "test_graphics_state_stacks",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_state_stacks_rust": {
+      "target": "test_graphics_state_stacks_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -18182,6 +18425,21 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_nix_wayland_keys_steps": {
+      "target": "test_nix_wayland_keys_steps",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_NIX_WAYLAND_KEYS_TEST_SDK"
+        ]
+      }
     },
     "test_nix_wayland_seats_steps": {
       "target": "test_nix_wayland_seats_steps",
@@ -19374,6 +19632,24 @@
     },
     "test_pulse_monitor_steps": {
       "target": "test_pulse_monitor_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_pulse_monitor_steps_rust": {
+      "target": "test_pulse_monitor_steps_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
       "command": [
         "${target}"
       ]
@@ -20691,6 +20967,13 @@
         "${target}"
       ]
     },
+    "test_sprite_geometry_steps_rust": {
+      "target": "test_sprite_geometry_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_srt_open_close": {
       "target": "test_srt_open_close",
       "requires": "HAVE_SRT_TEST_SDK",
@@ -21556,6 +21839,18 @@
     },
     "test_window_match_steps": {
       "target": "test_window_match_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_window_match_steps_rust": {
+      "target": "test_window_match_steps_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX"
+        ]
+      },
       "command": [
         "${target}"
       ]

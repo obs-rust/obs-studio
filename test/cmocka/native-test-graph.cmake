@@ -369,7 +369,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${target_graph}"
         "targets;${name}"
-        "sources;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;sanitizers"
+        "sources;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
       )
       string(JSON cpp_kind ERROR_VARIABLE cpp_error TYPE "${target_graph}" targets "${name}" cpp_standard)
       set(cpp_standard "")
@@ -566,6 +566,10 @@ function(obs_native_test_graph path root)
           target_link_options(${name} PRIVATE ${values})
         endif()
       endforeach()
+      _obs_test_graph_values(link_flags "${target_graph}" "${name}" conditional_link_options)
+      if(link_flags)
+        target_link_options(${name} PRIVATE ${link_flags})
+      endif()
       _obs_test_graph_values(flags "${target_graph}" "${name}" compile_options)
       if(flags)
         target_compile_options(${name} PRIVATE ${flags})
