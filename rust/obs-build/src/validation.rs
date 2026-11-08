@@ -3,6 +3,9 @@ pub mod graph;
 pub mod headless;
 pub mod sdk_helpers;
 
+/// Platform, compiler and default feature facts shared by native graph consumers.
+pub use crate::platform::native_test_facts;
+
 use crate::{NativeBuild, SharedLibrary, libobs::add_package};
 use std::{
     collections::BTreeMap,

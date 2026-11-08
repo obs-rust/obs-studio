@@ -2,7 +2,9 @@ use super::*;
 use std::process::Command;
 
 fn configured_headers_match(native: &str, cmake: &str) -> bool {
-    native == cmake
+    // CMake's Windows text output may use CRLF while the Rust writer uses LF.
+    // Preserve every other byte, including final newlines and whitespace.
+    native.replace("\r\n", "\n") == cmake.replace("\r\n", "\n")
 }
 
 #[test]
@@ -12,6 +14,11 @@ fn configured_headers_match_with_crlf_template_input() {
     let lf = configured.replace("\r\n", "\n");
     assert!(configured_headers_match(&lf, &configured));
     assert!(configured_headers_match(&configured, &lf));
+    assert!(!configured_headers_match(&lf, lf.trim_end()));
+    assert!(!configured_headers_match(
+        &lf,
+        &lf.replace("OTHER 7", "OTHER  7")
+    ));
     assert!(!configured_headers_match(
         &lf,
         &configured.replace("41", "40")
