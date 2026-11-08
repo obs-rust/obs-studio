@@ -56,6 +56,7 @@ mod output_caption_parity;
 mod output_identity;
 mod output_identity_parity;
 mod output_mixer_getters;
+mod output_mixer_getters_parity;
 mod output_pause;
 mod output_pause_parity;
 mod output_reconnect;
