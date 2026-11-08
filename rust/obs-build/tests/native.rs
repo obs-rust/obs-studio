@@ -1,10 +1,10 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
-#[path = "native/registration/canonical_qt_core_filename_is_registered.rs"]
-mod canonical_qt_core_filename_is_registered;
 #[path = "native/registration/canonical_portal_output_is_registered.rs"]
 mod canonical_portal_output_is_registered;
+#[path = "native/registration/canonical_qt_core_filename_is_registered.rs"]
+mod canonical_qt_core_filename_is_registered;
 #[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
 mod canonical_rust_static_windows_keys_are_registered;
 #[path = "native/graph_host_configurations.rs"]

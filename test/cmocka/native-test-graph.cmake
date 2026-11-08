@@ -75,6 +75,8 @@ function(_obs_test_graph_requirement output json)
       host_options
       ENABLE_WAYLAND
       HAVE_X11_DISPLAY
+      HAVE_QT_CORE_TEST_OWNER
+      HAVE_CRASH_LOG_TEST_OWNER
       HAVE_QT_WIDGETS_TEST_OWNER
       HAVE_QT_WIDGETS_TESTLIB_OWNER
       HAVE_PLUGIN_MANAGER_TEST_OWNER
@@ -269,6 +271,24 @@ endfunction()
 
 function(obs_native_test_graph path root)
   _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
+  set(HAVE_QT_CORE_TEST_OWNER FALSE)
+  set(HAVE_CRASH_LOG_TEST_OWNER FALSE)
+  if(TARGET Qt6::Core)
+    set(HAVE_QT_CORE_TEST_OWNER TRUE)
+    if(TARGET nlohmann_json::nlohmann_json)
+      set(HAVE_CRASH_LOG_TEST_OWNER TRUE)
+    endif()
+  endif()
+  # The original filename fixture adds its muxer branch only with the Linux
+  # renderer owner. Keep its artifact definition on that same conditional edge.
+  if(OS_LINUX AND TARGET OBS::libobs-opengl AND NOT TARGET OBS::output-filename-mux-test)
+    add_library(OBS::output-filename-mux-test INTERFACE IMPORTED)
+    set_property(
+      TARGET OBS::output-filename-mux-test
+      PROPERTY INTERFACE_COMPILE_DEFINITIONS TEST_FFMPEG_MUX GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>"
+    )
+    add_dependencies(OBS::output-filename-mux-test OBS::libobs-opengl)
+  endif()
   # Qt helpers are optional even when another component imported a Qt target.
   # An explicitly disabled UI/frontend must not enable their fixture owners.
   set(HAVE_QT_WIDGETS_TEST_OWNER FALSE)

@@ -1,20 +1,2 @@
-# Add Source dialog: the existing sources of a type are listed by name
-# (obsproject/obs-studio#13947). Builds the frontend helper the dialog calls
-# against real libobs sources; needs Qt Core but no frontend build. Its
-# cases skip without a display (obs_startup), like test_filter_clipboard.
+# Optional original SDK discovery; registration lives in the shared graph.
 find_package(Qt6 QUIET COMPONENTS Core)
-if(TARGET Qt6::Core)
-  add_executable(
-    test_source_select_list
-    test_source_select_list.cpp
-    "${CMAKE_SOURCE_DIR}/frontend/utility/source-select-list.cpp.hpp"
-  )
-  target_include_directories(
-    test_source_select_list
-    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/frontend/utility"
-  )
-  target_link_libraries(test_source_select_list PRIVATE OBS::libobs Qt6::Core ${CMOCKA_LIBRARIES})
-  add_dependencies(cmocka-tests test_source_select_list)
-  add_test(test_source_select_list ${CMAKE_CURRENT_BINARY_DIR}/test_source_select_list)
-  cmocka_qt_runtime(test_source_select_list Qt6::Core)
-endif()
