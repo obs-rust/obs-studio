@@ -47,6 +47,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "monitor"
                 | "graphics"
                 | "private-steps"
+                | "private-rules"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }
