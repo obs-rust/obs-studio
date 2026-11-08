@@ -5347,3 +5347,6 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
 
 #[path = "native/registration/canonical_display_live_is_registered.rs"]
 mod canonical_display_live_is_registered;
+
+#[path = "native/registration/canonical_qt_widgets_is_registered.rs"]
+mod canonical_qt_widgets_is_registered;
