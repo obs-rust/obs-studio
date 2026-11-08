@@ -1,5 +1,18 @@
-//! Tier 1 mirror of test_canvas_flags_getter.c.
+//! Tier 1 mirror of test_canvas_flags_getter.c and removal cases for #4079.
 use obs_core::canvas_flags_getter::stored_flags;
+
+#[test]
+fn removed_matches_canvas_flags_and_rules_callers_characterization() {
+    use obs_core::canvas_flags_getter::stored_removed;
+    use obs_core::canvas_rules::REMOVED;
+
+    for flags in [0, 1, 2, 4, 8, 16, 0x7fff_ffff] {
+        assert!(!stored_removed(&flags));
+        let removed = flags | REMOVED;
+        assert!(stored_removed(&removed));
+        assert_eq!(removed, flags | REMOVED);
+    }
+}
 
 #[test]
 fn stored_flags_match_c_characterization() {

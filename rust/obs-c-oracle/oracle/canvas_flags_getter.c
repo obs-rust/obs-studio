@@ -5,6 +5,12 @@
 #define obs_canvas_get_flags oracle_obs_canvas_get_flags
 #include "obs-canvas-flags-getter.c.h"
 #undef obs_canvas_get_flags
+#define obs_canvas_rules_removed oracle_obs_canvas_rules_removed
+#define obs_canvas_removed oracle_obs_canvas_removed
+bool oracle_obs_canvas_removed(obs_canvas_t *canvas);
+#include "obs-canvas-removed.c.h"
+#undef obs_canvas_removed
+#undef obs_canvas_rules_removed
 #include "canvas_flags_fields.inc"
 
 struct canvas_flags_fixture {

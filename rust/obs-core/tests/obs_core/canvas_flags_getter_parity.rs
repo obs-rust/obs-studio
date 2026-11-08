@@ -1,7 +1,8 @@
-//! Real-header layout and exact stored-bit parity for #3940. No exclusions.
+//! Real-header layout and exact flag/removal parity for #3940 and #4079.
+//! No exclusions or intentional differences from C.
 use core::ffi::c_void;
 use core::mem::{align_of, offset_of, size_of};
-use obs_core::ffi::canvas_flags_getter::{Fields, obs_canvas_get_flags};
+use obs_core::ffi::canvas_flags_getter::{Fields, obs_canvas_get_flags, obs_canvas_removed};
 use proptest::prelude::*;
 
 unsafe extern "C" {
@@ -10,6 +11,7 @@ unsafe extern "C" {
     fn oracle_canvas_flags_unchanged(canvas: *const c_void) -> bool;
     fn oracle_canvas_flags_free(canvas: *mut c_void);
     fn oracle_obs_canvas_get_flags(canvas: *const c_void) -> u32;
+    fn oracle_obs_canvas_removed(canvas: *mut c_void) -> bool;
 }
 
 #[test]
@@ -39,6 +41,11 @@ fn check(flags: u32) {
             oracle_obs_canvas_get_flags(canvas)
         );
         assert_eq!(obs_canvas_get_flags(canvas), flags);
+        assert_eq!(
+            obs_canvas_removed(canvas),
+            oracle_obs_canvas_removed(canvas)
+        );
+        assert_eq!(obs_canvas_removed(canvas), flags & 0x8000_0000 != 0);
         assert!(oracle_canvas_flags_unchanged(canvas));
         oracle_canvas_flags_free(canvas);
     }

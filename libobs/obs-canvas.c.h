@@ -573,11 +573,6 @@ void obs_canvas_remove(obs_canvas_t *canvas)
 	}
 }
 
-bool obs_canvas_removed(obs_canvas_t *canvas)
-{
-	return obs_canvas_rules_removed(canvas->flags);
-}
-
 void obs_canvas_render(obs_canvas_t *canvas)
 {
 	obs_view_render(&canvas->view);
