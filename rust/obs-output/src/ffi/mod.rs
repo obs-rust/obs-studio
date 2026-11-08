@@ -27,6 +27,7 @@ pub mod output_caption;
 pub mod output_caption_text;
 pub mod output_delay;
 pub mod output_flags;
+pub mod output_handler_getters;
 pub mod output_identity;
 pub mod output_interleave;
 pub mod output_mixer_getters;

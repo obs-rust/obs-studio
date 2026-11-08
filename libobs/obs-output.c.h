@@ -1004,16 +1004,6 @@ uint64_t obs_output_get_pause_offset(obs_output_t *output)
 	return offset;
 }
 
-signal_handler_t *obs_output_get_signal_handler(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_signal_handler") ? output->context.signals : NULL;
-}
-
-proc_handler_t *obs_output_get_proc_handler(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_proc_handler") ? output->context.procs : NULL;
-}
-
 void obs_output_set_media(obs_output_t *output, video_t *video, audio_t *audio)
 {
 	if (!obs_output_valid(output, "obs_output_set_media"))
