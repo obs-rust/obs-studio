@@ -50,6 +50,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "private-steps"
                 | "private-rules"
                 | "private-link-rules"
+                | "private-renderer"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }
