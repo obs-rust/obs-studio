@@ -1,0 +1,2 @@
+obs_scene_is_group
+obs_sceneitem_is_group

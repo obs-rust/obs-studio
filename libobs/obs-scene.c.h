@@ -3472,11 +3472,6 @@ obs_sceneitem_t *obs_scene_get_group(obs_scene_t *scene, const char *name)
 	return group;
 }
 
-bool obs_sceneitem_is_group(obs_sceneitem_t *item)
-{
-	return item && item->is_group;
-}
-
 obs_scene_t *obs_sceneitem_group_get_scene(const obs_sceneitem_t *item)
 {
 	return (item && item->is_group) ? item->source->context.data : NULL;
@@ -3813,11 +3808,6 @@ bool obs_source_is_group(const obs_source_t *source)
 bool obs_source_is_scene(const obs_source_t *source)
 {
 	return source && strcmp(source->info.id, scene_info.id) == 0;
-}
-
-bool obs_scene_is_group(const obs_scene_t *scene)
-{
-	return scene ? scene->is_group : false;
 }
 
 void obs_sceneitem_group_enum_items(obs_sceneitem_t *group, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),

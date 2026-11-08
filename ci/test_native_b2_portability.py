@@ -83,7 +83,27 @@ class NativeB2Portability(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(graph["targets"][name]["sources"], [
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
+                    "test/cmocka/scene-group-query-link-stubs.c",
                 ])
+
+    def test_scene_group_queries_supply_standalone_field_adapters(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-group-queries.json"
+        support = json.loads(entry.read_text())
+        names = {"test_scene_audio_window_steps_rust", "test_scene_render_plan_steps_rust"}
+        self.assertEqual(set(support), names)
+        stub = "test/cmocka/scene-group-query-link-stubs.c"
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(support[name], {"sources": [stub]})
+                self.assertIn(stub, graph["targets"][name]["sources"])
+        text = (ROOT / stub).read_text()
+        for symbol in ("obs_scene_group_query_fields", "obs_sceneitem_group_query_fields"):
+            self.assertIn(symbol, text)
+        self.assertEqual(text.count("abort();"), 2)
+        legacy = (ROOT / "test/cmocka/tests.d/scene_group_query_link_support.cmake").read_text()
+        self.assertIn("scene-group-query-link-stubs.c", legacy)
+        self.assertIn("libobs_rust-static", legacy)
 
     def test_all_scene_static_consumers_have_blog_provider(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
