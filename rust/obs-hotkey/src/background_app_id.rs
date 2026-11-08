@@ -9,6 +9,11 @@ pub trait BackgroundAppId {
 }
 
 /// Return no value when the core cannot be locked; otherwise borrow its ID.
-pub fn query<B: BackgroundAppId>(_background: &mut B) -> Option<B::Id> {
-    todo!("port the synchronized background app-ID query")
+pub fn query<B: BackgroundAppId>(background: &mut B) -> Option<B::Id> {
+    if !background.lock() {
+        return None;
+    }
+    let id = background.app_id();
+    background.unlock();
+    Some(id)
 }

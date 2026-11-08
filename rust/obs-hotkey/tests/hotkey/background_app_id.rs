@@ -24,12 +24,28 @@ impl BackgroundAppId for Background {
 #[test]
 fn mirrors_c_background_app_id() {
     for initialized in [false, true] {
-        for id in [None, Some(""), Some("app-id sentinel"), Some("App-id sentinel")] {
-            let mut background = Background { initialized, id, calls: RefCell::default() };
+        for id in [
+            None,
+            Some(""),
+            Some("app-id sentinel"),
+            Some("App-id sentinel"),
+        ] {
+            let mut background = Background {
+                initialized,
+                id,
+                calls: RefCell::default(),
+            };
             for _ in 0..2 {
                 background.calls.borrow_mut().clear();
                 assert_eq!(query(&mut background), initialized.then_some(id));
-                assert_eq!(*background.calls.borrow(), if initialized { vec!["lock", "read", "unlock"] } else { vec!["lock"] });
+                assert_eq!(
+                    *background.calls.borrow(),
+                    if initialized {
+                        vec!["lock", "read", "unlock"]
+                    } else {
+                        vec!["lock"]
+                    }
+                );
                 assert_eq!(background.id, id);
             }
         }
