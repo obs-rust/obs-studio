@@ -1,0 +1,4 @@
+# obs-source-transition-switch.c (obs-source-seam): the start and set of a
+# transition in obs.h (EXPORT), called by the frontend, plugins and scripts.
+obs_transition_set
+obs_transition_start

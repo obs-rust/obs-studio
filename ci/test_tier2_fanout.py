@@ -18,6 +18,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tier2_matrix import matrix
+
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"
 VALIDATE = ROOT / "rust" / "tools" / "linux-validate" / "validate.sh"
@@ -85,7 +87,9 @@ class WorkflowTest(unittest.TestCase):
         t = job("rust-linux-tier2")
         self.assertIn("needs: [check-event, ci-mode, rust-linux-tier2-build]", t)
         self.assertIn("fail-fast: false", t)
-        self.assertIn('mode: ["OFF", "ON"]', t)
+        self.assertIn("fromJSON(needs.check-event.outputs.tier2_matrix)", t)
+        for event in ("merge_group", "pull_request"):
+            self.assertEqual(matrix(event), {"mode": ["OFF", "ON"], "part": ["all"]})
         self.assertNotIn("shard:", t)
         self.assertNotIn("OBS_CTEST_SHARD", t)
         self.assertNotIn("matrix.shard", t)

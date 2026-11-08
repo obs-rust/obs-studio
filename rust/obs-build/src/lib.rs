@@ -400,7 +400,13 @@ impl NativeBuild {
             compiler.is_like_msvc(),
             library.kind,
         )?;
-        command.args(&library.link_options);
+        platform::configure_link_options(
+            &self.target,
+            &mut command,
+            &artifact,
+            &library.link_options,
+            compiler.is_like_msvc(),
+        )?;
         let result = command
             .output()
             .map_err(|e| format!("execute linker {command:?}: {e}"))?;
@@ -436,7 +442,13 @@ impl NativeBuild {
             &target.dependencies,
             compiler.is_like_msvc(),
         )?;
-        command.args(&target.link_options);
+        platform::configure_link_options(
+            &self.target,
+            &mut command,
+            &artifact,
+            &target.link_options,
+            compiler.is_like_msvc(),
+        )?;
         let result = command
             .output()
             .map_err(|e| format!("execute linker {command:?}: {e}"))?;

@@ -39,15 +39,28 @@ pub mod bounds_place;
 pub mod coords;
 pub mod crop;
 pub mod extent;
+pub mod group_queries;
 pub mod group_transform;
+pub mod item_id;
 pub mod item_names;
 pub mod item_order;
+pub mod item_parent_getter;
 pub mod item_transform;
 mod platform;
 pub mod render_plan;
+pub mod source_type_queries;
 pub mod transform_update;
 
 #[allow(unsafe_code)]
 pub mod ffi;
 
 pub mod item_state_getters;
+
+pub mod item_bounds_getters;
+pub mod item_render_getters;
+pub mod item_scale_getter;
+
+pub mod item_crop_getter;
+pub mod item_transform_getters;
+
+pub mod item_transition_getters;

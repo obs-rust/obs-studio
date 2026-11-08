@@ -373,12 +373,16 @@ class PulseMonitorDeviceTest(unittest.TestCase):
     def test_wiring_is_complete(self) -> None:
         self.assertFalse(SHELL_SCRIPT.exists(), "test_pulse_monitor_device.sh should be gone")
         self.assertTrue(MODULE.is_file(), "test_pulse_monitor_device.py should exist")
+        graph = json.loads(GRAPH.read_text(encoding="utf-8"))
         for caller in CMAKE_CALLERS:
             text = caller.read_text(encoding="utf-8")
-            self.assertIn("uv run --script", text, caller.name)
-            self.assertIn("test_pulse_monitor_device.py", text, caller.name)
+            if caller.stem in graph["tests"]:
+                self.assertIn("test-graph.json", text, caller.name)
+                self.assertEqual(graph["tests"][caller.stem]["command"], GRAPH_COMMAND)
+            else:
+                self.assertIn("uv run --script", text, caller.name)
+                self.assertIn("test_pulse_monitor_device.py", text, caller.name)
             self.assertNotIn("test_pulse_monitor_device.sh", text, caller.name)
-        graph = json.loads(GRAPH.read_text(encoding="utf-8"))
         self.assertEqual(graph["tests"]["test_pulse_monitor_samples"]["command"], GRAPH_COMMAND)
         wrapper = WRAPPER.read_text(encoding="utf-8")
         self.assertIn("test_pulse_monitor_device.py", wrapper)

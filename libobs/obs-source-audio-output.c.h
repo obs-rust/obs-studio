@@ -185,7 +185,16 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 
 	pthread_mutex_lock(&source->audio_buf_mutex);
 
-	timing_adjust = source->timing_adjust;
+	/* a continuous packet follows the video's timing only on the video's
+	 * clock (#3747); audio on a clock of its own keeps its own timing */
+	const bool on_video_clock =
+		obs_source_audio_timing_follows_video(data->timestamp, source->last_output_frame_ts);
+	if (!on_video_clock && !source->own_clock_timing_set) {
+		/* reset_audio_timing() for the audio's own timing */
+		source->own_clock_timing_adjust = os_time - data->timestamp;
+		source->own_clock_timing_set = true;
+	}
+	timing_adjust = on_video_clock ? source->timing_adjust : source->own_clock_timing_adjust;
 
 	struct obs_source_audio_timing_under under = {
 		.timestamp = pre.timestamp,
@@ -195,20 +204,20 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 		.next_audio_ts_min = source->next_audio_ts_min,
 		.resample_offset = source->resample_offset,
 		.sync_offset = source->sync_offset,
-		.timing_adjust = source->timing_adjust,
+		.timing_adjust = on_video_clock ? source->timing_adjust : source->own_clock_timing_adjust,
 		.next_audio_sys_ts_min = source->next_audio_sys_ts_min,
 		.last_sync_offset = source->last_sync_offset,
-		/* a continuous packet follows the video's timing only on the
-		 * video's clock (#3747) */
-		.continuous = pre.continuous &&
-			      obs_source_audio_timing_follows_video(data->timestamp, source->last_output_frame_ts),
+		.continuous = pre.continuous && on_video_clock,
 	};
 	obs_source_audio_timing_under_lock(&under);
 
 	if (under.reset_timing) {
 		/* reset_audio_timing(source, data->timestamp, os_time) */
 		source->timing_set = true;
-		source->timing_adjust = under.timing_adjust;
+		if (on_video_clock)
+			source->timing_adjust = under.timing_adjust;
+		else
+			source->own_clock_timing_adjust = under.timing_adjust;
 	}
 	source->next_audio_sys_ts_min = under.next_audio_sys_ts_min;
 	source->last_sync_offset = under.last_sync_offset;

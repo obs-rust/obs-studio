@@ -4,6 +4,7 @@
   "obs-audio-min-ts.h",
   "obs-audio-mix.h",
   "obs-audio-render.h",
+  "obs-audio-seam.h",
   "obs-av1.h",
   "obs-avc.h",
   "obs-canvas-draw.h",
@@ -108,6 +109,8 @@
   "obs-source-transition-seam.h",
   "obs-source-transition-size.h",
   "obs-source-transition-start.h",
+  "obs-source-transition-state.h",
+  "obs-source-transition-stop.h",
   "obs-source-video-tick.h",
   "obs-source-volume.h",
   "obs-source-volume-mul.h",
@@ -210,9 +213,9 @@
   "build/libobs.core+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-source+.h.c",
-  "build/libobs.effect-parser-compile+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
+  "build/libobs.graphics-linear-srgb+.h.c",
   "build/libobs.media+.h.c"
 ]

@@ -6,11 +6,4 @@
 # read_distribution_info() over the same /etc/os-release; that header calls
 # the hidden rules of obs-nix-log-rules.c, so the test builds that C file
 # into itself as the expectation.
-if(OS_LINUX)
-  add_executable(test_nix_startup_log test_nix_startup_log.c "${CMAKE_SOURCE_DIR}/libobs/obs-nix-log-rules.c.h")
-  target_include_directories(test_nix_startup_log PRIVATE ${CMOCKA_INCLUDE_DIR})
-  target_link_libraries(test_nix_startup_log PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
-  add_dependencies(cmocka-tests test_nix_startup_log)
-  add_test(test_nix_startup_log ${CMAKE_CURRENT_BINARY_DIR}/test_nix_startup_log)
-  set_tests_properties(test_nix_startup_log PROPERTIES TIMEOUT 120)
-endif()
+# Registered once in build/test-graph.json, consumed by CMake and Cargo.

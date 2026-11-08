@@ -1,0 +1,4 @@
+obs_canvas_get_name
+obs_canvas_get_uuid
+obs_canvas_get_signal_handler
+obs_canvas_has_video

@@ -107,6 +107,17 @@
 //! handover of the transitions (`obs_transition_start()`, `set_source()`,
 //! `activate_transition()`, the active source, the manual reset and the
 //! active child rule of `obs_transition_set()` and the swap);
+//! `libobs/obs-source-transition-stop.c.h`, the clock read and stop of the
+//! transitions (`obs_transition_get_time()`, `obs_transition_force_stop()`
+//! and the render helpers `transition_calc_time()`,
+//! `transition_get_video_time()`, `transition_stop()` and
+//! `transition_handle_stop()`, generic over the transition seam and the
+//! libobs calls; its C shims are in `obs-source-seam` too);
+//! `libobs/obs-source-transition-switch.c.h`, the start and set of the
+//! transitions (`obs_transition_start()` and `obs_transition_set()`, with
+//! `set_source()`, `activate_transition()`, `write_start_clock()` and the
+//! recursion check, generic over the transition seam and the libobs calls;
+//! its C shims are in `obs-source-seam` too);
 //! `libobs/obs-source-video-tick.c.h`, the per-frame decisions of
 //! `obs_source_video_tick()` and `async_tick()` (which steps run, the
 //! deferred update, the show and activate edges, the plugin callback and
@@ -125,7 +136,7 @@
 //! [`transition_access`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
-//! [`transition_start`],
+//! [`transition_start`], [`transition_stop`], [`transition_switch`],
 //! [`video_tick`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
@@ -134,8 +145,10 @@
 
 #![deny(unsafe_code)]
 
+pub mod async_flag_getters;
 pub mod async_pacing;
 pub mod async_upload;
+pub mod audio_active;
 pub mod audio_input;
 pub mod audio_input_path;
 pub mod audio_output;
@@ -143,21 +156,28 @@ pub mod audio_place;
 pub mod audio_render_plan;
 pub mod audio_settings;
 pub mod audio_timing;
+pub mod base_size;
+pub mod boolean_queries;
 pub mod color_space;
 pub mod conversion_plan;
 pub mod deinterlace_draw;
+pub mod deinterlace_getters;
 pub mod deinterlace_pacing;
 pub mod deinterlace_select;
 pub mod draw_plan;
 pub mod draw_technique;
+pub mod filter_relationship_getters;
 pub mod frame_copy;
 pub mod media_admission;
 pub mod monitoring;
 pub mod ptm_gate;
+pub mod push_queries;
 pub mod render_route;
 pub mod size_route;
 pub mod source_duplicate;
 pub mod source_filter_chain;
+pub mod source_identity_getters;
+pub mod state_getters;
 pub mod transition_access;
 pub mod transition_clock;
 pub mod transition_load;
@@ -167,6 +187,8 @@ pub mod transition_settings;
 pub mod transition_size;
 pub mod transition_slots;
 pub mod transition_start;
+pub mod transition_stop;
+pub mod transition_switch;
 pub mod video_tick;
 pub mod volume_apply;
 pub mod volume_mul;

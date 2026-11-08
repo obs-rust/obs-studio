@@ -1,0 +1,3 @@
+obs_source_enabled
+obs_source_get_flags
+obs_source_get_last_obs_version

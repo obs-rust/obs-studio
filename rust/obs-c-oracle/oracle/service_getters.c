@@ -44,6 +44,11 @@
 #define obs_weak_service_get_service oracle_obs_weak_service_get_service
 #define obs_weak_service_references_service oracle_obs_weak_service_references_service
 
+#define obs_weak_service_strong_release oracle_traced_weak_service_strong_release
+#define obs_weak_service_weak_addref oracle_traced_weak_service_weak_addref
+#define obs_weak_service_weak_release oracle_traced_weak_service_weak_release
+#define obs_weak_service_free oracle_traced_weak_service_free
+
 #include "obs-service-getters.c.h"
 
 #include <stddef.h>
@@ -91,14 +96,11 @@ static void trace_ev(const char *event, const obs_service_t *service)
 		oracle_trace_hook(event, service ? service->context.name : NULL);
 }
 
-static obs_module_t *oracle_first_module;
-static obs_module_t *oracle_first_disabled_module;
-
+void oracle_module_lookup_set_roots(obs_module_t *enabled, obs_module_t *disabled);
 void oracle_service_set_modules(obs_module_t *first, obs_module_t *first_disabled);
 void oracle_service_set_modules(obs_module_t *first, obs_module_t *first_disabled)
 {
-	oracle_first_module = first;
-	oracle_first_disabled_module = first_disabled;
+	oracle_module_lookup_set_roots(first, first_disabled);
 }
 
 /* A module that registered `num` service ids; `next` links the list. */
@@ -117,31 +119,6 @@ void oracle_module_free(obs_module_t *module);
 void oracle_module_free(obs_module_t *module)
 {
 	free(module);
-}
-
-obs_module_t *obs_service_module_first(bool disabled)
-{
-	return disabled ? oracle_first_disabled_module : oracle_first_module;
-}
-
-obs_module_t *obs_service_module_next(obs_module_t *module)
-{
-	return module->next;
-}
-
-size_t obs_service_module_service_count(obs_module_t *module)
-{
-	return module->services.num;
-}
-
-const char *obs_service_module_service_id(obs_module_t *module, size_t i)
-{
-	return module->services.array[i];
-}
-
-enum obs_module_load_state obs_service_module_load_state(obs_module_t *module)
-{
-	return module->load_state;
 }
 
 static bool oracle_context_fails;
@@ -183,7 +160,9 @@ void obs_service_set_plugin_data(obs_service_t *service, void *data)
 void obs_service_context_insert(obs_service_t *service)
 {
 	trace_ev("insert", service);
-	struct obs_weak_service *control = calloc(1, sizeof(*control));
+	/* The production Rust free seam owns this allocation now (#3838).
+	 * Match obs_context_init_control(): bzalloc paired with bfree. */
+	struct obs_weak_service *control = bzalloc(sizeof(*control));
 	control->service = service;
 	service->context.control = (obs_weak_object_t *)control;
 }
@@ -201,28 +180,49 @@ void obs_service_context_free(obs_service_t *service)
 
 /* State accessors now resolve to the real Rust seam (#3840).
  * Independent C state parity lives in oracle/service_state.c. */
+/* These private wrappers retain the C lifecycle trace. The Rust lifecycle
+ * calls production directly; independent primitive parity covers that seam. */
+bool oracle_obs_weak_service_strong_release(obs_weak_service_t *weak);
+void oracle_obs_weak_service_weak_addref(obs_weak_service_t *weak);
+bool oracle_obs_weak_service_weak_release(obs_weak_service_t *weak);
+void oracle_obs_weak_service_free(obs_weak_service_t *weak);
+
 bool obs_weak_service_strong_release(obs_weak_service_t *weak)
 {
 	trace_ev("ref_release", weak->service);
-	return obs_ref_release(&weak->ref);
+	return oracle_obs_weak_service_strong_release(weak);
 }
 
 void obs_weak_service_weak_addref(obs_weak_service_t *weak)
 {
 	trace_ev("weak_addref", weak->service);
-	obs_weak_ref_addref(&weak->ref);
+	oracle_obs_weak_service_weak_addref(weak);
 }
 
 bool obs_weak_service_weak_release(obs_weak_service_t *weak)
 {
 	trace_ev("weak_release", weak->service);
-	return obs_weak_ref_release(&weak->ref);
+	return oracle_obs_weak_service_weak_release(weak);
 }
 
 void obs_weak_service_free(obs_weak_service_t *weak)
 {
 	trace_ev("weak_free", weak->service);
-	free(weak);
+	oracle_obs_weak_service_free(weak);
+}
+
+/* A zeroed output a service can link to: the service state accessors
+ * write its service field on deactivate (#3886). */
+void *oracle_service_output_new(void);
+void *oracle_service_output_new(void)
+{
+	return calloc(1, sizeof(struct obs_output));
+}
+
+void oracle_service_output_free(void *output);
+void oracle_service_output_free(void *output)
+{
+	free(output);
 }
 
 /* What the tests read and set on a service. */

@@ -1247,40 +1247,35 @@ bool obs_startup(const char *locale, const char *module_config_path, profiler_na
 	return success;
 }
 
-static struct obs_cmdline_args cmdline_args = {0, NULL};
 void obs_set_cmdline_args(int argc, const char *const *argv)
 {
+	struct obs_cmdline_args *args = obs_core_cmdline_args_field();
 	char *data;
 	size_t len;
 	int i;
 
 	/* Once argc is set (non-zero) we shouldn't call again */
-	if (obs_core_setup_rules_cmdline_set(cmdline_args.argc))
+	if (obs_core_setup_rules_cmdline_set(args->argc))
 		return;
 
-	cmdline_args.argc = argc;
+	args->argc = argc;
 
 	/* Safely copy over argv */
 	len = 0;
 	for (i = 0; i < argc; i++)
 		len = obs_core_setup_rules_cmdline_len(len, strlen(argv[i]));
 
-	cmdline_args.argv = bmalloc(obs_core_setup_rules_cmdline_table(argc, sizeof(char *)) + len);
-	data = (char *)cmdline_args.argv + obs_core_setup_rules_cmdline_table(argc, sizeof(char *));
+	args->argv = bmalloc(obs_core_setup_rules_cmdline_table(argc, sizeof(char *)) + len);
+	data = (char *)args->argv + obs_core_setup_rules_cmdline_table(argc, sizeof(char *));
 
 	for (i = 0; i < argc; i++) {
-		cmdline_args.argv[i] = data;
+		args->argv[i] = data;
 		len = strlen(argv[i]) + 1;
 		memcpy(data, argv[i], len);
 		data += len;
 	}
 
-	cmdline_args.argv[argc] = NULL;
-}
-
-struct obs_cmdline_args obs_get_cmdline_args(void)
-{
-	return cmdline_args;
+	args->argv[argc] = NULL;
 }
 
 void obs_shutdown(void)
@@ -1387,14 +1382,9 @@ void obs_shutdown(void)
 	bfree(obs->locale);
 	bfree(obs);
 	obs = NULL;
-	bfree(cmdline_args.argv);
+	bfree(obs_core_cmdline_args_field()->argv);
 
 	obs_host_shutdown();
-}
-
-bool obs_initialized(void)
-{
-	return obs != NULL;
 }
 
 uint32_t obs_get_version(void)
@@ -1422,11 +1412,6 @@ void obs_set_locale(const char *locale)
 
 		module = module->next;
 	}
-}
-
-const char *obs_get_locale(void)
-{
-	return obs->locale;
 }
 
 /* A video mix freed by obs_reset_video(), and the canvas that owned it. */
@@ -2356,16 +2341,6 @@ gs_effect_t *obs_get_base_effect(enum obs_base_effect effect)
 	return NULL;
 }
 
-signal_handler_t *obs_get_signal_handler(void)
-{
-	return obs->signals;
-}
-
-proc_handler_t *obs_get_proc_handler(void)
-{
-	return obs->procs;
-}
-
 static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_blend_type src_c,
 					       enum gs_blend_type dest_c, enum gs_blend_type src_a,
 					       enum gs_blend_type dest_a)
@@ -3099,17 +3074,6 @@ uint64_t obs_get_average_frame_time_ns(void)
 	return obs_video_stats_avg_frame_time_ns(&obs->video.stats);
 }
 
-uint64_t obs_get_frame_interval_ns(void)
-{
-	return obs->video.video_frame_interval_ns;
-}
-
-enum obs_obj_type obs_obj_get_type(void *obj)
-{
-	struct obs_context_data *context = obj;
-	return context ? context->type : OBS_OBJ_TYPE_INVALID;
-}
-
 const char *obs_obj_get_id(void *obj)
 {
 	struct obs_context_data *context = obj;
@@ -3131,15 +3095,6 @@ const char *obs_obj_get_id(void *obj)
 	return NULL;
 }
 
-bool obs_obj_invalid(void *obj)
-{
-	struct obs_context_data *context = obj;
-	if (!context)
-		return true;
-
-	return !context->data;
-}
-
 void *obs_obj_get_data(void *obj)
 {
 	struct obs_context_data *context = obj;
@@ -3147,15 +3102,6 @@ void *obs_obj_get_data(void *obj)
 		return NULL;
 
 	return context->data;
-}
-
-bool obs_obj_is_private(void *obj)
-{
-	struct obs_context_data *context = obj;
-	if (!context)
-		return false;
-
-	return context->private;
 }
 
 void obs_reset_audio_monitoring(void)
@@ -3553,29 +3499,6 @@ bool obs_video_active(void)
 	return result;
 }
 
-/* The main canvas has no mix until the first obs_reset_video() (#2253), and
- * there is no canvas at all with no core (#2566): no video, so no texture
- * conversion either. */
-bool obs_nv12_tex_active(void)
-{
-	if (!obs)
-		return false;
-
-	const obs_canvas_t *canvas = obs->data.main_canvas;
-	const struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
-	return video && video->using_nv12_tex;
-}
-
-bool obs_p010_tex_active(void)
-{
-	if (!obs)
-		return false;
-
-	const obs_canvas_t *canvas = obs->data.main_canvas;
-	const struct obs_core_video_mix *video = canvas ? canvas->mix : NULL;
-	return video && video->using_p010_tex;
-}
-
 /* ------------------------------------------------------------------------- */
 /* task stuff                                                                */
 
@@ -3827,11 +3750,6 @@ obs_object_t *obs_weak_object_get_object(obs_weak_object_t *weak)
 bool obs_weak_object_expired(obs_weak_object_t *weak)
 {
 	return weak ? obs_weak_ref_expired(&weak->ref) : true;
-}
-
-bool obs_weak_object_references_object(obs_weak_object_t *weak, obs_object_t *object)
-{
-	return weak && object && weak->object == object;
 }
 
 bool obs_is_output_protocol_registered(const char *protocol)

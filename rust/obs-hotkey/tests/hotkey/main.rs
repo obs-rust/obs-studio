@@ -1,5 +1,7 @@
 //! obs-hotkey integration tests: hotkey (one module per former tests/*.rs file, #968).
 
+mod background_query;
+mod background_query_parity;
 mod binding_getters;
 mod binding_getters_parity;
 mod binding_press;
@@ -9,6 +11,8 @@ mod bindings_parity;
 mod cocoa_keys;
 mod cocoa_keys_parity;
 mod hotkey_name_map;
+mod identity_getters;
+mod identity_getters_parity;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
 mod nix_wayland_key_names;
@@ -23,6 +27,8 @@ mod nix_x11_input;
 mod nix_x11_input_parity;
 mod nix_x11_keys;
 mod nix_x11_keys_parity;
+mod object_getters;
+mod object_getters_parity;
 mod pair;
 mod pair_parity;
 mod parity;

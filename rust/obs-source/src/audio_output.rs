@@ -124,6 +124,16 @@ pub trait Source {
     /// `source->last_output_frame_ts`: the timestamp of the latest frame the
     /// source output, 0 for none. Read under `audio_buf_mutex` (#3747).
     fn last_output_frame_ts(&self) -> u64;
+    /// `source->own_clock_timing_adjust`: the timing of audio on a clock of
+    /// its own, which the video's frames do not move.
+    fn own_clock_timing_adjust(&self) -> u64;
+    /// `source->own_clock_timing_adjust = value`.
+    fn set_own_clock_timing_adjust(&self, value: u64);
+    /// `source->own_clock_timing_set`: whether `own_clock_timing_adjust` holds
+    /// a timing yet.
+    fn own_clock_timing_set(&self) -> bool;
+    /// `source->own_clock_timing_set = value`.
+    fn set_own_clock_timing_set(&self, value: bool);
 
     /// `source->resampler != NULL && source->last_async_compensation`.
     fn compensating(&self) -> bool;
@@ -306,7 +316,20 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
 
     source.lock_audio_buf();
 
-    let packet_timing_adjust = source.timing_adjust();
+    // a continuous packet follows the video's timing only on the video's
+    // clock (#3747); audio on a clock of its own keeps its own timing
+    let on_video_clock =
+        audio_timing::follows_video(packet.timestamp, source.last_output_frame_ts());
+    if !on_video_clock && !source.own_clock_timing_set() {
+        // reset_audio_timing() for the audio's own timing
+        source.set_own_clock_timing_adjust(os_time.wrapping_sub(packet.timestamp));
+        source.set_own_clock_timing_set(true);
+    }
+    let packet_timing_adjust = if on_video_clock {
+        source.timing_adjust()
+    } else {
+        source.own_clock_timing_adjust()
+    };
 
     let under = audio_timing::under_lock(UnderLockInput {
         timestamp: pre.timestamp,
@@ -316,18 +339,23 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
         next_audio_ts_min: source.next_audio_ts_min(),
         resample_offset: source.resample_offset(),
         sync_offset: source.sync_offset(),
-        timing_adjust: source.timing_adjust(),
+        timing_adjust: if on_video_clock {
+            source.timing_adjust()
+        } else {
+            source.own_clock_timing_adjust()
+        },
         next_audio_sys_ts_min: source.next_audio_sys_ts_min(),
         last_sync_offset: source.last_sync_offset(),
-        // a continuous packet follows the video's timing only on the
-        // video's clock (#3747)
-        continuous: pre.continuous
-            && audio_timing::follows_video(packet.timestamp, source.last_output_frame_ts()),
+        continuous: pre.continuous && on_video_clock,
     });
 
     if under.reset_timing {
         source.set_timing_set(true);
-        source.set_timing_adjust(under.timing_adjust);
+        if on_video_clock {
+            source.set_timing_adjust(under.timing_adjust);
+        } else {
+            source.set_own_clock_timing_adjust(under.timing_adjust);
+        }
     }
     source.set_next_audio_sys_ts_min(under.next_audio_sys_ts_min);
     source.set_last_sync_offset(under.last_sync_offset);

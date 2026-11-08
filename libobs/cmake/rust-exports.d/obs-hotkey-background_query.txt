@@ -1,0 +1,1 @@
+obs_hotkey_combination_is_background

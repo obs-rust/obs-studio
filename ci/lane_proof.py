@@ -32,7 +32,9 @@ every lane. A proof is keyed by the lane's *inputs* instead:
 
 Everything fails closed: no key, an API error or no trusted proof means the
 lane runs. `check` writes `hit=true|false`, `key` and `reason` to
-$GITHUB_OUTPUT. Push, schedule and dispatch runs never consult proofs.
+$GITHUB_OUTPUT. Every check appends its decision and trusted proof run to
+$GITHUB_STEP_SUMMARY when set; one in ten keys reruns as an audit sample.
+Push, schedule and dispatch runs never consult proofs.
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -65,6 +68,7 @@ SURFACES = (
     "ci/local_gate.py",
     "ci/nextest_tool.py",
     "ci/nextest.toml",
+    "ci/tier2_matrix.py",
     ".github/workflows/*",
     ".github/actions/*",
     "rust/tools/linux-validate/*",
@@ -73,7 +77,9 @@ SURFACES = (
 
 
 def git(*args: str) -> str:
-    return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    return subprocess.run(
+        ["git", *args], cwd=ROOT, check=True, capture_output=True, text=True
+    ).stdout
 
 
 def touches_surface(base: str, head: str) -> list[str]:
@@ -83,7 +89,9 @@ def touches_surface(base: str, head: str) -> list[str]:
     return [p for p in changed if any(fnmatch.fnmatch(p, s) for s in SURFACES)]
 
 
-def lane_key(lane_id: str, base: str, head: str = "HEAD", image: str | None = None) -> str:
+def lane_key(
+    lane_id: str, base: str, head: str = "HEAD", image: str | None = None
+) -> str:
     """The proof key of `lane_id` for `head`, with the lane declared as on `base`."""
     from ci_lint.lane_cache import lane_inputs, tree_entries
     from ci_lint.local_gate import load_gate_config_at
@@ -97,8 +105,15 @@ def lane_key(lane_id: str, base: str, head: str = "HEAD", image: str | None = No
     entries = tree_entries(ROOT, head)
     inputs = lane_inputs(entries, lane, config.run, config.source)
     if image is None:
-        image = f"{os.environ.get('ImageOS', 'local')}/{os.environ.get('ImageVersion', '')}"
-    header = {"v": PROOF_VERSION, "lane": lane_id, "run": list(lane.run), "image": image}
+        image = (
+            f"{os.environ.get('ImageOS', 'local')}/{os.environ.get('ImageVersion', '')}"
+        )
+    header = {
+        "v": PROOF_VERSION,
+        "lane": lane_id,
+        "run": list(lane.run),
+        "image": image,
+    }
     h = hashlib.sha256(json.dumps(header, sort_keys=True).encode())
     for entry in inputs:
         h.update(b"\0" + entry.path.encode() + b"\0" + entry.sha.encode())
@@ -112,8 +127,11 @@ def artifact_name(lane_id: str, key: str) -> str:
 def api(path: str, token: str) -> dict:
     req = urllib.request.Request(
         f"https://api.github.com{path}",
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
-                 "X-GitHub-Api-Version": "2022-11-28"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.load(resp)
@@ -139,13 +157,17 @@ def trusted(run: dict, repo: str, now: float) -> str | None:
     return None
 
 
-def lookup(lane_id: str, key: str, repo: str, token: str, fetch=api, now: float | None = None) -> tuple[bool, str]:
+def lookup(
+    lane_id: str, key: str, repo: str, token: str, fetch=api, now: float | None = None
+) -> tuple[bool, str, int | None]:
     now = time.time() if now is None else now
     name = artifact_name(lane_id, key)
     try:
-        listing = fetch(f"/repos/{repo}/actions/artifacts?name={name}&per_page=20", token)
+        listing = fetch(
+            f"/repos/{repo}/actions/artifacts?name={name}&per_page=20", token
+        )
     except (urllib.error.URLError, TimeoutError, ValueError) as exc:
-        return False, f"artifact lookup failed: {exc}"
+        return False, f"artifact lookup failed: {exc}", None
     reasons = []
     for art in listing.get("artifacts", []):
         if art.get("expired") or art.get("name") != name:
@@ -160,12 +182,142 @@ def lookup(lane_id: str, key: str, repo: str, token: str, fetch=api, now: float 
             continue
         why = trusted(run, repo, now)
         if why is None:
-            return True, f"proof from run {run_id} ({run.get('event')}, {run.get('head_branch')})"
+            return (
+                True,
+                f"proof from run {run_id} ({run.get('event')}, {run.get('head_branch')})",
+                run_id,
+            )
         reasons.append(why)
-    return False, "; ".join(reasons) or "no proof for this key"
+    return False, "; ".join(reasons) or "no proof for this key", None
 
 
-def output(**values: str) -> None:
+def miss_diagnostic(
+    lane_id: str,
+    key: str,
+    base: str,
+    head: str,
+    repo: str,
+    token: str,
+    fetch=api,
+    now: float | None = None,
+) -> str:
+    """Explain a queue miss with at most two bounded requests; never decide a hit.
+
+    Partial history cannot establish absence. An existing different key takes
+    precedence over an unchanged base SHA: the key describes the actual inputs.
+    """
+    nearest, run_id, pr_base, verdict = "none", "none", "none", "unknown"
+    try:
+        ref = " ".join(
+            (
+                head,
+                os.environ.get("GITHUB_HEAD_REF", ""),
+                os.environ.get("GITHUB_REF", ""),
+            )
+        )
+        match = re.search(r"(?:^|/)pr-(\d+)(?:-|/|$)", ref)
+        if not token or match is None:
+            raise ValueError("no credentials or queue PR")
+        number = int(match[1])
+        now = time.time() if now is None else now
+        pr = fetch(f"/repos/{repo}/pulls/{number}", token)
+        branch = pr["head"]["ref"]
+        repository_id = pr["base"]["repo"]["id"]
+        if pr["head"]["repo"]["id"] != repository_id:
+            raise ValueError("fork PR cannot publish a repository proof")
+        # The artifacts API ignores head_branch; filter its run metadata locally.
+        # This is diagnostic evidence only: lookup() still authenticates the
+        # workflow/event/age before a proof can ever change hit.
+        listing = fetch(f"/repos/{repo}/actions/artifacts?per_page=100", token)
+        prefix = artifact_name(lane_id, "")
+        proofs = []
+        for art in listing["artifacts"]:
+            name = art["name"]
+            if (
+                not art.get("expired")
+                and name.startswith(prefix)
+                and re.fullmatch(r"[0-9a-f]{64}", name[len(prefix) :])
+                and art["workflow_run"]["head_branch"] == branch
+                and art["workflow_run"]["repository_id"] == repository_id
+                and art["workflow_run"]["head_repository_id"] == repository_id
+                and now
+                - datetime.fromisoformat(
+                    art["created_at"].replace("Z", "+00:00")
+                ).timestamp()
+                <= MAX_AGE_HOURS * 3600
+            ):
+                proofs.append(art)
+        if proofs:
+            art = max(proofs, key=lambda a: (a["created_at"], a.get("id", 0)))
+            proof_key = art["name"][len(prefix) :]
+            nearest = proof_key[:12]
+            run_id = str(art["workflow_run"]["id"])
+            pr_base = pr["base"]["sha"]
+            # A matching key with no usable proof is not evidence of stale inputs.
+            verdict = "stale-base" if proof_key != key else "unknown"
+        elif listing["total_count"] <= len(listing["artifacts"]):
+            verdict = "no-pr-proof"
+    except Exception:
+        verdict = "unknown"
+    return f"nearest={nearest} run={run_id} pr_base={pr_base} queue_base={base} verdict={verdict}"
+
+
+def summarize_miss(
+    lane: str,
+    key: str,
+    base: str,
+    head: str,
+    repo: str,
+    token: str,
+    decision: tuple[str, bool, str],
+) -> None:
+    if (*decision, os.environ.get("GITHUB_EVENT_NAME")) != (
+        "check",
+        False,
+        "no proof for this key",
+        "merge_group",
+    ):
+        return
+    diagnostic = f"nearest=none run=none pr_base=none queue_base={base} verdict=unknown"
+    try:
+        diagnostic = miss_diagnostic(lane, key, base, head, repo, token)
+    except Exception:
+        pass  # Even an unexpected diagnostic failure leaves all outputs untouched.
+    diagnostic = " ".join(diagnostic.splitlines())
+    print(diagnostic)
+    try:
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary, "a", encoding="utf-8") as f:
+                f.write(diagnostic + "\n")
+    except Exception:
+        pass
+
+
+def output(
+    *, summary_lane: str | None = None, workflow_run: int | None = None, **values: str
+) -> None:
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_lane is not None and summary:
+        # Keep each decision on one line even if an API/git error spans lines.
+        fields = {
+            "lane": summary_lane,
+            "key": values.get("key") or "none",
+            "hit": values["hit"],
+            "reason": values["reason"],
+            "workflow_run": str(workflow_run) if workflow_run is not None else "none",
+            "artifact": values.get("name") or "none",
+        }
+        line = "- " + " ".join(
+            f"{k}={' '.join(v.splitlines())}" for k, v in fields.items()
+        )
+        if values["reason"] == "audit sample":
+            line += "; audit failure proves a wrong skip"
+        try:
+            with open(summary, "a", encoding="utf-8") as f:
+                f.write(line + "\n")
+        except OSError:
+            pass  # Observability must not break the lane decision.
     lines = "".join(f"{k}={v}\n" for k, v in values.items())
     print(lines, end="")
     path = os.environ.get("GITHUB_OUTPUT")
@@ -175,7 +327,9 @@ def output(**values: str) -> None:
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("key", "check"):
         p = sub.add_parser(name)
@@ -192,24 +346,50 @@ def main(argv: list[str]) -> int:
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
 
     if args.cmd == "lookup":
-        hit, reason = lookup(args.lane, args.key, args.repo, token)
+        hit, reason, _ = lookup(args.lane, args.key, args.repo, token)
         output(hit=str(hit).lower(), reason=reason)
         return 0
 
-    surfaces = touches_surface(args.base, args.head)
-    if surfaces:
-        output(hit="false", key="", reason=f"changes proof surfaces: {', '.join(surfaces[:5])}")
-        return 0
+    key = ""
+    hit = False
+    workflow_run = None
     try:
-        key = lane_key(args.lane, args.base, args.head)
-    except (LookupError, subprocess.CalledProcessError) as exc:
-        output(hit="false", key="", reason=f"no key: {exc}")
-        return 0
-    if args.cmd == "key":
-        output(key=key, name=artifact_name(args.lane, key))
-        return 0
-    hit, reason = lookup(args.lane, key, args.repo, token)
-    output(hit=str(hit).lower(), key=key, name=artifact_name(args.lane, key), reason=reason)
+        surfaces = touches_surface(args.base, args.head)
+        if surfaces:
+            reason = f"changes proof surfaces: {', '.join(surfaces[:5])}"
+        else:
+            key = lane_key(args.lane, args.base, args.head)
+            if args.cmd == "key":
+                output(key=key, name=artifact_name(args.lane, key))
+                return 0
+            hit, reason, workflow_run = lookup(args.lane, key, args.repo, token)
+            if hit and int(key[:8], 16) % 10 == 0:
+                hit, reason = False, "audit sample"
+    except Exception as exc:
+        # Malformed ledger data and unexpected lookup failures also run the lane.
+        if args.cmd != "check" and not isinstance(
+            exc, (LookupError, subprocess.CalledProcessError)
+        ):
+            raise
+        hit, workflow_run = False, None
+        reason = f"proof check failed: {exc}" if key else f"no key: {exc}"
+    values = {"hit": str(hit).lower(), "key": key, "reason": reason}
+    if key:
+        values["name"] = artifact_name(args.lane, key)
+    output(
+        summary_lane=args.lane if args.cmd == "check" else None,
+        workflow_run=workflow_run,
+        **values,
+    )
+    summarize_miss(
+        args.lane,
+        key,
+        args.base,
+        args.head,
+        getattr(args, "repo", ""),
+        token,
+        (args.cmd, hit, reason),
+    )
     return 0
 
 

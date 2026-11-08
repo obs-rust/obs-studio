@@ -449,6 +449,48 @@ static void fade_has_both_slides(void **state)
 	destroy_slideshow(ss);
 }
 
+/* current_index reports a Next only once its transition has started: a
+ * short fade leaves the next slide past the cap still decoding when the
+ * press arrives, and the index must not be seen before the transition
+ * shows that slide (#3789). */
+static void index_follows_transition_start(void **state)
+{
+	(void)state;
+	if (!obs_up)
+		skip();
+
+	obs_data_t *settings = slideshow_settings(false, "fade", 50);
+	set_files(settings, false);
+	obs_source_t *ss = create_slideshow(settings);
+	obs_source_t *tr = get_transition(ss);
+	assert_non_null(tr);
+
+	for (int i = 0; i < PICS - 1; i++) {
+		long long before = current_index(ss);
+		obs_source_media_next(ss);
+
+		long long now = before;
+		uint64_t deadline = os_gettime_ns() + 5000000000ULL;
+		while ((now = current_index(ss)) == before && os_gettime_ns() < deadline)
+			;
+		obs_source_t *a = obs_transition_get_source(tr, OBS_TRANSITION_SOURCE_A);
+		obs_source_t *b = obs_transition_get_source(tr, OBS_TRANSITION_SOURCE_B);
+		int ia = source_index(a), ib = source_index(b);
+		obs_source_release(a);
+		obs_source_release(b);
+		printf("index %lld -> %lld: transition %d -> %d\n", before, now, ia, ib);
+
+		assert_int_equal(now, i + 1);
+		assert_true(ia == now || ib == now);
+
+		for (int w = 0; w < 300 && obs_transition_get_time(tr) < 1.0f; w++)
+			os_sleep_ms(10);
+		assert_true(obs_transition_get_time(tr) >= 1.0f);
+	}
+
+	destroy_slideshow(ss);
+}
+
 /* Random order: every slide shown is decoded, and few past the cap are
  * loaded. */
 static void random_slides_are_loaded(void **state)
@@ -583,6 +625,7 @@ int main(void)
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_teardown(steps_through_every_slide, case_teardown),
 		cmocka_unit_test_teardown(fade_has_both_slides, case_teardown),
+		cmocka_unit_test_teardown(index_follows_transition_start, case_teardown),
 		cmocka_unit_test_teardown(random_slides_are_loaded, case_teardown),
 		cmocka_unit_test_teardown(folder_keeps_every_picture, case_teardown),
 	};

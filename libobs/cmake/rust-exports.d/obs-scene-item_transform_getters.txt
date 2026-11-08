@@ -1,0 +1,2 @@
+obs_sceneitem_get_alignment
+obs_sceneitem_get_rot

@@ -475,16 +475,21 @@ independent work can finish after Fast Gate fails.
 Measure runner cost and actual gate time rather than treating the theoretical
 overlap as a proven speedup (#930, #1286).
 
-Tier 2 uses one complete suite per mode (#1662), each in its own runner
-environment: two test jobs rather than four. Deinterlacing retains
+Tier 2 uses one complete suite per mode on PRs and merge groups, each in its
+own runner environment: two test jobs rather than six. Main pushes, nightly
+and release runs retain the suite plus two serial partitions per backend.
+The [runner-capacity measurement](ci-tier2-queue-capacity.md) explains the
+tradeoff: fewer allocations while keeping every test on the queue path.
+Deinterlacing retains
 `RUN_SERIAL` because CI still dropped fields with bounded software-renderer
 workers. The other nine former barriers
 are removed: eight tests already own their resources, and XSHM now uses a
 private Xvfb (serial fallback when unavailable). Linux tests pin
 `LP_NUM_THREADS=1`; see the [concurrency audit](ci-serial-audit-2026-10-21.md).
-The build job produces one tree for both backends. Test jobs run the entire
-CTest registry without a shard selector, with up to eight binaries concurrent
-within each suite. A failed or canceled backend cannot publish a passing lane
+The build job produces one tree for both backends. PR/queue test jobs run the
+entire CTest registry without a shard selector, with up to eight binaries
+concurrent within each suite; CTest honors `RUN_SERIAL`. Background partitions
+together cover that same registry. A failed or canceled backend cannot publish a passing lane
 proof. Timings have unique per-mode artifacts and merge on master; recorded
 costs still order the longest tests first. Optional local sharding tools remain
 available, including their complete-partition checks.

@@ -44,7 +44,9 @@ KNOWN = {
     ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
 }
 SKIP_EXIT = "77"
-EXTERNAL = re.compile(r"/nix/store/|/usr/(?:include|lib)/")
+# Not OBS, although a path below may name an OBS folder: valgrind reports its
+# own replacements as .../memcheck/../shared/vg_replace_strmem.c (#4045).
+EXTERNAL = re.compile(r"/nix/store/|/usr/(?:include|lib)/|/usr/src/valgrind")
 
 
 def obs_frame(line):

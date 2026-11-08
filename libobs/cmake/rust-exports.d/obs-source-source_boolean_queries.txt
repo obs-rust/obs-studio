@@ -1,0 +1,2 @@
+obs_source_get_texcoords_centered
+obs_source_is_hidden

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_transition_start_steps_rust": {
+      "sources": [
+        "test/cmocka/test_transition_start_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_transition_start_steps_rust": {
+      "target": "test_transition_start_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

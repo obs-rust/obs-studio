@@ -1,0 +1,2 @@
+obs_source_type_is_group
+obs_source_type_is_scene

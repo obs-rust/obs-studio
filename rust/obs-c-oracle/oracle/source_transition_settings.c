@@ -12,7 +12,15 @@
  * the hybrid libobs; blog() is base-variadic.c.
  *
  * A test transition is a zeroed struct obs_source with its type, its
- * transition_mutex and up to two children that have only a name. */
+ * transition_mutex and up to two children that have only a name.
+ *
+ * The seam's signal, video-time, graphics and transparent-texture accessors
+ * read libobs's core pointer, obs (obs.c). Test binaries link this file without any definition of it
+ * (the MSVC linker keeps the reference), so here it is this file's own
+ * pointer, renamed from the first include on and left NULL: no parity test
+ * calls those accessors. */
+
+#define obs oracle_transition_settings_obs
 
 #define obs_transition_is_active oracle_obs_transition_is_active
 #define obs_transition_set_scale_type oracle_obs_transition_set_scale_type
@@ -41,6 +49,10 @@
 #undef obs_transition_is_active
 
 #include "obs-source-transition-seam.c.h"
+
+#undef obs
+
+struct obs_core *oracle_transition_settings_obs;
 
 /* A child kind: 0 no child, 1 a child named name, 2 a child whose
  * context.name is NULL. */

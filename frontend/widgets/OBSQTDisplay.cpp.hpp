@@ -51,6 +51,12 @@ OBSQTDisplay::OBSQTDisplay(QWidget *parent, Qt::WindowFlags flags) : QWidget(par
 
 		QSize size = GetPixelSize(this);
 		obs_display_resize(display, static_cast<uint32_t>(size.width()), static_cast<uint32_t>(size.height()));
+
+		/* A screen with another pixel ratio changes the size in pixels
+		 * but sends no resize event (macOS keeps the size in points), so
+		 * report it as one: the studio-mode program view and every
+		 * other display lays out on DisplayResized (#4010). */
+		emit DisplayResized();
 	};
 
 	connect(windowHandle(), &QWindow::visibleChanged, this, windowVisible);

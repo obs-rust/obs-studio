@@ -361,12 +361,19 @@ list(SORT _cmocka_test_fragments)
 foreach(_fragment IN LISTS _cmocka_test_fragments)
   include("${_fragment}")
 endforeach()
+# The original directory-level net-host include is also an explicit graph interface.
+add_library(native-test-ffmpeg-net-host INTERFACE)
+add_library(OBS::ffmpeg-net-host ALIAS native-test-ffmpeg-net-host)
+target_include_directories(
+  native-test-ffmpeg-net-host
+  INTERFACE "${CMAKE_SOURCE_DIR}/plugins/obs-ffmpeg/hosts/$<IF:$<PLATFORM_ID:Windows>,windows,posix>"
+)
 include("${CMAKE_CURRENT_SOURCE_DIR}/native-test-graph.cmake")
 # Match the existing plugin-target guards independently of core feature options.
 foreach(
   _graph_plugin
   IN
-  ITEMS ffmpeg filters pipewire pulseaudio outputs qsv11
+  ITEMS alsa ffmpeg filters pipewire pulseaudio outputs qsv11 v4l2
 )
   string(TOUPPER "${_graph_plugin}" _graph_plugin_upper)
   if(TARGET OBS::${_graph_plugin})

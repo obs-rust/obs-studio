@@ -170,7 +170,7 @@ cache = "machine"
 
 # -- Allowlists ---------------------------------------------------------------
 [allow]
-workflows = { "ci.yml" = ["workflow_dispatch", "pull_request", "merge_group"], "ci-pre.yml" = ["workflow_call"], "push.yaml" = ["push"], "build-project.yaml" = ["workflow_call"], "analyze-project.yaml" = ["workflow_call"], "check-format.yaml" = ["workflow_call"], "sign-windows.yaml" = ["workflow_call"], "appimage.yaml" = ["push", "workflow_call", "workflow_dispatch"], "claim-bot.yaml" = ["issue_comment", "pull_request", "schedule", "workflow_dispatch"], "dispatch.yaml" = ["workflow_dispatch"], "leaderboard.yml" = ["schedule", "workflow_dispatch"], "publish.yaml" = ["release"], "release-rust.yaml" = ["schedule", "workflow_dispatch"], "release-hygiene.yaml" = ["schedule", "workflow_dispatch"], "sanitizers.yaml" = ["workflow_call", "workflow_dispatch", "schedule"], "scheduled.yaml" = ["workflow_dispatch", "schedule"], "welcome.yaml" = ["issues", "pull_request_target"], "vcam-audio-hardware.yaml" = ["workflow_dispatch", "pull_request"] }
+workflows = { "ci.yml" = ["workflow_dispatch", "pull_request", "merge_group"], "cache-probe.yml" = ["workflow_dispatch"], "ci-pre.yml" = ["workflow_call"], "push.yaml" = ["push"], "build-project.yaml" = ["workflow_call"], "analyze-project.yaml" = ["workflow_call"], "check-format.yaml" = ["workflow_call"], "sign-windows.yaml" = ["workflow_call"], "appimage.yaml" = ["push", "workflow_call", "workflow_dispatch"], "claim-bot.yaml" = ["issue_comment", "pull_request", "schedule", "workflow_dispatch"], "dispatch.yaml" = ["workflow_dispatch"], "leaderboard.yml" = ["schedule", "workflow_dispatch"], "publish.yaml" = ["release"], "release-rust.yaml" = ["schedule", "workflow_dispatch"], "release-hygiene.yaml" = ["schedule", "workflow_dispatch"], "sanitizers.yaml" = ["workflow_call", "workflow_dispatch", "schedule"], "s3-cache-canary.yaml" = ["schedule", "workflow_dispatch"], "scheduled.yaml" = ["workflow_dispatch", "schedule"], "welcome.yaml" = ["issues", "pull_request_target"], "vcam-audio-hardware.yaml" = ["workflow_dispatch", "pull_request"] }
 actions = [
   "actions/attest", "actions/cache", "actions/checkout", "actions/download-artifact", "actions/upload-artifact",
   "andriivitiv/setup-steamcmd", "andriivitiv/steam-totp", "astral-sh/setup-uv", "cloudflare/wrangler-action",
@@ -197,7 +197,7 @@ secrets = [
 # grants, and granting less made GitHub refuse to start the run (startup_failure).
 # leaderboard.yml's `update` job is the other holder: it pushes to the
 # leaderboard branch, so its grant sits on that job, not the top-level block.
-# "issues: write" and "pull-requests: read" also name claim-bot.yaml's `claim`
+# "issues: write" and "pull-requests: write" also name claim-bot.yaml's `claim`
 # job, which routes this repo's events to the org claim bot.
 # build-project.yaml's native-cache-transport writes the native build caches.
 # dispatch.yaml's `services-validation` job is the same shape: it opens a PR, so
@@ -213,7 +213,7 @@ secrets = [
 # contents: write the release action needs, `compatibility-validation` and
 # `services-validation` hold checks: write, and `sign-windows-build` holds the
 # attestations scope plus the id-token it hands to the upstream signing workflow.
-permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "attestations: write" = ["sign-windows-build"], "checks: write" = ["validate-data", "services-validation", "compatibility-validation", "services-availability"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update", "services-validation", "create-release", "services-availability"], "id-token: write" = ["sign-windows-build", "build"], "issues: write" = ["welcome", "claim", "report-nightly-failure"], "packages: read" = ["codeql"], "pull-requests: read" = ["claim"], "pull-requests: write" = ["welcome", "services-validation", "services-availability"], "security-events: write" = ["windows", "macos", "analyze-project", "codeql"] }
+permissions = { "actions: write" = ["cache-janitor", "cancel-superseded", "ci-pre"], "attestations: write" = ["sign-windows-build"], "checks: write" = ["validate-data", "services-validation", "compatibility-validation", "services-availability"], "contents: write" = ["appimage", "build-project", "certify", "gate", "native-cache-transport", "nightly_feed", "release", "update", "services-validation", "create-release", "services-availability"], "id-token: write" = ["sign-windows-build", "build"], "issues: write" = ["welcome", "claim", "report-nightly-failure"], "packages: read" = ["codeql"], "pull-requests: write" = ["welcome", "services-validation", "services-availability", "claim"], "security-events: write" = ["windows", "macos", "analyze-project", "codeql"] }
 # setup-soldr is called from the workflows directly; there is no wrapper.
 setup-soldr = { only-in = ".github/workflows", require = {} }
 # Host-specific Rust code lives in each crate's src/platform/ (one cfg_select!

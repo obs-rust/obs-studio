@@ -1070,31 +1070,16 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 	pthread_mutex_unlock(&encoder->init_mutex);
 }
 
-const char *obs_encoder_get_codec(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_codec") ? encoder->info.codec : NULL;
-}
-
 const char *obs_get_encoder_codec(const char *id)
 {
 	struct obs_encoder_info *info = find_encoder(id);
 	return info ? info->codec : NULL;
 }
 
-enum obs_encoder_type obs_encoder_get_type(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_type") ? encoder->info.type : OBS_ENCODER_AUDIO;
-}
-
 enum obs_encoder_type obs_get_encoder_type(const char *id)
 {
 	struct obs_encoder_info *info = find_encoder(id);
 	return info ? info->type : OBS_ENCODER_AUDIO;
-}
-
-uint32_t obs_encoder_get_encoded_frames(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_output_get_encoded_frames") ? encoder->encoded_frames : 0;
 }
 
 void obs_encoder_set_scaled_size(obs_encoder_t *encoder, uint32_t width, uint32_t height)
@@ -1222,157 +1207,6 @@ bool obs_encoder_set_frame_rate_divisor(obs_encoder_t *encoder, uint32_t frame_r
 	}
 
 	return true;
-}
-
-bool obs_encoder_scaling_enabled(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_scaling_enabled"))
-		return false;
-
-	return obs_encoder_size_scaling(encoder->scaled_width, encoder->scaled_height);
-}
-
-uint32_t obs_encoder_get_width(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_width"))
-		return 0;
-
-	switch (obs_encoder_size_video_route((int)encoder->info.type, encoder->media != NULL, encoder->scaled_width)) {
-	case OBS_ENCODER_SIZE_WRONG_TYPE:
-		blog(LOG_WARNING,
-		     "obs_encoder_get_width: "
-		     "encoder '%s' is not a video encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	case OBS_ENCODER_SIZE_STORED:
-		return encoder->scaled_width;
-	case OBS_ENCODER_SIZE_MEDIA:
-		return video_output_get_width(encoder->media);
-	case OBS_ENCODER_SIZE_NO_MEDIA:
-	default:
-		return 0;
-	}
-}
-
-uint32_t obs_encoder_get_height(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_height"))
-		return 0;
-
-	switch (obs_encoder_size_video_route((int)encoder->info.type, encoder->media != NULL, encoder->scaled_height)) {
-	case OBS_ENCODER_SIZE_WRONG_TYPE:
-		blog(LOG_WARNING,
-		     "obs_encoder_get_height: "
-		     "encoder '%s' is not a video encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	case OBS_ENCODER_SIZE_STORED:
-		return encoder->scaled_height;
-	case OBS_ENCODER_SIZE_MEDIA:
-		return video_output_get_height(encoder->media);
-	case OBS_ENCODER_SIZE_NO_MEDIA:
-	default:
-		return 0;
-	}
-}
-
-bool obs_encoder_gpu_scaling_enabled(obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_gpu_scaling_enabled"))
-		return 0;
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
-		blog(LOG_WARNING,
-		     "obs_encoder_gpu_scaling_enabled: "
-		     "encoder '%s' is not a video encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	}
-
-	return encoder->gpu_scale_type != OBS_SCALE_DISABLE;
-}
-
-enum obs_scale_type obs_encoder_get_scale_type(obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_scale_type"))
-		return 0;
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
-		blog(LOG_WARNING,
-		     "obs_encoder_get_scale_type: "
-		     "encoder '%s' is not a video encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	}
-
-	return encoder->gpu_scale_type;
-}
-
-uint32_t obs_encoder_get_frame_rate_divisor(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_set_frame_rate_divisor"))
-		return 0;
-
-	if (encoder->info.type != OBS_ENCODER_VIDEO) {
-		blog(LOG_WARNING,
-		     "obs_encoder_set_frame_rate_divisor: "
-		     "encoder '%s' is not a video encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	}
-
-	return encoder->frame_rate_divisor;
-}
-
-uint32_t obs_encoder_get_sample_rate(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_sample_rate"))
-		return 0;
-
-	switch (obs_encoder_size_rate_route((int)encoder->info.type, encoder->media != NULL, encoder->samplerate)) {
-	case OBS_ENCODER_SIZE_WRONG_TYPE:
-		blog(LOG_WARNING,
-		     "obs_encoder_get_sample_rate: "
-		     "encoder '%s' is not an audio encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	case OBS_ENCODER_SIZE_STORED:
-		return encoder->samplerate;
-	case OBS_ENCODER_SIZE_MEDIA:
-		return audio_output_get_sample_rate(encoder->media);
-	case OBS_ENCODER_SIZE_NO_MEDIA:
-	default:
-		return 0;
-	}
-}
-
-size_t obs_encoder_get_frame_size(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_frame_size"))
-		return 0;
-	if (encoder->info.type != OBS_ENCODER_AUDIO) {
-		blog(LOG_WARNING,
-		     "obs_encoder_get_frame_size: "
-		     "encoder '%s' is not an audio encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	}
-
-	return encoder->framesize;
-}
-
-size_t obs_encoder_get_mixer_index(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_mixer_index"))
-		return 0;
-
-	if (encoder->info.type != OBS_ENCODER_AUDIO) {
-		blog(LOG_WARNING,
-		     "obs_encoder_get_mixer_index: "
-		     "encoder '%s' is not an audio encoder",
-		     obs_encoder_get_name(encoder));
-		return 0;
-	}
-
-	return encoder->mixer_idx;
 }
 
 void obs_encoder_set_video(obs_encoder_t *encoder, video_t *video)
@@ -1511,11 +1345,6 @@ audio_t *obs_encoder_audio(const obs_encoder_t *encoder)
 	}
 
 	return encoder->media;
-}
-
-bool obs_encoder_active(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_active") ? encoder_active(encoder) : false;
 }
 
 static inline bool get_sei(const struct obs_encoder *encoder, uint8_t **sei, size_t *size)
@@ -2253,43 +2082,10 @@ obs_encoder_t *obs_weak_encoder_get_encoder(obs_weak_encoder_t *weak)
 	return NULL;
 }
 
-bool obs_weak_encoder_references_encoder(obs_weak_encoder_t *weak, obs_encoder_t *encoder)
-{
-	return weak && encoder && weak->encoder == encoder;
-}
-
-void *obs_encoder_get_type_data(obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_type_data") ? encoder->orig_info.type_data : NULL;
-}
-
-const char *obs_encoder_get_id(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_id") ? encoder->orig_info.id : NULL;
-}
-
 uint32_t obs_get_encoder_caps(const char *encoder_id)
 {
 	struct obs_encoder_info *info = find_encoder(encoder_id);
 	return info ? info->caps : 0;
-}
-
-uint32_t obs_encoder_get_caps(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_caps") ? encoder->orig_info.caps : 0;
-}
-
-bool obs_encoder_paused(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_paused") ? os_atomic_load_bool(&encoder->paused) : false;
-}
-
-const char *obs_encoder_get_last_error(obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_last_error"))
-		return NULL;
-
-	return encoder->last_error_message;
 }
 
 void obs_encoder_set_last_error(obs_encoder_t *encoder, const char *message)
@@ -2314,16 +2110,6 @@ char *obs_encoder_dup_last_error(obs_encoder_t *encoder)
 	char *message = bstrdup(encoder->last_error_message);
 	pthread_mutex_unlock(&encoder->last_error_mutex);
 	return message;
-}
-
-uint64_t obs_encoder_get_pause_offset(const obs_encoder_t *encoder)
-{
-	return encoder ? encoder->pause.ts_offset : 0;
-}
-
-bool obs_encoder_has_roi(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_has_roi") ? encoder->roi.num > 0 : false;
 }
 
 bool obs_encoder_add_roi(obs_encoder_t *encoder, const struct obs_encoder_roi *roi)
@@ -2390,11 +2176,6 @@ void obs_encoder_enum_roi(obs_encoder_t *encoder, void (*enum_proc)(void *, stru
 	}
 
 	pthread_mutex_unlock(&encoder->roi_mutex);
-}
-
-uint32_t obs_encoder_get_roi_increment(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_roi_increment") ? encoder->roi_increment : 0;
 }
 
 bool obs_encoder_set_group(obs_encoder_t *encoder, obs_encoder_group_t *group)

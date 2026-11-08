@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_parser_passes_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_passes.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        {
+          "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
+          "requires": "MSVC"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/Dgs_effect_get_param_by_name=obs_test_effect_get_param_by_name",
+          "requires": "MSVC"
+        }
+      ],
+      "msvc_import_library": {
+        "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
+        "output": "effect-parser-passes-lookup-import.lib"
+      },
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_effect_parser_passes_rust": {
+      "target": "test_effect_parser_passes_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

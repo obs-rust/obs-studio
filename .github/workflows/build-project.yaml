@@ -115,6 +115,7 @@ jobs:
       deferred: ${{ steps.native.outputs.deferred }}
       qt: ${{ steps.native.outputs.qt }}
       tier2: ${{ steps.native.outputs.tier2 }}
+      tier2_matrix: ${{ steps.tier2-matrix.outputs.matrix }}
       linux_targets: ${{ steps.native.outputs.linux_targets }}
       qt_sdk: ${{ steps.native.outputs.qt_sdk }}
       docs_only: ${{ steps.native.outputs.docs_only }}
@@ -130,6 +131,12 @@ jobs:
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      - name: Select Tier 2 Scheduling
+        id: tier2-matrix
+        env:
+          TIER2_FULL: ${{ inputs.full }}
+        run: uv run --no-project ci/tier2_matrix.py
 
       - name: Check Experimental Flatpak Inputs
         if: inputs.flatpak-dependency-transfer-probe
@@ -1706,6 +1713,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -1747,9 +1755,26 @@ jobs:
       # clang-format, gersemi and soldr cargo test --workspace --locked.
       # The ci/ self-tests run in the Checks job on the standard pool (#427).
       - name: Local Gate (lint) 🧪
+        id: local-gate
         env:
           OBS_GATE_SKIP_SELF_TEST: "1"
-        run: uv run --no-project ci/local_gate.py --lane lint
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.sha }}
+        run: |
+          uv run --no-project ci/local_gate.py --lane lint --lane dylint
+          git fetch -q --depth=1 origin "${BASE}"
+          # Writes key=/name= to $GITHUB_OUTPUT; surfaces touched by the change
+          # leave name= empty, which skips the upload below.
+          uv run --no-project ci/lane_proof.py key --lane dylint --base "${BASE}"
+          touch "${{ runner.temp }}/dylint-lane-proof"
+
+      - name: Upload Dylint Lane Proof 🧾
+        if: steps.local-gate.outputs.name != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.local-gate.outputs.name }}
+          path: ${{ runner.temp }}/dylint-lane-proof
+          retention-days: 3
+          if-no-files-found: error
 
       - name: Unit Tests (changed crates) 🧪
         if: needs.check-event.outputs.deferred == 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
@@ -1939,6 +1964,14 @@ jobs:
             echo "- watermark: 50 GiB"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: fast-gate
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+
   # Compile-only cross check (cmake/cross/, #1294) of the Windows and macOS
   # host groups a change touches, on Linux with soldr's LLVM and SDKs. PR CI
   # builds no Windows or macOS app, so without it a broken host group first
@@ -2086,6 +2119,58 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
+  # The deferred PR/queue tier skips rust-cross-lint and the native Windows
+  # lanes, so COFF-only link defects reached master (`undefined symbol:
+  # obs_encoder_get_caps`, merge_group 42390201886 green, push 42393067345
+  # red). This is only the cross lane's link step for Windows x64: no clippy,
+  # Dylint or macOS, nothing executed (ci/windows_link_check.py).
+  rust-windows-link:
+    timeout-minutes: 30
+    name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
+    runs-on: ubuntu-26.04
+    needs: check-event
+    # Every deferred (PR and queue) run except docs-only. No stand-down for
+    # lane proofs or attestations: a queue run must show a real conclusion.
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        with:
+          # Same scope and layer as rust-cross-lint, so it replays master's cache.
+          verdict-scope: build-project
+          version: 0.9.45
+          build-cache: false
+          prebuild-deps-flags: --profile dev -- --tests
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          # The Windows target is added mid-job (see rust-cross-lint, #969).
+          solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      - name: Link Windows Test Binaries 🔗
+        run: uv run --no-project ci/windows_link_check.py
+
   rust-cross-lint-release:
     timeout-minutes: 45
     name: Rust Cross Lint 🦀 (release targets)
@@ -2153,6 +2238,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -2275,6 +2361,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: rust-tests-macos
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
   # (including the enforced C/Rust export comparison, so a mismatch fails
@@ -2305,6 +2399,7 @@ jobs:
       # cache and cargo registry. Remote saves only warm master; PR and
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -2433,6 +2528,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: rust-tests-windows
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks
   # (including the enforced C/Rust export comparison, so a mismatch fails
@@ -2552,6 +2655,7 @@ jobs:
       # Production hybrid libobs builds the Rust ports through Corrosion;
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
+        id: setup-soldr
         uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
@@ -2613,6 +2717,10 @@ jobs:
           uv run --no-project rust/tools/linux-validate/install_zccache.py "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # The restored .tier2-zccache carries earlier runs' journals.
+      - name: Mark Cache Ledger Start 📒
+        run: echo "CACHE_LEDGER_SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Build Tier 2 (libobs and libobs-c-reference) 🧱
         id: tier2-build
         env:
@@ -2659,6 +2767,16 @@ jobs:
           path: ${{ github.workspace }}/.tier2-zccache
           key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
+      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
+      - name: Cache ledger 📒
+        if: always()
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: tier2-linux-build
+          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+          cache-dir: ${{ github.workspace }}/.tier2-zccache
+          since: ${{ env.CACHE_LEDGER_SINCE }}
+
   rust-linux-tier2:
     name: Rust Tier 2 Linux 🐧 (tests ${{ matrix.mode }}${{ matrix.part != 'suite' && format(', {0}', matrix.part) || '' }})
     runs-on: ubuntu-26.04
@@ -2670,15 +2788,12 @@ jobs:
     # remaining lint/Rust work; the caller's required gate still needs both.
     # Failed/skipped builds and workflow cancellation cannot start tests.
     if: ${{ always() && !cancelled() && needs.rust-linux-tier2-build.result == 'success' }}
-    # One suite per backend (#1662), less its RUN_SERIAL tests, which run
-    # on runners of their own: inside the suite the deinterlace test held
-    # the runner alone for 146 of 238 s (#1643, #2071). Its five rate entries
-    # run on two runners (#2072).
+    # PR/queue: one complete suite per backend; CTest honors RUN_SERIAL.
+    # Background/release: retain separate serial runners (#2071, #2072).
+    # Scheduling policy lives in ci/tier2_matrix.py, not YAML expressions.
     strategy:
       fail-fast: false
-      matrix:
-        mode: ["OFF", "ON"]
-        part: ["suite", "serial-1-of-2", "serial-2-of-2"]
+      matrix: ${{ fromJSON(needs.check-event.outputs.tier2_matrix) }}
     defaults:
       run:
         shell: bash

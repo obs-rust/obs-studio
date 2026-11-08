@@ -80,7 +80,9 @@ class RustSourceProbeTest(unittest.TestCase):
                 print(f"$ {' '.join(cmd)}\n{output[-1][-4000:]}", file=sys.stderr)
             result.check_returncode()
 
-        with mock.patch.object(local_gate, "run", side_effect=run_in_scratch):
+        # This probe checks source freshness, so use Cargo without acquiring nextest.
+        with mock.patch.object(local_gate, "ensure_nextest", return_value=None), \
+                mock.patch.object(local_gate, "run", side_effect=run_in_scratch):
             local_gate.lane_rust_test(False)
             stamp = nested.stat()
             nested.write_text("   " + nested.read_text()[3:])

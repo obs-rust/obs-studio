@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="#windows-x64-arm64"><img src="docs/images/download-windows.svg" alt="Download OBS-Studio-Rust for Windows" height="44"></a> &nbsp;&nbsp; <a href="#macos-arm64-x86_64"><img src="docs/images/download-macos.svg" alt="Download OBS-Studio-Rust for macOS" height="44"></a> &nbsp;&nbsp; <a href="#linux-x86_64"><img src="docs/images/download-linux.svg" alt="Download OBS-Studio-Rust for Linux" height="44"></a>
+</p>
+
 # obs-studio-rust
 
 > [!IMPORTANT]

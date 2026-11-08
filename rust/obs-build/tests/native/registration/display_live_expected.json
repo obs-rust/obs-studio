@@ -1,0 +1,335 @@
+{
+  "schema": 1,
+  "targets": {
+    "obs_runtime_bench": {
+      "sources": [
+        "test/cmocka/obs_runtime_bench.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL"
+        ]
+      }
+    },
+    "test_media_cover_art_monitor": {
+      "sources": [
+        "test/cmocka/test_media_cover_art_monitor.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h",
+        "libobs/audio-monitoring/monitor-video-sync.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg",
+        "libobs/audio-monitoring"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "shared/media-playback",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
+    "test_media_sync_offset_restart": {
+      "sources": [
+        "test/cmocka/test_media_sync_offset_restart.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "shared/media-playback",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    },
+    "test_screencast_portal_teardown": {
+      "sources": [
+        "test/cmocka/test_screencast_portal_teardown.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h",
+        "plugins/linux-pipewire/screencast-portal.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "PkgConfig::_portal_test_glib",
+        "X11::X11"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_PIPEWIRE"
+        ]
+      }
+    },
+    "test_stinger_media_duration": {
+      "sources": [
+        "test/cmocka/test_stinger_media_duration.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl",
+        "TRANSITIONS_MODULE_PATH": "obs-transitions"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "shared/media-playback",
+        "plugins/obs-transitions",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "definitions": [
+        "TRANSITIONS_DATA_PATH=\"${source}/plugins/obs-transitions/data\""
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+          "HAVE_TRANSITIONS_TEST_OWNER"
+        ]
+      }
+    },
+    "test_xshm_capture_live": {
+      "sources": [
+        "test/cmocka/test_xshm_capture_live.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "includes": [
+        "plugins/linux-capture"
+      ],
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/linux-capture"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "obs_runtime_bench_smoke": {
+      "target": "obs_runtime_bench",
+      "command": [
+        "${target}",
+        "--seconds",
+        "1",
+        "--warmup",
+        "0.5"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "skip_return_code": 77,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "suite": "graphics"
+    },
+    "test_media_cover_art_monitor": {
+      "target": "test_media_cover_art_monitor",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "suite": "graphics"
+    },
+    "test_media_sync_offset_restart": {
+      "target": "test_media_sync_offset_restart",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "suite": "graphics"
+    },
+    "test_screencast_portal_teardown": {
+      "target": "test_screencast_portal_teardown",
+      "timeout_seconds": 60,
+      "environment": {
+        "PORTAL_TEST_VERBOSE": "1"
+      },
+      "skip_return_code": 77,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_PIPEWIRE"
+        ]
+      },
+      "suite": "graphics"
+    },
+    "test_stinger_media_duration": {
+      "target": "test_stinger_media_duration",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+          "HAVE_TRANSITIONS_TEST_OWNER"
+        ]
+      },
+      "suite": "graphics"
+    },
+    "test_xshm_capture_live": {
+      "target": "test_xshm_capture_live",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 30,
+      "environment": {
+        "LP_NUM_THREADS": "1"
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "--server-args=-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

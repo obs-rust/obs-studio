@@ -2,6 +2,18 @@
 
 #include "libobs/build/libobs.pch.h"
 
+#include "libobs/obs-core-cmdline-fields.c.h"
+#include "libobs/obs-core-frame-interval-fields.c.h"
+#include "libobs/obs-core-global-fields.c.h"
+#include "libobs/obs-core-initialized-fields.c.h"
+#include "libobs/obs-core-texture-activity-fields.c.h"
+#include "libobs/obs-hotkey-identity-fields.c.h"
+#include "libobs/obs-hotkey-object-fields.c.h"
 #include "libobs/obs-hotkey.c.h"
+#include "libobs/obs-module-locale-getters-fields.c.h"
+#include "libobs/obs-module-metadata-adapter.c.h"
+#include "libobs/obs-module-name-lookup-fields.c.h"
+#include "libobs/obs-module-type-query-fields.c.h"
 #include "libobs/obs-module.c.h"
+#include "libobs/obs-weak-object-identity-fields.c.h"
 #include "libobs/obs.c.h"

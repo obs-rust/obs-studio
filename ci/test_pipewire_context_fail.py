@@ -12,7 +12,7 @@ No real daemon and no real test binary run here: `pipewire` is a stub on PATH
 and the test binary is a stub that records the environment, the working
 directory and the argv the module handed it.
 
-The shell's only caller is
+The native test graph owns the command, discovered through
 `test/cmocka/tests.d/test_pipewire_context_fail.cmake`, so this suite drives the
 module directly and pins that the wiring -- the shell script gone, its GEN-005
 exception gone, the cmake caller running the Python through `uv run` -- is
@@ -22,6 +22,7 @@ complete.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -34,6 +35,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.sh"
 CMAKE = ROOT / "test" / "cmocka" / "tests.d" / "test_pipewire_context_fail.cmake"
+GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 WRAPPER_TEST = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.py"
 CI_TOML = ROOT / "ci.toml"
 EXCEPTION = 'path = "test/cmocka/test_pipewire_context_fail.sh"'
@@ -286,8 +288,13 @@ class PipewireContextFailTest(unittest.TestCase):
         self.assertFalse(SHELL_SCRIPT.exists(), "test_pipewire_context_fail.sh should be gone")
         self.assertTrue(MODULE.is_file(), "test_pipewire_context_fail.py should exist")
         caller = CMAKE.read_text()
-        self.assertIn("uv run --script", caller)
+        self.assertIn("test-graph.json", caller)
         self.assertNotIn("test_pipewire_context_fail.sh", caller)
+        graph = json.loads(GRAPH.read_text(encoding="utf-8"))
+        self.assertEqual(graph["tests"]["test_pipewire_context_fail"]["command"], [
+            "uv", "run", "--script",
+            "${source}/test/cmocka/test_pipewire_context_fail.py", "${target}",
+        ])
         # The sibling wrapper test used to run this shell script as a control;
         # it must run the Python module instead, or it fails on a machine with
         # pipewire installed (CI has none, so PR CI does not catch it).

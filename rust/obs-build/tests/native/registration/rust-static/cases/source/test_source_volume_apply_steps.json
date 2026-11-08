@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_volume_apply_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_volume_apply_steps.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-ptm-gate.h",
+        "libobs/obs-source-volume.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_volume_apply_steps_rust": {
+      "target": "test_source_volume_apply_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

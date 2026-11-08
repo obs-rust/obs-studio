@@ -62,7 +62,7 @@ fn canonical_pulse_monitor_format_is_registered() {
     }
 }
 
-// This smoke contract requires installed real libobs/cmocka packages. Native
+// This smoke contract builds libobs from this checkout (OBS_GRAPH_LIBOBS). Native
 // Windows/macOS execution remains the Tier 2 host runner's responsibility.
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 #[test]
@@ -87,21 +87,13 @@ fn canonical_pulse_monitor_format_runs_unchanged() {
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let mut core = Dependency::package(&build.target, "libobs").unwrap();
-    // Some installed libobs.pc files name include/ instead of include/obs/.
-    let nested: Vec<_> = core
-        .include_dirs
-        .iter()
-        .map(|path| path.join("obs"))
-        .filter(|path| path.is_dir())
-        .collect();
-    core.include_dirs.extend(nested);
+    let core = built_core(&build, &root);
     let interfaces = [
         (
             "PulseAudio::PulseAudio".into(),
             Dependency::package(&build.target, "libpulse").unwrap(),
         ),
-        ("OBS::libobs".into(), core),
+        ("OBS::libobs".into(), core.dependency),
         (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
@@ -127,7 +119,7 @@ fn canonical_pulse_monitor_format_runs_unchanged() {
         assert_success(&output, name);
     }
     fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    replay_cmake_helpers(directory.path(), &root);
+    replay_cmake_helpers(directory.path(), &root, &core.cmake);
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
@@ -141,7 +133,7 @@ fn assert_success(output: &std::process::Output, context: &str) {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-fn replay_cmake_helpers(directory: &Path, root: &Path) {
+fn replay_cmake_helpers(directory: &Path, root: &Path, core: &str) {
     use std::process::Command;
     // Replay the real sanitizer helper rather than supplying a test double.
     let cmake = fs::read_to_string(root.join("test/cmocka/CMakeLists.txt")).unwrap();
@@ -167,17 +159,10 @@ set(OS_WINDOWS FALSE)
 set(OS_FREEBSD FALSE)
 set(OS_OPENBSD FALSE)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(CORE REQUIRED IMPORTED_TARGET libobs)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
 list(APPEND CMAKE_MODULE_PATH "{source}/cmake/finders")
 include("{source}/test/cmocka/tests.d/test_pulse_monitor_format.cmake")
-add_library(OBS::libobs ALIAS PkgConfig::CORE)
-foreach(dir IN LISTS CORE_INCLUDE_DIRS)
-  if(IS_DIRECTORY "${{dir}}/obs")
-    target_include_directories(PkgConfig::CORE INTERFACE "${{dir}}/obs")
-  endif()
-endforeach()
-add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
+{core}add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 add_custom_target(cmocka-tests)
 include("{source}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")

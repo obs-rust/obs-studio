@@ -15,5 +15,6 @@ workspace = true
 test = false
 
 [dependencies]
+libc.workspace = true
 obs-media-io = { path = "../obs-media-io" }
 obs-util = { path = "../obs-util" }

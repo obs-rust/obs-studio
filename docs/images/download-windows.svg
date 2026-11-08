@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="243" height="44" role="img" aria-label="Download OBS-Studio-Rust for Windows">
+  <title>Download OBS-Studio-Rust for Windows</title>
+  <defs>
+    <filter id="sha" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0" flood-color="#010101" flood-opacity=".30"/>
+    </filter>
+  </defs>
+  <linearGradient id="ga" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".10"/>
+    <stop offset="1" stop-opacity=".10"/>
+  </linearGradient>
+  <clipPath id="ca">
+    <rect width="243" height="44" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#ca)">
+    <rect width="100" height="44" fill="#555555"/>
+    <rect x="100" width="243" height="44" fill="#0067bf"/>
+    <rect width="243" height="44" fill="url(#ga)"/>
+  </g>
+  <g filter="url(#sha)">
+  <text x="50.0" y="26.6" font-family="Verdana, 'DejaVu Sans', Geneva, sans-serif"
+        font-size="11" font-weight="600" letter-spacing="1.0" fill="#ffffff"
+        text-anchor="middle">DOWNLOAD</text>
+  <g transform="translate(124.0 22.0)">
+    <g fill="#ffffff">
+      <rect x="-10" y="-10" width="9.2" height="9.2" rx="0.8"/>
+      <rect x="0.8" y="-10" width="9.2" height="9.2" rx="0.8"/>
+      <rect x="-10" y="0.8" width="9.2" height="9.2" rx="0.8"/>
+      <rect x="0.8" y="0.8" width="9.2" height="9.2" rx="0.8"/>
+    </g>
+  </g>
+  <text x="229.39999999999998" y="26.6" font-family="Verdana, 'DejaVu Sans', Geneva, sans-serif"
+        font-size="13" font-weight="700" letter-spacing="0.8" fill="#ffffff"
+        text-anchor="end" text-rendering="geometricPrecision">WINDOWS</text>
+  </g>
+</svg>

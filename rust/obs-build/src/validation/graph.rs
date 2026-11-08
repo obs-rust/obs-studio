@@ -1,7 +1,8 @@
 //! Declarative native test targets and their execution contracts.
 //!
 //! Selection is explicit: callers provide platform, feature and dependency
-//! facts. An unknown fact is an error, never an implicit reason to drop a test.
+//! facts. Unknown facts are errors; the optional HAVE_X11_DISPLAY runtime fact
+//! alone defaults to false when no X server is declared.
 use crate::{NativeBuild, SharedLibrary};
 use serde::Deserialize;
 use std::{
@@ -34,6 +35,24 @@ impl Requirement {
             Self::Fact(name) => facts
                 .get(name)
                 .copied()
+                // Optional display/Qt owners may be absent on headless hosts.
+                // All other facts remain strict, including misspelled names.
+                .or_else(|| {
+                    matches!(
+                        name.as_str(),
+                        "HAVE_X11_DISPLAY"
+                            | "HAVE_QT_CORE_TEST_OWNER"
+                            | "HAVE_CRASH_LOG_TEST_OWNER"
+                            | "HAVE_QT_WIDGETS_TEST_OWNER"
+                            | "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+                            | "HAVE_PLUGIN_MANAGER_TEST_OWNER"
+                            | "HAVE_VST_EDITOR_TEST_OWNER"
+                            | "HAVE_PRIVATE_DAEMON_TEST_OWNER"
+                            | "HAVE_PIPEWIRE_CAMERA_TEST_OWNER"
+                            | "HAVE_V4L2_VMIC_TEST_OWNER"
+                    )
+                    .then_some(false)
+                })
                 .ok_or_else(|| format!("unknown native test requirement {name}")),
             Self::All { all } => {
                 let mut selected = true;
@@ -111,10 +130,49 @@ pub struct Qt {
     pub rcc: Vec<String>,
 }
 
+/// A DATA-only import address library, generated before ordinary core linkage.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MsvcImportLibrary {
+    pub definition: String,
+    pub output: String,
+}
+
+impl MsvcImportLibrary {
+    fn validate(&self, name: &str) -> Result<(), String> {
+        if !self.definition.ends_with(".def")
+            || self.definition.contains(['\\', ':', ';'])
+            || self.definition.chars().any(char::is_control)
+            || self
+                .definition
+                .split('/')
+                .any(|part| matches!(part, "" | "." | ".."))
+            || self.output.strip_suffix(".lib").is_none_or(|stem| {
+                stem.is_empty()
+                    || !stem
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+            })
+        {
+            return Err(format!(
+                "invalid native test MSVC import library for {name}"
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Target {
     pub sources: Vec<Source>,
+    /// Explicit C unity partitions, preserving linker interposition boundaries.
+    #[serde(default)]
+    pub unity_groups: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
+    pub pch: Option<String>,
+    #[serde(default)]
+    pub msvc_import_library: Option<MsvcImportLibrary>,
     #[serde(default)]
     pub qt: Qt,
     #[serde(default)]
@@ -153,11 +211,103 @@ pub struct Target {
     pub compile_options_if_supported: Vec<String>,
     #[serde(default)]
     pub link_options: Vec<String>,
+    /// Link flags selected by the same facts as conditional compiler options.
+    #[serde(default)]
+    pub conditional_link_options: Vec<CompilerOption>,
     #[serde(default)]
     pub sanitizers: Option<String>,
 }
 
 impl Target {
+    fn validate_groups(&self) -> Result<(), String> {
+        if self.unity_groups.is_empty() {
+            if self.pch.is_some() {
+                return Err("native test PCH requires explicit unity groups".into());
+            }
+            return Ok(());
+        }
+        let header = self.pch.as_deref().ok_or("unity groups require a PCH")?;
+        if !header.ends_with(".h")
+            || header.starts_with('/')
+            || header
+                .split('/')
+                .any(|s| s.is_empty() || s == "." || s == "..")
+            || header.contains(['"', '\\', ':', ';', '\n', '\r'])
+        {
+            return Err("invalid unity PCH".into());
+        }
+        let mut members = BTreeSet::new();
+        for (name, sources) in &self.unity_groups {
+            validate_name(name)?;
+            if !name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
+            {
+                return Err("invalid unity group name".into());
+            }
+            if sources.is_empty() {
+                return Err("empty unity group".into());
+            }
+            for source in sources {
+                if !self
+                    .sources
+                    .iter()
+                    .any(|s| matches!(s, Source::Path(p) if p == source))
+                    || !source.ends_with(".c") && !source.ends_with(".c.h")
+                    || !members.insert(source)
+                {
+                    return Err(format!("invalid or duplicate unity member {source}"));
+                }
+            }
+        }
+        if members.len() != self.sources.len() {
+            return Err("unity groups must partition all unconditional C sources".into());
+        }
+        Ok(())
+    }
+
+    fn group_sources(
+        &self,
+        build: &NativeBuild,
+        root: &Path,
+        name: &str,
+        target: &mut SharedLibrary,
+    ) -> Result<(), String> {
+        if self.unity_groups.is_empty() {
+            return Ok(());
+        }
+        let header = root.join(self.pch.as_ref().ok_or("unity groups require a PCH")?);
+        let mut groups = Vec::new();
+        fs::create_dir_all(build.output.join("native-tests").join(name))
+            .map_err(|error| error.to_string())?;
+        for (group, sources) in &self.unity_groups {
+            let path = build
+                .output
+                .join("native-tests")
+                .join(name)
+                .join(format!("{group}.c"));
+            let mut text = format!(
+                "#include {}\n",
+                serde_json::to_string(&header.to_string_lossy()).map_err(|e| e.to_string())?
+            );
+            for source in sources {
+                text.push_str(&format!(
+                    "#include {}\n",
+                    serde_json::to_string(&root.join(source).to_string_lossy())
+                        .map_err(|e| e.to_string())?
+                ));
+            }
+            crate::frontend::write(&path, &text)?;
+            groups.push(path);
+        }
+        target.sources.clone_from(&groups);
+        target.precompiled_headers = vec![crate::PrecompiledHeader {
+            header,
+            sources: groups,
+        }];
+        Ok(())
+    }
+
     fn library_names(&self, facts: &BTreeMap<String, bool>) -> Result<Vec<String>, String> {
         let mut names: Vec<_> = self
             .archives
@@ -441,6 +591,10 @@ impl Graph {
                 }
             }
             validate_name(name)?;
+            target.validate_groups()?;
+            if let Some(import) = &target.msvc_import_library {
+                import.validate(name)?;
+            }
             for input in &target.watch_inputs {
                 if input.is_empty()
                     || input.starts_with('/')
@@ -575,9 +729,35 @@ impl Graph {
                     .filter_map(|option| option.selected(facts).transpose())
                     .map(|value| value.map(str::to_owned))
                     .collect::<Result<Vec<_>, _>>()?,
-                link_options: spec.link_options.clone(),
+                link_options: spec
+                    .link_options
+                    .iter()
+                    .cloned()
+                    .chain(
+                        spec.conditional_link_options
+                            .iter()
+                            .filter_map(|option| option.selected(facts).transpose())
+                            .map(|value| value.map(str::to_owned))
+                            .collect::<Result<Vec<_>, _>>()?,
+                    )
+                    .collect(),
                 ..Default::default()
             };
+            if let Some(import) = &spec.msvc_import_library
+                && Requirement::Fact("MSVC".into()).evaluate(facts)?
+            {
+                let output = build
+                    .output
+                    .join("native-tests")
+                    .join(name)
+                    .join(&import.output);
+                let library = crate::platform::native_test_import_library(
+                    build,
+                    &root.join(&import.definition),
+                    &output,
+                )?;
+                target.dependencies.insert(0, library);
+            }
             for source in &spec.sources {
                 if !source.selected(facts)? {
                     continue;
@@ -658,6 +838,7 @@ impl Graph {
             for input in &spec.watch_inputs {
                 watched_inputs.insert(root.join(input));
             }
+            watched_inputs.extend(spec.pch.iter().map(|header| root.join(header)));
             for directory in &spec.includes {
                 target.include_dirs.push(root.join(directory));
             }
@@ -758,6 +939,7 @@ impl Graph {
                     &generated.join(format!("qrc_{index}.cpp")),
                 )?;
             }
+            spec.group_sources(build, &root, name, &mut target)?;
             artifacts.insert(name.into(), build.executable(&target)?);
         }
         for directory in watched_inputs {

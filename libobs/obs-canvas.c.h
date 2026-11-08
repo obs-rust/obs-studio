@@ -445,25 +445,6 @@ bool obs_canvas_reset_video(obs_canvas_t *canvas, struct obs_video_info *ovi)
 	return obs_canvas_reset_video_internal(canvas, ovi);
 }
 
-video_t *obs_canvas_get_video(const obs_canvas_t *canvas)
-{
-	return canvas->mix ? canvas->mix->video : NULL;
-}
-
-bool obs_canvas_get_video_info(const obs_canvas_t *canvas, struct obs_video_info *ovi)
-{
-	if (!obs->video.graphics || !canvas->mix)
-		return false;
-
-	*ovi = canvas->mix->ovi;
-	return true;
-}
-
-signal_handler_t *obs_canvas_get_signal_handler(obs_canvas_t *canvas)
-{
-	return canvas->context.signals;
-}
-
 void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t *source)
 {
 	assert(channel < MAX_CHANNELS);
@@ -512,11 +493,6 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 	}
 }
 
-obs_source_t *obs_canvas_get_channel(obs_canvas_t *canvas, uint32_t channel)
-{
-	return obs_view_get_source(&canvas->view, channel);
-}
-
 obs_scene_t *obs_canvas_scene_create(obs_canvas_t *canvas, const char *name)
 {
 	struct obs_source *source = obs_source_create_canvas(canvas, "scene", name, NULL, NULL);
@@ -558,21 +534,6 @@ void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
 	bfree(prev_name);
 }
 
-const char *obs_canvas_get_name(const obs_canvas_t *canvas)
-{
-	return canvas->context.name;
-}
-
-const char *obs_canvas_get_uuid(const obs_canvas_t *canvas)
-{
-	return canvas->context.uuid;
-}
-
-uint32_t obs_canvas_get_flags(const obs_canvas_t *canvas)
-{
-	return canvas->flags;
-}
-
 static bool enum_move_cb(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	UNUSED_PARAMETER(scene);
@@ -610,16 +571,6 @@ void obs_canvas_remove(obs_canvas_t *canvas)
 		canvas_dosignal(c, "canvas_remove", "remove");
 		obs_canvas_release(c);
 	}
-}
-
-bool obs_canvas_removed(obs_canvas_t *canvas)
-{
-	return obs_canvas_rules_removed(canvas->flags);
-}
-
-bool obs_canvas_has_video(obs_canvas_t *canvas)
-{
-	return canvas->mix != NULL;
 }
 
 void obs_canvas_render(obs_canvas_t *canvas)

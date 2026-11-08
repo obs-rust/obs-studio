@@ -19,12 +19,26 @@
 //! transition, whose shims ([`ffi::source_transition_slots`]) implement
 //! `obs_source::transition_slots::Transition` over the same seam and the
 //! libobs source calls (`obs_source_get_ref()`, `obs_source_release()`, the
-//! active-child add and remove, `obs_source_get_name()` and `blog()`); and
+//! active-child add and remove, `obs_source_get_name()` and `blog()`);
 //! `libobs/obs-source-transition-access.c.h`, the getters and manual
 //! controls of a transition, whose shims
 //! ([`ffi::source_transition_access`]) implement
 //! `obs_source::transition_access::Transition` over the same seam,
-//! `obs_source_get_ref()` and `obs_transition_set()`.
+//! `obs_source_get_ref()` and `obs_transition_set()`;
+//! `libobs/obs-source-transition-stop.c.h`, the clock read and stop of a
+//! transition, whose shims ([`ffi::source_transition_stop`]) implement
+//! `obs_source::transition_stop::Transition` over the same seam (with the
+//! plugin's `transition_stop`, the signals and the video frame time
+//! through it), `obs_source_remove_active_child()` and
+//! `obs_source_release()`; and
+//! `libobs/obs-source-transition-switch.c.h`, the start and set of a
+//! transition, whose shims ([`ffi::source_transition_switch`]) implement
+//! `obs_source::transition_switch::Transition` over the same seam (with the
+//! plugin's `transition_start` and the signals through it), the libobs
+//! source calls (`obs_source_get_ref()`, `obs_source_release()`, the
+//! active-child add and remove, `obs_source_get_name()`,
+//! `obs_source_enum_full_tree()` and `blog()`), `os_gettime_ns()` and the
+//! size port's recalculation ([`ffi::source_transition_size`]).
 //!
 //! `libobs/obs-source-audio-settings.c.h`, the source audio settings, have
 //! their shims in [`ffi::source_audio_settings`], over

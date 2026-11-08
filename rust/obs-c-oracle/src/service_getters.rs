@@ -37,6 +37,9 @@ unsafe extern "C" {
     pub fn oracle_module_free(module: *mut c_void);
     /// Makes the next `obs_service_context_new()` fail.
     pub fn oracle_service_set_context_fails(fails: bool);
+    /// A zeroed `struct obs_output` for a service to link to (#3886).
+    pub fn oracle_service_output_new() -> *mut c_void;
+    pub fn oracle_service_output_free(output: *mut c_void);
     pub fn oracle_service_set_state(service: *mut c_void, active: bool, output: *mut c_void);
     pub fn oracle_service_is_destroying(service: *const c_void) -> bool;
     pub fn oracle_service_is_active(service: *const c_void) -> bool;

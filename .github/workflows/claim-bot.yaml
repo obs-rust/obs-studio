@@ -32,5 +32,5 @@ jobs:
     # consumer, and are listed in ci.toml's [allow].permissions (SEC-002).
     permissions:
       issues: write
-      pull-requests: read
+      pull-requests: write
     uses: obs-rust/.github/.github/workflows/claim-bot.yml@master

@@ -34,31 +34,6 @@ const struct obs_service_info *find_service(const char *id)
  * obs_service, its context and its reference counts, which stay here with
  * the struct; the Rust port (obs-output's service module) calls the same
  * ones. Hidden. */
-obs_module_t *obs_service_module_first(bool disabled)
-{
-	return disabled ? obs->first_disabled_module : obs->first_module;
-}
-
-obs_module_t *obs_service_module_next(obs_module_t *module)
-{
-	return module->next;
-}
-
-size_t obs_service_module_service_count(obs_module_t *module)
-{
-	return module->services.num;
-}
-
-const char *obs_service_module_service_id(obs_module_t *module, size_t i)
-{
-	return module->services.array[i];
-}
-
-enum obs_module_load_state obs_service_module_load_state(obs_module_t *module)
-{
-	return module->load_state;
-}
-
 /* A zeroed service with its context set up, or NULL (freed) if that fails. */
 obs_service_t *obs_service_context_new(const char *name, obs_data_t *settings, obs_data_t *hotkey_data, bool private)
 {
@@ -102,26 +77,6 @@ void obs_service_context_free(obs_service_t *service)
 	bfree(service);
 }
 
-bool obs_weak_service_strong_release(obs_weak_service_t *weak)
-{
-	return obs_ref_release(&weak->ref);
-}
-
-void obs_weak_service_weak_addref(obs_weak_service_t *weak)
-{
-	obs_weak_ref_addref(&weak->ref);
-}
-
-bool obs_weak_service_weak_release(obs_weak_service_t *weak)
-{
-	return obs_weak_ref_release(&weak->ref);
-}
-
-void obs_weak_service_free(obs_weak_service_t *weak)
-{
-	bfree(weak);
-}
-
 signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service);
 signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service)
 {
@@ -163,3 +118,12 @@ obs_data_t *obs_service_get_context_settings(const obs_service_t *service)
 
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef get_weak
+
+/* Expose global roots together; Rust selects the enabled/disabled list.
+ * Module storage remains owned and synchronized by libobs. Hidden. */
+void obs_service_module_roots(obs_module_t **enabled, obs_module_t **disabled);
+void obs_service_module_roots(obs_module_t **enabled, obs_module_t **disabled)
+{
+	*enabled = obs->first_module;
+	*disabled = obs->first_disabled_module;
+}

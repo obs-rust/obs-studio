@@ -26,47 +26,15 @@
 # symbols the shims pull in (blog, bcrash, obs_get_video_info) are public and
 # exported on every host, and the shims carry no host code, so one set of stubs
 # serves all three.
-if(TARGET libobs_rust-static)
-  add_executable(test_windows_keys_steps_rust test_windows_keys_steps.c windows-keys-rust-stubs.c)
-  target_include_directories(
-    test_windows_keys_steps_rust
-    PRIVATE
-      ${CMOCKA_INCLUDE_DIR}
-      "${CMAKE_SOURCE_DIR}"
-      "${CMAKE_SOURCE_DIR}/libobs"
-      "${CMAKE_SOURCE_DIR}/deps/libcaption"
-  )
-  target_link_libraries(
-    test_windows_keys_steps_rust
-    PRIVATE
-      OBS::libobs
-      OBS::caption
-      Uthash::Uthash
-      ${CMOCKA_LIBRARIES}
-      libobs_rust-static
-      jansson::jansson
-      $<TARGET_NAME_IF_EXISTS:LibUUID::LibUUID>
-      $<TARGET_NAME_IF_EXISTS:gio::gio>
-      $<$<TARGET_EXISTS:gio::gio>:gobject-2.0>
-      $<$<TARGET_EXISTS:gio::gio>:glib-2.0>
-  )
-  obs_test_sanitize(test_windows_keys_steps_rust "address,undefined")
-  # The staticlib's obs-util host halves call the platform directly: on Windows
-  # UuidCreate(), timeBeginPeriod() and timeEndPeriod(); on macOS the
-  # Objective-C runtime, CoreFoundation and IOKit. libobs links these per host
-  # in libobs/cmake/os-<os>.cmake, so the executable does the same.
-  if(WIN32)
-    target_link_libraries(test_windows_keys_steps_rust PRIVATE winmm Rpcrt4)
-  elseif(OS_MACOS)
-    target_link_libraries(
-      test_windows_keys_steps_rust
-      PRIVATE
-        "$<LINK_LIBRARY:FRAMEWORK,AppKit.framework>"
-        "$<LINK_LIBRARY:FRAMEWORK,CoreFoundation.framework>"
-        "$<LINK_LIBRARY:FRAMEWORK,Foundation.framework>"
-        "$<LINK_LIBRARY:FRAMEWORK,IOKit.framework>"
-    )
-  endif()
-  add_dependencies(cmocka-tests test_windows_keys_steps_rust)
-  add_test(test_windows_keys_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_windows_keys_steps_rust)
+# Both targets/tests are declared in ../build/test-graph.json. Keep the
+# original optional imported-target checks, including on non-Linux hosts.
+set(HAVE_WINDOWS_KEYS_TEST_UUID FALSE)
+if(TARGET LibUUID::LibUUID)
+  set(HAVE_WINDOWS_KEYS_TEST_UUID TRUE)
 endif()
+set(HAVE_WINDOWS_KEYS_TEST_GIO FALSE)
+if(TARGET gio::gio)
+  set(HAVE_WINDOWS_KEYS_TEST_GIO TRUE)
+endif()
+# Public core references arise from the Rust archive: the graph puts that
+# archive before OBS::libobs so --as-needed does not discard their provider.

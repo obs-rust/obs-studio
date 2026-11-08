@@ -37,6 +37,12 @@ pub struct Init {
     pub compensating: bool,
     /// What `source_muted()` answers.
     pub muted: bool,
+    /// `last_output_frame_ts`.
+    pub last_output_frame_ts: u64,
+    /// `own_clock_timing_adjust`.
+    pub own_clock_timing_adjust: u64,
+    /// `own_clock_timing_set`.
+    pub own_clock_timing_set: bool,
 }
 
 unsafe extern "C" {

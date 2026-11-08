@@ -443,6 +443,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/queue_report.py
+      - name: Report Lane Proof Output 🧾
+        if: always()
+        env:
+          BUILD_PROJECT: ${{ toJSON(needs.build-project) }}
+        run: echo "$BUILD_PROJECT"
       - name: Check Job Results ✅
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
@@ -461,7 +466,15 @@ jobs:
   tier2-lane-proof:
     name: Tier 2 Lane Proof 🧾
     needs: [build-project, ci-gate]
-    if: ${{ needs.ci-gate.result == 'success' && needs.build-project.outputs.tier2-linux-proof != '' }}
+    # Override implicit success(): optional skipped jobs in the reusable build
+    # must not suppress publication. Explicit results still fail closed.
+    if: >-
+      ${{ !cancelled() && needs.ci-gate.result == 'success' &&
+          needs.build-project.result == 'success' &&
+          needs.build-project.outputs.tier2-linux-proof != '' &&
+          (github.event_name == 'merge_group' ||
+           (github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.full_name == github.repository)) }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
