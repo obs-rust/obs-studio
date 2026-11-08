@@ -93,7 +93,11 @@ def download(url: str, staged: Path) -> None:
                 shutil.copyfileobj(response, destination)
             return
         except (HTTPError, URLError, TimeoutError, ConnectionError) as error:
-            reason = f'HTTP {error.code}' if isinstance(error, HTTPError) else f'{type(error).__name__}: {error}'
+            if isinstance(error, HTTPError):
+                error.close()  # an HTTPError owns the open error response
+                reason = f'HTTP {error.code}'
+            else:
+                reason = f'{type(error).__name__}: {error}'
             failures.append(f'attempt {attempt}: {reason}')
             if not transient(error):
                 break
