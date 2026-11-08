@@ -1851,11 +1851,6 @@ void obs_scene_release(obs_scene_t *scene)
 		obs_source_release(scene->source);
 }
 
-obs_source_t *obs_scene_get_source(const obs_scene_t *scene)
-{
-	return scene ? scene->source : NULL;
-}
-
 obs_scene_t *obs_scene_from_source(const obs_source_t *source)
 {
 	if (!source || strcmp(source->info.id, scene_info.id) != 0)
@@ -2328,11 +2323,6 @@ void sceneitem_restore(obs_data_t *data, void *vp)
 void obs_sceneitems_add(obs_scene_t *scene, obs_data_array_t *data)
 {
 	obs_data_array_enum(data, sceneitem_restore, scene);
-}
-
-obs_source_t *obs_sceneitem_get_source(const obs_sceneitem_t *item)
-{
-	return item ? item->source : NULL;
 }
 
 static void signal_parent(obs_scene_t *parent, const char *command, calldata_t *params)

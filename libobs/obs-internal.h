@@ -881,6 +881,7 @@ typedef void (*obs_destroy_cb)(void *obj);
 #include "obs-object-query-fields.h"
 #include "obs-scene-group-query-fields.h"
 #include "obs-scene-item-parent-fields.h"
+#include "obs-scene-source-fields.h"
 #include "obs-scene-item-transition-fields.h"
 
 /* A non-NULL context is required; the Rust query guards it before this call. */

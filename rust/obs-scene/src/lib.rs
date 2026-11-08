@@ -48,6 +48,7 @@ pub mod item_parent_getter;
 pub mod item_transform;
 mod platform;
 pub mod render_plan;
+pub mod source_getters;
 pub mod source_type_queries;
 pub mod transform_update;
 

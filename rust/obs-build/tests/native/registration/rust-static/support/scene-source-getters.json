@@ -1,0 +1,66 @@
+{
+  "test_scene_audio_window_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_bounds_place_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_item_crop_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-support.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_item_names_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_item_order_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_item_transform_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_render_plan_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_scene_transform_update_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-source-getter-link-stubs.c"
+    ],
+    "includes": [
+      "libobs"
+    ]
+  }
+}
