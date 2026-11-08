@@ -3694,6 +3694,21 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_background_query": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_query.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_background_ui": {
       "sources": [
         "test/cmocka/test_hotkey_background_ui.cpp",
@@ -14622,6 +14637,13 @@
     },
     "test_hevc": {
       "target": "test_hevc"
+    },
+    "test_hotkey_background_query": {
+      "target": "test_hotkey_background_query",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_hotkey_background_ui": {
       "target": "test_hotkey_background_ui",
