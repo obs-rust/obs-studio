@@ -199,6 +199,40 @@
       }
     ]
   },
+  "test_source_duplicate_steps_rust": {
+    "sources": [
+      "test/cmocka/source-identity-getter-link-stubs.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
+  "test_source_filter_chain_steps_rust": {
+    "sources": [
+      "test/cmocka/source-identity-getter-link-stubs.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
   "test_source_frame_copy_steps_rust": {
     "sources": [
       "test/cmocka/source-identity-getter-link-stubs.c",
@@ -327,6 +361,23 @@
       }
     ]
   },
+  "test_transition_clock_steps_rust": {
+    "sources": [
+      "test/cmocka/source-identity-getter-link-stubs.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ],
+    "includes": [
+      "libobs"
+    ]
+  },
   "test_transition_load_steps_rust": {
     "sources": [
       "test/cmocka/source-identity-getter-link-stubs.c",
@@ -357,6 +408,23 @@
         "name": "OBS::w32-pthreads",
         "requires": "OS_WINDOWS"
       }
+    ]
+  },
+  "test_transition_sample_time_steps_rust": {
+    "sources": [
+      "test/cmocka/source-identity-getter-link-stubs.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ],
+    "includes": [
+      "libobs"
     ]
   },
   "test_transition_start_steps_rust": {

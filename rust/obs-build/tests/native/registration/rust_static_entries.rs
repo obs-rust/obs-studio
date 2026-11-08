@@ -46,6 +46,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "transition-start"
                 | "monitor"
                 | "graphics"
+                | "private-source"
                 | "private-steps"
                 | "private-rules"
                 | "private-link-rules"
@@ -301,5 +302,48 @@ fn missing_malformed_and_unknown_support_entries_are_rejected() {
             .err()
             .unwrap()
             .contains("singleton runtime")
+    );
+}
+
+#[test]
+fn rust_static_consumers_preserve_private_adapter_link_support() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let raw = read(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut missing = Vec::new();
+    for (name, target) in raw["targets"].as_object().unwrap() {
+        if !target["libraries"]
+            .as_array()
+            .is_some_and(|libraries| libraries.contains(&json!("libobs_rust-static")))
+        {
+            continue;
+        }
+        // Mirror the two legacy deferred fragments' archive-consumer predicates.
+        let support = if name.starts_with("test_scene_") {
+            Some("test/cmocka/scene-item-transition-getter-link-stub.c")
+        } else if [
+            "test_async_",
+            "test_deinterlace_",
+            "test_source_",
+            "test_transition_",
+        ]
+        .iter()
+        .any(|prefix| name.starts_with(prefix))
+        {
+            Some("test/cmocka/source-identity-getter-link-stubs.c")
+        } else {
+            None
+        };
+        if let Some(support) = support
+            && !target["sources"]
+                .as_array()
+                .unwrap()
+                .contains(&json!(support))
+        {
+            missing.push(format!("{name}: {support}"));
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "missing private adapter support: {missing:#?}"
     );
 }
