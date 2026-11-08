@@ -17339,8 +17339,10 @@
         "test/cmocka/windows-keys-rust-stubs.c",
         "test/cmocka/hotkey-identity-rust-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/obs-hotkey-background-app-id-fields.c.h"
+        "test/cmocka/object-validity-query-link-stubs.c"
+      ],
+      "watch_inputs": [
+        "Cargo.toml"
       ],
       "includes": [
         ".",

@@ -1,7 +1,7 @@
 {
   "test_windows_keys_steps_rust": {
-    "sources": [
-      "libobs/obs-hotkey-background-app-id-fields.c.h"
+    "watch_inputs": [
+      "Cargo.toml"
     ]
   }
 }
