@@ -52,6 +52,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "private-link-rules"
                 | "private-renderer"
                 | "private-parser"
+                | "windows-keys"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }
