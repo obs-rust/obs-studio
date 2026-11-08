@@ -2089,6 +2089,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_effect_param_types_steps_rust": {
+      "sources": [
+        "test/cmocka/test_effect_param_types_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_effect_param_values": {
       "sources": [
         "test/cmocka/test_effect_param_values.c"
@@ -2200,6 +2230,30 @@
         "OBS::caption",
         "Uthash::Uthash",
         "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_effect_parser_lifecycle_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_lifecycle.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
@@ -3800,6 +3854,39 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_ffmpeg_pq_steps_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_pq_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined",
+      "definitions": [
+        "GS_PQ_STEPS_TEST_RUST"
+      ]
+    },
     "test_graphics_ffmpeg_rgba64_steps": {
       "sources": [
         "test/cmocka/test_graphics_ffmpeg_rgba64_steps.c",
@@ -3840,6 +3927,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_ffmpeg_route_steps_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_route_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_ffmpeg_wic_checks": {
       "sources": [
         "libobs/graphics/graphics-ffmpeg-host-wic-checks.c.h",
@@ -3855,6 +3972,36 @@
       "libraries": [
         "OBS::libobs",
         "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
+    "test_graphics_ffmpeg_wic_checks_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_wic_checks.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -6255,6 +6402,40 @@
       ],
       "libraries": [
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_nsgif_decode_rust": {
+      "sources": [
+        "test/cmocka/test_nsgif_decode.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined",
+      "definitions": [
+        "NSGIF_TEST_RUST",
+        "NSGIF_DATA_DIR=\"${source}/test/cmocka/data\""
       ]
     },
     "test_null_output_stop_thread": {
@@ -16233,6 +16414,13 @@
         "${target}"
       ]
     },
+    "test_effect_param_types_steps_rust": {
+      "target": "test_effect_param_types_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_effect_param_values": {
       "target": "test_effect_param_values",
       "command": [
@@ -16260,6 +16448,13 @@
     "test_effect_parser_lifecycle": {
       "target": "test_effect_parser_lifecycle",
       "requires": true
+    },
+    "test_effect_parser_lifecycle_rust": {
+      "target": "test_effect_parser_lifecycle_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
     },
     "test_effect_parser_params": {
       "target": "test_effect_parser_params",
@@ -16840,6 +17035,13 @@
         "${target}"
       ]
     },
+    "test_graphics_ffmpeg_pq_steps_rust": {
+      "target": "test_graphics_ffmpeg_pq_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_graphics_ffmpeg_rgba64_steps": {
       "target": "test_graphics_ffmpeg_rgba64_steps",
       "command": [
@@ -16852,8 +17054,22 @@
         "${target}"
       ]
     },
+    "test_graphics_ffmpeg_route_steps_rust": {
+      "target": "test_graphics_ffmpeg_route_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_graphics_ffmpeg_wic_checks": {
       "target": "test_graphics_ffmpeg_wic_checks",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_ffmpeg_wic_checks_rust": {
+      "target": "test_graphics_ffmpeg_wic_checks_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -17707,6 +17923,13 @@
     },
     "test_nsgif_decode": {
       "target": "test_nsgif_decode"
+    },
+    "test_nsgif_decode_rust": {
+      "target": "test_nsgif_decode_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
     },
     "test_null_output_stop_thread": {
       "target": "test_null_output_stop_thread",
