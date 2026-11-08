@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 bool obs_source_get_texcoords_centered(obs_source_t *source)
 {
