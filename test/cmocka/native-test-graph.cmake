@@ -292,7 +292,12 @@ function(obs_native_test_graph path root)
   foreach(helper IN ITEMS batch_order current_scene_removed list_property_items scene_count)
     string(TOUPPER "${helper}" helper_key)
     set(HAVE_WS_${helper_key}_TEST_OWNER FALSE)
-    if(TARGET OBS::libobs AND TARGET nlohmann_json::nlohmann_json)
+    if(
+      TARGET OBS::libobs
+      AND TARGET nlohmann_json::nlohmann_json
+      AND NOT OS_WINDOWS
+      AND (OS_LINUX OR helper STREQUAL "batch_order" OR helper STREQUAL "scene_count")
+    )
       if(helper STREQUAL "batch_order")
         set(owner_source "requesthandler/RequestBatchHandler.cpp")
       elseif(helper STREQUAL "current_scene_removed")
@@ -454,7 +459,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${target_graph}"
         "targets;${name}"
-        "sources;unity_groups;pch;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;configured_headers;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
+        "sources;unity_groups;pch;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;configured_headers;packages;header_packages;header_libraries;inherit_header_definitions;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
       )
       string(JSON cpp_kind ERROR_VARIABLE cpp_error TYPE "${target_graph}" targets "${name}" cpp_standard)
       set(cpp_standard "")
@@ -613,7 +618,15 @@ function(obs_native_test_graph path root)
           target_include_directories(${name} PRIVATE ${header_directories})
         endif()
         get_target_property(header_definitions "${library}" INTERFACE_COMPILE_DEFINITIONS)
-        if(header_definitions)
+        string(
+          JSON inherit_definitions
+          ERROR_VARIABLE inherit_error
+          GET "${target_graph}"
+          targets
+          "${name}"
+          inherit_header_definitions
+        )
+        if(NOT inherit_error AND inherit_definitions AND header_definitions)
           target_compile_definitions(${name} PRIVATE ${header_definitions})
         endif()
       endforeach()

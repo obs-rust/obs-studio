@@ -2,5 +2,4 @@
 if(NOT TARGET nlohmann_json::nlohmann_json)
   find_package(nlohmann_json 3.11 QUIET)
 endif()
-include("${CMAKE_CURRENT_LIST_DIR}/../native-test-graph.cmake")
-obs_native_test_graph("${CMAKE_CURRENT_LIST_DIR}/../build/test-graph.json" "${CMAKE_SOURCE_DIR}")
+# Registration lives in build/test-graph.json, consumed once by CMakeLists.txt.

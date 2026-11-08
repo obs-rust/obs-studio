@@ -15,6 +15,8 @@ fn checked(command: &mut Command) -> std::process::Output {
 fn fixture() -> serde_json::Value {
     serde_json::json!({"schema":1,"targets":{"probe":{
         "sources":["probe.c"],
+        "header_libraries":["header-policy"],
+        "inherit_header_definitions":true,
         "configured_headers":{"settings.h":{"input":"settings.h.in","values":{"VALUE":"41"}}}
     }},"tests":{"probe":{"target":"probe"}}})
 }
@@ -60,7 +62,7 @@ fn configured_headers_reject_escaping_paths_and_invalid_values() {
 fn configured_headers_match_consumers_and_rebuild_after_template_or_value_changes() {
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path();
-    fs::write(root.join("probe.c"), "#include <settings.h>\n#include <stdio.h>\nint main(void) {printf(\"%d\", ANSWER); return 0;}\n").unwrap();
+    fs::write(root.join("probe.c"), "#include <settings.h>\n#include <stdio.h>\nint main(void) {printf(\"%d\", ANSWER + HEADER_IMPORTED - 7); return 0;}\n").unwrap();
     fs::write(
         root.join("settings.h.in"),
         "#define ANSWER (@VALUE@ + 1)\r\n",
@@ -74,6 +76,8 @@ fn configured_headers_match_consumers_and_rebuild_after_template_or_value_change
             r#"cmake_minimum_required(VERSION 3.28)
 project(configured-header-contract C)
 enable_testing()
+add_library(header-policy INTERFACE IMPORTED)
+set_property(TARGET header-policy PROPERTY INTERFACE_COMPILE_DEFINITIONS HEADER_IMPORTED=7)
 include("{}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRENT_SOURCE_DIR}}")
 "#,
@@ -87,6 +91,13 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRE
         output: root.join("native"),
         profile: Default::default(),
     };
+    let interfaces = std::collections::BTreeMap::from([(
+        "header-policy".into(),
+        obs_build::validation::graph::Dependency {
+            definitions: vec![("HEADER_IMPORTED".into(), Some("7".into()))],
+            ..Default::default()
+        },
+    )]);
     let mut graph = fixture();
     for step in 0..3 {
         if step == 1 {
@@ -102,7 +113,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRE
         fs::write(root.join("graph.json"), graph.to_string()).unwrap();
         let parsed = Graph::parse(&graph.to_string()).unwrap();
         let artifacts = parsed
-            .compile(&build, root, &Default::default(), &Default::default())
+            .compile(&build, root, &Default::default(), &interfaces)
             .unwrap();
         let native = checked(&mut Command::new(&artifacts["probe"]));
         let expected = if step == 1 { b"43" } else { b"42" };

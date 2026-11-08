@@ -140,6 +140,11 @@ pub fn build_qt_tests(
     ]);
     let mut interfaces = interfaces.clone();
     if !interfaces.contains_key("nlohmann_json::nlohmann_json")
+        && pkg_config::Config::new()
+            .atleast_version("3.11")
+            .cargo_metadata(false)
+            .probe("nlohmann_json")
+            .is_ok()
         && let Ok(json) = graph::Dependency::package(&build.target, "nlohmann_json")
     {
         interfaces.insert("nlohmann_json::nlohmann_json".into(), json);
@@ -155,7 +160,10 @@ pub fn build_qt_tests(
     ] {
         facts.insert(
             format!("HAVE_WS_{helper}_TEST_OWNER"),
-            interfaces.contains_key("OBS::libobs")
+            !facts.get("OS_WINDOWS").copied().unwrap_or(false)
+                && (facts.get("OS_LINUX").copied().unwrap_or(false)
+                    || matches!(helper, "BATCH_ORDER" | "SCENE_COUNT"))
+                && interfaces.contains_key("OBS::libobs")
                 && interfaces.contains_key("nlohmann_json::nlohmann_json")
                 && (helper != "BATCH_ORDER" || interfaces.contains_key("Qt6::Core"))
                 && root

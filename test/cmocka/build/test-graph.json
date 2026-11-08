@@ -17408,14 +17408,7 @@
         "plugins/obs-websocket/src/requesthandler/rpc/RequestResult.cpp",
         "plugins/obs-websocket/src/utils/Compat.cpp"
       ],
-      "requires": {
-        "all": [
-          {
-            "not": "OS_WINDOWS"
-          },
-          "HAVE_WS_BATCH_ORDER_TEST_OWNER"
-        ]
-      },
+      "requires": "HAVE_WS_BATCH_ORDER_TEST_OWNER",
       "includes": [
         "plugins/obs-websocket/src",
         "plugins/obs-websocket/src/utils",
@@ -17436,6 +17429,9 @@
         "Qt6::Core",
         "nlohmann_json::nlohmann_json",
         "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
       ]
     },
     "test_ws_current_scene_removed": {
@@ -17451,12 +17447,7 @@
         "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp",
         "plugins/obs-websocket/src/utils/Obs_SearchHelper.cpp"
       ],
-      "requires": {
-        "all": [
-          "OS_LINUX",
-          "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER"
-        ]
-      },
+      "requires": "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER",
       "includes": [
         "plugins/obs-websocket/src",
         "frontend/api"
@@ -17478,6 +17469,9 @@
       ],
       "compile_options": [
         "-Wno-error=deprecated-declarations"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
       ]
     },
     "test_ws_image_mime": {
@@ -17505,12 +17499,7 @@
         "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
         "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp"
       ],
-      "requires": {
-        "all": [
-          "OS_LINUX",
-          "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER"
-        ]
-      },
+      "requires": "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER",
       "includes": [
         "plugins/obs-websocket/src",
         "frontend/api"
@@ -17532,6 +17521,9 @@
       ],
       "compile_options": [
         "-Wno-error=deprecated-declarations"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
       ]
     },
     "test_ws_scene_count": {
@@ -17539,14 +17531,7 @@
         "test/cmocka/test_ws_scene_count.cpp",
         "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp"
       ],
-      "requires": {
-        "all": [
-          {
-            "not": "OS_WINDOWS"
-          },
-          "HAVE_WS_SCENE_COUNT_TEST_OWNER"
-        ]
-      },
+      "requires": "HAVE_WS_SCENE_COUNT_TEST_OWNER",
       "includes": [
         "plugins/obs-websocket/src",
         "plugins/obs-websocket/src/utils",
@@ -17571,7 +17556,11 @@
       ],
       "compile_options_if_supported": [
         "-ftrivial-auto-var-init=pattern"
-      ]
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
+      ],
+      "inherit_header_definitions": true
     },
     "test_ws_session_duration": {
       "sources": [

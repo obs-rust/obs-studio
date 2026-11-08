@@ -5,5 +5,4 @@ endif()
 if(NOT TARGET Qt6::Core)
   find_package(Qt6 QUIET COMPONENTS Core)
 endif()
-include("${CMAKE_CURRENT_LIST_DIR}/../native-test-graph.cmake")
-obs_native_test_graph("${CMAKE_CURRENT_LIST_DIR}/../build/test-graph.json" "${CMAKE_SOURCE_DIR}")
+# Registration lives in build/test-graph.json, consumed once by CMakeLists.txt.

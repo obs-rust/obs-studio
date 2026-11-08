@@ -213,6 +213,9 @@ pub struct Target {
     /// Public include directories for tests that supply dependency stubs.
     #[serde(default)]
     pub header_libraries: Vec<String>,
+    /// Opt in to interface definitions for fixtures that explicitly imported them.
+    #[serde(default)]
+    pub inherit_header_definitions: bool,
     #[serde(default)]
     pub archives: Vec<String>,
     #[serde(default)]
@@ -231,6 +234,27 @@ pub struct Target {
 }
 
 impl Target {
+    fn add_header_libraries(
+        &self,
+        target: &mut SharedLibrary,
+        libraries: &BTreeMap<String, Dependency>,
+    ) -> Result<(), String> {
+        for name in &self.header_libraries {
+            let dependency = libraries
+                .get(name)
+                .ok_or_else(|| format!("unresolved native test header library {name}"))?;
+            target
+                .include_dirs
+                .extend(dependency.include_dirs.iter().cloned());
+            if self.inherit_header_definitions {
+                target
+                    .definitions
+                    .extend(dependency.definitions.iter().cloned());
+            }
+        }
+        Ok(())
+    }
+
     fn validate_groups(&self) -> Result<(), String> {
         if self.unity_groups.is_empty() {
             if self.pch.is_some() {
@@ -850,19 +874,7 @@ impl Graph {
                     Some(serde_json::to_string(&path).map_err(|error| error.to_string())?),
                 ));
             }
-            for (output, header) in &spec.configured_headers {
-                let directory = build
-                    .output
-                    .join("native-tests")
-                    .join(name)
-                    .join("configured");
-                let input = root.join(&header.input);
-                watched_inputs.insert(input.clone());
-                let text = fs::read_to_string(input).map_err(|error| error.to_string())?;
-                fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-                crate::frontend::write(&directory.join(output), &header.render(&text))?;
-                target.include_dirs.push(directory);
-            }
+            watched_inputs.extend(spec.configure_headers(build, &root, name, &mut target)?);
             for input in &spec.watch_inputs {
                 watched_inputs.insert(root.join(input));
             }
@@ -879,17 +891,7 @@ impl Graph {
                     });
                 target.definitions.push((key.into(), value));
             }
-            for name in &spec.header_libraries {
-                let dependency = libraries
-                    .get(name)
-                    .ok_or_else(|| format!("unresolved native test header library {name}"))?;
-                target
-                    .include_dirs
-                    .extend(dependency.include_dirs.iter().cloned());
-                target
-                    .definitions
-                    .extend(dependency.definitions.iter().cloned());
-            }
+            spec.add_header_libraries(&mut target, libraries)?;
             for package in &spec.packages {
                 crate::libobs::add_package(&mut target, &build.target, package)?;
             }

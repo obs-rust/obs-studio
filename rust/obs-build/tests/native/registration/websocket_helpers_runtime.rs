@@ -29,6 +29,7 @@ fn cases(output: &std::process::Output, name: &str) {
     );
     assert!(!text.contains("[  SKIPPED ]"), "{name}: {text}");
     assert!(!text.contains("[  FAILED  ]"), "{name}: {text}");
+    eprintln!("{name}: PASS {count} cases");
 }
 fn unavailable_owners(directory: &Path, root: &str) {
     let absent = directory.join("absent-sources");

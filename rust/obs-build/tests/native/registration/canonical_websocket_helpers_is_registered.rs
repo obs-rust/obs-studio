@@ -30,6 +30,7 @@ fn canonical_websocket_helpers_is_registered() {
         assert!(fragment.contains("test-graph.json"));
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
+        assert!(!fragment.contains("obs_native_test_graph("));
     }
 }
 #[test]
