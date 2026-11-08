@@ -1,5 +1,6 @@
 use super::*;
 use obs_build::validation::graph::Dependency;
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 fn checked(command: &mut Command) -> Output {
@@ -42,34 +43,7 @@ fn canonical_pipewire_cameras_runs_unchanged() {
     let renderer =
         obs_build::graphics::build_opengl(&build, &root, &core_path, &Default::default()).unwrap();
     assert_binding(&renderer, &core_path);
-    let support = directory.path().join("support");
-    fs::create_dir_all(&support).unwrap();
-    fs::write(
-        support.join("CMakeLists.txt"),
-        format!(
-            r#"cmake_minimum_required(VERSION 3.28)
-project(camera-glad C)
-add_library(camera-glad STATIC "{root}/deps/glad/src/glad.c")
-target_include_directories(camera-glad PRIVATE "{root}/deps/glad/include")
-"#,
-            root = root.display()
-        ),
-    )
-    .unwrap();
-    checked(
-        Command::new("cmake")
-            .arg("-S")
-            .arg(&support)
-            .arg("-B")
-            .arg(support.join("build"))
-            .args(["-G", "Ninja"]),
-    );
-    checked(
-        Command::new("cmake")
-            .arg("--build")
-            .arg(support.join("build")),
-    );
-    let glad = support.join("build/libcamera-glad.a");
+    let glad = build_glad(directory.path(), &root);
     let mut interfaces =
         std::collections::BTreeMap::from([("OBS::libobs".into(), core.dependency)]);
     for (name, package) in [
@@ -140,6 +114,37 @@ target_include_directories(camera-glad PRIVATE "{root}/deps/glad/include")
         &glad,
     );
     replay_cmake(directory.path(), &runtime, &core_path);
+}
+
+fn build_glad(directory: &Path, root: &Path) -> PathBuf {
+    let support = directory.join("support");
+    fs::create_dir_all(&support).unwrap();
+    fs::write(
+        support.join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
+project(camera-glad C)
+add_library(camera-glad STATIC "{root}/deps/glad/src/glad.c")
+target_include_directories(camera-glad PRIVATE "{root}/deps/glad/include")
+"#,
+            root = root.display()
+        ),
+    )
+    .unwrap();
+    checked(
+        Command::new("cmake")
+            .arg("-S")
+            .arg(&support)
+            .arg("-B")
+            .arg(support.join("build"))
+            .args(["-G", "Ninja"]),
+    );
+    checked(
+        Command::new("cmake")
+            .arg("--build")
+            .arg(support.join("build")),
+    );
+    support.join("build/libcamera-glad.a")
 }
 
 fn write_cmake(
