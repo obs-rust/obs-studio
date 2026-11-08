@@ -56,7 +56,10 @@ fn canonical_scene_bounds_place_is_registered() {
     let fragment =
         fs::read_to_string(root.join("test/cmocka/tests.d/test_scene_bounds_place.cmake")).unwrap();
     assert!(!fragment.contains("add_executable(\n  test_scene_bounds_place\n"));
-    assert!(!fragment.contains("add_executable("));
+    assert!(fragment.contains("if(TARGET libobs_rust-static)"));
+    assert!(
+        fragment.contains("add_executable(test_scene_bounds_place_rust test_scene_bounds_place.c scene-getter-log-link-stub.c)")
+    );
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
