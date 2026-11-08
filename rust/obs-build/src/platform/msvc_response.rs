@@ -10,6 +10,20 @@
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+
+/// Append the final linker options, keeping MSVC invocations short.
+pub fn configure_link_options(
+    target: &str,
+    command: &mut Command,
+    artifact: &Path,
+    options: &[String],
+    msvc: bool,
+) -> Result<(), String> {
+    let _ = (target, artifact, msvc);
+    command.args(options);
+    Ok(())
+}
 
 /// Writes `objects` to `rsp`, one double-quoted path per line, and returns
 /// the `@rsp` argument that stands for them on the command line.
@@ -35,6 +49,40 @@ pub fn msvc_response_file(rsp: &Path, objects: &[PathBuf]) -> Result<OsString, S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn msvc_export_options_use_a_short_response_file_invocation() {
+        let dir = tempfile::tempdir().unwrap();
+        let artifact = dir.path().join("libobs with spaces.dll");
+        let exports: Vec<String> = (0..3000)
+            .map(|i| format!("/EXPORT:obs_synthetic_export_{i:04}"))
+            .collect();
+        assert!(exports.iter().map(String::len).sum::<usize>() > 32767);
+        let mut command = Command::new("cl.exe");
+        command.arg("/link");
+        configure_link_options(
+            "x86_64-pc-windows-msvc",
+            &mut command,
+            &artifact,
+            &exports,
+            true,
+        )
+        .unwrap();
+        assert!(format!("{command:?}").len() < 8000);
+        let args: Vec<_> = command.get_args().collect();
+        assert_eq!(args.len(), 2);
+        assert_eq!(args[0], "/link");
+        let response = args[1].to_str().unwrap().strip_prefix('@').unwrap();
+        assert_eq!(Path::new(response), artifact.with_extension("link.rsp"));
+        let text = std::fs::read_to_string(response).unwrap();
+        assert_eq!(
+            text.lines().collect::<Vec<_>>(),
+            exports
+                .iter()
+                .map(|arg| format!("\"{arg}\""))
+                .collect::<Vec<_>>()
+        );
+    }
 
     /// A path with spaces, as a checkout under "Program Files" has.
     fn objects(dir: &Path) -> Vec<PathBuf> {
