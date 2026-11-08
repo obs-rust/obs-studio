@@ -13696,6 +13696,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_handler_getters": {
+      "sources": [
+        "test/cmocka/test_source_handler_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_identity_getters": {
       "sources": [
         "test/cmocka/test_source_identity_getters.c"
@@ -22672,6 +22687,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_handler_getters": {
+      "target": "test_source_handler_getters",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_identity_getters": {
