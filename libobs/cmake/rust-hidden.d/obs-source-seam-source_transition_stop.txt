@@ -1,0 +1,7 @@
+# obs-source-transition-stop.c (obs-source-seam): the four helpers in the
+# private obs-source-transition-stop.h, which the video and audio renders
+# of obs-source-transition.c call.
+transition_calc_time
+transition_get_video_time
+transition_handle_stop
+transition_stop

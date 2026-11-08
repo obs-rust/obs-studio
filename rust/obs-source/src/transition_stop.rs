@@ -50,10 +50,13 @@
     clippy::expect_used,
     clippy::panic,
     clippy::unimplemented,
-    clippy::unreachable
+    clippy::unreachable,
+    clippy::todo
 )]
 
 use std::ffi::CStr;
+
+use crate::transition_clock::{self, Clock};
 
 /// The name [`get_time`] hands `transition_valid()`, which logs it for a
 /// NULL source.
@@ -124,15 +127,20 @@ pub trait Transition {
 /// mode, manual value, start time and duration (read in that order), by
 /// [`crate::transition_clock::time`]. Called with `transition_mutex` held.
 pub fn calc_time<T: Transition>(transition: &T, ts: u64) -> f32 {
-    let _ = (transition, ts);
-    todo!()
+    let clock = Clock {
+        mode: transition.mode(),
+        manual_val: transition.manual_val(),
+        start_time: transition.start_time(),
+        duration: transition.duration(),
+    };
+    transition_clock::time(clock, ts)
 }
 
 /// `transition_get_video_time()`: [`calc_time`] at the latest video
 /// frame's time, read first. Called with `transition_mutex` held.
 pub fn get_video_time<T: Transition>(transition: &T) -> f32 {
-    let _ = transition;
-    todo!()
+    let ts = transition.video_time();
+    calc_time(transition, ts)
 }
 
 /// `obs_transition_get_time()`: [`get_video_time`] under
@@ -144,8 +152,17 @@ pub fn get_video_time<T: Transition>(transition: &T) -> f32 {
 /// difference: the C crashes on the first and reads the second's unused
 /// fields).
 pub fn get_time<T: Transition>(transition: Option<&T>) -> f32 {
-    let _ = transition;
-    todo!()
+    if !T::valid(transition, GET_TIME_LOG_NAME) {
+        return 0.0;
+    }
+    let Some(transition) = transition else {
+        return 0.0;
+    };
+
+    transition.lock();
+    let t = get_video_time(transition);
+    transition.unlock();
+    t
 }
 
 /// `transition_stop()`: the end of a transition. Slot A's child is removed
@@ -154,16 +171,27 @@ pub fn get_time<T: Transition>(transition: Option<&T>) -> f32 {
 /// slot A and slot B empties. Called with `transition_mutex` held; takes no
 /// lock.
 pub fn stop<T: Transition>(transition: &T) {
-    let _ = transition;
-    todo!()
+    let old_child = transition.source(SOURCE_A);
+
+    if let Some(old) = old_child
+        && transition.source_active(SOURCE_A)
+    {
+        transition.remove_active_child(old);
+    }
+    transition.release(old_child);
+
+    transition.set_source_active(SOURCE_A, true);
+    transition.set_source_active(SOURCE_B, false);
+    transition.set_source(SOURCE_A, transition.source(SOURCE_B));
+    transition.set_source(SOURCE_B, None);
 }
 
 /// `transition_handle_stop()`: the type's `transition_stop` callback, when
 /// it has one, then the stop signals ([`STOP_SIGNALS`]). Called after
 /// `transition_mutex` is let go; touches no field.
 pub fn handle_stop<T: Transition>(transition: &T) {
-    let _ = transition;
-    todo!()
+    transition.call_stop();
+    transition.dosignal(STOP_SIGNALS.0, STOP_SIGNALS.1);
 }
 
 /// `obs_transition_force_stop()`: [`handle_stop`], whether or not the
@@ -173,6 +201,11 @@ pub fn handle_stop<T: Transition>(transition: &T) {
 /// intentional difference: the C crashes on the first and calls back and
 /// signals on the second).
 pub fn force_stop<T: Transition>(transition: Option<&T>) {
-    let _ = transition;
-    todo!()
+    if !T::valid(transition, FORCE_STOP_LOG_NAME) {
+        return;
+    }
+    let Some(transition) = transition else {
+        return;
+    };
+    handle_stop(transition);
 }
