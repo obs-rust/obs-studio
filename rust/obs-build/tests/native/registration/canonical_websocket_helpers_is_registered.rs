@@ -51,6 +51,36 @@ fn canonical_websocket_helpers_optional_owners() {
     }
 }
 
+#[test]
+fn canonical_websocket_helpers_preserve_original_hosts() {
+    let graph = Graph::parse(&expected().to_string()).unwrap();
+    for (linux, windows) in [(true, false), (false, false), (false, true)] {
+        let mut facts = std::collections::BTreeMap::from([
+            ("OS_LINUX".into(), linux),
+            ("OS_WINDOWS".into(), windows),
+        ]);
+        for name in CASES {
+            facts.insert(
+                format!(
+                    "HAVE_{}_TEST_OWNER",
+                    name.trim_start_matches("test_").to_uppercase()
+                ),
+                true,
+            );
+        }
+        let selected = graph.select(&facts).unwrap();
+        for name in CASES {
+            let enabled = match name {
+                "test_ws_current_scene_removed" | "test_ws_list_property_items" => linux,
+                "test_ws_batch_order" | "test_ws_scene_count" => !windows,
+                _ => true,
+            };
+            assert_eq!(selected.targets.contains_key(name), enabled, "{name}: {facts:?}");
+            assert_eq!(selected.tests.contains_key(name), enabled, "{name}: {facts:?}");
+        }
+    }
+}
+
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
 #[path = "websocket_helpers_runtime.rs"]
 mod runtime;
