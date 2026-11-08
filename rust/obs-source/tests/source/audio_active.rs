@@ -15,7 +15,10 @@ fn independent_fields() {
     for bits in 0..16 {
         field.store(bits & 1 != 0, Ordering::SeqCst);
         for _ in 0..2 {
-            assert_eq!(active(Some(&field), || panic!("valid source logged")), bits & 1 != 0);
+            assert_eq!(
+                active(Some(&field), || panic!("valid source logged")),
+                bits & 1 != 0
+            );
             assert_eq!(field.load(Ordering::SeqCst), bits & 1 != 0);
         }
     }

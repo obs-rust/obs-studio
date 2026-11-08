@@ -387,6 +387,8 @@ mod canonical_scripting_hosts_are_registered;
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
 mod canonical_shutdown_after_failed_startup_is_registered;
+#[path = "native/registration/canonical_source_audio_active_is_registered.rs"]
+mod canonical_source_audio_active_is_registered;
 #[path = "native/registration/canonical_source_boolean_queries_is_registered.rs"]
 mod canonical_source_boolean_queries_is_registered;
 #[path = "native/registration/canonical_source_identity_getters_is_registered.rs"]
