@@ -5888,6 +5888,21 @@
         "deps/libcaption"
       ]
     },
+    "test_module_name_lookups": {
+      "sources": [
+        "test/cmocka/test_module_name_lookups.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_module_register_copy_steps": {
       "sources": [
         "test/cmocka/test_module_register_copy_steps.c",
@@ -17681,6 +17696,12 @@
       ],
       "suite": "core",
       "timeout_seconds": 30
+    },
+    "test_module_name_lookups": {
+      "target": "test_module_name_lookups",
+      "command": [
+        "${target}"
+      ]
     },
     "test_module_register_copy_steps": {
       "target": "test_module_register_copy_steps",
