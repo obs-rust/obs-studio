@@ -246,11 +246,11 @@ include("{root}/test/cmocka/native-test-graph.cmake")
 add_link_options("LINKER:--as-needed" "LINKER:--no-copy-dt-needed-entries")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 "#,
-        root = root.display(),
+        root = root.to_string_lossy().replace('\\', "/"),
         core = core,
-        runtime = runtime.display(),
-        caption = caption.display(),
-        renderer = renderer.display()
+        runtime = runtime.to_string_lossy().replace('\\', "/"),
+        caption = caption.to_string_lossy().replace('\\', "/"),
+        renderer = renderer.to_string_lossy().replace('\\', "/")
     );
     fs::write(directory.join("CMakeLists.txt"), cmake).unwrap();
 }
