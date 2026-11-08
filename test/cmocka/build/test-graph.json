@@ -16161,6 +16161,39 @@
         "Libv4l2::Libv4l2"
       ]
     },
+    "test_v4l2_vmic_libpulse": {
+      "sources": [
+        "test/cmocka/test_v4l2_vcam_audio.c",
+        "plugins/linux-v4l2/vcam-format.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_OBS_PULSEAUDIO"
+        ]
+      },
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/v4l2-output.c.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h",
+        "plugins/linux-v4l2/build/linux-v4l2-nix-output.pch.h"
+      ],
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ],
+      "definitions": [
+        "HAVE_LIBPULSE"
+      ]
+    },
     "test_v4l2_vmic_server": {
       "sources": [
         "test/cmocka/test_v4l2_vmic_server.c",
@@ -23398,6 +23431,25 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_v4l2_vmic_libpulse": {
+      "target": "test_v4l2_vmic_libpulse",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_OBS_PULSEAUDIO"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pulse_monitor_device.py",
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "skip_return_code": 77
     },
     "test_v4l2_vmic_server": {
       "target": "test_v4l2_vmic_server",
