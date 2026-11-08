@@ -23,29 +23,13 @@
 # does with its adapters. Linux only: obs-util's member pulls in other host code
 # on macOS and Windows, and no PR lane builds this test there to check that
 # link.
-if(TARGET libobs_rust-static)
-  if(OS_LINUX)
-    find_package(LibUUID REQUIRED)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(_window_match_test_gio QUIET IMPORTED_TARGET gio-2.0 glib-2.0)
-    add_executable(
-      test_window_match_steps_rust
-      test_window_match_steps.c
-      "${CMAKE_SOURCE_DIR}/libobs/util/base-variadic.c.h"
-    )
-    target_include_directories(
-      test_window_match_steps_rust
-      PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
-    )
-    target_link_libraries(
-      test_window_match_steps_rust
-      PRIVATE OBS::libobs ${CMOCKA_LIBRARIES} libobs_rust-static LibUUID::LibUUID
-    )
-    if(TARGET PkgConfig::_window_match_test_gio)
-      target_link_libraries(test_window_match_steps_rust PRIVATE PkgConfig::_window_match_test_gio)
-    endif()
-    obs_test_sanitize(test_window_match_steps_rust "address,undefined")
-    add_dependencies(cmocka-tests test_window_match_steps_rust)
-    add_test(test_window_match_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_window_match_steps_rust)
+set(HAVE_WINDOW_MATCH_TEST_GIO FALSE)
+if(TARGET libobs_rust-static AND OS_LINUX)
+  find_package(LibUUID REQUIRED)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(_window_match_test_gio QUIET IMPORTED_TARGET gio-2.0 glib-2.0)
+  if(TARGET PkgConfig::_window_match_test_gio)
+    set(HAVE_WINDOW_MATCH_TEST_GIO TRUE)
   endif()
 endif()
+# Both targets and tests are declared in ../build/test-graph.json.

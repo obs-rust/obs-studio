@@ -170,6 +170,9 @@ pub struct Target {
     pub compile_options_if_supported: Vec<String>,
     #[serde(default)]
     pub link_options: Vec<String>,
+    /// Link flags selected by the same facts as conditional compiler options.
+    #[serde(default)]
+    pub conditional_link_options: Vec<CompilerOption>,
     #[serde(default)]
     pub sanitizers: Option<String>,
 }
@@ -592,7 +595,18 @@ impl Graph {
                     .filter_map(|option| option.selected(facts).transpose())
                     .map(|value| value.map(str::to_owned))
                     .collect::<Result<Vec<_>, _>>()?,
-                link_options: spec.link_options.clone(),
+                link_options: spec
+                    .link_options
+                    .iter()
+                    .cloned()
+                    .chain(
+                        spec.conditional_link_options
+                            .iter()
+                            .filter_map(|option| option.selected(facts).transpose())
+                            .map(|value| value.map(str::to_owned))
+                            .collect::<Result<Vec<_>, _>>()?,
+                    )
+                    .collect(),
                 ..Default::default()
             };
             for source in &spec.sources {
