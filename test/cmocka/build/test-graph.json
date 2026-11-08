@@ -728,6 +728,26 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_audio_seam": {
+      "sources": [
+        "test/cmocka/test_audio_seam.c",
+        "libobs/obs-audio-seam.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-audio-seam.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_audio_sync_offset_change": {
       "sources": [
         "test/cmocka/test_audio_sync_offset_change.c"
@@ -17149,6 +17169,12 @@
     },
     "test_audio_restart_resampler_tail": {
       "target": "test_audio_restart_resampler_tail",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_audio_seam": {
+      "target": "test_audio_seam",
       "command": [
         "${target}"
       ]
