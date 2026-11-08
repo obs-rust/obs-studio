@@ -245,6 +245,12 @@ not get a line.
   source-record filter on it. *All*, pending merge. Issue
   [#3747](https://github.com/obs-rust/obs-studio/issues/3747), PR
   [#3752](https://github.com/obs-rust/obs-studio/pull/3752).
+- **NDI audio on its own clock stays clean on a busy machine.** Audio stamped
+  on a clock apart from its video keeps a timing of its own, so the video's
+  frames no longer re-place each packet by when it arrived: on a loaded CPU
+  the tone of such a source no longer breaks up into gaps and overlaps
+  (73–89 % of the program instead of 93 %). *All*, pending merge. Issue
+  [#3747](https://github.com/obs-rust/obs-studio/issues/3747).
 
 ### Encoding, streaming and recording
 

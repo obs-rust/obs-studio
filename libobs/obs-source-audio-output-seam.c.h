@@ -154,6 +154,26 @@ uint64_t obs_source_audio_output_seam_get_last_output_frame_ts(const obs_source_
 	return source->last_output_frame_ts;
 }
 
+uint64_t obs_source_audio_output_seam_get_own_clock_timing_adjust(const obs_source_t *source)
+{
+	return source->own_clock_timing_adjust;
+}
+
+void obs_source_audio_output_seam_set_own_clock_timing_adjust(obs_source_t *source, uint64_t value)
+{
+	source->own_clock_timing_adjust = value;
+}
+
+bool obs_source_audio_output_seam_get_own_clock_timing_set(const obs_source_t *source)
+{
+	return source->own_clock_timing_set;
+}
+
+void obs_source_audio_output_seam_set_own_clock_timing_set(obs_source_t *source, bool value)
+{
+	source->own_clock_timing_set = value;
+}
+
 bool obs_source_audio_output_seam_compensating(const obs_source_t *source)
 {
 	return source->resampler && source->last_async_compensation;

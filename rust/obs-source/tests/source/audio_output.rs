@@ -43,6 +43,8 @@ struct Fake {
     async_unbuffered: Cell<bool>,
     async_decoupled: Cell<bool>,
     last_output_frame_ts: Cell<u64>,
+    own_clock_timing_adjust: Cell<u64>,
+    own_clock_timing_set: Cell<bool>,
     compensating: Cell<bool>,
     muted: Cell<bool>,
     sizes: RefCell<[usize; MAX_CHANNELS]>,
@@ -180,6 +182,25 @@ impl Source for Fake {
     fn last_output_frame_ts(&self) -> u64 {
         self.guard("last_output_frame_ts");
         self.last_output_frame_ts.get()
+    }
+    fn own_clock_timing_adjust(&self) -> u64 {
+        self.guard("own_clock_timing_adjust");
+        self.rec("read own adjust");
+        self.own_clock_timing_adjust.get()
+    }
+    fn set_own_clock_timing_adjust(&self, value: u64) {
+        self.guard("own_clock_timing_adjust");
+        self.rec(format!("own adjust={value}"));
+        self.own_clock_timing_adjust.set(value);
+    }
+    fn own_clock_timing_set(&self) -> bool {
+        self.guard("own_clock_timing_set");
+        self.own_clock_timing_set.get()
+    }
+    fn set_own_clock_timing_set(&self, value: bool) {
+        self.guard("own_clock_timing_set");
+        self.rec(format!("own timing_set={value}"));
+        self.own_clock_timing_set.set(value);
     }
     fn compensating(&self) -> bool {
         self.compensating.get()
@@ -557,8 +578,8 @@ fn a_moved_system_time_keeps_a_continuous_packet_on_the_video_clock() {
 }
 
 /// A continuous packet whose clock is hours from the source's video (NDI
-/// Test Patterns) resets to the system clock instead of following the
-/// video's timing (#3747).
+/// Test Patterns) does not follow the video's timing (#3747): it resets its
+/// own timing to the system clock, and leaves the video's alone.
 #[test]
 fn a_moved_system_time_resets_a_continuous_packet_on_another_clock() {
     let f = Fake::new();
@@ -575,9 +596,44 @@ fn a_moved_system_time_resets_a_continuous_packet_on_another_clock() {
 
     let want = NOW.wrapping_sub(FAR);
     let log = f.take();
-    let at = log.iter().rposition(|l| l == "timing_set=true").unwrap();
-    assert_eq!(log[at + 1], format!("adjust={want}"));
-    assert_eq!(f.timing_adjust.get(), want);
+    let at = log
+        .iter()
+        .position(|l| *l == format!("own adjust={want}"))
+        .unwrap();
+    assert_eq!(log[at + 1], "own timing_set=true");
+    assert!(!log.iter().any(|l| l.starts_with("adjust=")), "{log:?}");
+    assert_eq!(f.own_clock_timing_adjust.get(), want);
+    assert!(f.own_clock_timing_set.get());
+    assert_eq!(f.timing_adjust.get(), adjust);
+}
+
+/// Audio on a clock of its own keeps its timing while the video's moves
+/// with every frame: a continuous packet that arrives 40 ms after the time
+/// its timing puts it at is appended there, not placed by when it arrived.
+#[test]
+fn a_late_continuous_packet_on_another_clock_keeps_its_own_timing() {
+    let f = Fake::new();
+    let due = NOW - 40 * MSEC;
+    let own = due.wrapping_sub(FAR);
+    f.timing_set.set(true);
+    // the video's timing, moved by the frame just shown
+    f.timing_adjust
+        .set(NOW.wrapping_sub(FAR + 14_191_000 * MSEC));
+    f.own_clock_timing_adjust.set(own);
+    f.own_clock_timing_set.set(true);
+    f.next_audio_ts_min.set(FAR);
+    f.next_audio_sys_ts_min.set(due);
+    f.audio_ts.set(due);
+    f.last_output_frame_ts.set(FAR + 14_191_000 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    let log = f.take();
+    assert!(!log.iter().any(|l| l.contains("adjust=")), "{log:?}");
+    assert!(log.iter().any(|l| l.starts_with("push ")), "{log:?}");
+    assert!(!log.iter().any(|l| l.starts_with("place ")), "{log:?}");
+    assert_eq!(f.own_clock_timing_adjust.get(), own);
+    assert_eq!(f.next_audio_sys_ts_min.get(), due + DUR);
 }
 
 #[test]
@@ -718,6 +774,18 @@ impl Source for Moves {
     }
     fn last_output_frame_ts(&self) -> u64 {
         self.0.last_output_frame_ts()
+    }
+    fn own_clock_timing_adjust(&self) -> u64 {
+        self.0.own_clock_timing_adjust()
+    }
+    fn set_own_clock_timing_adjust(&self, value: u64) {
+        self.0.set_own_clock_timing_adjust(value);
+    }
+    fn own_clock_timing_set(&self) -> bool {
+        self.0.own_clock_timing_set()
+    }
+    fn set_own_clock_timing_set(&self, value: bool) {
+        self.0.set_own_clock_timing_set(value);
     }
     fn compensating(&self) -> bool {
         self.0.compensating()
