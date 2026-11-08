@@ -69,6 +69,7 @@ function(_obs_test_graph_requirement output json)
       HAVE_PLUGIN_MANAGER_TEST_OWNER
       HAVE_VST_EDITOR_TEST_OWNER
       HAVE_PRIVATE_DAEMON_TEST_OWNER
+      HAVE_PIPEWIRE_CAMERA_TEST_OWNER
     )
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
@@ -284,6 +285,33 @@ function(obs_native_test_graph path root)
       find_program(_graph_dbus_run_session dbus-run-session)
       if(_graph_pipewire AND _graph_wireplumber AND _graph_pipewire_pulse AND _graph_pactl AND _graph_dbus_run_session)
         set(HAVE_PRIVATE_DAEMON_TEST_OWNER TRUE)
+      endif()
+    endif()
+  endif()
+  # Camera fixtures create their own PipeWire daemon and fake D-Bus portal.
+  # Missing tools/SDKs and other hosts disable them without probing hardware.
+  if(NOT DEFINED HAVE_PIPEWIRE_CAMERA_TEST_OWNER)
+    set(HAVE_PIPEWIRE_CAMERA_TEST_OWNER FALSE)
+    if(OS_LINUX AND TARGET OBS::pipewire AND TARGET OBS::glad AND TARGET OBS::libobs-opengl)
+      find_package(PipeWire 0.3.60 QUIET)
+      find_package(X11 QUIET)
+      find_package(PkgConfig QUIET)
+      find_program(_camera_pipewire pipewire)
+      find_program(_camera_dbus dbus-daemon)
+      find_program(_camera_uv uv)
+      if(PKG_CONFIG_FOUND)
+        pkg_check_modules(_camera_test_sdk QUIET libdrm glib-2.0 gobject-2.0 gio-2.0)
+        if(
+          PipeWire_FOUND
+          AND X11_FOUND
+          AND _camera_test_sdk_FOUND
+          AND _camera_pipewire
+          AND _camera_dbus
+          AND _camera_uv
+          AND TARGET gio::gio
+        )
+          set(HAVE_PIPEWIRE_CAMERA_TEST_OWNER TRUE)
+        endif()
       endif()
     endif()
   endif()
