@@ -87,11 +87,11 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/module-name-lookup-link-stubs.c",
                     "test/cmocka/object-validity-query-link-stubs.c",
                     "test/cmocka/output-handler-getter-link-stubs.c",
+                    "test/cmocka/output-pause-query-link-stubs.c",
                     "test/cmocka/output-service-getter-link-stub.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
-                    "test/cmocka/output-pause-query-link-stubs.c",
                 ])
 
     def test_core_texture_activity_supplies_standalone_field_adapters(self):
