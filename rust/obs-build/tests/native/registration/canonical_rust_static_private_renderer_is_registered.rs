@@ -35,3 +35,25 @@ mod runtime {
         );
     }
 }
+
+#[test]
+fn canonical_rust_static_private_parsers_are_registered() {
+    let graph = rust_static_entries::assert_family("private-parser");
+    for windows in [false, true] {
+        for msvc in [false, true] {
+            for archive in [false, true] {
+                let facts = [("OS_WINDOWS".into(), windows), ("MSVC".into(), msvc),
+                    ("HAVE_LIBOBS_RUST_STATIC".into(), archive)].into();
+                let selected = graph.select(&facts).unwrap();
+                assert_eq!(selected.targets.len(), if archive { 4 } else { 0 });
+                assert_eq!(selected.tests.len(), if archive { 4 } else { 0 });
+            }
+        }
+    }
+}
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[test]
+fn canonical_private_parsers_run_unchanged() {
+    graphics_private_runtime::run("private-parser", &rust_static_entries::cases("private-parser"));
+}
