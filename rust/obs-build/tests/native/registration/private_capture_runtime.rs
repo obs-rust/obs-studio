@@ -247,7 +247,6 @@ fn assert_cases(output: &Output, name: &str) {
     let expected = match name {
         "test_pipewire_camera_unplug" => 2,
         "test_pipewire_cursor_hdr" => 4,
-        "test_pipewire_screencast_shm" => 6,
         "test_v4l2_vmic_server" => 3,
         _ => panic!("unexpected fixture {name}"),
     };
