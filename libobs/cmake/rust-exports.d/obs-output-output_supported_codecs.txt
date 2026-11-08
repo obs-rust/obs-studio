@@ -1,0 +1,2 @@
+obs_output_get_supported_audio_codecs
+obs_output_get_supported_video_codecs
