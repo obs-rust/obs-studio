@@ -27,4 +27,3 @@ obs_module_t *obs_get_disabled_module(const char *name)
 
 	return NULL;
 }
-

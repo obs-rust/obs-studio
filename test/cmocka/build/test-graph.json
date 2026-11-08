@@ -286,6 +286,7 @@
         "test/cmocka/test_async_conversion_plan.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -386,6 +387,7 @@
         "test/cmocka/test_async_frame_pacing_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -474,6 +476,7 @@
         "test/cmocka/test_async_upload_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -618,7 +621,8 @@
     },
     "test_audio_monitor_delay_steps_rust": {
       "sources": [
-        "test/cmocka/test_audio_monitor_delay_steps.c"
+        "test/cmocka/test_audio_monitor_delay_steps.c",
+        "test/cmocka/module-name-lookup-link-stubs.c"
       ],
       "requires": {
         "all": [
@@ -1352,7 +1356,8 @@
     },
     "test_coreaudio_device_rules_rust": {
       "sources": [
-        "test/cmocka/test_coreaudio_device_rules.c"
+        "test/cmocka/test_coreaudio_device_rules.c",
+        "test/cmocka/module-name-lookup-link-stubs.c"
       ],
       "requires": {
         "all": [
@@ -1419,7 +1424,8 @@
     },
     "test_coreaudio_pacing_steps_rust": {
       "sources": [
-        "test/cmocka/test_coreaudio_pacing_steps.c"
+        "test/cmocka/test_coreaudio_pacing_steps.c",
+        "test/cmocka/module-name-lookup-link-stubs.c"
       ],
       "requires": {
         "all": [
@@ -1617,6 +1623,7 @@
         "test/cmocka/test_deinterlace_draw_plan_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -1691,6 +1698,7 @@
         "test/cmocka/test_deinterlace_pacing_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -1742,6 +1750,7 @@
         "test/cmocka/test_deinterlace_select_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -5966,7 +5975,8 @@
     },
     "test_monitor_speaker_layout_rust": {
       "sources": [
-        "test/cmocka/test_monitor_speaker_layout.c"
+        "test/cmocka/test_monitor_speaker_layout.c",
+        "test/cmocka/module-name-lookup-link-stubs.c"
       ],
       "requires": {
         "all": [
@@ -5998,7 +6008,8 @@
     },
     "test_monitor_video_sync_rust": {
       "sources": [
-        "test/cmocka/test_monitor_video_sync.c"
+        "test/cmocka/test_monitor_video_sync.c",
+        "test/cmocka/module-name-lookup-link-stubs.c"
       ],
       "requires": {
         "all": [
@@ -6031,7 +6042,8 @@
     },
     "test_monitor_wasapi_steps_rust": {
       "sources": [
-        "test/cmocka/test_monitor_wasapi_steps.c"
+        "test/cmocka/test_monitor_wasapi_steps.c",
+        "test/cmocka/module-name-lookup-link-stubs.c"
       ],
       "requires": {
         "all": [
@@ -10316,6 +10328,7 @@
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_audio_window_steps.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/scene-group-query-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
@@ -10878,6 +10891,7 @@
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_render_plan_steps.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/scene-group-query-link-stubs.c"
       ],
       "includes": [
@@ -11518,6 +11532,7 @@
         "test/cmocka/test_source_audio_input_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -11582,6 +11597,7 @@
         "test/cmocka/test_source_audio_place_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -11652,6 +11668,7 @@
         "test/cmocka/test_source_audio_render_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -11735,6 +11752,7 @@
         "test/cmocka/test_source_audio_timing_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -11800,6 +11818,7 @@
         "test/cmocka/test_source_color_space_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -11877,6 +11896,7 @@
         "test/cmocka/test_source_draw_plan_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -11987,6 +12007,7 @@
         "test/cmocka/test_source_frame_copy_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12115,6 +12136,7 @@
         "test/cmocka/test_source_media_admission_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12204,6 +12226,7 @@
         "test/cmocka/test_source_monitoring_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12305,6 +12328,7 @@
         "test/cmocka/test_source_ptm_gate_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12370,6 +12394,7 @@
         "test/cmocka/test_source_render_route_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12429,6 +12454,7 @@
         "test/cmocka/test_source_size_route_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12629,6 +12655,7 @@
         "test/cmocka/test_source_video_tick_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -12683,6 +12710,7 @@
         "test/cmocka/test_source_volume_apply_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13363,6 +13391,7 @@
         "test/cmocka/test_transition_load_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13458,6 +13487,7 @@
         "test/cmocka/test_transition_render_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
@@ -13610,6 +13640,7 @@
         "test/cmocka/test_transition_start_steps.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
