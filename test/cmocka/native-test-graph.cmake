@@ -85,6 +85,8 @@ function(_obs_test_graph_requirement output json)
       HAVE_PRIVATE_DAEMON_TEST_OWNER
       HAVE_PIPEWIRE_CAMERA_TEST_OWNER
       HAVE_V4L2_VMIC_TEST_OWNER
+      HAVE_WS_IMAGE_MIME_TEST_OWNER
+      HAVE_WS_SESSION_DURATION_TEST_OWNER
     )
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
@@ -272,6 +274,16 @@ endfunction()
 
 function(obs_native_test_graph path root)
   _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
+  # These preserved plugin helpers do not require the WebSocket plugin owner.
+  set(HAVE_WS_IMAGE_MIME_TEST_OWNER FALSE)
+  if(EXISTS "${root}/plugins/obs-websocket/src/utils/ImageFormat.cpp")
+    set(HAVE_WS_IMAGE_MIME_TEST_OWNER TRUE)
+  endif()
+  set(HAVE_WS_SESSION_DURATION_TEST_OWNER FALSE)
+  if(TARGET Qt6::Core AND EXISTS "${root}/plugins/obs-websocket/src/forms/SessionDuration.h")
+    set(HAVE_WS_SESSION_DURATION_TEST_OWNER TRUE)
+  endif()
+
   set(HAVE_QT_CORE_TEST_OWNER FALSE)
   set(HAVE_CRASH_LOG_TEST_OWNER FALSE)
   if(TARGET Qt6::Core)

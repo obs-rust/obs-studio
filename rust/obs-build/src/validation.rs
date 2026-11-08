@@ -124,6 +124,20 @@ pub fn build_qt_tests(
         ),
         ("HAVE_QT6_TEST".into(), interfaces.contains_key("Qt6::Test")),
     ]);
+    facts.extend([
+        (
+            "HAVE_WS_IMAGE_MIME_TEST_OWNER".into(),
+            root.join("plugins/obs-websocket/src/utils/ImageFormat.cpp")
+                .is_file(),
+        ),
+        (
+            "HAVE_WS_SESSION_DURATION_TEST_OWNER".into(),
+            interfaces.contains_key("Qt6::Core")
+                && root
+                    .join("plugins/obs-websocket/src/forms/SessionDuration.h")
+                    .is_file(),
+        ),
+    ]);
     let mut interfaces = interfaces.clone();
     let thread_options = crate::platform::native_test_thread_options(&build.target);
     interfaces
