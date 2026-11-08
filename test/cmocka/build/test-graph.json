@@ -910,6 +910,33 @@
         }
       ]
     },
+    "test_canvas_video_info_getter": {
+      "sources": [
+        "test/cmocka/test_canvas_video_info_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_caption_unmappable": {
       "sources": [
         "test/cmocka/test_caption_unmappable.c"
@@ -13494,6 +13521,23 @@
       "target": "test_canvas_video_getter",
       "command": [
         "${target}"
+      ]
+    },
+    "test_canvas_video_info_getter": {
+      "target": "test_canvas_video_info_getter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_caption_unmappable": {

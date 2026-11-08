@@ -20,6 +20,8 @@ mod canvas_rules;
 mod canvas_rules_parity;
 mod canvas_video_getter;
 mod canvas_video_getter_parity;
+mod canvas_video_info_getter;
+mod canvas_video_info_getter_parity;
 mod context_names;
 mod context_names_parity;
 mod core_setup_rules;

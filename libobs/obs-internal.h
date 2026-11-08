@@ -1098,6 +1098,7 @@ struct obs_canvas {
 };
 
 #include "libobs/obs-canvas-video-fields.h"
+#include "libobs/obs-canvas-video-info-fields.h"
 
 /* Private borrowed field addresses; the canvas layout remains owned by C. */
 struct obs_canvas_readonly_fields {
