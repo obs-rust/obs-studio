@@ -188,8 +188,8 @@ class NativeB2Portability(unittest.TestCase):
         # graph targets and exclusion of targets that do not link the archive.
         names = ("test_source_duplicate_steps_rust", "test_source_filter_chain_steps_rust",
                  "test_transition_clock_steps_rust", "test_transition_sample_time_steps_rust")
-        fragment = ROOT / "test/cmocka/tests.d/source_handler_getter_link_support.cmake"
-        adapter = ROOT / "test/cmocka/source-handler-getter-link-support.c"
+        fragment = (ROOT / "test/cmocka/tests.d/source_handler_getter_link_support.cmake").as_posix()
+        adapter = (ROOT / "test/cmocka/source-handler-getter-link-support.c").as_posix()
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
             (source / "dummy.c").write_text("int main(void) { return 0; }\n")
@@ -197,10 +197,10 @@ class NativeB2Portability(unittest.TestCase):
                      "add_library(libobs_rust-static INTERFACE)",
                      "add_library(OBS::caption INTERFACE IMPORTED)",
                      "add_library(Uthash::Uthash INTERFACE IMPORTED)",
-                     f'set(CMAKE_CURRENT_SOURCE_DIR "{ROOT / "test/cmocka"}")']
+                     f'set(CMAKE_CURRENT_SOURCE_DIR "{(ROOT / "test/cmocka").as_posix()}")']
             for name in (*names, "test_source_graph", "test_source_c_reference"):
                 lines.append(f'add_executable({name} "{adapter}")' if name == "test_source_graph"
-                             else f'add_executable({name} "{source / "dummy.c"}")')
+                             else f'add_executable({name} "{(source / "dummy.c").as_posix()}")')
                 if name != "test_source_c_reference":
                     lines.append(f"target_link_libraries({name} PRIVATE libobs_rust-static)")
             lines += [f'include("{fragment}")', "function(check_sources)"]
@@ -214,7 +214,7 @@ class NativeB2Portability(unittest.TestCase):
             lines += ["endfunction()", "cmake_language(DEFER CALL check_sources)"]
             (source / "CMakeLists.txt").write_text("\n".join(lines))
             result = subprocess.run(["cmake", "-S", str(source), "-B", str(source / "build")],
-                                    capture_output=True, text=True, check=False)
+                                    capture_output=True, text=True, check=False, timeout=60)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_output_pause_queries_supply_all_static_consumers(self):
