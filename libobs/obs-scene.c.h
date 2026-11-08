@@ -3810,19 +3810,9 @@ bool obs_source_is_group(const obs_source_t *source)
 	return source && strcmp(source->info.id, group_info.id) == 0;
 }
 
-bool obs_source_type_is_group(const char *id)
-{
-	return id && strcmp(id, group_info.id) == 0;
-}
-
 bool obs_source_is_scene(const obs_source_t *source)
 {
 	return source && strcmp(source->info.id, scene_info.id) == 0;
-}
-
-bool obs_source_type_is_scene(const char *id)
-{
-	return id && strcmp(id, scene_info.id) == 0;
 }
 
 bool obs_scene_is_group(const obs_scene_t *scene)

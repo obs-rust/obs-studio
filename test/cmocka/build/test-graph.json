@@ -9294,6 +9294,15 @@
         "libobs/obs.h"
       ]
     },
+    "test_scene_source_type_queries": {
+      "sources": [
+        "test/cmocka/test_scene_source_type_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_scene_transform_update_steps": {
       "sources": [
         "test/cmocka/test_scene_transform_update_steps.c",
@@ -16552,6 +16561,12 @@
         "${target}"
       ],
       "working_directory": "${runtime}"
+    },
+    "test_scene_source_type_queries": {
+      "target": "test_scene_source_type_queries",
+      "command": [
+        "${target}"
+      ]
     },
     "test_scene_transform_update_steps": {
       "target": "test_scene_transform_update_steps",
