@@ -12960,6 +12960,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_push_queries": {
+      "sources": [
+        "test/cmocka/test_source_push_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_registration": {
       "sources": [
         "test/cmocka/test_source_registration.c"
@@ -21117,6 +21132,12 @@
     "test_source_ptm_gate_steps_rust": {
       "target": "test_source_ptm_gate_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_push_queries": {
+      "target": "test_source_push_queries",
       "command": [
         "${target}"
       ]
