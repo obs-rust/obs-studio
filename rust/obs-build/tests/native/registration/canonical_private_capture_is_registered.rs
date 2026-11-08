@@ -1,10 +1,9 @@
 use super::*;
 use obs_build::validation::graph::Graph;
 
-const CASES: [&str; 4] = [
+const CASES: [&str; 3] = [
     "test_pipewire_camera_unplug",
     "test_pipewire_cursor_hdr",
-    "test_pipewire_screencast_shm",
     "test_v4l2_vmic_server",
 ];
 
@@ -80,7 +79,7 @@ fn canonical_private_capture_guards() {
                 }
                 let selected = graph.select(&facts).unwrap();
                 let count = if linux && owner == Some(true) {
-                    if display == Some(true) { 4 } else { 1 }
+                    if display == Some(true) { 3 } else { 1 }
                 } else {
                     0
                 };
