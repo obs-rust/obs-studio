@@ -19,6 +19,7 @@
 #include "libobs/obs-output-handler-getters-fields.c.h"
 #include "libobs/obs-output-identity-fields.c.h"
 #include "libobs/obs-output-mixer-getters-fields.c.h"
+#include "libobs/obs-output-service-getter-fields.c.h"
 #include "libobs/obs-output-supported-codecs-fields.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-state-adapter.c.h"

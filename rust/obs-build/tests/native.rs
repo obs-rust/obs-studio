@@ -329,6 +329,8 @@ mod canonical_output_mixer_getters_is_registered;
 mod canonical_output_protocol_null_is_registered;
 #[path = "native/registration/canonical_output_protocols_is_registered.rs"]
 mod canonical_output_protocols_is_registered;
+#[path = "native/registration/canonical_output_service_getter_is_registered.rs"]
+mod canonical_output_service_getter_is_registered;
 #[path = "native/registration/canonical_output_supported_codecs_is_registered.rs"]
 mod canonical_output_supported_codecs_is_registered;
 #[path = "native/registration/canonical_pipe_contracts_are_registered.rs"]
