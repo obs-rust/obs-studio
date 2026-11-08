@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import importlib.util
 import os
-import re
 import shutil
 import subprocess
 import tempfile
@@ -62,7 +61,7 @@ class Publication(unittest.TestCase):
         self.caller = (ROOT / ".github/workflows/ci.yml").read_text()
         self.build = (ROOT / ".github/workflows/build-project.yaml").read_text()
         self.publisher = self.caller.split("  tier2-lane-proof:\n", 1)[1].split("\n  cache-janitor:", 1)[0]
-        self.condition = re.search(r"^    if: (.+)$", self.publisher, re.M).group(1)
+        self.condition = self.publisher.split("    if:", 1)[1].split("    runs-on:", 1)[0]
 
     def test_optional_skips_do_not_apply_implicit_success(self):
         self.assertIn("!cancelled()", self.condition)
