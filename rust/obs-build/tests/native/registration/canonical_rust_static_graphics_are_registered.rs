@@ -14,12 +14,16 @@ fn canonical_rust_static_graphics_are_registered() {
                     ("HAVE_LIBOBS_RUST_STATIC".into(), available),
                     ("OS_WINDOWS".into(), windows),
                     ("MSVC".into(), msvc),
-                ].into();
+                ]
+                .into();
                 let selected = graph.select(&facts).unwrap();
                 assert_eq!(selected.targets.len(), if available { 6 } else { 0 });
                 assert_eq!(selected.tests.len(), if available { 6 } else { 0 });
-
             }
         }
     }
 }
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "graphics_private_runtime.rs"]
+mod runtime;
