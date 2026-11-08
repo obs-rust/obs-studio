@@ -197,6 +197,7 @@ pub mod transition_slots;
 pub mod transition_start;
 pub mod transition_stop;
 pub mod transition_switch;
+pub mod transition_video;
 pub mod video_tick;
 pub mod volume_apply;
 pub mod volume_mul;

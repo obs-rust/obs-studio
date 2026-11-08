@@ -82,6 +82,7 @@ mod transition_start;
 mod transition_start_parity;
 mod transition_stop;
 mod transition_switch;
+mod transition_video;
 mod video_tick;
 mod video_tick_parity;
 mod volume_apply;
