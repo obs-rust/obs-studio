@@ -166,6 +166,11 @@ impl MsvcImportLibrary {
 #[serde(deny_unknown_fields)]
 pub struct Target {
     pub sources: Vec<Source>,
+    /// Explicit C unity partitions, preserving linker interposition boundaries.
+    #[serde(default)]
+    pub unity_groups: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
+    pub pch: Option<String>,
     #[serde(default)]
     pub msvc_import_library: Option<MsvcImportLibrary>,
     #[serde(default)]
@@ -214,6 +219,95 @@ pub struct Target {
 }
 
 impl Target {
+    fn validate_groups(&self) -> Result<(), String> {
+        if self.unity_groups.is_empty() {
+            if self.pch.is_some() {
+                return Err("native test PCH requires explicit unity groups".into());
+            }
+            return Ok(());
+        }
+        let header = self.pch.as_deref().ok_or("unity groups require a PCH")?;
+        if !header.ends_with(".h")
+            || header.starts_with('/')
+            || header
+                .split('/')
+                .any(|s| s.is_empty() || s == "." || s == "..")
+            || header.contains(['"', '\\', ':', ';', '\n', '\r'])
+        {
+            return Err("invalid unity PCH".into());
+        }
+        let mut members = BTreeSet::new();
+        for (name, sources) in &self.unity_groups {
+            validate_name(name)?;
+            if !name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
+            {
+                return Err("invalid unity group name".into());
+            }
+            if sources.is_empty() {
+                return Err("empty unity group".into());
+            }
+            for source in sources {
+                if !self
+                    .sources
+                    .iter()
+                    .any(|s| matches!(s, Source::Path(p) if p == source))
+                    || !source.ends_with(".c") && !source.ends_with(".c.h")
+                    || !members.insert(source)
+                {
+                    return Err(format!("invalid or duplicate unity member {source}"));
+                }
+            }
+        }
+        if members.len() != self.sources.len() {
+            return Err("unity groups must partition all unconditional C sources".into());
+        }
+        Ok(())
+    }
+
+    fn group_sources(
+        &self,
+        build: &NativeBuild,
+        root: &Path,
+        name: &str,
+        target: &mut SharedLibrary,
+    ) -> Result<(), String> {
+        if self.unity_groups.is_empty() {
+            return Ok(());
+        }
+        let header = root.join(self.pch.as_ref().ok_or("unity groups require a PCH")?);
+        let mut groups = Vec::new();
+        fs::create_dir_all(build.output.join("native-tests").join(name))
+            .map_err(|error| error.to_string())?;
+        for (group, sources) in &self.unity_groups {
+            let path = build
+                .output
+                .join("native-tests")
+                .join(name)
+                .join(format!("{group}.c"));
+            let mut text = format!(
+                "#include {}\n",
+                serde_json::to_string(&header.to_string_lossy()).map_err(|e| e.to_string())?
+            );
+            for source in sources {
+                text.push_str(&format!(
+                    "#include {}\n",
+                    serde_json::to_string(&root.join(source).to_string_lossy())
+                        .map_err(|e| e.to_string())?
+                ));
+            }
+            crate::frontend::write(&path, &text)?;
+            groups.push(path);
+        }
+        target.sources.clone_from(&groups);
+        target.precompiled_headers = vec![crate::PrecompiledHeader {
+            header,
+            sources: groups,
+        }];
+        Ok(())
+    }
+
     fn library_names(&self, facts: &BTreeMap<String, bool>) -> Result<Vec<String>, String> {
         let mut names: Vec<_> = self
             .archives
@@ -497,6 +591,7 @@ impl Graph {
                 }
             }
             validate_name(name)?;
+            target.validate_groups()?;
             if let Some(import) = &target.msvc_import_library {
                 import.validate(name)?;
             }
@@ -743,6 +838,7 @@ impl Graph {
             for input in &spec.watch_inputs {
                 watched_inputs.insert(root.join(input));
             }
+            watched_inputs.extend(spec.pch.iter().map(|header| root.join(header)));
             for directory in &spec.includes {
                 target.include_dirs.push(root.join(directory));
             }
@@ -843,6 +939,7 @@ impl Graph {
                     &generated.join(format!("qrc_{index}.cpp")),
                 )?;
             }
+            spec.group_sources(build, &root, name, &mut target)?;
             artifacts.insert(name.into(), build.executable(&target)?);
         }
         for directory in watched_inputs {
