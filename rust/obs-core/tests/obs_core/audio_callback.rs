@@ -10,8 +10,12 @@
 //!
 //! `test_audio_buffering_subsample` pins the helpers' decision cores
 //! (`audio_discard`, `audio_min_ts`, `audio_mix`, `audio_render`), whose
-//! own Tier 1 modules port its assertions; this module covers the tick
-//! that calls them.
+//! own Tier 1 modules port those assertions. Its four cases that call the
+//! helpers this module ports (`source_wrappers_use_the_source_fields`,
+//! `calc_min_ts_through_the_list`, `tree_wrapper_tags_once` and
+//! `silence_wrappers_use_the_source_fields`) are ported 1:1 at the end,
+//! under their names; the model runs the `audio_discard` core on its input
+//! sizes for them. The rest covers the tick that calls the helpers.
 //!
 //! The intentional difference (a root source's `audio_pending` read under
 //! its `audio_buf_mutex`) is `pending_is_read_under_the_buffer_lock`.
@@ -19,8 +23,10 @@
 use std::collections::{BTreeSet, VecDeque};
 
 use obs_core::audio_callback::{
-    AUDIO_SIZE, Ignored, MAX_CHANNELS, Tick, audio_callback, push_tree2,
+    AUDIO_SIZE, Ignored, MAX_CHANNELS, Tick, audio_callback, calc_min_ts, clear_audio_output_buf,
+    discard_audio, ignore_audio, push_tree2, should_silence_monitored_source,
 };
+use obs_core::audio_discard::{self, InputState, Pop};
 use obs_core::audio_mix::{Step, TsInfo};
 use obs_core::audio_render::{SOURCE_AUDIO, TYPE_INPUT};
 
@@ -38,8 +44,13 @@ struct Src {
     dead: bool,
     duplicated: bool,
     pending: bool,
+    pending_stop: bool,
+    timing_set: bool,
     audio_ts: u64,
-    input_size: usize,
+    /// `last_audio_input_buf_size`.
+    last_size: usize,
+    /// The bytes in each channel's input deque.
+    input: Vec<usize>,
     kind: u32,
     output_flags: u32,
     audio_render: bool,
@@ -50,10 +61,43 @@ struct Src {
     monitoring: bool,
     /// What `obs_source_enum_active_tree()` visits, in order.
     tree: Vec<usize>,
-    /// What `obs_audio_discard_ignore()` reports.
-    ignore: Ignored,
+    /// What `obs_audio_discard_ignore()` reports, when scripted; else the
+    /// `audio_discard` core runs on the source's input.
+    ignore: Option<Ignored>,
+    /// The value of each mix's output buffers.
+    out: [f32; 6],
     next: Option<usize>,
     refs: i32,
+}
+
+impl Src {
+    /// The input fields the `audio_discard` core works on.
+    fn state(&self) -> InputState {
+        InputState {
+            audio_ts: self.audio_ts,
+            last_size: self.last_size,
+            pending: self.pending,
+            pending_stop: self.pending_stop,
+        }
+    }
+
+    /// The core's new fields and pops, as its C ABI writes them back.
+    fn apply(&mut self, state: &InputState, channels: usize, pop: Pop) {
+        self.audio_ts = state.audio_ts;
+        self.last_size = state.last_size;
+        self.pending = state.pending;
+        self.pending_stop = state.pending_stop;
+        for ch in 0..channels.min(self.input.len()) {
+            let size = match pop {
+                Pop::None => return,
+                Pop::Bytes(n) => n,
+                Pop::Channel0(n) if ch == 0 => n,
+                Pop::Channel0(_) => 0,
+                Pop::EachAll => self.input[ch],
+            };
+            self.input[ch] -= size.min(self.input[ch]);
+        }
+    }
 }
 
 /// A plain audio input: active, with a timestamp at the tick start and a
@@ -62,12 +106,13 @@ fn input() -> Src {
     Src {
         active: true,
         audio_ts: START,
-        input_size: AUDIO_SIZE,
+        input: vec![AUDIO_SIZE; 2],
         kind: TYPE_INPUT,
         output_flags: SOURCE_AUDIO,
         output_buf: true,
         volume: 1.0,
         mixers: 0x3f,
+        out: [1.0; 6],
         ..Src::default()
     }
 }
@@ -354,7 +399,7 @@ impl Tick for Model {
     }
     fn input_size(&mut self, source: usize) -> usize {
         assert!(self.holds(&format!("buf{source}")));
-        self.src[source].input_size
+        self.src[source].input[0]
     }
     fn kind(&mut self, source: usize) -> u32 {
         self.src[source].kind
@@ -382,6 +427,11 @@ impl Tick for Model {
     }
     fn clear_output(&mut self, source: usize, mixes: u32) {
         self.log(format!("clear {source} {mixes:#x}"));
+        for (mix, value) in self.src[source].out.iter_mut().enumerate() {
+            if mixes & (1 << mix) != 0 {
+                *value = 0.0;
+            }
+        }
     }
     fn ignore(
         &mut self,
@@ -394,7 +444,24 @@ impl Tick for Model {
         self.log(format!(
             "ignore {source} {channels} {sample_rate} {start_ts}"
         ));
-        self.src[source].ignore
+        if let Some(scripted) = self.src[source].ignore {
+            return scripted;
+        }
+        let s = &mut self.src[source];
+        let mut state = s.state();
+        let (step, pop) = audio_discard::ignore(&mut state, s.input[0], sample_rate, start_ts);
+        s.apply(&state, channels, pop);
+        if step.restarted {
+            s.timing_set = false;
+        }
+        Ignored {
+            rerender: step.rerender,
+            no_timestamp: step.no_timestamp,
+            buffered: step.buffered,
+            lag: step.lag,
+            warn: step.warn,
+            warn_lag: step.warn_lag,
+        }
     }
     fn discard_tick(
         &mut self,
@@ -409,6 +476,11 @@ impl Tick for Model {
             "discard {source} {audio_render} {channels} {sample_rate} {}",
             ts.start
         ));
+        let s = &mut self.src[source];
+        let mut state = s.state();
+        let (_, pop) =
+            audio_discard::discard_tick(&mut state, audio_render, s.input[0], sample_rate, ts);
+        s.apply(&state, channels, pop);
     }
     fn mix(&mut self, source: usize, channels: usize, sample_rate: usize, ts: TsInfo, mixers: u32) {
         assert!(self.holds(&format!("buf{source}")));
@@ -677,14 +749,14 @@ fn a_source_with_audio_render_gone_backwards_goes_pending() {
 fn an_input_gone_backwards_is_ignored_and_rendered_again() {
     let mut m = Model::new(vec![input()]);
     m.src[0].audio_ts = START - 1;
-    m.src[0].ignore = Ignored {
+    m.src[0].ignore = Some(Ignored {
         rerender: true,
         buffered: 8,
         lag: 77,
         warn: true,
         warn_lag: 1_500_000,
         ..Ignored::default()
-    };
+    });
     m.maxed = true;
     m.audio_list(&[0]);
     m.run(0x1);
@@ -704,13 +776,13 @@ fn an_input_gone_backwards_is_ignored_and_rendered_again() {
 fn an_ignore_without_timestamp_logs_nothing() {
     let mut m = Model::new(vec![input()]);
     m.src[0].audio_ts = START - 1;
-    m.src[0].ignore = Ignored {
+    m.src[0].ignore = Some(Ignored {
         rerender: true,
         no_timestamp: true,
         buffered: 8,
         warn: true,
         ..Ignored::default()
-    };
+    });
     m.maxed = true;
     m.audio_list(&[0]);
     m.run(0x1);
@@ -719,11 +791,11 @@ fn an_ignore_without_timestamp_logs_nothing() {
     // nothing buffered: no lag line, the warning alone
     let mut m = Model::new(vec![input()]);
     m.src[0].audio_ts = START - 1;
-    m.src[0].ignore = Ignored {
+    m.src[0].ignore = Some(Ignored {
         warn: true,
         warn_lag: 9,
         ..Ignored::default()
-    };
+    });
     m.maxed = true;
     m.audio_list(&[0]);
     m.run(0x1);
@@ -793,7 +865,7 @@ fn a_short_source_goes_pending_and_the_minimum_is_found_again() {
     // source 0 is early but short; source 1 is early and full
     let mut m = Model::new(vec![input(), input()]);
     m.src[0].audio_ts = START - 2 * TICK;
-    m.src[0].input_size = 4;
+    m.src[0].input = vec![4, 4];
     m.src[1].audio_ts = START - TICK;
     m.audio_list(&[0, 1]);
     m.add_step = Step {
@@ -830,7 +902,7 @@ fn an_early_source_with_enough_audio_is_named() {
 fn a_minimum_from_the_first_pass_with_no_source_left_names_none() {
     let mut m = Model::new(vec![input()]);
     m.src[0].audio_ts = START - TICK;
-    m.src[0].input_size = 4;
+    m.src[0].input = vec![4, 4];
     m.audio_list(&[0]);
     m.add_step = Step {
         added: true,
@@ -985,4 +1057,177 @@ fn out_ts_is_set_before_the_wait_tick_and_the_tasks() {
     m.wait = 1;
     assert_eq!(m.run(0x1), (false, START));
     assert!(m.has(&format!("out_ts {START}")));
+}
+
+// 1:1 ports of the cases of `test_audio_buffering_subsample` that call the
+// helpers of `obs-audio.c.h` this module ports (the other cases pin the
+// decision cores, and their own modules port them). Each takes the locks
+// its caller in `audio_callback()` holds.
+
+/// A source in the model's audio source list, added at the head as
+/// `obs_source_init()` does (`list_source()` of the C test).
+fn list_source(m: &mut Model, audio_ts: u64, frames: usize) -> usize {
+    let s = m.src.len();
+    m.src.push(Src {
+        audio_ts,
+        input: vec![frames * 4, 0],
+        next: m.first,
+        ..input()
+    });
+    m.first = Some(s);
+    s
+}
+
+/// `test_audio_buffering_subsample`'s `source_wrappers_use_the_source_fields`.
+#[test]
+fn source_wrappers_use_the_source_fields() {
+    let ts = TsInfo {
+        start: START,
+        end: START + TICK,
+    };
+    let mut m = Model::new(vec![Src {
+        input: vec![1500 * 4; 2],
+        audio_ts: START,
+        last_size: 40,
+        pending_stop: true,
+        ..input()
+    }]);
+
+    m.lock_audio_sources();
+    m.lock_buf(0);
+    discard_audio(&mut m, 0, 2, 48_000, ts);
+    m.unlock_buf(0);
+    m.unlock_audio_sources();
+    assert_eq!(m.src[0].input[1], (1500 - 1024) * 4);
+    assert_eq!(m.src[0].audio_ts, ts.end);
+    assert_eq!(m.src[0].last_size, 0);
+    assert!(!m.src[0].pending_stop);
+
+    // 20 ms (960 samples) behind with 476 buffered: all dropped, restart.
+    m.src[0].audio_ts = START - 20_000_000;
+    m.src[0].timing_set = true;
+    m.lock_buf(0);
+    assert!(!ignore_audio(&mut m, 0, 2, 48_000, START));
+    m.unlock_buf(0);
+    assert!(m.src[0].pending);
+    assert_eq!(m.src[0].audio_ts, 0);
+    assert!(!m.src[0].timing_set);
+    assert_eq!(m.src[0].input[1], 0);
+}
+
+/// `test_audio_buffering_subsample`'s `calc_min_ts_through_the_list`.
+#[test]
+fn calc_min_ts_through_the_list() {
+    let calc = |m: &mut Model, min_ts: &mut u64| {
+        m.lock_audio_sources();
+        let name = calc_min_ts(m, 48_000, min_ts);
+        m.unlock_audio_sources();
+        name
+    };
+
+    // Two sources with enough audio: the earlier one.
+    let mut m = Model::default();
+    list_source(&mut m, START - 1000, 2048);
+    let b = list_source(&mut m, START - 2000, 2048);
+    let mut min_ts = START;
+    let name = calc(&mut m, &mut min_ts);
+    assert_eq!(min_ts, START - 2000);
+    assert_eq!(name, Some(b));
+
+    // Ties: the first in the list (the newest) stays.
+    let mut m = Model::default();
+    list_source(&mut m, START - 2000, 2048);
+    let new = list_source(&mut m, START - 2000, 2048);
+    let mut min_ts = START;
+    assert_eq!(calc(&mut m, &mut min_ts), Some(new));
+
+    // Nothing earlier than the tick: no name, min_ts unchanged.
+    let mut m = Model::default();
+    list_source(&mut m, START + TICK / 2, 2048);
+    let mut min_ts = START;
+    assert_eq!(calc(&mut m, &mut min_ts), None);
+    assert_eq!(min_ts, START);
+
+    // Kept, characterized, not endorsed: the source with the minimum is
+    // short for a tick at its timestamp. The first pass takes it, the
+    // check marks it pending, and the second pass starts from the first
+    // pass's minimum, so with a strict comparison it finds nothing: the
+    // minimum stays that source's timestamp and the name becomes None.
+    let mut m = Model::default();
+    let short = list_source(&mut m, START - 2000, 10);
+    let ok = list_source(&mut m, START - 1000, 2048);
+    let mut min_ts = START;
+    let name = calc(&mut m, &mut min_ts);
+    assert!(m.src[short].pending);
+    assert!(!m.src[ok].pending);
+    assert_eq!(min_ts, START - 2000);
+    assert_eq!(name, None);
+}
+
+/// `test_audio_buffering_subsample`'s `tree_wrapper_tags_once`.
+#[test]
+fn tree_wrapper_tags_once() {
+    let (mic, scene_source) = (0, 1);
+    let mut m = Model::new(vec![input(), scene(vec![])]);
+    m.render = vec![mic, scene_source];
+
+    // The second visit of the mic tags it and makes it a root node; a
+    // third visit changes nothing.
+    push_tree2(&mut m, mic);
+    assert!(m.src[mic].duplicated);
+    assert_eq!(m.roots, vec![mic]);
+    push_tree2(&mut m, mic);
+    assert_eq!(m.roots.len(), 1);
+
+    // A scene seen twice is not tagged.
+    push_tree2(&mut m, scene_source);
+    assert!(!m.src[scene_source].duplicated);
+    assert_eq!(m.roots.len(), 1);
+
+    // A removed source is skipped, even if it is in the render order.
+    m.src[mic].duplicated = false;
+    m.src[mic].removed = true;
+    push_tree2(&mut m, mic);
+    assert!(!m.src[mic].duplicated);
+    assert_eq!(m.roots.len(), 1);
+    assert_eq!(m.render.len(), 2);
+}
+
+/// `test_audio_buffering_subsample`'s
+/// `silence_wrappers_use_the_source_fields`. The model keeps one value per
+/// mix where the C test fills every frame; the core clears whole buffers
+/// through `Tick::clear_output`.
+#[test]
+fn silence_wrappers_use_the_source_fields() {
+    let (capture, monitored) = (0, 1);
+    let mut m = Model::new(vec![
+        Src {
+            mixers: 0x05, // mixes 1 and 3
+            ..input()
+        },
+        Src {
+            monitoring: true,
+            mixers: 0x07, // mixes 1, 2 and 3
+            ..input()
+        },
+    ]);
+
+    // No deduplication source: nothing.
+    assert!(!should_silence_monitored_source(&mut m, monitored));
+    clear_audio_output_buf(&mut m, monitored);
+    assert!(m.src[monitored].out[0] == 1.0);
+
+    m.dedup = Some(capture);
+    assert!(should_silence_monitored_source(&mut m, monitored));
+    assert!(!should_silence_monitored_source(&mut m, capture));
+
+    // Only the common mixes are cleared.
+    clear_audio_output_buf(&mut m, monitored);
+    assert!(m.src[monitored].out[0] == 0.0);
+    assert!(m.src[monitored].out[1] == 1.0);
+    assert!(m.src[monitored].out[2] == 0.0);
+    assert!(m.src[monitored].out[3] == 1.0);
+
+    m.src[capture].active = false;
+    assert!(!should_silence_monitored_source(&mut m, monitored));
 }

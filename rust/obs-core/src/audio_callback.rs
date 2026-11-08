@@ -331,8 +331,9 @@ pub fn push_tree2<T: Tick + ?Sized>(t: &mut T, source: T::Source) {
 }
 
 /// `ignore_audio`: drops the audio of a source that has gone backward in
-/// time, under its buffer lock; whether it is rendered again.
-fn ignore_audio<T: Tick + ?Sized>(
+/// time; whether it is rendered again. The caller holds the source's
+/// `audio_buf_mutex`.
+pub fn ignore_audio<T: Tick + ?Sized>(
     t: &mut T,
     source: T::Source,
     channels: usize,
@@ -446,8 +447,10 @@ fn mark_invalid_sources<T: Tick + ?Sized>(t: &mut T, sample_rate: usize, min_ts:
     recalculate
 }
 
-/// `calc_min_ts`, under `audio_sources_mutex`.
-fn calc_min_ts<T: Tick + ?Sized>(
+/// `calc_min_ts`: the minimum timestamp of the audio sources, marking the
+/// short ones pending, and the name of the source that set it, if the last
+/// search found one. The caller holds `audio_sources_mutex`.
+pub fn calc_min_ts<T: Tick + ?Sized>(
     t: &mut T,
     sample_rate: usize,
     min_ts: &mut u64,
@@ -499,7 +502,7 @@ fn monitor_dedup<T: Tick + ?Sized>(t: &mut T) -> MonitorDedup {
 }
 
 /// `should_silence_monitored_source`.
-fn should_silence_monitored_source<T: Tick + ?Sized>(t: &mut T, source: T::Source) -> bool {
+pub fn should_silence_monitored_source<T: Tick + ?Sized>(t: &mut T, source: T::Source) -> bool {
     let dedup = monitor_dedup(t);
     let monitoring_enabled = t.monitoring_enabled(source);
     let is_dedup_source = t.monitoring_duplicating_source() == Some(source);
@@ -507,13 +510,26 @@ fn should_silence_monitored_source<T: Tick + ?Sized>(t: &mut T, source: T::Sourc
 }
 
 /// `clear_audio_output_buf`.
-fn clear_audio_output_buf<T: Tick + ?Sized>(t: &mut T, source: T::Source) {
+pub fn clear_audio_output_buf<T: Tick + ?Sized>(t: &mut T, source: T::Source) {
     let Some(dup_src) = t.monitoring_duplicating_source() else {
         return;
     };
     let dup_mixers = t.audio_mixers(dup_src);
     let source_mixers = t.audio_mixers(source);
     t.clear_output(source, clear_mixes(dup_mixers, source_mixers));
+}
+
+/// `discard_audio`: drops the tick from a source's input. The caller holds
+/// `audio_sources_mutex` and the source's `audio_buf_mutex`.
+pub fn discard_audio<T: Tick + ?Sized>(
+    t: &mut T,
+    source: T::Source,
+    channels: usize,
+    sample_rate: usize,
+    ts: TsInfo,
+) {
+    let audio_render = t.has_audio_render(source);
+    t.discard_tick(source, audio_render, channels, sample_rate, ts);
 }
 
 /// The render order and root nodes over the views of the mixes, under
@@ -685,8 +701,7 @@ pub fn audio_callback<T: Tick>(t: &mut T, start_ts: u64, end_ts: u64, mixers: u3
     let mut source = t.first_audio_source();
     while let Some(s) = source {
         t.lock_buf(s);
-        let audio_render = t.has_audio_render(s);
-        t.discard_tick(s, audio_render, channels, sample_rate, ts);
+        discard_audio(t, s, channels, sample_rate, ts);
         t.unlock_buf(s);
 
         source = t.next_audio_source(s);
