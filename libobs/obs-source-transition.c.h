@@ -78,29 +78,6 @@ void obs_transition_free(obs_source_t *transition)
 	gs_leave_context();
 }
 
-static float calc_time(obs_source_t *transition, uint64_t ts)
-{
-	return obs_source_transition_clock_time((int)transition->transition_mode, transition->transition_manual_val,
-						transition->transition_start_time, transition->transition_duration, ts);
-}
-
-static inline float get_video_time(obs_source_t *transition)
-{
-	uint64_t ts = obs_video_stats_frame_time(&obs->video.stats);
-	return calc_time(transition, ts);
-}
-
-float obs_transition_get_time(obs_source_t *transition)
-{
-	/* Read under the lock that publishes a start's clock, as the render
-	 * functions do: a caller choosing what to draw from this value, then
-	 * rendering, must not pair a new start with the previous clock. */
-	lock_transition(transition);
-	float t = get_video_time(transition);
-	unlock_transition(transition);
-	return t;
-}
-
 static inline gs_texture_t *get_texture(obs_source_t *transition, enum obs_transition_target target)
 {
 	size_t idx = (size_t)target;
@@ -159,32 +136,6 @@ static inline void render_child(obs_source_t *transition, obs_source_t *child, s
 	}
 }
 
-static void obs_transition_stop(obs_source_t *transition)
-{
-	obs_source_t *old_child = transition->transition_sources[0];
-
-	if (old_child && transition->transition_source_active[0])
-		obs_source_remove_active_child(transition, old_child);
-	obs_source_release(old_child);
-
-	transition->transition_source_active[0] = true;
-	transition->transition_source_active[1] = false;
-	transition->transition_sources[0] = transition->transition_sources[1];
-	transition->transition_sources[1] = NULL;
-}
-
-static inline void handle_stop(obs_source_t *transition)
-{
-	if (transition->info.transition_stop)
-		transition->info.transition_stop(transition->context.data);
-	obs_source_dosignal(transition, "source_transition_stop", "transition_stop");
-}
-
-void obs_transition_force_stop(obs_source_t *transition)
-{
-	handle_stop(transition);
-}
-
 void obs_transition_video_render(obs_source_t *transition, obs_transition_video_render_callback_t callback)
 {
 	obs_transition_video_render2(transition, callback, obs->video.transparent_texture);
@@ -208,7 +159,7 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 	 * reading it before the lock could pair a new start with an old clock. */
 	lock_transition(transition);
 
-	t = get_video_time(transition);
+	t = transition_get_video_time(transition);
 
 	if (obs_source_transition_render_video_due(t, os_atomic_load_bool(&transition->transitioning_video))) {
 		enum obs_source_transition_render_video_step step;
@@ -220,7 +171,7 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 		step = obs_source_transition_render_video_stop(os_atomic_load_bool(&transition->transitioning_audio),
 							       true);
 		if (step != OBS_SOURCE_TRANSITION_RENDER_VIDEO_END) {
-			obs_transition_stop(transition);
+			transition_stop(transition);
 			stopped = true;
 		}
 	}
@@ -290,7 +241,7 @@ void obs_transition_video_render2(obs_source_t *transition, obs_transition_video
 	if (video_stopped)
 		obs_source_dosignal(transition, "source_transition_video_stop", "transition_video_stop");
 	if (stopped)
-		handle_stop(transition);
+		transition_handle_stop(transition);
 }
 
 static enum gs_color_space mix_spaces(enum gs_color_space a, enum gs_color_space b)
@@ -340,7 +291,7 @@ bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_trans
 	 * reading it before the lock could pair a new start with an old clock. */
 	lock_transition(transition);
 
-	t = get_video_time(transition);
+	t = transition_get_video_time(transition);
 
 	if (obs_source_transition_render_video_due(t, os_atomic_load_bool(&transition->transitioning_video))) {
 		enum obs_source_transition_render_video_step step;
@@ -354,7 +305,7 @@ bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_trans
 			os_atomic_store_bool(&transition->transitioning_audio, false);
 
 		if (step != OBS_SOURCE_TRANSITION_RENDER_VIDEO_END) {
-			obs_transition_stop(transition);
+			transition_stop(transition);
 			stopped = true;
 		}
 	}
@@ -379,7 +330,7 @@ bool obs_transition_video_render_direct(obs_source_t *transition, enum obs_trans
 	if (video_stopped)
 		obs_source_dosignal(transition, "source_transition_video_stop", "transition_video_stop");
 	if (stopped)
-		handle_stop(transition);
+		transition_handle_stop(transition);
 
 	return transitioning;
 }
@@ -479,7 +430,7 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	min_ts = transition_calc_min_ts(sources);
 
 	if (min_ts)
-		t = calc_time(transition, min_ts);
+		t = transition_calc_time(transition, min_ts);
 
 	step = obs_source_transition_render_audio_stop(min_ts != 0, t,
 						       os_atomic_load_bool(&transition->transitioning_video),
@@ -487,7 +438,7 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	if (step != OBS_SOURCE_TRANSITION_RENDER_AUDIO_KEEP) {
 		os_atomic_store_bool(&transition->transitioning_audio, false);
 		if (step == OBS_SOURCE_TRANSITION_RENDER_AUDIO_STOP) {
-			obs_transition_stop(transition);
+			transition_stop(transition);
 			stopped = true;
 		}
 	}
@@ -527,7 +478,7 @@ bool obs_transition_audio_render(obs_source_t *transition, uint64_t *ts_out, str
 	}
 
 	if (stopped)
-		handle_stop(transition);
+		transition_handle_stop(transition);
 
 	*ts_out = min_ts;
 	return !!min_ts;

@@ -12686,6 +12686,28 @@
         "libobs/data"
       ]
     },
+    "test_source_transition_seam_calls": {
+      "sources": [
+        "test/cmocka/test_source_transition_seam_calls.c",
+        "libobs/obs-source-transition-seam.c.h",
+        "libobs/obs-source-transition-load.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-transition-load.h",
+        "libobs/obs-source-transition-seam.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_source_transition_settings": {
       "sources": [
         "test/cmocka/test_source_transition_settings.c"
@@ -12731,6 +12753,27 @@
     "test_source_transition_slots": {
       "sources": [
         "test/cmocka/test_source_transition_slots.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
+    "test_source_transition_stop": {
+      "sources": [
+        "test/cmocka/test_source_transition_stop.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -20406,6 +20449,12 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 120
     },
+    "test_source_transition_seam_calls": {
+      "target": "test_source_transition_seam_calls",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_source_transition_settings": {
       "target": "test_source_transition_settings",
       "command": [
@@ -20426,6 +20475,15 @@
     },
     "test_source_transition_slots": {
       "target": "test_source_transition_slots",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_source_transition_stop": {
+      "target": "test_source_transition_stop",
       "command": [
         "${target}"
       ],
