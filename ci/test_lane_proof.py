@@ -353,7 +353,11 @@ class Check(unittest.TestCase):
 class MissDiagnostic(unittest.TestCase):
     def test_diagnostic_stdout_matches_summary_after_decision(self):
         diagnostic = self.diagnose()
-        for summary_options in ({}, {"summary": False}, {"summary_path_is_directory": True}):
+        for summary_options in (
+            {},
+            {"summary": False},
+            {"summary_path_is_directory": True},
+        ):
             with self.subTest(**summary_options):
                 stdout = io.StringIO()
                 _, summary = Check().check(
@@ -366,7 +370,9 @@ class MissDiagnostic(unittest.TestCase):
                 lines = stdout.getvalue().splitlines()
                 self.assertEqual(lines[-1], diagnostic)
                 self.assertLess(lines.index("hit=false"), len(lines) - 1)
-                self.assertLess(lines.index("reason=no proof for this key"), len(lines) - 1)
+                self.assertLess(
+                    lines.index("reason=no proof for this key"), len(lines) - 1
+                )
                 if summary:
                     self.assertEqual(summary.splitlines()[-1], lines[-1])
 
