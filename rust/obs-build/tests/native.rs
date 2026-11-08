@@ -1006,11 +1006,11 @@ fn canonical_remux_queue_runs_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     // Compare the evaluated inventory, including optional Qt Test selection.
+    let facts = qt_replay_facts(&build.target, qt_test_available);
+    let linux = facts["OS_LINUX"];
     let mut expected = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     expected.retain_suite("qt");
-    let expected = expected
-        .select(&qt_replay_facts(&build.target, qt_test_available))
-        .unwrap();
+    let expected = expected.select(&facts).unwrap();
     assert!(
         graph["targets"].get("test_hotkey_edit_backtab").is_some(),
         "canonical graph omits test_hotkey_edit_backtab"
