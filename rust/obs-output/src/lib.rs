@@ -155,6 +155,7 @@ pub mod output_service_getter;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
+pub mod output_protocols;
 pub mod output_supported_codecs;
 pub mod protocols;
 pub mod raw_audio;
