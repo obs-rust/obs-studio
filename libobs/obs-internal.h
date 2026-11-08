@@ -812,6 +812,10 @@ extern struct obs_core *obs;
 /* Borrowed argument snapshot; setter/shutdown retain allocation ownership. */
 extern struct obs_cmdline_args *obs_core_cmdline_args_field(void);
 
+/* Frame interval seam: check core presence before obtaining the member address. */
+extern const struct obs_core *obs_core_frame_interval_core(void);
+extern const uint64_t *obs_core_frame_interval_field(const struct obs_core *core);
+
 /* Address of the global pointer; safe to obtain before startup and after shutdown. */
 extern struct obs_core *const *obs_core_initialized_field(void);
 
