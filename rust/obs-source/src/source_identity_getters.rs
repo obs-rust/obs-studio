@@ -8,14 +8,24 @@ pub struct Identity<T> {
 }
 
 pub fn uuid<T: Copy + Default>(source: Option<Identity<T>>, log: impl FnOnce(&'static CStr)) -> T {
-    let _ = (source, log);
-    todo!("source UUID port")
+    match source {
+        Some(fields) => fields.uuid,
+        None => {
+            log(c"obs_source_get_uuid");
+            T::default()
+        }
+    }
 }
 
 pub fn unversioned_id<T: Copy + Default>(
     source: Option<Identity<T>>,
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (source, log);
-    todo!("source unversioned ID port")
+    match source {
+        Some(fields) => fields.unversioned_id,
+        None => {
+            log(c"obs_source_get_unversioned_id");
+            T::default()
+        }
+    }
 }

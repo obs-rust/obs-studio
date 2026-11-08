@@ -1445,6 +1445,13 @@ struct obs_source_boolean_query_fields {
 };
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
 
+/* Borrowed identity field addresses. Caller must reject NULL before access. */
+struct obs_source_identity_getter_fields {
+	const char *const *uuid;
+	const char *const *unversioned_id;
+};
+struct obs_source_identity_getter_fields obs_source_identity_getter_fields(const obs_source_t *source);
+
 /* Borrowed field addresses only. Caller checks non-NULL and keeps the source
  * live under the original getters' synchronization contract. */
 struct obs_source_state_getter_fields {

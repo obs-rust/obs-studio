@@ -1,0 +1,2 @@
+obs_source_get_uuid
+obs_source_get_unversioned_id
