@@ -1,4 +1,4 @@
-//! The object list of an MSVC link, passed in a response file, and its
+//! The object list and options of an MSVC link, passed in response files, and their
 //! private regression check.
 //!
 //! `cl.exe` takes the libobs objects (one per unity group, and one
@@ -6,7 +6,7 @@
 //! command line at 32767 characters, and with a CI checkout's long paths
 //! the two paths per group passed it ("The filename or extension is too
 //! long", os error 206). `cl.exe` and `link.exe` read `@file` arguments in place, so
-//! the objects go into one file and the command line names only it.
+//! the objects and final linker options go into files named by the command line.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -20,8 +20,37 @@ pub fn configure_link_options(
     options: &[String],
     msvc: bool,
 ) -> Result<(), String> {
-    let _ = (target, artifact, msvc);
-    command.args(options);
+    if target.contains("windows") && msvc && !options.is_empty() {
+        let rsp = artifact.with_extension("link.rsp");
+        let mut text = String::new();
+        for option in options {
+            if option.contains(['\r', '\n', '\0']) {
+                return Err(format!("invalid MSVC response-file option: {option:?}"));
+            }
+            // MSVC treats backslashes before quotes (including the closing
+            // quote) as escapes. Preserve embedded quotes and trailing slashes.
+            text.push('"');
+            let mut slashes = 0;
+            for ch in option.chars() {
+                if ch == '\\' {
+                    slashes += 1;
+                    continue;
+                }
+                let count = if ch == '"' { slashes * 2 + 1 } else { slashes };
+                text.extend(std::iter::repeat_n('\\', count));
+                text.push(ch);
+                slashes = 0;
+            }
+            text.extend(std::iter::repeat_n('\\', slashes * 2));
+            text.push_str("\"\n");
+        }
+        std::fs::write(&rsp, text).map_err(|e| format!("write {}: {e}", rsp.display()))?;
+        let mut arg = OsString::from("@");
+        arg.push(&rsp);
+        command.arg(arg);
+    } else {
+        command.args(options);
+    }
     Ok(())
 }
 
@@ -49,6 +78,70 @@ pub fn msvc_response_file(rsp: &Path, objects: &[PathBuf]) -> Result<OsString, S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn link_options_preserve_msvc_quoting_and_other_toolchains() {
+        let dir = tempfile::tempdir().unwrap();
+        let artifact = dir.path().join("obs.dll");
+        let options = vec![
+            r"/WHOLEARCHIVE:C:\Program Files\obs.lib".into(),
+            "trailing\\".into(),
+            "embedded\"quote".into(),
+            String::new(),
+        ];
+        let mut command = Command::new("cl.exe");
+        configure_link_options(
+            "x86_64-pc-windows-msvc",
+            &mut command,
+            &artifact,
+            &options,
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(artifact.with_extension("link.rsp")).unwrap(),
+            "\"/WHOLEARCHIVE:C:\\Program Files\\obs.lib\"\n\"trailing\\\\\"\n\"embedded\\\"quote\"\n\"\"\n"
+        );
+        for (target, msvc) in [
+            ("x86_64-unknown-linux-gnu", false),
+            ("x86_64-pc-windows-gnu", false),
+        ] {
+            let mut command = Command::new("cc");
+            configure_link_options(target, &mut command, &artifact, &options, msvc).unwrap();
+            assert_eq!(
+                command.get_args().collect::<Vec<_>>(),
+                options.iter().map(std::ffi::OsStr::new).collect::<Vec<_>>()
+            );
+        }
+        let mut command = Command::new("cl.exe");
+        configure_link_options("x86_64-pc-windows-msvc", &mut command, &artifact, &[], true)
+            .unwrap();
+        assert_eq!(command.get_args().count(), 0);
+        for option in ["bad\noption", "bad\roption", "bad\0option"] {
+            assert!(
+                configure_link_options(
+                    "x86_64-pc-windows-msvc",
+                    &mut command,
+                    &artifact,
+                    &[option.into()],
+                    true
+                )
+                .is_err()
+            );
+        }
+        let missing = dir.path().join("missing").join("obs.dll");
+        assert!(
+            configure_link_options(
+                "x86_64-pc-windows-msvc",
+                &mut command,
+                &missing,
+                &options,
+                true
+            )
+            .unwrap_err()
+            .contains("write")
+        );
+    }
 
     #[test]
     fn msvc_export_options_use_a_short_response_file_invocation() {
