@@ -911,6 +911,7 @@ pub fn native_test_facts(
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
+        ("HAVE_WINDOW_MATCH_TEST_GIO".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         // Optional headless plugin SDKs are false until the consumer probes them.
         ("HAVE_RTMPS_TEST_SDK".into(), false),
