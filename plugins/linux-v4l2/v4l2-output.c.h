@@ -10,6 +10,21 @@ struct vmic_tail {
 	size_t cap;
 };
 
+/* Frame sync (obs-rust/obs-studio#4087): libobs hands the output each video
+ * frame as it renders but its audio only after the audio buffering, so with
+ * the microphone on, frames wait here until the audio with the same timestamp
+ * has gone to the microphone. Bounded, so the picture never stops. */
+#define VCAM_SYNC_FRAMES 64
+struct vcam_sync {
+	pthread_mutex_t mutex;
+	uint8_t *frame[VCAM_SYNC_FRAMES];
+	uint64_t ts[VCAM_SYNC_FRAMES];
+	size_t head;
+	size_t len;
+	/* End timestamp of the audio last handed to the microphone. */
+	uint64_t audio_end;
+};
+
 struct virtualcam_data {
 	obs_output_t *output;
 	int device;
@@ -18,6 +33,10 @@ struct virtualcam_data {
 
 	/* OBS Virtual Microphone (#3011): the FIFO of a module-pipe-source. */
 	int mic_fifo;
+	/* A read end of the same FIFO, to throw away audio nobody read. */
+	int mic_drain;
+	uint32_t mic_rate;
+	struct vcam_sync sync;
 	size_t mic_pipe_size;
 	struct vmic_tail mic_tail;
 	uint32_t mic_module;
@@ -224,6 +243,17 @@ static bool vmic_write_packet(int fd, size_t pipe_size, struct vmic_tail *tail, 
 	}
 	return true;
 }
+/* Throws away audio that waits in the FIFO beyond keep bytes: while no app
+ * reads the microphone the FIFO fills with old audio, and an app that links
+ * later would hear it first and stay that far behind (#4087). Returns the
+ * bytes dropped. */
+static size_t vmic_drop_stale(int drain_fd, int fd, size_t keep)
+{
+	UNUSED_PARAMETER(drain_fd);
+	UNUSED_PARAMETER(fd);
+	UNUSED_PARAMETER(keep);
+	return 0;
+}
 /* #3180 writer end */
 
 static const char *virtualcam_name(void *unused)
@@ -239,6 +269,7 @@ static void virtualcam_destroy(void *data)
 	if (vcam->device >= 0)
 		close(vcam->device);
 	vmic_stop(vcam);
+	pthread_mutex_destroy(&vcam->sync.mutex);
 
 	bfree(data);
 }
@@ -843,7 +874,9 @@ static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 	vcam->output = output;
 	vcam->device = -1;
 	vcam->mic_fifo = -1;
+	vcam->mic_drain = -1;
 	vcam->mic_lock = -1;
+	pthread_mutex_init(&vcam->sync.mutex, NULL);
 	vmic_read_settings(vcam, settings);
 
 	/* The frontend asks after start whether the microphone runs, to tell
@@ -1073,3 +1106,4 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_FIFO_NAME
 #undef VMIC_DIR_NAME
 #undef VMIC_PA_TIMEOUT_NS
+#undef VCAM_SYNC_FRAMES

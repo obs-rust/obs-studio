@@ -525,6 +525,148 @@ static void a_second_obs_gets_its_own_source_name(void **state)
 	assert_string_equal(name, "obs_virtual_microphone_3");
 }
 
+/* #4087: frame sync. Pipes stand in for the camera device and the FIFO; a
+ * frame is 16 bytes, so FIONREAD / 16 counts the frames the camera got. */
+#define SYNC_FRAME 16
+#define MS(x) ((uint64_t)(x) * 1000000ULL)
+
+static int queued_bytes(int fd)
+{
+	int n = 0;
+	assert_int_equal(ioctl(fd, FIONREAD, &n), 0);
+	return n;
+}
+
+static struct virtualcam_data *sync_vcam(int dev[2], int mic[2])
+{
+	assert_int_equal(pipe2(dev, O_NONBLOCK | O_CLOEXEC), 0);
+	assert_int_equal(pipe2(mic, O_NONBLOCK | O_CLOEXEC), 0);
+	int size = fcntl(mic[1], F_SETPIPE_SZ, 1 << 16);
+	assert_true(size >= 1 << 16);
+	struct virtualcam_data *vcam = virtualcam_create(NULL, NULL);
+	vcam->device = dev[1];
+	vcam->frame_size = SYNC_FRAME;
+	vcam->mic_fifo = mic[1];
+	vcam->mic_pipe_size = (size_t)size;
+	vcam->mic_rate = 48000;
+	return vcam;
+}
+
+static void sync_done(struct virtualcam_data *vcam, int dev[2], int mic[2])
+{
+	virtualcam_destroy(vcam); /* closes dev[1] and mic[1] */
+	close(dev[0]);
+	close(mic[0]);
+}
+
+static void send_frame(struct virtualcam_data *vcam, uint64_t ts)
+{
+	uint8_t px[SYNC_FRAME] = {0};
+	struct video_data frame = {0};
+	frame.data[0] = px;
+	frame.timestamp = ts;
+	virtual_video(vcam, &frame);
+}
+
+static void send_audio(struct virtualcam_data *vcam, uint64_t ts, uint32_t frames)
+{
+	static float samples[1024 * 2];
+	struct audio_data audio = {0};
+	audio.data[0] = (uint8_t *)samples;
+	audio.frames = frames;
+	audio.timestamp = ts;
+	virtual_audio(vcam, &audio);
+}
+
+/* A frame goes to the camera once the microphone has the audio up to its
+ * timestamp, not before. */
+static void video_waits_for_its_audio(void **state)
+{
+	(void)state;
+	int dev[2], mic[2];
+	struct virtualcam_data *vcam = sync_vcam(dev, mic);
+
+	send_frame(vcam, MS(1000));
+	send_frame(vcam, MS(1033));
+	send_frame(vcam, MS(1066));
+	assert_int_equal(queued_bytes(dev[0]), 0);
+
+	/* 1024 frames at 48 kHz: 21.33 ms each. */
+	send_audio(vcam, MS(1000), 1024); /* up to 1021.3 */
+	assert_int_equal(queued_bytes(dev[0]), 1 * SYNC_FRAME);
+	send_audio(vcam, 1021333333ULL, 1024); /* up to 1042.7 */
+	assert_int_equal(queued_bytes(dev[0]), 2 * SYNC_FRAME);
+	send_audio(vcam, 1042666667ULL, 1024); /* up to 1064 */
+	assert_int_equal(queued_bytes(dev[0]), 2 * SYNC_FRAME);
+	send_audio(vcam, 1064000000ULL, 1024); /* up to 1085.3 */
+	assert_int_equal(queued_bytes(dev[0]), 3 * SYNC_FRAME);
+
+	/* Audio already ahead: the next frame goes straight through. */
+	send_frame(vcam, MS(1080));
+	assert_int_equal(queued_bytes(dev[0]), 4 * SYNC_FRAME);
+
+	sync_done(vcam, dev, mic);
+}
+
+/* Without a microphone nothing waits. */
+static void video_is_not_held_without_microphone(void **state)
+{
+	(void)state;
+	int dev[2], mic[2];
+	struct virtualcam_data *vcam = sync_vcam(dev, mic);
+	close(vcam->mic_fifo);
+	vcam->mic_fifo = -1;
+
+	send_frame(vcam, MS(1000));
+	assert_int_equal(queued_bytes(dev[0]), SYNC_FRAME);
+
+	sync_done(vcam, dev, mic);
+}
+
+/* Audio that stops never freezes the picture: past 64 waiting frames the
+ * oldest goes out anyway. */
+static void held_video_is_bounded(void **state)
+{
+	(void)state;
+	int dev[2], mic[2];
+	struct virtualcam_data *vcam = sync_vcam(dev, mic);
+
+	for (int i = 0; i < 64 + 5; i++)
+		send_frame(vcam, MS(1000) + MS(i * 33));
+	assert_int_equal(queued_bytes(dev[0]), 5 * SYNC_FRAME);
+
+	sync_done(vcam, dev, mic);
+}
+
+/* Audio nobody read is thrown away, oldest first, down to one packet, so an
+ * app that links later starts at the newest audio. */
+static void stale_audio_is_dropped(void **state)
+{
+	(void)state;
+	int p[2];
+	assert_int_equal(pipe2(p, O_NONBLOCK | O_CLOEXEC), 0);
+	assert_true(fcntl(p[1], F_SETPIPE_SZ, 1 << 16) >= 1 << 16);
+
+	uint8_t packet[8192];
+	for (int i = 1; i <= 3; i++) {
+		memset(packet, i, sizeof(packet));
+		assert_int_equal(write(p[1], packet, sizeof(packet)), (ssize_t)sizeof(packet));
+	}
+	assert_int_equal(vmic_drop_stale(-1, p[1], sizeof(packet)), 0);
+	assert_int_equal(vmic_drop_stale(p[0], p[1], sizeof(packet)), 2 * sizeof(packet));
+	assert_int_equal(queued_bytes(p[0]), (int)sizeof(packet));
+	assert_int_equal(read(p[0], packet, sizeof(packet)), (ssize_t)sizeof(packet));
+	assert_int_equal(packet[0], 3);
+	assert_int_equal(packet[sizeof(packet) - 1], 3);
+
+	/* Within the limit nothing goes. */
+	assert_int_equal(write(p[1], packet, 4096), 4096);
+	assert_int_equal(vmic_drop_stale(p[0], p[1], sizeof(packet)), 0);
+
+	close(p[0]);
+	close(p[1]);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -543,6 +685,10 @@ int main(void)
 		cmocka_unit_test(our_module_line_gives_id_and_pid),
 		cmocka_unit_test(quoted_module_line_gives_id_and_pid),
 		cmocka_unit_test(other_module_lines_are_ignored),
+		cmocka_unit_test(video_waits_for_its_audio),
+		cmocka_unit_test(video_is_not_held_without_microphone),
+		cmocka_unit_test(held_video_is_bounded),
+		cmocka_unit_test(stale_audio_is_dropped),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
