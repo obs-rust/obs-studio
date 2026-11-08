@@ -173,6 +173,7 @@ pub mod transition_settings;
 pub mod transition_size;
 pub mod transition_slots;
 pub mod transition_start;
+pub mod transition_switch;
 pub mod video_tick;
 pub mod volume_apply;
 pub mod volume_mul;
