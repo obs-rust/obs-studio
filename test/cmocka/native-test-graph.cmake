@@ -92,6 +92,9 @@ function(_obs_test_graph_requirement output json)
       HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER
       HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER
       HAVE_WS_SCENE_COUNT_TEST_OWNER
+      HAVE_WS_FILTER_SETTINGS_EVENT_TEST_OWNER
+      HAVE_WS_REMOVE_INPUT_TEST_OWNER
+      HAVE_WS_TRANSFORM_BOUNDS_TEST_OWNER
     )
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
@@ -312,6 +315,27 @@ function(obs_native_test_graph path root)
         AND EXISTS "${root}/plugins/obs-websocket/src/plugin-macros.h.in"
       )
         if(NOT helper STREQUAL "batch_order" OR TARGET Qt6::Core)
+          set(HAVE_WS_${helper_key}_TEST_OWNER TRUE)
+        endif()
+      endif()
+    endif()
+  endforeach()
+  foreach(helper IN ITEMS filter_settings_event remove_input transform_bounds)
+    string(TOUPPER "${helper}" helper_key)
+    set(HAVE_WS_${helper_key}_TEST_OWNER FALSE)
+    if(TARGET OBS::libobs AND NOT OS_WINDOWS AND (OS_LINUX OR helper STREQUAL "filter_settings_event"))
+      if(helper STREQUAL "filter_settings_event")
+        set(owner_source "eventhandler/EventHandler.cpp")
+      elseif(helper STREQUAL "transform_bounds")
+        set(owner_source "requesthandler/RequestHandler_SceneItems.cpp")
+      else()
+        set(owner_source "requesthandler/RequestHandler_Inputs.cpp")
+      endif()
+      if(EXISTS "${root}/plugins/obs-websocket/src/${owner_source}")
+        if(TARGET nlohmann_json::nlohmann_json AND EXISTS "${root}/plugins/obs-websocket/src/plugin-macros.h.in")
+          if(helper STREQUAL "filter_settings_event" AND OS_LINUX AND NOT TARGET X11::X11)
+            continue()
+          endif()
           set(HAVE_WS_${helper_key}_TEST_OWNER TRUE)
         endif()
       endif()
