@@ -14,8 +14,8 @@
  * A test transition is a zeroed struct obs_source with its type, its
  * transition_mutex and up to two children that have only a name.
  *
- * The seam's signal and video-time accessors read libobs's core pointer,
- * obs (obs.c). Test binaries link this file without any definition of it
+ * The seam's signal, video-time, graphics and transparent-texture accessors
+ * read libobs's core pointer, obs (obs.c). Test binaries link this file without any definition of it
  * (the MSVC linker keeps the reference), so here it is this file's own
  * pointer, renamed from the first include on and left NULL: no parity test
  * calls those accessors. */

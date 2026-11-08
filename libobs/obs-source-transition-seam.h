@@ -43,6 +43,25 @@
  * - obs_source_transition_seam_get_video_time(): the latest video frame's
  *   time. It takes obs->video.stats.mutex, which its callers take with
  *   transition_mutex held.
+ * - obs_source_transition_seam_get_context_data(): the transition's
+ *   context.data, which the type's render and audio mix callbacks get.
+ * - obs_source_transition_seam_get_transparent_texture() and _get_graphics():
+ *   the core's obs->video.transparent_texture and obs->video.graphics, each
+ *   a single read.
+ * - obs_source_transition_seam_get_child_audio_pending() and
+ *   _get_child_audio_is_duplicated(): a child's audio_pending and
+ *   audio_is_duplicated. They take no lock: the audio render reads them with
+ *   transition_mutex held and none of the child's.
+ * - obs_source_transition_seam_get_child_audio_output_buf(): a child's
+ *   audio_output_buf[0][0], the start of the one block its output buffers
+ *   share. The audio render copies TOTAL_AUDIO_SIZE bytes from it (every mix
+ *   and channel), which only that one allocation makes valid.
+ * - obs_source_transition_seam_init_mutex_values(): pthread_mutex_init_value()
+ *   on transition_mutex, then transition_tex_mutex.
+ * - obs_source_transition_seam_mutex_init() and _tex_mutex_init():
+ *   pthread_mutex_init() of transition_mutex (or transition_tex_mutex) with
+ *   no attributes, returning its result; _mutex_destroy() and
+ *   _tex_mutex_destroy(): pthread_mutex_destroy() of the same.
  *
  * Hidden in libobs: not EXPORT. */
 
@@ -103,3 +122,14 @@ bool obs_source_transition_seam_call_start(obs_source_t *transition);
 bool obs_source_transition_seam_call_stop(obs_source_t *transition);
 void obs_source_transition_seam_dosignal(obs_source_t *transition, const char *signal_obs, const char *signal_source);
 uint64_t obs_source_transition_seam_get_video_time(void);
+void *obs_source_transition_seam_get_context_data(const obs_source_t *transition);
+gs_texture_t *obs_source_transition_seam_get_transparent_texture(void);
+graphics_t *obs_source_transition_seam_get_graphics(void);
+bool obs_source_transition_seam_get_child_audio_pending(const obs_source_t *child);
+bool obs_source_transition_seam_get_child_audio_is_duplicated(const obs_source_t *child);
+float *obs_source_transition_seam_get_child_audio_output_buf(const obs_source_t *child);
+void obs_source_transition_seam_init_mutex_values(obs_source_t *transition);
+int obs_source_transition_seam_mutex_init(obs_source_t *transition);
+int obs_source_transition_seam_tex_mutex_init(obs_source_t *transition);
+void obs_source_transition_seam_mutex_destroy(obs_source_t *transition);
+void obs_source_transition_seam_tex_mutex_destroy(obs_source_t *transition);
