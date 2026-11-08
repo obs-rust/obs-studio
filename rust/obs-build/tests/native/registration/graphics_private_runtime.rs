@@ -24,6 +24,7 @@ fn assert_cases(output: &Output, name: &str) {
         "test_effect_param_types_steps_rust" | "test_graphics_ffmpeg_route_steps_rust" => 10,
         "test_effect_parser_lifecycle_rust" => 8,
         "test_scene_item_crop_rust" => 11,
+        "test_windows_keys_steps_rust" => 9,
         "test_effect_parser_blocks_rust" | "test_effect_parser_params_rust" => 7,
         "test_effect_parser_passes_rust" => 5,
         "test_effect_parser_shader_call_rust" => 3,
@@ -145,6 +146,41 @@ fn interfaces(
     .into()
 }
 
+fn fixture_dependencies(
+    family: &str,
+    build: &NativeBuild,
+    root: &Path,
+    directory: &Path,
+    interfaces: &mut std::collections::BTreeMap<String, Dependency>,
+) {
+    let dependencies = if family == "windows-keys" {
+        for (name, package) in [
+            ("jansson::jansson", "jansson"),
+            ("LibUUID::LibUUID", "uuid"),
+            ("gio::gio", "gio-2.0"),
+            ("gobject-2.0", "gobject-2.0"),
+            ("glib-2.0", "glib-2.0"),
+        ] {
+            interfaces.insert(
+                name.into(),
+                Dependency::package(&build.target, package).unwrap(),
+            );
+        }
+        format!(
+            r#"
+find_package(jansson REQUIRED)
+find_package(LibUUID REQUIRED)
+find_package(Gio REQUIRED)
+include("{}/test/cmocka/tests.d/test_windows_keys_steps.cmake")
+"#,
+            root.display()
+        )
+    } else {
+        String::new()
+    };
+    fs::write(directory.join("fixture-dependencies.cmake"), dependencies).unwrap();
+}
+
 pub(super) fn run(family: &str, cases: &[String]) {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let archive = dunce::canonicalize(
@@ -181,6 +217,7 @@ pub(super) fn run(family: &str, cases: &[String]) {
         None
     };
     let mut interfaces = interfaces(&build, &root, core.dependency, &caption, &archive);
+    fixture_dependencies(family, &build, &root, directory.path(), &mut interfaces);
     if let Some(renderer) = &renderer {
         interfaces.insert(
             "OBS::libobs-opengl".into(),
@@ -199,6 +236,8 @@ pub(super) fn run(family: &str, cases: &[String]) {
         ("OS_LINUX".into(), true),
         ("OS_FREEBSD".into(), false),
         ("ENABLE_PULSEAUDIO".into(), true),
+        ("HAVE_WINDOWS_KEYS_TEST_UUID".into(), true),
+        ("HAVE_WINDOWS_KEYS_TEST_GIO".into(), true),
     ]
     .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
@@ -290,6 +329,7 @@ find_package(SIMDe REQUIRED)
 option(OBS_TEST_SANITIZE_PER_TARGET "Per-target ASan/UBSan" ON)
 include("${{CMAKE_CURRENT_SOURCE_DIR}}/sanitize.cmake")
 {core}
+include("${{CMAKE_CURRENT_SOURCE_DIR}}/fixture-dependencies.cmake")
 {renderer_cmake}
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
