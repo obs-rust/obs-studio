@@ -806,6 +806,8 @@ def rust_tests(packages: list[str]) -> None:
 
 
 def lane_rust_test(fix: bool) -> None:
+    # Fail with the command-not-found hint before nextest can touch the network.
+    run(["soldr", "--version"])
     rust_tests(["--workspace"])
     for args in FEATURE_TEST_SETS:
         rust_tests(list(args))
