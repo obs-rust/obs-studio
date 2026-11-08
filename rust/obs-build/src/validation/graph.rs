@@ -35,9 +35,17 @@ impl Requirement {
             Self::Fact(name) => facts
                 .get(name)
                 .copied()
-                // No declared X server is a normal unsupported runtime, including
-                // non-X11 hosts. All other facts remain strict (including typos).
-                .or_else(|| (name == "HAVE_X11_DISPLAY").then_some(false))
+                // Optional display/Qt owners may be absent on headless hosts.
+                // All other facts remain strict, including misspelled names.
+                .or_else(|| {
+                    matches!(
+                        name.as_str(),
+                        "HAVE_X11_DISPLAY"
+                            | "HAVE_QT_WIDGETS_TEST_OWNER"
+                            | "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+                    )
+                    .then_some(false)
+                })
                 .ok_or_else(|| format!("unknown native test requirement {name}")),
             Self::All { all } => {
                 let mut selected = true;

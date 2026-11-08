@@ -60,7 +60,7 @@ function(_obs_test_graph_requirement output json)
     # Wayland and the X11 display declaration may be absent on other hosts.
     # SDK facts stay explicitly declared; unknown names (including typos) fail.
     set(platform_facts UNIX APPLE WIN32 MSVC)
-    set(host_options ENABLE_WAYLAND HAVE_X11_DISPLAY)
+    set(host_options ENABLE_WAYLAND HAVE_X11_DISPLAY HAVE_QT_WIDGETS_TEST_OWNER HAVE_QT_WIDGETS_TESTLIB_OWNER)
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
@@ -247,6 +247,16 @@ endfunction()
 
 function(obs_native_test_graph path root)
   _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
+  # Qt helpers are optional even when another component imported a Qt target.
+  # An explicitly disabled UI/frontend must not enable their fixture owners.
+  set(HAVE_QT_WIDGETS_TEST_OWNER FALSE)
+  set(HAVE_QT_WIDGETS_TESTLIB_OWNER FALSE)
+  if((NOT DEFINED ENABLE_UI OR ENABLE_UI) AND (NOT DEFINED ENABLE_FRONTEND OR ENABLE_FRONTEND) AND TARGET Qt6::Widgets)
+    set(HAVE_QT_WIDGETS_TEST_OWNER TRUE)
+    if(TARGET Qt6::Test)
+      set(HAVE_QT_WIDGETS_TESTLIB_OWNER TRUE)
+    endif()
+  endif()
   set(HAVE_STARTUP_X11 FALSE)
   if(TARGET X11::X11)
     set(HAVE_STARTUP_X11 TRUE)
