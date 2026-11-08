@@ -310,3 +310,64 @@ uint64_t obs_source_transition_seam_get_video_time(void)
 {
 	return obs_video_stats_frame_time(&obs->video.stats);
 }
+
+void *obs_source_transition_seam_get_context_data(const obs_source_t *transition)
+{
+	UNUSED_PARAMETER(transition);
+	return NULL;
+}
+
+gs_texture_t *obs_source_transition_seam_get_transparent_texture(void)
+{
+	return NULL;
+}
+
+graphics_t *obs_source_transition_seam_get_graphics(void)
+{
+	return NULL;
+}
+
+bool obs_source_transition_seam_get_child_audio_pending(const obs_source_t *child)
+{
+	UNUSED_PARAMETER(child);
+	return false;
+}
+
+bool obs_source_transition_seam_get_child_audio_is_duplicated(const obs_source_t *child)
+{
+	UNUSED_PARAMETER(child);
+	return false;
+}
+
+float *obs_source_transition_seam_get_child_audio_output_buf(const obs_source_t *child)
+{
+	UNUSED_PARAMETER(child);
+	return NULL;
+}
+
+void obs_source_transition_seam_init_mutex_values(obs_source_t *transition)
+{
+	UNUSED_PARAMETER(transition);
+}
+
+int obs_source_transition_seam_mutex_init(obs_source_t *transition)
+{
+	UNUSED_PARAMETER(transition);
+	return -1;
+}
+
+int obs_source_transition_seam_tex_mutex_init(obs_source_t *transition)
+{
+	UNUSED_PARAMETER(transition);
+	return -1;
+}
+
+void obs_source_transition_seam_mutex_destroy(obs_source_t *transition)
+{
+	UNUSED_PARAMETER(transition);
+}
+
+void obs_source_transition_seam_tex_mutex_destroy(obs_source_t *transition)
+{
+	UNUSED_PARAMETER(transition);
+}
