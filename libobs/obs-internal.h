@@ -1466,6 +1466,9 @@ struct obs_source_state_getter_fields {
 };
 struct obs_source_state_getter_fields obs_source_state_getter_fields(const obs_source_t *source);
 
+uint32_t obs_source_base_width(const obs_source_t *source);
+uint32_t obs_source_base_height(const obs_source_t *source);
+
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
