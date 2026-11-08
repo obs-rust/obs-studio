@@ -25,3 +25,7 @@
 #include <string.h>
 
 #include "vcam-format.h"
+
+#ifdef HAVE_LIBPULSE
+#include <pulse/pulseaudio.h>
+#endif

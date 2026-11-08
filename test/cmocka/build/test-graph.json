@@ -15669,12 +15669,14 @@
       ],
       "libraries": [
         "OBS::libobs",
+        "PulseAudio::PulseAudio",
         "OBS::native-test-cmocka"
       ],
       "requires": {
         "all": [
           "OS_LINUX",
-          "HAVE_OBS_V4L2"
+          "HAVE_OBS_V4L2",
+          "HAVE_OBS_PULSEAUDIO"
         ]
       },
       "includes": [
@@ -15688,6 +15690,9 @@
       ],
       "header_libraries": [
         "Libv4l2::Libv4l2"
+      ],
+      "definitions": [
+        "HAVE_LIBPULSE"
       ]
     },
     "test_v4l2_vcam_write": {
@@ -22785,13 +22790,33 @@
       "requires": {
         "all": [
           "OS_LINUX",
-          "HAVE_OBS_V4L2"
+          "HAVE_OBS_V4L2",
+          "HAVE_OBS_PULSEAUDIO"
         ]
       },
       "command": [
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_v4l2_vcam_audio_pipewire": {
+      "target": "test_v4l2_vcam_audio",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_OBS_PULSEAUDIO"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pulse_monitor_device.py",
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "skip_return_code": 77
     },
     "test_v4l2_vcam_write": {
       "target": "test_v4l2_vcam_write",

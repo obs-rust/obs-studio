@@ -295,6 +295,29 @@ static char *run_pactl(const char *args)
 	return out;
 }
 
+/* The sound server through libpulse, so no external pactl is needed (#4057).
+ * Each returns false/NULL when libpulse cannot do it; callers then fall back
+ * to pactl. */
+static bool vmic_pa_load(const char *args, uint32_t *id)
+{
+	UNUSED_PARAMETER(args);
+	UNUSED_PARAMETER(id);
+	return false;
+}
+
+static bool vmic_pa_unload(uint32_t id)
+{
+	UNUSED_PARAMETER(id);
+	return false;
+}
+
+/* "pactl list modules short" (modules) or "pactl list sources short" text. */
+static char *vmic_pa_list(bool modules)
+{
+	UNUSED_PARAMETER(modules);
+	return NULL;
+}
+
 /* Whether pactl itself can run at all, whatever the sound server would say (#3797). */
 static bool vmic_pactl_runs(void)
 {

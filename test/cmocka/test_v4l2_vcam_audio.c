@@ -354,6 +354,65 @@ static void pactl_that_cannot_run_is_told_apart(void **state)
 	assert_true(present_runs);
 }
 
+/* #4057: the virtual microphone is made through libpulse, with no pactl
+ * anywhere on PATH. Runs only under a private sound server
+ * (test_pulse_monitor_device.py sets PULSE_SERVER); skipped otherwise. */
+static void virtual_microphone_needs_no_pactl(void **state)
+{
+	(void)state;
+	if (!getenv("PULSE_SERVER"))
+		skip();
+
+	const char *old = getenv("PATH");
+	char *saved = old ? strdup(old) : NULL;
+	setenv("PATH", "/nonexistent", 1);
+
+	char dir[] = "/tmp/vmic-pa-XXXXXX";
+	assert_non_null(mkdtemp(dir));
+	char args[512];
+	snprintf(args, sizeof(args),
+		 "source_name=obs_vmic_pa_test file='%s/obs-virtual-microphone-4242' format=float32le rate=48000 "
+		 "channels=2 source_properties=\"device.description=\\\"OBS Virtual Microphone\\\"\"",
+		 dir);
+
+	uint32_t id = 0;
+	bool loaded = vmic_pa_load(args, &id);
+	char *sources = loaded ? vmic_pa_list(false) : NULL;
+	char *modules = loaded ? vmic_pa_list(true) : NULL;
+	bool listed = sources && vmic_source_listed(sources, "obs_vmic_pa_test");
+	bool found = false;
+	for (char *line = modules, *next; line && *line; line = next) {
+		next = strchr(line, '\n');
+		if (next)
+			*next++ = 0;
+		uint32_t mid;
+		long pid;
+		if (vmic_parse_module_line(line, &mid, &pid) && mid == id && pid == 4242)
+			found = true;
+	}
+	bool unloaded = loaded && vmic_pa_unload(id);
+	char *after = unloaded ? vmic_pa_list(false) : NULL;
+	bool gone = after && !vmic_source_listed(after, "obs_vmic_pa_test");
+	bfree(sources);
+	bfree(modules);
+	bfree(after);
+
+	if (saved) {
+		setenv("PATH", saved, 1);
+		free(saved);
+	}
+	char fifo[300];
+	snprintf(fifo, sizeof(fifo), "%s/obs-virtual-microphone-4242", dir);
+	unlink(fifo);
+	rmdir(dir);
+
+	assert_true(loaded);
+	assert_true(listed);
+	assert_true(found);
+	assert_true(unloaded);
+	assert_true(gone);
+}
+
 /* #3181: pactl runs on the thread that starts the Virtual Camera. A sound
  * server that never answers must not freeze OBS: run_pactl gives up. */
 static void hung_pactl_is_given_up_on(void **state)
@@ -452,6 +511,7 @@ int main(void)
 		cmocka_unit_test(dialog_settings_choose_audio_and_track),
 		cmocka_unit_test(a_second_obs_gets_its_own_source_name),
 		cmocka_unit_test(hung_pactl_is_given_up_on),
+		cmocka_unit_test(virtual_microphone_needs_no_pactl),
 		cmocka_unit_test(stale_module_is_unloaded_with_the_microphone_off),
 		cmocka_unit_test(pactl_that_cannot_run_is_told_apart),
 		cmocka_unit_test(closed_fifo_is_not_written),

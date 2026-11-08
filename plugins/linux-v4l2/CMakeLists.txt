@@ -31,6 +31,14 @@ target_link_libraries(
   PRIVATE OBS::libobs Libv4l2::Libv4l2 FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil
 )
 
+# The OBS Virtual Microphone talks to the sound server through libpulse, so it
+# needs no external pactl (obs-rust/obs-studio#4057).
+find_package(PulseAudio)
+if(PulseAudio_FOUND)
+  target_link_libraries(linux-v4l2 PRIVATE PulseAudio::PulseAudio)
+  target_compile_definitions(linux-v4l2 PRIVATE HAVE_LIBPULSE)
+endif()
+
 if(ENABLE_UDEV)
   find_package(Libudev REQUIRED)
   target_sources(linux-v4l2 PRIVATE build/linux-v4l2.nix-udev+.h.c)
