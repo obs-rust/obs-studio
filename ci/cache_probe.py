@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """Measure the cache paths this repo actually has, in one job.
 
 Phases (each independent — one failing does not stop the others):

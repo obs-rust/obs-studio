@@ -41,6 +41,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Ensure zstd and tar
         run: |
           command -v zstd >/dev/null || sudo apt-get update -qq && sudo apt-get install -y -qq zstd
@@ -57,7 +62,7 @@ jobs:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
         run: |
-          python3 ci/cache_probe.py \
+          uv run --no-project ci/cache_probe.py \
             --size-mib "${{ inputs.size_mib }}" \
             ${{ inputs.skip_gha && '--skip-gha' || '' }} \
             ${{ inputs.skip_s3 && '--skip-s3' || '' }} \
