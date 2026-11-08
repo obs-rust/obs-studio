@@ -5476,3 +5476,5 @@ mod canonical_output_pause_queries_is_registered;
 
 #[path = "native/registration/camera_wrap_boundary.rs"]
 mod camera_wrap_boundary;
+#[path = "native/registration/canonical_scene_source_getters_is_registered.rs"]
+mod canonical_scene_source_getters_is_registered;

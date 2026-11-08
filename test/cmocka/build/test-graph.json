@@ -12380,6 +12380,21 @@
         "libobs/obs.h"
       ]
     },
+    "test_scene_source_getters": {
+      "sources": [
+        "test/cmocka/test_scene_source_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_source_type_queries": {
       "sources": [
         "test/cmocka/test_scene_source_type_queries.c"
@@ -22106,6 +22121,12 @@
         "${target}"
       ],
       "working_directory": "${runtime}"
+    },
+    "test_scene_source_getters": {
+      "target": "test_scene_source_getters",
+      "command": [
+        "${target}"
+      ]
     },
     "test_scene_source_type_queries": {
       "target": "test_scene_source_type_queries",
