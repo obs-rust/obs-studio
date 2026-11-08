@@ -16,12 +16,11 @@
 #undef obs_encoder_get_caps
 #include "encoder_metadata_fields.inc"
 
-/* The owning parity harness supplies either C or Rust getters. Unrelated
- * oracle consumers must not acquire a link dependency on obs-output. */
-typedef const char *(*metadata_string_getter)(const obs_encoder_t *encoder);
-typedef enum obs_encoder_type (*metadata_type_getter)(const obs_encoder_t *encoder);
-typedef void *(*metadata_data_getter)(obs_encoder_t *encoder);
-typedef uint32_t (*metadata_caps_getter)(const obs_encoder_t *encoder);
+extern const char *obs_encoder_get_codec(const obs_encoder_t *encoder);
+extern enum obs_encoder_type obs_encoder_get_type(const obs_encoder_t *encoder);
+extern const char *obs_encoder_get_id(const obs_encoder_t *encoder);
+extern void *obs_encoder_get_type_data(obs_encoder_t *encoder);
+extern uint32_t obs_encoder_get_caps(const obs_encoder_t *encoder);
 
 void oracle_encoder_metadata_layout(size_t *layout);
 void oracle_encoder_metadata_layout(size_t *layout)
@@ -105,27 +104,23 @@ static bool metadata_check_log(struct metadata_log *log, const char *function)
 	return ok;
 }
 
-bool oracle_encoder_metadata_null_log(metadata_string_getter codec, metadata_type_getter type,
-				      metadata_string_getter id, metadata_data_getter type_data,
-				      metadata_caps_getter caps);
-bool oracle_encoder_metadata_null_log(metadata_string_getter codec, metadata_type_getter type,
-				      metadata_string_getter id, metadata_data_getter type_data,
-				      metadata_caps_getter caps)
+bool oracle_encoder_metadata_null_log(bool rust);
+bool oracle_encoder_metadata_null_log(bool rust)
 {
 	struct metadata_log log = {0};
 	log_handler_t old_handler;
 	void *old_param;
 	base_get_log_handler(&old_handler, &old_param);
 	base_set_log_handler(metadata_capture, &log);
-	bool ok = codec(NULL) == NULL;
+	bool ok = (rust ? obs_encoder_get_codec(NULL) : oracle_obs_encoder_get_codec(NULL)) == NULL;
 	ok &= metadata_check_log(&log, "obs_encoder_get_codec");
-	ok &= type(NULL) == OBS_ENCODER_AUDIO;
+	ok &= (rust ? obs_encoder_get_type(NULL) : oracle_obs_encoder_get_type(NULL)) == OBS_ENCODER_AUDIO;
 	ok &= metadata_check_log(&log, "obs_encoder_get_type");
-	ok &= id(NULL) == NULL;
+	ok &= (rust ? obs_encoder_get_id(NULL) : oracle_obs_encoder_get_id(NULL)) == NULL;
 	ok &= metadata_check_log(&log, "obs_encoder_get_id");
-	ok &= type_data(NULL) == NULL;
+	ok &= (rust ? obs_encoder_get_type_data(NULL) : oracle_obs_encoder_get_type_data(NULL)) == NULL;
 	ok &= metadata_check_log(&log, "obs_encoder_get_type_data");
-	ok &= caps(NULL) == 0;
+	ok &= (rust ? obs_encoder_get_caps(NULL) : oracle_obs_encoder_get_caps(NULL)) == 0;
 	ok &= metadata_check_log(&log, "obs_encoder_get_caps");
 	base_set_log_handler(old_handler, old_param);
 	return ok;

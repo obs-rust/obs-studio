@@ -20,13 +20,7 @@ unsafe extern "C" {
     fn oracle_obs_encoder_get_id(encoder: *const c_void) -> *const c_char;
     fn oracle_obs_encoder_get_type_data(encoder: *mut c_void) -> *mut c_void;
     fn oracle_obs_encoder_get_caps(encoder: *const c_void) -> u32;
-    fn oracle_encoder_metadata_null_log(
-        codec: unsafe extern "C" fn(*const c_void) -> *const c_char,
-        kind: unsafe extern "C" fn(*const c_void) -> c_int,
-        id: unsafe extern "C" fn(*const c_void) -> *const c_char,
-        type_data: unsafe extern "C" fn(*mut c_void) -> *mut c_void,
-        caps: unsafe extern "C" fn(*const c_void) -> u32,
-    ) -> bool;
+    fn oracle_encoder_metadata_null_log(rust: bool) -> bool;
 }
 
 #[test]
@@ -133,20 +127,8 @@ fn null_defaults_and_logs() {
     }
     // SAFETY: the probe saves/restores the global logger, isolated in this child.
     unsafe {
-        assert!(oracle_encoder_metadata_null_log(
-            oracle_obs_encoder_get_codec,
-            oracle_obs_encoder_get_type,
-            oracle_obs_encoder_get_id,
-            oracle_obs_encoder_get_type_data,
-            oracle_obs_encoder_get_caps,
-        ));
-        assert!(oracle_encoder_metadata_null_log(
-            rust::obs_encoder_get_codec,
-            rust::obs_encoder_get_type,
-            rust::obs_encoder_get_id,
-            rust::obs_encoder_get_type_data,
-            rust::obs_encoder_get_caps,
-        ));
+        assert!(oracle_encoder_metadata_null_log(false));
+        assert!(oracle_encoder_metadata_null_log(true));
     }
 }
 
