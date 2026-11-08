@@ -46,7 +46,7 @@
 
 #define ORACLE_SLOTS_SOURCES 16
 #define ORACLE_SLOTS_LINKS 32
-#define ORACLE_SLOTS_TRACE 128
+#define ORACLE_SLOTS_TRACE 512
 
 /* A traced call: kind (1 get_ref, 2 release, 3 add, 4 remove), the sources
  * it names (NULL where it has none) and what it returned. obs_source_get_name
@@ -82,6 +82,7 @@ void oracle_slots_set_link(obs_source_t *parent, obs_source_t *child, long long 
 void oracle_slots_refuse(obs_source_t *parent, obs_source_t *child);
 size_t oracle_slots_traced(void);
 void oracle_slots_event(size_t i, int *kind, obs_source_t **a, obs_source_t **b, int *result);
+void oracle_slots_trace(int kind, obs_source_t *a, obs_source_t *b, int result);
 
 static void trace(int kind, obs_source_t *a, obs_source_t *b, int result)
 {
@@ -245,4 +246,11 @@ void oracle_slots_remove_active_child(obs_source_t *parent, obs_source_t *child)
 const char *oracle_slots_get_name(const obs_source_t *source)
 {
 	return source ? source->context.name : NULL;
+}
+
+/* Records a call of another oracle's stand-in (its kinds above 4), in order
+ * with these. */
+void oracle_slots_trace(int kind, obs_source_t *a, obs_source_t *b, int result)
+{
+	trace(kind, a, b, result);
 }
