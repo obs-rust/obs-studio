@@ -14,6 +14,10 @@ counted: its exit and its sanitizer reports. The list keeps itself honest
 (#3238): every bug entry names its issue, a known bug that ran clean is a
 finding (the fix must drop its entry), a tool limitation that ran clean is
 listed, and the known list comes first in the summary.
+
+A frame in valgrind's own replacement functions
+(`/usr/src/valgrind*/memcheck/../shared/vg_replace_strmem.c`) is not an OBS
+frame, although its path has `shared/` in it (#4045).
 """
 
 import importlib.util
@@ -128,6 +132,53 @@ class RaceTriageTest(unittest.TestCase):
         code, md = triage(tool="tsan", text=GLIB_RACE, summary="test_x exit=0\ntest_y exit=0\n")
         self.assertEqual(code, 0, md)
         self.assertIn("2/2 clean", md)
+
+
+VG_STRMEM = """\
+==1== Conditional jump or move depends on uninitialised value(s)
+==1==    at 0x4860EF7: memmove (/usr/src/valgrind-1:3.26.0-0ubuntu1/memcheck/../shared/vg_replace_strmem.c:1415)
+==1==    by 0xBCC5D02: ??? (in /usr/lib/x86_64-linux-gnu/libSvtAv1Enc.so.2.3.0)
+==1==    by 0xBDAA4CB: ??? (in /usr/lib/x86_64-linux-gnu/libSvtAv1Enc.so.2.3.0)
+==1==    by 0x4BC7E6A: start_thread (nptl/./nptl/pthread_create.c:454)
+==1==  Uninitialised value was created by a stack allocation
+==1==    at 0xBCC24E0: ??? (in /usr/lib/x86_64-linux-gnu/libSvtAv1Enc.so.2.3.0)
+==1==
+"""
+VG_STRMEM_FROM_OBS = """\
+==1== Conditional jump or move depends on uninitialised value(s)
+==1==    at 0x4860EF7: memmove (/usr/src/valgrind-1:3.26.0-0ubuntu1/memcheck/../shared/vg_replace_strmem.c:1415)
+==1==    by 0x4A0C2CC: do_encode (/home/runner/work/obs-studio/obs-studio/libobs/obs-encoder.c.h:1535)
+==1==
+"""
+
+
+def triage_valgrind(text, test="test_x"):
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "valgrind"
+        (out / "tests").mkdir(parents=True)
+        (out / "tests" / "summary.txt").write_text(f"{test} exit=0\n")
+        (out / "tests" / f"{test}.vg.log").write_text(text)
+        run = subprocess.run(
+            ["uv", "run", "--no-project", str(TRIAGE), str(out), "--fail-on-findings"],
+            capture_output=True, text=True,
+        )
+        return run.returncode, run.stdout
+
+
+class ValgrindOwnFrameTest(unittest.TestCase):
+    """Valgrind names its own replacement functions with their source path,
+    `.../memcheck/../shared/vg_replace_strmem.c`. That `shared/` is not OBS's
+    (#4045)."""
+
+    def test_valgrind_replacement_frame_is_not_an_obs_frame(self):
+        code, md = triage_valgrind(VG_STRMEM)
+        self.assertEqual(code, 0, md)
+        self.assertNotIn("vg_replace_strmem", md)
+
+    def test_obs_frame_under_it_still_counts(self):
+        code, md = triage_valgrind(VG_STRMEM_FROM_OBS)
+        self.assertEqual(code, 1, md)
+        self.assertIn("libobs/obs-encoder.c.h:1535", md)
 
 
 class SkipAndKnownTest(unittest.TestCase):
