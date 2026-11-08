@@ -16,6 +16,7 @@ pub mod core_cmdline_getter;
 pub mod core_frame_interval;
 pub mod core_initialized;
 pub mod core_setup_rules;
+pub mod core_texture_activity;
 pub mod display_size;
 pub mod display_state;
 pub mod global_getters;

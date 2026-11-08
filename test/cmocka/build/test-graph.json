@@ -284,6 +284,7 @@
     "test_async_conversion_plan_rust": {
       "sources": [
         "test/cmocka/test_async_conversion_plan.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -391,6 +392,7 @@
     "test_async_frame_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_async_frame_pacing_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -486,6 +488,7 @@
     "test_async_upload_steps_rust": {
       "sources": [
         "test/cmocka/test_async_upload_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -640,6 +643,7 @@
     "test_audio_monitor_delay_steps_rust": {
       "sources": [
         "test/cmocka/test_audio_monitor_delay_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -1367,6 +1371,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_core_texture_activity": {
+      "sources": [
+        "test/cmocka/test_core_texture_activity.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_coreaudio_device_rules": {
       "sources": [
         "test/cmocka/test_coreaudio_device_rules.c",
@@ -1388,6 +1407,7 @@
     "test_coreaudio_device_rules_rust": {
       "sources": [
         "test/cmocka/test_coreaudio_device_rules.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -1469,6 +1489,7 @@
     "test_coreaudio_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_coreaudio_pacing_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -1678,6 +1699,7 @@
     "test_deinterlace_draw_plan_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_draw_plan_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -1759,6 +1781,7 @@
     "test_deinterlace_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_pacing_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -1817,6 +1840,7 @@
     "test_deinterlace_select_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_select_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -6541,6 +6565,7 @@
     "test_monitor_speaker_layout_rust": {
       "sources": [
         "test/cmocka/test_monitor_speaker_layout.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -6587,6 +6612,7 @@
     "test_monitor_video_sync_rust": {
       "sources": [
         "test/cmocka/test_monitor_video_sync.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -6634,6 +6660,7 @@
     "test_monitor_wasapi_steps_rust": {
       "sources": [
         "test/cmocka/test_monitor_wasapi_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -9913,6 +9940,7 @@
     "test_pulse_monitor_steps_rust": {
       "sources": [
         "test/cmocka/test_pulse_monitor_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c"
       ],
@@ -11066,6 +11094,7 @@
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_audio_window_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -11789,6 +11818,7 @@
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_render_plan_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
@@ -12471,6 +12501,7 @@
     "test_source_audio_input_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_input_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -12542,6 +12573,7 @@
     "test_source_audio_place_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_place_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -12619,6 +12651,7 @@
     "test_source_audio_render_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_render_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -12709,6 +12742,7 @@
     "test_source_audio_timing_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_timing_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -12796,6 +12830,7 @@
     "test_source_color_space_steps_rust": {
       "sources": [
         "test/cmocka/test_source_color_space_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -12880,6 +12915,7 @@
     "test_source_draw_plan_steps_rust": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13063,6 +13099,7 @@
     "test_source_frame_copy_steps_rust": {
       "sources": [
         "test/cmocka/test_source_frame_copy_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13213,6 +13250,7 @@
     "test_source_media_admission_steps_rust": {
       "sources": [
         "test/cmocka/test_source_media_admission_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13309,6 +13347,7 @@
     "test_source_monitoring_steps_rust": {
       "sources": [
         "test/cmocka/test_source_monitoring_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13417,6 +13456,7 @@
     "test_source_ptm_gate_steps_rust": {
       "sources": [
         "test/cmocka/test_source_ptm_gate_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13504,6 +13544,7 @@
     "test_source_render_route_steps_rust": {
       "sources": [
         "test/cmocka/test_source_render_route_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13570,6 +13611,7 @@
     "test_source_size_route_steps_rust": {
       "sources": [
         "test/cmocka/test_source_size_route_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13820,6 +13862,7 @@
     "test_source_video_tick_steps_rust": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -13881,6 +13924,7 @@
     "test_source_volume_apply_steps_rust": {
       "sources": [
         "test/cmocka/test_source_volume_apply_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -14637,6 +14681,7 @@
     "test_transition_load_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_load_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -14739,6 +14784,7 @@
     "test_transition_render_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_render_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -14931,6 +14977,7 @@
     "test_transition_start_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_start_steps.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
@@ -17528,6 +17575,20 @@
       "target": "test_core_setup_rules_task_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_core_texture_activity": {
+      "target": "test_core_texture_activity",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_coreaudio_device_rules": {
