@@ -39,6 +39,7 @@ pub mod bounds_place;
 pub mod coords;
 pub mod crop;
 pub mod extent;
+pub mod group_queries;
 pub mod group_transform;
 pub mod item_id;
 pub mod item_names;
