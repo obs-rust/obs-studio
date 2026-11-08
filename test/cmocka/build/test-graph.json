@@ -1547,6 +1547,42 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_crash_log_upload": {
+      "sources": [
+        "test/cmocka/test_crash_log_upload.cpp",
+        "frontend/utility/CrashHandler.cpp.hpp",
+        "frontend/utility/CrashHandler_Linux.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_CRASH_LOG_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility",
+        "frontend"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/utility/CrashHandler.hpp",
+          "frontend/utility/RemoteTextThread.hpp"
+        ]
+      },
+      "includes_before": [
+        "test/cmocka/crash-handler-stubs"
+      ],
+      "watch_inputs": [
+        "test/cmocka/crash-handler-stubs"
+      ]
+    },
     "test_crash_sentinel_dir": {
       "sources": [
         "test/cmocka/test_crash_sentinel_dir.cpp",
@@ -7791,6 +7827,65 @@
         "frontend/utility"
       ]
     },
+    "test_output_filename_reserve": {
+      "sources": [
+        "test/cmocka/test_output_filename_reserve.c",
+        "frontend/utility/output-filename-reserve.c.h",
+        {
+          "path": "plugins/obs-ffmpeg/obs-ffmpeg-mux.c.h",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "path": "plugins/obs-ffmpeg/build/obs-ffmpeg.mux-host-posix+.h.c",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        }
+      ],
+      "includes": [
+        "frontend/utility",
+        "plugins/obs-ffmpeg"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "FFmpeg::avformat",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "name": "FFmpeg::avutil",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "name": "OBS::output-filename-mux-test",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        }
+      ]
+    },
     "test_output_flags": {
       "sources": [
         "test/cmocka/test_output_flags.c"
@@ -9473,6 +9568,22 @@
         }
       ]
     },
+    "test_preview_audio_sources": {
+      "sources": [
+        "test/cmocka/test_preview_audio_sources.cpp",
+        "frontend/utility/preview-audio-sources.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_preview_only_hide": {
       "sources": [
         "test/cmocka/test_preview_only_hide.c"
@@ -10952,6 +11063,36 @@
           "name": "-Wno-comma",
           "requires": "C_COMPILER_CLANG"
         }
+      ]
+    },
+    "test_rtmps_fallback_warning": {
+      "sources": [
+        "test/cmocka/test_rtmps_fallback_warning.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_QT_CORE_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility",
+        "frontend/api"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "FRONTEND_LOCALE=\"${source}/frontend/data/locale/en-US.ini\""
+      ],
+      "watch_inputs": [
+        "frontend/utility/RtmpsFallback.hpp",
+        "frontend/data/locale/en-US.ini"
       ]
     },
     "test_rtmps_nanostream": {
@@ -13588,6 +13729,22 @@
         }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
+    "test_source_select_list": {
+      "sources": [
+        "test/cmocka/test_source_select_list.cpp",
+        "frontend/utility/source-select-list.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
     },
     "test_source_size_route_steps": {
       "sources": [
@@ -17631,6 +17788,20 @@
       "target": "test_coreaudio_zero_channels",
       "requires": true
     },
+    "test_crash_log_upload": {
+      "target": "test_crash_log_upload",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_CRASH_LOG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 60
+    },
     "test_crash_sentinel_dir": {
       "target": "test_crash_sentinel_dir",
       "command": [
@@ -19801,6 +19972,21 @@
         "${target}"
       ]
     },
+    "test_output_filename_reserve": {
+      "target": "test_output_filename_reserve",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
     "test_output_flags": {
       "target": "test_output_flags",
       "command": [
@@ -20386,6 +20572,21 @@
       ],
       "timeout_seconds": 60
     },
+    "test_preview_audio_sources": {
+      "target": "test_preview_audio_sources",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
     "test_preview_only_hide": {
       "target": "test_preview_only_hide",
       "command": [
@@ -20928,6 +21129,22 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_rtmps_fallback_warning": {
+      "target": "test_rtmps_fallback_warning",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_QT_CORE_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "timeout_seconds": 30
     },
     "test_rtmps_nanostream": {
       "target": "test_rtmps_nanostream",
@@ -21933,6 +22150,21 @@
     "test_source_render_route_steps_rust": {
       "target": "test_source_render_route_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
+    "test_source_select_list": {
+      "target": "test_source_select_list",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
     },
     "test_source_size_route_steps": {
       "target": "test_source_size_route_steps",
