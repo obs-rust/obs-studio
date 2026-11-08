@@ -2119,6 +2119,58 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
+  # The deferred PR/queue tier skips rust-cross-lint and the native Windows
+  # lanes, so COFF-only link defects reached master (`undefined symbol:
+  # obs_encoder_get_caps`, merge_group 42390201886 green, push 42393067345
+  # red). This is only the cross lane's link step for Windows x64: no clippy,
+  # Dylint or macOS, nothing executed (ci/windows_link_check.py).
+  rust-windows-link:
+    timeout-minutes: 30
+    name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
+    runs-on: ubuntu-26.04
+    needs: check-event
+    # Every deferred (PR and queue) run except docs-only. No stand-down for
+    # lane proofs or attestations: a queue run must show a real conclusion.
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        with:
+          # Same scope and layer as rust-cross-lint, so it replays master's cache.
+          verdict-scope: build-project
+          version: 0.9.45
+          build-cache: false
+          prebuild-deps-flags: --profile dev -- --tests
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          # The Windows target is added mid-job (see rust-cross-lint, #969).
+          solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      - name: Link Windows Test Binaries 🔗
+        run: uv run --no-project ci/windows_link_check.py
+
   rust-cross-lint-release:
     timeout-minutes: 45
     name: Rust Cross Lint 🦀 (release targets)
