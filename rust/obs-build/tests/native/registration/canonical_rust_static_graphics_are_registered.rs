@@ -27,5 +27,9 @@ fn canonical_rust_static_graphics_are_registered() {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "graphics_private_runtime.rs"]
-mod runtime;
+mod runtime {
+    #[test]
+    fn canonical_graphics_private_runs_unchanged() {
+        super::super::graphics_private_runtime::run(super::FAMILY, &super::CASES);
+    }
+}

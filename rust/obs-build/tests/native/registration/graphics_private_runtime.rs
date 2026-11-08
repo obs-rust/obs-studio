@@ -76,14 +76,13 @@ fn assert_binding(binary: &Path, core: &Path) {
     eprintln!("Selected core {}: {}", binary.display(), core.display());
 }
 
-#[test]
-fn canonical_graphics_private_runs_unchanged() {
+pub(super) fn run(family: &str, cases: &[String]) {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let archive = dunce::canonicalize(
         std::env::var_os("OBS_BUILD_RUST_ARCHIVE").expect("production Rust archive required"),
     )
     .unwrap();
-    let mut graph = rust_static_entries::assert_family(FAMILY);
+    let mut graph = rust_static_entries::assert_family(family);
     for target in graph.targets.values_mut() {
         target.link_options.extend([
             "-Wl,--no-copy-dt-needed-entries".into(),
@@ -134,7 +133,7 @@ fn canonical_graphics_private_runs_unchanged() {
     ]
     .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
-    assert_eq!(artifacts.len(), CASES.len());
+    assert_eq!(artifacts.len(), cases.len());
     for (name, artifact) in &artifacts {
         assert_binding(artifact, &core_path);
         let output = checked(
@@ -155,7 +154,7 @@ fn canonical_graphics_private_runs_unchanged() {
             .unwrap();
     let mut selected = serde_json::json!({"schema":1,"targets":{},"tests":{}});
     for section in ["targets", "tests"] {
-        for base in CASES.iter() {
+        for base in cases.iter() {
             let name = format!("{base}_rust");
             selected[section][&name] = raw[section][&name].clone();
         }
@@ -168,6 +167,7 @@ fn canonical_graphics_private_runs_unchanged() {
         &caption,
         &core.cmake,
         &core_path,
+        cases,
     );
 }
 
@@ -178,6 +178,7 @@ fn replay_cmake(
     caption: &Path,
     core: &str,
     core_path: &Path,
+    cases: &[String],
 ) {
     let policy = fs::read_to_string(root.join("test/cmocka/CMakeLists.txt")).unwrap();
     let policy = policy.split_once("function(obs_test_sanitize ").unwrap().1;
@@ -239,7 +240,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
             .collect();
         names.sort();
         let expected: Vec<_> = if enabled {
-            CASES.iter().map(|base| format!("{base}_rust")).collect()
+            cases.iter().map(|base| format!("{base}_rust")).collect()
         } else {
             vec![]
         };
