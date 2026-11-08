@@ -25,4 +25,4 @@
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"
 #include "libobs/obs-video.c.h"
-#include "libobs/obs-weak-encoder-identity.c.h"
+#include "libobs/obs-weak-encoder-identity-fields.c.h"

@@ -141,3 +141,5 @@ pub(crate) fn isolated(test: &str) -> bool {
 }
 
 mod weak_encoder_identity;
+
+mod weak_encoder_identity_parity;

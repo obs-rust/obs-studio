@@ -2139,6 +2139,12 @@ struct obs_encoder {
 };
 
 /* Borrowed atomic state addresses; callers reject NULL before this adapter. */
+/* Borrowed field address; callers reject NULL before this accessor. */
+struct obs_weak_encoder_identity_fields {
+	struct obs_encoder *const *encoder;
+};
+struct obs_weak_encoder_identity_fields obs_weak_encoder_identity_fields(const obs_weak_encoder_t *weak);
+
 struct obs_encoder_state_queries_fields {
 	const volatile bool *active;
 	const volatile bool *paused;
