@@ -172,3 +172,5 @@ pub use delay::{
     Decision, DelayOutput, Entry, NS_PER_SEC, NullLog, OBS_OUTPUT_DELAY_PRESERVE,
     OBS_OUTPUT_ENCODED, SET_DELAY, Signal, active_delay_secs, pop_decision,
 };
+
+pub mod weak_encoder_identity;
