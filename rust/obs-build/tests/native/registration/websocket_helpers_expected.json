@@ -13,7 +13,10 @@
       "libraries": [
         "OBS::native-test-cmocka"
       ],
-      "cpp_standard": "17"
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "plugins/obs-websocket/src/utils/ImageFormat.h"
+      ]
     },
     "test_ws_session_duration": {
       "sources": [
