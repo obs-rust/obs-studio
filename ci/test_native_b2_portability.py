@@ -116,7 +116,7 @@ class NativeB2Portability(unittest.TestCase):
                     legacy.add(name)
                     with self.subTest(target=name):
                         self.assertIn("OBS::libobs", libraries)
-        self.assertIn("test_scene_item_names_steps_rust", legacy)
+        self.assertIn("test_scene_item_names_steps_rust", legacy | consumers)
     def test_source_boolean_queries_supply_standalone_field_adapter(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         consumers = [name for name, target in graph["targets"].items()
@@ -219,9 +219,7 @@ class NativeB2Portability(unittest.TestCase):
                         self.assertNotIn("scene-getter-log-link-stub.c", sources)
                     else:
                         self.assertIn("scene-getter-log-link-stub.c", sources)
-        self.assertEqual(legacy, {"test_scene_bounds_place_rust", "test_scene_item_crop_rust",
-                                 "test_scene_item_names_steps_rust", "test_scene_item_order_steps_rust",
-                                 "test_scene_item_transform_steps_rust", "test_scene_transform_update_steps_rust"})
+        self.assertEqual(legacy, {"test_scene_item_crop_rust", "test_scene_transform_update_steps_rust"})
 
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

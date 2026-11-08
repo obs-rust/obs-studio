@@ -1,11 +1,13 @@
 use super::*;
 
+const FAMILY: &str = "graphics";
+
 static CASES: std::sync::LazyLock<Vec<String>> =
-    std::sync::LazyLock::new(|| rust_static_entries::cases("graphics"));
+    std::sync::LazyLock::new(|| rust_static_entries::cases(FAMILY));
 
 #[test]
 fn canonical_rust_static_graphics_are_registered() {
-    let graph = rust_static_entries::assert_family("graphics");
+    let graph = rust_static_entries::assert_family(FAMILY);
     assert_eq!(CASES.len(), 6);
     for windows in [false, true] {
         for msvc in [false, true] {

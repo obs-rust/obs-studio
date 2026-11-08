@@ -4098,6 +4098,39 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_graphics_immediate_steps_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_immediate_steps.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "GS_IMMEDIATE_TEST_RUST"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_graphics_linear_srgb": {
       "sources": [
         "test/cmocka/test_graphics_linear_srgb.c"
@@ -10554,6 +10587,24 @@
         }
       ]
     },
+    "test_scene_bounds_place_rust": {
+      "sources": [
+        "test/cmocka/test_scene_bounds_place.c",
+        "test/cmocka/scene-getter-log-link-stub.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_scene_bounds_type_range": {
       "sources": [
         "test/cmocka/test_scene_bounds_type_range.c"
@@ -10842,6 +10893,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_names_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_names_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_item_order_steps": {
       "sources": [
         "test/cmocka/test_scene_item_order_steps.c",
@@ -10861,6 +10927,21 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_scene_item_order_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_order_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
     },
     "test_scene_item_render_getters": {
       "sources": [
@@ -10963,6 +11044,27 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_scene_item_transform_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_transform_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "includes": [
+        "libobs"
+      ]
     },
     "test_scene_list_remove": {
       "sources": [
@@ -17214,6 +17316,13 @@
         "${target}"
       ]
     },
+    "test_graphics_immediate_steps_rust": {
+      "target": "test_graphics_immediate_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_graphics_linear_srgb": {
       "target": "test_graphics_linear_srgb",
       "command": [
@@ -19533,6 +19642,13 @@
       ],
       "suite": "core"
     },
+    "test_scene_bounds_place_rust": {
+      "target": "test_scene_bounds_place_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_scene_bounds_type_range": {
       "target": "test_scene_bounds_type_range",
       "command": [
@@ -19662,8 +19778,22 @@
         "${target}"
       ]
     },
+    "test_scene_item_names_steps_rust": {
+      "target": "test_scene_item_names_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_scene_item_order_steps": {
       "target": "test_scene_item_order_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_order_steps_rust": {
+      "target": "test_scene_item_order_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -19696,6 +19826,13 @@
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_transform_steps_rust": {
+      "target": "test_scene_item_transform_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

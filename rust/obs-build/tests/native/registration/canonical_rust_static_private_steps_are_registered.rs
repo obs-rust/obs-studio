@@ -25,3 +25,7 @@ fn canonical_rust_static_private_steps_are_registered() {
         }
     }
 }
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "graphics_private_runtime.rs"]
+mod runtime;
