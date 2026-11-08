@@ -1,6 +1,13 @@
 use super::*;
 use obs_build::validation::graph::Graph;
-const CASES: [&str; 6] = ["obs_runtime_bench", "test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_screencast_portal_teardown", "test_stinger_media_duration", "test_xshm_capture_live"];
+const CASES: [&str; 6] = [
+    "obs_runtime_bench",
+    "test_media_cover_art_monitor",
+    "test_media_sync_offset_restart",
+    "test_screencast_portal_teardown",
+    "test_stinger_media_duration",
+    "test_xshm_capture_live",
+];
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("display_live_expected.json")).unwrap()
 }
@@ -17,9 +24,14 @@ fn canonical_display_live_is_registered() {
         }
     }
     for name in CASES {
-        let fragment_name = if name == "test_xshm_capture_live" { "test_xshm_capture_pipeline" } else {name};
+        let fragment_name = if name == "test_xshm_capture_live" {
+            "test_xshm_capture_pipeline"
+        } else {
+            name
+        };
         let fragment =
-            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{fragment_name}.cmake"))).unwrap();
+            fs::read_to_string(root.join(format!("test/cmocka/tests.d/{fragment_name}.cmake")))
+                .unwrap();
         assert!(fragment.contains("test-graph.json"));
         assert!(!fragment.contains("add_executable("), "{name}");
         assert!(!fragment.contains("add_test("), "{name}");
@@ -40,16 +52,27 @@ fn canonical_display_live_guards() {
                         ("HAVE_OBS_PIPEWIRE".into(), owners),
                         ("HAVE_LINUX_CAPTURE".into(), owners),
                     ]);
-                    if let Some(value) = display { facts.insert("HAVE_X11_DISPLAY".into(), value); }
+                    if let Some(value) = display {
+                        facts.insert("HAVE_X11_DISPLAY".into(), value);
+                    }
                     let selected = graph.select(&facts).unwrap();
                     for name in CASES {
-                        let enabled = os == "OS_LINUX" && display == Some(true)
+                        let enabled = os == "OS_LINUX"
+                            && display == Some(true)
                             && (owners || name == "obs_runtime_bench")
                             && (renderer || name == "test_screencast_portal_teardown");
-                        assert_eq!(selected.targets.contains_key(name), enabled, "{os}/{display:?}/{renderer}/{owners}/{name}");
+                        assert_eq!(
+                            selected.targets.contains_key(name),
+                            enabled,
+                            "{os}/{display:?}/{renderer}/{owners}/{name}"
+                        );
                     }
                     for (name, test) in &graph.tests {
-                        assert_eq!(selected.tests.contains_key(name.as_str()), selected.targets.contains_key(test.target.as_str()), "{name}");
+                        assert_eq!(
+                            selected.tests.contains_key(name.as_str()),
+                            selected.targets.contains_key(test.target.as_str()),
+                            "{name}"
+                        );
                     }
                 }
             }
@@ -57,3 +80,6 @@ fn canonical_display_live_guards() {
     }
 }
 
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "display_live_runtime.rs"]
+mod runtime;
