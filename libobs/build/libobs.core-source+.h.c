@@ -20,7 +20,7 @@
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
-#include "libobs/obs-source-base-size.c.h"
+#include "libobs/obs-source-base-size-fields.c.h"
 #include "libobs/obs-source-boolean-query-fields.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace.c.h"

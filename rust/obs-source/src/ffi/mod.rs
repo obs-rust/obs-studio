@@ -7,6 +7,7 @@ pub mod source_audio_input;
 pub mod source_audio_place;
 pub mod source_audio_render;
 pub mod source_audio_timing;
+pub mod source_base_size;
 pub mod source_boolean_queries;
 pub mod source_color_space;
 pub mod source_conversion_plan;

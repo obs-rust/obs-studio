@@ -1466,6 +1466,23 @@ struct obs_source_state_getter_fields {
 };
 struct obs_source_state_getter_fields obs_source_state_getter_fields(const obs_source_t *source);
 
+struct obs_source_base_size_fields {
+	enum obs_source_type const *source_type;
+	void *const *data;
+	uint32_t (*const *get_width)(void *);
+	uint32_t (*const *get_height)(void *);
+	obs_source_t *const *filter_parent;
+	obs_source_t *const *filter_target;
+	bool const *enabled;
+	bool const volatile *async_active;
+	long const *async_rotation;
+	long const volatile *transition_width;
+	long const volatile *transition_height;
+	uint32_t const *async_width;
+	uint32_t const *async_height;
+};
+struct obs_source_base_size_fields obs_source_base_size_fields(const obs_source_t *source);
+
 uint32_t obs_source_base_width(const obs_source_t *source);
 uint32_t obs_source_base_height(const obs_source_t *source);
 

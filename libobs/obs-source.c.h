@@ -2320,7 +2320,8 @@ uint32_t obs_source_get_width(obs_source_t *source)
 
 	/* a filter starts at itself (obs_source_size_entry()) and takes no
 	 * lock: its filter_mutex guards filters it never reads */
-	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_width(source) : obs_source_base_width(source);
+	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_width(source)
+							     : obs_source_base_width(source);
 }
 
 uint32_t obs_source_get_height(obs_source_t *source)
@@ -2329,7 +2330,8 @@ uint32_t obs_source_get_height(obs_source_t *source)
 		return 0;
 
 	/* as obs_source_get_width() */
-	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_height(source) : obs_source_base_height(source);
+	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_height(source)
+							     : obs_source_base_height(source);
 }
 
 _Static_assert(OBS_SOURCE_COLOR_SPACE_TYPE_FILTER == OBS_SOURCE_TYPE_FILTER, "OBS_SOURCE_TYPE_FILTER");

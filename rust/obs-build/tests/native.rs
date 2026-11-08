@@ -5434,3 +5434,6 @@ mod canonical_pipewire_cameras_is_registered;
 mod canonical_private_capture_is_registered;
 #[path = "native/registration/canonical_scene_item_transition_getters_is_registered.rs"]
 mod canonical_scene_item_transition_getters_is_registered;
+
+#[path = "native/registration/canonical_source_base_size_is_registered.rs"]
+mod canonical_source_base_size_is_registered;
