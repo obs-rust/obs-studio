@@ -12420,6 +12420,36 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_source_duplicate_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_duplicate_steps.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_source_filter_chain_steps": {
       "sources": [
         "test/cmocka/test_source_filter_chain_steps.c",
@@ -12439,6 +12469,36 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_source_filter_chain_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_filter_chain_steps.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_source_filter_relationship_getters": {
       "sources": [
@@ -13910,6 +13970,42 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_transition_clock_steps_rust": {
+      "sources": [
+        "test/cmocka/test_transition_clock_steps.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_transition_load_release": {
       "sources": [
         "test/cmocka/test_transition_load_release.c"
@@ -14119,6 +14215,36 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_transition_sample_time_steps_rust": {
+      "sources": [
+        "test/cmocka/test_transition_sample_time_steps.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_transition_scale_type": {
       "sources": [
@@ -20774,8 +20900,22 @@
         "${target}"
       ]
     },
+    "test_source_duplicate_steps_rust": {
+      "target": "test_source_duplicate_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_source_filter_chain_steps": {
       "target": "test_source_filter_chain_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_filter_chain_steps_rust": {
+      "target": "test_source_filter_chain_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -21298,6 +21438,13 @@
         "${target}"
       ]
     },
+    "test_transition_clock_steps_rust": {
+      "target": "test_transition_clock_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_transition_load_release": {
       "target": "test_transition_load_release",
       "command": [
@@ -21350,6 +21497,13 @@
     },
     "test_transition_sample_time_steps": {
       "target": "test_transition_sample_time_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_transition_sample_time_steps_rust": {
+      "target": "test_transition_sample_time_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

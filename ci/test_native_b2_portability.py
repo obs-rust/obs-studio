@@ -148,7 +148,7 @@ class NativeB2Portability(unittest.TestCase):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(consumers), 23)
+        self.assertEqual(len(consumers), 27)
         for name in consumers:
             with self.subTest(target=name):
                 target = graph["targets"][name]
@@ -167,7 +167,7 @@ class NativeB2Portability(unittest.TestCase):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(consumers), 23)
+        self.assertEqual(len(consumers), 27)
         for name in consumers:
             with self.subTest(target=name):
                 target = graph["targets"][name]
@@ -187,7 +187,7 @@ class NativeB2Portability(unittest.TestCase):
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-deinterlace-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(supported), 23)
+        self.assertEqual(len(supported), 27)
         for name in supported:
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])
@@ -199,7 +199,7 @@ class NativeB2Portability(unittest.TestCase):
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(supported), 23)
+        self.assertEqual(len(supported), 27)
         for name in supported:
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])
@@ -211,7 +211,7 @@ class NativeB2Portability(unittest.TestCase):
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-filter-relationship-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(supported), 23)
+        self.assertEqual(len(supported), 27)
         for name in supported:
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])
@@ -230,8 +230,9 @@ class NativeB2Portability(unittest.TestCase):
             if "libobs_rust-static" not in target.get("libraries", []):
                 continue
             sources = target.get("sources", [])
-            if any(isinstance(source, str) and "obs_scene" in (ROOT / source).read_text()
-                   for source in sources):
+            # Mirror scene_group_query_link_support.cmake's target-name closure.
+            # Source-rule fixture comments can mention scenes without using their adapters.
+            if name.startswith("test_scene"):
                 with self.subTest(target=name):
                     self.assertIn(stub, sources)
         legacy = set()
