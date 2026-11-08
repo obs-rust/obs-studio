@@ -1,0 +1,2 @@
+obs_is_core_module
+obs_is_legacy_module

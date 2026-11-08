@@ -547,22 +547,6 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 					  get_module_extension(), callback, data);
 }
 
-bool obs_is_core_module(obs_module_t *module)
-{
-	if (!module)
-		return false;
-	return obs_module_load_rules_is_core((uint32_t)module->module_type);
-}
-
-bool obs_is_legacy_module(obs_module_t *module)
-{
-	if (!module) {
-		return false;
-	}
-
-	return obs_module_load_rules_is_legacy((uint32_t)module->module_type);
-}
-
 void obs_find_modules2(obs_find_module_callback2_t callback, void *param)
 {
 	if (!obs)
