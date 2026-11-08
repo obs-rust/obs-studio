@@ -11523,6 +11523,22 @@
         "libobs"
       ]
     },
+    "test_scene_item_parent_getter": {
+      "sources": [
+        "test/cmocka/test_scene_item_parent_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_item_render_getters": {
       "sources": [
         "test/cmocka/test_scene_item_render_getters.c"
@@ -20993,6 +21009,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_scene_item_parent_getter": {
+      "target": "test_scene_item_parent_getter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_item_render_getters": {
       "target": "test_scene_item_render_getters",
