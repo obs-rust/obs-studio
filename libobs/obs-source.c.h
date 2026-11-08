@@ -3633,11 +3633,6 @@ signal_handler_t *obs_source_get_signal_handler(const obs_source_t *source)
 	return obs_source_valid(source, "obs_source_get_signal_handler") ? source->context.signals : NULL;
 }
 
-proc_handler_t *obs_source_get_proc_handler(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_proc_handler") ? source->context.procs : NULL;
-}
-
 struct source_enum_data {
 	obs_source_enum_proc_t enum_callback;
 	void *param;
