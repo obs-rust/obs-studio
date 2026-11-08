@@ -134,6 +134,8 @@ pub trait Tick {
     fn wait_ticks(&mut self) -> u64;
     /// `audio->buffering_wait_ticks = value`.
     fn set_wait_ticks(&mut self, value: u64);
+    /// `*out_ts = value`: the tick's start, for the audio output.
+    fn set_out_ts(&mut self, value: u64);
     /// `audio->monitoring_duplicating_source`.
     fn monitoring_duplicating_source(&mut self) -> Option<Self::Source>;
 

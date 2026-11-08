@@ -249,6 +249,9 @@ impl Tick for Model {
     fn set_wait_ticks(&mut self, value: u64) {
         self.wait = value;
     }
+    fn set_out_ts(&mut self, value: u64) {
+        self.log(format!("out_ts {value}"));
+    }
     fn monitoring_duplicating_source(&mut self) -> Option<usize> {
         self.dedup
     }
@@ -964,4 +967,22 @@ fn every_source_is_released_once() {
     // the render order is cleared at the start of the next tick
     m.run(0x1);
     assert_eq!(m.render, vec![1, 2, 0, 3]);
+}
+
+#[test]
+fn out_ts_is_set_before_the_wait_tick_and_the_tasks() {
+    // audio_callback() sets *out_ts before it counts a wait tick down or
+    // runs the tasks, so a task sees this tick's start.
+    let mut m = one_scene();
+    m.tasks.push_back(1);
+    m.run(0x1);
+    assert_eq!(m.count("out_ts "), 1);
+    assert!(m.pos(&format!("out_ts {START}")) < m.pos("task 1"));
+    let last_release = m.ev.iter().rposition(|e| e.starts_with("release")).unwrap();
+    assert!(m.pos(&format!("out_ts {START}")) > last_release);
+
+    let mut m = one_scene();
+    m.wait = 1;
+    assert_eq!(m.run(0x1), (false, START));
+    assert!(m.has(&format!("out_ts {START}")));
 }

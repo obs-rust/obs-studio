@@ -284,6 +284,7 @@ impl From<obs_audio_buffering_step> for Step {
 /// The tick's mixes and the libobs calls `L` makes for it.
 pub struct Seam<L> {
     mixes: *mut audio_output_data,
+    out_ts: *mut u64,
     calls: PhantomData<L>,
 }
 
@@ -415,6 +416,10 @@ impl<L: Calls> Tick for Seam<L> {
     fn set_wait_ticks(&mut self, value: u64) {
         // SAFETY: see the impl.
         unsafe { obs_audio_seam_set_buffering_wait_ticks(value) }
+    }
+    fn set_out_ts(&mut self, value: u64) {
+        // SAFETY: the caller's output (audio_callback()'s contract).
+        unsafe { *self.out_ts = value };
     }
     fn monitoring_duplicating_source(&mut self) -> Option<Source> {
         // SAFETY: see the impl.
@@ -761,6 +766,7 @@ pub unsafe fn audio_callback_with<L: Calls>(
 ) -> bool {
     let mut seam = Seam::<L> {
         mixes,
+        out_ts,
         calls: PhantomData,
     };
     let (result, ts) = core::audio_callback(&mut seam, start_ts_in, end_ts_in, mixers);

@@ -101,7 +101,11 @@ unsafe extern "C" {
     /// Clears the world's mixes; the pointer to its `MAX_AUDIO_MIXES`
     /// `struct audio_output_data`.
     pub fn oracle_tick_clear_mixes(world: *mut c_void) -> *mut c_void;
-    /// One tick of the original C on `world`, its mixes cleared first.
+    /// The world's `*out_ts` slot: the tasks log what it holds when they
+    /// run. [`oracle_tick_clear_mixes`] resets it.
+    pub fn oracle_tick_out_ts(world: *mut c_void) -> *mut u64;
+    /// One tick of the original C on `world`, its mixes cleared first, with
+    /// the world's `*out_ts` slot (copied to `out_ts` after).
     pub fn oracle_tick_run_c(
         world: *mut c_void,
         start: u64,

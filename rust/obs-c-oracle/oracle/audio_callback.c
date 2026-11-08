@@ -185,6 +185,8 @@ struct oracle_tick_world {
 	size_t task_len;
 	uint32_t rate;
 	size_t channels;
+	/* what audio_callback() writes *out_ts to; the tasks log it */
+	uint64_t out_ts;
 	char log[ORACLE_TICK_LOG];
 	size_t len;
 };
@@ -233,6 +235,7 @@ void oracle_tick_queue_task(void *world, int id, int chain);
 void oracle_tick_feed(void *world, int source, uint32_t frames, uint64_t audio_ts);
 void oracle_tick_use(void *world);
 struct audio_output_data *oracle_tick_clear_mixes(void *world);
+uint64_t *oracle_tick_out_ts(void *world);
 bool oracle_tick_run_c(void *world, uint64_t start, uint64_t end, uint32_t mixers, uint64_t *out_ts);
 size_t oracle_tick_state(void *world, char *out, size_t cap);
 
@@ -473,6 +476,8 @@ static void tick_task(void *param)
 
 	log_str("task ");
 	log_hex((uint64_t)(int64_t)task->id);
+	log_str(" out_ts ");
+	log_hex(world->out_ts);
 	log_locks(NULL);
 	log_str(";");
 
@@ -682,23 +687,36 @@ void oracle_tick_use(void *opaque)
 	oracle_tick_obs = &current->core;
 }
 
-/* The audio output clears the mixes before each tick. */
+/* The audio output clears the mixes before each tick. The *out_ts slot is
+ * set to a value no tick has, so a task shows whether it was written. */
 struct audio_output_data *oracle_tick_clear_mixes(void *opaque)
 {
 	struct oracle_tick_world *world = opaque;
 
+	world->out_ts = 0x5a5a5a5a5a5a5a5aULL;
 	for (size_t mix = 0; mix < MAX_AUDIO_MIXES; mix++)
 		for (size_t ch = 0; ch < MAX_AUDIO_CHANNELS; ch++)
 			memset(world->out[mix].data[ch], 0, AUDIO_OUTPUT_FRAMES * sizeof(float));
 	return world->out;
 }
 
-bool oracle_tick_run_c(void *world, uint64_t start, uint64_t end, uint32_t mixers, uint64_t *out_ts)
+/* The world's *out_ts slot. */
+uint64_t *oracle_tick_out_ts(void *opaque)
 {
+	struct oracle_tick_world *world = opaque;
+
+	return &world->out_ts;
+}
+
+bool oracle_tick_run_c(void *opaque, uint64_t start, uint64_t end, uint32_t mixers, uint64_t *out_ts)
+{
+	struct oracle_tick_world *world = opaque;
 	struct audio_output_data *mixes = oracle_tick_clear_mixes(world);
 
 	oracle_tick_use(world);
-	return oracle_audio_callback(NULL, start, end, out_ts, mixers, mixes);
+	bool result = oracle_audio_callback(NULL, start, end, &world->out_ts, mixers, mixes);
+	*out_ts = world->out_ts;
+	return result;
 }
 
 static void put_ids(char *out, size_t cap, size_t *len, obs_source_t **array, size_t num)

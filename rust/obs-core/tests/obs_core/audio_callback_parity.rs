@@ -8,7 +8,8 @@
 //! oracle's recording stand-ins as its `Calls`, and the C on the other.
 //! After every tick the two must agree on the result and `*out_ts`, and on
 //! the world: the log (each libobs call in order with its arguments and
-//! the locks it saw held, each log line with its values, each task run),
+//! the locks it saw held, each log line with its values, each task run with
+//! the `*out_ts` it sees),
 //! the core's buffering fields, buffered timestamps, render order and root
 //! nodes, every source's reference count, flags, timestamp, input (sizes
 //! and bytes) and output buffers, every mutex being free, and the mixes bit
@@ -191,13 +192,15 @@ fn check(spec: &Spec, steps: &[Step]) {
         let start = START + u64::try_from(i).unwrap() * TICK;
         let end = start + TICK;
 
-        let mut rust_ts = 0;
-        // SAFETY: the world is the core the seam and stand-ins see, and its
-        // mixes are MAX_AUDIO_MIXES cleared `struct audio_output_data`.
-        let rust_result = unsafe {
+        // SAFETY: the world is the core the seam and stand-ins see, its
+        // mixes are MAX_AUDIO_MIXES cleared `struct audio_output_data`, and
+        // `*out_ts` is its slot, which its tasks log.
+        let (rust_result, rust_ts) = unsafe {
             let mixes = c::oracle_tick_clear_mixes(rust.0).cast::<audio_output_data>();
+            let out_ts = c::oracle_tick_out_ts(rust.0);
             c::oracle_tick_use(rust.0);
-            rs::audio_callback_with::<Stand>(start, end, &raw mut rust_ts, step.mixers, mixes)
+            let result = rs::audio_callback_with::<Stand>(start, end, out_ts, step.mixers, mixes);
+            (result, *out_ts)
         };
         let mut c_ts = 0;
         // SAFETY: a live world.
