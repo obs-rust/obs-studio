@@ -20,3 +20,10 @@ fn preserves_all_format_bits() {
         assert_eq!(get(Some((1, format))), format);
     }
 }
+
+#[test]
+fn rejects_non_video_kinds_even_with_stored_format() {
+    for kind in [0, 2, -1, i32::MIN, i32::MAX] {
+        assert_eq!(get(Some((kind, u32::MAX))), 0);
+    }
+}
