@@ -1234,6 +1234,15 @@
         }
       ]
     },
+    "test_core_frame_interval": {
+      "sources": [
+        "test/cmocka/test_core_frame_interval.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_core_global_getters": {
       "sources": [
         "test/cmocka/test_core_global_getters.c"
@@ -15831,6 +15840,20 @@
       "target": "test_core_cmdline_getter",
       "command": [
         "${target}"
+      ]
+    },
+    "test_core_frame_interval": {
+      "target": "test_core_frame_interval",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_core_global_getters": {

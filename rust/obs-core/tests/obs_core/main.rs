@@ -28,6 +28,8 @@ mod context_names;
 mod context_names_parity;
 mod core_cmdline_getter;
 mod core_cmdline_getter_parity;
+mod core_frame_interval;
+mod core_frame_interval_parity;
 mod core_initialized;
 mod core_initialized_parity;
 mod core_setup_rules;

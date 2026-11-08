@@ -91,6 +91,7 @@ pub mod canvas_video_getter;
 pub mod canvas_video_info_getter;
 pub mod context_names;
 pub mod core_cmdline_getter;
+pub mod core_frame_interval;
 pub mod core_initialized;
 pub mod core_setup_rules;
 pub mod display_size;
