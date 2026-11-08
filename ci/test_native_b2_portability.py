@@ -92,6 +92,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
+                    "test/cmocka/weak-object-identity-link-stub.c",
                 ])
 
     def test_core_texture_activity_supplies_standalone_field_adapters(self):
@@ -122,6 +123,20 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(support[name]["sources"][0], stub)
                 self.assertEqual(graph["targets"][name]["sources"].count(stub), 1)
         self.assertIn("obs_output_service_getter_fields", (ROOT / stub).read_text())
+
+    def test_weak_object_identity_supplies_standalone_field_adapter(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/weak-object-identity.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if "libobs_rust-static" in target.get("libraries", [])
+                 and "OBS::libobs" not in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        stub = "test/cmocka/weak-object-identity-link-stub.c"
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(support[name]["sources"], [stub])
+                self.assertEqual(graph["targets"][name]["sources"].count(stub), 1)
 
     def test_output_handler_getters_supply_standalone_field_adapter(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

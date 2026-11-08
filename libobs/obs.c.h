@@ -3752,11 +3752,6 @@ bool obs_weak_object_expired(obs_weak_object_t *weak)
 	return weak ? obs_weak_ref_expired(&weak->ref) : true;
 }
 
-bool obs_weak_object_references_object(obs_weak_object_t *weak, obs_object_t *object)
-{
-	return weak && object && weak->object == object;
-}
-
 bool obs_is_output_protocol_registered(const char *protocol)
 {
 	if (!protocol)

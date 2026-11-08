@@ -870,6 +870,12 @@ struct obs_weak_object {
 	struct obs_context_data *object;
 };
 
+/* Borrowed field address; callers reject NULL before this accessor. */
+struct obs_weak_object_identity_fields {
+	struct obs_context_data *const *object;
+};
+struct obs_weak_object_identity_fields obs_weak_object_identity_fields(const obs_weak_object_t *weak);
+
 typedef void (*obs_destroy_cb)(void *obj);
 
 #include "obs-object-query-fields.h"
