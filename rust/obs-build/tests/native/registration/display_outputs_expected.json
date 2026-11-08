@@ -163,6 +163,10 @@
       "sources": [
         "test/cmocka/test_slideshow_empty.c",
         "plugins/image-source/obs-slideshow.c.h",
+        {
+          "path": "plugins/image-source/image-file-version.c.h",
+          "requires": "OS_WINDOWS"
+        },
         "plugins/obs-transitions/transition-cut.c.h",
         {
           "path": "plugins/image-source/build/image-source.posix+.h.c",

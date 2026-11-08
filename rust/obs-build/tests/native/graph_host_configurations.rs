@@ -214,7 +214,8 @@ cmake_language(DEFER CALL check_slideshow_sources)
         let path = Path::new(path);
         let text = fs::read_to_string(path).unwrap();
         let mut members = vec![path.to_path_buf()];
-        if path.to_string_lossy().ends_with("+.h.c") {
+        {
+            // Both explicit unity groups and generated .c.h wrappers compile members.
             members.extend(text.lines().filter_map(|line| {
                 let member = line.strip_prefix("#include \"")?.strip_suffix('"')?;
                 member.ends_with(".c.h").then(|| repository.join(member))
