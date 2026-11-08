@@ -16,6 +16,7 @@
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
+#include "libobs/obs-scene-item-visible.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"

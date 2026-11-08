@@ -2870,11 +2870,6 @@ void obs_sceneitem_get_box_scale(const obs_sceneitem_t *item, struct vec2 *scale
 	}
 }
 
-bool obs_sceneitem_visible(const obs_sceneitem_t *item)
-{
-	return item ? os_atomic_load_bool(&item->user_visible) : false;
-}
-
 static bool group_item_transition(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	if (!param || !item)
