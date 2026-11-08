@@ -25,6 +25,7 @@ pub mod output_can_pause;
 pub mod output_caption;
 pub mod output_caption_text;
 pub mod output_delay;
+pub mod output_identity;
 pub mod output_interleave;
 pub mod output_pause;
 pub mod output_protocols;

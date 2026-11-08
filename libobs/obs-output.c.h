@@ -2652,7 +2652,6 @@ bool obs_weak_output_references_output(obs_weak_output_t *weak, obs_output_t *ou
 	return weak && output && weak->output == output;
 }
 
-
 void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *captions)
 {
 	for (int i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {

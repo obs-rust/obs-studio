@@ -1782,6 +1782,13 @@ struct obs_output {
 	float audio_data[MAX_AUDIO_CHANNELS][AUDIO_OUTPUT_FRAMES];
 };
 
+/* Borrowed instance identity fields; reject NULL before taking member addresses. */
+struct obs_output_identity_fields {
+	const char *const *id;
+	void *const *type_data;
+};
+extern struct obs_output_identity_fields obs_output_identity_fields(const obs_output_t *output);
+
 /* Private borrowed field addresses; callers must reject NULL before access. */
 struct obs_output_supported_codecs_fields {
 	const char *const *video;
