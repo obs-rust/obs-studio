@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_duplicate_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_duplicate_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_duplicate_steps_rust": {
+      "target": "test_source_duplicate_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}
