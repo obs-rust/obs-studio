@@ -2,6 +2,8 @@
 """Batch 2 native contracts must carry portable header dependencies."""
 import json
 import re
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -180,6 +182,39 @@ class NativeB2Portability(unittest.TestCase):
         body = (ROOT / adapter).read_text()
         self.assertIn("&source->context.procs", body)
         self.assertNotIn("abort()", body)
+
+    def test_source_handler_getter_legacy_consumers_link_live_adapter(self):
+        # Exercise the deferred CMake rule, including duplicate suppression for
+        # graph targets and exclusion of targets that do not link the archive.
+        names = ("test_source_duplicate_steps_rust", "test_source_filter_chain_steps_rust",
+                 "test_transition_clock_steps_rust", "test_transition_sample_time_steps_rust")
+        fragment = ROOT / "test/cmocka/tests.d/source_handler_getter_link_support.cmake"
+        adapter = ROOT / "test/cmocka/source-handler-getter-link-support.c"
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            lines = ["cmake_minimum_required(VERSION 3.28)", "project(handler_link NONE)",
+                     "add_library(libobs_rust-static INTERFACE)",
+                     "add_library(OBS::caption INTERFACE IMPORTED)",
+                     "add_library(Uthash::Uthash INTERFACE IMPORTED)",
+                     f'set(CMAKE_CURRENT_SOURCE_DIR "{ROOT / "test/cmocka"}")']
+            for name in (*names, "test_source_graph", "test_source_c_reference"):
+                lines.append(f'add_executable({name} "{adapter}")' if name == "test_source_graph"
+                             else f'add_executable({name} dummy.c)')
+                if name != "test_source_c_reference":
+                    lines.append(f"target_link_libraries({name} PRIVATE libobs_rust-static)")
+            lines += [f'include("{fragment}")', "function(check_sources)"]
+            for name in (*names, "test_source_graph", "test_source_c_reference"):
+                expected = 0 if name == "test_source_c_reference" else 1
+                lines += [f"get_target_property(sources {name} SOURCES)", "set(count 0)",
+                          "foreach(item IN LISTS sources)", f'if(item STREQUAL "{adapter}")',
+                          "math(EXPR count \"${count}+1\")", "endif()", "endforeach()",
+                          f"if(NOT count EQUAL {expected})",
+                          f'message(FATAL_ERROR "{name}: adapter count ${{count}}")', "endif()"]
+            lines += ["endfunction()", "cmake_language(DEFER CALL check_sources)"]
+            (source / "CMakeLists.txt").write_text("\n".join(lines))
+            result = subprocess.run(["cmake", "-S", str(source), "-B", str(source / "build")],
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_output_pause_queries_supply_all_static_consumers(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
