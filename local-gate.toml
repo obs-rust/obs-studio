@@ -2,7 +2,7 @@
 #
 # Before pushing, from a clean, committed tree:
 #
-#   uvx --from git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2 ci-lint local-gate run
+#   uvx --from git+https://github.com/zackees/ci.yml@24362f3e60248ebe72ffd261e5585640228cbc5d ci-lint local-gate run
 #
 # runs every lane below (each cached on its inputs, so an unchanged lane is
 # skipped in seconds) and stamps HEAD with a tree-bound `Local-Gate:` trailer

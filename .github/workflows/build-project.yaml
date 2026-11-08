@@ -1632,6 +1632,18 @@ jobs:
         if: github.event_name != 'merge_group'
         run: PYTHONPATH=.ci-lint uv run --no-project python -m ci_lint local-gate verify --repo . --trust --github-output
 
+      # Reports the client-side attestation for the PR head's host gates. It
+      # never touches skip_*: the gate above decides what is skipped, and it
+      # fails closed on its own. Off by default -- the step runs only when the
+      # repository variable ATTEST_MODE is `warn` or `enforce`, so P0 behaviour
+      # is unchanged; `warn` annotates and passes, `enforce` annotates and fails.
+      - name: Report Client Attestations 🧾
+        if: github.event_name == 'pull_request' && vars.ATTEST_MODE != '' && vars.ATTEST_MODE != 'off'
+        env:
+          ATTEST_MODE: ${{ vars.ATTEST_MODE }}
+        run: PYTHONPATH=.ci-lint uv run --no-project python -m ci_lint attest verify --repo . --commit "${{ github.event.pull_request.head.sha }}" --base "${{ github.event.pull_request.base.sha }}" --required "rust/all/fmt,rust/x86_64-unknown-linux-gnu/clippy,rust/x86_64-unknown-linux-gnu/dylint,rust/x86_64-unknown-linux-gnu/test" --mode "$ATTEST_MODE"
+
+
       # Lane proofs (#699): a lane whose exact inputs already passed in a
       # trusted run of this workflow is skipped (ci/lane_proof.py). Keys come
       # from local-gate.toml as committed on the BASE, so a merge-queue
