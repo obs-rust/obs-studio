@@ -1,0 +1,5 @@
+# obs-source-transition-stop.c (obs-source-seam): the clock read and force
+# stop of a transition in obs.h (EXPORT), called by the frontend, plugins
+# and scenes. The four render helpers are in rust-hidden.d.
+obs_transition_force_stop
+obs_transition_get_time

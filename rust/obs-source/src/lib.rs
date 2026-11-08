@@ -107,6 +107,12 @@
 //! handover of the transitions (`obs_transition_start()`, `set_source()`,
 //! `activate_transition()`, the active source, the manual reset and the
 //! active child rule of `obs_transition_set()` and the swap);
+//! `libobs/obs-source-transition-stop.c.h`, the clock read and stop of the
+//! transitions (`obs_transition_get_time()`, `obs_transition_force_stop()`
+//! and the render helpers `transition_calc_time()`,
+//! `transition_get_video_time()`, `transition_stop()` and
+//! `transition_handle_stop()`, generic over the transition seam and the
+//! libobs calls; its C shims are in `obs-source-seam` too);
 //! `libobs/obs-source-transition-switch.c.h`, the start and set of the
 //! transitions (`obs_transition_start()` and `obs_transition_set()`, with
 //! `set_source()`, `activate_transition()`, `write_start_clock()` and the
@@ -130,7 +136,7 @@
 //! [`transition_access`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
-//! [`transition_start`], [`transition_switch`],
+//! [`transition_start`], [`transition_stop`], [`transition_switch`],
 //! [`video_tick`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
@@ -181,6 +187,7 @@ pub mod transition_settings;
 pub mod transition_size;
 pub mod transition_slots;
 pub mod transition_start;
+pub mod transition_stop;
 pub mod transition_switch;
 pub mod video_tick;
 pub mod volume_apply;

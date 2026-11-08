@@ -234,6 +234,7 @@ pub mod source_transition_settings;
 pub mod source_transition_size;
 pub mod source_transition_slots;
 pub mod source_transition_start;
+pub mod source_transition_stop;
 pub mod source_transition_switch;
 pub mod source_video_tick;
 pub mod source_volume;

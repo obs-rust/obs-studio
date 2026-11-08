@@ -2394,6 +2394,12 @@ area.
   transition now gets a debug log line naming obs_transition_get_size,
   instead of one naming obs_transition_set_size. *All*, 2026-11-03. Issue
   [#3540](https://github.com/obs-rust/obs-studio/issues/3540).
+- A plugin or script that hands obs_transition_get_time or
+  obs_transition_force_stop a missing transition no longer crashes OBS,
+  and one that hands them a source that is not a transition no longer
+  gets a made-up time or a stray transition stop on that source: the time
+  is 0 and the force stop does nothing. *All*, 2026-11-08. Issue
+  [#4032](https://github.com/obs-rust/obs-studio/issues/4032).
 
 ### Stability
 
