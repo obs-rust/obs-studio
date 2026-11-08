@@ -49,6 +49,8 @@
 
 use std::ffi::CStr;
 
+use crate::transition_start::{self as start_rules, Admission};
+
 /// The name `obs_transition_start()` hands `transition_valid()`, which logs
 /// it for a NULL source.
 pub const START_LOG_NAME: &CStr = c"obs_transition_start";
@@ -206,10 +208,11 @@ pub type Admit<T> = fn(&T, usize, Option<<T as Transition>::Child>) -> bool;
 
 /// `write_start_clock()`: when `clock` restarts, the start time (now) and
 /// then the duration.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn write_start_clock<T: Transition>(transition: &T, clock: &StartClock) {
-    let _ = (transition, clock);
-    todo!()
+    if clock.restart {
+        transition.set_start_time(transition.now());
+        transition.set_duration(clock.duration);
+    }
 }
 
 /// `set_source()`: hands slot `idx` to `new_child`.
@@ -223,7 +226,6 @@ pub fn write_start_clock<T: Transition>(transition: &T, clock: &StartClock) {
 /// unlock, a refused child's reference goes; an admitted one recalculates
 /// the size and matrices when the transition has no size of its own and
 /// releases the old child. Returns whether it was admitted.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn set_source<T: Transition>(
     transition: &T,
     idx: usize,
@@ -231,49 +233,268 @@ pub fn set_source<T: Transition>(
     callback: Option<Admit<T>>,
     clock: &mut StartClock,
 ) -> bool {
-    let _ = (transition, idx, new_child, callback, clock);
-    todo!()
+    let mut new_child = new_child;
+    let mut add_success = true;
+
+    if new_child.is_some() {
+        new_child = transition.get_ref(new_child);
+    }
+
+    transition.lock();
+
+    let old_child = transition.source(idx);
+
+    clock.same_as_source = new_child == transition.source(SOURCE_A);
+    clock.same_as_dest = new_child == old_child;
+    clock.restart = start_rules::restart(
+        transition.transitioning_audio() || transition.transitioning_video(),
+        clock.same_as_dest,
+        clock.same_as_source,
+    );
+
+    if new_child == old_child {
+        write_start_clock(transition, clock);
+        transition.unlock();
+        transition.release(new_child);
+        return true;
+    }
+
+    let already_active = transition.source_active(idx);
+
+    if start_rules::adds(already_active, new_child.is_some()) {
+        add_success = transition.add_active_child(new_child);
+    }
+    if start_rules::removes(already_active, old_child.is_some(), add_success)
+        && let Some(old) = old_child
+    {
+        transition.remove_active_child(old);
+    }
+
+    if start_rules::calls_back(callback.is_some(), add_success)
+        && let Some(admit) = callback
+    {
+        add_success = admit(transition, idx, new_child);
+    }
+
+    if add_success {
+        write_start_clock(transition, clock);
+        transition.set_source(idx, new_child);
+    }
+
+    transition.unlock();
+
+    if !add_success {
+        transition.release(new_child);
+        return false;
+    }
+
+    if start_rules::is_unsized(transition.cx()) || start_rules::is_unsized(transition.cy()) {
+        transition.recalculate_size();
+        transition.recalculate_matrices();
+    }
+
+    transition.release(old_child);
+    true
 }
 
 /// `activate_transition()`, [`set_source`]'s callback for a start: adds
 /// `child` as an active child when slot `idx` is not active yet (false when
 /// that fails) and marks the slot active, then sets both running flags.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn activate_transition<T: Transition>(
     transition: &T,
     idx: usize,
     child: Option<T::Child>,
 ) -> bool {
-    let _ = (transition, idx, child);
-    todo!()
+    if start_rules::activates(transition.source_active(idx)) {
+        if !transition.add_active_child(child) {
+            return false;
+        }
+
+        transition.set_source_active(idx, true);
+    }
+
+    transition.set_transitioning_video(true);
+    transition.set_transitioning_audio(true);
+    true
 }
 
 /// The recursion check of the start and the set: `dest` is the transition,
 /// or (when [`crate::transition_start::walks`]) a parent or child of
 /// `dest`'s full tree is (`check_transition_recursion()`).
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn recursive<T: Transition>(transition: &T, dest: Option<T::Child>) -> bool {
-    let _ = (transition, dest);
-    todo!()
+    let mut recursive = dest.is_some_and(|d| transition.is(d));
+    if start_rules::walks(dest.is_some(), recursive)
+        && let Some(root) = dest
+    {
+        transition.enum_full_tree(root, &mut |parent, child| {
+            if transition.is(parent) || transition.is(child) {
+                recursive = true;
+            }
+        });
+    }
+    recursive
 }
 
 /// `obs_transition_start()`: starts `transition` to `dest` in `mode` for
 /// `duration_ms` (the fixed duration instead, when it is enabled). Returns
 /// whether the transition runs to `dest`.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
 pub fn start<T: Transition>(
     transition: Option<&T>,
     mode: i32,
     duration_ms: u32,
     dest: Option<T::Child>,
 ) -> bool {
-    let _ = (transition, mode, duration_ms, dest);
-    todo!()
+    if !T::valid(transition, START_LOG_NAME) {
+        return false;
+    }
+    let Some(transition) = transition else {
+        return false;
+    };
+    let mut duration_ms = duration_ms;
+
+    transition.lock();
+    let same_as_source = dest == transition.source(SOURCE_A);
+    let active = transition.active();
+    transition.unlock();
+    if start_rules::refused(same_as_source, active) {
+        return false;
+    }
+
+    // The destination walk can visit this transition. Check before child
+    // activation holds its mutex, and before changing state or calling
+    // plugins.
+    if recursive(transition, dest) {
+        transition.warn(START_RECURSION_WARNING, dest);
+        return false;
+    }
+
+    if transition.active() {
+        set(Some(transition), transition.source(SOURCE_B));
+    }
+
+    transition.lock();
+    let same_as_source = dest == transition.source(SOURCE_A);
+    let same_as_dest = dest == transition.source(SOURCE_B);
+    let same_mode = mode == transition.mode();
+    let active = transition.active();
+    transition.unlock();
+
+    match start_rules::admit(same_as_source, same_as_dest, same_mode, mode, active) {
+        Admission::Refuse => return false,
+        Admission::Done => return true,
+        Admission::Go => {}
+    }
+
+    // Written before the plugin callback: a start the callback makes on
+    // this transition replaces the mode, and it stays even if this start
+    // then completes (unchanged upstream behaviour).
+    transition.lock();
+    transition.set_mode(mode);
+    transition.set_manual_val(0.0);
+    transition.set_manual_target(0.0);
+    transition.unlock();
+
+    transition.call_start();
+
+    if transition.use_fixed_duration() {
+        duration_ms = transition.fixed_duration();
+    }
+
+    // Plugin re-entry may have changed the destination since the
+    // preflight, or started this transition itself. Child admission checks
+    // again without descending into our held mutex, and the clock is
+    // decided from the state being replaced, so a rejected start leaves a
+    // nested start's clock intact.
+    let mut clock = StartClock::new(start_rules::duration_ns(duration_ms));
+    if !set_source(
+        transition,
+        SOURCE_B,
+        dest,
+        Some(activate_transition::<T>),
+        &mut clock,
+    ) {
+        transition.warn(START_RECURSION_WARNING, dest);
+        return false;
+    }
+    if start_rules::null_dest(dest.is_some(), clock.same_as_dest, clock.same_as_source) {
+        transition.set_transitioning_video(true);
+        transition.set_transitioning_audio(true);
+    }
+
+    transition.dosignal(START_SIGNALS.0, START_SIGNALS.1);
+
+    transition.recalculate_size();
+    transition.recalculate_matrices();
+
+    true
 }
 
 /// `obs_transition_set()`: puts `source` in slot A of an idle transition.
-#[expect(clippy::todo, reason = "RED: the port is not written yet")]
+///
+/// Refuses (with [`SET_RECURSION_WARNING`]) a source that is the
+/// transition or contains it, before changing anything: a walk of its
+/// active tree would enter the transition again and lock its mutex twice.
+/// Otherwise takes a reference on the source, signals the stop of a running
+/// transition, and under the lock empties both slots, puts the source in
+/// slot A (active), stops the transition and resets the manual value and
+/// target. After the unlock, each old child is removed from the active
+/// children (when its slot was active) and released, slot A first; then the
+/// source is added as an active child, and when that fails (a source that
+/// contains the transition) slot A is made inactive again, if it still
+/// holds the source, so the next set does not remove a reference another
+/// parent holds.
 pub fn set<T: Transition>(transition: Option<&T>, source: Option<T::Child>) {
-    let _ = (transition, source);
-    todo!()
+    if !T::valid(transition, SET_LOG_NAME) {
+        return;
+    }
+    let Some(transition) = transition else {
+        return;
+    };
+    let mut s = [None; 2];
+    let mut active = [false; 2];
+
+    if recursive(transition, source) {
+        transition.warn(SET_RECURSION_WARNING, source);
+        return;
+    }
+
+    let source = transition.get_ref(source);
+
+    if transition.active() {
+        transition.dosignal(STOP_SIGNALS.0, STOP_SIGNALS.1);
+    }
+
+    transition.lock();
+    for (i, (child, was_active)) in s.iter_mut().zip(active.iter_mut()).enumerate() {
+        *child = transition.source(i);
+        *was_active = transition.source_active(i);
+        transition.set_source(i, None);
+        transition.set_source_active(i, false);
+    }
+    transition.set_source_active(SOURCE_A, true);
+    transition.set_source(SOURCE_A, source);
+    transition.set_transitioning_video(false);
+    transition.set_transitioning_audio(false);
+    transition.set_manual_val(0.0);
+    transition.set_manual_target(0.0);
+    transition.unlock();
+
+    for (child, was_active) in s.into_iter().zip(active) {
+        if start_rules::child_active(child.is_some(), was_active)
+            && let Some(c) = child
+        {
+            transition.remove_active_child(c);
+        }
+        transition.release(child);
+    }
+
+    if let Some(src) = source
+        && !transition.add_active_child(source)
+    {
+        transition.lock();
+        if transition.source(SOURCE_A) == Some(src) {
+            transition.set_source_active(SOURCE_A, false);
+        }
+        transition.unlock();
+    }
 }
