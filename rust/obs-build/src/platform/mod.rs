@@ -912,6 +912,7 @@ pub fn native_test_facts(
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
         ("HAVE_WINDOW_MATCH_TEST_GIO".into(), false),
+        ("HAVE_PORTAL_TEST_GIO".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         // Optional headless plugin SDKs are false until the consumer probes them.
         ("HAVE_RTMPS_TEST_SDK".into(), false),
@@ -1427,4 +1428,12 @@ pub fn native_test_command_program(
     native_test_program(program)
         .map(|path| native_program_wrapper(program, &path, root, output))
         .transpose()
+}
+
+/// The unchanged config fault fixture interposes libc through a shared preload.
+pub fn configure_config_close_fault(target: &str, library: &mut crate::SharedLibrary) {
+    library.compile_options.push("-fvisibility=default".into());
+    if !target.contains("apple") {
+        library.link_options.push("-ldl".into());
+    }
 }

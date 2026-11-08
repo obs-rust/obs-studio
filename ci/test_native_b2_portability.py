@@ -326,7 +326,7 @@ class NativeB2Portability(unittest.TestCase):
         facts.update(HAVE_X11_DISPLAY=False, HAVE_QT_WIDGETS_TEST_OWNER=False, HAVE_QT_WIDGETS_TESTLIB_OWNER=False,
                      HAVE_PLUGIN_MANAGER_TEST_OWNER=False, HAVE_VST_EDITOR_TEST_OWNER=False,
                      HAVE_PRIVATE_DAEMON_TEST_OWNER=False, HAVE_PIPEWIRE_CAMERA_TEST_OWNER=False,
-                     HAVE_V4L2_VMIC_TEST_OWNER=False)
+                     HAVE_V4L2_VMIC_TEST_OWNER=False, HAVE_PORTAL_TEST_GIO=False)
         facts.update(dict.fromkeys(("OS_LINUX", "UNIX", "HAVE_LIBOBS", "HAVE_LIBOBS_RUST_STATIC",
                                     "HAVE_HAPPY_EYEBALLS", "HAVE_OBS_OUTPUTS", "HAVE_OBS_FILTERS",
                                      "HAVE_OBS_ALSA", "HAVE_OBS_PIPEWIRE", "HAVE_OBS_PULSEAUDIO"), True))
