@@ -175,6 +175,7 @@ pub fn build_qt_tests(
                     .is_file(),
         );
     }
+    websocket_remaining_owners(build, &root, &mut facts, &mut interfaces);
     let thread_options = crate::platform::native_test_thread_options(&build.target);
     interfaces
         .entry("Threads::Threads".into())
@@ -184,6 +185,46 @@ pub fn build_qt_tests(
             ..Default::default()
         });
     compile_suite(build, &root, &graph, &facts, &interfaces)
+}
+
+fn websocket_remaining_owners(
+    build: &NativeBuild,
+    root: &Path,
+    facts: &mut BTreeMap<String, bool>,
+    interfaces: &mut BTreeMap<String, graph::Dependency>,
+) {
+    let linux = facts.get("OS_LINUX").copied().unwrap_or(false);
+    if linux
+        && !interfaces.contains_key("X11::X11")
+        && let Ok(x11) = graph::Dependency::package(&build.target, "x11")
+    {
+        interfaces.insert("X11::X11".into(), x11);
+    }
+    for (helper, source) in [
+        ("FILTER_SETTINGS_EVENT", "eventhandler/EventHandler.cpp"),
+        ("REMOVE_INPUT", "requesthandler/RequestHandler_Inputs.cpp"),
+        (
+            "TRANSFORM_BOUNDS",
+            "requesthandler/RequestHandler_SceneItems.cpp",
+        ),
+    ] {
+        let filter = helper == "FILTER_SETTINGS_EVENT";
+        facts.insert(
+            format!("HAVE_WS_{helper}_TEST_OWNER"),
+            !facts.get("OS_WINDOWS").copied().unwrap_or(false)
+                && (linux || filter)
+                && interfaces.contains_key("OBS::libobs")
+                && interfaces.contains_key("nlohmann_json::nlohmann_json")
+                && (!filter || !linux || interfaces.contains_key("X11::X11"))
+                && root
+                    .join("plugins/obs-websocket/src")
+                    .join(source)
+                    .is_file()
+                && root
+                    .join("plugins/obs-websocket/src/plugin-macros.h.in")
+                    .is_file(),
+        );
+    }
 }
 
 /// Build standalone WHIP tests from the shared graph, with no core or SDK.

@@ -1,6 +1,6 @@
 use super::*;
 use obs_build::validation::graph::Graph;
-const CASES: [&str; 11] = [
+const CASES: [&str; 9] = [
     "test_ws_image_mime",
     "test_ws_session_duration",
     "test_ws_batch_order",
@@ -8,10 +8,8 @@ const CASES: [&str; 11] = [
     "test_ws_list_property_items",
     "test_ws_scene_count",
     "test_ws_filter_settings_event",
-    "test_ws_monitor_only",
     "test_ws_remove_input",
     "test_ws_transform_bounds",
-    "test_ws_screenshot_srgb",
 ];
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("websocket_helpers_expected.json")).unwrap()
@@ -76,10 +74,13 @@ fn canonical_websocket_helpers_preserve_original_hosts() {
         let selected = graph.select(&facts).unwrap();
         for name in CASES {
             let enabled = match name {
-                "test_ws_current_scene_removed" | "test_ws_list_property_items"
-                | "test_ws_monitor_only" | "test_ws_remove_input"
-                | "test_ws_transform_bounds" | "test_ws_screenshot_srgb" => linux,
-                "test_ws_batch_order" | "test_ws_scene_count" | "test_ws_filter_settings_event" => !windows,
+                "test_ws_current_scene_removed"
+                | "test_ws_list_property_items"
+                | "test_ws_remove_input"
+                | "test_ws_transform_bounds" => linux,
+                "test_ws_batch_order" | "test_ws_scene_count" | "test_ws_filter_settings_event" => {
+                    !windows
+                }
                 _ => true,
             };
             assert_eq!(

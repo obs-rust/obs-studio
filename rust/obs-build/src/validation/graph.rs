@@ -59,6 +59,9 @@ impl Requirement {
                             | "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER"
                             | "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER"
                             | "HAVE_WS_BATCH_ORDER_TEST_OWNER"
+                            | "HAVE_WS_REMOVE_INPUT_TEST_OWNER"
+                            | "HAVE_WS_TRANSFORM_BOUNDS_TEST_OWNER"
+                            | "HAVE_WS_FILTER_SETTINGS_EVENT_TEST_OWNER"
                     )
                     .then_some(false)
                 })
