@@ -211,6 +211,7 @@ static void run_ui_task(obs_task_t task, void *param, bool wait)
  * not run the signal handler in a child forked from a multithreaded parent,
  * so under TSan the handler never ran and Force Camera timed out (#3810). */
 static int slow_holder_fd = -1;
+static const char *test_program;
 
 static void slow_holder_term(int sig)
 {
@@ -233,7 +234,8 @@ static pid_t start_holder_ex(bool ignore_term, bool slow_exit)
 	if (pid == 0) {
 		close(ready[0]);
 		if (slow_exit) {
-			execl("/proc/self/exe", "test_v4l2_busy_signal", "--slow-holder", camera_path, ready_fd,
+			/* /proc/self/exe names the Valgrind runtime under Memcheck. */
+			execl(test_program, "test_v4l2_busy_signal", "--slow-holder", camera_path, ready_fd,
 			      (char *)NULL);
 			_exit(2);
 		}
@@ -428,6 +430,7 @@ static void camera_starts_when_the_holder_lets_go(void **state)
 
 int main(int argc, char **argv)
 {
+	test_program = argv[0];
 	if (argc == 4 && strcmp(argv[1], "--slow-holder") == 0) {
 		slow_holder_fd = open(argv[2], O_RDWR | O_NONBLOCK);
 		signal(SIGTERM, slow_holder_term);
