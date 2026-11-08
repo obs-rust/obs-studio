@@ -10,7 +10,8 @@ static void borrowed_handlers(void **state)
 {
 	(void)state;
 	struct obs_output output = {0}, before;
-	max_align_t signal_token, proc_token;
+	/* Borrowed addresses only; neither handler token is dereferenced. */
+	_Alignas(long double) unsigned char signal_token = 0, proc_token = 0;
 	signal_handler_t *signals = (signal_handler_t *)&signal_token;
 	proc_handler_t *procs = (proc_handler_t *)&proc_token;
 	assert_null(obs_output_get_signal_handler(NULL));

@@ -52,7 +52,7 @@ fn real_header_layout() {
 }
 
 fn check(present_signal: bool, present_proc: bool, same: bool, flags: u32) {
-    // SAFETY: the oracle owns its max_align_t-aligned handler tokens and fixture.
+    // SAFETY: the oracle owns its long-double-aligned handler tokens and fixture.
     let fixture =
         Fixture(unsafe { oracle_output_handlers_new(present_signal, present_proc, same, flags) });
     assert!(!fixture.0.is_null());

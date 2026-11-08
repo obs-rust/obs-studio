@@ -13,7 +13,8 @@
 struct output_handlers_fixture {
 	struct obs_output output;
 	struct obs_output before;
-	max_align_t tokens[2];
+	/* Borrowed addresses only; align each token without a C library alignment typedef. */
+	_Alignas(long double) unsigned char tokens[2][sizeof(long double)];
 };
 
 void *oracle_output_handlers_new(bool signal, bool proc, bool same, uint32_t flags);
