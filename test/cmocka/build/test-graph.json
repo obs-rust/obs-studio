@@ -288,7 +288,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -386,7 +387,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -472,7 +474,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -1604,7 +1607,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -1676,7 +1680,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -1725,7 +1730,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11343,7 +11349,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11405,7 +11412,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -11473,7 +11481,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11554,7 +11563,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11617,7 +11627,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11692,7 +11703,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -11800,7 +11812,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11926,7 +11939,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -12013,7 +12027,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -12112,7 +12127,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12175,7 +12191,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -12232,7 +12249,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12260,6 +12278,21 @@
       "header_libraries": [
         "OBS::libobs",
         "SIMDe::SIMDe"
+      ]
+    },
+    "test_source_state_getters": {
+      "sources": [
+        "test/cmocka/test_source_state_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_source_transition_access": {
@@ -12415,7 +12448,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -12467,7 +12501,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13145,7 +13180,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -13238,7 +13274,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13388,7 +13425,8 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
-        "test/cmocka/source-filter-relationship-getter-link-stubs.c"
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -19848,6 +19886,12 @@
     "test_source_size_route_steps_rust": {
       "target": "test_source_size_route_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_state_getters": {
+      "target": "test_source_state_getters",
       "command": [
         "${target}"
       ]

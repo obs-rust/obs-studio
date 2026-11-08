@@ -1441,6 +1441,15 @@ struct obs_source_boolean_query_fields {
 };
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
 
+/* Borrowed field addresses only. Caller checks non-NULL and keeps the source
+ * live under the original getters' synchronization contract. */
+struct obs_source_state_getter_fields {
+	const uint32_t *flags;
+	const bool *enabled;
+	const uint32_t *last_obs_version;
+};
+struct obs_source_state_getter_fields obs_source_state_getter_fields(const obs_source_t *source);
+
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,

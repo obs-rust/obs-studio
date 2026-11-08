@@ -356,6 +356,8 @@ mod canonical_settings_track_rows_is_registered;
 mod canonical_shutdown_after_failed_startup_is_registered;
 #[path = "native/registration/canonical_source_boolean_queries_is_registered.rs"]
 mod canonical_source_boolean_queries_is_registered;
+#[path = "native/registration/canonical_source_state_getters_is_registered.rs"]
+mod canonical_source_state_getters_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
 mod canonical_texture_create_mip_data_is_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
