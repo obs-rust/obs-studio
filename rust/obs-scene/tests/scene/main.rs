@@ -19,6 +19,8 @@ mod item_names;
 mod item_names_parity;
 mod item_order;
 mod item_order_parity;
+mod item_parent_getter;
+mod item_parent_getter_parity;
 mod item_transform;
 mod item_transform_parity;
 mod render_plan;
