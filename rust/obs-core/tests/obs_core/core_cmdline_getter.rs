@@ -10,12 +10,18 @@ fn test_core_cmdline_getter_initial_snapshot() {
 #[test]
 fn test_core_cmdline_getter_stored_snapshot() {
     let input: &[&[u8]] = &[b"obs", b"", b"--profile=\xc3\xa9", b"\xff\x80"];
-    let stored = input.iter().map(|arg| {
-        let mut copied = arg.to_vec();
-        copied.push(0);
-        copied
-    }).collect::<Vec<_>>();
-    let table = stored.iter().map(|arg| &arg[..arg.len() - 1]).collect::<Vec<_>>();
+    let stored = input
+        .iter()
+        .map(|arg| {
+            let mut copied = arg.to_vec();
+            copied.push(0);
+            copied
+        })
+        .collect::<Vec<_>>();
+    let table = stored
+        .iter()
+        .map(|arg| &arg[..arg.len() - 1])
+        .collect::<Vec<_>>();
     let argc = 4;
     let (mut count, args) = snapshot(&argc, &table.as_slice());
     assert_eq!(count, 4);
