@@ -15,6 +15,7 @@ pub mod scene_item_order;
 pub mod scene_item_transform;
 pub mod scene_render_plan;
 pub mod scene_transform_update;
+pub mod source_type_queries;
 
 pub mod scene_bounds_place;
 
