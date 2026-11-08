@@ -9,5 +9,4 @@
 #include "libobs/obs-module-locale-getters-fields.c.h"
 #include "libobs/obs-module-metadata-adapter.c.h"
 #include "libobs/obs-module.c.h"
-#include "libobs/obs-object-queries.c.h"
 #include "libobs/obs.c.h"

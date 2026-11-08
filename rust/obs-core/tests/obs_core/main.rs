@@ -57,6 +57,7 @@ mod nix_log_rules_parity;
 mod nix_system_info;
 mod nix_system_info_parity;
 mod object_queries;
+mod object_queries_parity;
 mod source_load;
 mod source_load_parity;
 mod source_profiler;

@@ -1,0 +1,2 @@
+obs_obj_get_type
+obs_obj_is_private
