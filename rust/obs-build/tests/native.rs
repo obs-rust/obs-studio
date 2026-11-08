@@ -2412,6 +2412,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
+        ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_LIBOBS_RUST_STATIC".into(), false),
