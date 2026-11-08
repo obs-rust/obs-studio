@@ -3995,11 +3995,6 @@ void obs_source_set_default_flags(obs_source_t *source, uint32_t flags)
 	source->default_flags = flags;
 }
 
-uint32_t obs_source_get_flags(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_flags") ? source->flags : 0;
-}
-
 void obs_source_set_audio_mixers(obs_source_t *source, uint32_t mixers)
 {
 	struct calldata data;
@@ -4185,11 +4180,6 @@ obs_source_t *obs_source_get_filter_by_name(obs_source_t *source, const char *na
 size_t obs_source_filter_count(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_filter_count") ? source->filters.num : 0;
-}
-
-bool obs_source_enabled(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_enabled") ? source->enabled : false;
 }
 
 void obs_source_set_enabled(obs_source_t *source, bool enabled)
@@ -4839,11 +4829,6 @@ void obs_source_set_audio_active(obs_source_t *source, bool active)
 bool obs_source_audio_active(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_audio_active") ? os_atomic_load_bool(&source->audio_active) : false;
-}
-
-uint32_t obs_source_get_last_obs_version(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_last_obs_version") ? source->last_obs_ver : 0;
 }
 
 enum obs_icon_type obs_source_get_icon_type(const char *id)
