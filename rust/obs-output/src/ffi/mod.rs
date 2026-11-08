@@ -47,3 +47,5 @@ pub mod service_module_lookup;
 pub mod service_state;
 pub mod service_weak_acquire;
 pub mod service_weak_release;
+
+pub mod weak_encoder_identity;
