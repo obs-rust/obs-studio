@@ -814,3 +814,43 @@ size_t oracle_tick_state(void *opaque, char *out, size_t cap)
 	}
 	return len;
 }
+
+/* The layouts the shim's #[repr(C)] types copy, measured from the real
+ * headers: struct obs_task_info (obs-internal.h) and one row of a source's
+ * audio_output_buf (obs_audio_seam_output_row_t, obs-audio-seam.h). */
+size_t oracle_tick_task_info_size(void);
+size_t oracle_tick_task_info_align(void);
+size_t oracle_tick_task_info_offset_task(void);
+size_t oracle_tick_task_info_offset_param(void);
+size_t oracle_tick_output_row_size(void);
+size_t oracle_tick_output_row_align(void);
+
+size_t oracle_tick_task_info_size(void)
+{
+	return sizeof(struct obs_task_info);
+}
+
+size_t oracle_tick_task_info_align(void)
+{
+	return _Alignof(struct obs_task_info);
+}
+
+size_t oracle_tick_task_info_offset_task(void)
+{
+	return offsetof(struct obs_task_info, task);
+}
+
+size_t oracle_tick_task_info_offset_param(void)
+{
+	return offsetof(struct obs_task_info, param);
+}
+
+size_t oracle_tick_output_row_size(void)
+{
+	return sizeof(((struct obs_source *)NULL)->audio_output_buf[0]);
+}
+
+size_t oracle_tick_output_row_align(void)
+{
+	return _Alignof(obs_audio_seam_output_row_t);
+}

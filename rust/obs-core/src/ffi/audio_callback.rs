@@ -42,7 +42,7 @@ const LOG_DEBUG: c_int = 400;
 const DARRAY_INVALID: usize = usize::MAX;
 
 /// One row of `audio_output_buf`: `obs_audio_seam_output_row_t`.
-type OutputRow = [*mut f32; MAX_AUDIO_CHANNELS];
+pub type OutputRow = [*mut f32; MAX_AUDIO_CHANNELS];
 
 /// `struct obs_task_info`.
 #[repr(C)]

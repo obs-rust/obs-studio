@@ -116,6 +116,19 @@ unsafe extern "C" {
     /// The world's log and state, written to `out`; its length.
     pub fn oracle_tick_state(world: *mut c_void, out: *mut c_char, cap: usize) -> usize;
 
+    /// `sizeof(struct obs_task_info)`.
+    pub fn oracle_tick_task_info_size() -> usize;
+    /// `_Alignof(struct obs_task_info)`.
+    pub fn oracle_tick_task_info_align() -> usize;
+    /// `offsetof(struct obs_task_info, task)`.
+    pub fn oracle_tick_task_info_offset_task() -> usize;
+    /// `offsetof(struct obs_task_info, param)`.
+    pub fn oracle_tick_task_info_offset_param() -> usize;
+    /// `sizeof` one row of `struct obs_source`'s `audio_output_buf`.
+    pub fn oracle_tick_output_row_size() -> usize;
+    /// `_Alignof(obs_audio_seam_output_row_t)`.
+    pub fn oracle_tick_output_row_align() -> usize;
+
     /// Stand-in `audio_output_get_sample_rate()`.
     pub fn oracle_tick_sample_rate(audio: *const c_void) -> u32;
     /// Stand-in `audio_output_get_channels()`.
