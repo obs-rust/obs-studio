@@ -910,6 +910,7 @@ pub fn native_test_facts(
         // and CMake enable these fixtures with the original feature guard.
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
+        ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
         // Optional headless plugin SDKs are false until the consumer probes them.
         ("HAVE_RTMPS_TEST_SDK".into(), false),

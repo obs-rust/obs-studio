@@ -48,3 +48,7 @@ fn canonical_private_hosts_are_registered() {
         }
     }
 }
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "private_hosts_runtime.rs"]
+mod runtime;

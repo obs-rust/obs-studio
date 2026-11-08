@@ -3866,6 +3866,25 @@
         }
       ]
     },
+    "test_graphics_ffmpeg_host": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "libobs/graphics/graphics-ffmpeg-host-posix.c.h",
+        "libobs/build/libobs-graphics-ffmpeg-host-posix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_graphics_ffmpeg_pq_steps": {
       "sources": [
         "test/cmocka/test_graphics_ffmpeg_pq_steps.c"
@@ -6373,6 +6392,37 @@
         "OBS::native-test-cmocka"
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_nix_wayland_keys_steps": {
+      "sources": [
+        "test/cmocka/test_nix_wayland_keys_steps.c",
+        "libobs/obs-nix-wayland-keys.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_NIX_WAYLAND_KEYS_TEST_SDK"
+        ]
+      }
     },
     "test_nix_wayland_seats_steps": {
       "sources": [
@@ -17342,6 +17392,12 @@
         "${target}"
       ]
     },
+    "test_graphics_ffmpeg_host": {
+      "target": "test_graphics_ffmpeg_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    },
     "test_graphics_ffmpeg_pq_steps": {
       "target": "test_graphics_ffmpeg_pq_steps",
       "command": [
@@ -18210,6 +18266,21 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_nix_wayland_keys_steps": {
+      "target": "test_nix_wayland_keys_steps",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_NIX_WAYLAND_KEYS_TEST_SDK"
+        ]
+      }
     },
     "test_nix_wayland_seats_steps": {
       "target": "test_nix_wayland_seats_steps",
