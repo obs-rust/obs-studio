@@ -12295,6 +12295,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_base_size": {
+      "sources": [
+        "test/cmocka/test_source_base_size.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_boolean_queries": {
       "sources": [
         "test/cmocka/test_source_boolean_queries.c"
@@ -20909,6 +20924,12 @@
     "test_source_audio_timing_steps_rust": {
       "target": "test_source_audio_timing_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_base_size": {
+      "target": "test_source_base_size",
       "command": [
         "${target}"
       ]
