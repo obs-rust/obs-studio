@@ -24,6 +24,7 @@ fn canonical_volume_meter_ticker_is_registered() {
         for core in [false, true] {
             let facts = [
                 ("OS_LINUX".into(), linux),
+                ("OS_WINDOWS".into(), !linux),
                 ("MSVC".into(), false),
                 ("HAVE_QT6_CORE".into(), core),
                 ("HAVE_QT6_WIDGETS".into(), false),

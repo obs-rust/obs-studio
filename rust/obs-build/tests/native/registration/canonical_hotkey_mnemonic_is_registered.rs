@@ -30,6 +30,7 @@ fn canonical_hotkey_mnemonic_is_registered() {
             for qt_test in [false, true] {
                 let facts = [
                     ("OS_LINUX".into(), linux),
+                    ("OS_WINDOWS".into(), !linux),
                     ("HAVE_QT6_CORE".into(), false),
                     ("HAVE_QT6_WIDGETS".into(), widgets),
                     ("HAVE_QT6_TEST".into(), qt_test),
