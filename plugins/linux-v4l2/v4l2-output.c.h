@@ -297,7 +297,170 @@ static char *run_pactl(const char *args)
 
 /* The sound server through libpulse, so no external pactl is needed (#4057).
  * Each returns false/NULL when libpulse cannot do it; callers then fall back
- * to pactl. */
+ * to pactl. Every call is bounded like pactl's timeout (#3181). */
+#ifdef HAVE_LIBPULSE
+#define VMIC_PA_TIMEOUT_NS 3000000000ULL
+
+struct vmic_pa {
+	pa_mainloop *loop;
+	pa_context *ctx;
+	uint64_t deadline;
+};
+
+static void vmic_pa_close(struct vmic_pa *pa)
+{
+	if (pa->ctx) {
+		pa_context_disconnect(pa->ctx);
+		pa_context_unref(pa->ctx);
+	}
+	if (pa->loop)
+		pa_mainloop_free(pa->loop);
+	pa->ctx = NULL;
+	pa->loop = NULL;
+}
+
+/* Runs the loop until done(arg) or the deadline; false on the deadline or a loop error. */
+static bool vmic_pa_run(struct vmic_pa *pa, bool (*done)(void *), void *arg)
+{
+	while (!done(arg)) {
+		if (os_gettime_ns() > pa->deadline)
+			return false;
+		if (pa_mainloop_prepare(pa->loop, 50000) < 0 || pa_mainloop_poll(pa->loop) < 0 ||
+		    pa_mainloop_dispatch(pa->loop) < 0)
+			return false;
+	}
+	return true;
+}
+
+static bool vmic_pa_settled(void *arg)
+{
+	pa_context_state_t state = pa_context_get_state((pa_context *)arg);
+	return state == PA_CONTEXT_READY || !PA_CONTEXT_IS_GOOD(state);
+}
+
+static bool vmic_pa_open(struct vmic_pa *pa)
+{
+	memset(pa, 0, sizeof(*pa));
+	pa->deadline = os_gettime_ns() + VMIC_PA_TIMEOUT_NS;
+	pa->loop = pa_mainloop_new();
+	if (!pa->loop)
+		return false;
+	pa->ctx = pa_context_new(pa_mainloop_get_api(pa->loop), "OBS Virtual Microphone");
+	if (!pa->ctx || pa_context_connect(pa->ctx, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) < 0 ||
+	    !vmic_pa_run(pa, vmic_pa_settled, pa->ctx) || pa_context_get_state(pa->ctx) != PA_CONTEXT_READY) {
+		vmic_pa_close(pa);
+		return false;
+	}
+	return true;
+}
+
+static bool vmic_pa_op_done(void *arg)
+{
+	return pa_operation_get_state((pa_operation *)arg) != PA_OPERATION_RUNNING;
+}
+
+/* Waits for op and drops it; false when it did not finish in time. */
+static bool vmic_pa_wait(struct vmic_pa *pa, pa_operation *op)
+{
+	if (!op)
+		return false;
+	bool finished = vmic_pa_run(pa, vmic_pa_op_done, op);
+	if (!finished)
+		pa_operation_cancel(op);
+	pa_operation_unref(op);
+	return finished;
+}
+
+static void vmic_pa_index_cb(pa_context *ctx, uint32_t index, void *userdata)
+{
+	UNUSED_PARAMETER(ctx);
+	*(uint32_t *)userdata = index;
+}
+
+static bool vmic_pa_load(const char *args, uint32_t *id)
+{
+	struct vmic_pa pa;
+	if (!vmic_pa_open(&pa))
+		return false;
+	uint32_t index = PA_INVALID_INDEX;
+	bool ok = vmic_pa_wait(&pa,
+			       pa_context_load_module(pa.ctx, "module-pipe-source", args, vmic_pa_index_cb, &index)) &&
+		  index != PA_INVALID_INDEX;
+	vmic_pa_close(&pa);
+	if (ok)
+		*id = index;
+	return ok;
+}
+
+static void vmic_pa_success_cb(pa_context *ctx, int success, void *userdata)
+{
+	UNUSED_PARAMETER(ctx);
+	*(bool *)userdata = success != 0;
+}
+
+static bool vmic_pa_unload(uint32_t id)
+{
+	struct vmic_pa pa;
+	if (!vmic_pa_open(&pa))
+		return false;
+	bool success = false;
+	bool ok = vmic_pa_wait(&pa, pa_context_unload_module(pa.ctx, id, vmic_pa_success_cb, &success)) && success;
+	vmic_pa_close(&pa);
+	return ok;
+}
+
+struct vmic_pa_list_data {
+	struct dstr text;
+	bool failed;
+};
+
+static void vmic_pa_module_cb(pa_context *ctx, const pa_module_info *info, int eol, void *userdata)
+{
+	UNUSED_PARAMETER(ctx);
+	struct vmic_pa_list_data *data = userdata;
+	if (eol < 0)
+		data->failed = true;
+	if (eol || !info)
+		return;
+	dstr_catf(&data->text, "%u\t%s\t%s\t\n", info->index, info->name ? info->name : "",
+		  info->argument ? info->argument : "");
+}
+
+static void vmic_pa_source_cb(pa_context *ctx, const pa_source_info *info, int eol, void *userdata)
+{
+	UNUSED_PARAMETER(ctx);
+	struct vmic_pa_list_data *data = userdata;
+	if (eol < 0)
+		data->failed = true;
+	if (eol || !info)
+		return;
+	dstr_catf(&data->text, "%u\t%s\t\n", info->index, info->name ? info->name : "");
+}
+
+/* "pactl list modules short" (modules) or "pactl list sources short" text:
+ * the index and name, tab separated, and for a module its arguments. */
+static char *vmic_pa_list(bool modules)
+{
+	struct vmic_pa pa;
+	if (!vmic_pa_open(&pa))
+		return NULL;
+	struct vmic_pa_list_data data;
+	memset(&data, 0, sizeof(data));
+	dstr_init(&data.text);
+	pa_operation *op = modules ? pa_context_get_module_info_list(pa.ctx, vmic_pa_module_cb, &data)
+				   : pa_context_get_source_info_list(pa.ctx, vmic_pa_source_cb, &data);
+	bool ok = vmic_pa_wait(&pa, op) && !data.failed;
+	vmic_pa_close(&pa);
+	if (!ok) {
+		dstr_free(&data.text);
+		return NULL;
+	}
+	/* An empty list is still an answer, unlike NULL. */
+	if (!data.text.array)
+		dstr_copy(&data.text, "");
+	return data.text.array;
+}
+#else
 static bool vmic_pa_load(const char *args, uint32_t *id)
 {
 	UNUSED_PARAMETER(args);
@@ -311,12 +474,12 @@ static bool vmic_pa_unload(uint32_t id)
 	return false;
 }
 
-/* "pactl list modules short" (modules) or "pactl list sources short" text. */
 static char *vmic_pa_list(bool modules)
 {
 	UNUSED_PARAMETER(modules);
 	return NULL;
 }
+#endif
 
 /* Whether pactl itself can run at all, whatever the sound server would say (#3797). */
 static bool vmic_pactl_runs(void)
@@ -336,8 +499,10 @@ static void vmic_stop(struct virtualcam_data *vcam)
 	vmic_tail_free(&vcam->mic_tail);
 	if (vcam->mic_loaded) {
 		char args[64];
-		snprintf(args, sizeof(args), "unload-module %u", vcam->mic_module);
-		bfree(run_pactl(args));
+		if (!vmic_pa_unload(vcam->mic_module)) {
+			snprintf(args, sizeof(args), "unload-module %u", vcam->mic_module);
+			bfree(run_pactl(args));
+		}
 		vcam->mic_loaded = false;
 	}
 	if (vcam->mic_path[0]) {
@@ -354,19 +519,42 @@ static void vmic_stop(struct virtualcam_data *vcam)
 /* Unloads the virtual microphones of OBS processes that are gone: one killed
  * while its Virtual Camera ran never unloaded its module, and apps would see
  * two "OBS Virtual Microphone"s. Another running OBS keeps its own. */
-static void vmic_unload_stale(const char *dir)
+/* All of "pactl list modules short", through libpulse or else pactl; NULL
+ * when neither answers. */
+static char *vmic_list_modules(void)
 {
+	char *text = vmic_pa_list(true);
+	if (text)
+		return text;
 	FILE *fp = popen(is_flatpak_sandbox() ? VMIC_PACTL_TIMEOUT
 				 "flatpak-spawn --host pactl list modules short 2>/dev/null"
 					      : VMIC_PACTL_TIMEOUT "pactl list modules short 2>/dev/null",
 			 "r");
 	if (!fp)
+		return NULL;
+	struct dstr out;
+	dstr_init(&out);
+	char line[4096];
+	while (fgets(line, sizeof(line), fp))
+		dstr_cat(&out, line);
+	pclose(fp);
+	return out.array;
+}
+
+static void vmic_unload_stale(const char *dir)
+{
+	char *modules = vmic_list_modules();
+	if (!modules)
 		return;
 
 	uint32_t stale[16];
 	size_t count = 0;
-	char line[4096];
-	while (fgets(line, sizeof(line), fp)) {
+	for (char *line = modules, *next; *line; line = next) {
+		next = strchr(line, '\n');
+		if (next)
+			*next++ = 0;
+		else
+			next = line + strlen(line);
 		uint32_t id;
 		long pid;
 		if (!vmic_parse_module_line(line, &id, &pid) || !vmic_instance_is_stale(dir, pid))
@@ -377,12 +565,14 @@ static void vmic_unload_stale(const char *dir)
 			blog(LOG_WARNING, "Virtual microphone: more than %zu stale modules; module %u is left loaded",
 			     sizeof(stale) / sizeof(stale[0]), id);
 	}
-	pclose(fp);
+	bfree(modules);
 
 	for (size_t i = 0; i < count; i++) {
 		char args[64];
-		snprintf(args, sizeof(args), "unload-module %u", stale[i]);
-		bfree(run_pactl(args));
+		if (!vmic_pa_unload(stale[i])) {
+			snprintf(args, sizeof(args), "unload-module %u", stale[i]);
+			bfree(run_pactl(args));
+		}
 		blog(LOG_INFO, "Virtual microphone: unloaded module %u left by an OBS that is no longer running",
 		     stale[i]);
 	}
@@ -393,6 +583,9 @@ static void vmic_unload_stale(const char *dir)
 /* All of "pactl list sources short", or NULL. */
 static char *vmic_list_sources(void)
 {
+	char *text = vmic_pa_list(false);
+	if (text)
+		return text;
 	FILE *fp = popen(is_flatpak_sandbox() ? VMIC_PACTL_TIMEOUT
 				 "flatpak-spawn --host pactl list sources short 2>/dev/null"
 					      : VMIC_PACTL_TIMEOUT "pactl list sources short 2>/dev/null",
@@ -503,11 +696,22 @@ static void vmic_start(struct virtualcam_data *vcam)
 		    /* The whole property list is quoted, or the server keeps only "OBS". */
 		    " 'source_properties=\"device.description=\\\"%s\\\"\"'",
 		    source, vcam->mic_path, rate, VMIC_CHANNELS, description);
-	char *reply = run_pactl(args.array);
+	/* The same arguments as pactl gets once the shell has taken its quotes
+	 * off: the server parses quoted values itself (#4057). */
+	struct dstr pa_args;
+	dstr_init(&pa_args);
+	dstr_printf(&pa_args,
+		    "source_name=%s file='%s' format=float32le rate=%u channels=%d"
+		    " source_properties=\"device.description=\\\"%s\\\"\"",
+		    source, vcam->mic_path, rate, VMIC_CHANNELS, description);
+	vcam->mic_loaded = vmic_pa_load(pa_args.array, &vcam->mic_module);
+	dstr_free(&pa_args);
+	if (!vcam->mic_loaded) {
+		char *reply = run_pactl(args.array);
+		vcam->mic_loaded = vmic_parse_module_id(reply, &vcam->mic_module);
+		bfree(reply);
+	}
 	dstr_free(&args);
-
-	vcam->mic_loaded = vmic_parse_module_id(reply, &vcam->mic_module);
-	bfree(reply);
 	if (!vcam->mic_loaded) {
 		if (vmic_pactl_runs())
 			blog(LOG_WARNING,
@@ -866,3 +1070,4 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_PACTL_TIMEOUT
 #undef VMIC_FIFO_NAME
 #undef VMIC_DIR_NAME
+#undef VMIC_PA_TIMEOUT_NS
