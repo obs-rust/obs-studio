@@ -46,6 +46,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "transition-start"
                 | "monitor"
                 | "graphics"
+                | "private-steps"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }

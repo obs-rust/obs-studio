@@ -336,6 +336,8 @@ mod canonical_rust_static_header_steps_are_registered;
 mod canonical_rust_static_monitor_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
 mod canonical_rust_static_pacing_is_registered;
+#[path = "native/registration/canonical_rust_static_private_steps_are_registered.rs"]
+mod canonical_rust_static_private_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
 mod canonical_rust_static_source_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_transition_start_are_registered.rs"]
