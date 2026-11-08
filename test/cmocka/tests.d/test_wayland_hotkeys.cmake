@@ -12,6 +12,7 @@ if(OS_LINUX OR OS_FREEBSD)
       test_portal_shortcuts
       test_portal_shortcuts.c
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-binding-press.c.h"
+      "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-background-query.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-save-load.c.h"
       "${CMAKE_SOURCE_DIR}/libobs/obs-hotkey-bindings.c.h"

@@ -32,6 +32,7 @@ use obs_c_oracle as _; // blog
 #[cfg(test)]
 use obs_util as _; // base log handler
 
+pub mod background_query;
 pub mod binding_getters;
 pub mod binding_press;
 pub mod bindings;
