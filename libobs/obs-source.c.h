@@ -1206,11 +1206,6 @@ void obs_source_send_key_click(obs_source_t *source, const struct obs_key_event 
 	}
 }
 
-bool obs_source_get_texcoords_centered(obs_source_t *source)
-{
-	return source->texcoords_centered;
-}
-
 void obs_source_set_texcoords_centered(obs_source_t *source, bool centered)
 {
 	source->texcoords_centered = centered;
@@ -4161,11 +4156,6 @@ void obs_source_enum_filters(obs_source_t *source, obs_source_enum_proc_t callba
 void obs_source_set_hidden(obs_source_t *source, bool hidden)
 {
 	source->temp_removed = hidden;
-}
-
-bool obs_source_is_hidden(obs_source_t *source)
-{
-	return source->temp_removed;
 }
 
 obs_source_t *obs_source_get_filter_by_name(obs_source_t *source, const char *name)

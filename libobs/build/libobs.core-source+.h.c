@@ -17,6 +17,7 @@
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"
+#include "libobs/obs-source-boolean-queries.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
