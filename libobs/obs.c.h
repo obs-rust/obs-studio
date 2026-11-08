@@ -1247,7 +1247,6 @@ bool obs_startup(const char *locale, const char *module_config_path, profiler_na
 	return success;
 }
 
-static struct obs_cmdline_args cmdline_args = {0, NULL};
 void obs_set_cmdline_args(int argc, const char *const *argv)
 {
 	char *data;
@@ -1276,11 +1275,6 @@ void obs_set_cmdline_args(int argc, const char *const *argv)
 	}
 
 	cmdline_args.argv[argc] = NULL;
-}
-
-struct obs_cmdline_args obs_get_cmdline_args(void)
-{
-	return cmdline_args;
 }
 
 void obs_shutdown(void)
