@@ -24,19 +24,7 @@
 # headers only), so it links the archive alone: the obs-audio-monitoring
 # member needs nothing from libobs. Linking the archive directly avoids
 # exporting private symbols just for a test.
-if(TARGET libobs_rust-static)
-  if((OS_LINUX OR OS_FREEBSD) AND ENABLE_PULSEAUDIO)
-    find_package(PulseAudio REQUIRED)
-    add_executable(test_pulse_monitor_steps_rust test_pulse_monitor_steps.c)
-    target_include_directories(
-      test_pulse_monitor_steps_rust
-      PRIVATE
-        "${CMAKE_SOURCE_DIR}/libobs/audio-monitoring/pulse"
-        $<TARGET_PROPERTY:PulseAudio::PulseAudio,INTERFACE_INCLUDE_DIRECTORIES>
-        ${CMOCKA_INCLUDE_DIR}
-    )
-    target_link_libraries(test_pulse_monitor_steps_rust PRIVATE libobs_rust-static ${CMOCKA_LIBRARIES} m)
-    add_dependencies(cmocka-tests test_pulse_monitor_steps_rust)
-    add_test(test_pulse_monitor_steps_rust ${CMAKE_CURRENT_BINARY_DIR}/test_pulse_monitor_steps_rust)
-  endif()
+if(TARGET libobs_rust-static AND (OS_LINUX OR OS_FREEBSD) AND ENABLE_PULSEAUDIO)
+  find_package(PulseAudio REQUIRED)
 endif()
+# Rust-static target and test are also declared in ../build/test-graph.json.

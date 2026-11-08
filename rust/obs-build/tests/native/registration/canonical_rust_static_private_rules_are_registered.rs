@@ -36,3 +36,11 @@ fn canonical_rust_static_private_rules_are_registered() {
         }
     }
 }
+
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+mod runtime {
+    #[test]
+    fn canonical_graphics_private_runs_unchanged() {
+        super::super::graphics_private_runtime::run(super::FAMILY, &super::CASES);
+    }
+}

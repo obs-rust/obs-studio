@@ -31,6 +31,8 @@ fn assert_cases(output: &Output, name: &str) {
         "test_scene_bounds_place_rust" | "test_scene_item_order_steps_rust" => 16,
         "test_scene_item_names_steps_rust" => 14,
         "test_scene_item_transform_steps_rust" => 13,
+        "test_scene_transform_update_steps_rust" => 9,
+        "test_pulse_monitor_steps_rust" | "test_sprite_geometry_steps_rust" => 20,
         _ => panic!("unknown fixture {name}"),
     };
     assert!(
@@ -52,7 +54,10 @@ fn assert_binding(binary: &Path, core: &Path) {
         // no public libobs symbol is referenced, so the DSO is not retained.
         assert!(matches!(
             binary.file_name().unwrap().to_str().unwrap(),
-            "test_scene_bounds_place_rust" | "test_scene_item_order_steps_rust"
+            "test_scene_bounds_place_rust"
+                | "test_scene_item_order_steps_rust"
+                | "test_scene_transform_update_steps_rust"
+                | "test_pulse_monitor_steps_rust"
         ));
         assert!(!text.contains("not found"), "{text}");
         eprintln!(
@@ -118,6 +123,10 @@ pub(super) fn run(family: &str, cases: &[String]) {
             Dependency::rust_static(&build.target, &archive).unwrap(),
         ),
         (
+            "PulseAudio::PulseAudio".into(),
+            Dependency::package(&build.target, "libpulse").unwrap(),
+        ),
+        (
             "m".into(),
             Dependency {
                 link_options: vec!["-lm".into()],
@@ -130,6 +139,9 @@ pub(super) fn run(family: &str, cases: &[String]) {
         ("HAVE_LIBOBS_RUST_STATIC".into(), true),
         ("OS_WINDOWS".into(), false),
         ("MSVC".into(), false),
+        ("OS_LINUX".into(), true),
+        ("OS_FREEBSD".into(), false),
+        ("ENABLE_PULSEAUDIO".into(), true),
     ]
     .into();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
@@ -193,6 +205,11 @@ project(graphics-private-contract C)
 enable_testing()
 set(OS_WINDOWS OFF)
 set(MSVC OFF)
+set(OS_LINUX ON)
+set(OS_FREEBSD OFF)
+set(ENABLE_PULSEAUDIO ON)
+set(CMAKE_MODULE_PATH "{root}/cmake/finders")
+find_package(PulseAudio REQUIRED)
 option(OBS_TEST_SANITIZE_PER_TARGET "Per-target ASan/UBSan" ON)
 include("${{CMAKE_CURRENT_SOURCE_DIR}}/sanitize.cmake")
 {core}
