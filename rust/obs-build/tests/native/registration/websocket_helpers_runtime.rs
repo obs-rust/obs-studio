@@ -142,10 +142,14 @@ fn canonical_websocket_helpers_run_unchanged() {
             name,
         );
     }
-    fs::write(directory.path().join("graph.json"), expected().to_string()).unwrap();
+    cmake_replay(directory.path(), &root, &core);
+}
+
+fn cmake_replay(directory: &Path, root: &Path, core: &BuiltCore) {
+    fs::write(directory.join("graph.json"), expected().to_string()).unwrap();
     let root = root.to_string_lossy().replace('\\', "/");
     fs::write(
-        directory.path().join("CMakeLists.txt"),
+        directory.join("CMakeLists.txt"),
         format!(
             r#"cmake_minimum_required(VERSION 3.28)
 project(websocket-helper-contract C CXX)
@@ -169,11 +173,11 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{GRAPH_ROOT}
         ),
     )
     .unwrap();
-    let output = directory.path().join("cmake");
+    let output = directory.join("cmake");
     checked(
         Command::new("cmake")
             .arg("-S")
-            .arg(directory.path())
+            .arg(directory)
             .arg("-B")
             .arg(&output)
             .args(["-G", "Ninja"]),
@@ -209,5 +213,5 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{GRAPH_ROOT}
             name,
         );
     }
-    unavailable_owners(directory.path(), &root);
+    unavailable_owners(directory, &root);
 }
