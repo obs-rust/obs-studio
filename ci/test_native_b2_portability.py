@@ -85,6 +85,7 @@ class NativeB2Portability(unittest.TestCase):
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
                     "test/cmocka/module-name-lookup-link-stubs.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
+                    "test/cmocka/scene-item-transition-getter-link-stub.c",
                 ])
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
