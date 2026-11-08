@@ -2208,6 +2208,54 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_parser_blocks_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_blocks.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-compile.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        {
+          "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
+          "requires": "MSVC"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/Dgs_effect_get_param_by_name=obs_test_effect_get_param_by_name",
+          "requires": "MSVC"
+        }
+      ],
+      "msvc_import_library": {
+        "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
+        "output": "effect-parser-lookup-import.lib"
+      },
+      "sanitizers": "address,undefined"
+    },
     "test_effect_parser_compile": {
       "sources": [
         "libobs/graphics/effect-param-numbers.c.h",
@@ -2339,6 +2387,54 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_parser_params_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_params.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-compile.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        {
+          "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
+          "requires": "MSVC"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/Dgs_effect_get_param_by_name=obs_test_effect_get_param_by_name",
+          "requires": "MSVC"
+        }
+      ],
+      "msvc_import_library": {
+        "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
+        "output": "effect-parser-params-lookup-import.lib"
+      },
+      "sanitizers": "address,undefined"
+    },
     "test_effect_parser_passes": {
       "sources": [
         "libobs/graphics/effect-param-numbers.c.h",
@@ -2364,6 +2460,54 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_effect_parser_passes_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_passes.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-compile.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        {
+          "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
+          "requires": "MSVC"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/Dgs_effect_get_param_by_name=obs_test_effect_get_param_by_name",
+          "requires": "MSVC"
+        }
+      ],
+      "msvc_import_library": {
+        "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
+        "output": "effect-parser-passes-lookup-import.lib"
+      },
+      "sanitizers": "address,undefined"
+    },
     "test_effect_parser_shader_call": {
       "sources": [
         "libobs/graphics/effect-param-numbers.c.h",
@@ -2388,6 +2532,58 @@
         "Uthash::Uthash",
         "OBS::native-test-cmocka"
       ],
+      "definitions": [
+        "gs_pixelshader_create=test_pixelshader_create",
+        "gs_vertexshader_create=test_vertexshader_create"
+      ]
+    },
+    "test_effect_parser_shader_call_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_shader_call.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-compile.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        {
+          "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
+          "requires": "MSVC"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/Dgs_effect_get_param_by_name=obs_test_effect_get_param_by_name",
+          "requires": "MSVC"
+        }
+      ],
+      "msvc_import_library": {
+        "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
+        "output": "effect-parser-shader-call-lookup-import.lib"
+      },
+      "sanitizers": "address,undefined",
       "definitions": [
         "gs_pixelshader_create=test_pixelshader_create",
         "gs_vertexshader_create=test_vertexshader_create"
@@ -11101,6 +11297,36 @@
         "libobs/data"
       ]
     },
+    "test_scene_item_crop_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_crop.c",
+        "test/cmocka/scene-item-fields-link-support.c",
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_scene_item_id": {
       "sources": [
         "test/cmocka/test_scene_item_id.c"
@@ -17257,6 +17483,13 @@
         "${target}"
       ]
     },
+    "test_effect_parser_blocks_rust": {
+      "target": "test_effect_parser_blocks_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_effect_parser_compile": {
       "target": "test_effect_parser_compile",
       "command": [
@@ -17286,14 +17519,35 @@
         "${target}"
       ]
     },
+    "test_effect_parser_params_rust": {
+      "target": "test_effect_parser_params_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_effect_parser_passes": {
       "target": "test_effect_parser_passes",
       "command": [
         "${target}"
       ]
     },
+    "test_effect_parser_passes_rust": {
+      "target": "test_effect_parser_passes_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_effect_parser_shader_call": {
       "target": "test_effect_parser_shader_call",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_effect_parser_shader_call_rust": {
+      "target": "test_effect_parser_shader_call_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
@@ -20432,6 +20686,22 @@
     },
     "test_scene_item_crop_load": {
       "target": "test_scene_item_crop_load",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    },
+    "test_scene_item_crop_rust": {
+      "target": "test_scene_item_crop_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
       "command": [
         "${target}"
       ],

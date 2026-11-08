@@ -252,7 +252,18 @@ class NativeB2Portability(unittest.TestCase):
             # Source-rule fixture comments can mention scenes without using their adapters.
             if name.startswith("test_scene"):
                 with self.subTest(target=name):
-                    self.assertIn(stub, sources)
+                    if name == "test_scene_item_crop_rust":
+                        # This renderer-backed integration fixture calls the real
+                        # getters. Preserve its live mutex adapter, not the
+                        # abort-only adapter used by pure-rule consumers.
+                        adapter = "test/cmocka/scene-item-fields-link-support.c"
+                        self.assertEqual(sources.count(adapter), 1)
+                        self.assertNotIn(stub, sources)
+                        self.assertIn("OBS::libobs", target["libraries"])
+                        for symbol in ("obs_sceneitem_fields_lock", "obs_sceneitem_fields_unlock"):
+                            self.assertIn(symbol, (ROOT / adapter).read_text())
+                    else:
+                        self.assertIn(stub, sources)
         legacy = set()
         for fragment in (ROOT / "test/cmocka/tests.d").glob("test_scene*.cmake"):
             text = fragment.read_text()
@@ -265,7 +276,7 @@ class NativeB2Portability(unittest.TestCase):
                         self.assertNotIn("scene-getter-log-link-stub.c", sources)
                     else:
                         self.assertIn("scene-getter-log-link-stub.c", sources)
-        self.assertEqual(legacy, {"test_scene_item_crop_rust"})
+        self.assertEqual(legacy, set())
 
     def test_filter_pch_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
