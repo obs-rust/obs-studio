@@ -74,6 +74,17 @@ mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
+fn qt_replay_facts(target: &str, qt_test: bool) -> std::collections::BTreeMap<String, bool> {
+    [
+        ("OS_LINUX".into(), target.contains("linux")),
+        ("MSVC".into(), target.contains("msvc")),
+        ("HAVE_QT6_CORE".into(), true),
+        ("HAVE_QT6_WIDGETS".into(), true),
+        ("HAVE_QT6_TEST".into(), qt_test),
+    ]
+    .into()
+}
+
 /// #1390: retain the Linux QSV host check without a GPU or graphics context.
 #[test]
 fn canonical_qsv_host_is_registered() {
@@ -996,20 +1007,10 @@ fn canonical_remux_queue_runs_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     // Compare the evaluated inventory, including optional Qt Test selection.
-    let linux = build.target.contains("linux");
     let mut expected = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     expected.retain_suite("qt");
     let expected = expected
-        .select(
-            &[
-                ("OS_LINUX".into(), linux),
-                ("MSVC".into(), build.target.contains("msvc")),
-                ("HAVE_QT6_CORE".into(), true),
-                ("HAVE_QT6_WIDGETS".into(), true),
-                ("HAVE_QT6_TEST".into(), qt_test_available),
-            ]
-            .into(),
-        )
+        .select(&qt_replay_facts(&build.target, qt_test_available))
         .unwrap();
     assert!(
         graph["targets"].get("test_hotkey_edit_backtab").is_some(),

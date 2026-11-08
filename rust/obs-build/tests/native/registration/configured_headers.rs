@@ -1,6 +1,23 @@
 use super::*;
 use std::process::Command;
 
+fn configured_headers_match(native: &str, cmake: &str) -> bool {
+    native == cmake
+}
+
+#[test]
+fn configured_headers_match_with_crlf_template_input() {
+    let template = "#define ANSWER (@VALUE@ + 1)\r\n#define OTHER 7\r\n";
+    let configured = template.replace("@VALUE@", "41");
+    let lf = configured.replace("\r\n", "\n");
+    assert!(configured_headers_match(&lf, &configured));
+    assert!(configured_headers_match(&configured, &lf));
+    assert!(!configured_headers_match(
+        &lf,
+        &configured.replace("41", "40")
+    ));
+}
+
 fn checked(command: &mut Command) -> std::process::Output {
     let output = command.output().unwrap();
     assert!(
@@ -135,9 +152,11 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRE
                 .arg(root.join("cmake"))
                 .args(["--no-tests=error", "--output-on-failure"]),
         );
-        assert_eq!(
-            fs::read(root.join("native/native-tests/probe/configured/settings.h")).unwrap(),
-            fs::read(root.join("cmake/native-tests/probe/configured/settings.h")).unwrap()
-        );
+        assert!(configured_headers_match(
+            &fs::read_to_string(root.join("native/native-tests/probe/configured/settings.h"))
+                .unwrap(),
+            &fs::read_to_string(root.join("cmake/native-tests/probe/configured/settings.h"))
+                .unwrap()
+        ));
     }
 }
