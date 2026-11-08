@@ -6,6 +6,10 @@ mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "native/registration/graphics_private_runtime.rs"]
+mod graphics_private_runtime;
+
 #[path = "native/registration/canonical_display_audio_is_registered.rs"]
 mod canonical_display_audio_is_registered;
 #[path = "native/registration/canonical_display_media_is_registered.rs"]
