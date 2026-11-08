@@ -1367,6 +1367,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_core_texture_activity": {
+      "sources": [
+        "test/cmocka/test_core_texture_activity.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_coreaudio_device_rules": {
       "sources": [
         "test/cmocka/test_coreaudio_device_rules.c",
@@ -17469,6 +17484,20 @@
       "target": "test_core_setup_rules_task_steps",
       "command": [
         "${target}"
+      ]
+    },
+    "test_core_texture_activity": {
+      "target": "test_core_texture_activity",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_coreaudio_device_rules": {

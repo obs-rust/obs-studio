@@ -235,6 +235,8 @@ mod canonical_core_cmdline_getter_is_registered;
 mod canonical_core_frame_interval_is_registered;
 #[path = "native/registration/canonical_core_initialized_is_registered.rs"]
 mod canonical_core_initialized_is_registered;
+#[path = "native/registration/canonical_core_texture_activity_is_registered.rs"]
+mod canonical_core_texture_activity_is_registered;
 #[path = "native/registration/canonical_dock_proportions_is_registered.rs"]
 mod canonical_dock_proportions_is_registered;
 #[path = "native/registration/canonical_effect_lookups_is_registered.rs"]
