@@ -1,4 +1,4 @@
-//! Tier 1 mirror of test_canvas_flags_getter.c.
+//! Tier 1 mirror of test_canvas_flags_getter.c and removal cases for #4079.
 use obs_core::canvas_flags_getter::stored_flags;
 
 #[test]
