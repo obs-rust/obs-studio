@@ -238,14 +238,7 @@ else
       cp "$build.build.log" "$build.build-first-failure.log"
       uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build-first-failure.log"
       echo "== zccache status before recovery"
-      daemon_unavailable=0
-      if ! zccache status 2>&1 | head -60; then
-        echo "::warning::zccache daemon unavailable; the single recovery build will compile without caching"
-        daemon_unavailable=1
-        if [ -n "${GITHUB_OUTPUT:-}" ]; then
-          echo 'cache-healthy=false' >>"$GITHUB_OUTPUT"
-        fi
-      fi
+      timeout --kill-after=2s 5s zccache status 2>&1 | head -60 || true
       echo "== zccache stop for recovery"
       zccache stop 2>&1 | head -40 || true
       # zccache keeps the cache root in its recovery cool-down after stop and
@@ -256,6 +249,20 @@ else
         "${ZCCACHE_CACHE_DIR:-/nonexistent}"/v*/daemon.running-process.json; do
         if [ -e "$cooldown" ]; then rm -f -- "$cooldown"; fi
       done
+      # status starts a fresh daemon. Only a successful bounded re-probe
+      # permits caching; timeouts and unsupported/missing commands fail closed.
+      daemon_unavailable=0
+      if timeout --kill-after=2s 5s zccache status >"$build.zccache-reprobe.log" 2>&1; then
+        echo "== zccache re-probe: ok"
+      else
+        probe_status=$?
+        echo "== zccache re-probe: unavailable (exit $probe_status)"
+        echo "::warning::zccache daemon unavailable; the single recovery build will compile without caching"
+        daemon_unavailable=1
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+          echo 'cache-healthy=false' >>"$GITHUB_OUTPUT"
+        fi
+      fi
       (
         if [ "$daemon_unavailable" = 1 ]; then export ZCCACHE_DISABLE=1; fi
         cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0

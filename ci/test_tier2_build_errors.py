@@ -78,6 +78,17 @@ class BuildErrorsTest(unittest.TestCase):
         return recovery.replace('uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py',
                                 f'{shlex.quote(sys.executable)} "$SRC"/rust/tools/linux-validate/build_errors.py')
 
+    @staticmethod
+    def zccache_stub(directory: str, status: str) -> dict:
+        # validate.sh bounds zccache with `timeout`, which execs a program and
+        # cannot see a shell function, so the stub is an executable on PATH.
+        bin_dir = Path(directory, 'stub-bin')
+        bin_dir.mkdir()
+        stub = bin_dir / 'zccache'
+        stub.write_text('#!/usr/bin/env bash\necho "daemon diagnostic: $*"\nexit ' + status + '\n')
+        stub.chmod(0o755)
+        return {'PATH': f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+
     # A launcher that cannot reach the daemon exits 125 (run 39002068564). A
     # request the daemon accepted and then lost exits 1 with a
     # "daemon response failure" line and no compiler output: zccache's
@@ -114,14 +125,14 @@ cmake() {
   echo 'FAILED: [code=1] second.o'
   return "$retry_status"
 }
-zccache() { echo "daemon diagnostic: $*"; return "$daemon_status"; }
 '''
                 result = subprocess.run(
                     ['bash', '-euo', 'pipefail', '-c', prefix + recovery],
                     env={**os.environ, 'SRC': str(ROOT),
                          'build': directory + '/build', 'retry_status': str(retry_status),
                          'daemon_status': str(daemon_status),
-                         'GITHUB_OUTPUT': directory + '/step-output'},
+                         'GITHUB_OUTPUT': directory + '/step-output',
+                         **self.zccache_stub(directory, '"$daemon_status"')},
                     capture_output=True, text=True)
                 self.assertEqual(result.returncode, retry_status)
                 self.assertEqual(Path(directory, 'build.calls').read_text().strip(), '2')
@@ -164,13 +175,13 @@ cmake() {
   done
   return 0
 }
-zccache() { echo "daemon diagnostic: $*"; return 1; }
 '''
             result = subprocess.run(
                 ['bash', '-euo', 'pipefail', '-c', prefix + recovery],
                 env={**os.environ, 'SRC': str(ROOT), 'build': directory + '/build',
                      'ZCCACHE_CACHE_DIR': directory + '/zccache',
-                     'GITHUB_OUTPUT': directory + '/step-output'},
+                     'GITHUB_OUTPUT': directory + '/step-output',
+                     **self.zccache_stub(directory, '1')},
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertFalse((cache / 'daemon.running-process.json').exists())
@@ -188,11 +199,11 @@ cmake() {
   echo 'FAILED: [code=1] a.o'
   return 1
 }
-zccache() { echo "daemon diagnostic: $*"; }
 '''
             result = subprocess.run(
                 ['bash', '-euo', 'pipefail', '-c', prefix + self.recovery_script()],
-                env={**os.environ, 'SRC': str(ROOT), 'build': directory + '/build'},
+                env={**os.environ, 'SRC': str(ROOT), 'build': directory + '/build',
+                     **self.zccache_stub(directory, '0')},
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertEqual(Path(directory, 'build.calls').read_text().count('x'), 1)
