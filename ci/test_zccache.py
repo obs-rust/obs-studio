@@ -19,8 +19,10 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -168,6 +170,63 @@ class ZccacheTest(unittest.TestCase):
         text = (ROOT / "local-gate.toml").read_text()
         self.assertIn("Save Tier 2 zccache 💾", text)
         self.assertIn("name: Save Tier 2 zccache 💾", job("build-project.yaml", "rust-linux-tier2-build"))
+
+
+class RecoveryTest(unittest.TestCase):
+    def recovery(self, second_status: int | None):
+        # Run the production recovery block, with only its external tools faked.
+        script = (LINUX_VALIDATE / "validate.sh").read_text()
+        block = script.split('      echo "== zccache status before recovery"', 1)[1]
+        block = block.split("    else\n", 1)[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            binary = executable(directory, "fixture")
+            binary.write_text(
+                "#!/bin/bash\n"
+                'if [ "$1" = stop ]; then exit 0; fi\n'
+                'if [ ! -e "$STATE" ]; then touch "$STATE"; exit 1; fi\n'
+                + (f"exit {second_status}\n" if second_status is not None
+                   else 'exec /missing-zccache-command\n')
+            )
+            cmake = directory / "cmake"
+            cmake.write_text('#!/bin/bash\nprintf "%s\\n" "${ZCCACHE_DISABLE-unset}" >"$RESULT"\n')
+            cmake.chmod(0o755)
+            env = dict(os.environ)
+            env.pop("ZCCACHE_DISABLE", None)
+            env.update(PATH=f"{directory}:{env['PATH']}", STATE=str(directory / "state"),
+                       RESULT=str(directory / "result"), GITHUB_OUTPUT=str(directory / "output"),
+                       ZCCACHE_CACHE_DIR=str(directory / "cache"))
+            result = subprocess.run(
+                ["bash", "-c", 'set -euo pipefail\nbuild="$STATE"\ntier2_targets=(fixture)\n' + block],
+                env=env, text=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output = directory / "output"
+            return (result.stdout, (directory / "result").read_text().strip(),
+                    output.read_text() if output.exists() else "")
+
+    def test_recovery_reprobe_succeeds(self):
+        log, disabled, output = self.recovery(0)
+        self.assertEqual(disabled, "unset")
+        self.assertEqual(output, "")
+        self.assertEqual(log.count("== zccache re-probe:"), 1)
+        self.assertIn("== zccache re-probe: ok\n", log)
+
+    def test_recovery_reprobe_fails(self):
+        log, disabled, output = self.recovery(1)
+        self.assertEqual(disabled, "1")
+        self.assertEqual(output, "cache-healthy=false\n")
+        self.assertEqual(log.count("== zccache re-probe:"), 1)
+        self.assertIn("== zccache re-probe: unavailable (exit 1)", log)
+
+    def test_recovery_reprobe_errors_fail_closed(self):
+        for status in (2, 124, 127, None):
+            with self.subTest(status=status):
+                log, disabled, output = self.recovery(status)
+                self.assertEqual(disabled, "1")
+                self.assertEqual(output, "cache-healthy=false\n")
+                self.assertEqual(log.count("== zccache re-probe:"), 1)
+                self.assertIn("== zccache re-probe: unavailable (", log)
 
 
 class PortTest(unittest.TestCase):
