@@ -29,8 +29,7 @@
       ],
       "qt": {
         "moc": [
-          "frontend/dialogs/OBSFallbackWarning.hpp",
-          "frontend/utility/FallbackWarning.hpp"
+          "frontend/dialogs/OBSFallbackWarning.hpp"
         ]
       },
       "sanitizers": "address,undefined",
@@ -38,7 +37,8 @@
         "frontend/build/frontend-dialogs-obsfallbackwarning.pch.hpp",
         "frontend/build/frontend-fallback-warning.pch.hpp",
         "frontend/dialogs/OBSFallbackWarning.cpp.hpp",
-        "frontend/utility/FallbackWarning.cpp.hpp"
+        "frontend/utility/FallbackWarning.cpp.hpp",
+        "frontend/utility/FallbackWarning.hpp"
       ]
     },
     "test_plugin_manager": {
@@ -77,7 +77,6 @@
         "moc": [
           "frontend/components/InfoChip.hpp",
           "frontend/plugin-manager/InstalledPluginRow.hpp",
-          "frontend/plugin-manager/PluginManager.hpp",
           "frontend/plugin-manager/PluginManagerWindow.hpp"
         ],
         "uic": [
@@ -87,7 +86,10 @@
       "watch_inputs": [
         "test/cmocka/plugin-manager-stubs",
         "frontend/build/frontend-components-infochip.pch.hpp",
-        "frontend/build/frontend-plugin-manager.pch.hpp"
+        "frontend/build/frontend-plugin-manager-installedpluginrow.pch.hpp",
+        "frontend/build/frontend-plugin-manager-pluginmanager.pch.hpp",
+        "frontend/build/frontend-plugin-manager-pluginmanagerwindow.pch.hpp",
+        "frontend/plugin-manager/PluginManager.hpp"
       ]
     },
     "test_vst_editor_close": {
@@ -113,7 +115,7 @@
         "VST_TEST_PLUGIN_PATH": "test_vst_editor_close_plugin"
       },
       "definitions": [
-        "VST_DATA_PATH=\"${repo}/plugins/obs-vst/data\""
+        "VST_DATA_PATH=\"${source}/plugins/obs-vst/data\""
       ]
     },
     "test_pipewire_context_fail": {
@@ -157,7 +159,8 @@
         "all": [
           "OS_LINUX",
           "ENABLE_PULSEAUDIO",
-          "HAVE_PRIVATE_DAEMON_TEST_OWNER"
+          "HAVE_PRIVATE_DAEMON_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
         ]
       },
       "libraries": [
@@ -222,7 +225,7 @@
         ]
       },
       "command": [
-        "${exe}"
+        "${target}"
       ],
       "environment": {
         "ASAN_OPTIONS": "detect_leaks=0"
@@ -239,7 +242,7 @@
         ]
       },
       "command": [
-        "${exe}"
+        "${target}"
       ]
     },
     "test_vst_editor_close": {
@@ -254,7 +257,7 @@
         ]
       },
       "command": [
-        "${exe}"
+        "${target}"
       ],
       "timeout_seconds": 60
     },
@@ -272,8 +275,8 @@
         "uv",
         "run",
         "--script",
-        "${repo}/test/cmocka/test_pipewire_context_fail.py",
-        "${exe}"
+        "${source}/test/cmocka/test_pipewire_context_fail.py",
+        "${target}"
       ],
       "timeout_seconds": 60
     },
@@ -284,15 +287,16 @@
         "all": [
           "OS_LINUX",
           "ENABLE_PULSEAUDIO",
-          "HAVE_PRIVATE_DAEMON_TEST_OWNER"
+          "HAVE_PRIVATE_DAEMON_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
         ]
       },
       "command": [
         "uv",
         "run",
         "--script",
-        "${repo}/test/cmocka/test_pulse_monitor_device.py",
-        "${exe}"
+        "${source}/test/cmocka/test_pulse_monitor_device.py",
+        "${target}"
       ],
       "timeout_seconds": 60,
       "skip_return_code": 77
@@ -311,8 +315,8 @@
         "uv",
         "run",
         "--script",
-        "${repo}/test/cmocka/test_pulse_monitor_device.py",
-        "${exe}"
+        "${source}/test/cmocka/test_pulse_monitor_device.py",
+        "${target}"
       ],
       "timeout_seconds": 60,
       "skip_return_code": 77

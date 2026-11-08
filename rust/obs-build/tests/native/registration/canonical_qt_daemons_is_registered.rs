@@ -1,8 +1,12 @@
 use super::*;
 use obs_build::validation::graph::Graph;
 const CASES: [&str; 6] = [
-    "test_fallback_warning_queue", "test_plugin_manager", "test_vst_editor_close",
-    "test_pipewire_context_fail", "test_pulse_monitor_device", "test_pulse_two_sources",
+    "test_fallback_warning_queue",
+    "test_plugin_manager",
+    "test_vst_editor_close",
+    "test_pipewire_context_fail",
+    "test_pulse_monitor_device",
+    "test_pulse_two_sources",
 ];
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("qt_daemons_expected.json")).unwrap()
@@ -30,21 +34,45 @@ fn canonical_qt_daemons_is_registered() {
 #[test]
 fn canonical_qt_daemons_guards() {
     let graph = Graph::parse(&expected().to_string()).unwrap();
-    let owners = ["HAVE_QT_WIDGETS_TEST_OWNER", "HAVE_QT_WIDGETS_TESTLIB_OWNER", "HAVE_PLUGIN_MANAGER_TEST_OWNER", "HAVE_VST_EDITOR_TEST_OWNER", "HAVE_PRIVATE_DAEMON_TEST_OWNER"];
+    let owners = [
+        "HAVE_QT_WIDGETS_TEST_OWNER",
+        "HAVE_QT_WIDGETS_TESTLIB_OWNER",
+        "HAVE_PLUGIN_MANAGER_TEST_OWNER",
+        "HAVE_VST_EDITOR_TEST_OWNER",
+        "HAVE_PRIVATE_DAEMON_TEST_OWNER",
+    ];
     for linux in [false, true] {
         for disabled in 0..=owners.len() {
             let mut facts = std::collections::BTreeMap::from([
-                ("OS_LINUX".into(), linux), ("HAVE_OBS_PIPEWIRE".into(), true),
-                ("ENABLE_PULSEAUDIO".into(), true), ("HAVE_OBS_PULSEAUDIO".into(), true), ("HAVE_X11_DISPLAY".into(), true),
+                ("OS_LINUX".into(), linux),
+                ("HAVE_OBS_PIPEWIRE".into(), true),
+                ("ENABLE_PULSEAUDIO".into(), true),
+                ("HAVE_OBS_PULSEAUDIO".into(), true),
+                ("HAVE_X11_DISPLAY".into(), true),
             ]);
             for (index, name) in owners.iter().enumerate() {
-                if index != disabled { facts.insert((*name).into(), true); }
+                if index != disabled {
+                    facts.insert((*name).into(), true);
+                }
             }
             let selected = graph.select(&facts).unwrap();
             for (name, record) in expected()["targets"].as_object().unwrap() {
-                let enabled = linux && !record["requires"]["all"].as_array().unwrap().iter().any(|item| disabled < owners.len() && item == owners[disabled]);
-                assert_eq!(selected.targets.contains_key(name.as_str()), enabled, "{linux}/{disabled}/{name}");
-                assert_eq!(selected.tests.contains_key(name.as_str()), enabled, "{name}");
+                let enabled = linux
+                    && !record["requires"]["all"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|item| disabled < owners.len() && item == owners[disabled]);
+                assert_eq!(
+                    selected.targets.contains_key(name.as_str()),
+                    enabled,
+                    "{linux}/{disabled}/{name}"
+                );
+                assert_eq!(
+                    selected.tests.contains_key(name.as_str()),
+                    enabled,
+                    "{name}"
+                );
             }
         }
     }
@@ -112,6 +140,52 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
         assert!(result.status.success());
         let inventory: serde_json::Value = serde_json::from_slice(&result.stdout).unwrap();
         assert!(inventory["tests"].as_array().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn canonical_qt_daemons_frontend_owner_is_optional() {
+    let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    fs::write(directory.path().join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
+project(frontend-owner-contract NONE)
+set(OS_LINUX TRUE)
+add_library(Qt6::Widgets INTERFACE IMPORTED)
+add_library(Qt6::Test INTERFACE IMPORTED)
+if(WITH_RUST)
+  add_library(obs_frontend-static INTERFACE IMPORTED)
+endif()
+include("{root}/test/cmocka/tests.d/test_fallback_warning_queue.cmake")
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/owner.txt" CONTENT "$<TARGET_GENEX_EVAL:native-fallback-warning-frontend,$<TARGET_PROPERTY:native-fallback-warning-frontend,INTERFACE_COMPILE_DEFINITIONS>>\n$<TARGET_GENEX_EVAL:native-fallback-warning-frontend,$<TARGET_PROPERTY:native-fallback-warning-frontend,INTERFACE_LINK_LIBRARIES>>")
+"#, root=root.to_string_lossy().replace('\\', "/"))).unwrap();
+    for enabled in [false, true] {
+        let output = directory
+            .path()
+            .join(if enabled { "rust" } else { "rollback" });
+        let result = std::process::Command::new("cmake")
+            .arg("-S")
+            .arg(directory.path())
+            .arg("-B")
+            .arg(&output)
+            .arg(format!(
+                "-DWITH_RUST={}",
+                if enabled { "ON" } else { "OFF" }
+            ))
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(output.join("owner.txt")).unwrap().trim(),
+            if enabled {
+                "OBS_FRONTEND_RUST\nobs_frontend-static"
+            } else {
+                ""
+            }
+        );
     }
 }
 

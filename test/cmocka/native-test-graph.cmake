@@ -60,7 +60,16 @@ function(_obs_test_graph_requirement output json)
     # Wayland and the X11 display declaration may be absent on other hosts.
     # SDK facts stay explicitly declared; unknown names (including typos) fail.
     set(platform_facts UNIX APPLE WIN32 MSVC)
-    set(host_options ENABLE_WAYLAND HAVE_X11_DISPLAY HAVE_QT_WIDGETS_TEST_OWNER HAVE_QT_WIDGETS_TESTLIB_OWNER)
+    set(
+      host_options
+      ENABLE_WAYLAND
+      HAVE_X11_DISPLAY
+      HAVE_QT_WIDGETS_TEST_OWNER
+      HAVE_QT_WIDGETS_TESTLIB_OWNER
+      HAVE_PLUGIN_MANAGER_TEST_OWNER
+      HAVE_VST_EDITOR_TEST_OWNER
+      HAVE_PRIVATE_DAEMON_TEST_OWNER
+    )
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
     endif()
@@ -255,6 +264,27 @@ function(obs_native_test_graph path root)
     set(HAVE_QT_WIDGETS_TEST_OWNER TRUE)
     if(TARGET Qt6::Test)
       set(HAVE_QT_WIDGETS_TESTLIB_OWNER TRUE)
+    endif()
+  endif()
+  set(HAVE_PLUGIN_MANAGER_TEST_OWNER FALSE)
+  if(HAVE_QT_WIDGETS_TEST_OWNER AND TARGET Qt6::Svg AND TARGET OBS::idian AND TARGET nlohmann_json::nlohmann_json)
+    set(HAVE_PLUGIN_MANAGER_TEST_OWNER TRUE)
+  endif()
+  set(HAVE_VST_EDITOR_TEST_OWNER FALSE)
+  if(HAVE_QT_WIDGETS_TEST_OWNER AND TARGET test_vst_editor_close_module AND TARGET test_vst_editor_close_plugin)
+    set(HAVE_VST_EDITOR_TEST_OWNER TRUE)
+  endif()
+  if(NOT DEFINED HAVE_PRIVATE_DAEMON_TEST_OWNER)
+    set(HAVE_PRIVATE_DAEMON_TEST_OWNER FALSE)
+    if(OS_LINUX)
+      find_program(_graph_pipewire pipewire)
+      find_program(_graph_wireplumber wireplumber)
+      find_program(_graph_pipewire_pulse pipewire-pulse)
+      find_program(_graph_pactl pactl)
+      find_program(_graph_dbus_run_session dbus-run-session)
+      if(_graph_pipewire AND _graph_wireplumber AND _graph_pipewire_pulse AND _graph_pactl AND _graph_dbus_run_session)
+        set(HAVE_PRIVATE_DAEMON_TEST_OWNER TRUE)
+      endif()
     endif()
   endif()
   set(HAVE_STARTUP_X11 FALSE)

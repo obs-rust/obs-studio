@@ -43,6 +43,9 @@ impl Requirement {
                         "HAVE_X11_DISPLAY"
                             | "HAVE_QT_WIDGETS_TEST_OWNER"
                             | "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+                            | "HAVE_PLUGIN_MANAGER_TEST_OWNER"
+                            | "HAVE_VST_EDITOR_TEST_OWNER"
+                            | "HAVE_PRIVATE_DAEMON_TEST_OWNER"
                     )
                     .then_some(false)
                 })
