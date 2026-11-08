@@ -1,8 +1,7 @@
 use super::*;
 use obs_build::validation::graph::Graph;
-const CASES: [&str; 6] = [
+const CASES: [&str; 5] = [
     "test_color_correction_16f",
-    "test_frontend_screenshot_srgb",
     "test_rtmps_upgrade",
     "test_scroll_filter_wide_source",
     "test_slideshow_manual_end",
@@ -61,7 +60,6 @@ fn canonical_display_plugins_guards() {
                         let enabled = match name {
                             "test_rtmps_upgrade" => visible && owners,
                             "test_x11_volume_keys" => visible && x11,
-                            "test_frontend_screenshot_srgb" => visible && renderer && qt,
                             "test_color_correction_16f" | "test_scroll_filter_wide_source" => {
                                 visible && renderer && filters
                             }

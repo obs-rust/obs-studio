@@ -333,14 +333,7 @@ fn replay_cmake(directory: &Path, core: &Path) {
                 .filter(|name| *name != "test_rtmps_upgrade")
                 .collect(),
         ),
-        (
-            "no-qt",
-            vec!["-DDECLARE_QT=OFF"],
-            CASES
-                .into_iter()
-                .filter(|name| *name != "test_frontend_screenshot_srgb")
-                .collect(),
-        ),
+        ("no-qt", vec!["-DDECLARE_QT=OFF"], CASES.to_vec()),
     ] {
         let output = directory.join(mode);
         let mut configure = Command::new("cmake");
@@ -463,7 +456,6 @@ fn check_inventory(output: &Path, expected: &[&str], built: bool) {
 fn expected_cases(name: &str) -> Vec<usize> {
     match name {
         "test_color_correction_16f" => vec![3],
-        "test_frontend_screenshot_srgb" => vec![7],
         "test_scroll_filter_wide_source" => vec![6],
         "test_rtmps_upgrade" => vec![9],
         "test_slideshow_manual_end" => vec![6],

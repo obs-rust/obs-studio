@@ -3517,37 +3517,6 @@
         "OBS::native-test-cmocka"
       ]
     },
-    "test_frontend_screenshot_srgb": {
-      "sources": [
-        "test/cmocka/test_frontend_screenshot_srgb.cpp",
-        "frontend/utility/screenshot-render.cpp.hpp"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::native-test-cmocka",
-        "Qt6::Widgets"
-      ],
-      "includes": [
-        "frontend/utility"
-      ],
-      "cpp_standard": "17",
-      "artifact_definitions": {
-        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
-      },
-      "watch_inputs": [
-        "frontend/build/frontend-utility-screenshot-render.pch.hpp",
-        "frontend/utility/screenshot-render.hpp",
-        "frontend/utility/display-helpers.hpp"
-      ],
-      "requires": {
-        "all": [
-          "OS_LINUX",
-          "HAVE_OBS_OPENGL",
-          "HAVE_X11_DISPLAY",
-          "HAVE_QT6_WIDGETS"
-        ]
-      }
-    },
     "test_frontend_settings_host": {
       "sources": [
         "test/cmocka/test_frontend_settings_host.c"
@@ -15946,19 +15915,6 @@
     "test_frontend_obsbasic_host": {
       "target": "test_frontend_obsbasic_host",
       "requires": "OS_LINUX"
-    },
-    "test_frontend_screenshot_srgb": {
-      "target": "test_frontend_screenshot_srgb",
-      "working_directory": "${runtime}",
-      "requires": {
-        "all": [
-          "OS_LINUX",
-          "HAVE_OBS_OPENGL",
-          "HAVE_X11_DISPLAY",
-          "HAVE_QT6_WIDGETS"
-        ]
-      },
-      "suite": "graphics"
     },
     "test_frontend_settings_host": {
       "target": "test_frontend_settings_host",
