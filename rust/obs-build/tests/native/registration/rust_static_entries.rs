@@ -333,14 +333,13 @@ fn rust_static_consumers_preserve_private_adapter_link_support() {
         } else {
             None
         };
-        if let Some(support) = support {
-            if !target["sources"]
+        if let Some(support) = support
+            && !target["sources"]
                 .as_array()
                 .unwrap()
                 .contains(&json!(support))
-            {
-                missing.push(format!("{name}: {support}"));
-            }
+        {
+            missing.push(format!("{name}: {support}"));
         }
     }
     assert!(
