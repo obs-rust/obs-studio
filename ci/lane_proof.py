@@ -50,7 +50,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 # LANE_PROOF_REPO: another checkout to key (ci/test_lane_proof.py uses a
@@ -220,20 +220,14 @@ def miss_diagnostic(
             raise ValueError("no credentials or queue PR")
         number = int(match[1])
         now = time.time() if now is None else now
-        since = datetime.fromtimestamp(
-            now - MAX_AGE_HOURS * 3600, timezone.utc
-        ).strftime("%Y-%m-%dT%H:%M:%SZ")
-        runs = fetch(
-            f"/repos/{repo}/actions/workflows/ci.yml/runs?event=pull_request&per_page=100&created=%3E%3D{since}",
-            token,
-        )
-        candidates = {
-            run["id"]: (run, pr["base"]["sha"])
-            for run in runs["workflow_runs"]
-            if trusted(run, repo, now) is None
-            for pr in run["pull_requests"]
-            if pr["number"] == number and pr["head"]["ref"] == run["head_branch"]
-        }
+        pr = fetch(f"/repos/{repo}/pulls/{number}", token)
+        branch = pr["head"]["ref"]
+        repository_id = pr["base"]["repo"]["id"]
+        if pr["head"]["repo"]["id"] != repository_id:
+            raise ValueError("fork PR cannot publish a repository proof")
+        # The artifacts API ignores head_branch; filter its run metadata locally.
+        # This is diagnostic evidence only: lookup() still authenticates the
+        # workflow/event/age before a proof can ever change hit.
         listing = fetch(f"/repos/{repo}/actions/artifacts?per_page=100", token)
         prefix = artifact_name(lane_id, "")
         proofs = []
@@ -243,7 +237,14 @@ def miss_diagnostic(
                 not art.get("expired")
                 and name.startswith(prefix)
                 and re.fullmatch(r"[0-9a-f]{64}", name[len(prefix) :])
-                and art["workflow_run"]["id"] in candidates
+                and art["workflow_run"]["head_branch"] == branch
+                and art["workflow_run"]["repository_id"] == repository_id
+                and art["workflow_run"]["head_repository_id"] == repository_id
+                and now
+                - datetime.fromisoformat(
+                    art["created_at"].replace("Z", "+00:00")
+                ).timestamp()
+                <= MAX_AGE_HOURS * 3600
             ):
                 proofs.append(art)
         if proofs:
@@ -251,15 +252,10 @@ def miss_diagnostic(
             proof_key = art["name"][len(prefix) :]
             nearest = proof_key[:12]
             run_id = str(art["workflow_run"]["id"])
-            pr_base = candidates[int(run_id)][1]
+            pr_base = pr["base"]["sha"]
             # A matching key with no usable proof is not evidence of stale inputs.
             verdict = "stale-base" if proof_key != key else "unknown"
-            # The newest artifact must be in the returned run window as well.
-            if runs["total_count"] > len(runs["workflow_runs"]):
-                verdict = "unknown"
-        elif runs["total_count"] <= len(runs["workflow_runs"]) and listing[
-            "total_count"
-        ] <= len(listing["artifacts"]):
+        elif listing["total_count"] <= len(listing["artifacts"]):
             verdict = "no-pr-proof"
     except Exception:
         verdict = "unknown"
