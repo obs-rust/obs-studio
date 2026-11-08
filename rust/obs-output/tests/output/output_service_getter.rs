@@ -5,7 +5,10 @@ use obs_output::output_service_getter::service;
 fn borrowed_service() {
     for value in [None, Some(7_u32), Some(9_u32)] {
         for _ in 0..2 {
-            assert_eq!(service(Some(value), |_| panic!("valid output must not log")), value);
+            assert_eq!(
+                service(Some(value), |_| panic!("valid output must not log")),
+                value
+            );
         }
     }
 }

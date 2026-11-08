@@ -2,6 +2,11 @@
 use core::ffi::CStr;
 
 pub fn service<T: Copy + Default>(output: Option<T>, log: impl FnOnce(&'static CStr)) -> T {
-    let _ = (output, log);
-    todo!("port obs_output_get_service")
+    match output {
+        Some(service) => service,
+        None => {
+            log(c"obs_output_get_service");
+            T::default()
+        }
+    }
 }
