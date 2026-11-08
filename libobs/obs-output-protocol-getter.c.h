@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 static inline bool flag_service(const struct obs_output *output)
 {

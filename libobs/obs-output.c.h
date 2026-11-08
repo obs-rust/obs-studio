@@ -102,6 +102,11 @@ static inline bool log_flag_audio(const struct obs_output *output, const char *f
 	return ret;
 }
 
+static inline bool flag_service(const struct obs_output *output)
+{
+	return (output->info.flags & OBS_OUTPUT_SERVICE) != 0;
+}
+
 static inline bool log_flag_service(const struct obs_output *output, const char *func_name)
 {
 	bool ret = flag_service(output);

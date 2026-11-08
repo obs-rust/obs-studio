@@ -33,6 +33,7 @@ pub mod output_interleave;
 pub mod output_mixer_getters;
 pub mod output_pause;
 pub mod output_pause_queries;
+pub mod output_protocol_getter;
 pub mod output_protocols;
 pub mod output_raw_audio;
 pub mod output_raw_audio_trim;

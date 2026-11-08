@@ -7,10 +7,16 @@ fn borrowed_protocols() {
     let flags = [0, 8, 1, u32::MAX, u32::MAX & !8];
     for value in values {
         for flag in flags {
-            let output = Some(Protocols { flags: flag, protocols: value });
+            let output = Some(Protocols {
+                flags: flag,
+                protocols: value,
+            });
             let expected = if flag & 8 != 0 { value } else { None };
             for _ in 0..2 {
-                assert_eq!(protocols(output, |_| panic!("valid output must not log")), expected);
+                assert_eq!(
+                    protocols(output, |_| panic!("valid output must not log")),
+                    expected
+                );
             }
         }
     }
@@ -19,6 +25,9 @@ fn borrowed_protocols() {
 #[test]
 fn null_output_logs_getter_name() {
     let mut logs = Vec::new();
-    assert_eq!(protocols::<Option<&[u8]>>(None, |name| logs.push(name)), None);
+    assert_eq!(
+        protocols::<Option<&[u8]>>(None, |name| logs.push(name)),
+        None
+    );
     assert_eq!(logs, [c"obs_output_get_protocols"]);
 }
