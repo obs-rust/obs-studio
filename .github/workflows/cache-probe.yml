@@ -1,0 +1,91 @@
+name: Cache probe
+
+# One-off measurement of the cache paths this repo actually has. It exists to
+# answer three questions with numbers instead of geography:
+#
+#   1. how fast is the Actions cache *service* when driven directly, with the
+#      blob streamed through zstd+tar instead of written to disk first;
+#   2. how fast is the same payload through the S3-compatible bucket the
+#      workflows already configure;
+#   3. which one deserves to hold a hot cook layer.
+#
+# It is dispatch-only and scoped to a per-run key, so it never reads, evicts or
+# overwrites a real cache entry.
+
+on:
+  workflow_dispatch:
+    inputs:
+      size_mib:
+        description: "Raw payload size in MiB before compression"
+        required: false
+        default: "512"
+      skip_gha:
+        description: "Skip the Actions cache service phase"
+        type: boolean
+        required: false
+        default: false
+      skip_s3:
+        description: "Skip the S3 phase"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Measure cache paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Ensure zstd and tar
+        run: |
+          command -v zstd >/dev/null || sudo apt-get update -qq && sudo apt-get install -y -qq zstd
+          zstd --version
+          tar --version | head -1
+
+      - name: Probe
+        env:
+          # Same bucket/endpoint the workflows already use; the only credentials
+          # needed are ones this repo already holds.
+          PROBE_S3_BUCKET: forge-ci
+          PROBE_S3_ENDPOINT: nyc3.digitaloceanspaces.com
+          PROBE_S3_REGION: nyc3
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+        run: |
+          uv run --no-project ci/cache_probe.py \
+            --size-mib "${{ inputs.size_mib }}" \
+            ${{ inputs.skip_gha && '--skip-gha' || '' }} \
+            ${{ inputs.skip_s3 && '--skip-s3' || '' }} \
+            --json-out probe.json
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Cache probe"
+            echo
+            echo '```json'
+            cat probe.json 2>/dev/null || echo '{"error":"probe did not write a report"}'
+            echo '```'
+            echo
+            echo "Note: \`gha-stream-extract\` is the direct-service path (query -> signed"
+            echo "archiveLocation -> zstd -d | tar -x, nothing written to disk); \`s3-put\`"
+            echo "and \`s3-get\` are the same archive against the configured bucket."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cache-probe-report
+          path: probe.json
+          if-no-files-found: warn

@@ -117,6 +117,25 @@ class NativeB2Portability(unittest.TestCase):
                     with self.subTest(target=name):
                         self.assertIn("OBS::libobs", libraries)
         self.assertIn("test_scene_item_names_steps_rust", legacy)
+    def test_source_boolean_queries_supply_standalone_field_adapter(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        consumers = [name for name, target in graph["targets"].items()
+                     if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
+        self.assertEqual(len(consumers), 23)
+        for name in consumers:
+            with self.subTest(target=name):
+                target = graph["targets"][name]
+                self.assertIn("test/cmocka/source-boolean-query-link-stubs.c", target["sources"])
+                self.assertIn("test/cmocka/source-getter-log-link-stub.c", target["sources"])
+                self.assertIn("OBS::libobs", target["header_libraries"])
+                self.assertIn("SIMDe::SIMDe", target["header_libraries"])
+                self.assertIn({"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"},
+                              target["libraries"])
+        legacy = (ROOT / "test/cmocka/tests.d/source_boolean_query_link_support.cmake").read_text()
+        self.assertIn("source-boolean-query-link-stubs.c", legacy)
+        self.assertIn("source-getter-log-link-stub.c", legacy)
+        self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
+
     def test_deinterlace_link_support_imports_windows_pthreads(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}

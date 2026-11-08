@@ -24,7 +24,9 @@ from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location("lane_proof", ROOT / "ci" / "lane_proof.py")
+spec = importlib.util.spec_from_file_location(
+    "lane_proof", ROOT / "ci" / "lane_proof.py"
+)
 lane_proof = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lane_proof)
 
@@ -32,10 +34,22 @@ REPO = "obs-rust/obs-studio"
 NOW = 1_800_000_000.0
 
 
-def run(event="merge_group", head=REPO, path=lane_proof.TRUSTED_WORKFLOW, age_h=1.0, run_id=7):
+def run(
+    event="merge_group",
+    head=REPO,
+    path=lane_proof.TRUSTED_WORKFLOW,
+    age_h=1.0,
+    run_id=7,
+):
     created = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(NOW - age_h * 3600))
-    return {"id": run_id, "event": event, "path": path, "created_at": created,
-            "head_repository": {"full_name": head}, "head_branch": "b"}
+    return {
+        "id": run_id,
+        "event": event,
+        "path": path,
+        "created_at": created,
+        "head_repository": {"full_name": head},
+        "head_branch": "b",
+    }
 
 
 class Trust(unittest.TestCase):
@@ -63,8 +77,12 @@ class Publication(unittest.TestCase):
     def setUp(self):
         self.caller = (ROOT / ".github/workflows/ci.yml").read_text()
         self.build = (ROOT / ".github/workflows/build-project.yaml").read_text()
-        self.publisher = self.caller.split("  tier2-lane-proof:\n", 1)[1].split("\n  cache-janitor:", 1)[0]
-        self.condition = self.publisher.split("    if:", 1)[1].split("    runs-on:", 1)[0]
+        self.publisher = self.caller.split("  tier2-lane-proof:\n", 1)[1].split(
+            "\n  cache-janitor:", 1
+        )[0]
+        self.condition = self.publisher.split("    if:", 1)[1].split("    runs-on:", 1)[
+            0
+        ]
 
     def test_optional_skips_do_not_apply_implicit_success(self):
         self.assertIn("!cancelled()", self.condition)
@@ -83,14 +101,25 @@ class Publication(unittest.TestCase):
             self.assertIn(guard, self.condition)
 
     def test_output_chain_still_comes_from_the_build_that_ran(self):
-        self.assertIn("value: ${{ jobs.rust-linux-tier2-build.outputs.tier2-linux-proof }}", self.build)
-        build = self.build.split("  rust-linux-tier2-build:\n", 1)[1].split("    steps:", 1)[0]
-        self.assertIn("tier2-linux-proof: ${{ needs.ci-mode.outputs.tier2-linux_name }}", build)
+        self.assertIn(
+            "value: ${{ jobs.rust-linux-tier2-build.outputs.tier2-linux-proof }}",
+            self.build,
+        )
+        build = self.build.split("  rust-linux-tier2-build:\n", 1)[1].split(
+            "    steps:", 1
+        )[0]
+        self.assertIn(
+            "tier2-linux-proof: ${{ needs.ci-mode.outputs.tier2-linux_name }}", build
+        )
         self.assertIn("needs.ci-mode.outputs.tier2-linux_hit != 'true'", build)
-        self.assertIn("name: ${{ needs.build-project.outputs.tier2-linux-proof }}", self.publisher)
+        self.assertIn(
+            "name: ${{ needs.build-project.outputs.tier2-linux-proof }}", self.publisher
+        )
 
     def test_gate_logs_the_actual_reusable_workflow_outputs(self):
-        gate = self.caller.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:\n", 1)[0]
+        gate = self.caller.split("  ci-gate:\n", 1)[1].split(
+            "  tier2-lane-proof:\n", 1
+        )[0]
         self.assertIn("${{ toJSON(needs.build-project) }}", gate)
         self.assertIn('echo "$BUILD_PROJECT"', gate)
 
@@ -104,21 +133,31 @@ class Lookup(unittest.TestCase):
             if isinstance(runs[run_id], Exception):
                 raise runs[run_id]
             return runs[run_id]
+
         return fetch
 
     def art(self, run_id, key="k", expired=False):
-        return {"name": lane_proof.artifact_name("rust-test", key), "expired": expired,
-                "workflow_run": {"id": run_id}}
+        return {
+            "name": lane_proof.artifact_name("rust-test", key),
+            "expired": expired,
+            "workflow_run": {"id": run_id},
+        }
 
     def test_trusted_proof_is_a_hit(self):
         fetch = self.fetcher([self.art(1)], {1: run(run_id=1)})
-        hit, reason, _ = lane_proof.lookup("rust-test", "k", REPO, "t", fetch=fetch, now=NOW)
+        hit, reason, _ = lane_proof.lookup(
+            "rust-test", "k", REPO, "t", fetch=fetch, now=NOW
+        )
         self.assertTrue(hit, reason)
 
     def test_untrusted_proofs_miss_with_reasons(self):
-        fetch = self.fetcher([self.art(1), self.art(2)],
-                             {1: run("pull_request", head="x/fork", run_id=1), 2: run("push", run_id=2)})
-        hit, reason, _ = lane_proof.lookup("rust-test", "k", REPO, "t", fetch=fetch, now=NOW)
+        fetch = self.fetcher(
+            [self.art(1), self.art(2)],
+            {1: run("pull_request", head="x/fork", run_id=1), 2: run("push", run_id=2)},
+        )
+        hit, reason, _ = lane_proof.lookup(
+            "rust-test", "k", REPO, "t", fetch=fetch, now=NOW
+        )
         self.assertFalse(hit)
         self.assertIn("fork", reason)
 
@@ -131,42 +170,89 @@ class Lookup(unittest.TestCase):
     def test_api_errors_fail_closed(self):
         def broken(path, token):
             raise urllib.error.URLError("down")
-        self.assertFalse(lane_proof.lookup("rust-test", "k", REPO, "t", fetch=broken, now=NOW)[0])
+
+        self.assertFalse(
+            lane_proof.lookup("rust-test", "k", REPO, "t", fetch=broken, now=NOW)[0]
+        )
         fetch = self.fetcher([self.art(1)], {1: urllib.error.URLError("down")})
-        self.assertFalse(lane_proof.lookup("rust-test", "k", REPO, "t", fetch=fetch, now=NOW)[0])
+        self.assertFalse(
+            lane_proof.lookup("rust-test", "k", REPO, "t", fetch=fetch, now=NOW)[0]
+        )
 
     def test_no_proof(self):
         fetch = self.fetcher([], {})
-        self.assertEqual(lane_proof.lookup("rust-test", "k", REPO, "t", fetch=fetch, now=NOW),
-                         (False, "no proof for this key", None))
+        self.assertEqual(
+            lane_proof.lookup("rust-test", "k", REPO, "t", fetch=fetch, now=NOW),
+            (False, "no proof for this key", None),
+        )
 
 
 class Check(unittest.TestCase):
-    def check(self, key="00000001" + "a" * 56, *, summary=True, fetch=None, summary_path_is_directory=False, **patches):
+    def check(
+        self,
+        key="00000001" + "a" * 56,
+        *,
+        summary=True,
+        fetch=None,
+        summary_path_is_directory=False,
+        queue=False,
+        **patches,
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "summary"
             if summary_path_is_directory:
                 path.mkdir()
             env = {"GITHUB_STEP_SUMMARY": str(path)} if summary else {}
+            if queue:
+                env.update(
+                    GITHUB_EVENT_NAME="merge_group",
+                    GITHUB_REF="refs/heads/gh-readonly-queue/master/pr-42-abc",
+                )
             stdout = io.StringIO()
-            artifacts = [{"name": lane_proof.artifact_name("rust-test", key),
-                          "workflow_run": {"id": 7}}]
+            artifacts = [
+                {
+                    "name": lane_proof.artifact_name("rust-test", key),
+                    "workflow_run": {"id": 7},
+                }
+            ]
             fetch = fetch or Lookup().fetcher(artifacts, {7: run()})
             # Exercise the real ledger validation, offline and without a token.
             lookup = lane_proof.lookup
             with contextlib.ExitStack() as stack:
                 stack.enter_context(patch.dict(os.environ, env, clear=True))
-                stack.enter_context(patch.object(lane_proof, "touches_surface", return_value=[]))
-                stack.enter_context(patch.object(lane_proof, "lane_key", return_value=key))
-                stack.enter_context(patch.object(lane_proof, "lookup", side_effect=lambda *a: lookup(
-                    *a, fetch=fetch, now=NOW)))
+                stack.enter_context(
+                    patch.object(lane_proof, "touches_surface", return_value=[])
+                )
+                stack.enter_context(
+                    patch.object(lane_proof, "lane_key", return_value=key)
+                )
+                stack.enter_context(
+                    patch.object(
+                        lane_proof,
+                        "lookup",
+                        side_effect=lambda *a: lookup(*a, fetch=fetch, now=NOW),
+                    )
+                )
                 for name, options in patches.items():
                     stack.enter_context(patch.object(lane_proof, name, **options))
                 with contextlib.redirect_stdout(stdout):
-                    self.assertEqual(lane_proof.main([
-                        "check", "--lane", "rust-test", "--base", "base", "--repo", REPO]), 0)
-            return dict(line.split("=", 1) for line in stdout.getvalue().splitlines()), (
-                path.read_text() if path.is_file() else "")
+                    self.assertEqual(
+                        lane_proof.main(
+                            [
+                                "check",
+                                "--lane",
+                                "rust-test",
+                                "--base",
+                                "base",
+                                "--repo",
+                                REPO,
+                            ]
+                        ),
+                        0,
+                    )
+            return dict(
+                line.split("=", 1) for line in stdout.getvalue().splitlines()
+            ), (path.read_text() if path.is_file() else "")
 
     def test_sampled_valid_proof_runs_lane_and_records_proof(self):
         key = "0000000a" + "a" * 56
@@ -174,7 +260,9 @@ class Check(unittest.TestCase):
             out, summary = self.check(key)
             self.assertEqual(out["hit"], "false")
             self.assertEqual(out["reason"], "audit sample")
-            self.assertIn(f"lane=rust-test key={key} hit=false reason=audit sample", summary)
+            self.assertIn(
+                f"lane=rust-test key={key} hit=false reason=audit sample", summary
+            )
             self.assertIn("workflow_run=7", summary)
             self.assertIn("audit failure proves a wrong skip", summary)
             self.assertEqual(len(summary.splitlines()), 1)
@@ -182,9 +270,13 @@ class Check(unittest.TestCase):
     def test_non_sampled_valid_proof_still_hits(self):
         out, summary = self.check()
         self.assertEqual(out["hit"], "true")
-        self.assertEqual(summary, (
-            f"- lane=rust-test key={out['key']} hit=true "
-            f"reason=proof from run 7 (merge_group, b) workflow_run=7 artifact={out['name']}\n"))
+        self.assertEqual(
+            summary,
+            (
+                f"- lane=rust-test key={out['key']} hit=true "
+                f"reason=proof from run 7 (merge_group, b) workflow_run=7 artifact={out['name']}\n"
+            ),
+        )
 
     def test_erroring_ledger_fails_closed_and_writes_summary(self):
         out, summary = self.check(lookup={"side_effect": RuntimeError("ledger down")})
@@ -196,10 +288,12 @@ class Check(unittest.TestCase):
 
     def test_api_failure_and_malformed_ledger_write_miss_summary(self):
         for result in (urllib.error.URLError("down"), {"artifacts": None}):
+
             def fetch(path, token):
                 if isinstance(result, Exception):
                     raise result
                 return result
+
             with self.subTest(result=result):
                 out, summary = self.check(fetch=fetch)
                 self.assertEqual(out["hit"], "false")
@@ -212,9 +306,19 @@ class Check(unittest.TestCase):
             with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": str(path)}, clear=True):
                 with contextlib.redirect_stdout(io.StringIO()):
                     for _ in range(2):
-                        lane_proof.output(summary_lane="rust-test", key="", hit="false", reason="down\nretry")
-            self.assertEqual(path.read_text().splitlines(), [
-                "- lane=rust-test key=none hit=false reason=down retry workflow_run=none artifact=none"] * 2)
+                        lane_proof.output(
+                            summary_lane="rust-test",
+                            key="",
+                            hit="false",
+                            reason="down\nretry",
+                        )
+            self.assertEqual(
+                path.read_text().splitlines(),
+                [
+                    "- lane=rust-test key=none hit=false reason=down retry workflow_run=none artifact=none"
+                ]
+                * 2,
+            )
 
     def test_summary_unset_does_not_crash(self):
         out, summary = self.check(summary=False)
@@ -232,13 +336,121 @@ class Check(unittest.TestCase):
         self.assertIn("workflow_run=none", summary)
 
     def test_surface_and_key_errors_have_summary(self):
-        for patches in ({"touches_surface": {"return_value": ["ci/lane_proof.py"]}},
-                        {"lane_key": {"side_effect": LookupError("no config")}},
-                        {"touches_surface": {"side_effect": RuntimeError("git down")}}):
+        for patches in (
+            {"touches_surface": {"return_value": ["ci/lane_proof.py"]}},
+            {"lane_key": {"side_effect": LookupError("no config")}},
+            {"touches_surface": {"side_effect": RuntimeError("git down")}},
+        ):
             with self.subTest(patches=patches):
                 out, summary = self.check(**patches)
                 self.assertEqual(out["hit"], "false")
                 self.assertIn("lane=rust-test key=none hit=false", summary)
+
+
+class MissDiagnostic(unittest.TestCase):
+    def diagnose(
+        self, artifacts=None, runs=None, error=None, pr_base="old", total_runs=1
+    ):
+        pr_run = {
+            **run("pull_request"),
+            "pull_requests": [
+                {"number": 42, "head": {"ref": "b"}, "base": {"sha": pr_base}}
+            ],
+        }
+        artifacts = (
+            artifacts
+            if artifacts is not None
+            else [
+                {
+                    "name": lane_proof.artifact_name("rust-test", "b" * 64),
+                    "created_at": "2027-01-01T00:00:00Z",
+                    "workflow_run": {"id": 7},
+                }
+            ]
+        )
+        calls = []
+
+        def fetch(path, token):
+            calls.append(path)
+            if error:
+                raise error
+            if "/actions/workflows/" in path:
+                return {
+                    "workflow_runs": runs if runs is not None else [pr_run],
+                    "total_count": total_runs,
+                }
+            return {"artifacts": artifacts, "total_count": len(artifacts)}
+
+        with patch.dict(
+            os.environ,
+            {"GITHUB_REF": "refs/heads/gh-readonly-queue/master/pr-42-abc"},
+            clear=True,
+        ):
+            result = lane_proof.miss_diagnostic(
+                "rust-test", "a" * 64, "queue", "HEAD", REPO, "t", fetch=fetch, now=NOW
+            )
+        self.assertLessEqual(len(calls), 2)
+        return result
+
+    def test_stale_base(self):
+        self.assertEqual(
+            self.diagnose(),
+            "nearest=bbbbbbbbbbbb run=7 pr_base=old queue_base=queue verdict=stale-base",
+        )
+
+    def test_no_pr_proof(self):
+        self.assertIn("verdict=no-pr-proof", self.diagnose(artifacts=[]))
+
+    def test_api_error_unknown(self):
+        self.assertIn("verdict=unknown", self.diagnose(error=RuntimeError("down")))
+
+    def test_diagnostic_never_changes_hit(self):
+        empty = Lookup().fetcher([], {})
+        expected, _ = Check().check(fetch=empty)
+        actual, summary = Check().check(
+            fetch=empty,
+            queue=True,
+            miss_diagnostic={"side_effect": RuntimeError("down")},
+        )
+        self.assertIn("verdict=unknown", summary)
+        self.assertEqual(actual, expected)
+
+    def test_hit_has_no_diagnostic_lookup(self):
+        with patch.object(lane_proof, "miss_diagnostic") as diagnostic:
+            out, _ = Check().check(queue=True)
+        self.assertEqual(out["hit"], "true")
+        diagnostic.assert_not_called()
+
+    def test_missing_credentials_unknown_without_network(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(lane_proof, "api") as fetch,
+        ):
+            line = lane_proof.miss_diagnostic(
+                "rust-test", "k", "base", "HEAD", REPO, "", fetch=fetch
+            )
+        self.assertIn("verdict=unknown", line)
+        fetch.assert_not_called()
+
+    def test_matching_inputs_unknown_even_with_different_base(self):
+        art = {
+            "name": lane_proof.artifact_name("rust-test", "a" * 64),
+            "created_at": "2027-01-01T00:00:00Z",
+            "workflow_run": {"id": 7},
+        }
+        self.assertIn("verdict=unknown", self.diagnose(artifacts=[art]))
+
+    def test_untrusted_pr_proof_is_ignored(self):
+        self.assertIn(
+            "verdict=no-pr-proof",
+            self.diagnose(runs=[run("pull_request", head="fork/repo")]),
+        )
+
+    def test_different_key_wins_over_same_base(self):
+        self.assertIn("verdict=stale-base", self.diagnose(pr_base="queue"))
+
+    def test_incomplete_history_unknown(self):
+        self.assertIn("verdict=unknown", self.diagnose(artifacts=[], total_runs=101))
 
 
 GATE = """[gate]
@@ -270,10 +482,23 @@ class Keys(unittest.TestCase):
         self.tmp.cleanup()
 
     def git(self, *args):
-        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@e", "GIT_COMMITTER_NAME": "t",
-               "GIT_COMMITTER_EMAIL": "t@e", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
-        return subprocess.run(["git", *args], cwd=self.repo, env=env, check=True, capture_output=True,
-                              text=True).stdout.strip()
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@e",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@e",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
+        return subprocess.run(
+            ["git", *args],
+            cwd=self.repo,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
 
     def write(self, path, text):
         (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
@@ -285,10 +510,30 @@ class Keys(unittest.TestCase):
         return self.git("rev-parse", "HEAD")
 
     def key(self, head="HEAD", base=None, lane="rust-test"):
-        env = {**os.environ, "LANE_PROOF_REPO": str(self.repo), "ImageOS": "test", "ImageVersion": "1"}
-        out = subprocess.run(["uv", "run", str(ROOT / "ci" / "lane_proof.py"), "key", "--lane", lane,
-                              "--base", base or self.base, "--head", head],
-                             env=env, check=True, capture_output=True, text=True).stdout
+        env = {
+            **os.environ,
+            "LANE_PROOF_REPO": str(self.repo),
+            "ImageOS": "test",
+            "ImageVersion": "1",
+        }
+        out = subprocess.run(
+            [
+                "uv",
+                "run",
+                str(ROOT / "ci" / "lane_proof.py"),
+                "key",
+                "--lane",
+                lane,
+                "--base",
+                base or self.base,
+                "--head",
+                head,
+            ],
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
         return dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
 
     def test_excluded_change_keeps_the_key(self):
@@ -318,7 +563,7 @@ class Keys(unittest.TestCase):
         self.assertNotEqual(after, before)
 
     def test_surface_change_has_no_key(self):
-        self.write("local-gate.toml", GATE.replace('keep = ["rust/**"]', 'keep = []'))
+        self.write("local-gate.toml", GATE.replace('keep = ["rust/**"]', "keep = []"))
         self.commit("widen exclusions")
         self.assertEqual(self.key()["key"], "")
         self.assertIn("local-gate.toml", self.key()["reason"])

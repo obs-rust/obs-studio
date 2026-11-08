@@ -286,6 +286,7 @@
         "test/cmocka/test_async_conversion_plan.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -383,6 +384,7 @@
         "test/cmocka/test_async_frame_pacing_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -468,6 +470,7 @@
         "test/cmocka/test_async_upload_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -1213,6 +1216,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_core_cmdline_getter": {
+      "sources": [
+        "test/cmocka/test_core_cmdline_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_core_global_getters": {
       "sources": [
         "test/cmocka/test_core_global_getters.c"
@@ -1584,6 +1602,7 @@
         "test/cmocka/test_deinterlace_draw_plan_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -1655,6 +1674,7 @@
         "test/cmocka/test_deinterlace_pacing_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -1703,6 +1723,7 @@
         "test/cmocka/test_deinterlace_select_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -4157,6 +4178,21 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_background_query": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_query.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_background_ui": {
       "sources": [
         "test/cmocka/test_hotkey_background_ui.cpp",
@@ -4237,6 +4273,7 @@
       "sources": [
         "test/cmocka/test_hotkey_binding_press_steps.c",
         "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -4325,6 +4362,7 @@
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_getters_characterization.c",
+        "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -4360,6 +4398,7 @@
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_load.c",
+        "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -4427,6 +4466,7 @@
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_pair_steps.c",
+        "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -4450,6 +4490,7 @@
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_press_steps.c",
+        "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -6968,6 +7009,21 @@
       ],
       "watch_inputs": [
         "frontend/utility"
+      ]
+    },
+    "test_output_identity_getters": {
+      "sources": [
+        "test/cmocka/test_output_identity_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_output_input_checks": {
@@ -10409,6 +10465,15 @@
         "libobs/obs.h"
       ]
     },
+    "test_scene_source_type_queries": {
+      "sources": [
+        "test/cmocka/test_scene_source_type_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_scene_transform_update_steps": {
       "sources": [
         "test/cmocka/test_scene_transform_update_steps.c",
@@ -10981,6 +11046,7 @@
         "test/cmocka/test_source_audio_input_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11042,6 +11108,7 @@
         "test/cmocka/test_source_audio_place_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11109,6 +11176,7 @@
         "test/cmocka/test_source_audio_render_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11189,6 +11257,7 @@
         "test/cmocka/test_source_audio_timing_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11214,6 +11283,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_boolean_queries": {
+      "sources": [
+        "test/cmocka/test_source_boolean_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_color_space_steps": {
       "sources": [
         "test/cmocka/test_source_color_space_steps.c",
@@ -11236,6 +11320,7 @@
         "test/cmocka/test_source_color_space_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11310,6 +11395,7 @@
         "test/cmocka/test_source_draw_plan_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11417,6 +11503,7 @@
         "test/cmocka/test_source_frame_copy_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11542,6 +11629,7 @@
         "test/cmocka/test_source_media_admission_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11628,6 +11716,7 @@
         "test/cmocka/test_source_monitoring_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11726,6 +11815,7 @@
         "test/cmocka/test_source_ptm_gate_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11788,6 +11878,7 @@
         "test/cmocka/test_source_render_route_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -11844,6 +11935,7 @@
         "test/cmocka/test_source_size_route_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -12026,6 +12118,7 @@
         "test/cmocka/test_source_video_tick_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -12077,6 +12170,7 @@
         "test/cmocka/test_source_volume_apply_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -12754,6 +12848,7 @@
         "test/cmocka/test_transition_load_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -12846,6 +12941,7 @@
         "test/cmocka/test_transition_render_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -12995,6 +13091,7 @@
         "test/cmocka/test_transition_start_steps.c",
         "test/cmocka/source-async-flag-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
         "test/cmocka/source-deinterlace-getter-link-stubs.c",
         "test/cmocka/source-filter-relationship-getter-link-stubs.c"
       ],
@@ -14322,6 +14419,7 @@
       "sources": [
         "test/cmocka/test_wayland_hotkeys.c",
         "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -15380,6 +15478,12 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_core_cmdline_getter": {
+      "target": "test_core_cmdline_getter",
+      "command": [
+        "${target}"
+      ]
     },
     "test_core_global_getters": {
       "target": "test_core_global_getters",
@@ -16474,6 +16578,13 @@
     "test_hevc": {
       "target": "test_hevc"
     },
+    "test_hotkey_background_query": {
+      "target": "test_hotkey_background_query",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    },
     "test_hotkey_background_ui": {
       "target": "test_hotkey_background_ui",
       "requires": {
@@ -17495,6 +17606,12 @@
     },
     "test_output_filename_format": {
       "target": "test_output_filename_format",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_identity_getters": {
+      "target": "test_output_identity_getters",
       "command": [
         "${target}"
       ]
@@ -18695,6 +18812,12 @@
       ],
       "working_directory": "${runtime}"
     },
+    "test_scene_source_type_queries": {
+      "target": "test_scene_source_type_queries",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_scene_transform_update_steps": {
       "target": "test_scene_transform_update_steps",
       "command": [
@@ -19074,6 +19197,12 @@
     "test_source_audio_timing_steps_rust": {
       "target": "test_source_audio_timing_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_boolean_queries": {
+      "target": "test_source_boolean_queries",
       "command": [
         "${target}"
       ]

@@ -46,6 +46,7 @@ pub mod item_order;
 pub mod item_transform;
 mod platform;
 pub mod render_plan;
+pub mod source_type_queries;
 pub mod transform_update;
 
 #[allow(unsafe_code)]

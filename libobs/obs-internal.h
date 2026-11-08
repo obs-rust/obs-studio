@@ -809,6 +809,9 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Borrowed argument snapshot; setter/shutdown retain allocation ownership. */
+extern struct obs_cmdline_args *obs_core_cmdline_args_field(void);
+
 /* Address of the global pointer; safe to obtain before startup and after shutdown. */
 extern struct obs_core *const *obs_core_initialized_field(void);
 
@@ -1430,6 +1433,14 @@ struct obs_source_async_flag_fields {
 };
 struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
 
+/* Borrowed addresses only; source must be non-NULL and live. No ownership or
+ * synchronization changes, and each getter reads only its requested field. */
+struct obs_source_boolean_query_fields {
+	const bool *texcoords_centered;
+	const bool *hidden;
+};
+struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
+
 extern struct obs_source_info *get_source_info(const char *id);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
@@ -1781,6 +1792,13 @@ struct obs_output {
 
 	float audio_data[MAX_AUDIO_CHANNELS][AUDIO_OUTPUT_FRAMES];
 };
+
+/* Borrowed instance identity fields; reject NULL before taking member addresses. */
+struct obs_output_identity_fields {
+	const char *const *id;
+	void *const *type_data;
+};
+extern struct obs_output_identity_fields obs_output_identity_fields(const obs_output_t *output);
 
 /* Private borrowed field addresses; callers must reject NULL before access. */
 struct obs_output_supported_codecs_fields {

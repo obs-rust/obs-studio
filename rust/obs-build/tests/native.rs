@@ -212,6 +212,8 @@ mod canonical_close_top_level_is_registered;
 mod canonical_config_hex_float_rounding_is_registered;
 #[path = "native/registration/canonical_context_names_is_registered.rs"]
 mod canonical_context_names_is_registered;
+#[path = "native/registration/canonical_core_cmdline_getter_is_registered.rs"]
+mod canonical_core_cmdline_getter_is_registered;
 #[path = "native/registration/canonical_core_initialized_is_registered.rs"]
 mod canonical_core_initialized_is_registered;
 #[path = "native/registration/canonical_dock_proportions_is_registered.rs"]
@@ -258,6 +260,8 @@ mod canonical_group_lifecycle_is_registered;
 mod canonical_headless_abi_is_registered;
 #[path = "native/registration/canonical_headless_audio_is_registered.rs"]
 mod canonical_headless_audio_is_registered;
+#[path = "native/registration/canonical_hotkey_background_query_is_registered.rs"]
+mod canonical_hotkey_background_query_is_registered;
 #[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
 mod canonical_hotkey_backtab_is_registered;
 #[path = "native/registration/canonical_hotkey_identity_getters_is_registered.rs"]
@@ -284,6 +288,8 @@ mod canonical_missing_files_list_is_registered;
 mod canonical_nvenc_host_and_glyph_tests_are_registered;
 #[path = "native/registration/canonical_object_queries_is_registered.rs"]
 mod canonical_object_queries_is_registered;
+#[path = "native/registration/canonical_output_identity_getters_is_registered.rs"]
+mod canonical_output_identity_getters_is_registered;
 #[path = "native/registration/canonical_output_protocol_null_is_registered.rs"]
 mod canonical_output_protocol_null_is_registered;
 #[path = "native/registration/canonical_output_protocols_is_registered.rs"]
@@ -346,6 +352,8 @@ mod canonical_scripting_hosts_are_registered;
 mod canonical_settings_track_rows_is_registered;
 #[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
 mod canonical_shutdown_after_failed_startup_is_registered;
+#[path = "native/registration/canonical_source_boolean_queries_is_registered.rs"]
+mod canonical_source_boolean_queries_is_registered;
 #[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
 mod canonical_texture_create_mip_data_is_registered;
 #[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
@@ -5381,3 +5389,5 @@ mod canonical_qt_widgets_is_registered;
 
 #[path = "native/registration/canonical_qt_daemons_is_registered.rs"]
 mod canonical_qt_daemons_is_registered;
+#[path = "native/registration/canonical_scene_source_type_queries_is_registered.rs"]
+mod canonical_scene_source_type_queries_is_registered;
