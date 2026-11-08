@@ -249,10 +249,37 @@ static bool vmic_write_packet(int fd, size_t pipe_size, struct vmic_tail *tail, 
  * bytes dropped. */
 static size_t vmic_drop_stale(int drain_fd, int fd, size_t keep)
 {
-	UNUSED_PARAMETER(drain_fd);
-	UNUSED_PARAMETER(fd);
-	UNUSED_PARAMETER(keep);
-	return 0;
+	if (drain_fd < 0 || fd < 0)
+		return 0;
+	int queued = 0;
+	if (ioctl(fd, FIONREAD, &queued) < 0 || queued <= 0 || (size_t)queued <= keep)
+		return 0;
+	/* Whole sample frames only, so what stays starts on a frame. */
+	size_t want = ((size_t)queued - keep) & ~(size_t)(VMIC_CHANNELS * sizeof(float) - 1);
+	uint8_t buf[4096];
+	size_t dropped = 0;
+	while (dropped < want) {
+		size_t n = want - dropped < sizeof(buf) ? want - dropped : sizeof(buf);
+		ssize_t got = read(drain_fd, buf, n);
+		if (got < 0 && errno == EINTR)
+			continue;
+		if (got <= 0)
+			break;
+		dropped += (size_t)got;
+	}
+	return dropped;
+}
+
+/* Frees the frames waiting for their audio; under sync.mutex. */
+static void vcam_sync_free(struct vcam_sync *sync)
+{
+	for (size_t i = 0; i < VCAM_SYNC_FRAMES; i++) {
+		bfree(sync->frame[i]);
+		sync->frame[i] = NULL;
+	}
+	sync->head = 0;
+	sync->len = 0;
+	sync->audio_end = 0;
 }
 /* #3180 writer end */
 
@@ -525,10 +552,18 @@ static bool vmic_pactl_runs(void)
 
 static void vmic_stop(struct virtualcam_data *vcam)
 {
+	pthread_mutex_lock(&vcam->sync.mutex);
 	if (vcam->mic_fifo >= 0) {
 		close(vcam->mic_fifo);
 		vcam->mic_fifo = -1;
 	}
+	vcam_sync_free(&vcam->sync);
+	pthread_mutex_unlock(&vcam->sync.mutex);
+	/* > 0: a zeroed struct (tests) must not close stdin. */
+	if (vcam->mic_drain > 0)
+		close(vcam->mic_drain);
+	vcam->mic_drain = -1;
+	vcam->mic_rate = 0;
 	vmic_tail_free(&vcam->mic_tail);
 	if (vcam->mic_loaded) {
 		char args[64];
@@ -716,9 +751,9 @@ static void vmic_start(struct virtualcam_data *vcam)
 	}
 	char description[64];
 	if (k == 1)
-		snprintf(description, sizeof(description), "OBS Virtual Microphone");
+		snprintf(description, sizeof(description), "OBS Audio");
 	else
-		snprintf(description, sizeof(description), "OBS Virtual Microphone (%d)", k);
+		snprintf(description, sizeof(description), "OBS Audio (%d)", k);
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
 	struct dstr args;
@@ -770,6 +805,9 @@ static void vmic_start(struct virtualcam_data *vcam)
 	if (size < 0)
 		size = fcntl(vcam->mic_fifo, F_GETPIPE_SZ);
 	vcam->mic_pipe_size = size > 0 ? (size_t)size : VMIC_PIPE_SIZE;
+	vcam->mic_rate = rate;
+	/* Without it old audio is only not thrown away (#4087). */
+	vcam->mic_drain = open(vcam->mic_path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
 
 	struct audio_convert_info aci = {0};
 	aci.format = AUDIO_FORMAT_FLOAT;
@@ -1063,11 +1101,9 @@ static void virtualcam_stop(void *data, uint64_t ts)
 	UNUSED_PARAMETER(ts);
 }
 
-static void virtual_video(void *param, struct video_data *frame)
+static void vcam_write_frame(struct virtualcam_data *vcam, const uint8_t *frame_data)
 {
-	struct virtualcam_data *vcam = (struct virtualcam_data *)param;
 	uint32_t frame_size = vcam->frame_size;
-	const uint8_t *frame_data = frame->data[0];
 	while (frame_size > 0) {
 		ssize_t written = write(vcam->device, frame_data, frame_size);
 		if (written < 0 && errno == EINTR)
@@ -1079,11 +1115,60 @@ static void virtual_video(void *param, struct video_data *frame)
 	}
 }
 
+/* Sends the waiting frames whose audio the microphone has; under sync.mutex. */
+static void vcam_sync_flush(struct virtualcam_data *vcam)
+{
+	struct vcam_sync *sync = &vcam->sync;
+	while (sync->len > 0 && sync->ts[sync->head] <= sync->audio_end) {
+		vcam_write_frame(vcam, sync->frame[sync->head]);
+		sync->head = (sync->head + 1) % VCAM_SYNC_FRAMES;
+		sync->len--;
+	}
+}
+
+static void virtual_video(void *param, struct video_data *frame)
+{
+	struct virtualcam_data *vcam = (struct virtualcam_data *)param;
+	struct vcam_sync *sync = &vcam->sync;
+
+	pthread_mutex_lock(&sync->mutex);
+	/* No running microphone (mic_rate is set only by vmic_start): nothing to wait for. */
+	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0 || (sync->len == 0 && frame->timestamp <= sync->audio_end)) {
+		vcam_write_frame(vcam, frame->data[0]);
+		pthread_mutex_unlock(&sync->mutex);
+		return;
+	}
+	if (sync->len == VCAM_SYNC_FRAMES) {
+		/* The audio stopped: the picture goes on without it. */
+		vcam_write_frame(vcam, sync->frame[sync->head]);
+		sync->head = (sync->head + 1) % VCAM_SYNC_FRAMES;
+		sync->len--;
+	}
+	size_t slot = (sync->head + sync->len) % VCAM_SYNC_FRAMES;
+	if (!sync->frame[slot])
+		sync->frame[slot] = bmalloc(vcam->frame_size);
+	memcpy(sync->frame[slot], frame->data[0], vcam->frame_size);
+	sync->ts[slot] = frame->timestamp;
+	sync->len++;
+	pthread_mutex_unlock(&sync->mutex);
+}
+
 static void virtual_audio(void *param, struct audio_data *frames)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)param;
+	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0)
+		return;
 	size_t size = (size_t)frames->frames * VMIC_CHANNELS * sizeof(float);
+	/* Keep at most one packet unread, so a reader hears the newest audio. */
+	vmic_drop_stale(vcam->mic_drain, vcam->mic_fifo, size);
 	vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, &vcam->mic_tail, frames->data[0], size);
+
+	uint64_t end = frames->timestamp + util_mul_div64(frames->frames, 1000000000ULL, vcam->mic_rate);
+	pthread_mutex_lock(&vcam->sync.mutex);
+	if (end > vcam->sync.audio_end)
+		vcam->sync.audio_end = end;
+	vcam_sync_flush(vcam);
+	pthread_mutex_unlock(&vcam->sync.mutex);
 }
 
 struct obs_output_info virtualcam_info = {

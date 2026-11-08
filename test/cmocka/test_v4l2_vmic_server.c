@@ -186,7 +186,7 @@ static void obs_audio_reaches_an_app_recording_the_microphone(void **state)
 	vmic_start(&vcam);
 	assert_true(vcam.mic_fifo >= 0);
 	assert_true(source_listed("obs_virtual_microphone"));
-	char *desc = capture("pactl list sources 2>/dev/null | grep -c 'Description: OBS Virtual Microphone$'");
+	char *desc = capture("pactl list sources 2>/dev/null | grep -c 'Description: OBS Audio$'");
 	assert_int_equal(atoi(desc), 1);
 	bfree(desc);
 
