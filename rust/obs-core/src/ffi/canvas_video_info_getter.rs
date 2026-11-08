@@ -36,9 +36,17 @@ pub unsafe extern "C" fn obs_canvas_get_video_info(
 ) -> bool {
     // SAFETY: initialized OBS owns a readable graphics pointer field.
     let graphics = unsafe { *obs_canvas_video_info_graphics_field() };
-    let info = crate::canvas_video_info_getter::video_info(!graphics.is_null(), || {
+    let canvas = NonNull::new(canvas.cast_mut());
+    if !graphics.is_null() && canvas.is_none() {
+        // Preserve the characterized C precondition failure without forming a
+        // field address from NULL (which is itself undefined behavior in C).
+        // SAFETY: raise accepts SIGSEGV; no field accessor or output is touched.
+        unsafe { libc::raise(libc::SIGSEGV) };
+        return false;
+    }
+    let info = crate::canvas_video_info_getter::video_info(!graphics.is_null(), canvas, |canvas| {
         // SAFETY: only evaluated with graphics; the caller supplies a live canvas.
-        NonNull::new(unsafe { *obs_canvas_video_info_mix_field(canvas) }).map(|mix| {
+        NonNull::new(unsafe { *obs_canvas_video_info_mix_field(canvas.as_ptr()) }).map(|mix| {
             // SAFETY: a present mix owns readable info throughout this call.
             unsafe { obs_canvas_video_info_value_field(mix.as_ptr()) }
         })
