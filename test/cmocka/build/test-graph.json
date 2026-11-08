@@ -10516,7 +10516,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_audio_window_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/scene-group-query-link-stubs.c"
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -10535,6 +10536,10 @@
             "not": "MSVC"
           }
         }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
       ]
     },
     "test_scene_blend": {
@@ -11015,6 +11020,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_transition_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_transition_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_list_remove": {
       "sources": [
         "test/cmocka/test_scene_list_remove.c",
@@ -11079,7 +11099,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_render_plan_steps.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/scene-group-query-link-stubs.c"
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c"
       ],
       "includes": [
         "libobs"
@@ -19855,6 +19876,12 @@
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_transition_getters": {
+      "target": "test_scene_item_transition_getters",
       "command": [
         "${target}"
       ]
