@@ -351,6 +351,52 @@ class Check(unittest.TestCase):
 
 
 class MissDiagnostic(unittest.TestCase):
+    def test_queue_ref_finds_pr_branch_proof_in_partial_history(self):
+        calls = []
+
+        def fetch(path, token):
+            calls.append(path)
+            if path == f"/repos/{REPO}/pulls/42":
+                return {
+                    "head": {"ref": "fix/the-bug", "repo": {"id": 123}},
+                    "base": {"sha": "old", "repo": {"id": 123}},
+                }
+            self.assertEqual(path, f"/repos/{REPO}/actions/artifacts?per_page=100")
+            return {
+                "total_count": 9040,
+                "artifacts": [
+                    {
+                        "name": lane_proof.artifact_name("rust-test", "b" * 64),
+                        "created_at": time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ", time.gmtime(NOW - 3600)
+                        ),
+                        "workflow_run": {
+                            "id": 7,
+                            "head_branch": "fix/the-bug",
+                            "repository_id": 123,
+                            "head_repository_id": 123,
+                        },
+                    }
+                ],
+            }
+
+        with patch.dict(os.environ, {}, clear=True):
+            line = lane_proof.miss_diagnostic(
+                "rust-test",
+                "a" * 64,
+                "queue",
+                "gh-readonly-queue/master/pr-42-abc",
+                REPO,
+                "t",
+                fetch=fetch,
+                now=NOW,
+            )
+        self.assertEqual(
+            line,
+            "nearest=bbbbbbbbbbbb run=7 pr_base=old queue_base=queue verdict=stale-base",
+        )
+        self.assertEqual(len(calls), 2)
+
     def test_diagnostic_stdout_matches_summary_after_decision(self):
         diagnostic = self.diagnose()
         for summary_options in (
@@ -377,13 +423,16 @@ class MissDiagnostic(unittest.TestCase):
                     self.assertEqual(summary.splitlines()[-1], lines[-1])
 
     def diagnose(
-        self, artifacts=None, runs=None, error=None, pr_base="old", total_runs=1
+        self,
+        artifacts=None,
+        error=None,
+        pr_base="old",
+        total_artifacts=None,
+        fork=False,
     ):
-        pr_run = {
-            **run("pull_request"),
-            "pull_requests": [
-                {"number": 42, "head": {"ref": "b"}, "base": {"sha": pr_base}}
-            ],
+        pr = {
+            "head": {"ref": "b", "repo": {"id": 123}},
+            "base": {"sha": pr_base, "repo": {"id": 123}},
         }
         artifacts = (
             artifacts
@@ -391,8 +440,15 @@ class MissDiagnostic(unittest.TestCase):
             else [
                 {
                     "name": lane_proof.artifact_name("rust-test", "b" * 64),
-                    "created_at": "2027-01-01T00:00:00Z",
-                    "workflow_run": {"id": 7},
+                    "created_at": time.strftime(
+                        "%Y-%m-%dT%H:%M:%SZ", time.gmtime(NOW - 3600)
+                    ),
+                    "workflow_run": {
+                        "id": 7,
+                        "head_branch": "b",
+                        "repository_id": 123,
+                        "head_repository_id": 456 if fork else 123,
+                    },
                 }
             ]
         )
@@ -402,12 +458,15 @@ class MissDiagnostic(unittest.TestCase):
             calls.append(path)
             if error:
                 raise error
-            if "/actions/workflows/" in path:
-                return {
-                    "workflow_runs": runs if runs is not None else [pr_run],
-                    "total_count": total_runs,
-                }
-            return {"artifacts": artifacts, "total_count": len(artifacts)}
+            if path == f"/repos/{REPO}/pulls/42":
+                return pr
+            self.assertEqual(path, f"/repos/{REPO}/actions/artifacts?per_page=100")
+            return {
+                "artifacts": artifacts,
+                "total_count": len(artifacts)
+                if total_artifacts is None
+                else total_artifacts,
+            }
 
         with patch.dict(
             os.environ,
@@ -428,6 +487,32 @@ class MissDiagnostic(unittest.TestCase):
 
     def test_no_pr_proof(self):
         self.assertIn("verdict=no-pr-proof", self.diagnose(artifacts=[]))
+
+    def test_newest_pr_branch_proof_ignores_other_branches_and_forks(self):
+        def artifact(key, age, branch="b", head_repo=123):
+            return {
+                "name": lane_proof.artifact_name("rust-test", key * 64),
+                "created_at": time.strftime(
+                    "%Y-%m-%dT%H:%M:%SZ", time.gmtime(NOW - age)
+                ),
+                "workflow_run": {
+                    "id": age,
+                    "head_branch": branch,
+                    "repository_id": 123,
+                    "head_repository_id": head_repo,
+                },
+            }
+
+        line = self.diagnose(
+            artifacts=[
+                artifact("b", 7200),
+                artifact("c", 3600),
+                artifact("d", 60, branch="gh-readonly-queue/master/pr-42-abc"),
+                artifact("e", 30, head_repo=456),
+            ]
+        )
+        self.assertIn("nearest=cccccccccccc run=3600", line)
+        self.assertIn("verdict=stale-base", line)
 
     def test_api_error_unknown(self):
         self.assertIn("verdict=unknown", self.diagnose(error=RuntimeError("down")))
@@ -463,22 +548,31 @@ class MissDiagnostic(unittest.TestCase):
     def test_matching_inputs_unknown_even_with_different_base(self):
         art = {
             "name": lane_proof.artifact_name("rust-test", "a" * 64),
-            "created_at": "2027-01-01T00:00:00Z",
-            "workflow_run": {"id": 7},
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(NOW - 3600)),
+            "workflow_run": {
+                "id": 7,
+                "head_branch": "b",
+                "repository_id": 123,
+                "head_repository_id": 123,
+            },
         }
-        self.assertIn("verdict=unknown", self.diagnose(artifacts=[art]))
+        line = self.diagnose(artifacts=[art])
+        self.assertIn("nearest=aaaaaaaaaaaa", line)
+        self.assertIn("verdict=unknown", line)
 
     def test_untrusted_pr_proof_is_ignored(self):
         self.assertIn(
             "verdict=no-pr-proof",
-            self.diagnose(runs=[run("pull_request", head="fork/repo")]),
+            self.diagnose(fork=True),
         )
 
     def test_different_key_wins_over_same_base(self):
         self.assertIn("verdict=stale-base", self.diagnose(pr_base="queue"))
 
     def test_incomplete_history_unknown(self):
-        self.assertIn("verdict=unknown", self.diagnose(artifacts=[], total_runs=101))
+        self.assertIn(
+            "verdict=unknown", self.diagnose(artifacts=[], total_artifacts=101)
+        )
 
 
 GATE = """[gate]
