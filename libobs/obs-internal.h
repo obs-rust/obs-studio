@@ -2075,6 +2075,13 @@ struct obs_encoder {
 	bool reconfigure_requested;
 };
 
+/* Borrowed atomic state addresses; callers reject NULL before this adapter. */
+struct obs_encoder_state_queries_fields {
+	const volatile bool *active;
+	const volatile bool *paused;
+};
+struct obs_encoder_state_queries_fields obs_encoder_state_queries_fields(const obs_encoder_t *encoder);
+
 /* Borrowed dimension field addresses, with no allocation or value conversion. */
 struct obs_encoder_dimensions_fields {
 	const enum obs_encoder_type *type;

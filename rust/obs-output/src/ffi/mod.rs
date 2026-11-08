@@ -20,6 +20,7 @@ pub mod encoder_roi;
 pub mod encoder_roi_state;
 pub mod encoder_scaling_enabled;
 pub mod encoder_size;
+pub mod encoder_state_queries;
 pub mod output_begin;
 pub mod output_can_pause;
 pub mod output_caption;
