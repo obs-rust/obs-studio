@@ -1,4 +1,4 @@
 //! Weak object identity without dereferencing object handles.
-pub fn references(_stored: Option<usize>, _object: usize) -> bool {
-    todo!("port the characterized weak object identity query")
+pub fn references(stored: Option<usize>, object: usize) -> bool {
+    object != 0 && stored.is_some_and(|stored| stored == object)
 }

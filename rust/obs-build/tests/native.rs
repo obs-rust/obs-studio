@@ -429,6 +429,8 @@ mod canonical_vmic_helpers_are_registered;
 mod canonical_volume_meter_ticker_is_registered;
 #[path = "native/registration/canonical_weak_encoder_identity_is_registered.rs"]
 mod canonical_weak_encoder_identity_is_registered;
+#[path = "native/registration/canonical_weak_object_identity_is_registered.rs"]
+mod canonical_weak_object_identity_is_registered;
 #[path = "native/registration/canonical_win_vmic_route_is_registered.rs"]
 mod canonical_win_vmic_route_is_registered;
 #[path = "native/registration/canonical_x11_keymap_is_registered.rs"]
