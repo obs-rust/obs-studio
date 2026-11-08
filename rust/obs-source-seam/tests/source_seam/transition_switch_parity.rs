@@ -24,13 +24,14 @@
 //! calls, the walks and what they visited, the signals, the clock reads,
 //! the recalculations and the plugin's calls). The inputs are the C test's
 //! sequences, every call on fixed graphs, and a proptest over random graphs
-//! (children in either slot, active or not, running or idle, any mode,
-//! clock, fixed duration and size, a child going away, children whose add
-//! fails, a re-entering plugin) and sequences of starts and sets (any mode
-//! and duration, to no source, a child, slot A's or B's child, the
+//! (children in either slot, active or not, running or idle, any mode
+//! including ones outside the enum, clock, fixed duration and size, a child
+//! going away, children whose add fails, a re-entering plugin) and
+//! sequences of starts and sets (any mode, again including ones outside the
+//! enum, and any duration, to no source, a child, slot A's or B's child, the
 //! transition itself, a scene that holds it, or on a source that is not a
-//! transition). In a child process, the three warnings match the C's lines
-//! and levels.
+//! transition). In a child process, the warnings match the C's lines and
+//! levels.
 //!
 //! No intentional differences. The order of the lock calls is not visible
 //! here (the seam calls pthread itself); the Tier 1 tests pin it. Nor is the
@@ -533,6 +534,10 @@ fn every_op() -> Vec<Op> {
     for d in dests {
         ops.push(Op::Start(Some(TR), AUTO, 300, d));
         ops.push(Op::Start(Some(TR), MANUAL, 0, d));
+        // Modes outside the enum: stored and compared as the int they are.
+        for mode in OUT_OF_RANGE_MODES {
+            ops.push(Op::Start(Some(TR), mode, 300, d));
+        }
         ops.push(Op::Set(Some(TR), d));
     }
     ops
@@ -591,6 +596,20 @@ fn fixed_inits() -> Vec<Init> {
         refuses: vec![CH_B, CH_A],
         ..base.clone()
     });
+    // A stored mode outside the enum, running and idle: the second check
+    // compares it with the asked one as an int.
+    for mode in OUT_OF_RANGE_MODES {
+        inits.push(Init {
+            slots: [held(CH_A, true), held(CH_B, true)],
+            video: true,
+            mode,
+            ..base.clone()
+        });
+        inits.push(Init {
+            mode,
+            ..base.clone()
+        });
+    }
     // Idle with an active slot B: a start hands the slot over, adding the
     // destination before it removes the old child; a refused add removes
     // nothing.
@@ -626,6 +645,19 @@ fn every_call_on_fixed_graphs() {
     }
 }
 
+/// Modes no `enum obs_transition_mode` value has: a plugin or script can
+/// hand any `int`, and the C stores and compares it unchecked.
+const OUT_OF_RANGE_MODES: [c_int; 5] = [-1, 2, 3, c_int::MIN, c_int::MAX];
+
+/// Auto and manual most of the time, otherwise any `int`.
+fn gen_mode() -> impl Strategy<Value = c_int> {
+    prop_oneof![
+        6 => 0..2,
+        1 => proptest::sample::select(OUT_OF_RANGE_MODES.to_vec()),
+        1 => any::<c_int>(),
+    ]
+}
+
 fn gen_child() -> impl Strategy<Value = Option<usize>> {
     prop_oneof![
         Just(None),
@@ -644,7 +676,7 @@ fn gen_slot() -> impl Strategy<Value = Slot> {
 
 fn gen_reenter() -> impl Strategy<Value = Reenter> {
     prop_oneof![
-        (0..2, any::<u32>(), gen_child()).prop_map(|(m, ms, d)| Reenter::Start(m, ms, d)),
+        (gen_mode(), any::<u32>(), gen_child()).prop_map(|(m, ms, d)| Reenter::Start(m, ms, d)),
         gen_child().prop_map(Reenter::Set),
     ]
 }
@@ -655,7 +687,7 @@ fn gen_target() -> impl Strategy<Value = Option<usize>> {
 
 fn gen_op() -> impl Strategy<Value = Op> {
     prop_oneof![
-        3 => (gen_target(), 0..2, any::<u32>(), gen_child())
+        3 => (gen_target(), gen_mode(), any::<u32>(), gen_child())
             .prop_map(|(t, m, ms, d)| Op::Start(t, m, ms, d)),
         1 => (gen_target(), gen_child()).prop_map(|(t, s)| Op::Set(t, s)),
     ]
@@ -666,7 +698,7 @@ prop_compose! {
         slots in proptest::array::uniform2(gen_slot()),
         video in any::<bool>(),
         audio in any::<bool>(),
-        mode in 0..2,
+        mode in gen_mode(),
         manual in (0.0f32..=1.0, 0.0f32..=1.0),
         start_time in any::<u64>(),
         duration in any::<u64>(),
