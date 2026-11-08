@@ -1,6 +1,7 @@
 # Consumer of the native test graph shared with obs-build. Paths in the graph
 # are repository-relative; runtime substitutions are deliberately limited.
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/native-test-groups.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/qt-runtime.cmake")
 
 function(_obs_test_graph_fields json path allowed)
@@ -413,7 +414,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${target_graph}"
         "targets;${name}"
-        "sources;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
+        "sources;unity_groups;pch;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
       )
       string(JSON cpp_kind ERROR_VARIABLE cpp_error TYPE "${target_graph}" targets "${name}" cpp_standard)
       set(cpp_standard "")
@@ -479,6 +480,7 @@ function(obs_native_test_graph path root)
         endif()
       endforeach()
       add_executable(${name} ${inputs})
+      _obs_test_graph_groups("${name}" "${target_graph}" "${root}" "${sources}")
       string(JSON import_kind ERROR_VARIABLE import_error TYPE "${target_graph}" targets "${name}" msvc_import_library)
       if(NOT import_error AND NOT import_kind STREQUAL "NULL")
         _obs_test_graph_fields("${target_graph}" "targets;${name};msvc_import_library" "definition;output")
