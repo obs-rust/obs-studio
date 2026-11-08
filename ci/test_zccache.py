@@ -116,7 +116,10 @@ class ZccacheTest(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 text = path.read_text()
                 self.assertNotRegex(text, r"(?i)(?<!z)ccache", "still uses ccache")
-        for path in (TOOLS / "linux-validate" / "validate.sh", TOOLS / "sanitize" / "sanitize.py"):
+        for path in (
+            TOOLS / "linux-validate" / "validate.sh",
+            TOOLS / "sanitize" / "sanitize.py",
+        ):
             text = path.read_text()
             self.assertIn("-DCMAKE_C_COMPILER_LAUNCHER=zccache", text)
             self.assertIn("-DCMAKE_CXX_COMPILER_LAUNCHER=zccache", text)
@@ -130,7 +133,9 @@ class ZccacheTest(unittest.TestCase):
         self.assertRegex(text, r"RUN .*install_zccache\.py /usr/local/bin")
 
     def test_ubuntu_ci_preset_uses_zccache(self):
-        presets = json.loads((ROOT / "CMakePresets.json").read_text())["configurePresets"]
+        presets = json.loads((ROOT / "CMakePresets.json").read_text())[
+            "configurePresets"
+        ]
         ubuntu = next(p for p in presets if p["name"] == "ubuntu-ci")["cacheVariables"]
         self.assertNotIn("ENABLE_CCACHE", ubuntu)
         self.assertEqual(ubuntu.get("CMAKE_C_COMPILER_LAUNCHER"), "zccache")
@@ -145,7 +150,11 @@ class ZccacheTest(unittest.TestCase):
         ]
         for workflow, name in jobs:
             steps = cache_steps(job(workflow, name))
-            compiler = [key for _, key in steps if "cache" in key and not key.startswith(("cargo-", "apt-"))]
+            compiler = [
+                key
+                for _, key in steps
+                if "cache" in key and not key.startswith(("cargo-", "apt-"))
+            ]
             with self.subTest(job=f"{workflow}:{name}"):
                 self.assertTrue(compiler, steps)
                 for key in compiler:
@@ -156,9 +165,15 @@ class ZccacheTest(unittest.TestCase):
         # zackees/ci.yml cache policy: a PR-ref save is unreachable by other PRs.
         for name in ("rust-linux-tier2-build",):
             block = job("build-project.yaml", name)
-            saves = [step for step in block.split("\n      - ")
-                     if "actions/cache/save@" in step
-                     or ("uses: ./.github/actions/cache" in step and re.search(r"(?m)^\s+mode: save$", step))]
+            saves = [
+                step
+                for step in block.split("\n      - ")
+                if "actions/cache/save@" in step
+                or (
+                    "uses: ./.github/actions/cache" in step
+                    and re.search(r"(?m)^\s+mode: save$", step)
+                )
+            ]
             with self.subTest(job=name):
                 self.assertTrue(saves)
                 for step in saves:
@@ -169,7 +184,10 @@ class ZccacheTest(unittest.TestCase):
     def test_tier2_lane_setup_step_renamed(self):
         text = (ROOT / "local-gate.toml").read_text()
         self.assertIn("Save Tier 2 zccache 💾", text)
-        self.assertIn("name: Save Tier 2 zccache 💾", job("build-project.yaml", "rust-linux-tier2-build"))
+        self.assertIn(
+            "name: Save Tier 2 zccache 💾",
+            job("build-project.yaml", "rust-linux-tier2-build"),
+        )
 
 
 class RecoveryTest(unittest.TestCase):
@@ -304,7 +322,9 @@ class WiringTest(unittest.TestCase):
     """The shell installer is gone; every caller runs the Python port (#962)."""
 
     def test_the_shell_script_is_ported(self):
-        self.assertFalse(SHELL_SCRIPT.exists(), "install-zccache.sh is the ported one and must go")
+        self.assertFalse(
+            SHELL_SCRIPT.exists(), "install-zccache.sh is the ported one and must go"
+        )
 
     def test_no_gen_005_exception_is_left(self):
         ci_toml = (ROOT / "ci.toml").read_text(encoding="utf-8")
@@ -323,9 +343,12 @@ class WiringTest(unittest.TestCase):
         )
 
     def test_the_manylinux_dockerfile_runs_the_python(self):
-        text = (ROOT / "build-aux" / "appimage" / "manylinux" / "Dockerfile").read_text()
+        text = (
+            ROOT / "build-aux" / "appimage" / "manylinux" / "Dockerfile"
+        ).read_text()
         self.assertTrue(
-            "install_zccache.py /usr/local/bin" in text and "install-zccache.sh" not in text,
+            "install_zccache.py /usr/local/bin" in text
+            and "install-zccache.sh" not in text,
             "the manylinux Dockerfile does not run install_zccache.py",
         )
 
@@ -334,7 +357,9 @@ class WiringTest(unittest.TestCase):
         self.assertIn("!rust/tools/linux-validate/install_zccache.py", text)
 
     def test_setup_zccache_runs_the_python_through_uv(self):
-        text = (ROOT / ".github" / "scripts" / "utils.zsh" / "setup_zccache").read_text()
+        text = (
+            ROOT / ".github" / "scripts" / "utils.zsh" / "setup_zccache"
+        ).read_text()
         self.assertTrue(
             "uv run --no-project" in text
             and "rust/tools/linux-validate/install_zccache.py" in text
@@ -345,7 +370,9 @@ class WiringTest(unittest.TestCase):
     def test_the_build_workflow_runs_the_python_through_uv(self):
         text = (WORKFLOWS / "build-project.yaml").read_text()
         self.assertEqual(
-            text.count("uv run --no-project rust/tools/linux-validate/install_zccache.py"),
+            text.count(
+                "uv run --no-project rust/tools/linux-validate/install_zccache.py"
+            ),
             2,
             "build-project.yaml must run the installer through uv at both sites",
         )
