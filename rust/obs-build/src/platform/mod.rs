@@ -228,18 +228,16 @@ pub fn configure_shared_link(
 ) -> Result<(), String> {
     if target.contains("windows") {
         if msvc {
-            command.arg("/LD").arg(msvc_response::msvc_response_file(
-                &artifact.with_extension("objects.rsp"),
+            return msvc_response::configure_msvc_link(
+                command,
+                artifact,
                 objects,
-            )?);
-            command.args(dependencies.iter().map(|p| dependency_link_name(p, true)));
-            command
-                .arg("/link")
-                .arg(format!("/OUT:{}", artifact.display()))
-                .arg(format!(
-                    "/IMPLIB:{}",
-                    artifact.with_extension("lib").display()
-                ));
+                &dependencies
+                    .iter()
+                    .map(|p| dependency_link_name(p, true))
+                    .collect::<Vec<_>>(),
+                true,
+            );
         } else {
             command.arg("-shared").args(objects);
             command.args(dependencies.iter().map(|p| dependency_link_name(p, false)));
@@ -517,26 +515,25 @@ pub fn configure_executable_link(
     msvc: bool,
 ) -> Result<(), String> {
     if target.contains("windows") && msvc {
-        command.arg(msvc_response::msvc_response_file(
-            &artifact.with_extension("objects.rsp"),
+        return msvc_response::configure_msvc_link(
+            command,
+            artifact,
             objects,
-        )?);
-    } else {
-        command.args(objects);
+            &dependencies
+                .iter()
+                .map(|p| dependency_link_name(p, true))
+                .collect::<Vec<_>>(),
+            false,
+        );
     }
+    command.args(objects);
     if target.contains("windows") {
         command.args(
             dependencies
                 .iter()
                 .map(|path| dependency_link_name(path, msvc)),
         );
-        if msvc {
-            command
-                .arg("/link")
-                .arg(format!("/OUT:{}", artifact.display()));
-        } else {
-            command.arg("-o").arg(artifact);
-        }
+        command.arg("-o").arg(artifact);
     } else {
         command.args(dependencies).arg("-o").arg(artifact);
         command.arg(if target.contains("apple") {

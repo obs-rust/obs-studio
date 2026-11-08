@@ -22,13 +22,27 @@ pub fn configure_link_options(
 ) -> Result<(), String> {
     if target.contains("windows") && msvc && !options.is_empty() {
         let rsp = artifact.with_extension("link.rsp");
-        let mut text = String::new();
+        let mut arg = OsString::from("@");
+        arg.push(&rsp);
+        let existing = command.get_args().any(|value| value == arg);
+        let mut text = if existing {
+            std::fs::read_to_string(&rsp).map_err(|e| format!("read {}: {e}", rsp.display()))?
+        } else {
+            String::new()
+        };
+        let direct = is_direct_linker(command);
+
         for option in options {
             if option.contains(['\r', '\n', '\0']) {
                 return Err(format!("invalid MSVC response-file option: {option:?}"));
             }
             // MSVC treats backslashes before quotes (including the closing
             // quote) as escapes. Preserve embedded quotes and trailing slashes.
+            // CL forwards only the rest of this line after /link. Repeat the
+            // switch for each option; a bare /link line would forward nothing.
+            if !direct {
+                text.push_str("/link ");
+            }
             text.push('"');
             let mut slashes = 0;
             for ch in option.chars() {
@@ -45,13 +59,50 @@ pub fn configure_link_options(
             text.push_str("\"\n");
         }
         std::fs::write(&rsp, text).map_err(|e| format!("write {}: {e}", rsp.display()))?;
-        let mut arg = OsString::from("@");
-        arg.push(&rsp);
-        command.arg(arg);
+        if !existing {
+            command.arg(arg);
+        }
     } else {
         command.args(options);
     }
     Ok(())
+}
+
+/// Configure the MSVC driver or direct linker before appending final options.
+pub(super) fn configure_msvc_link(
+    command: &mut Command,
+    artifact: &Path,
+    objects: &[PathBuf],
+    dependencies: &[PathBuf],
+    shared: bool,
+) -> Result<(), String> {
+    if shared {
+        command.arg(if is_direct_linker(command) {
+            "/DLL"
+        } else {
+            "/LD"
+        });
+    }
+    command.arg(msvc_response_file(
+        &artifact.with_extension("objects.rsp"),
+        objects,
+    )?);
+    command.args(dependencies);
+    let mut options = vec![format!("/OUT:{}", artifact.display())];
+    if shared {
+        options.push(format!(
+            "/IMPLIB:{}",
+            artifact.with_extension("lib").display()
+        ));
+    }
+    configure_link_options("windows", command, artifact, &options, true)
+}
+
+/// Recognize the linker itself, including Windows paths when testing on Unix.
+pub(super) fn is_direct_linker(command: &Command) -> bool {
+    let program = command.get_program().to_string_lossy();
+    let name = program.rsplit(['/', '\\']).next().unwrap_or(&program);
+    name.eq_ignore_ascii_case("link.exe") || name.eq_ignore_ascii_case("link")
 }
 
 /// Writes `objects` to `rsp`, one double-quoted path per line, and returns
@@ -100,7 +151,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             std::fs::read_to_string(artifact.with_extension("link.rsp")).unwrap(),
-            "\"/WHOLEARCHIVE:C:\\Program Files\\obs.lib\"\n\"trailing\\\\\"\n\"embedded\\\"quote\"\n\"\"\n"
+            "/link \"/WHOLEARCHIVE:C:\\Program Files\\obs.lib\"\n/link \"trailing\\\\\"\n/link \"embedded\\\"quote\"\n/link \"\"\n"
         );
         for (target, msvc) in [
             ("x86_64-unknown-linux-gnu", false),
@@ -151,30 +202,66 @@ mod tests {
             .map(|i| format!("/EXPORT:obs_synthetic_export_{i:04}"))
             .collect();
         assert!(exports.iter().map(String::len).sum::<usize>() > 32767);
-        let mut command = Command::new("cl.exe");
-        command.arg("/link");
-        configure_link_options(
-            "x86_64-pc-windows-msvc",
-            &mut command,
-            &artifact,
-            &exports,
-            true,
-        )
-        .unwrap();
-        assert!(format!("{command:?}").len() < 8000);
-        let args: Vec<_> = command.get_args().collect();
-        assert_eq!(args.len(), 2);
-        assert_eq!(args[0], "/link");
-        let response = args[1].to_str().unwrap().strip_prefix('@').unwrap();
-        assert_eq!(Path::new(response), artifact.with_extension("link.rsp"));
-        let text = std::fs::read_to_string(response).unwrap();
-        assert_eq!(
-            text.lines().collect::<Vec<_>>(),
-            exports
-                .iter()
-                .map(|arg| format!("\"{arg}\""))
-                .collect::<Vec<_>>()
-        );
+        for program in ["cl.exe", r"C:\VS tools\LINK.EXE"] {
+            let mut command = Command::new(program);
+            configure_msvc_link(&mut command, &artifact, &objects(dir.path()), &[], true).unwrap();
+            configure_link_options(
+                "x86_64-pc-windows-msvc",
+                &mut command,
+                &artifact,
+                &exports,
+                true,
+            )
+            .unwrap();
+            assert!(format!("{command:?}").len() < 8000);
+            let args: Vec<_> = command.get_args().collect();
+            let direct = program != "cl.exe";
+            assert_eq!(
+                args,
+                vec![
+                    std::ffi::OsStr::new(if direct { "/DLL" } else { "/LD" }),
+                    &OsString::from(format!(
+                        "@{}",
+                        artifact.with_extension("objects.rsp").display()
+                    )),
+                    &OsString::from(format!(
+                        "@{}",
+                        artifact.with_extension("link.rsp").display()
+                    )),
+                ]
+            );
+            let text = std::fs::read_to_string(artifact.with_extension("link.rsp")).unwrap();
+            let prefix = if direct { "" } else { "/link " };
+            let expected: Vec<_> = [
+                format!("/OUT:{}", artifact.display()),
+                format!("/IMPLIB:{}", artifact.with_extension("lib").display()),
+            ]
+            .into_iter()
+            .chain(exports.iter().cloned())
+            .map(|arg| format!("{prefix}\"{arg}\""))
+            .collect();
+            assert_eq!(text.lines().collect::<Vec<_>>(), expected);
+
+            let mut executable = Command::new(program);
+            configure_msvc_link(&mut executable, &artifact, &objects(dir.path()), &[], false)
+                .unwrap();
+            configure_link_options(
+                "x86_64-pc-windows-msvc",
+                &mut executable,
+                &artifact,
+                &exports,
+                true,
+            )
+            .unwrap();
+            assert_eq!(executable.get_args().collect::<Vec<_>>(), args[1..]);
+            let text = std::fs::read_to_string(artifact.with_extension("link.rsp")).unwrap();
+            let expected: Vec<_> = expected
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, line)| (i != 1).then_some(line))
+                .collect();
+            assert_eq!(text.lines().collect::<Vec<_>>(), expected);
+        }
     }
 
     /// A path with spaces, as a checkout under "Program Files" has.
