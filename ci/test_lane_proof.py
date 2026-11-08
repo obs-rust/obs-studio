@@ -196,6 +196,7 @@ class Check(unittest.TestCase):
         fetch=None,
         summary_path_is_directory=False,
         queue=False,
+        captured_stdout=None,
         **patches,
     ):
         with tempfile.TemporaryDirectory() as tmp:
@@ -208,7 +209,7 @@ class Check(unittest.TestCase):
                     GITHUB_EVENT_NAME="merge_group",
                     GITHUB_REF="refs/heads/gh-readonly-queue/master/pr-42-abc",
                 )
-            stdout = io.StringIO()
+            stdout = captured_stdout if captured_stdout is not None else io.StringIO()
             artifacts = [
                 {
                     "name": lane_proof.artifact_name("rust-test", key),
@@ -251,7 +252,9 @@ class Check(unittest.TestCase):
                         0,
                     )
             return dict(
-                line.split("=", 1) for line in stdout.getvalue().splitlines()
+                line.split("=", 1)
+                for line in stdout.getvalue().splitlines()
+                if not line.startswith("nearest=")
             ), (path.read_text() if path.is_file() else "")
 
     def test_sampled_valid_proof_runs_lane_and_records_proof(self):
@@ -348,6 +351,25 @@ class Check(unittest.TestCase):
 
 
 class MissDiagnostic(unittest.TestCase):
+    def test_diagnostic_stdout_matches_summary_after_decision(self):
+        diagnostic = self.diagnose()
+        for summary_options in ({}, {"summary": False}, {"summary_path_is_directory": True}):
+            with self.subTest(**summary_options):
+                stdout = io.StringIO()
+                _, summary = Check().check(
+                    fetch=Lookup().fetcher([], {}),
+                    queue=True,
+                    captured_stdout=stdout,
+                    miss_diagnostic={"return_value": diagnostic},
+                    **summary_options,
+                )
+                lines = stdout.getvalue().splitlines()
+                self.assertEqual(lines[-1], diagnostic)
+                self.assertLess(lines.index("hit=false"), len(lines) - 1)
+                self.assertLess(lines.index("reason=no proof for this key"), len(lines) - 1)
+                if summary:
+                    self.assertEqual(summary.splitlines()[-1], lines[-1])
+
     def diagnose(
         self, artifacts=None, runs=None, error=None, pr_base="old", total_runs=1
     ):
