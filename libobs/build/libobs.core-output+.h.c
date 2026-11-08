@@ -11,6 +11,7 @@
 #include "libobs/obs-encoder-gpu-scaling-getters-fields.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
+#include "libobs/obs-encoder-preferred-format-fields.c.h"
 #include "libobs/obs-encoder-roi-state-fields.c.h"
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder-state-queries-fields.c.h"
