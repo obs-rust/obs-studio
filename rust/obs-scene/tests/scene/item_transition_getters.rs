@@ -14,7 +14,10 @@ fn transition_getters_stored_fields_are_unchanged() {
     let values = [0, 1, 250, u32::MAX];
     for mask in 0..4 {
         for (i, &show_duration) in values.iter().enumerate() {
-            let pointers = (if mask & 1 != 0 { 17 } else { 0 }, if mask & 2 != 0 { 29 } else { 0 });
+            let pointers = (
+                if mask & 1 != 0 { 17 } else { 0 },
+                if mask & 2 != 0 { 29 } else { 0 },
+            );
             let durations = (show_duration, values[3 - i]);
             let before = (pointers, durations);
             for _ in 0..2 {
@@ -26,4 +29,21 @@ fn transition_getters_stored_fields_are_unchanged() {
             }
         }
     }
+}
+
+#[test]
+fn reads_only_the_selected_field() {
+    use obs_scene::item_transition_getters::read_transition;
+    assert_eq!(
+        read_transition(Some((|| 17, || panic!("hide must not be read"))), true),
+        17
+    );
+    assert_eq!(
+        read_transition(Some((|| panic!("show must not be read"), || 29)), false),
+        29
+    );
+    assert_eq!(
+        read_transition::<u32>(None::<(fn() -> u32, fn() -> u32)>, true),
+        0
+    );
 }

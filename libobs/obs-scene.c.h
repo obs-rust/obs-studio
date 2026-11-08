@@ -3841,7 +3841,6 @@ void obs_sceneitem_set_transition(obs_sceneitem_t *item, bool show, obs_source_t
 	*target = obs_source_get_ref(transition);
 }
 
-
 void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uint32_t duration_ms)
 {
 	if (!item)
@@ -3851,7 +3850,6 @@ void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uin
 	else
 		item->hide_transition_duration = duration_ms;
 }
-
 
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata)
