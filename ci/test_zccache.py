@@ -177,7 +177,7 @@ class RecoveryTest(unittest.TestCase):
         # Run the production recovery block, with only its external tools faked.
         script = (LINUX_VALIDATE / "validate.sh").read_text()
         block = script.split('      echo "== zccache status before recovery"', 1)[1]
-        block = block.split("    else\n", 1)[0]
+        block = block.split("\n    else\n", 1)[0]
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             binary = executable(directory, "fixture")
@@ -185,25 +185,45 @@ class RecoveryTest(unittest.TestCase):
                 "#!/bin/bash\n"
                 'if [ "$1" = stop ]; then exit 0; fi\n'
                 'if [ ! -e "$STATE" ]; then touch "$STATE"; exit 1; fi\n'
-                + (f"exit {second_status}\n" if second_status is not None
-                   else 'exec /missing-zccache-command\n')
+                + (
+                    f"exit {second_status}\n"
+                    if second_status is not None
+                    else "exec /missing-zccache-command\n"
+                )
             )
             cmake = directory / "cmake"
-            cmake.write_text('#!/bin/bash\nprintf "%s\\n" "${ZCCACHE_DISABLE-unset}" >"$RESULT"\n')
+            cmake.write_text(
+                '#!/bin/bash\nprintf "%s\\n" "${ZCCACHE_DISABLE-unset}" >"$RESULT"\n'
+            )
             cmake.chmod(0o755)
             env = dict(os.environ)
             env.pop("ZCCACHE_DISABLE", None)
-            env.update(PATH=f"{directory}:{env['PATH']}", STATE=str(directory / "state"),
-                       RESULT=str(directory / "result"), GITHUB_OUTPUT=str(directory / "output"),
-                       ZCCACHE_CACHE_DIR=str(directory / "cache"))
+            env.update(
+                PATH=f"{directory}:{env['PATH']}",
+                STATE=str(directory / "state"),
+                RESULT=str(directory / "result"),
+                GITHUB_OUTPUT=str(directory / "output"),
+                ZCCACHE_CACHE_DIR=str(directory / "cache"),
+            )
             result = subprocess.run(
-                ["bash", "-c", 'set -euo pipefail\nbuild="$STATE"\ntier2_targets=(fixture)\n' + block],
-                env=env, text=True, capture_output=True, timeout=10,
+                [
+                    "bash",
+                    "-c",
+                    'set -euo pipefail\nbuild="$STATE"\ntier2_targets=(fixture)\n'
+                    + block,
+                ],
+                env=env,
+                text=True,
+                capture_output=True,
+                timeout=10,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             output = directory / "output"
-            return (result.stdout, (directory / "result").read_text().strip(),
-                    output.read_text() if output.exists() else "")
+            return (
+                result.stdout,
+                (directory / "result").read_text().strip(),
+                output.read_text() if output.exists() else "",
+            )
 
     def test_recovery_reprobe_succeeds(self):
         log, disabled, output = self.recovery(0)
