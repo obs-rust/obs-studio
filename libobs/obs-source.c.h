@@ -2036,66 +2036,6 @@ _Static_assert(OBS_SOURCE_SIZE_TYPE_FILTER == OBS_SOURCE_TYPE_FILTER, "OBS_SOURC
 _Static_assert(OBS_SOURCE_SIZE_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION, "OBS_SOURCE_TYPE_TRANSITION");
 _Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
 
-/* The fields obs_source_size_route() reads; has_callback is the size
- * callback of the axis asked for. */
-static inline struct obs_source_size_node size_node(const obs_source_t *source, bool has_callback)
-{
-	const struct obs_source_size_node node = {
-		.type = (int)source->info.type,
-		.has_data = source->context.data != NULL,
-		.has_callback = has_callback,
-		.has_filter_parent = source->filter_parent != NULL,
-		.enabled = source->enabled,
-		.async_active = os_atomic_load_bool(&source->async_active),
-		.async_rotation = source->async_rotation,
-	};
-	return node;
-}
-
-static uint32_t get_base_width(const obs_source_t *source)
-{
-	switch (obs_source_size_route(size_node(source, source->info.get_width != NULL))) {
-	case OBS_SOURCE_SIZE_TRANSITION:
-		return (uint32_t)os_atomic_load_long(&source->transition_actual_cx);
-	case OBS_SOURCE_SIZE_CALLBACK:
-		return source->info.get_width(source->context.data);
-	case OBS_SOURCE_SIZE_ASK_TARGET:
-		/* A filter being attached or removed can have a parent and no
-		 * target yet (#2172). */
-		return source->filter_target ? get_base_width(source->filter_target) : 0;
-	case OBS_SOURCE_SIZE_ASYNC:
-		return source->async_width;
-	case OBS_SOURCE_SIZE_ASYNC_SWAPPED:
-		return source->async_height;
-	case OBS_SOURCE_SIZE_ZERO:
-		break;
-	}
-
-	return 0;
-}
-
-static uint32_t get_base_height(const obs_source_t *source)
-{
-	switch (obs_source_size_route(size_node(source, source->info.get_height != NULL))) {
-	case OBS_SOURCE_SIZE_TRANSITION:
-		return (uint32_t)os_atomic_load_long(&source->transition_actual_cy);
-	case OBS_SOURCE_SIZE_CALLBACK:
-		return source->info.get_height(source->context.data);
-	case OBS_SOURCE_SIZE_ASK_TARGET:
-		/* A filter being attached or removed can have a parent and no
-		 * target yet (#2172). */
-		return source->filter_target ? get_base_height(source->filter_target) : 0;
-	case OBS_SOURCE_SIZE_ASYNC:
-		return source->async_height;
-	case OBS_SOURCE_SIZE_ASYNC_SWAPPED:
-		return source->async_width;
-	case OBS_SOURCE_SIZE_ZERO:
-		break;
-	}
-
-	return 0;
-}
-
 static void source_render(obs_source_t *source, gs_effect_t *effect)
 {
 	gs_timer_t *timer = NULL;
@@ -2127,8 +2067,8 @@ static void source_render(obs_source_t *source, gs_effect_t *effect)
 		}
 
 		gs_texrender_reset(source->color_space_texrender);
-		const uint32_t cx = get_base_width(source);
-		const uint32_t cy = get_base_height(source);
+		const uint32_t cx = obs_source_base_width(source);
+		const uint32_t cy = obs_source_base_height(source);
 		if (gs_texrender_begin_with_color_space(source->color_space_texrender, cx, cy, source_space)) {
 			gs_enable_blending(false);
 
@@ -2353,7 +2293,7 @@ static uint32_t get_recurse_width(obs_source_t *source)
 
 	pthread_mutex_lock(&source->filter_mutex);
 
-	width = get_base_width(size_start(source));
+	width = obs_source_base_width(size_start(source));
 
 	pthread_mutex_unlock(&source->filter_mutex);
 
@@ -2366,7 +2306,7 @@ static uint32_t get_recurse_height(obs_source_t *source)
 
 	pthread_mutex_lock(&source->filter_mutex);
 
-	height = get_base_height(size_start(source));
+	height = obs_source_base_height(size_start(source));
 
 	pthread_mutex_unlock(&source->filter_mutex);
 
@@ -2380,7 +2320,8 @@ uint32_t obs_source_get_width(obs_source_t *source)
 
 	/* a filter starts at itself (obs_source_size_entry()) and takes no
 	 * lock: its filter_mutex guards filters it never reads */
-	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_width(source) : get_base_width(source);
+	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_width(source)
+							     : obs_source_base_width(source);
 }
 
 uint32_t obs_source_get_height(obs_source_t *source)
@@ -2389,7 +2330,8 @@ uint32_t obs_source_get_height(obs_source_t *source)
 		return 0;
 
 	/* as obs_source_get_width() */
-	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_height(source) : get_base_height(source);
+	return (source->info.type != OBS_SOURCE_TYPE_FILTER) ? get_recurse_height(source)
+							     : obs_source_base_height(source);
 }
 
 _Static_assert(OBS_SOURCE_COLOR_SPACE_TYPE_FILTER == OBS_SOURCE_TYPE_FILTER, "OBS_SOURCE_TYPE_FILTER");
@@ -2431,22 +2373,6 @@ enum gs_color_space obs_source_get_color_space(obs_source_t *source, size_t coun
 	return source->info.video_get_color_space
 		       ? source->info.video_get_color_space(source->context.data, count, preferred_spaces)
 		       : GS_CS_SRGB;
-}
-
-uint32_t obs_source_get_base_width(obs_source_t *source)
-{
-	if (!data_valid(source, "obs_source_get_base_width"))
-		return 0;
-
-	return get_base_width(source);
-}
-
-uint32_t obs_source_get_base_height(obs_source_t *source)
-{
-	if (!data_valid(source, "obs_source_get_base_height"))
-		return 0;
-
-	return get_base_height(source);
 }
 
 _Static_assert(OBS_SOURCE_FILTER_CHAIN_VIDEO == OBS_SOURCE_VIDEO, "OBS_SOURCE_VIDEO");
@@ -3548,8 +3474,8 @@ bool obs_source_process_filter_begin_with_color_space(obs_source_t *filter, enum
 
 	filter_flags = filter->info.output_flags;
 	parent_flags = parent->info.output_flags;
-	cx = (int)get_base_width(target);
-	cy = (int)get_base_height(target);
+	cx = (int)obs_source_base_width(target);
+	cy = (int)obs_source_base_height(target);
 
 	filter->allow_direct = allow_direct;
 
