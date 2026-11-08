@@ -71,10 +71,7 @@ static void output_protocol_getter_capture(int level, const char *format, va_lis
 	log->count++;
 	log->level = level;
 	vsnprintf(log->message, sizeof(log->message), format, args);
-	/* Symbol renaming changes __func__ only in the oracle. Strip just that
-	 * oracle-only prefix so diagnostics retain the public function name. */
-	if (strncmp(log->message, "oracle_", 7) == 0)
-		memmove(log->message, log->message + 7, strlen(log->message + 7) + 1);
+
 }
 
 typedef const char *(*output_protocol_getter_getter)(const obs_output_t *);

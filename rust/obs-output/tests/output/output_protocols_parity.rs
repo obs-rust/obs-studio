@@ -1,5 +1,5 @@
 //! Tier 2 layout and Tier 3 borrowed-pointer, state and diagnostic parity.
-//! No input exclusions; oracle-only __func__ symbol prefixes are normalized.
+//! No input exclusions or diagnostic normalization.
 use core::ffi::{c_char, c_void};
 use core::mem::{align_of, offset_of, size_of};
 use obs_output::ffi::output_protocol_getter::{Fields, obs_output_get_protocols as getter};
@@ -79,7 +79,7 @@ fn characterized_edges() {
         Some(b"rtmp;\xff\0"),
     ];
     for value in values {
-        for flags in [0, 8, 1, u32::MAX, u32::MAX & !8] {
+        for flags in [0, 8, 1, u32::MAX, !8] {
             check(value, flags);
         }
     }

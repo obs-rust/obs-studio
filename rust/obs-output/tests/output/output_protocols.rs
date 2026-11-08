@@ -4,7 +4,7 @@ use obs_output::output_protocols::{Protocols, protocols};
 #[test]
 fn borrowed_protocols() {
     let values: [Option<&[u8]>; 4] = [None, Some(b""), Some(b"rtmp;rtmps"), Some(b"rtmp;\xff")];
-    let flags = [0, 8, 1, u32::MAX, u32::MAX & !8];
+    let flags = [0, 8, 1, u32::MAX, !8];
     for value in values {
         for flag in flags {
             let output = Some(Protocols {
