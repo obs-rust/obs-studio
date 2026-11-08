@@ -809,6 +809,9 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Borrowed argument snapshot; setter/shutdown retain allocation ownership. */
+extern struct obs_cmdline_args *obs_core_cmdline_args_field(void);
+
 /* Address of the global pointer; safe to obtain before startup and after shutdown. */
 extern struct obs_core *const *obs_core_initialized_field(void);
 
