@@ -1,0 +1,2 @@
+obs_output_get_id
+obs_output_get_type_data

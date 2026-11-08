@@ -6203,6 +6203,21 @@
         "frontend/utility"
       ]
     },
+    "test_output_identity_getters": {
+      "sources": [
+        "test/cmocka/test_output_identity_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_input_checks": {
       "sources": [
         "test/cmocka/test_output_input_checks.c"
@@ -15533,6 +15548,12 @@
     },
     "test_output_filename_format": {
       "target": "test_output_filename_format",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_identity_getters": {
+      "target": "test_output_identity_getters",
       "command": [
         "${target}"
       ]
