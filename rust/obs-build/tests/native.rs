@@ -274,6 +274,8 @@ mod canonical_missing_files_list_is_registered;
 mod canonical_nvenc_host_and_glyph_tests_are_registered;
 #[path = "native/registration/canonical_object_queries_is_registered.rs"]
 mod canonical_object_queries_is_registered;
+#[path = "native/registration/canonical_output_identity_getters_is_registered.rs"]
+mod canonical_output_identity_getters_is_registered;
 #[path = "native/registration/canonical_output_protocol_null_is_registered.rs"]
 mod canonical_output_protocol_null_is_registered;
 #[path = "native/registration/canonical_output_protocols_is_registered.rs"]
