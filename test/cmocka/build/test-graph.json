@@ -1113,6 +1113,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_core_initialized": {
+      "sources": [
+        "test/cmocka/test_core_initialized.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_core_module_manifest": {
       "sources": [
         "test/cmocka/test_core_module_manifest.c"
@@ -13716,6 +13725,20 @@
         "${target}"
       ],
       "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_core_initialized": {
+      "target": "test_core_initialized",
+      "command": [
+        "${target}"
+      ],
       "optional_prefixes": [
         [
           "xvfb-run",
