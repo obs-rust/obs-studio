@@ -6,6 +6,10 @@ mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
+#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
+#[path = "native/registration/graphics_private_runtime.rs"]
+mod graphics_private_runtime;
+
 #[path = "native/registration/canonical_display_audio_is_registered.rs"]
 mod canonical_display_audio_is_registered;
 #[path = "native/registration/canonical_display_media_is_registered.rs"]
@@ -40,6 +44,10 @@ mod canonical_media_clips_is_registered;
 mod canonical_opengl_video_slice_is_registered;
 #[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
 mod canonical_plugin_getters_is_registered;
+#[path = "native/registration/canonical_private_hosts_are_registered.rs"]
+mod canonical_private_hosts_are_registered;
+#[path = "native/registration/canonical_private_link_rules_are_registered.rs"]
+mod canonical_private_link_rules_are_registered;
 #[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
 mod canonical_v4l2_capture_sdk_is_registered;
 #[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
@@ -338,6 +346,10 @@ mod canonical_rust_static_header_steps_are_registered;
 mod canonical_rust_static_monitor_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
 mod canonical_rust_static_pacing_is_registered;
+#[path = "native/registration/canonical_rust_static_private_rules_are_registered.rs"]
+mod canonical_rust_static_private_rules_are_registered;
+#[path = "native/registration/canonical_rust_static_private_steps_are_registered.rs"]
+mod canonical_rust_static_private_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
 mod canonical_rust_static_source_steps_are_registered;
 #[path = "native/registration/canonical_rust_static_transition_start_are_registered.rs"]
@@ -2406,6 +2418,7 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         ("ENABLE_WAYLAND".into(), false),
         ("HAVE_WAYLAND_CLIENT_TEST_SDK".into(), false),
         ("HAVE_WAYLAND_SERVER_TEST_SDK".into(), false),
+        ("HAVE_NIX_WAYLAND_KEYS_TEST_SDK".into(), false),
         ("HAVE_OBS_FFMPEG".into(), false),
         ("HAVE_OBS_QSV11".into(), false),
         ("HAVE_LIBOBS_RUST_STATIC".into(), false),

@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pulse_monitor_steps_rust": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_steps.c"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring/pulse"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "header_libraries": [
+        "PulseAudio::PulseAudio"
+      ]
+    }
+  },
+  "tests": {
+    "test_pulse_monitor_steps_rust": {
+      "target": "test_pulse_monitor_steps_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_PULSEAUDIO"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}
