@@ -11,7 +11,7 @@
 #include "libobs/obs-display-size-fields.c.h"
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-object-query-fields.c.h"
-#include "libobs/obs-scene-group-queries.c.h"
+#include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"

@@ -1,0 +1,12 @@
+{
+  "test_scene_audio_window_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-group-query-link-stubs.c"
+    ]
+  },
+  "test_scene_render_plan_steps_rust": {
+    "sources": [
+      "test/cmocka/scene-group-query-link-stubs.c"
+    ]
+  }
+}

@@ -10207,7 +10207,8 @@
     "test_scene_audio_window_steps_rust": {
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
-        "test/cmocka/test_scene_audio_window_steps.c"
+        "test/cmocka/test_scene_audio_window_steps.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -10768,7 +10769,8 @@
     "test_scene_render_plan_steps_rust": {
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
-        "test/cmocka/test_scene_render_plan_steps.c"
+        "test/cmocka/test_scene_render_plan_steps.c",
+        "test/cmocka/scene-group-query-link-stubs.c"
       ],
       "includes": [
         "libobs"
