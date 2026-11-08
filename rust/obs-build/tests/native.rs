@@ -5393,3 +5393,6 @@ mod canonical_qt_widgets_is_registered;
 mod canonical_qt_daemons_is_registered;
 #[path = "native/registration/canonical_scene_source_type_queries_is_registered.rs"]
 mod canonical_scene_source_type_queries_is_registered;
+
+#[path = "native/registration/canonical_pipewire_cameras_is_registered.rs"]
+mod canonical_pipewire_cameras_is_registered;
