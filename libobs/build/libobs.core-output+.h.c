@@ -14,6 +14,7 @@
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"
+#include "libobs/obs-output-flags.c.h"
 #include "libobs/obs-output-identity-fields.c.h"
 #include "libobs/obs-output-mixer-getters-fields.c.h"
 #include "libobs/obs-output-supported-codecs-fields.c.h"
