@@ -12225,6 +12225,21 @@
         }
       ]
     },
+    "test_source_audio_active": {
+      "sources": [
+        "test/cmocka/test_source_audio_active.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_audio_balance_mono": {
       "sources": [
         "test/cmocka/test_source_audio_balance_mono.c"
@@ -21162,6 +21177,12 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_source_audio_active": {
+      "target": "test_source_audio_active",
+      "command": [
+        "${target}"
+      ]
     },
     "test_source_audio_balance_mono": {
       "target": "test_source_audio_balance_mono",
