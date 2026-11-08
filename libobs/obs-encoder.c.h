@@ -1981,14 +1981,6 @@ void obs_encoder_set_preferred_video_format(obs_encoder_t *encoder, enum video_f
 	encoder->preferred_format = format;
 }
 
-enum video_format obs_encoder_get_preferred_video_format(const obs_encoder_t *encoder)
-{
-	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
-		return VIDEO_FORMAT_NONE;
-
-	return encoder->preferred_format;
-}
-
 void obs_encoder_set_preferred_color_space(obs_encoder_t *encoder, enum video_colorspace colorspace)
 {
 	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
