@@ -139,6 +139,34 @@ pub fn build_qt_tests(
         ),
     ]);
     let mut interfaces = interfaces.clone();
+    if !interfaces.contains_key("nlohmann_json::nlohmann_json")
+        && let Ok(json) = graph::Dependency::package(&build.target, "nlohmann_json")
+    {
+        interfaces.insert("nlohmann_json::nlohmann_json".into(), json);
+    }
+    for (helper, source) in [
+        ("BATCH_ORDER", "requesthandler/RequestBatchHandler.cpp"),
+        (
+            "CURRENT_SCENE_REMOVED",
+            "requesthandler/RequestHandler_Scenes.cpp",
+        ),
+        ("LIST_PROPERTY_ITEMS", "utils/Obs_ArrayHelper.cpp"),
+        ("SCENE_COUNT", "utils/Obs_NumberHelper.cpp"),
+    ] {
+        facts.insert(
+            format!("HAVE_WS_{helper}_TEST_OWNER"),
+            interfaces.contains_key("OBS::libobs")
+                && interfaces.contains_key("nlohmann_json::nlohmann_json")
+                && (helper != "BATCH_ORDER" || interfaces.contains_key("Qt6::Core"))
+                && root
+                    .join("plugins/obs-websocket/src")
+                    .join(source)
+                    .is_file()
+                && root
+                    .join("plugins/obs-websocket/src/plugin-macros.h.in")
+                    .is_file(),
+        );
+    }
     let thread_options = crate::platform::native_test_thread_options(&build.target);
     interfaces
         .entry("Threads::Threads".into())

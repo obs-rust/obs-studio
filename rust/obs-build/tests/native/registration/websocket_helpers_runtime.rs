@@ -18,7 +18,11 @@ fn cases(output: &std::process::Output, name: &str) {
         String::from_utf8_lossy(&output.stderr)
     )
     .replace("\r\n", "\n");
-    let count = 5;
+    let count = match name {
+        "test_ws_current_scene_removed" => 4,
+        "test_ws_list_property_items" => 3,
+        _ => 5,
+    };
     assert!(
         text.contains(&format!("[  PASSED  ] {count} test(s).")),
         "{name}: {text}"
@@ -31,7 +35,17 @@ fn unavailable_owners(directory: &Path, root: &str) {
     fs::create_dir_all(&absent).unwrap();
     for (mode, source_root, qt, expected_names) in [
         ("no-source", absent.as_path(), "ON", vec![]),
-        ("no-qt", Path::new(root), "OFF", vec!["test_ws_image_mime"]),
+        (
+            "no-qt",
+            Path::new(root),
+            "OFF",
+            vec![
+                "test_ws_current_scene_removed",
+                "test_ws_image_mime",
+                "test_ws_list_property_items",
+                "test_ws_scene_count",
+            ],
+        ),
     ] {
         let output = directory.join(mode);
         checked(
@@ -74,7 +88,13 @@ fn canonical_websocket_helpers_run_unchanged() {
         output: directory.path().join("native"),
         profile: Default::default(),
     };
+    let core = built_core(&build, &root);
     let interfaces = std::collections::BTreeMap::from([
+        ("OBS::libobs".into(), core.dependency.clone()),
+        (
+            "nlohmann_json::nlohmann_json".into(),
+            Dependency::package(&build.target, "nlohmann_json").unwrap(),
+        ),
         (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
@@ -85,6 +105,12 @@ fn canonical_websocket_helpers_run_unchanged() {
         ),
     ]);
     let facts = std::collections::BTreeMap::from([
+        ("OS_LINUX".into(), true),
+        ("OS_WINDOWS".into(), false),
+        ("HAVE_WS_BATCH_ORDER_TEST_OWNER".into(), true),
+        ("HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER".into(), true),
+        ("HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER".into(), true),
+        ("HAVE_WS_SCENE_COUNT_TEST_OWNER".into(), true),
         ("HAVE_WS_IMAGE_MIME_TEST_OWNER".into(), true),
         ("HAVE_WS_SESSION_DURATION_TEST_OWNER".into(), true),
     ]);
@@ -92,6 +118,19 @@ fn canonical_websocket_helpers_run_unchanged() {
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), CASES.len());
     for name in CASES {
+        let loaded = checked(Command::new("ldd").arg(&artifacts[name]));
+        let loaded = String::from_utf8_lossy(&loaded.stdout);
+        if matches!(
+            name,
+            "test_ws_batch_order" | "test_ws_current_scene_removed" | "test_ws_list_property_items"
+        ) {
+            assert!(
+                loaded.contains(core.dependency.artifacts[0].to_str().unwrap()),
+                "{name}: {loaded}"
+            );
+        } else {
+            assert!(!loaded.contains("libobs.so"), "{name}: {loaded}");
+        }
         let test = graph.tests[name].resolve_runtime(&interfaces).unwrap();
         cases(
             &checked(
@@ -110,6 +149,10 @@ fn canonical_websocket_helpers_run_unchanged() {
             r#"cmake_minimum_required(VERSION 3.28)
 project(websocket-helper-contract C CXX)
 enable_testing()
+set(OS_LINUX TRUE)
+set(OS_WINDOWS FALSE)
+{core_cmake}
+find_package(nlohmann_json 3.11 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
 add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
@@ -120,7 +163,8 @@ endif()
 set(GRAPH_ROOT "{root}" CACHE PATH "Fixture source root")
 include("{root}/test/cmocka/native-test-graph.cmake")
 obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{GRAPH_ROOT}}")
-"#
+"#,
+            core_cmake = core.cmake,
         ),
     )
     .unwrap();
@@ -140,6 +184,19 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{GRAPH_ROOT}
             .args(["--parallel", "4"]),
     );
     for name in CASES {
+        let loaded = checked(Command::new("ldd").arg(output.join(name)));
+        let loaded = String::from_utf8_lossy(&loaded.stdout);
+        if matches!(
+            name,
+            "test_ws_batch_order" | "test_ws_current_scene_removed" | "test_ws_list_property_items"
+        ) {
+            assert!(
+                loaded.contains(core.dependency.artifacts[0].to_str().unwrap()),
+                "{name}: {loaded}"
+            );
+        } else {
+            assert!(!loaded.contains("libobs.so"), "{name}: {loaded}");
+        }
         cases(
             &checked(
                 Command::new("ctest")

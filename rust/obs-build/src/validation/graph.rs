@@ -4,6 +4,9 @@
 //! facts. Unknown facts are errors; the optional HAVE_X11_DISPLAY runtime fact
 //! alone defaults to false when no X server is declared.
 use crate::{NativeBuild, SharedLibrary};
+#[path = "configured_headers.rs"]
+mod configured_headers;
+use configured_headers::ConfiguredHeader;
 use serde::Deserialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -52,6 +55,10 @@ impl Requirement {
                             | "HAVE_V4L2_VMIC_TEST_OWNER"
                             | "HAVE_WS_IMAGE_MIME_TEST_OWNER"
                             | "HAVE_WS_SESSION_DURATION_TEST_OWNER"
+                            | "HAVE_WS_SCENE_COUNT_TEST_OWNER"
+                            | "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER"
+                            | "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER"
+                            | "HAVE_WS_BATCH_ORDER_TEST_OWNER"
                     )
                     .then_some(false)
                 })
@@ -194,6 +201,9 @@ pub struct Target {
     /// Repository-relative headers or data read indirectly by these sources/tests.
     #[serde(default)]
     pub watch_inputs: Vec<String>,
+    /// Target-local headers with explicit literal @NAME@ substitutions.
+    #[serde(default)]
+    pub configured_headers: BTreeMap<String, ConfiguredHeader>,
     #[serde(default)]
     pub packages: Vec<String>,
     #[serde(default)]
@@ -597,6 +607,9 @@ impl Graph {
             if let Some(import) = &target.msvc_import_library {
                 import.validate(name)?;
             }
+            for (output, header) in &target.configured_headers {
+                header.validate(output)?;
+            }
             for input in &target.watch_inputs {
                 if input.is_empty()
                     || input.starts_with('/')
@@ -837,6 +850,19 @@ impl Graph {
                     Some(serde_json::to_string(&path).map_err(|error| error.to_string())?),
                 ));
             }
+            for (output, header) in &spec.configured_headers {
+                let directory = build
+                    .output
+                    .join("native-tests")
+                    .join(name)
+                    .join("configured");
+                let input = root.join(&header.input);
+                watched_inputs.insert(input.clone());
+                let text = fs::read_to_string(input).map_err(|error| error.to_string())?;
+                fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+                crate::frontend::write(&directory.join(output), &header.render(&text))?;
+                target.include_dirs.push(directory);
+            }
             for input in &spec.watch_inputs {
                 watched_inputs.insert(root.join(input));
             }
@@ -860,6 +886,9 @@ impl Graph {
                 target
                     .include_dirs
                     .extend(dependency.include_dirs.iter().cloned());
+                target
+                    .definitions
+                    .extend(dependency.definitions.iter().cloned());
             }
             for package in &spec.packages {
                 crate::libobs::add_package(&mut target, &build.target, package)?;
