@@ -1097,6 +1097,7 @@ struct obs_canvas {
 	struct obs_core_video_mix *mix;
 };
 
+#include "libobs/obs-canvas-channel-fields.h"
 #include "libobs/obs-canvas-video-fields.h"
 
 /* Private borrowed field addresses; the canvas layout remains owned by C. */

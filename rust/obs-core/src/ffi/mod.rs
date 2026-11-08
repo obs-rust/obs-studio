@@ -4,6 +4,7 @@ pub mod audio_discard;
 pub mod audio_min_ts;
 pub mod audio_mix;
 pub mod audio_render;
+pub mod canvas_channel_getter;
 pub mod canvas_draw;
 pub mod canvas_flags_getter;
 pub mod canvas_readonly_getters;

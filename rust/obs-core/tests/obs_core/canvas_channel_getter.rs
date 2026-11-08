@@ -22,10 +22,13 @@ fn retained_channel() {
         assert_eq!(get_channel(17, channel, |_, _| None::<usize>), None);
     }
     for channel in [64, u32::MAX] {
-        assert_eq!(get_channel(17, channel, |view, selected| {
-            assert_eq!((view, selected), (17, channel));
-            None::<usize>
-        }), None);
+        assert_eq!(
+            get_channel(17, channel, |view, selected| {
+                assert_eq!((view, selected), (17, channel));
+                None::<usize>
+            }),
+            None
+        );
     }
     // NULL canvas is C UB, excluded; safe handles are supplied by the FFI boundary.
 }
