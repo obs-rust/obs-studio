@@ -26,6 +26,7 @@ mod canvas_video_info_getter;
 mod canvas_video_info_getter_parity;
 mod context_names;
 mod context_names_parity;
+mod core_cmdline_getter;
 mod core_initialized;
 mod core_initialized_parity;
 mod core_setup_rules;
