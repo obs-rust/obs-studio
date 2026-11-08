@@ -41,7 +41,10 @@ fn check(flags: u32) {
             oracle_obs_canvas_get_flags(canvas)
         );
         assert_eq!(obs_canvas_get_flags(canvas), flags);
-        assert_eq!(obs_canvas_removed(canvas), oracle_obs_canvas_removed(canvas));
+        assert_eq!(
+            obs_canvas_removed(canvas),
+            oracle_obs_canvas_removed(canvas)
+        );
         assert_eq!(obs_canvas_removed(canvas), flags & 0x8000_0000 != 0);
         assert!(oracle_canvas_flags_unchanged(canvas));
         oracle_canvas_flags_free(canvas);
