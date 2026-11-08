@@ -11982,7 +11982,7 @@
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-support.c"
       ],
       "includes": [
         "libobs"

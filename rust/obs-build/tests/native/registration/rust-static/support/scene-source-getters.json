@@ -17,7 +17,7 @@
   },
   "test_scene_item_crop_rust": {
     "sources": [
-      "test/cmocka/scene-source-getter-link-stubs.c"
+      "test/cmocka/scene-source-getter-link-support.c"
     ],
     "includes": [
       "libobs"

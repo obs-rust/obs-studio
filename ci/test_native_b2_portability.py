@@ -217,6 +217,8 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(graph["targets"][name]["sources"].count(adapter), 1)
                 self.assertEqual(support[name]["includes"], ["libobs"])
                 self.assertIn("libobs", graph["targets"][name]["includes"])
+                if name == "test_scene_item_crop_rust":
+                    self.assertNotIn(stub, graph["targets"][name]["sources"])
         text = (ROOT / stub).read_text()
         self.assertIn("obs_scene_source_fields", text)
         self.assertIn("obs_sceneitem_source_fields", text)
@@ -224,6 +226,8 @@ class NativeB2Portability(unittest.TestCase):
         legacy = (ROOT / "test/cmocka/tests.d/scene_source_getter_link_support.cmake").read_text()
         self.assertIn("scene-source-getter-link-stubs.c", legacy)
         self.assertIn("libobs_rust-static", legacy)
+        self.assertIn('_target STREQUAL "test_scene_item_crop_rust"', legacy)
+        self.assertIn("scene-source-getter-link-support.c", legacy)
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
