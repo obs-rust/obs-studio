@@ -1,0 +1,409 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipewire_camera_control_refresh": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_control_refresh.c",
+        "plugins/linux-pipewire/camera-portal.c.h",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      }
+    },
+    "test_pipewire_camera_format_dedup": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_format_dedup.c",
+        "plugins/linux-pipewire/camera-portal.c.h",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      }
+    },
+    "test_pipewire_camera_nv12": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_nv12.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      }
+    },
+    "test_pipewire_camera_renegotiate": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_renegotiate.c",
+        "plugins/linux-pipewire/camera-portal.c.h",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      }
+    },
+    "test_pipewire_camera_resolution_restart": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_resolution_restart.c",
+        "plugins/linux-pipewire/camera-portal.c.h",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      }
+    },
+    "test_pipewire_camera_unload": {
+      "sources": [
+        "test/cmocka/test_pipewire_camera_unload.c",
+        "plugins/linux-pipewire/camera-portal.c.h",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "packages": [
+        "glib-2.0",
+        "gobject-2.0",
+        "x11"
+      ],
+      "definitions": [
+        "_GNU_SOURCE"
+      ],
+      "watch_inputs": [
+        "test/cmocka/test_pipewire_cursor_hdr.py"
+      ],
+      "link_options": [
+        "-Wl,--wrap=pw_thread_loop_new",
+        "-Wl,--wrap=pw_thread_loop_lock",
+        "-Wl,--wrap=pw_thread_loop_unlock",
+        "-Wl,--wrap=pw_thread_loop_stop",
+        "-Wl,--wrap=pw_proxy_destroy"
+      ]
+    }
+  },
+  "tests": {
+    "test_pipewire_camera_control_refresh": {
+      "target": "test_pipewire_camera_control_refresh",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77,
+      "working_directory": "${runtime}"
+    },
+    "test_pipewire_camera_format_dedup": {
+      "target": "test_pipewire_camera_format_dedup",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77,
+      "working_directory": "${runtime}"
+    },
+    "test_pipewire_camera_nv12": {
+      "target": "test_pipewire_camera_nv12",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 90,
+      "skip_return_code": 77,
+      "working_directory": "${runtime}"
+    },
+    "test_pipewire_camera_renegotiate": {
+      "target": "test_pipewire_camera_renegotiate",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77,
+      "working_directory": "${runtime}"
+    },
+    "test_pipewire_camera_resolution_restart": {
+      "target": "test_pipewire_camera_resolution_restart",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77,
+      "working_directory": "${runtime}"
+    },
+    "test_pipewire_camera_unload": {
+      "target": "test_pipewire_camera_unload",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_CAMERA_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "uv",
+        "run",
+        "--script",
+        "${source}/test/cmocka/test_pipewire_cursor_hdr.py",
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    }
+  }
+}
