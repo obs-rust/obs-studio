@@ -1,0 +1,107 @@
+{
+  "targets": {
+    "test_graphics_state_stacks_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_state_stacks.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "GS_STATE_STACKS_TEST_RUST"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined",
+      "conditional_link_options": [
+        {
+          "name": "/FORCE:MULTIPLE",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/INCREMENTAL:NO",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/WX:NO",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/IGNORE:4006",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/IGNORE:4075",
+          "requires": "MSVC"
+        }
+      ]
+    },
+    "test_window_match_steps_rust": {
+      "sources": [
+        "test/cmocka/test_window_match_steps.c",
+        "libobs/util/base-variadic.c.h"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        "LibUUID::LibUUID",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        }
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX"
+        ]
+      },
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_graphics_state_stacks_rust": {
+      "target": "test_graphics_state_stacks_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_window_match_steps_rust": {
+      "target": "test_window_match_steps_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

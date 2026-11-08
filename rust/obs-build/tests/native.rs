@@ -44,6 +44,8 @@ mod canonical_media_clips_is_registered;
 mod canonical_opengl_video_slice_is_registered;
 #[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
 mod canonical_plugin_getters_is_registered;
+#[path = "native/registration/canonical_private_link_rules_are_registered.rs"]
+mod canonical_private_link_rules_are_registered;
 #[path = "native/registration/canonical_private_hosts_are_registered.rs"]
 mod canonical_private_hosts_are_registered;
 #[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
