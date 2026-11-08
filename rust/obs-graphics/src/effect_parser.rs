@@ -1,10 +1,12 @@
 //! Safe core of `libobs/graphics/effect-parser-blocks.c.h`,
 //! `libobs/graphics/effect-parser-passes.c.h`,
-//! `libobs/graphics/effect-parser-params.c.h` and
-//! `libobs/graphics/effect-parser-writer.c.h`: the effect parser's struct
+//! `libobs/graphics/effect-parser-params.c.h`,
+//! `libobs/graphics/effect-parser-writer.c.h` and
+//! `libobs/graphics/effect-parser-compile.c.h`: the effect parser's struct
 //! and sampler-state blocks, its passes and techniques, its parameter
-//! declarations, and its shader writer ([`writer`]: the shader text the
-//! compile step builds for each pass call).
+//! declarations, its shader writer ([`writer`]: the shader text the compile
+//! step builds for each pass call), and its compile step ([`compile`]: the
+//! effect `ep_parse()` fills from the parser once the text parsed).
 //!
 //! - [`parse_struct`] (`ep_parse_struct`, with `ep_parse_struct_var`):
 //!   `struct name { type name [: MAPPING]; ... };`;
@@ -94,6 +96,7 @@
 //! The `int` and count reads' own intentional difference (#3464) is
 //! [`crate::effect_param_types`]'s.
 
+pub mod compile;
 pub mod writer;
 
 use crate::effect_param_types::{self, Route};

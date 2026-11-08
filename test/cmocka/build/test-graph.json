@@ -2266,7 +2266,6 @@
       "sources": [
         "test/cmocka/test_effect_parser_blocks.c",
         "libobs/graphics/effect-parser.c.h",
-        "libobs/graphics/effect-parser-compile.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
@@ -2334,6 +2333,45 @@
         "Uthash::Uthash",
         "OBS::native-test-cmocka"
       ],
+      "definitions": [
+        "gs_pixelshader_create=test_pixelshader_create",
+        "gs_shader_destroy=test_shader_destroy",
+        "gs_shader_get_param_by_name=test_shader_get_param_by_name",
+        "gs_vertexshader_create=test_vertexshader_create"
+      ]
+    },
+    "test_effect_parser_compile_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_compile.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined",
       "definitions": [
         "gs_pixelshader_create=test_pixelshader_create",
         "gs_shader_destroy=test_shader_destroy",
@@ -2445,7 +2483,6 @@
       "sources": [
         "test/cmocka/test_effect_parser_params.c",
         "libobs/graphics/effect-parser.c.h",
-        "libobs/graphics/effect-parser-compile.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
@@ -2518,7 +2555,6 @@
       "sources": [
         "test/cmocka/test_effect_parser_passes.c",
         "libobs/graphics/effect-parser.c.h",
-        "libobs/graphics/effect-parser-compile.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
@@ -2595,7 +2631,6 @@
       "sources": [
         "test/cmocka/test_effect_parser_shader_call.c",
         "libobs/graphics/effect-parser.c.h",
-        "libobs/graphics/effect-parser-compile.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
@@ -17800,6 +17835,13 @@
     },
     "test_effect_parser_compile": {
       "target": "test_effect_parser_compile",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_effect_parser_compile_rust": {
+      "target": "test_effect_parser_compile_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

@@ -27,7 +27,7 @@ fn assert_cases(output: &Output, name: &str) {
         "test_windows_keys_steps_rust" => 9,
         "test_effect_parser_blocks_rust" | "test_effect_parser_params_rust" => 7,
         "test_effect_parser_passes_rust" => 5,
-        "test_effect_parser_shader_call_rust" => 3,
+        "test_effect_parser_compile_rust" | "test_effect_parser_shader_call_rust" => 3,
         "test_graphics_ffmpeg_pq_steps_rust" => 9,
         "test_graphics_ffmpeg_wic_checks_rust" => 4,
         "test_nsgif_decode_rust" => 39,
