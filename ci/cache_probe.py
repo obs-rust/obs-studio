@@ -154,7 +154,7 @@ def _http(method: str, url: str, headers: dict, body=None, timeout: int = 600):
         return err.code, dict(err.headers or {}), err.read() or b""
 
 
-def probe_gha_stream(archive: Path, report: Report, key: str) -> None:
+def probe_gha_stream(archive: Path, report: Report, key: str) -> None:  # noqa: C901
     base = os.environ.get("ACTIONS_CACHE_URL", "").rstrip("/")
     token = os.environ.get("ACTIONS_RUNTIME_TOKEN", "")
     if not (base and token):
@@ -272,7 +272,7 @@ def probe_gha_stream(archive: Path, report: Report, key: str) -> None:
                 ok=ok,
             )
         )
-    except Exception as error:  # noqa: BLE001 - a probe phase must not abort the run
+    except Exception as error:  # a probe phase must not abort the run
         report.add(
             Phase("gha-stream-extract", time.monotonic() - started, received, note=str(error)[:160], ok=False)
         )
@@ -280,7 +280,7 @@ def probe_gha_stream(archive: Path, report: Report, key: str) -> None:
         shutil.rmtree(dest, ignore_errors=True)
         try:
             _http("DELETE", f"{base}/_apis/artifactcache/caches/{cache_id}", headers)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
 
@@ -365,14 +365,14 @@ def probe_s3(archive: Path, report: Report) -> None:
                     break
                 received += len(piece)
         report.add(Phase("s3-get", time.monotonic() - started, received, ok=received == size))
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         report.add(Phase("s3-get", time.monotonic() - started, received, note=str(error)[:160], ok=False))
 
     # Leaving the object behind would pollute the bucket; a probe run deletes it.
     try:
         headers, _hash = _sigv4_headers("DELETE", url, region, access, secret, None)
         _http("DELETE", url, headers, None)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
 
