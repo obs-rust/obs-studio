@@ -2045,6 +2045,13 @@ area.
   [#345](https://github.com/obs-rust/obs-studio/issues/345), PR
   [#346](https://github.com/obs-rust/obs-studio/pull/346), upstream
   [obsproject/obs-studio#12171](https://github.com/obsproject/obs-studio/issues/12171).
+- In Studio Mode, the Program view follows the window to a screen with
+  another pixel ratio (for example from a Retina display to an external
+  display) and keeps its size and position, instead of keeping the old
+  layout until the window is resized. Projectors and other previews follow
+  too. *All* (seen on macOS), 2026-11-08. Issue
+  [#4010](https://github.com/obs-rust/obs-studio/issues/4010), PR
+  [#4052](https://github.com/obs-rust/obs-studio/pull/4052).
 - On X11 with a second keyboard layout, hotkeys on keys like [ and ] use the
   correct key instead of a number key. *Linux*, 2026-10-12. Issue
   [#349](https://github.com/obs-rust/obs-studio/issues/349), PR

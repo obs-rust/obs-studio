@@ -1986,6 +1986,38 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_display_screen_change": {
+      "sources": [
+        "test/cmocka/test_display_screen_change.cpp",
+        "frontend/build/frontend.widgets-obsqtdisplay+.hpp.cpp"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/utility/SurfaceEventFilter.hpp",
+          "frontend/widgets/OBSQTDisplay.hpp"
+        ]
+      },
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/build/frontend-widgets-obsqtdisplay.pch.hpp",
+        "frontend/utility/SurfaceEventFilter.hpp",
+        "frontend/widgets/OBSQTDisplay.cpp.hpp"
+      ]
+    },
     "test_display_size": {
       "sources": [
         "test/cmocka/test_display_size.c"
@@ -18149,6 +18181,18 @@
     "test_display_reinit": {
       "target": "test_display_reinit",
       "requires": true
+    },
+    "test_display_screen_change": {
+      "target": "test_display_screen_change",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
     },
     "test_display_size": {
       "target": "test_display_size",
