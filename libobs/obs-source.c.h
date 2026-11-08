@@ -3418,11 +3418,6 @@ const char *obs_source_get_name(const obs_source_t *source)
 	return obs_source_valid(source, "obs_source_get_name") ? source->context.name : NULL;
 }
 
-const char *obs_source_get_uuid(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_uuid") ? source->context.uuid : NULL;
-}
-
 void obs_source_set_name(obs_source_t *source, const char *name)
 {
 	if (!obs_source_valid(source, "obs_source_set_name"))
@@ -3463,11 +3458,6 @@ enum obs_source_type obs_source_get_type(const obs_source_t *source)
 const char *obs_source_get_id(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_get_id") ? source->info.id : NULL;
-}
-
-const char *obs_source_get_unversioned_id(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_unversioned_id") ? source->info.unversioned_id : NULL;
 }
 
 static inline void render_filter_bypass(obs_source_t *target, gs_effect_t *effect, const char *tech_name)
