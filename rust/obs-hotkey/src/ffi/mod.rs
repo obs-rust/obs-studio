@@ -1,5 +1,6 @@
 //! C ABI shims, one module per C file.
 
+pub mod background_query;
 pub mod binding_getters;
 pub mod binding_press;
 pub mod bindings;

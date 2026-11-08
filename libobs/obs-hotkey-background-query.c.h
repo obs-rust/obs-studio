@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-hotkey-binding-press.pch.h"
 
 bool obs_hotkey_combination_is_background(obs_key_combination_t combo)
 {
