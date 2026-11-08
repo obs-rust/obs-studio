@@ -769,9 +769,8 @@ pub unsafe fn audio_callback_with<L: Calls>(
         out_ts,
         calls: PhantomData,
     };
-    let (result, ts) = core::audio_callback(&mut seam, start_ts_in, end_ts_in, mixers);
-    // SAFETY: the caller's output (the contract).
-    unsafe { *out_ts = ts };
+    // The core writes `*out_ts` through the seam where the C does.
+    let (result, _) = core::audio_callback(&mut seam, start_ts_in, end_ts_in, mixers);
     result
 }
 

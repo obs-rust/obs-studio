@@ -627,7 +627,9 @@ fn mix_roots<T: Tick + ?Sized>(
 }
 
 /// `audio_callback()`: one tick from `start_ts` to `end_ts`, mixed into the
-/// mixes in `mixers`. Returns the result and `*out_ts`.
+/// mixes in `mixers`. It sets `*out_ts` ([`Tick::set_out_ts`]) before it
+/// counts a wait tick down or runs the tasks, as the C does. Returns the
+/// result and the `*out_ts` it set.
 pub fn audio_callback<T: Tick>(t: &mut T, start_ts: u64, end_ts: u64, mixers: u32) -> (bool, u64) {
     let sample_rate = t.sample_rate();
     let channels = t.channels();
@@ -697,6 +699,7 @@ pub fn audio_callback<T: Tick>(t: &mut T, start_ts: u64, end_ts: u64, mixers: u3
     t.timestamps_pop_front();
 
     let out_ts = ts.start;
+    t.set_out_ts(out_ts);
 
     let wait = t.wait_ticks();
     if wait != 0 {
