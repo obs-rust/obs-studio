@@ -142,12 +142,14 @@ class Lookup(unittest.TestCase):
 
 
 class Check(unittest.TestCase):
-    def check(self, key="00000001" + "a" * 56, *, summary=True, fetch=None, summary_path_is_directory=False, **patches):
+    def check(self, key="00000001" + "a" * 56, *, summary=True, fetch=None, summary_path_is_directory=False, queue=False, **patches):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "summary"
             if summary_path_is_directory:
                 path.mkdir()
             env = {"GITHUB_STEP_SUMMARY": str(path)} if summary else {}
+            if queue:
+                env.update(GITHUB_EVENT_NAME="merge_group", GITHUB_REF="refs/heads/gh-readonly-queue/master/pr-42-abc")
             stdout = io.StringIO()
             artifacts = [{"name": lane_proof.artifact_name("rust-test", key),
                           "workflow_run": {"id": 7}}]
@@ -239,6 +241,47 @@ class Check(unittest.TestCase):
                 out, summary = self.check(**patches)
                 self.assertEqual(out["hit"], "false")
                 self.assertIn("lane=rust-test key=none hit=false", summary)
+
+
+class MissDiagnostic(unittest.TestCase):
+    def diagnose(self, artifacts=None, runs=None, error=None):
+        pr_run = {**run("pull_request"), "pull_requests": [
+            {"number": 42, "head": {"ref": "b"}, "base": {"sha": "old"}}]}
+        artifacts = artifacts if artifacts is not None else [{
+            "name": lane_proof.artifact_name("rust-test", "b" * 64),
+            "created_at": "2027-01-01T00:00:00Z", "workflow_run": {"id": 7}}]
+        calls = []
+
+        def fetch(path, token):
+            calls.append(path)
+            if error:
+                raise error
+            if "/actions/workflows/" in path:
+                return {"workflow_runs": runs if runs is not None else [pr_run], "total_count": 1}
+            return {"artifacts": artifacts, "total_count": len(artifacts)}
+
+        with patch.dict(os.environ, {"GITHUB_REF": "refs/heads/gh-readonly-queue/master/pr-42-abc"}, clear=True):
+            result = lane_proof.miss_diagnostic("rust-test", "a" * 64, "queue", "HEAD", REPO, "t", fetch=fetch, now=NOW)
+        self.assertLessEqual(len(calls), 2)
+        return result
+
+    def test_stale_base(self):
+        self.assertEqual(self.diagnose(),
+                         "nearest=bbbbbbbbbbbb run=7 pr_base=old queue_base=queue verdict=stale-base")
+
+    def test_no_pr_proof(self):
+        self.assertIn("verdict=no-pr-proof", self.diagnose(artifacts=[]))
+
+    def test_api_error_unknown(self):
+        self.assertIn("verdict=unknown", self.diagnose(error=RuntimeError("down")))
+
+    def test_diagnostic_never_changes_hit(self):
+        empty = Lookup().fetcher([], {})
+        expected, _ = Check().check(fetch=empty)
+        actual, summary = Check().check(fetch=empty, queue=True,
+                                       miss_diagnostic={"side_effect": RuntimeError("down")})
+        self.assertIn("verdict=unknown", summary)
+        self.assertEqual(actual, expected)
 
 
 GATE = """[gate]
