@@ -144,6 +144,7 @@ pub mod output_begin;
 pub mod output_can_pause;
 pub mod output_caption;
 pub mod output_identity;
+pub mod output_mixer_getters;
 pub mod output_pause;
 pub mod output_reconnect;
 pub mod output_slots;

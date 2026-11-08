@@ -1081,14 +1081,6 @@ void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 	output->mixer_mask = obs_output_slots_mixer_mask(mixer_idx);
 }
 
-size_t obs_output_get_mixer(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_mixer"))
-		return 0;
-
-	return get_first_mixer(output);
-}
-
 void obs_output_set_mixers(obs_output_t *output, size_t mixers)
 {
 	if (!obs_output_valid(output, "obs_output_set_mixers"))
@@ -1099,11 +1091,6 @@ void obs_output_set_mixers(obs_output_t *output, size_t mixers)
 		return;
 
 	output->mixer_mask = mixers;
-}
-
-size_t obs_output_get_mixers(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_mixers") ? output->mixer_mask : 0;
 }
 
 void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_encoder *encoder)

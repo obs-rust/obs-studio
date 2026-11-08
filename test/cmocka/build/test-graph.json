@@ -6340,6 +6340,24 @@
         "libobs/data"
       ]
     },
+    "test_output_mixer_getters": {
+      "sources": [
+        "test/cmocka/test_output_mixer_getters.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_null_id": {
       "sources": [
         "test/cmocka/test_output_null_id.c"
@@ -15689,6 +15707,12 @@
       "working_directory": "${runtime}",
       "timeout_seconds": 30,
       "skip_return_code": 77
+    },
+    "test_output_mixer_getters": {
+      "target": "test_output_mixer_getters",
+      "command": [
+        "${target}"
+      ]
     },
     "test_output_null_id": {
       "target": "test_output_null_id",

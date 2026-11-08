@@ -1806,6 +1806,11 @@ struct obs_output_supported_codecs_fields {
 	const char *const *audio;
 };
 extern struct obs_output_supported_codecs_fields obs_output_supported_codecs_fields(const obs_output_t *output);
+/* Borrowed field addresses; NULL must be rejected before calling. */
+struct obs_output_mixer_getters_fields {
+	const size_t *mask;
+};
+extern struct obs_output_mixer_getters_fields obs_output_mixer_getters_fields(const obs_output_t *output);
 
 static inline void do_output_signal(struct obs_output *output, const char *signal)
 {
