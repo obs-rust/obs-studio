@@ -11009,6 +11009,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_scene_item_transition_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_transition_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_list_remove": {
       "sources": [
         "test/cmocka/test_scene_list_remove.c",
@@ -19817,6 +19832,12 @@
     },
     "test_scene_item_transform_steps": {
       "target": "test_scene_item_transform_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_scene_item_transition_getters": {
+      "target": "test_scene_item_transition_getters",
       "command": [
         "${target}"
       ]
