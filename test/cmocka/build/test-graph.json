@@ -662,7 +662,6 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "requires": {
@@ -1441,7 +1440,6 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "requires": {
@@ -1526,7 +1524,6 @@
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
@@ -6749,7 +6746,6 @@
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "requires": {
@@ -6799,7 +6795,6 @@
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
@@ -6851,7 +6846,6 @@
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
@@ -10301,7 +10295,6 @@
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
         "test/cmocka/output-pause-query-link-stubs.c",
-        "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
