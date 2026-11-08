@@ -44,33 +44,7 @@ fn canonical_private_capture_runs_unchanged() {
         obs_build::graphics::build_opengl(&build, &root, &core_path, &Default::default()).unwrap();
     assert_binding(&renderer, &core_path);
     let glad = build_glad(directory.path(), &root);
-    let mut interfaces =
-        std::collections::BTreeMap::from([("OBS::libobs".into(), core.dependency)]);
-    for (name, package) in [
-        ("OBS::native-test-cmocka", "cmocka"),
-        ("PipeWire::PipeWire", "libpipewire-0.3"),
-        ("gio::gio", "gio-2.0"),
-    ] {
-        interfaces.insert(
-            name.into(),
-            Dependency::package(&build.target, package).unwrap(),
-        );
-    }
-    interfaces.insert(
-        "OBS::glad".into(),
-        Dependency {
-            artifacts: vec![glad.clone()],
-            include_dirs: vec![root.join("deps/glad/include")],
-            ..Default::default()
-        },
-    );
-    interfaces.insert(
-        "OBS::libobs-opengl".into(),
-        Dependency {
-            artifacts: vec![renderer.clone()],
-            ..Default::default()
-        },
-    );
+    let interfaces = interfaces(core.dependency, &build, &root, &glad, &renderer);
     let facts = [
         ("OS_LINUX".into(), true),
         ("HAVE_PIPEWIRE_CAMERA_TEST_OWNER".into(), true),
@@ -90,6 +64,16 @@ fn canonical_private_capture_runs_unchanged() {
     }
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), CASES.len());
+    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
+    write_cmake(
+        directory.path(),
+        &root,
+        &runtime,
+        &core.cmake,
+        &renderer,
+        &glad,
+    );
+    replay_cmake(directory.path(), &runtime, &core_path);
     for name in CASES {
         assert_binding(&artifacts[name], &core_path);
         let result = checked(
@@ -105,16 +89,6 @@ fn canonical_private_capture_runs_unchanged() {
             String::from_utf8_lossy(&result.stderr)
         );
     }
-    fs::write(directory.path().join("graph.json"), selected.to_string()).unwrap();
-    write_cmake(
-        directory.path(),
-        &root,
-        &runtime,
-        &core.cmake,
-        &renderer,
-        &glad,
-    );
-    replay_cmake(directory.path(), &runtime, &core_path);
 }
 
 fn build_glad(directory: &Path, root: &Path) -> PathBuf {
@@ -176,7 +150,9 @@ add_library(OBS::glad STATIC IMPORTED)
 set_target_properties(OBS::glad PROPERTIES IMPORTED_LOCATION "{glad}" INTERFACE_INCLUDE_DIRECTORIES "{root}/deps/glad/include")
 add_library(OBS::libobs-opengl MODULE IMPORTED)
 set_property(TARGET OBS::libobs-opengl PROPERTY IMPORTED_LOCATION "{renderer}")
-set(HAVE_V4L2_VMIC_TEST_OWNER ${{WITH_OWNER}})
+if(NOT DEFINED HAVE_V4L2_VMIC_TEST_OWNER)
+  set(HAVE_V4L2_VMIC_TEST_OWNER ${{WITH_OWNER}})
+endif()
 if(WITH_OWNER)
   add_library(OBS::pipewire INTERFACE IMPORTED)
 endif()
@@ -188,15 +164,35 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 fn replay_cmake(directory: &Path, runtime: &Path, core: &Path) {
     for (mode, options, names) in [
         ("enabled", vec![], CASES.to_vec()),
-        ("windows", vec!["-DOS_LINUX=OFF", "-DOS_WINDOWS=ON", "-DHAVE_V4L2_VMIC_TEST_OWNER=OFF"], vec![]),
-        ("macos", vec!["-DOS_LINUX=OFF", "-DOS_MACOS=ON", "-DHAVE_V4L2_VMIC_TEST_OWNER=OFF"], vec![]),
+        (
+            "windows",
+            vec![
+                "-DOS_LINUX=OFF",
+                "-DOS_WINDOWS=ON",
+                "-DHAVE_V4L2_VMIC_TEST_OWNER=OFF",
+            ],
+            vec![],
+        ),
+        (
+            "macos",
+            vec![
+                "-DOS_LINUX=OFF",
+                "-DOS_MACOS=ON",
+                "-DHAVE_V4L2_VMIC_TEST_OWNER=OFF",
+            ],
+            vec![],
+        ),
         ("no-owner", vec!["-DWITH_OWNER=OFF"], vec![]),
         (
             "no-daemons",
             vec!["-DHAVE_PIPEWIRE_CAMERA_TEST_OWNER=OFF"],
             vec!["test_v4l2_vmic_server"],
         ),
-        ("no-display", vec!["-DHAVE_X11_DISPLAY=OFF"], vec!["test_v4l2_vmic_server"]),
+        (
+            "no-display",
+            vec!["-DHAVE_X11_DISPLAY=OFF"],
+            vec!["test_v4l2_vmic_server"],
+        ),
     ] {
         let output = directory.join(mode);
         checked(
@@ -394,4 +390,47 @@ fn normalized_command(command: &serde_json::Value) -> Vec<String> {
         arguments[0] = "uv".into();
     }
     arguments
+}
+
+fn interfaces(
+    core: Dependency,
+    build: &NativeBuild,
+    root: &Path,
+    glad: &Path,
+    renderer: &Path,
+) -> std::collections::BTreeMap<String, Dependency> {
+    let mut interfaces = std::collections::BTreeMap::from([("OBS::libobs".into(), core)]);
+    for (name, package) in [
+        ("OBS::native-test-cmocka", "cmocka"),
+        ("PipeWire::PipeWire", "libpipewire-0.3"),
+        ("gio::gio", "gio-2.0"),
+    ] {
+        interfaces.insert(
+            name.into(),
+            Dependency::package(&build.target, package).unwrap(),
+        );
+    }
+    interfaces.insert(
+        "m".into(),
+        Dependency {
+            link_options: vec!["-lm".into()],
+            ..Default::default()
+        },
+    );
+    interfaces.insert(
+        "OBS::glad".into(),
+        Dependency {
+            artifacts: vec![glad.to_path_buf()],
+            include_dirs: vec![root.join("deps/glad/include")],
+            ..Default::default()
+        },
+    );
+    interfaces.insert(
+        "OBS::libobs-opengl".into(),
+        Dependency {
+            artifacts: vec![renderer.to_path_buf()],
+            ..Default::default()
+        },
+    );
+    interfaces
 }

@@ -47,6 +47,7 @@ impl Requirement {
                             | "HAVE_VST_EDITOR_TEST_OWNER"
                             | "HAVE_PRIVATE_DAEMON_TEST_OWNER"
                             | "HAVE_PIPEWIRE_CAMERA_TEST_OWNER"
+                            | "HAVE_V4L2_VMIC_TEST_OWNER"
                     )
                     .then_some(false)
                 })
