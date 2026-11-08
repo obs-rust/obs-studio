@@ -42,6 +42,8 @@ and `today_badge`, the HTML for the green up-arrow marker.
 """
 import argparse, html, json, re, subprocess, sys
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from zoneinfo import ZoneInfo
 
 RELAYS = {"zackees"}  # repo owner; also anything treated as a bot
@@ -93,6 +95,16 @@ def pr_commits(repo, n):
                     authors.append({"login": (c.get("author") or {}).get("login", ""), "email": who.get("email", "")})
             out.append({"messageHeadline": head, "messageBody": body, "authors": authors})
     return out
+
+def fetch_commits(repo, numbers):
+    """Overlap API latency without changing attribution order or pagination.
+
+    Thousands of serial gh calls exhausted the workflow's 15-minute budget.
+    Four workers bound simultaneous requests; map returns results in input order
+    and propagates failures rather than publishing a partial leaderboard.
+    """
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        yield from pool.map(partial(pr_commits, repo), numbers)
 
 def merged_list_complete(fetched, total):
     """True unless the fetched list is shorter than GitHub's merged-PR count.
@@ -149,10 +161,10 @@ def main():  # noqa: C901
                                          "merged_prs": 0, "issues_filed": 0, "prs": [], "issues": [], "dates": []})
     notes, unattributed, seen_humans = [], [], set()
     assigned = {}
-    for p in sorted(merged, key=lambda p: p["number"]):
+    ordered = sorted(merged, key=lambda p: p["number"])
+    for p, commits in zip(ordered, fetch_commits(repo, [p["number"] for p in ordered])):
         a = p["author"] or {}
         login = a.get("login", "")
-        commits = pr_commits(repo, p["number"])
         for c in commits:
             for au in c.get("authors") or []:
                 if au.get("login") and not is_bot(au["login"], au.get("email", "")):
