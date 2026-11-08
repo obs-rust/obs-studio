@@ -10,6 +10,8 @@ mod audio_mix;
 mod audio_mix_parity;
 mod audio_render;
 mod audio_render_parity;
+mod canvas_channel_getter;
+mod canvas_channel_getter_parity;
 mod canvas_draw;
 mod canvas_draw_parity;
 mod canvas_flags_getter;
