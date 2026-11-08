@@ -3074,11 +3074,6 @@ uint64_t obs_get_average_frame_time_ns(void)
 	return obs_video_stats_avg_frame_time_ns(&obs->video.stats);
 }
 
-uint64_t obs_get_frame_interval_ns(void)
-{
-	return obs->video.video_frame_interval_ns;
-}
-
 const char *obs_obj_get_id(void *obj)
 {
 	struct obs_context_data *context = obj;

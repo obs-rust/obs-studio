@@ -3,6 +3,7 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-core-cmdline-fields.c.h"
+#include "libobs/obs-core-frame-interval.c.h"
 #include "libobs/obs-core-global-fields.c.h"
 #include "libobs/obs-core-initialized-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
