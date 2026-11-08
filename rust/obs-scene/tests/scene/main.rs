@@ -26,6 +26,7 @@ mod item_transform_parity;
 mod render_plan;
 mod render_plan_parity;
 mod source_getters;
+mod source_getters_parity;
 mod source_type_queries;
 mod source_type_queries_parity;
 mod transform_update;

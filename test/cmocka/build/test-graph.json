@@ -11588,6 +11588,7 @@
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
@@ -11677,7 +11678,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
-        "test/cmocka/scene-item-transition-getter-link-stub.c"
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -11979,7 +11981,8 @@
         "test/cmocka/scene-item-fields-link-support.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
-        "test/cmocka/scene-item-parent-getter-link-stub.c"
+        "test/cmocka/scene-item-parent-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c"
       ],
       "includes": [
         "libobs"
@@ -12036,7 +12039,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
-        "test/cmocka/scene-item-transition-getter-link-stub.c"
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12074,7 +12078,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
-        "test/cmocka/scene-item-transition-getter-link-stub.c"
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12210,7 +12215,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
-        "test/cmocka/scene-item-transition-getter-link-stub.c"
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12315,6 +12321,7 @@
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c",
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
@@ -12430,7 +12437,8 @@
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/scene-group-query-link-stubs.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
-        "test/cmocka/scene-item-transition-getter-link-stub.c"
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-source-getter-link-stubs.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [

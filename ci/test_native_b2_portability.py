@@ -92,6 +92,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
+                    "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                 ])
 
@@ -198,6 +199,28 @@ class NativeB2Portability(unittest.TestCase):
         self.assertEqual(text.count("abort();"), 1)
         legacy = (ROOT / "test/cmocka/tests.d/scene_item_parent_getter_link_support.cmake").read_text()
         self.assertIn("scene-item-parent-getter-link-stub.c", legacy)
+        self.assertIn("libobs_rust-static", legacy)
+
+    def test_scene_source_getters_supply_all_static_consumers(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-source-getters.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if name.startswith("test_scene") and "libobs_rust-static" in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        stub = "test/cmocka/scene-source-getter-link-stubs.c"
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(support[name]["sources"], [stub])
+                self.assertEqual(graph["targets"][name]["sources"].count(stub), 1)
+                self.assertEqual(support[name]["includes"], ["libobs"])
+                self.assertIn("libobs", graph["targets"][name]["includes"])
+        text = (ROOT / stub).read_text()
+        self.assertIn("obs_scene_source_fields", text)
+        self.assertIn("obs_sceneitem_source_fields", text)
+        self.assertEqual(text.count("abort();"), 2)
+        legacy = (ROOT / "test/cmocka/tests.d/scene_source_getter_link_support.cmake").read_text()
+        self.assertIn("scene-source-getter-link-stubs.c", legacy)
         self.assertIn("libobs_rust-static", legacy)
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
