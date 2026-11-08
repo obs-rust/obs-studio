@@ -95,6 +95,38 @@ class CommitFetchTest(unittest.TestCase):
         self.assertEqual(result[0]["messageBody"], "body")
 
 
+class ConversionBadgeTest(unittest.TestCase):
+    def test_measure_emits_badge_and_check_detects_stale_badge(self):
+        import json
+        import tempfile
+
+        path = GENERATE.parents[1] / "conversion" / "measure.py"
+        spec = importlib.util.spec_from_file_location("conversion_measure_badge", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        data = {"date": "2026-11-08", "libobs": {"all": {"percent": 55.04}}}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "conversion.json"
+            badge = output.with_name("conversion-badge.json")
+            with patch.object(mod, "measure", return_value=data), patch.object(mod, "render_svg", return_value=""):
+                self.assertEqual(mod.main(["--json", str(output)]), 0)
+                self.assertTrue(badge.is_file(), "measurement must emit its badge")
+                self.assertEqual(json.loads(badge.read_text()), {
+                    "schemaVersion": 1, "label": "converted to Rust",
+                    "message": "55.0% · 2026-11-08", "color": "e8631a",
+                })
+                self.assertEqual(mod.main(["--json", str(output), "--check"]), 0)
+                badge.write_text("{}")
+                self.assertEqual(mod.main(["--json", str(output), "--check"]), 1)
+
+    def test_badges_are_next_to_conversion_graph(self):
+        readme = (WORKFLOW.parent.parent.parent / "README.md").read_text()
+        section = readme.split("# Conversion progress", 1)[1].split("# Features", 1)[0]
+        self.assertIn("img.shields.io/endpoint?url=", section)
+        self.assertIn("conversion-badge.json", section)
+        self.assertIn("actions/workflows/leaderboard.yml/badge.svg?branch=master", section)
+
+
 class LeaderboardScheduleTest(unittest.TestCase):
     def setUp(self):
         self.text = WORKFLOW.read_text()
