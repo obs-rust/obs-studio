@@ -1907,6 +1907,7 @@
       ],
       "qt": {
         "moc": [
+          "frontend/utility/SurfaceEventFilter.hpp",
           "frontend/widgets/OBSQTDisplay.hpp"
         ]
       },
@@ -1927,6 +1928,7 @@
       ],
       "watch_inputs": [
         "frontend/build/frontend-widgets-obsqtdisplay.pch.hpp",
+        "frontend/utility/SurfaceEventFilter.hpp",
         "frontend/widgets/OBSQTDisplay.cpp.hpp"
       ]
     },

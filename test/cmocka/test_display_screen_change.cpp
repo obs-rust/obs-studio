@@ -36,11 +36,20 @@ extern "C" {
 }
 
 /* The frontend's platform files are not built into this test: no native
- * window, so CreateDisplay() stops before obs_display_create(). */
+ * window, so CreateDisplay() stops before obs_display_create(), and no native
+ * events to handle. */
 bool FillPlatformGraphicsWindow(QWindow *, gs_window &)
 {
 	return false;
 }
+
+/* As on X11 (platform-x11.cpp.hpp). */
+bool PlatformResetsHiddenDisplay()
+{
+	return true;
+}
+
+void HandlePlatformDisplayNativeEvent(OBSQTDisplay *, void *) {}
 
 /* Two screens side by side, the second with pixel ratio 2 (a Retina next to
  * a normal display). */
