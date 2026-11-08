@@ -15,6 +15,17 @@ fn canonical_private_capture_is_registered() {
     let raw: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
+    // GCC C-reference replay failed packed_rows twice in ten runs: the
+    // unchanged fixture checks after 15 output frames, before capture is ready.
+    // Keep its original CMake coverage until that timing race is addressed.
+    let deferred = "test_pipewire_screencast_shm";
+    assert!(!graph.targets.contains_key(deferred));
+    assert!(!graph.tests.contains_key(deferred));
+    let fragment =
+        fs::read_to_string(root.join(format!("test/cmocka/tests.d/{deferred}.cmake"))).unwrap();
+    assert!(fragment.contains("add_executable("));
+    assert!(fragment.contains("add_test("));
+    assert!(!fragment.contains("test-graph.json"));
     let wanted = expected();
     for section in ["targets", "tests"] {
         for name in CASES {
