@@ -2330,11 +2330,6 @@ void obs_sceneitems_add(obs_scene_t *scene, obs_data_array_t *data)
 	obs_data_array_enum(data, sceneitem_restore, scene);
 }
 
-obs_scene_t *obs_sceneitem_get_scene(const obs_sceneitem_t *item)
-{
-	return item ? item->parent : NULL;
-}
-
 obs_source_t *obs_sceneitem_get_source(const obs_sceneitem_t *item)
 {
 	return item ? item->source : NULL;
