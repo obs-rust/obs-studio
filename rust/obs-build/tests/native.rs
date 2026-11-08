@@ -1,6 +1,8 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
+#[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
+mod canonical_rust_static_windows_keys_are_registered;
 #[path = "native/graph_host_configurations.rs"]
 mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]

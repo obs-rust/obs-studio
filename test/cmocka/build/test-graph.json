@@ -16379,6 +16379,76 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_windows_keys_steps_rust": {
+      "sources": [
+        "test/cmocka/test_windows_keys_steps.c",
+        "test/cmocka/windows-keys-rust-stubs.c",
+        "test/cmocka/hotkey-identity-rust-stubs.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
+        "test/cmocka/object-validity-query-link-stubs.c"
+      ],
+      "includes": [
+        ".",
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka",
+        "jansson::jansson",
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": "HAVE_WINDOWS_KEYS_TEST_UUID"
+        },
+        {
+          "name": "gio::gio",
+          "requires": "HAVE_WINDOWS_KEYS_TEST_GIO"
+        },
+        {
+          "name": "gobject-2.0",
+          "requires": "HAVE_WINDOWS_KEYS_TEST_GIO"
+        },
+        {
+          "name": "glib-2.0",
+          "requires": "HAVE_WINDOWS_KEYS_TEST_GIO"
+        },
+        {
+          "name": "winmm",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Rpcrt4",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "conditional_link_options": [
+        {
+          "name": "-Wl,-framework,AppKit",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "-Wl,-framework,CoreFoundation",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "-Wl,-framework,Foundation",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "-Wl,-framework,IOKit",
+          "requires": "OS_MACOS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_windows_monitor_identity": {
       "sources": [
         "test/cmocka/test_windows_monitor_identity.c"
@@ -22571,6 +22641,13 @@
     },
     "test_windows_keys_steps": {
       "target": "test_windows_keys_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_windows_keys_steps_rust": {
+      "target": "test_windows_keys_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
