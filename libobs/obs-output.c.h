@@ -1262,11 +1262,6 @@ void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 	service->output = output;
 }
 
-obs_service_t *obs_output_get_service(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_service") ? output->service : NULL;
-}
-
 void obs_output_set_reconnect_settings(obs_output_t *output, int retry_count, int retry_sec)
 {
 	if (!obs_output_valid(output, "obs_output_set_reconnect_settings"))
