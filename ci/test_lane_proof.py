@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -52,6 +53,44 @@ class Trust(unittest.TestCase):
         for name, r in cases.items():
             with self.subTest(name):
                 self.assertIsNotNone(lane_proof.trusted(r, REPO, NOW))
+
+
+class Publication(unittest.TestCase):
+    """Publication must survive optional skipped jobs without trusting a red lane."""
+
+    def setUp(self):
+        self.caller = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.build = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        self.publisher = self.caller.split("  tier2-lane-proof:\n", 1)[1].split("\n  cache-janitor:", 1)[0]
+        self.condition = re.search(r"^    if: (.+)$", self.publisher, re.M).group(1)
+
+    def test_optional_skips_do_not_apply_implicit_success(self):
+        self.assertIn("!cancelled()", self.condition)
+        self.assertNotIn("success()", self.condition)
+
+    def test_publisher_requires_gate_build_output_and_trusted_event(self):
+        self.assertIn("needs: [build-project, ci-gate]", self.publisher)
+        for guard in (
+            "needs.ci-gate.result == 'success'",
+            "needs.build-project.result == 'success'",
+            "needs.build-project.outputs.tier2-linux-proof != ''",
+            "github.event_name == 'merge_group'",
+            "github.event_name == 'pull_request'",
+            "github.event.pull_request.head.repo.full_name == github.repository",
+        ):
+            self.assertIn(guard, self.condition)
+
+    def test_output_chain_still_comes_from_the_build_that_ran(self):
+        self.assertIn("value: ${{ jobs.rust-linux-tier2-build.outputs.tier2-linux-proof }}", self.build)
+        build = self.build.split("  rust-linux-tier2-build:\n", 1)[1].split("    steps:", 1)[0]
+        self.assertIn("tier2-linux-proof: ${{ needs.ci-mode.outputs.tier2-linux_name }}", build)
+        self.assertIn("needs.ci-mode.outputs.tier2-linux_hit != 'true'", build)
+        self.assertIn("name: ${{ needs.build-project.outputs.tier2-linux-proof }}", self.publisher)
+
+    def test_gate_logs_the_actual_reusable_workflow_outputs(self):
+        gate = self.caller.split("  ci-gate:\n", 1)[1].split("  tier2-lane-proof:\n", 1)[0]
+        self.assertIn("${{ toJSON(needs.build-project) }}", gate)
+        self.assertIn('echo "$BUILD_PROJECT"', gate)
 
 
 class Lookup(unittest.TestCase):
