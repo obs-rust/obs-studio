@@ -3,6 +3,7 @@
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/native-test-groups.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/qt-runtime.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/native-test-configured-headers.cmake")
 
 function(_obs_test_graph_fields json path allowed)
   string(JSON kind TYPE "${json}" ${path})
@@ -85,6 +86,12 @@ function(_obs_test_graph_requirement output json)
       HAVE_PRIVATE_DAEMON_TEST_OWNER
       HAVE_PIPEWIRE_CAMERA_TEST_OWNER
       HAVE_V4L2_VMIC_TEST_OWNER
+      HAVE_WS_IMAGE_MIME_TEST_OWNER
+      HAVE_WS_SESSION_DURATION_TEST_OWNER
+      HAVE_WS_BATCH_ORDER_TEST_OWNER
+      HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER
+      HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER
+      HAVE_WS_SCENE_COUNT_TEST_OWNER
     )
     if(NOT DEFINED ${value} AND NOT value IN_LIST platform_facts AND NOT value IN_LIST host_options)
       message(FATAL_ERROR "Unknown native test requirement ${value}")
@@ -272,6 +279,44 @@ endfunction()
 
 function(obs_native_test_graph path root)
   _obs_test_graph_x11_display(HAVE_X11_DISPLAY)
+  # These preserved plugin helpers do not require the WebSocket plugin owner.
+  set(HAVE_WS_IMAGE_MIME_TEST_OWNER FALSE)
+  if(EXISTS "${root}/plugins/obs-websocket/src/utils/ImageFormat.cpp")
+    set(HAVE_WS_IMAGE_MIME_TEST_OWNER TRUE)
+  endif()
+  set(HAVE_WS_SESSION_DURATION_TEST_OWNER FALSE)
+  if(TARGET Qt6::Core AND EXISTS "${root}/plugins/obs-websocket/src/forms/SessionDuration.h")
+    set(HAVE_WS_SESSION_DURATION_TEST_OWNER TRUE)
+  endif()
+
+  foreach(helper IN ITEMS batch_order current_scene_removed list_property_items scene_count)
+    string(TOUPPER "${helper}" helper_key)
+    set(HAVE_WS_${helper_key}_TEST_OWNER FALSE)
+    if(
+      TARGET OBS::libobs
+      AND TARGET nlohmann_json::nlohmann_json
+      AND NOT OS_WINDOWS
+      AND (OS_LINUX OR helper STREQUAL "batch_order" OR helper STREQUAL "scene_count")
+    )
+      if(helper STREQUAL "batch_order")
+        set(owner_source "requesthandler/RequestBatchHandler.cpp")
+      elseif(helper STREQUAL "current_scene_removed")
+        set(owner_source "requesthandler/RequestHandler_Scenes.cpp")
+      elseif(helper STREQUAL "list_property_items")
+        set(owner_source "utils/Obs_ArrayHelper.cpp")
+      else()
+        set(owner_source "utils/Obs_NumberHelper.cpp")
+      endif()
+      if(
+        EXISTS "${root}/plugins/obs-websocket/src/${owner_source}"
+        AND EXISTS "${root}/plugins/obs-websocket/src/plugin-macros.h.in"
+      )
+        if(NOT helper STREQUAL "batch_order" OR TARGET Qt6::Core)
+          set(HAVE_WS_${helper_key}_TEST_OWNER TRUE)
+        endif()
+      endif()
+    endif()
+  endforeach()
   set(HAVE_QT_CORE_TEST_OWNER FALSE)
   set(HAVE_CRASH_LOG_TEST_OWNER FALSE)
   if(TARGET Qt6::Core)
@@ -414,7 +459,7 @@ function(obs_native_test_graph path root)
       _obs_test_graph_fields(
         "${target_graph}"
         "targets;${name}"
-        "sources;unity_groups;pch;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;packages;header_packages;header_libraries;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
+        "sources;unity_groups;pch;msvc_import_library;qt;cpp_standard;requires;includes;includes_before;definitions;artifact_definitions;watch_inputs;configured_headers;packages;header_packages;header_libraries;inherit_header_definitions;archives;libraries;compile_options;compile_options_if_supported;link_options;conditional_link_options;sanitizers"
       )
       string(JSON cpp_kind ERROR_VARIABLE cpp_error TYPE "${target_graph}" targets "${name}" cpp_standard)
       set(cpp_standard "")
@@ -480,6 +525,7 @@ function(obs_native_test_graph path root)
         endif()
       endforeach()
       add_executable(${name} ${inputs})
+      _obs_test_graph_configured_headers("${target_graph}" "${name}" "${root}")
       _obs_test_graph_groups("${name}" "${target_graph}" "${root}" "${sources}")
       string(JSON import_kind ERROR_VARIABLE import_error TYPE "${target_graph}" targets "${name}" msvc_import_library)
       if(NOT import_error AND NOT import_kind STREQUAL "NULL")
@@ -570,6 +616,18 @@ function(obs_native_test_graph path root)
         get_target_property(header_directories "${library}" INTERFACE_INCLUDE_DIRECTORIES)
         if(header_directories)
           target_include_directories(${name} PRIVATE ${header_directories})
+        endif()
+        get_target_property(header_definitions "${library}" INTERFACE_COMPILE_DEFINITIONS)
+        string(
+          JSON inherit_definitions
+          ERROR_VARIABLE inherit_error
+          GET "${target_graph}"
+          targets
+          "${name}"
+          inherit_header_definitions
+        )
+        if(NOT inherit_error AND inherit_definitions AND header_definitions)
+          target_compile_definitions(${name} PRIVATE ${header_definitions})
         endif()
       endforeach()
       string(

@@ -25,6 +25,7 @@ fn canonical_hotkey_backtab_is_registered() {
         for qt_test in [false, true] {
             let facts = [
                 ("OS_LINUX".into(), false),
+                ("OS_WINDOWS".into(), false),
                 ("MSVC".into(), false),
                 ("HAVE_QT6_CORE".into(), false),
                 ("HAVE_QT6_WIDGETS".into(), widgets),

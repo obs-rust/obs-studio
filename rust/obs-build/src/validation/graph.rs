@@ -4,6 +4,9 @@
 //! facts. Unknown facts are errors; the optional HAVE_X11_DISPLAY runtime fact
 //! alone defaults to false when no X server is declared.
 use crate::{NativeBuild, SharedLibrary};
+#[path = "configured_headers.rs"]
+mod configured_headers;
+use configured_headers::ConfiguredHeader;
 use serde::Deserialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -50,6 +53,12 @@ impl Requirement {
                             | "HAVE_PRIVATE_DAEMON_TEST_OWNER"
                             | "HAVE_PIPEWIRE_CAMERA_TEST_OWNER"
                             | "HAVE_V4L2_VMIC_TEST_OWNER"
+                            | "HAVE_WS_IMAGE_MIME_TEST_OWNER"
+                            | "HAVE_WS_SESSION_DURATION_TEST_OWNER"
+                            | "HAVE_WS_SCENE_COUNT_TEST_OWNER"
+                            | "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER"
+                            | "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER"
+                            | "HAVE_WS_BATCH_ORDER_TEST_OWNER"
                     )
                     .then_some(false)
                 })
@@ -192,6 +201,9 @@ pub struct Target {
     /// Repository-relative headers or data read indirectly by these sources/tests.
     #[serde(default)]
     pub watch_inputs: Vec<String>,
+    /// Target-local headers with explicit literal @NAME@ substitutions.
+    #[serde(default)]
+    pub configured_headers: BTreeMap<String, ConfiguredHeader>,
     #[serde(default)]
     pub packages: Vec<String>,
     #[serde(default)]
@@ -201,6 +213,9 @@ pub struct Target {
     /// Public include directories for tests that supply dependency stubs.
     #[serde(default)]
     pub header_libraries: Vec<String>,
+    /// Opt in to interface definitions for fixtures that explicitly imported them.
+    #[serde(default)]
+    pub inherit_header_definitions: bool,
     #[serde(default)]
     pub archives: Vec<String>,
     #[serde(default)]
@@ -219,6 +234,27 @@ pub struct Target {
 }
 
 impl Target {
+    fn add_header_libraries(
+        &self,
+        target: &mut SharedLibrary,
+        libraries: &BTreeMap<String, Dependency>,
+    ) -> Result<(), String> {
+        for name in &self.header_libraries {
+            let dependency = libraries
+                .get(name)
+                .ok_or_else(|| format!("unresolved native test header library {name}"))?;
+            target
+                .include_dirs
+                .extend(dependency.include_dirs.iter().cloned());
+            if self.inherit_header_definitions {
+                target
+                    .definitions
+                    .extend(dependency.definitions.iter().cloned());
+            }
+        }
+        Ok(())
+    }
+
     fn validate_groups(&self) -> Result<(), String> {
         if self.unity_groups.is_empty() {
             if self.pch.is_some() {
@@ -595,6 +631,9 @@ impl Graph {
             if let Some(import) = &target.msvc_import_library {
                 import.validate(name)?;
             }
+            for (output, header) in &target.configured_headers {
+                header.validate(output)?;
+            }
             for input in &target.watch_inputs {
                 if input.is_empty()
                     || input.starts_with('/')
@@ -835,6 +874,7 @@ impl Graph {
                     Some(serde_json::to_string(&path).map_err(|error| error.to_string())?),
                 ));
             }
+            watched_inputs.extend(spec.configure_headers(build, &root, name, &mut target)?);
             for input in &spec.watch_inputs {
                 watched_inputs.insert(root.join(input));
             }
@@ -851,14 +891,7 @@ impl Graph {
                     });
                 target.definitions.push((key.into(), value));
             }
-            for name in &spec.header_libraries {
-                let dependency = libraries
-                    .get(name)
-                    .ok_or_else(|| format!("unresolved native test header library {name}"))?;
-                target
-                    .include_dirs
-                    .extend(dependency.include_dirs.iter().cloned());
-            }
+            spec.add_header_libraries(&mut target, libraries)?;
             for package in &spec.packages {
                 crate::libobs::add_package(&mut target, &build.target, package)?;
             }

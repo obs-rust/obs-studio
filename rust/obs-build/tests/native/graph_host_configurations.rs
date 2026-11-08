@@ -1,5 +1,31 @@
 use super::*;
 
+#[test]
+fn qt_replay_requirements_know_the_real_host() {
+    use obs_build::validation::graph::Graph;
+    let graph = Graph::parse(
+        &serde_json::json!({
+            "schema": 1,
+            "targets": {
+                "windows": {"sources": ["probe.c"], "requires": "OS_WINDOWS"},
+                "other": {"sources": ["probe.c"], "requires": {"not": "OS_WINDOWS"}},
+                "linux": {"sources": ["probe.c"], "requires": "OS_LINUX"}
+            },
+            "tests": {"other": {"target": "other"}}
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let facts = qt_replay_facts(obs_build::BUILD_TARGET, false);
+    let selected = graph.select(&facts).unwrap();
+    assert_eq!(selected.targets.contains_key("windows"), cfg!(windows));
+    assert_eq!(selected.targets.contains_key("other"), !cfg!(windows));
+    assert_eq!(
+        selected.targets.contains_key("linux"),
+        cfg!(target_os = "linux")
+    );
+}
+
 fn graph_fixture(names: &[&str], setup: &str) -> tempfile::TempDir {
     let fixture = tempfile::tempdir().unwrap();
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

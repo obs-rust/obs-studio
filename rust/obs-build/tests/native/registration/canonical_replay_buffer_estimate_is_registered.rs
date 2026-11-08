@@ -49,6 +49,7 @@ fn canonical_replay_buffer_estimate_is_registered() {
         for widgets in [false, true] {
             let facts = [
                 ("OS_LINUX".into(), linux),
+                ("OS_WINDOWS".into(), !linux),
                 ("MSVC".into(), !linux),
                 ("HAVE_QT6_CORE".into(), true),
                 ("HAVE_QT6_WIDGETS".into(), widgets),

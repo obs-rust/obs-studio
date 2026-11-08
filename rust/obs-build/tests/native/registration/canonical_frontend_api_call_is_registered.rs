@@ -28,6 +28,7 @@ fn canonical_frontend_api_call_is_registered() {
     for have_core in [false, true] {
         let facts = [
             ("OS_LINUX".into(), false),
+            ("OS_WINDOWS".into(), false),
             ("MSVC".into(), false),
             ("HAVE_QT6_CORE".into(), have_core),
             ("HAVE_QT6_WIDGETS".into(), false),

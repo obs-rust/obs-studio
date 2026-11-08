@@ -7,6 +7,8 @@ mod canonical_portal_output_is_registered;
 mod canonical_qt_core_filename_is_registered;
 #[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
 mod canonical_rust_static_windows_keys_are_registered;
+#[path = "native/registration/canonical_websocket_helpers_is_registered.rs"]
+mod canonical_websocket_helpers_is_registered;
 #[path = "native/graph_host_configurations.rs"]
 mod graph_host_configurations;
 #[path = "native/registration/rust_static_entries.rs"]
@@ -71,6 +73,16 @@ mod canonical_wayland_sdk_is_registered;
 mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
+
+fn qt_replay_facts(target: &str, qt_test: bool) -> std::collections::BTreeMap<String, bool> {
+    let mut facts = obs_build::validation::native_test_facts(target, false, false);
+    facts.extend([
+        ("HAVE_QT6_CORE".into(), true),
+        ("HAVE_QT6_WIDGETS".into(), true),
+        ("HAVE_QT6_TEST".into(), qt_test),
+    ]);
+    facts
+}
 
 /// #1390: retain the Linux QSV host check without a GPU or graphics context.
 #[test]
@@ -823,7 +835,7 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
         ),
     ]
     .into();
-    let facts = [("MSVC".into(), build.target.contains("msvc"))].into();
+    let facts = obs_build::validation::native_test_facts(&build.target, false, false);
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), 2);
     for (name, test) in &graph.tests {
@@ -994,21 +1006,11 @@ fn canonical_remux_queue_runs_unchanged() {
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     // Compare the evaluated inventory, including optional Qt Test selection.
-    let linux = build.target.contains("linux");
+    let facts = qt_replay_facts(&build.target, qt_test_available);
+    let linux = facts["OS_LINUX"];
     let mut expected = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     expected.retain_suite("qt");
-    let expected = expected
-        .select(
-            &[
-                ("OS_LINUX".into(), linux),
-                ("MSVC".into(), build.target.contains("msvc")),
-                ("HAVE_QT6_CORE".into(), true),
-                ("HAVE_QT6_WIDGETS".into(), true),
-                ("HAVE_QT6_TEST".into(), qt_test_available),
-            ]
-            .into(),
-        )
-        .unwrap();
+    let expected = expected.select(&facts).unwrap();
     assert!(
         graph["targets"].get("test_hotkey_edit_backtab").is_some(),
         "canonical graph omits test_hotkey_edit_backtab"
@@ -1100,8 +1102,13 @@ fn canonical_remux_queue_runs_unchanged() {
         .unwrap()
         .to_string_lossy()
         .replace('\\', "/");
+    let host_setup = qt_replay_facts(&build.target, qt_test_available)
+        .into_iter()
+        .filter(|(name, _)| name.starts_with("OS_") || matches!(name.as_str(), "UNIX" | "MSVC"))
+        .map(|(name, value)| format!("set({name} {})\n", u8::from(value)))
+        .collect::<String>();
     fs::write(directory.path().join("CMakeLists.txt"), format!(
-        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(Qt6 QUIET COMPONENTS Test)\nfind_package(Threads REQUIRED)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\nset(OS_LINUX FALSE)\nif(CMAKE_SYSTEM_NAME STREQUAL \"Linux\")\nset(OS_LINUX TRUE)\nendif()\nset(HAVE_QT6_TEST FALSE)\nif(TARGET Qt6::Test)\nset(HAVE_QT6_TEST TRUE)\nendif()\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
+        "cmake_minimum_required(VERSION 3.28)\nproject(remux CXX)\nenable_testing()\nfind_package(Qt6 REQUIRED COMPONENTS Widgets)\nfind_package(Qt6 QUIET COMPONENTS Test)\nfind_package(Threads REQUIRED)\nfind_package(PkgConfig REQUIRED)\npkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)\nadd_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)\nset(HAVE_QT6_WIDGETS TRUE)\nset(HAVE_QT6_CORE TRUE)\nif(NOT DEFINED MSVC)\nset(MSVC FALSE)\nendif()\n{host_setup}set(HAVE_QT6_TEST FALSE)\nif(TARGET Qt6::Test)\nset(HAVE_QT6_TEST TRUE)\nendif()\ninclude(\"{root}/test/cmocka/native-test-graph.cmake\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"{root}\")\n"
     )).unwrap();
     let output = directory.path().join("cmake-output");
     for (program, arguments) in [
@@ -4646,15 +4653,7 @@ fn run_standalone_configuration_contract(names: &[&str]) {
             ..Default::default()
         },
     );
-    let facts = [
-        ("MSVC".into(), build.target.contains("msvc")),
-        ("OS_WINDOWS".into(), build.target.contains("windows")),
-        ("OS_LINUX".into(), build.target.contains("linux")),
-        ("OS_MACOS".into(), build.target.contains("apple")),
-        ("OS_FREEBSD".into(), build.target.contains("freebsd")),
-        ("OS_OPENBSD".into(), build.target.contains("openbsd")),
-    ]
-    .into();
+    let facts = obs_build::validation::native_test_facts(&build.target, false, false);
     let selection = graph.select(&facts).unwrap();
     let header_setup = standalone_core_header_fixture(
         directory.path(),

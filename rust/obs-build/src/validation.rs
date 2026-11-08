@@ -3,6 +3,9 @@ pub mod graph;
 pub mod headless;
 pub mod sdk_helpers;
 
+/// Platform, compiler and default feature facts shared by native graph consumers.
+pub use crate::platform::native_test_facts;
+
 use crate::{NativeBuild, SharedLibrary, libobs::add_package};
 use std::{
     collections::BTreeMap,
@@ -124,7 +127,57 @@ pub fn build_qt_tests(
         ),
         ("HAVE_QT6_TEST".into(), interfaces.contains_key("Qt6::Test")),
     ]);
+    facts.extend([
+        (
+            "HAVE_WS_IMAGE_MIME_TEST_OWNER".into(),
+            root.join("plugins/obs-websocket/src/utils/ImageFormat.cpp")
+                .is_file(),
+        ),
+        (
+            "HAVE_WS_SESSION_DURATION_TEST_OWNER".into(),
+            interfaces.contains_key("Qt6::Core")
+                && root
+                    .join("plugins/obs-websocket/src/forms/SessionDuration.h")
+                    .is_file(),
+        ),
+    ]);
     let mut interfaces = interfaces.clone();
+    if !interfaces.contains_key("nlohmann_json::nlohmann_json")
+        && pkg_config::Config::new()
+            .atleast_version("3.11")
+            .cargo_metadata(false)
+            .probe("nlohmann_json")
+            .is_ok()
+        && let Ok(json) = graph::Dependency::package(&build.target, "nlohmann_json")
+    {
+        interfaces.insert("nlohmann_json::nlohmann_json".into(), json);
+    }
+    for (helper, source) in [
+        ("BATCH_ORDER", "requesthandler/RequestBatchHandler.cpp"),
+        (
+            "CURRENT_SCENE_REMOVED",
+            "requesthandler/RequestHandler_Scenes.cpp",
+        ),
+        ("LIST_PROPERTY_ITEMS", "utils/Obs_ArrayHelper.cpp"),
+        ("SCENE_COUNT", "utils/Obs_NumberHelper.cpp"),
+    ] {
+        facts.insert(
+            format!("HAVE_WS_{helper}_TEST_OWNER"),
+            !facts.get("OS_WINDOWS").copied().unwrap_or(false)
+                && (facts.get("OS_LINUX").copied().unwrap_or(false)
+                    || matches!(helper, "BATCH_ORDER" | "SCENE_COUNT"))
+                && interfaces.contains_key("OBS::libobs")
+                && interfaces.contains_key("nlohmann_json::nlohmann_json")
+                && (helper != "BATCH_ORDER" || interfaces.contains_key("Qt6::Core"))
+                && root
+                    .join("plugins/obs-websocket/src")
+                    .join(source)
+                    .is_file()
+                && root
+                    .join("plugins/obs-websocket/src/plugin-macros.h.in")
+                    .is_file(),
+        );
+    }
     let thread_options = crate::platform::native_test_thread_options(&build.target);
     interfaces
         .entry("Threads::Threads".into())

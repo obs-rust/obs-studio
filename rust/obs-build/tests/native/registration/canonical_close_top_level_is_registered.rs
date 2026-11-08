@@ -33,6 +33,7 @@ fn canonical_close_top_level_is_registered() {
                 .select(
                     &[
                         ("OS_LINUX".into(), linux),
+                        ("OS_WINDOWS".into(), !linux),
                         ("MSVC".into(), !linux),
                         ("HAVE_QT6_CORE".into(), true),
                         ("HAVE_QT6_WIDGETS".into(), widgets),
