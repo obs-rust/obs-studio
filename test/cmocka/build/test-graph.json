@@ -778,6 +778,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_canvas_channel_getter": {
+      "sources": [
+        "test/cmocka/test_canvas_channel_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_canvas_destroy_scene_refs": {
       "sources": [
         "test/cmocka/test_canvas_destroy_scene_refs.c"
@@ -13442,6 +13457,12 @@
     },
     "test_calldata": {
       "target": "test_calldata",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_canvas_channel_getter": {
+      "target": "test_canvas_channel_getter",
       "command": [
         "${target}"
       ]

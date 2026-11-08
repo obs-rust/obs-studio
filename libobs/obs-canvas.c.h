@@ -493,11 +493,6 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 	}
 }
 
-obs_source_t *obs_canvas_get_channel(obs_canvas_t *canvas, uint32_t channel)
-{
-	return obs_view_get_source(&canvas->view, channel);
-}
-
 obs_scene_t *obs_canvas_scene_create(obs_canvas_t *canvas, const char *name)
 {
 	struct obs_source *source = obs_source_create_canvas(canvas, "scene", name, NULL, NULL);
