@@ -3841,13 +3841,6 @@ void obs_sceneitem_set_transition(obs_sceneitem_t *item, bool show, obs_source_t
 	*target = obs_source_get_ref(transition);
 }
 
-obs_source_t *obs_sceneitem_get_transition(obs_sceneitem_t *item, bool show)
-{
-	if (!item)
-		return NULL;
-
-	return show ? item->show_transition : item->hide_transition;
-}
 
 void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uint32_t duration_ms)
 {
@@ -3859,12 +3852,6 @@ void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uin
 		item->hide_transition_duration = duration_ms;
 }
 
-uint32_t obs_sceneitem_get_transition_duration(obs_sceneitem_t *item, bool show)
-{
-	if (!item)
-		return 0;
-	return show ? item->show_transition_duration : item->hide_transition_duration;
-}
 
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata)
