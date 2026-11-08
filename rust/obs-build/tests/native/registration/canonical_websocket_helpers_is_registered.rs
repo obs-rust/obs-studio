@@ -1,6 +1,6 @@
 use super::*;
 use obs_build::validation::graph::Graph;
-const CASES: [&str; 2] = ["test_ws_image_mime", "test_ws_session_duration"];
+const CASES: [&str; 6] = ["test_ws_image_mime", "test_ws_session_duration", "test_ws_batch_order", "test_ws_current_scene_removed", "test_ws_list_property_items", "test_ws_scene_count"];
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("websocket_helpers_expected.json")).unwrap()
 }
@@ -28,19 +28,14 @@ fn canonical_websocket_helpers_is_registered() {
 #[test]
 fn canonical_websocket_helpers_optional_owners() {
     let graph = Graph::parse(&expected().to_string()).unwrap();
-    assert!(graph.select(&Default::default()).unwrap().tests.is_empty());
-    for mime in [false, true] {
-        for duration in [false, true] {
-            let facts = std::collections::BTreeMap::from([
-                ("HAVE_WS_IMAGE_MIME_TEST_OWNER".into(), mime),
-                ("HAVE_WS_SESSION_DURATION_TEST_OWNER".into(), duration),
-            ]);
-            let selected = graph.select(&facts).unwrap();
-            for (name, enabled) in CASES.into_iter().zip([mime, duration]) {
-                assert_eq!(selected.targets.contains_key(name), enabled);
-                assert_eq!(selected.tests.contains_key(name), enabled);
-            }
-        }
+    let mut facts = std::collections::BTreeMap::from([("OS_LINUX".into(), true), ("OS_WINDOWS".into(), false)]);
+    assert!(graph.select(&facts).unwrap().tests.is_empty());
+    for name in CASES {
+        let owner = format!("HAVE_{}_TEST_OWNER", name.trim_start_matches("test_").to_uppercase());
+        facts.insert(owner.clone(), true);
+        assert!(graph.select(&facts).unwrap().tests.contains_key(name));
+        facts.insert(owner, false);
+        assert!(!graph.select(&facts).unwrap().targets.contains_key(name));
     }
 }
 

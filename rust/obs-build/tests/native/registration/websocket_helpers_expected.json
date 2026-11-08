@@ -33,6 +33,163 @@
       "watch_inputs": [
         "plugins/obs-websocket/src/forms/SessionDuration.h"
       ]
+    },
+    "test_ws_batch_order": {
+      "sources": [
+        "test/cmocka/test_ws_batch_order.cpp",
+        "plugins/obs-websocket/src/requesthandler/RequestBatchHandler.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/Request.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/RequestBatchRequest.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/RequestResult.cpp",
+        "plugins/obs-websocket/src/utils/Compat.cpp"
+      ],
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_WS_BATCH_ORDER_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "plugins/obs-websocket/src/utils",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_ws_current_scene_removed": {
+      "sources": [
+        "test/cmocka/test_ws_current_scene_removed.cpp",
+        "plugins/obs-websocket/src/requesthandler/RequestHandler_Scenes.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/Request.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/RequestResult.cpp",
+        "plugins/obs-websocket/src/utils/Json.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ActionHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ArrayHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_SearchHelper.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_WS_CURRENT_SCENE_REMOVED_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "compile_options": [
+        "-Wno-error=deprecated-declarations"
+      ]
+    },
+    "test_ws_list_property_items": {
+      "sources": [
+        "test/cmocka/test_ws_list_property_items.cpp",
+        "plugins/obs-websocket/src/utils/Json.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ArrayHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "compile_options": [
+        "-Wno-error=deprecated-declarations"
+      ]
+    },
+    "test_ws_scene_count": {
+      "sources": [
+        "test/cmocka/test_ws_scene_count.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp"
+      ],
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          "HAVE_WS_SCENE_COUNT_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "plugins/obs-websocket/src/utils",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "compile_options_if_supported": [
+        "-ftrivial-auto-var-init=pattern"
+      ]
     }
   },
   "tests": {
@@ -44,6 +201,29 @@
       "target": "test_ws_session_duration",
       "suite": "qt",
       "qt_runtime": "Qt6::Core"
+    },
+    "test_ws_batch_order": {
+      "target": "test_ws_batch_order",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core"
+    },
+    "test_ws_current_scene_removed": {
+      "target": "test_ws_current_scene_removed",
+      "suite": "qt",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
+    "test_ws_list_property_items": {
+      "target": "test_ws_list_property_items",
+      "suite": "qt"
+    },
+    "test_ws_scene_count": {
+      "target": "test_ws_scene_count",
+      "suite": "qt"
     }
   }
 }
