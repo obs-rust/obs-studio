@@ -11,24 +11,31 @@ fn retained_channel() {
             refs.set(refs.get() + 1);
             Some(23)
         };
-        assert_eq!(get_channel(17, channel, acquire), Some(23));
+        assert_eq!(get_channel(Some(17), channel, acquire), Some(23));
         assert_eq!(refs.get(), 1);
-        assert_eq!(get_channel(17, channel, acquire), Some(23));
+        assert_eq!(get_channel(Some(17), channel, acquire), Some(23));
         assert_eq!(refs.get(), 2);
         refs.set(refs.get() - 2);
         assert_eq!(refs.get(), 0);
-        assert_eq!(get_channel(17, channel, |_, _| None::<usize>), None);
+        assert_eq!(get_channel(Some(17), channel, |_, _| None::<usize>), None);
         // The view owns rejection of an expired source, with no retained reference.
-        assert_eq!(get_channel(17, channel, |_, _| None::<usize>), None);
+        assert_eq!(get_channel(Some(17), channel, |_, _| None::<usize>), None);
     }
     for channel in [64, u32::MAX] {
         assert_eq!(
-            get_channel(17, channel, |view, selected| {
+            get_channel(Some(17), channel, |view, selected| {
                 assert_eq!((view, selected), (17, channel));
                 None::<usize>
             }),
             None
         );
     }
-    // NULL canvas is C UB, excluded; safe handles are supplied by the FFI boundary.
+}
+
+#[test]
+fn null_canvas_never_reaches_field_accessor() {
+    assert_eq!(
+        get_channel::<(), ()>(None, 0, |_, _| panic!("NULL canvas reached accessor")),
+        None
+    );
 }
