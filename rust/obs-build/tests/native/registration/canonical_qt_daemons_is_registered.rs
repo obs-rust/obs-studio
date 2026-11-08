@@ -143,6 +143,59 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
     }
 }
 
+fn frontend_owner_output(output: &str) -> String {
+    output.trim().to_owned()
+}
+
+#[test]
+fn canonical_qt_daemons_frontend_owner_crlf() {
+    for output in [
+        "OBS_FRONTEND_RUST\nobs_frontend-static\n",
+        "OBS_FRONTEND_RUST\r\nobs_frontend-static\r\n",
+    ] {
+        assert_eq!(
+            frontend_owner_output(output),
+            "OBS_FRONTEND_RUST\nobs_frontend-static"
+        );
+    }
+    assert_eq!(frontend_owner_output("\r\n"), "");
+}
+
+#[test]
+fn canonical_qt_daemons_link_interfaces() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    // The original fixtures link these SDKs directly; transitive DSOs are
+    // insufficient with --no-copy-dt-needed-entries and --as-needed.
+    for name in ["test_pulse_monitor_device", "test_pulse_two_sources"] {
+        assert_eq!(
+            graph["targets"][name]["libraries"],
+            serde_json::json!([
+                "OBS::libobs",
+                "OBS::native-test-cmocka",
+                "PulseAudio::PulseAudio"
+            ]),
+            "{name}"
+        );
+    }
+    let pipewire = &graph["targets"]["test_pipewire_context_fail"];
+    assert_eq!(
+        pipewire["packages"],
+        serde_json::json!(["glib-2.0", "gobject-2.0"])
+    );
+    assert_eq!(
+        pipewire["libraries"],
+        serde_json::json!([
+            "OBS::libobs",
+            "OBS::native-test-cmocka",
+            "OBS::glad",
+            "PipeWire::PipeWire"
+        ])
+    );
+}
+
 #[test]
 fn canonical_qt_daemons_frontend_owner_is_optional() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
@@ -179,7 +232,7 @@ file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/owner.txt" CONTENT "$<TARGET_GENEX_E
             String::from_utf8_lossy(&result.stderr)
         );
         assert_eq!(
-            fs::read_to_string(output.join("owner.txt")).unwrap().trim(),
+            frontend_owner_output(&fs::read_to_string(output.join("owner.txt")).unwrap()),
             if enabled {
                 "OBS_FRONTEND_RUST\nobs_frontend-static"
             } else {
