@@ -1,0 +1,220 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_counter_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_counter_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_config_close_fault": {
+      "sources": [
+        "test/cmocka/test_config_close_fault.c"
+      ],
+      "requires": "UNIX",
+      "libraries": [
+        "config_close_fault",
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_inhibit_portal": {
+      "sources": [
+        "test/cmocka/test_inhibit_portal.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "gio::gio",
+        "PkgConfig::PORTAL_TEST_GLIB",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
+    "test_inhibit_sleep_dbus": {
+      "sources": [
+        "test/cmocka/test_inhibit_sleep_dbus.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "gio::gio",
+        "PkgConfig::INHIBIT_TEST_GLIB",
+        "OBS::native-test-cmocka"
+      ]
+    },
+    "test_portal_shortcuts": {
+      "sources": [
+        "test/cmocka/test_portal_shortcuts.c",
+        "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "libobs/obs-nix-portal-shortcut-ids.c.h",
+        "libobs/obs-nix-portal-shortcut-sets.c.h",
+        "libobs/obs-nix-portal-shortcut-status.c.h",
+        "libobs/obs-nix-portal-shortcuts.c.h"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "gio::gio",
+        "PkgConfig::PORTAL_TEST_GLIB",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ]
+    },
+    "test_output_stop_while_reconnecting": {
+      "sources": [
+        "test/cmocka/test_output_stop_while_reconnecting.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_counter_getters": {
+      "target": "test_encoder_counter_getters"
+    },
+    "test_config_close_fault": {
+      "target": "test_config_close_fault",
+      "requires": "UNIX",
+      "command": [
+        "cmake",
+        "-DFAULT_SHIM=${build}/config_close_fault/config_close_fault.preload",
+        "-DFAULT_TEST=${target}",
+        "-P",
+        "${source}/test/cmocka/config-close-fault-run.cmake"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_inhibit_portal": {
+      "target": "test_inhibit_portal",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "timeout_seconds": 30
+    },
+    "test_inhibit_sleep_dbus": {
+      "target": "test_inhibit_sleep_dbus",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    },
+    "test_portal_shortcuts": {
+      "target": "test_portal_shortcuts",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      }
+    },
+    "test_output_stop_while_reconnecting": {
+      "target": "test_output_stop_while_reconnecting",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}
