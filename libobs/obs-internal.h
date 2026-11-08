@@ -866,6 +866,9 @@ typedef void (*obs_destroy_cb)(void *obj);
 #include "obs-scene-group-query-fields.h"
 #include "obs-scene-item-transition-fields.h"
 
+/* A non-NULL context is required; the Rust query guards it before this call. */
+extern void *const *obs_object_validity_field(const void *obj);
+
 struct obs_context_data {
 	char *name;
 	const char *uuid;

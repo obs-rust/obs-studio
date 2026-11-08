@@ -84,6 +84,7 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(graph["targets"][name]["sources"], [
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
                     "test/cmocka/module-name-lookup-link-stubs.c",
+                    "test/cmocka/object-validity-query-link-stubs.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
                 ])

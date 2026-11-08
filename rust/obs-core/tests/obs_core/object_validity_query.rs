@@ -5,7 +5,11 @@ use obs_core::object_validity_query::is_invalid;
 fn query_matches_c_characterization() {
     assert!(is_invalid::<i32>(None));
     let mut payloads = [0, 42];
-    let values = [core::ptr::null_mut(), &raw mut payloads[0], &raw mut payloads[1]];
+    let values = [
+        core::ptr::null_mut(),
+        &raw mut payloads[0],
+        &raw mut payloads[1],
+    ];
     for kind in 0..=5 {
         for data in values {
             let context = (kind, true, "object data sentinel", data);
