@@ -2312,6 +2312,13 @@ struct obs_encoder_metadata_fields {
 };
 struct obs_encoder_metadata_fields obs_encoder_metadata_fields(const obs_encoder_t *encoder);
 
+/* Mutable format storage borrowed only for the setter call. */
+struct obs_encoder_set_preferred_format_fields {
+	const enum obs_encoder_type *kind;
+	enum video_format *format;
+};
+extern struct obs_encoder_set_preferred_format_fields obs_encoder_set_preferred_format_fields(obs_encoder_t *encoder);
+
 /* Borrowed addresses only; the encoder remains owned by C. */
 struct obs_encoder_preferred_format_fields {
 	const enum obs_encoder_type *kind;
