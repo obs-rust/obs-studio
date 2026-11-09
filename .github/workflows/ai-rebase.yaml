@@ -46,9 +46,14 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.AI_REBASE_TOKEN }}
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       # rustfmt for resolved Rust files (the agent runs `soldr cargo fmt`).
-      - uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2
+      - uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        with:
+          build-cache: false
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
       # The conflict resolver: the clud agent, unattended, on DeepSeek Flash
       # through OpenRouter, driven by ci/ai_rebase_prompt.md.
       - name: Install clud

@@ -28,6 +28,7 @@ wins. Dequeuing clears auto-merge, so the script re-arms it when it was armed.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -247,8 +248,10 @@ def main() -> int:
     a = ap.parse_args()
     prs = list(a.prs)
     if a.dirty:
-        sys.path.insert(0, str(Path(__file__).parent))
-        import backpressure
+        spec = importlib.util.spec_from_file_location(
+            "backpressure", Path(__file__).with_name("backpressure.py"))
+        backpressure = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(backpressure)
         v = backpressure.measure(REPO)
         # A rebase restarts CI, so it spends queue capacity like a new PR does.
         prs += dirty_prs(max(1, v["headroom"]) if v["state"] == "open" else 0)
