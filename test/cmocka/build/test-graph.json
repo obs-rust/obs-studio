@@ -18259,6 +18259,24 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_encoder_preferred_range": {
+      "sources": [
+        "test/cmocka/test_encoder_preferred_range.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
+      ],
+      "definitions": [
+        "OBS_UNIT_TEST"
+      ]
     }
   },
   "tests": {
@@ -24797,6 +24815,12 @@
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_preferred_range": {
+      "target": "test_encoder_preferred_range",
       "command": [
         "${target}"
       ]
