@@ -92,6 +92,7 @@ mod video_pacing_parity;
 mod video_plan;
 mod video_plan_parity;
 mod video_render_passes;
+mod video_render_passes_parity;
 mod view;
 mod view_parity;
 mod weak_object_identity;

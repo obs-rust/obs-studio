@@ -1,10 +1,14 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Defined by obs-video.c.h in this unity group; keep the existing helper. */
-static inline void set_render_size(uint32_t width, uint32_t height);
+/* C reference only. The graphics callback keeps the existing file-local
+ * set_render_size dependency in obs-video.c.h. No public ABI is added. */
+void obs_video_draw_mix_texture(size_t mix_idx, uintptr_t (*call)(uint32_t, uintptr_t, uintptr_t));
+void obs_video_render_convert_plane(gs_effect_t *effect, gs_texture_t *target, const char *tech_name,
+				    uintptr_t (*call)(uint32_t, uintptr_t, uintptr_t));
 
-static inline void draw_mix_texture(const size_t mix_idx)
+void obs_video_draw_mix_texture(const size_t mix_idx, uintptr_t (*call)(uint32_t, uintptr_t, uintptr_t))
 {
+	(void)call;
 	gs_texture_t *tex = obs->video.mixes.array[mix_idx]->render_texture;
 	gs_effect_t *effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
 	gs_eparam_t *param = gs_effect_get_param_by_name(effect, "image");
@@ -22,7 +26,8 @@ static inline void draw_mix_texture(const size_t mix_idx)
 	gs_blend_state_pop();
 }
 
-static void render_convert_plane(gs_effect_t *effect, gs_texture_t *target, const char *tech_name)
+void obs_video_render_convert_plane(gs_effect_t *effect, gs_texture_t *target, const char *tech_name,
+				    uintptr_t (*call)(uint32_t, uintptr_t, uintptr_t))
 {
 	gs_technique_t *tech = gs_effect_get_technique(effect, tech_name);
 
@@ -30,7 +35,7 @@ static void render_convert_plane(gs_effect_t *effect, gs_texture_t *target, cons
 	const uint32_t height = gs_texture_get_height(target);
 
 	gs_set_render_target(target, NULL);
-	set_render_size(width, height);
+	(void)call(15, width, height);
 
 	size_t passes = gs_technique_begin(tech);
 	for (size_t i = 0; i < passes; i++) {
