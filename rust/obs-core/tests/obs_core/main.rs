@@ -109,6 +109,7 @@ mod video_output_step_parity;
 mod video_pacing;
 mod video_pacing_parity;
 mod video_plan;
+mod video_render_size;
 mod video_plan_parity;
 mod view;
 mod view_parity;
