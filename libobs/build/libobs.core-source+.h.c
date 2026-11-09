@@ -23,6 +23,7 @@
 #include "libobs/obs-scene-item-blending-mode.c.h"
 #include "libobs/obs-scene-item-group-resize-defer.c.h"
 #include "libobs/obs-scene-item-group-scene-fields.c.h"
+#include "libobs/obs-scene-item-locked-setter.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-scale-filter-setter.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
