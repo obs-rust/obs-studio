@@ -15111,6 +15111,27 @@
         }
       ]
     },
+    "test_source_init_context": {
+      "sources": [
+        "test/cmocka/test_source_init_context.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_label_destroy": {
       "sources": [
         "test/cmocka/test_source_label_destroy.cpp",
@@ -25156,6 +25177,12 @@
     },
     "test_source_identity_getters": {
       "target": "test_source_identity_getters",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_init_context": {
+      "target": "test_source_init_context",
       "command": [
         "${target}"
       ]
