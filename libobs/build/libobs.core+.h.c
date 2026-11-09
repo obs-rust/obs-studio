@@ -8,7 +8,7 @@
 #include "libobs/obs-core-initialized-fields.c.h"
 #include "libobs/obs-core-texture-activity-fields.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
-#include "libobs/obs-hotkey-background-error.c.h"
+#include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
 #include "libobs/obs-hotkey-object-fields.c.h"
 #include "libobs/obs-hotkey.c.h"

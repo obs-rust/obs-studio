@@ -11,6 +11,11 @@ pub trait BackgroundError {
 }
 
 /// Return no error if locking fails or the backend has none.
-pub fn query<B: BackgroundError>(_background: &mut B) -> Option<B::Owned> {
-    todo!("port background error getter")
+pub fn query<B: BackgroundError>(background: &mut B) -> Option<B::Owned> {
+    if !background.lock() {
+        return None;
+    }
+    let error = background.error().map(|error| background.duplicate(error));
+    background.unlock();
+    error
 }
