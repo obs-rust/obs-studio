@@ -5,16 +5,16 @@ import ctypes
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 
+import host_platform as host
 from test_settings_platform_facade import function
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-@unittest.skipIf(sys.platform == "win32", "fixture uses a Unix shared library")
+@unittest.skipIf(host.is_windows(), "fixture uses a Unix shared library")
 class OpenGLStagingStrideTest(unittest.TestCase):
     def test_mapped_rows_match_the_allocated_pack_pitch(self):
         source = (ROOT / "libobs-opengl/gl-stagesurf.c.h").read_text()
