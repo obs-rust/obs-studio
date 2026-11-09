@@ -46,6 +46,7 @@ pub mod ffi;
 pub mod gif;
 pub mod gif_blocks;
 pub mod gif_frame;
+pub mod image_decode;
 pub mod image_file;
 pub mod image_orient;
 pub mod image_pq_scrgb;
