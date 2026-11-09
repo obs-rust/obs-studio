@@ -239,6 +239,20 @@ def render_svg(data: dict) -> str:
     return "\n".join(parts) + "\n"
 
 
+def render_badge(data: dict) -> str:
+    """Use the minimal card's exact libobs percentage and source-data date.
+
+    Shields caches this static endpoint; colour cannot track age at render time.
+    The date is deliberately visible even when the refresh workflow stops.
+    """
+    return render_json({
+        "schemaVersion": 1,
+        "label": "converted to Rust",
+        "message": f"{data['libobs']['all']['percent']:.1f}% · {data['date']}",
+        "color": "e8631a",
+    })
+
+
 def render_json(data: dict) -> str:
     return json.dumps(data, indent=2, sort_keys=True) + "\n"
 
@@ -254,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     data = measure(args.root, args.commit, args.date)
     outputs = [(p, text) for p, text in ((args.json, render_json(data)), (args.svg, render_svg(data))) if p]
+    if args.json:
+        outputs.append((args.json.with_name("conversion-badge.json"), render_badge(data)))
     if not outputs:
         sys.stdout.write(render_json(data))
         return 0
