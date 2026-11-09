@@ -236,33 +236,37 @@ pub unsafe extern "C" fn obs_hotkey_seam_enum_bindings(
     }
 }
 
-/// # Safety
-///
-/// `context` is a [`FakeContext`] of this thread's registry; `func` takes `data`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_seam_enum_context(
-    context: *mut c_void,
-    func: unsafe extern "C" fn(*mut c_void, *mut obs_hotkey_t) -> bool,
-    data: *mut c_void,
-) {
-    log("enum_context".into());
-    // SAFETY: per the caller.
-    let ids = unsafe { (*context.cast::<FakeContext>()).ids.clone() };
-    for id in ids {
-        let hotkey: *mut obs_hotkey_t = REGISTRY.with_borrow_mut(|r| {
-            r.hotkeys
-                .iter_mut()
-                .find(|h| h.id == id)
-                .map_or(std::ptr::null_mut(), |h| (&raw mut **h).cast())
-        });
-        if hotkey.is_null() {
-            continue;
-        }
-        // SAFETY: per the caller; a live box.
-        if !unsafe { func(data, hotkey) } {
-            break;
-        }
-    }
+pub extern "C" fn obs_hotkey_enum_first() -> *mut obs_hotkey_t {
+    REGISTRY.with_borrow_mut(|r| {
+        r.hotkeys
+            .first_mut()
+            .map_or(std::ptr::null_mut(), |h| (&raw mut **h).cast())
+    })
+}
+
+/// # Safety
+/// `hotkey` belongs to this thread's registry.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_hotkey_enum_next(hotkey: *mut obs_hotkey_t) -> *mut obs_hotkey_t {
+    REGISTRY.with_borrow_mut(|r| {
+        let index = r
+            .hotkeys
+            .iter_mut()
+            .position(|h| (&raw mut **h).cast() == hotkey)
+            .expect("live key");
+        r.hotkeys
+            .get_mut(index + 1)
+            .map_or(std::ptr::null_mut(), |h| (&raw mut **h).cast())
+    })
+}
+
+/// # Safety
+/// `context` is live and `index` is within its captured ID count.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_hotkey_enum_context_id(context: *const c_void, index: usize) -> usize {
+    // SAFETY: this fixture owns the context and preserves its ID storage.
+    unsafe { (&(*context.cast::<FakeContext>()).ids)[index] }
 }
 
 /// # Safety
@@ -724,4 +728,160 @@ proptest! {
     ) {
         assert_parity(&ops, lock_ok, swapped);
     }
+}
+
+// Enumeration shares the real save/load seam fixture, avoiding duplicate fake
+// symbols in the category binary. The C oracle owns real private C layouts.
+unsafe extern "C" {
+    fn oracle_hotkey_enum_run(
+        live: usize,
+        ids: *const usize,
+        count: usize,
+        limit: usize,
+        kind: i32,
+        lock_ok: bool,
+        trace: *mut usize,
+    ) -> usize;
+}
+
+struct EnumResult {
+    limit: usize,
+    visits: usize,
+}
+
+unsafe extern "C" fn enum_collect(data: *mut c_void, id: usize, key: *mut obs_hotkey_t) -> bool {
+    // SAFETY: the enumeration passes the live fake hotkey and this call's result.
+    let (result, key_id) = unsafe {
+        (
+            &mut *data.cast::<EnumResult>(),
+            (*key.cast::<FakeHotkey>()).id,
+        )
+    };
+    assert_eq!(id, key_id);
+    log(format!("visit {id}"));
+    result.visits += 1;
+    result.visits < result.limit
+}
+
+unsafe extern "C" fn enum_collect_context(data: *mut c_void, key: *mut obs_hotkey_t) -> bool {
+    // SAFETY: context lookup returned a live fake key; data belongs to this run.
+    unsafe { enum_collect(data, (*key.cast::<FakeHotkey>()).id, key) }
+}
+
+unsafe extern "C" fn enum_collect_binding(
+    data: *mut c_void,
+    index: usize,
+    binding: *mut obs_hotkey_binding,
+) -> bool {
+    // SAFETY: the enumerator supplies this run's result and a live binding.
+    let (result, binding) = unsafe {
+        (
+            &mut *data.cast::<EnumResult>(),
+            &*binding.cast::<FakeBinding>(),
+        )
+    };
+    assert_eq!(index, result.visits);
+    // SAFETY: the binding retains its live fake hotkey.
+    assert_eq!(binding.hotkey_id, unsafe {
+        (*binding.hotkey.cast::<FakeHotkey>()).id
+    });
+    log(format!("visit {}", binding.hotkey_id));
+    result.visits += 1;
+    result.visits < result.limit
+}
+
+fn enumeration_matches_c(live: usize, ids: &[usize], limit: usize, kind: i32, lock_ok: bool) {
+    let mut expected = [0usize; 128];
+    // SAFETY: sizes are bounded by the caller to 16 nodes/32 IDs; output holds
+    // at most 66 trace entries, including missing lookups and lock events.
+    let count = unsafe {
+        oracle_hotkey_enum_run(
+            live,
+            ids.as_ptr(),
+            ids.len(),
+            limit,
+            kind,
+            lock_ok,
+            expected.as_mut_ptr(),
+        )
+    };
+    let expected: Vec<String> = expected[..count]
+        .iter()
+        .map(|&value| match value {
+            usize::MAX => "lock".into(),
+            n if n == usize::MAX - 1 => "unlock".into(),
+            n if n >= 1000 => format!("find {}", n - 1000),
+            n => format!("visit {n}"),
+        })
+        .collect();
+    reset(lock_ok, false);
+    REGISTRY.with_borrow_mut(|r| {
+        r.hotkeys.clear();
+        for id in 0..live {
+            let name = CString::new(format!("enum.{id}")).unwrap();
+            let name_ptr = name.as_ptr().cast_mut();
+            let mut key = Box::new(FakeHotkey {
+                id,
+                _name: name,
+                name_ptr,
+            });
+            r.bindings.push(Box::new(FakeBinding {
+                key: obs_key_combination {
+                    modifiers: 2,
+                    key: 10,
+                },
+                pressed: false,
+                modifiers_match: false,
+                hotkey_id: id,
+                hotkey: (&raw mut *key).cast(),
+            }));
+            r.hotkeys.push(key);
+        }
+        r.objects[0].ids = ids.to_vec();
+    });
+    let mut result = EnumResult { limit, visits: 0 };
+    let data = (&raw mut result).cast();
+    // SAFETY: fixture registry, context, callbacks and result stay live for the
+    // synchronous run. The internal context helper has no lock of its own.
+    unsafe {
+        use obs_hotkey::ffi::enumeration as e;
+        match kind {
+            0 => e::obs_enum_hotkeys(enum_collect, data),
+            1 => e::obs_hotkey_seam_enum_context(object(0), enum_collect_context, data),
+            _ => e::obs_enum_hotkey_bindings(enum_collect_binding, data),
+        }
+    }
+    let actual = REGISTRY.with_borrow_mut(|r| std::mem::take(&mut r.log));
+    let actual: Vec<_> = actual
+        .into_iter()
+        .filter(|s| s != "enum_bindings")
+        .collect();
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn enumeration_edges_match_original_c() {
+    for live in [0, 1, 4, 16] {
+        for ids in [vec![], vec![19, 0, 19, 1, 15], vec![0, 0, 0], vec![19; 32]] {
+            for limit in [0, 1, 2, 16, 33] {
+                for kind in 0..3 {
+                    for lock_ok in [false, true] {
+                        enumeration_matches_c(live, &ids, limit, kind, lock_ok);
+                    }
+                }
+            }
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {cases: obs_c_oracle::parity::cases(300), failure_persistence: None, ..ProptestConfig::default()})]
+    #[test]
+    fn enumeration_random_matches_original_c(
+        live in 0usize..=16,
+        ids in prop::collection::vec(0usize..20, 0..=32),
+        limit in 0usize..35,
+        kind in 0i32..3,
+        lock_ok in any::<bool>(),
+    ) { enumeration_matches_c(live, &ids, limit, kind, lock_ok); }
 }

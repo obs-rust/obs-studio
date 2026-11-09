@@ -1,0 +1,2 @@
+obs_enum_hotkeys
+obs_enum_hotkey_bindings
