@@ -44,8 +44,11 @@ fn promotion() {
     let object = 17usize;
     for count in [-2, -1, 0, 1, 7] {
         refs.store(count, SeqCst);
-        assert_eq!(get_object(Some((&refs, object))), (count >= 0).then_some(object));
-        assert_eq!(refs.load(SeqCst), if count < 0 {count} else {count + 1});
+        assert_eq!(
+            get_object(Some((&refs, object))),
+            (count >= 0).then_some(object)
+        );
+        assert_eq!(refs.load(SeqCst), if count < 0 { count } else { count + 1 });
         assert_eq!(weak.load(SeqCst), 3);
         assert_eq!(object, 17);
     }
@@ -61,6 +64,8 @@ fn final_release() {
     assert!(!release(Some(weak)));
     assert_eq!(weak.load(SeqCst), 0);
     assert!(allocation.is_some());
-    if release(allocation.as_deref()) { allocation.take(); }
+    if release(allocation.as_deref()) {
+        allocation.take();
+    }
     assert!(allocation.is_none());
 }

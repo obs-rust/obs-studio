@@ -1,0 +1,4 @@
+obs_weak_object_addref
+obs_weak_object_release
+obs_object_get_weak_object
+obs_weak_object_get_object
