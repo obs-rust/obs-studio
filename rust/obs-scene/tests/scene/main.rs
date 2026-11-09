@@ -63,3 +63,6 @@ mod item_crop_getter_parity;
 mod item_transition_getters;
 
 mod item_transition_getters_parity;
+
+mod item_visible;
+mod item_visible_parity;

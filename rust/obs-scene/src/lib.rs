@@ -65,3 +65,5 @@ pub mod item_crop_getter;
 pub mod item_transform_getters;
 
 pub mod item_transition_getters;
+
+pub mod item_visible;
