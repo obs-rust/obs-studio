@@ -92,13 +92,13 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/output-pause-query-link-stubs.c",
                     "test/cmocka/output-service-getter-link-stub.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
+                    "test/cmocka/scene-item-group-scene-link-support.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
                     "test/cmocka/scene-item-visible-link-support.c",
                     "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/source-handler-getter-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
-                    "test/cmocka/scene-item-group-scene-link-support.c",
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):
