@@ -96,15 +96,6 @@ static inline void render_displays(void)
 	gs_leave_context();
 }
 
-static inline void set_render_size(uint32_t width, uint32_t height)
-{
-	gs_enable_depth_test(false);
-	gs_set_cull_mode(GS_NEITHER);
-
-	gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f, 100.0f);
-	gs_set_viewport(0, 0, (int)width, (int)height);
-}
-
 static inline void unmap_last_surface(struct obs_core_video_mix *video)
 {
 	for (int c = 0; c < NUM_CHANNELS; ++c) {

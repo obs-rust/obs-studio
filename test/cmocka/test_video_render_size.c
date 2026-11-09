@@ -56,8 +56,8 @@ void render_size_viewport(int x, int y, int width, int height)
 static void dimensions_and_call_order(void **state)
 {
 	(void)state;
-	const uint32_t sizes[][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}, {1920, 1080}, {1080, 1920},
-				     {16777215, 16777217}, {INT_MAX, INT_MAX}};
+	const uint32_t sizes[][2] = {
+		{0, 0}, {0, 1}, {1, 0}, {1, 1}, {1920, 1080}, {1080, 1920}, {16777215, 16777217}, {INT_MAX, INT_MAX}};
 	for (size_t i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
 		expected_width = sizes[i][0];
 		expected_height = sizes[i][1];
