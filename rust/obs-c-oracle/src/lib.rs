@@ -62,6 +62,7 @@ pub mod darray;
 pub mod dbus_inhibit;
 pub mod decl;
 pub mod deque;
+pub mod display;
 pub mod dstr;
 pub mod dstr_libc;
 pub mod effect_destroy;
