@@ -34,7 +34,7 @@ The limit is never below 1, so after a stall one PR can always probe the queue. 
 
 ## AI rebase
 
-`ci/ai_rebase.py` replays a PR onto `origin/master`. For each conflicted file it sends the file, with its conflict markers and the PR commit's subject, to OpenRouter. The default model is `~deepseek/deepseek-flash-latest`; `AI_REBASE_MODEL` overrides it. The model returns the whole resolved file.
+`ci/ai_rebase.py` replays a PR onto `origin/master`. At each stopped step it runs the clud agent unattended (`clud --openrouter --model ~deepseek/deepseek-flash-latest --unattended`) with the instructions in `ci/ai_rebase_prompt.md` and the list of conflicted files. The agent can read neighbouring code and run the repo's own fixers (`test_test_graph_sorted.py --fix`, `soldr cargo fmt`). It only stages files: the script continues the rebase and judges the result. Without clud, each file goes to the model directly. `AI_REBASE_MODEL` overrides the model.
 
 A resolution is refused, and the PR is left untouched with a comment explaining why, if any of these holds:
 - conflict markers remain,
@@ -51,4 +51,4 @@ It needs two repository secrets:
 - `OPENROUTER_API_KEY`.
 - `AI_REBASE_TOKEN`: a GitHub App installation token or a fine-grained PAT, with **contents: write** and **pull-requests: write** on this repository. It cannot be `GITHUB_TOKEN`, for two reasons. A push made with `GITHUB_TOKEN` starts no workflows, so the rebased PR would never get CI. And the repository's maximum `GITHUB_TOKEN` grant is read-only.
 
-Rebased commits keep their authors; the committer becomes the token's identity. Only same-repository PRs are rebased, never forks.
+Rebased commits keep their authors; the committer becomes the token's identity. Only same-repository PRs are rebased, never forks. A dry run on #4235 (2026-11-09) resolved 3 conflicted files in one step and kept all 455 added lines.
