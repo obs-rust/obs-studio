@@ -2430,6 +2430,9 @@ struct obs_encoder_registry_query_fields {
 };
 struct obs_encoder_registry_query_fields obs_encoder_registry_query_fields(const struct obs_encoder_info *info);
 
+/* The initializer's thread-local create-only reroute permission. */
+extern bool obs_encoder_reroute_allowed(void);
+
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
 extern bool obs_encoder_initialize(obs_encoder_t *encoder);
