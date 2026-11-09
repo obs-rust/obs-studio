@@ -12,6 +12,9 @@ pub struct StartInput {
     /// Wait until the output reports active.
     #[serde(default)]
     pub wait: bool,
+    /// Auto-wait deadline in milliseconds.
+    #[serde(default = "super::waiting::default_timeout_ms")]
+    pub timeout_ms: u64,
     /// Enable the paired microphone before a stopped output starts.
     #[serde(default = "enabled")]
     pub audio_enabled: bool,
@@ -29,6 +32,7 @@ impl Default for StartInput {
     fn default() -> Self {
         Self {
             wait: false,
+            timeout_ms: super::waiting::DEFAULT_TIMEOUT_MS,
             audio_enabled: true,
             audio_track: 1,
         }

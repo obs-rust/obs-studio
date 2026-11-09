@@ -41,6 +41,41 @@ pub struct OutputStatus {
 /// Methods take `&self`: libobs owns the state, so implementations use their
 /// own interior mutability.
 pub trait OutputBackend {
+    /// Whether the owning control host is shutting down.
+    fn control_cancelled(&self) -> bool {
+        false
+    }
+    /// Starts with optional bounded auto-wait.
+    /// # Errors
+    /// Reports start failure or an auto-wait timeout.
+    fn start_with_wait(&self, request: OutputStartRequest) -> Result<ActiveOutput, ToolError> {
+        use super::waiting::{SystemClock, WaitClock, validate_timeout};
+        if request.options.wait {
+            validate_timeout(request.options.timeout_ms)?;
+        }
+        if self.control_cancelled() {
+            return Err(ToolError::not_ready("OBS control is shutting down"));
+        }
+        let state = self.start_output(OutputRequest { kind: request.kind })?;
+        if !request.options.wait {
+            return Ok(state);
+        }
+        let clock = SystemClock::default();
+        loop {
+            if self.control_cancelled() {
+                return Err(ToolError::not_ready("OBS control is shutting down"));
+            }
+            if self.status(request.kind).active {
+                return Ok(ActiveOutput { active: true });
+            }
+            let elapsed = clock.now_ms();
+            if elapsed >= request.options.timeout_ms {
+                return Err(ToolError::not_ready("output start timed out"));
+            }
+            clock.wait_ms((request.options.timeout_ms - elapsed).min(10));
+        }
+    }
+
     /// Typed idempotent start.
     /// # Errors
     /// Reports a processing failure.
@@ -94,13 +129,14 @@ typed_tool!(
     RecordStart,
     "record_start",
     OutputBackend,
-    EmptyInput,
+    OutputStartInput,
     ActiveOutput,
     IDEMPOTENT,
     "Start recording.",
-    |backend, _input| {
-        backend.start_output(OutputRequest {
+    |backend, input| {
+        backend.start_with_wait(OutputStartRequest {
             kind: OutputKind::Record,
+            options: input,
         })
     }
 );
@@ -136,13 +172,14 @@ typed_tool!(
     StreamStart,
     "stream_start",
     OutputBackend,
-    EmptyInput,
+    OutputStartInput,
     ActiveOutput,
     IDEMPOTENT,
     "Start streaming.",
-    |backend, _input| {
-        backend.start_output(OutputRequest {
+    |backend, input| {
+        backend.start_with_wait(OutputStartRequest {
             kind: OutputKind::Stream,
+            options: input,
         })
     }
 );
@@ -215,4 +252,31 @@ pub fn schemas() -> Vec<serde_json::Value> {
 pub struct OutputRequest {
     /// Output to operate on.
     pub kind: OutputKind,
+}
+
+/// Auto-wait options for recording/streaming starts.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OutputStartInput {
+    /// Wait for the output to report active.
+    #[serde(default)]
+    pub wait: bool,
+    /// Bounded wait deadline.
+    #[serde(default = "super::waiting::default_timeout_ms")]
+    pub timeout_ms: u64,
+}
+impl Default for OutputStartInput {
+    fn default() -> Self {
+        Self {
+            wait: false,
+            timeout_ms: super::waiting::DEFAULT_TIMEOUT_MS,
+        }
+    }
+}
+/// Backend start request.
+pub struct OutputStartRequest {
+    /// Output selector.
+    pub kind: OutputKind,
+    /// Auto-wait options.
+    pub options: OutputStartInput,
 }

@@ -41,6 +41,7 @@ pub fn schema_snapshot() -> serde_json::Value {
     tools.extend(outputs::schemas());
     tools.extend(screenshot::schemas());
     tools.extend(control::schemas());
+    tools.extend(waiting::schemas());
     tools.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
     serde_json::json!({"tools": tools, "toolError": schemars::schema_for!(crate::server::ToolError)})
 }

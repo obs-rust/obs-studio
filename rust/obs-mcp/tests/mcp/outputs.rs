@@ -106,7 +106,11 @@ fn lists_six_tools_with_empty_object_schemas() {
         }
 
         assert_eq!(t["inputSchema"]["type"], "object");
-        assert_eq!(t["inputSchema"]["properties"], json!({}));
+        if t["name"].as_str().unwrap().ends_with("start") {
+            assert!(t["inputSchema"]["properties"].get("wait").is_some());
+        } else {
+            assert_eq!(t["inputSchema"]["properties"], json!({}));
+        }
         assert_eq!(t["inputSchema"]["additionalProperties"], false);
         assert!(!t["description"].as_str().unwrap().is_empty());
     }
