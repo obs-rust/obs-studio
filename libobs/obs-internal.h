@@ -1497,6 +1497,10 @@ extern struct obs_source_filter_count_fields obs_source_filter_count_fields(cons
 /* Caller rejects NULL before taking the writable rotation address. */
 extern long *obs_source_async_rotation_fields(obs_source_t *source);
 
+/* Borrowed array under filter_mutex; callers reject NULL before locking. */
+extern obs_source_t *const *obs_source_filter_index_lock(obs_source_t *source, size_t *count);
+extern void obs_source_filter_index_unlock(obs_source_t *source);
+
 struct obs_source_handler_getters_fields {
 	proc_handler_t *const *proc;
 };
