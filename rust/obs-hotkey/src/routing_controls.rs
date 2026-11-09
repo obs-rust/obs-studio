@@ -18,12 +18,16 @@ pub trait RoutingControls {
 
 /// Store the router and context together, without invoking the router.
 pub fn set_callback<R: RoutingControls>(registry: &mut R, callback: R::Callback, data: R::Data) {
-    let _ = (registry, callback, data);
-    todo!()
+    if registry.lock() {
+        registry.set_callback(callback, data);
+        registry.unlock();
+    }
 }
 
 /// Enable or disable routing without changing the stored router or context.
 pub fn set_enabled<R: RoutingControls>(registry: &mut R, enabled: bool) {
-    let _ = (registry, enabled);
-    todo!()
+    if registry.lock() {
+        registry.set_enabled(enabled);
+        registry.unlock();
+    }
 }
