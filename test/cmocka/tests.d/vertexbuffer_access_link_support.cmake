@@ -1,0 +1,20 @@
+# Real private adapter in a lazy archive: unrelated Rust-static fixtures do not
+# acquire a dependency on a graphics context they never use. Consumers which do
+# call these wrappers supply their actual graphics subsystem as usual.
+function(_vertexbuffer_access_link_support)
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  set(_adapter_target obs_vertexbuffer_access_link_support)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if("libobs_rust-static" IN_LIST _links)
+      if(NOT TARGET ${_adapter_target})
+        set(_source "${CMAKE_CURRENT_BINARY_DIR}/vertexbuffer-access-link-support.c")
+        file(WRITE "${_source}" "#include \"libobs/obs-vertexbuffer-access-fields.c.h\"\n")
+        add_library(${_adapter_target} STATIC EXCLUDE_FROM_ALL "${_source}")
+        target_include_directories(${_adapter_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
+      endif()
+      target_link_libraries(${_target} PRIVATE ${_adapter_target})
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _vertexbuffer_access_link_support)

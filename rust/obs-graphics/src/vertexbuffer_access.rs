@@ -15,16 +15,21 @@ pub trait Backend<P, R> {
 
 /// Flush exactly once after validating context and buffer, in that order.
 pub fn flush<P, R, B: Backend<P, R>>(
-    _context: Option<&mut B>,
-    _buffer: Option<P>,
+    context: Option<&mut B>,
+    buffer: Option<P>,
 ) -> Result<(), Error> {
-    todo!()
+    let context = context.ok_or(Error::NoContext)?;
+    let buffer = buffer.ok_or(Error::NullBuffer)?;
+    context.flush(buffer);
+    Ok(())
 }
 
 /// Return the backend's result unchanged, including its empty-result value.
 pub fn get_data<P, R, B: Backend<P, R>>(
-    _context: Option<&mut B>,
-    _buffer: Option<P>,
+    context: Option<&mut B>,
+    buffer: Option<P>,
 ) -> Result<R, Error> {
-    todo!()
+    let context = context.ok_or(Error::NoContext)?;
+    let buffer = buffer.ok_or(Error::NullBuffer)?;
+    Ok(context.get_data(buffer))
 }
