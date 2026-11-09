@@ -1,16 +1,16 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 83276,
-      "libobs": 90949,
+      "frontend": 83287,
+      "libobs": 91428,
       "plugins": 148373,
       "shared": 15968
     },
-    "percent": 14.97,
-    "ported_lines": 50689,
-    "total_lines": 338566
+    "percent": 15.11,
+    "ported_lines": 51247,
+    "total_lines": 339056
   },
-  "commit": "39461ad",
+  "commit": "931ed98",
   "date": "2026-11-09",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 45.46,
-          "ported_lines": 27582,
-          "total_lines": 60672
+          "percent": 46.0,
+          "ported_lines": 28119,
+          "total_lines": 61124
         },
         "graphics": {
-          "percent": 63.36,
-          "ported_lines": 8546,
-          "total_lines": 13487
+          "percent": 63.39,
+          "ported_lines": 8567,
+          "total_lines": 13514
         },
         "media-io": {
           "percent": 78.57,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 445,
-      "hybrid_lines": 40260,
-      "percent": 55.73,
-      "ported_lines": 50689,
-      "total_lines": 90949
+      "files": 486,
+      "hybrid_lines": 40181,
+      "percent": 56.05,
+      "ported_lines": 51247,
+      "total_lines": 91428
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 47.1,
-            "ported_lines": 26229,
-            "total_lines": 55683
+            "percent": 47.68,
+            "ported_lines": 26766,
+            "total_lines": 56135
           },
           "graphics": {
-            "percent": 63.84,
-            "ported_lines": 8486,
-            "total_lines": 13293
+            "percent": 63.87,
+            "ported_lines": 8507,
+            "total_lines": 13320
           },
           "media-io": {
             "percent": 78.57,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 410,
-        "hybrid_lines": 35941,
-        "percent": 56.41,
+        "files": 451,
+        "hybrid_lines": 35862,
+        "percent": 56.75,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -109,6 +109,7 @@
           "graphics/graphics-ffmpeg-route.c.h",
           "graphics/graphics-immediate.c.h",
           "graphics/graphics-linear-srgb.c.h",
+          "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
           "graphics/image-file.c.h",
@@ -202,6 +203,7 @@
           "obs-hotkey-press.c.h",
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
+          "obs-hotkey-update-atomic.c.h",
           "obs-missing-files.c.h",
           "obs-module-failure-info.c.h",
           "obs-module-load-rules-skip.c.h",
@@ -235,8 +237,10 @@
           "obs-output-can-pause.c.h",
           "obs-output-caption-text.c.h",
           "obs-output-caption.c.h",
+          "obs-output-connect-time.c.h",
           "obs-output-delay.c.h",
           "obs-output-flags.c.h",
+          "obs-output-frames-dropped.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -277,6 +281,7 @@
           "obs-scene-item-parent-getter.c.h",
           "obs-scene-item-render-getters.c.h",
           "obs-scene-item-scale-fields.c.h",
+          "obs-scene-item-set-id.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
           "obs-scene-item-transform.c.h",
@@ -338,6 +343,9 @@
           "obs-source-transition-start.c.h",
           "obs-source-transition-stop.c.h",
           "obs-source-transition-switch.c.h",
+          "obs-source-transition-video.c.h",
+          "obs-source-transition.c.h",
+          "obs-source-type-data.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
@@ -386,20 +394,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 46503,
-        "total_lines": 82444
+        "ported_lines": 47061,
+        "total_lines": 82923
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 45.67,
-            "ported_lines": 22747,
-            "total_lines": 49812
+            "percent": 46.32,
+            "ported_lines": 23284,
+            "total_lines": 50264
           },
           "graphics": {
-            "percent": 63.84,
-            "ported_lines": 8486,
-            "total_lines": 13293
+            "percent": 63.87,
+            "ported_lines": 8507,
+            "total_lines": 13320
           },
           "media-io": {
             "percent": 78.57,
@@ -412,9 +420,9 @@
             "total_lines": 9978
           }
         },
-        "files": 391,
-        "hybrid_lines": 33552,
-        "percent": 56.14,
+        "files": 432,
+        "hybrid_lines": 33473,
+        "percent": 56.51,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -441,6 +449,7 @@
           "graphics/graphics-ffmpeg-route.c.h",
           "graphics/graphics-immediate.c.h",
           "graphics/graphics-linear-srgb.c.h",
+          "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
           "graphics/image-file.c.h",
@@ -535,6 +544,7 @@
           "obs-hotkey-press.c.h",
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
+          "obs-hotkey-update-atomic.c.h",
           "obs-missing-files.c.h",
           "obs-module-failure-info.c.h",
           "obs-module-load-rules-skip.c.h",
@@ -556,8 +566,10 @@
           "obs-output-can-pause.c.h",
           "obs-output-caption-text.c.h",
           "obs-output-caption.c.h",
+          "obs-output-connect-time.c.h",
           "obs-output-delay.c.h",
           "obs-output-flags.c.h",
+          "obs-output-frames-dropped.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -598,6 +610,7 @@
           "obs-scene-item-parent-getter.c.h",
           "obs-scene-item-render-getters.c.h",
           "obs-scene-item-scale-fields.c.h",
+          "obs-scene-item-set-id.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
           "obs-scene-item-transform.c.h",
@@ -659,6 +672,9 @@
           "obs-source-transition-start.c.h",
           "obs-source-transition-stop.c.h",
           "obs-source-transition-switch.c.h",
+          "obs-source-transition-video.c.h",
+          "obs-source-transition.c.h",
+          "obs-source-type-data.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
@@ -705,20 +721,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 42942,
-        "total_lines": 76494
+        "ported_lines": 43500,
+        "total_lines": 76973
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 46.05,
-            "ported_lines": 23688,
-            "total_lines": 51443
+            "percent": 46.68,
+            "ported_lines": 24225,
+            "total_lines": 51895
           },
           "graphics": {
-            "percent": 63.44,
-            "ported_lines": 8546,
-            "total_lines": 13472
+            "percent": 63.46,
+            "ported_lines": 8567,
+            "total_lines": 13499
           },
           "media-io": {
             "percent": 78.57,
@@ -731,9 +747,9 @@
             "total_lines": 10704
           }
         },
-        "files": 402,
-        "hybrid_lines": 34910,
-        "percent": 55.83,
+        "files": 443,
+        "hybrid_lines": 34831,
+        "percent": 56.19,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -763,6 +779,7 @@
           "graphics/graphics-ffmpeg-route.c.h",
           "graphics/graphics-immediate.c.h",
           "graphics/graphics-linear-srgb.c.h",
+          "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
           "graphics/image-file.c.h",
@@ -856,6 +873,7 @@
           "obs-hotkey-press.c.h",
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
+          "obs-hotkey-update-atomic.c.h",
           "obs-missing-files.c.h",
           "obs-module-failure-info.c.h",
           "obs-module-load-rules-skip.c.h",
@@ -877,8 +895,10 @@
           "obs-output-can-pause.c.h",
           "obs-output-caption-text.c.h",
           "obs-output-caption.c.h",
+          "obs-output-connect-time.c.h",
           "obs-output-delay.c.h",
           "obs-output-flags.c.h",
+          "obs-output-frames-dropped.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -919,6 +939,7 @@
           "obs-scene-item-parent-getter.c.h",
           "obs-scene-item-render-getters.c.h",
           "obs-scene-item-scale-fields.c.h",
+          "obs-scene-item-set-id.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
           "obs-scene-item-transform.c.h",
@@ -980,6 +1001,9 @@
           "obs-source-transition-start.c.h",
           "obs-source-transition-stop.c.h",
           "obs-source-transition-switch.c.h",
+          "obs-source-transition-video.c.h",
+          "obs-source-transition.c.h",
+          "obs-source-type-data.c.h",
           "obs-source-video-tick.c.h",
           "obs-source-volume-mul.c.h",
           "obs-source-volume.c.h",
@@ -1031,12 +1055,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 44120,
-        "total_lines": 79030
+        "ported_lines": 44678,
+        "total_lines": 79509
       }
     }
   },
   "rust": {
-    "lines": 186480
+    "lines": 189469
   }
 }
