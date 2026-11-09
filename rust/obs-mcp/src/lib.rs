@@ -42,3 +42,4 @@ pub fn serve<R: BufRead, W: Write>(reader: R, writer: W) -> io::Result<()> {
 }
 
 pub mod platform;
+pub mod client;

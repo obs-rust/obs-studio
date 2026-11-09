@@ -251,3 +251,13 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+
+class McpSession:
+    """Newline JSON-RPC session over the owner-only OBS socket."""
+
+    def __init__(self, reader, writer):
+        self.reader, self.writer = reader, writer
+        self.next_id = 0
+
+    async def call(self, name: str, arguments: dict | None = None) -> dict:
+        raise NotImplementedError("MCP tool exchange")
