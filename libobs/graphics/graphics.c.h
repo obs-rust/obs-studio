@@ -2469,18 +2469,6 @@ void gs_samplerstate_destroy(gs_samplerstate_t *samplerstate)
 	thread_graphics->exports.gs_samplerstate_destroy(samplerstate);
 }
 
-void gs_vertexbuffer_destroy(gs_vertbuffer_t *vertbuffer)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_vertexbuffer_destroy"))
-		return;
-	if (!vertbuffer)
-		return;
-
-	graphics->exports.gs_vertexbuffer_destroy(vertbuffer);
-}
-
 void gs_vertexbuffer_flush(gs_vertbuffer_t *vertbuffer)
 {
 	if (!gs_valid_p("gs_vertexbuffer_flush", vertbuffer))

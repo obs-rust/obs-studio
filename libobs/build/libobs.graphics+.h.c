@@ -8,3 +8,4 @@
 #include "libobs/graphics/graphics.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/shader-parser.c.h"
+#include "libobs/graphics/vertexbuffer-destroy.c.h"
