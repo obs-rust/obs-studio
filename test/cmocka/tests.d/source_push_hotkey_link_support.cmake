@@ -15,7 +15,7 @@ target_include_directories(
 )
 target_link_libraries(
   source_push_hotkey_link_support
-  PRIVATE libobs_rust-static OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
+  PRIVATE libobs_rust-static SIMDe::SIMDe OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
 )
 function(_source_push_hotkey_link_support)
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
