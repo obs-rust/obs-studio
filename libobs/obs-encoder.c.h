@@ -776,25 +776,10 @@ static inline bool obs_encoder_initialize_internal(obs_encoder_t *encoder)
 	return true;
 }
 
-void *obs_encoder_create_rerouted(obs_encoder_t *encoder, const char *reroute_id)
+/* Keep the creation-thread admission state private to the initializer. */
+bool obs_encoder_reroute_allowed(void)
 {
-	if (!obs_ptr_valid(encoder, "obs_encoder_reroute"))
-		return NULL;
-	if (!obs_ptr_valid(reroute_id, "obs_encoder_reroute"))
-		return NULL;
-	if (!can_reroute)
-		return NULL;
-
-	const struct obs_encoder_info *ei = find_encoder(reroute_id);
-	if (ei) {
-		if (ei->type != encoder->orig_info.type || astrcmpi(ei->codec, encoder->orig_info.codec) != 0) {
-			return NULL;
-		}
-		encoder->info = *ei;
-		return encoder->info.create(encoder->context.settings, encoder);
-	}
-
-	return NULL;
+	return can_reroute;
 }
 
 bool obs_encoder_initialize(obs_encoder_t *encoder)

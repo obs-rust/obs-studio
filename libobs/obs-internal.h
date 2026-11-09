@@ -2256,6 +2256,7 @@ struct obs_encoder_roi_state_fields {
 extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
 
 extern struct obs_encoder_info *find_encoder(const char *id);
+extern bool obs_encoder_reroute_allowed(void);
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
 extern bool obs_encoder_initialize(obs_encoder_t *encoder);
