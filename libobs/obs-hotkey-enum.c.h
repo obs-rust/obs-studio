@@ -5,7 +5,7 @@
 #define unlock obs_hotkey_seam_unlock
 #define enum_bindings obs_hotkey_seam_enum_bindings
 #define enum_context_hotkeys hkenum_enum_context_hotkeys
-#define HASH_FIND_HKEY(head, id, out) HASH_FIND(hh, head, &(id), sizeof(size_t), out)
+#define HASH_FIND_HKEY(head, id, out) ((out) = obs_hotkey_seam_find(id))
 
 static inline void enum_context_hotkeys(struct obs_context_data *context, obs_hotkey_internal_enum_func func,
 					void *data)
