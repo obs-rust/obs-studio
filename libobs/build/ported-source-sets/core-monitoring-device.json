@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-core-monitoring-device+.h.c"
+  ]
+}
