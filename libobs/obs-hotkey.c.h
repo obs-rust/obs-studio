@@ -1038,16 +1038,6 @@ const char *obs_get_hotkey_translation(obs_key_t key, const char *def)
 	return obs->hotkeys.translations[key] ? obs->hotkeys.translations[key] : def;
 }
 
-void obs_hotkey_update_atomic(obs_hotkey_atomic_update_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	func(data);
-
-	unlock();
-}
-
 void obs_hotkeys_set_audio_hotkeys_translations(const char *mute, const char *unmute, const char *push_to_mute,
 						const char *push_to_talk, const char *monitor_on,
 						const char *monitor_off)
