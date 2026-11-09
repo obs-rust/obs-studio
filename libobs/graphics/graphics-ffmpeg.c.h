@@ -33,13 +33,6 @@ static void *ffmpeg_image_orient(struct ffmpeg_image *info, void *in_data, int o
 	return data;
 }
 
-/* RED: the unchanged public image tests must reject missing orientation selection. */
-static int ffmpeg_image_get_orientation(const AVFrame *frame)
-{
-	(void)frame;
-	return 0;
-}
-
 /* graphics-ffmpeg-route.c gives the pixel formats, the texture formats and
  * the alpha modes as their values. */
 _Static_assert(GS_FFMPEG_IMAGE_PIX_FMT_YUV420P == AV_PIX_FMT_YUV420P, "AV_PIX_FMT_YUV420P");
