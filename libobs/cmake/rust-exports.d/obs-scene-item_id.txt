@@ -1,1 +1,2 @@
 obs_sceneitem_get_id
+obs_sceneitem_set_id

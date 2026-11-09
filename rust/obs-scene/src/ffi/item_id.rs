@@ -1,5 +1,5 @@
-//! Read-only item ID C ABI. Only the prefix through `id` is described.
-//! Read only `id`, without borrowing the item or its opaque suffix.
+//! Item ID C ABI. Only the prefix through `id` is described.
+//! Access only `id`, without borrowing the item or its opaque suffix.
 use core::ffi::{c_char, c_int, c_long};
 
 /// Private scene-item prefix ending immediately before `parent`.
@@ -43,4 +43,17 @@ pub unsafe extern "C" fn obs_sceneitem_get_id(item: *const SceneItemIdPrefix) ->
             )
         };
     })
+}
+
+/// Replace the stored signed ID without touching any other field.
+///
+/// # Safety
+/// `item` must be non-null and live, with exclusive access to its ID under
+/// the original C setter's synchronization contract.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_sceneitem_set_id(item: *mut SceneItemIdPrefix, id: i64) {
+    // SAFETY: the caller guarantees a live non-null item and exclusive access
+    // to this field. Do not create a reference covering the opaque suffix.
+    let stored = unsafe { &mut *core::ptr::addr_of_mut!((*item).id) };
+    crate::item_id::set_id(stored, id);
 }

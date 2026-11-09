@@ -106,3 +106,57 @@ proptest! {
         check(flags, id);
     }
 }
+
+// NULL is excluded: the unchanged C setter dereferences its item unconditionally.
+type Setter = unsafe extern "C" fn(*mut SceneItemIdPrefix, i64);
+unsafe extern "C" {
+    fn oracle_scene_item_set_id_probe(flags: u32, initial: i64, id: i64, setter: Setter) -> u32;
+}
+
+fn check_set(flags: u32, initial: i64, id: i64) {
+    // SAFETY: C owns complete live items, grants exclusive ID access during
+    // each callback, and compares every byte against the unchanged C setter.
+    let mismatches = unsafe {
+        oracle_scene_item_set_id_probe(
+            flags,
+            initial,
+            id,
+            obs_scene::ffi::item_id::obs_sceneitem_set_id,
+        )
+    };
+    assert_eq!(
+        mismatches, 0,
+        "flags={flags:#x}, initial={initial}, id={id}"
+    );
+}
+
+#[test]
+fn set_id_characterized_edges() {
+    for flags in 0..128 {
+        for id in [
+            i64::MIN,
+            i64::MIN + 1,
+            -17,
+            -1,
+            0,
+            1,
+            4242,
+            i64::MAX - 1,
+            i64::MAX,
+        ] {
+            check_set(flags, id.wrapping_add(1), id);
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: obs_c_oracle::parity::cases(1024),
+        failure_persistence: None,
+        ..ProptestConfig::default()
+    })]
+    #[test]
+    fn set_id_arbitrary(flags in any::<u32>(), initial in any::<i64>(), id in any::<i64>()) {
+        check_set(flags, initial, id);
+    }
+}
