@@ -1,6 +1,6 @@
 # Actual-library characterization; the same test runs against reference and hybrid libobs.
 add_executable(test_source_filter_index test_source_filter_index.c)
-target_link_libraries(test_source_filter_index PRIVATE OBS::libobs OBS::native-test-cmocka)
+target_link_libraries(test_source_filter_index PRIVATE OBS::libobs OBS::native-test-cmocka OBS::caption Uthash::Uthash)
 if(OS_WINDOWS)
   target_link_libraries(test_source_filter_index PRIVATE OBS::w32-pthreads)
 else()
