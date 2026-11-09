@@ -1474,6 +1474,12 @@ struct obs_source_boolean_query_fields {
 };
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
 
+/* Borrowed procedure-handler address. Caller rejects NULL before access. */
+struct obs_source_handler_getters_fields {
+	proc_handler_t *const *proc;
+};
+extern struct obs_source_handler_getters_fields obs_source_handler_getters_fields(const obs_source_t *source);
+
 /* Borrowed identity field addresses. Caller must reject NULL before access. */
 struct obs_source_identity_getter_fields {
 	const char *const *uuid;

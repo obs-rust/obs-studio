@@ -2,6 +2,8 @@
 """Batch 2 native contracts must carry portable header dependencies."""
 import json
 import re
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -93,6 +95,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
                     "test/cmocka/scene-source-getter-link-stubs.c",
+                    "test/cmocka/source-handler-getter-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                 ])
 
@@ -158,6 +161,61 @@ class NativeB2Portability(unittest.TestCase):
                 self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
                 self.assertTrue(any(provider in support[name]["sources"] for provider in providers))
         self.assertIn("obs_output_handler_getters_fields", (ROOT / stub).read_text())
+
+    def test_source_handler_getter_supplies_live_standalone_adapter(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/source-handler-getters.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if "libobs_rust-static" in target.get("libraries", [])
+                 and "OBS::libobs" not in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        adapter = "test/cmocka/source-handler-getter-link-support.c"
+        providers = ("test/cmocka/source-getter-log-link-stub.c",
+                     "test/cmocka/scene-getter-log-link-stub.c")
+        for name in names:
+            with self.subTest(name=name):
+                sources = graph["targets"][name]["sources"]
+                self.assertEqual(support[name]["sources"][0], adapter)
+                self.assertEqual(sources.count(adapter), 1)
+                self.assertEqual(sum(sources.count(provider) for provider in providers), 1)
+        body = (ROOT / adapter).read_text()
+        self.assertIn("&source->context.procs", body)
+        self.assertNotIn("abort()", body)
+
+    def test_source_handler_getter_legacy_consumers_link_live_adapter(self):
+        # Exercise the deferred CMake rule, including duplicate suppression for
+        # graph targets and exclusion of targets that do not link the archive.
+        names = ("test_source_duplicate_steps_rust", "test_source_filter_chain_steps_rust",
+                 "test_transition_clock_steps_rust", "test_transition_sample_time_steps_rust")
+        fragment = (ROOT / "test/cmocka/tests.d/source_handler_getter_link_support.cmake").as_posix()
+        adapter = (ROOT / "test/cmocka/source-handler-getter-link-support.c").as_posix()
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            (source / "dummy.c").write_text("int main(void) { return 0; }\n")
+            lines = ["cmake_minimum_required(VERSION 3.28)", "project(handler_link C)",
+                     "add_library(libobs_rust-static INTERFACE)",
+                     "add_library(OBS::caption INTERFACE IMPORTED)",
+                     "add_library(Uthash::Uthash INTERFACE IMPORTED)",
+                     f'set(CMAKE_CURRENT_SOURCE_DIR "{(ROOT / "test/cmocka").as_posix()}")']
+            for name in (*names, "test_source_graph", "test_source_c_reference"):
+                lines.append(f'add_executable({name} "{adapter}")' if name == "test_source_graph"
+                             else f'add_executable({name} "{(source / "dummy.c").as_posix()}")')
+                if name != "test_source_c_reference":
+                    lines.append(f"target_link_libraries({name} PRIVATE libobs_rust-static)")
+            lines += [f'include("{fragment}")', "function(check_sources)"]
+            for name in (*names, "test_source_graph", "test_source_c_reference"):
+                expected = 0 if name == "test_source_c_reference" else 1
+                lines += [f"get_target_property(sources {name} SOURCES)", "set(count 0)",
+                          "foreach(item IN LISTS sources)", f'if(item STREQUAL "{adapter}")',
+                          "math(EXPR count \"${count}+1\")", "endif()", "endforeach()",
+                          f"if(NOT count EQUAL {expected})",
+                          f'message(FATAL_ERROR "{name}: adapter count ${{count}}")', "endif()"]
+            lines += ["endfunction()", "cmake_language(DEFER CALL check_sources)"]
+            (source / "CMakeLists.txt").write_text("\n".join(lines))
+            result = subprocess.run(["cmake", "-S", str(source), "-B", str(source / "build")],
+                                    capture_output=True, text=True, check=False, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_output_pause_queries_supply_all_static_consumers(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

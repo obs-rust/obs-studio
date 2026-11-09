@@ -1,0 +1,578 @@
+{
+  "test_async_conversion_plan_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_async_frame_pacing_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_async_upload_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_audio_monitor_delay_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_coreaudio_device_rules_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_coreaudio_pacing_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_deinterlace_draw_plan_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_deinterlace_pacing_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_deinterlace_select_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_monitor_speaker_layout_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_monitor_video_sync_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_monitor_wasapi_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_pulse_monitor_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_scene_audio_window_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/scene-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_scene_render_plan_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/scene-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_audio_input_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_audio_place_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_audio_render_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_audio_timing_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_color_space_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_draw_plan_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_frame_copy_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_media_admission_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_monitoring_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_ptm_gate_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_render_route_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_size_route_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_video_tick_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_source_volume_apply_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_transition_load_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_transition_render_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
+  "test_transition_start_steps_rust": {
+    "sources": [
+      "test/cmocka/source-handler-getter-link-support.c",
+      "test/cmocka/source-getter-log-link-stub.c"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  }
+}
