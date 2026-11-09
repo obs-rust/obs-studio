@@ -154,12 +154,12 @@ mod weak_encoder_identity;
 
 mod weak_encoder_identity_parity;
 
+mod encoder_preferred_range;
 mod output_total_frames;
 mod output_total_frames_parity;
 
 mod output_connect_time;
 
 mod output_connect_time_parity;
-mod encoder_preferred_range;
 
 mod encoder_preferred_range_parity;
