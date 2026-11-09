@@ -4184,11 +4184,6 @@ void obs_source_set_push_to_talk_delay(obs_source_t *source, uint64_t delay)
 	pthread_mutex_unlock(&source->audio_mutex);
 }
 
-void *obs_source_get_type_data(obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_type_data") ? source->info.type_data : NULL;
-}
-
 /* The gate goes through obs-source-ptm-gate.c and the snap through
  * obs-source-volume.c, on values. Each field is read and written here as
  * before, in the same order: the stop times only when their key is not
