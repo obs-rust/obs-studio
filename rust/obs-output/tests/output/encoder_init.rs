@@ -61,9 +61,18 @@ fn test_encoder_init_characterize_defaults() {
             assert_eq!(encoder.order, if callbacks == 3 { 12 } else { callbacks });
             assert_eq!(encoder.legacy, if callbacks & 1 != 0 { 11 } else { 0 });
             assert_eq!(encoder.modern, if callbacks & 2 != 0 { 12 } else { 0 });
-            let shared = if callbacks & 2 != 0 { 22 } else if callbacks & 1 != 0 { 21 } else { 0 };
+            let shared = if callbacks & 2 != 0 {
+                22
+            } else if callbacks & 1 != 0 {
+                21
+            } else {
+                0
+            };
             assert_eq!(encoder.shared, shared);
-            assert_eq!(encoder.shared_user.unwrap_or(encoder.shared), if supplied { 99 } else { shared });
+            assert_eq!(
+                encoder.shared_user.unwrap_or(encoder.shared),
+                if supplied { 99 } else { shared }
+            );
             let expected: Vec<_> = (0..13).map(|n| (n, n == 7 || n == 8)).collect();
             assert_eq!(encoder.events, expected);
         }
@@ -73,10 +82,22 @@ fn test_encoder_init_characterize_defaults() {
 #[test]
 fn every_failure_preserves_partial_initialization_and_skips_defaults() {
     for fail in 0..7 {
-        let mut encoder = Encoder { fail: Some(fail), callbacks: 3, ..Encoder::default() };
+        let mut encoder = Encoder {
+            fail: Some(fail),
+            callbacks: 3,
+            ..Encoder::default()
+        };
         assert!(!initialize(&mut encoder));
         let expected: Vec<_> = (0..=6 + fail).map(|n| (n, n == 7 || n == 8)).collect();
         assert_eq!(encoder.events, expected);
-        assert_eq!((encoder.order, encoder.legacy, encoder.modern, encoder.shared), (0, 0, 0, 0));
+        assert_eq!(
+            (
+                encoder.order,
+                encoder.legacy,
+                encoder.modern,
+                encoder.shared
+            ),
+            (0, 0, 0, 0)
+        );
     }
 }

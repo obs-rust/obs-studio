@@ -16,6 +16,19 @@ pub trait Boundary {
 }
 
 /// Initialize without rolling back: the caller owns partial-state cleanup.
-pub fn initialize(_boundary: &mut impl Boundary) -> bool {
-    todo!("init_encoder port")
+pub fn initialize(boundary: &mut impl Boundary) -> bool {
+    for index in 0..6 {
+        boundary.sentinel(index);
+    }
+    if !boundary.context() {
+        return false;
+    }
+    for index in 0..6 {
+        if !boundary.mutex(index, index < 2) {
+            return false;
+        }
+    }
+    boundary.defaults();
+    boundary.defaults2();
+    true
 }
