@@ -1,8 +1,8 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
 /* The validators are private to the graphics unity group. */
-#define ptr_valid(ptr, func) gs_obj_valid(ptr, func, #ptr)
-#define gs_valid_p(func, param1) (gs_valid(func) && ptr_valid(param1, func))
+#define ptr_valid(ptr, func) shader_file_obj_valid(ptr, func, #ptr)
+#define gs_valid_p(func, param1) (shader_file_valid(func) && ptr_valid(param1, func))
 
 gs_shader_t *gs_vertexshader_create_from_file(const char *file, char **error_string)
 {

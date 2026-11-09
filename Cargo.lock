@@ -642,6 +642,7 @@ dependencies = [
  "obs-c-oracle",
  "obs-util",
  "proptest",
+ "tempfile",
 ]
 
 [[package]]
