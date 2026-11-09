@@ -636,6 +636,61 @@ fn a_late_continuous_packet_on_another_clock_keeps_its_own_timing() {
     assert_eq!(f.next_audio_sys_ts_min.get(), due + DUR);
 }
 
+/// A sender clock faster than the system clock puts each packet on a clock
+/// of its own later after its arrival (#4143). More than
+/// TS_SMOOTHING_THRESHOLD ahead, the packet takes its own timing again from
+/// its arrival, and is placed there instead of appended.
+#[test]
+fn a_continuous_packet_far_ahead_on_another_clock_takes_its_timing_again() {
+    let f = Fake::new();
+    let due = NOW + 100 * MSEC;
+    f.timing_set.set(true);
+    f.timing_adjust
+        .set(NOW.wrapping_sub(FAR + 14_191_000 * MSEC));
+    f.own_clock_timing_adjust.set(due.wrapping_sub(FAR));
+    f.own_clock_timing_set.set(true);
+    f.next_audio_ts_min.set(FAR);
+    f.next_audio_sys_ts_min.set(due);
+    f.audio_ts.set(NOW - 500 * MSEC);
+    f.last_output_frame_ts.set(FAR + 14_191_000 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    let want = NOW.wrapping_sub(FAR);
+    let log = f.take();
+    assert!(log.contains(&format!("own adjust={want}")), "{log:?}");
+    assert!(log.iter().any(|l| l.starts_with("place ")), "{log:?}");
+    assert!(!log.iter().any(|l| l.starts_with("push ")), "{log:?}");
+    assert_eq!(f.own_clock_timing_adjust.get(), want);
+    assert_eq!(f.next_audio_sys_ts_min.get(), NOW + DUR);
+}
+
+/// At TS_SMOOTHING_THRESHOLD ahead, not more, the packet keeps its own
+/// timing and is appended (#4143).
+#[test]
+fn a_continuous_packet_at_the_threshold_on_another_clock_keeps_its_timing() {
+    let f = Fake::new();
+    let due = NOW + 70 * MSEC;
+    let own = due.wrapping_sub(FAR);
+    f.timing_set.set(true);
+    f.timing_adjust
+        .set(NOW.wrapping_sub(FAR + 14_191_000 * MSEC));
+    f.own_clock_timing_adjust.set(own);
+    f.own_clock_timing_set.set(true);
+    f.next_audio_ts_min.set(FAR);
+    f.next_audio_sys_ts_min.set(due);
+    f.audio_ts.set(NOW - 500 * MSEC);
+    f.last_output_frame_ts.set(FAR + 14_191_000 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    let log = f.take();
+    assert!(!log.iter().any(|l| l.contains("adjust=")), "{log:?}");
+    assert!(log.iter().any(|l| l.starts_with("push ")), "{log:?}");
+    assert_eq!(f.own_clock_timing_adjust.get(), own);
+    assert_eq!(f.next_audio_sys_ts_min.get(), due + DUR);
+}
+
 #[test]
 fn a_decoupled_unbuffered_source_reanchors_before_the_unlock() {
     let f = Fake::new();

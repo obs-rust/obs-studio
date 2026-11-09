@@ -193,6 +193,12 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 		/* reset_audio_timing() for the audio's own timing */
 		source->own_clock_timing_adjust = os_time - data->timestamp;
 		source->own_clock_timing_set = true;
+	} else if (!on_video_clock && (int64_t)(data->timestamp + source->own_clock_timing_adjust - os_time) >
+					      (int64_t)OBS_SOURCE_AUDIO_TS_SMOOTHING_THRESHOLD) {
+		/* A sender clock faster than the system clock places its audio
+		 * later and later after its arrival, and no other path moves
+		 * this timing (#4143): take the timing of this packet again. */
+		source->own_clock_timing_adjust = os_time - data->timestamp;
 	}
 	timing_adjust = on_video_clock ? source->timing_adjust : source->own_clock_timing_adjust;
 

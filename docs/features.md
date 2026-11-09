@@ -251,6 +251,14 @@ not get a line.
   the tone of such a source no longer breaks up into gaps and overlaps
   (73–89 % of the program instead of 93 %). *All*, pending merge. Issue
   [#3747](https://github.com/obs-rust/obs-studio/issues/3747).
+- **NDI audio on its own clock stays in sync with a fast sender.** Audio
+  whose sender clock runs faster than the computer's no longer plays later
+  and later (about 0.2 s an hour at 50 ppm, without a limit): OBS takes its
+  timing again when it runs more than 70 ms ahead. Each such step skips
+  about 60 ms of audio, once every 23 minutes at 50 ppm; a smooth
+  correction is [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
+  *All*, pending merge. Issue
+  [#4143](https://github.com/obs-rust/obs-studio/issues/4143).
 
 ### Encoding, streaming and recording
 
