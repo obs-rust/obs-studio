@@ -68,3 +68,4 @@ mod item_visible;
 mod item_visible_parity;
 
 mod set_visibility;
+mod set_visibility_parity;

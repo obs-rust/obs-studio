@@ -10,6 +10,14 @@ pub trait Item {
 }
 
 /// Cancel pending audio actions and reconcile active-child membership.
-pub fn reconcile(_item: &mut impl Item, _visible: bool) {
-    todo!()
+pub fn reconcile(item: &mut impl Item, visible: bool) {
+    item.clear_actions();
+    if item.active_refs() > 0 {
+        if !visible {
+            item.remove_child();
+        }
+    } else if visible {
+        item.add_child();
+    }
+    item.normalize(visible);
 }
