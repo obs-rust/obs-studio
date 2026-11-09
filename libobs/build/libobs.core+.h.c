@@ -14,6 +14,7 @@
 #include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
 #include "libobs/obs-hotkey-object-fields.c.h"
+#include "libobs/obs-hotkey-routed-callback.c.h"
 #include "libobs/obs-hotkey-routing-controls.c.h"
 #include "libobs/obs-hotkey.c.h"
 #include "libobs/obs-module-init.c.h"
