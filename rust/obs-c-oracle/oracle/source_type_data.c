@@ -92,9 +92,9 @@ typedef void *(*source_type_data_getter)(obs_source_t *);
 typedef void (*source_type_data_get_log)(log_handler_t *, void **);
 typedef void (*source_type_data_set_log)(log_handler_t, void *);
 bool oracle_source_type_data_logs(source_type_data_getter getter, source_type_data_get_log get_log,
-				 source_type_data_set_log set_log);
+				  source_type_data_set_log set_log);
 bool oracle_source_type_data_logs(source_type_data_getter getter, source_type_data_get_log get_log,
-				 source_type_data_set_log set_log)
+				  source_type_data_set_log set_log)
 {
 	log_handler_t old_handler;
 	void *old_param;
