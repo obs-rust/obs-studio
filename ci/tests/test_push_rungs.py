@@ -98,5 +98,43 @@ class Rungs(unittest.TestCase):
         self.assertEqual(code, 3)
 
 
+class Evidence(unittest.TestCase):
+    """Evidence is per commit and pruned, never a shared singleton."""
+
+    def test_two_commits_never_share_a_file(self):
+        with tempfile.TemporaryDirectory() as gitdir, \
+                mock.patch.object(push, "git") as git:
+            shas = iter(["abc123", "def456"])
+
+            def fake(*args, **kwargs):
+                class R:
+                    returncode = 0
+                    stdout = gitdir + "\n" if "--git-dir" in args else next(shas) + "\n"
+
+                return R()
+
+            git.side_effect = fake
+            first = push.evidence_path()
+            second = push.evidence_path()
+        self.assertEqual(first.name, "abc123.json")
+        self.assertEqual(second.name, "def456.json")
+
+    def test_prune_keeps_the_newest_and_drops_the_rest(self):
+        import os, time
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            made = []
+            for index in range(push.ATTEST_KEEP + 5):
+                path = directory / f"{index}.json"
+                path.write_text("{}", encoding="utf-8")
+                os.utime(path, (time.time() - index, time.time() - index))
+                made.append(path)
+            push.prune_evidence(directory)
+            left = sorted(directory.glob("*.json"))
+        self.assertEqual(len(left), push.ATTEST_KEEP)
+        self.assertIn(made[0], left)
+        self.assertNotIn(made[-1], left)
+
+
 if __name__ == "__main__":
     unittest.main()

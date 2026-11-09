@@ -84,6 +84,40 @@ def _prooft_version(tool: str) -> tuple[int, int, int] | None:
     return (numbers + (0, 0, 0))[:3]
 
 
+ATTEST_KEEP = 20
+ATTEST_MAX_AGE_DAYS = 7
+
+
+def evidence_path() -> Path:
+    """A per-commit evidence file, pruned periodically.
+
+    One file per commit, never a singleton: two agents pushing from the same
+    clone (or a worktree whose `.git` is a file) must not overwrite each
+    other's evidence. Pruning keeps the directory bounded -- it is scratch, not
+    a record, and the attestation itself lives in the commit message.
+    """
+
+    git_dir = Path(git("rev-parse", "--git-dir", capture=True).stdout.strip() or ".git")
+    sha = git("rev-parse", "HEAD", capture=True).stdout.strip() or "HEAD"
+    directory = git_dir / "soldr-attest"
+    directory.mkdir(parents=True, exist_ok=True)
+    prune_evidence(directory)
+    return directory / f"{sha.replace('/', '-')}.json"
+
+
+def prune_evidence(directory: Path) -> None:
+    """Drop stale evidence: older than a week, then all but the newest few."""
+
+    import time
+
+    now = time.time()
+    files = sorted(directory.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for index, path in enumerate(files):
+        age_days = (now - path.stat().st_mtime) / 86400
+        if index >= ATTEST_KEEP or age_days > ATTEST_MAX_AGE_DAYS:
+            path.unlink(missing_ok=True)
+
+
 def attest() -> bool:
     """Stamp this commit's evidence. Returns whether a trailer was written.
 
@@ -111,10 +145,7 @@ def attest() -> bool:
 
     soldr = shutil.which("soldr")
     if soldr and supports([soldr, "lint", "--help"], "--attest"):
-        # A worktree's `.git` is a file, not a directory, so the git dir is
-        # resolved rather than assumed.
-        git_dir = git("rev-parse", "--git-dir", capture=True).stdout.strip() or ".git"
-        evidence = Path(git_dir) / "soldr-attest.json"
+        evidence = evidence_path()
         proc = run([soldr, "lint", "rust", "--attest", "--format", "json"], capture=True, check=False)
         if proc.returncode != 0:
             print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
