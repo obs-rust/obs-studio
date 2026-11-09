@@ -63,6 +63,13 @@ def crates() -> list[str]:
     return sorted(p.parent.name for p in (ROOT / "rust").glob("*/Cargo.toml"))
 
 
+def mentioned_crates(text: str, names: list[str]) -> set[str]:
+    # Native C oracle paths are build inputs, not Cargo imports. Preserve
+    # manifest and Rust source references when inferring the Rust build roots.
+    text = re.sub(r"\brust/[\w-]+/[^\s\"';}]+\.(?:c|h|cpp|hpp)(?=[\s\"';)]|$)", "", text)
+    return {c for c in names if re.search(rf"rust/{re.escape(c)}\b|\b{re.escape(c)}\b(?!-)", text)}
+
+
 def tier2_roots() -> set[str]:
     names = crates()
     roots = set()
@@ -71,9 +78,7 @@ def tier2_roots() -> set[str]:
             if f.suffix not in (".cmake", ".txt") or not f.is_file():
                 continue
             text = f.read_text(encoding="utf-8", errors="replace")
-            for c in names:
-                if re.search(rf"rust/{re.escape(c)}\b|\b{re.escape(c)}\b(?!-)", text):
-                    roots.add(c)
+            roots.update(mentioned_crates(text, names))
     return roots
 
 
@@ -86,6 +91,17 @@ def tier2_closure() -> set[str]:
 
 
 class Tier2ProofInputsTest(unittest.TestCase):
+    def test_native_oracle_path_is_not_a_cargo_root(self):
+        text = '\n'.join((
+            'file(READ "${CMAKE_SOURCE_DIR}/rust/obs-c-oracle/legacy/encoder.c" baseline)',
+            'corrosion_import_crate(MANIFEST_PATH "${CMAKE_SOURCE_DIR}/rust/libobs-rust/Cargo.toml")',
+        ))
+        self.assertEqual(mentioned_crates(text, ["obs-c-oracle", "libobs-rust"]), {"libobs-rust"})
+
+    def test_native_oracle_legacy_stays_a_tier2_input(self):
+        self.assertFalse(excluded("rust/obs-c-oracle/legacy/obs-encoder-audio-buffers.c"))
+        self.assertTrue(excluded("rust/obs-c-oracle/src/lib.rs"))
+
     def test_roots_are_found(self):
         self.assertTrue({"libobs-rust", "obs-nvenc-plugin", "obs-preflight-ffi"} <= tier2_roots(), tier2_roots())
 

@@ -625,6 +625,11 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
+    std::fs::write(
+        extract_dir.join("encoder_audio_buffers_original.inc"),
+        extract_after_libobs_pch(&manifest.join("legacy/obs-encoder-audio-buffers.c")),
+    )
+    .expect("write encoder audio-buffer baseline");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
@@ -734,6 +739,7 @@ fn main() {
     // checkouts; collect_c_sources tolerates its absence.
     let roots = [
         manifest.join("oracle"),
+        manifest.join("legacy"),
         manifest.join("vendor"),
         libobs.clone(),
         libobs.with_file_name("deps").join("w32-pthreads"),
