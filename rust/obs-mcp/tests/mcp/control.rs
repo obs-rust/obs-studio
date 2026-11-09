@@ -117,3 +117,26 @@ fn reset_changes_counters_but_preserves_gauges_and_unknown_values() {
     assert_eq!(result.stages.vcam.latency_max_ns, Some(800));
     assert_eq!(result.stages.vmic.xruns, None);
 }
+
+#[test]
+fn recreated_counter_stays_in_new_generation_across_old_baseline() {
+    use obs_mcp::tools::control::StatsBaseline;
+    let mut old = StatsSnapshot::default();
+    old.stages.vcam.frames_total = Some(20);
+    old.stages.vcam.generation = Some(1);
+    let mut tracker = StatsBaseline::new(old);
+    let mut new = StatsSnapshot::default();
+    new.stages.vcam.frames_total = Some(3);
+    new.stages.vcam.generation = Some(2);
+    assert_eq!(tracker.apply(new.clone()).stages.vcam.frames_total, Some(3));
+    new.stages.vcam.frames_total = Some(25);
+    assert_eq!(
+        tracker.apply(new.clone()).stages.vcam.frames_total,
+        Some(25)
+    );
+    new.stages.vcam.frames_total = Some(30);
+    new.stages.vcam.generation = Some(3);
+    assert_eq!(tracker.apply(new).stages.vcam.frames_total, Some(30));
+    assert!(StartInput::default().audio_enabled);
+    assert_eq!(StartInput::default().audio_track, 1);
+}

@@ -119,10 +119,14 @@ impl Output {
     pub fn virtual_audio(&self) -> Option<bool> {
         self.procedure(c"virtualcam_audio")?.boolean(c"active")
     }
+    pub fn reset_device_stats(&self) {
+        let _ = self.procedure(c"virtualcam_stats_reset");
+    }
     pub fn device_stats(&self) -> Option<(StageStats, StageStats)> {
         let data = self.procedure(c"virtualcam_stats")?;
         let video = StageStats {
             live: self.active(),
+            generation: data.count(c"generation"),
             latency_min_ns: data.count(c"vcam_min_ns"),
             latency_max_ns: data.count(c"vcam_max_ns"),
             frames_total: data.count(c"vcam_frames"),
@@ -131,6 +135,7 @@ impl Output {
         };
         let audio = StageStats {
             live: self.virtual_audio().unwrap_or(false),
+            generation: data.count(c"generation"),
             latency_min_ns: data.count(c"vmic_min_ns"),
             latency_max_ns: data.count(c"vmic_max_ns"),
             frames_total: data.count(c"vmic_frames"),

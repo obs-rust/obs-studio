@@ -6,12 +6,33 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
 /// Bounded start options, extended by the wait domain.
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StartInput {
     /// Wait until the output reports active.
     #[serde(default)]
     pub wait: bool,
+    /// Enable the paired microphone before a stopped output starts.
+    #[serde(default = "enabled")]
+    pub audio_enabled: bool,
+    /// One-based OBS audio mix (1 through 6).
+    #[serde(default = "first_mix")]
+    pub audio_track: u32,
+}
+fn enabled() -> bool {
+    true
+}
+fn first_mix() -> u32 {
+    1
+}
+impl Default for StartInput {
+    fn default() -> Self {
+        Self {
+            wait: false,
+            audio_enabled: true,
+            audio_track: 1,
+        }
+    }
 }
 /// Virtual Camera and its paired audio source.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
@@ -77,6 +98,8 @@ pub struct MediaStatus {
 pub struct StageStats {
     /// Currently running.
     pub live: bool,
+    /// Counter generation, when the provider exposes one.
+    pub generation: Option<u64>,
     /// Observed minimum stage residence time, if measured.
     pub latency_min_ns: Option<u64>,
     /// Observed maximum stage residence time, if measured.
@@ -358,5 +381,69 @@ impl StatsSnapshot {
             baseline.render.render_skipped_frames,
         );
         self
+    }
+}
+
+/// Stateful baselines detect provider recreation even after raw counters exceed
+/// the previous baseline. Latency bounds are gauges, reset by the provider.
+#[derive(Clone, Debug)]
+pub struct StatsBaseline {
+    baseline: StatsSnapshot,
+    previous: StatsSnapshot,
+}
+impl StatsBaseline {
+    /// Establishes a baseline from the current raw snapshot.
+    #[must_use]
+    pub fn new(snapshot: StatsSnapshot) -> Self {
+        Self {
+            previous: snapshot.clone(),
+            baseline: snapshot,
+        }
+    }
+    /// Observe a raw snapshot, resetting rolled-back/recreated counter baselines.
+    pub fn apply(&mut self, snapshot: StatsSnapshot) -> StatsSnapshot {
+        fn stage(now: &StageStats, previous: &StageStats, baseline: &mut StageStats) {
+            let recreated = now.generation.is_some() && now.generation != previous.generation;
+            let fix = |current: Option<u64>, prior: Option<u64>, base: &mut Option<u64>| {
+                if recreated || current.zip(prior).is_some_and(|(n, p)| n < p) {
+                    *base = current.map(|_| 0);
+                }
+            };
+            fix(
+                now.frames_total,
+                previous.frames_total,
+                &mut baseline.frames_total,
+            );
+            fix(
+                now.frames_dropped,
+                previous.frames_dropped,
+                &mut baseline.frames_dropped,
+            );
+            fix(now.xruns, previous.xruns, &mut baseline.xruns);
+            baseline.generation = now.generation;
+        }
+        stage(
+            &snapshot.stages.render,
+            &self.previous.stages.render,
+            &mut self.baseline.stages.render,
+        );
+        stage(
+            &snapshot.stages.vcam,
+            &self.previous.stages.vcam,
+            &mut self.baseline.stages.vcam,
+        );
+        stage(
+            &snapshot.stages.vmic,
+            &self.previous.stages.vmic,
+            &mut self.baseline.stages.vmic,
+        );
+        if snapshot.render.render_total_frames < self.previous.render.render_total_frames {
+            self.baseline.render.render_total_frames = 0;
+        }
+        if snapshot.render.render_skipped_frames < self.previous.render.render_skipped_frames {
+            self.baseline.render.render_skipped_frames = 0;
+        }
+        self.previous = snapshot.clone();
+        snapshot.relative_to(&self.baseline)
     }
 }

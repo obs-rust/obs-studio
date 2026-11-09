@@ -55,10 +55,21 @@ impl ObsBackend {
 }
 impl ControlBackend for ObsBackend {
     fn vcam_start(&self, request: StartInput) -> Result<VcamStatus, ToolError> {
+        if !crate::ffi::has_video() {
+            return Err(ToolError::not_ready(
+                "Virtual Camera requires initialized video",
+            ));
+        }
+        if !(1..=6).contains(&request.audio_track) {
+            return Err(ToolError::wrong_state(
+                "audio_track must be between 1 and 6",
+            ));
+        }
         let output = self
             .camera(true)?
             .ok_or_else(|| ToolError::not_ready("Virtual Camera output unavailable"))?;
         if !output.active() {
+            output.update(&serde_json::json!({"audio_enabled":request.audio_enabled,"audio_track":request.audio_track})).map_err(ToolError::processing)?;
             output.start().map_err(ToolError::processing)?;
         }
         let status = self.vcam_status(EmptyInput::default())?;
@@ -102,13 +113,19 @@ impl ControlBackend for ObsBackend {
     }
     fn stats_get(&self, _request: EmptyInput) -> Result<StatsSnapshot, ToolError> {
         let current = self.raw_stats()?;
-        Ok(self.baseline.borrow().as_ref().map_or_else(
-            || current.clone(),
-            |baseline| current.clone().relative_to(baseline),
-        ))
+        if let Some(baseline) = self.baseline.borrow_mut().as_mut() {
+            return Ok(baseline.apply(current));
+        }
+        Ok(current)
     }
     fn stats_reset(&self, _request: EmptyInput) -> Result<StatsSnapshot, ToolError> {
-        self.baseline.replace(Some(self.raw_stats()?));
+        if let Some(output) = self.camera(false)? {
+            output.reset_device_stats();
+        }
+        self.baseline
+            .replace(Some(crate::tools::control::StatsBaseline::new(
+                self.raw_stats()?,
+            )));
         self.stats_get(EmptyInput::default())
     }
     fn pipeline_dump(&self, _request: EmptyInput) -> Result<PipelineDump, ToolError> {

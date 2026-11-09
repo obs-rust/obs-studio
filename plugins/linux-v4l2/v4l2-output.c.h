@@ -50,6 +50,7 @@ struct virtualcam_data {
 	char mic_lock_path[256];
 	int mic_lock;
 	/* Lifetime counters; all accesses hold sync.mutex. Never consumed by logging. */
+	uint64_t stats_generation;
 	uint64_t stats_video_frames, stats_video_dropped, stats_video_measured;
 	uint64_t stats_video_min_ns, stats_video_max_ns;
 	uint64_t stats_audio_frames, stats_audio_dropped, stats_audio_measured;
@@ -953,6 +954,7 @@ static void virtualcam_stats_proc(void *data, calldata_t *cd)
 {
 	struct virtualcam_data *vcam = data;
 	pthread_mutex_lock(&vcam->sync.mutex);
+	calldata_set_int(cd, "generation", (long long)vcam->stats_generation);
 	calldata_set_int(cd, "vcam_frames", (long long)vcam->stats_video_frames);
 	calldata_set_int(cd, "vcam_dropped", (long long)vcam->stats_video_dropped);
 	calldata_set_int(cd, "vmic_frames", (long long)vcam->stats_audio_frames);
@@ -968,10 +970,24 @@ static void virtualcam_stats_proc(void *data, calldata_t *cd)
 	pthread_mutex_unlock(&vcam->sync.mutex);
 }
 
+static void virtualcam_stats_reset_proc(void *data, calldata_t *cd)
+{
+	struct virtualcam_data *vcam = data;
+	pthread_mutex_lock(&vcam->sync.mutex);
+	vcam->stats_generation = os_gettime_ns();
+	vcam->stats_video_frames = vcam->stats_video_dropped = vcam->stats_video_measured = 0;
+	vcam->stats_video_min_ns = vcam->stats_video_max_ns = 0;
+	vcam->stats_audio_frames = vcam->stats_audio_dropped = vcam->stats_audio_measured = 0;
+	vcam->stats_audio_min_ns = vcam->stats_audio_max_ns = 0;
+	pthread_mutex_unlock(&vcam->sync.mutex);
+	UNUSED_PARAMETER(cd);
+}
+
 static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)bzalloc(sizeof(*vcam));
 	vcam->output = output;
+	vcam->stats_generation = os_gettime_ns();
 	vcam->device = -1;
 	vcam->mic_fifo = -1;
 	vcam->mic_drain = -1;
@@ -987,8 +1003,11 @@ static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 	if (output)
 		proc_handler_add(
 			obs_output_get_proc_handler(output),
-			"void virtualcam_stats(out int vcam_frames, out int vcam_dropped, out int vmic_frames, out int vmic_dropped, out int vcam_min_ns, out int vcam_max_ns, out int vmic_min_ns, out int vmic_max_ns)",
+			"void virtualcam_stats(out int generation, out int vcam_frames, out int vcam_dropped, out int vmic_frames, out int vmic_dropped, out int vcam_min_ns, out int vcam_max_ns, out int vmic_min_ns, out int vmic_max_ns)",
 			virtualcam_stats_proc, vcam);
+	if (output)
+		proc_handler_add(obs_output_get_proc_handler(output), "void virtualcam_stats_reset()",
+				 virtualcam_stats_reset_proc, vcam);
 	return vcam;
 }
 

@@ -234,6 +234,8 @@ fn sources_and_items(backend: &ObsBackend) {
 }
 
 fn stats_capture_and_outputs(backend: &ObsBackend) {
+    let error = obs_mcp::tools::control::ControlBackend::vcam_start(backend, Default::default()).unwrap_err();
+    assert_eq!(error.code, 207, "no video must be rejected before entering the native camera plugin");
     let stats = backend.stats();
     assert_eq!(stats.fps, 0.0, "no video subsystem, no frames");
     assert_eq!(stats.dropped_frames, 0);

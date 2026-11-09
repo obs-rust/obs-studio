@@ -56,7 +56,7 @@ pub struct ObsBackend {
     output_error: Option<String>,
     cpu: Option<CpuUsage>,
     camera: RefCell<Option<Output>>,
-    baseline: RefCell<Option<crate::tools::control::StatsSnapshot>>,
+    baseline: RefCell<Option<crate::tools::control::StatsBaseline>>,
 }
 
 impl Default for ObsBackend {
