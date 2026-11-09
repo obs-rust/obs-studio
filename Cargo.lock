@@ -599,6 +599,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -658,12 +659,19 @@ dependencies = [
  "base64",
  "flate2",
  "libc",
- "obs-callback",
  "obs-sys",
  "schemars",
  "serde",
  "serde_json",
  "serde_path_to_error",
+]
+
+[[package]]
+name = "obs-mcp-module"
+version = "0.1.0"
+dependencies = [
+ "libloading",
+ "obs-mcp",
 ]
 
 [[package]]

@@ -21,6 +21,7 @@ libc = { workspace = true, default-features = true }
 cc = { workspace = true, default-features = true, features = ["parallel"] }
 
 [dev-dependencies]
+tempfile = { workspace = true, default-features = true }
 schemars = { workspace = true, features = ["derive", "std"] }
 serde = { workspace = true, features = ["derive"] }
 obs-audio-monitoring = { path = "../obs-audio-monitoring" }

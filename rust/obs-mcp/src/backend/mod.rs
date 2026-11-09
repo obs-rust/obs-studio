@@ -43,7 +43,14 @@ use crate::tools::sources::{self, ItemInfo, ItemRef, SourceBackend, SourceInfo, 
 const MAX_SIDE: u32 = 16_384;
 
 /// The libobs-backed implementation of every backend trait.
+/// Frontend capabilities supplied by an attached application.
+pub trait AttachedFrontend {
+    fn current_scene(&self) -> Option<String>;
+    fn set_scene(&self, request: &crate::tools::scenes::NameInput) -> Result<(), String>;
+    fn output_name(&self, request: &crate::tools::outputs::OutputRequest) -> Option<String>;
+}
 pub struct ObsBackend {
+    frontend: Option<Rc<dyn AttachedFrontend>>,
     /// References to the scenes and sources created here, by name.
     owned: RefCell<HashMap<String, Source>>,
     record: Option<String>,
@@ -73,7 +80,18 @@ impl ObsBackend {
     #[must_use]
     pub fn new() -> Self {
         crate::ffi::use_absolute_coordinates();
+        Self::unconfigured()
+    }
+    /// Attach without changing global coordinate settings or owning libobs.
+    #[must_use]
+    pub fn attached(frontend: Rc<dyn AttachedFrontend>) -> Self {
+        let mut backend = Self::unconfigured();
+        backend.frontend = Some(frontend);
+        backend
+    }
+    fn unconfigured() -> Self {
         Self {
+            frontend: None,
             owned: RefCell::new(HashMap::new()),
             record: None,
             stream: None,
@@ -174,8 +192,12 @@ impl ObsBackend {
             OutputKind::Record => ("record", &self.record),
             OutputKind::Stream => ("stream", &self.stream),
         };
-        let name = name
+        let frontend_name = self.frontend.as_ref().and_then(|frontend| {
+            frontend.output_name(&crate::tools::outputs::OutputRequest { kind })
+        });
+        let name = frontend_name
             .as_deref()
+            .or(name.as_deref())
             .ok_or_else(|| format!("the {label} output is not configured"))?;
         Output::by_name(name).ok_or_else(|| {
             Self::because(
@@ -219,11 +241,19 @@ impl SceneBackend for ObsBackend {
     }
 
     fn current(&self) -> Option<String> {
-        ffi::program().filter(Source::is_scene).map(|s| s.name())
+        self.frontend.as_ref().map_or_else(
+            || ffi::program().filter(Source::is_scene).map(|s| s.name()),
+            |frontend| frontend.current_scene(),
+        )
     }
 
     fn set_current(&self, name: &str) -> Result<(), String> {
         let scene = Self::scene(name)?;
+        if let Some(frontend) = &self.frontend {
+            return frontend.set_scene(&crate::tools::scenes::NameInput {
+                name: name.to_owned(),
+            });
+        }
         ffi::set_program(Some(&scene));
         Ok(())
     }
@@ -234,7 +264,7 @@ impl SceneBackend for ObsBackend {
         // A client that makes the first scene wants to see it: with no
         // program scene the new one becomes the program scene (#3339).
         if self.current().is_none() {
-            ffi::set_program(Some(&scene));
+            self.set_current(name)?;
         }
         self.owned.borrow_mut().insert(name.to_owned(), scene);
         Ok(())
@@ -243,6 +273,11 @@ impl SceneBackend for ObsBackend {
     fn remove(&self, name: &str) -> Result<(), String> {
         let scene = Self::scene(name)?;
         if self.current().as_deref() == Some(name) {
+            if self.frontend.is_some() {
+                return Err(
+                    "switch away from the current frontend scene before removing it".to_owned(),
+                );
+            }
             ffi::set_program(None);
         }
         scene.remove();

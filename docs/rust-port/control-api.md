@@ -51,3 +51,23 @@ Rust client and ci/vcam_av_sync.py MCP transport. Each slice targets master
 from a fresh infra/control-api-* branch with RED then GREEN shared MCP tests.
 The client reuses server types; Python retains websocket and adds --transport
 mcp plus fallback. Real GUI/device validation runs only in bosn containers.
+
+## Attach to the application
+
+Build `soldr cargo build -p obs-mcp-module` and install the resulting
+`libobs_mcp_module.so` in OBS's normal module search path. The module binds
+`$XDG_RUNTIME_DIR/obs-studio-rust/control.sock` with mode 0600 in a private
+directory. It shares the app's libobs and stops its worker on frontend EXIT,
+prior to libobs shutdown. It never starts a second OBS instance.
+
+`obs-studio-rust --mcp-attach [socket]` relays stdio to that instance. The same
+newline JSON-RPC Server handles both transports. At most 32 clients share the
+control thread; requests are serial, bounded to 16 MiB per buffered frame.
+`wait_for` blocks the control thread, while OBS render/audio threads continue.
+Windows named pipes are unsupported pending #4455.
+
+For headless CI use `obs-studio-rust --mcp-listen [socket]` (native build).
+Keep its stdin open for the test's lifetime; EOF stops the socket and libobs.
+The attached backend resolves frontend scenes and output names on each call,
+preserves coordinate settings, and queues scene changes through the graphics
+thread so the frontend's UI mutation path cannot block shutdown.

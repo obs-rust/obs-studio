@@ -3066,3 +3066,6 @@ area.
   *All platforms*, 2026-11-02. Follows
   [#3491](https://github.com/obs-rust/obs-studio/pull/3491), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+
+- **Control socket** (#4456): private Unix MCP endpoint, `--mcp-attach` stdio proxy,
+  and an in-app frontend module that controls the existing OBS instance.

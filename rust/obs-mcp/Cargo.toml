@@ -19,7 +19,7 @@ test = false
 # Binds the backend traits to libobs through obs-sys (#3283). Off by default:
 # it needs the libobs symbols at link time, which only the application and the
 # `bundled-native` contract tests provide.
-libobs = ["dep:obs-sys", "dep:libc", "dep:obs-callback"]
+libobs = ["dep:obs-sys"]
 # Test-only fault injection (with `libobs`): `host::fail_audio_mixer` makes the next start
 # behave as if libobs could not open its audio mixer (#3491). Enabled only by
 # obs-studio-rust's dev-dependency, so no shipped build can reach it; the
@@ -27,7 +27,6 @@ libobs = ["dep:obs-sys", "dep:libc", "dep:obs-callback"]
 fault-injection = []
 
 [dependencies]
-obs-callback = { path = "../obs-callback", optional = true }
 schemars = { workspace = true, features = ["derive", "std"] }
 serde_path_to_error = { workspace = true }
 obs-sys = { path = "../obs-sys", optional = true }
@@ -39,4 +38,4 @@ flate2 = { workspace = true, features = ["rust_backend"] }
 
 # Redirects descriptor 1 to stderr so libobs logs stay off the protocol stream.
 [target.'cfg(unix)'.dependencies]
-libc = { workspace = true, default-features = true, optional = true }
+libc = { workspace = true, default-features = true }

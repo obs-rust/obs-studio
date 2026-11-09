@@ -1,7 +1,10 @@
 //! Private libobs media/procedure bindings; public C headers stay unchanged.
 use super::{Output, Source, sys};
 use crate::tools::control::{MediaState, MediaStatus, RenderStats, StageStats};
-use obs_callback::ffi::calldata::calldata;
+// The layout is the stable calldata_t ABI in callback/calldata.h. Keeping
+// this declaration local avoids linking callback implementations into a plugin.
+#[repr(C)]
+struct Calldata { stack: *mut u8, size: usize, capacity: usize, fixed: bool }
 use std::ffi::{CStr, c_char, c_int, c_void};
 
 unsafe extern "C" {
@@ -14,19 +17,19 @@ unsafe extern "C" {
     fn obs_get_total_frames() -> u32;
     fn obs_get_average_frame_time_ns() -> u64;
     fn obs_output_get_proc_handler(output: *const sys::obs_output_t) -> *mut c_void;
-    fn proc_handler_call(handler: *mut c_void, name: *const c_char, params: *mut calldata) -> bool;
+    fn proc_handler_call(handler: *mut c_void, name: *const c_char, params: *mut Calldata) -> bool;
     fn calldata_get_data(
-        data: *const calldata,
+        data: *const Calldata,
         name: *const c_char,
         out: *mut c_void,
         size: usize,
     ) -> bool;
     fn bfree(data: *mut c_void);
 }
-struct Params(calldata);
+struct Params(Calldata);
 impl Params {
     fn new() -> Self {
-        Self(calldata {
+        Self(Calldata {
             stack: std::ptr::null_mut(),
             size: 0,
             capacity: 0,
