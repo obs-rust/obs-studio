@@ -130,6 +130,14 @@ static float sample(const uint8_t **in, int fmt, int channels_, int ch, int fram
 	memcpy(&v, p, 4);
 	return (float)((double)v / 2147483648.0);
 }
+static double bounded(double value, double minimum, double maximum)
+{
+	/* Keep this dependency double defined for arbitrary safe byte inputs,
+	 * including NaNs, infinities, and samples outside the nominal range. */
+	if (value != value)
+		return 0.0;
+	return value < minimum ? minimum : value > maximum ? maximum : value;
+}
 static void store(uint8_t **out, int fmt, int channels_, int ch, int frame, float value)
 {
 	int index = fmt >= 5 ? frame : frame * channels_ + ch;
@@ -137,12 +145,12 @@ static void store(uint8_t **out, int fmt, int channels_, int ch, int frame, floa
 	if (fmt == 3 || fmt == 8)
 		memcpy(p, &value, 4);
 	else if (fmt == 1 || fmt == 6) {
-		int16_t v = (int16_t)(value * 32768.0f);
+		int16_t v = (int16_t)bounded((double)value * 32768.0, -32768.0, 32767.0);
 		memcpy(p, &v, 2);
 	} else if (fmt == 0 || fmt == 5)
-		*p = (uint8_t)(value * 128.0f + 128.0f);
+		*p = (uint8_t)bounded((double)value * 128.0 + 128.0, 0.0, 255.0);
 	else {
-		int32_t v = (int32_t)((double)value * 2147483648.0);
+		int32_t v = (int32_t)bounded((double)value * 2147483648.0, -2147483648.0, 2147483647.0);
 		memcpy(p, &v, 4);
 	}
 }
