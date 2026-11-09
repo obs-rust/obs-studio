@@ -977,35 +977,6 @@ static inline size_t get_first_mixer(const obs_output_t *output)
 	return obs_output_first_mixer(output->mixer_mask);
 }
 
-void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
-{
-	if (!obs_output_valid(output, "obs_output_set_mixer"))
-		return;
-	if (log_flag_encoded(output, __func__, true))
-		return;
-	if (!obs_output_slots_mixer_in_range(mixer_idx)) {
-		blog(LOG_WARNING, "output '%s': Ignoring mixer index %zu, it must be below %d",
-		     obs_output_get_name(output), mixer_idx, MAX_AUDIO_MIXES);
-		return;
-	}
-	if (active(output))
-		return;
-
-	output->mixer_mask = obs_output_slots_mixer_mask(mixer_idx);
-}
-
-void obs_output_set_mixers(obs_output_t *output, size_t mixers)
-{
-	if (!obs_output_valid(output, "obs_output_set_mixers"))
-		return;
-	if (log_flag_encoded(output, __func__, true))
-		return;
-	if (active(output))
-		return;
-
-	output->mixer_mask = mixers;
-}
-
 void obs_output_remove_encoder_internal(struct obs_output *output, struct obs_encoder *encoder)
 {
 	if (!obs_output_valid(output, "obs_output_remove_encoder_internal"))
