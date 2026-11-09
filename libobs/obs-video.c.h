@@ -223,6 +223,9 @@ _Static_assert(OBS_VIDEO_COPY_SCALE_LANCZOS == OBS_SCALE_LANCZOS, "OBS_SCALE_LAN
 _Static_assert(OBS_VIDEO_COPY_SCALE_AREA == OBS_SCALE_AREA, "OBS_SCALE_AREA");
 _Static_assert(OBS_VIDEO_COPY_MAX == NUM_CHANNELS, "NUM_CHANNELS");
 
+uint32_t obs_video_loaded_scale_effects(const struct obs_core_video *video);
+gs_effect_t *obs_video_scale_effect_pointer(const struct obs_core_video *video, enum obs_video_scale_effect effect);
+
 static inline gs_effect_t *get_scale_effect(struct obs_core_video_mix *mix, uint32_t width, uint32_t height)
 {
 	struct obs_core_video *video = &obs->video;
@@ -232,7 +235,7 @@ static inline gs_effect_t *get_scale_effect(struct obs_core_video_mix *mix, uint
 		.target_width = width,
 		.target_height = height,
 		.scale_type = (int)mix->ovi.scale_type,
-		.loaded = loaded_scale_effects(video),
+		.loaded = obs_video_loaded_scale_effects(video),
 	};
 
 	/* The output's size is only read when the target is not close to the
@@ -243,7 +246,7 @@ static inline gs_effect_t *get_scale_effect(struct obs_core_video_mix *mix, uint
 		input.output_height = info->height;
 	}
 
-	return scale_effect_pointer(video, obs_video_scale_effect_choice(&input));
+	return obs_video_scale_effect_pointer(video, obs_video_scale_effect_choice(&input));
 }
 
 static const char *render_output_texture_name = "render_output_texture";
