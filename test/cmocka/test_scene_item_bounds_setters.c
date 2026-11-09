@@ -3,7 +3,7 @@
 #include <setjmp.h>
 #include <limits.h>
 #include <cmocka.h>
-#include "obs-internal.h"
+#include "util/threading.h"
 #include "obs-scene.h"
 
 /* Actual-library characterization; stack fixtures own no sources or buffers.
