@@ -219,6 +219,7 @@ pub mod own_clock_drift;
 pub mod private_settings;
 pub mod ptm_gate;
 pub mod push_delay;
+pub mod push_hotkeys;
 pub mod push_queries;
 pub mod push_to_enable;
 pub mod render_route;
