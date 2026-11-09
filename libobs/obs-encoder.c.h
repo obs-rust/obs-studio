@@ -1936,14 +1936,6 @@ void obs_encoder_packet_release(struct encoder_packet *pkt)
 	memset(pkt, 0, sizeof(struct encoder_packet));
 }
 
-void obs_encoder_set_preferred_video_format(obs_encoder_t *encoder, enum video_format format)
-{
-	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
-		return;
-
-	encoder->preferred_format = format;
-}
-
 void obs_encoder_set_preferred_color_space(obs_encoder_t *encoder, enum video_colorspace colorspace)
 {
 	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
