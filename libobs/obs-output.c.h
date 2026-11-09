@@ -2519,16 +2519,6 @@ void obs_output_output_caption_text2(obs_output_t *output, const char *text, dou
 	}
 }
 
-float obs_output_get_congestion(obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_congestion"))
-		return 0;
-
-	if (output->info.get_congestion)
-		return obs_output_congestion_clamp(output->info.get_congestion(output->context.data));
-	return 0;
-}
-
 const char *obs_output_get_last_error(obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_get_last_error"))
