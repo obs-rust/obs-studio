@@ -190,10 +190,10 @@ impl SocketServer {
 }
 impl Drop for SocketServer {
     fn drop(&mut self) {
-        if let Ok(meta) = fs::symlink_metadata(&self.path) {
-            if (meta.dev(), meta.ino()) == self.identity {
-                let _ = fs::remove_file(&self.path);
-            }
+        if let Ok(meta) = fs::symlink_metadata(&self.path)
+            && (meta.dev(), meta.ino()) == self.identity
+        {
+            let _ = fs::remove_file(&self.path);
         }
     }
 }

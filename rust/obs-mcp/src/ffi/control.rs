@@ -4,7 +4,12 @@ use crate::tools::control::{MediaState, MediaStatus, RenderStats, StageStats};
 // The layout is the stable calldata_t ABI in callback/calldata.h. Keeping
 // this declaration local avoids linking callback implementations into a plugin.
 #[repr(C)]
-struct Calldata { stack: *mut u8, size: usize, capacity: usize, fixed: bool }
+struct Calldata {
+    stack: *mut u8,
+    size: usize,
+    capacity: usize,
+    fixed: bool,
+}
 use std::ffi::{CStr, c_char, c_int, c_void};
 
 unsafe extern "C" {
