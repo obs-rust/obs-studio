@@ -20,6 +20,7 @@ mod image_route_parity;
 mod image_wic_checks;
 mod image_wic_checks_parity;
 mod immediate;
+mod indexbuffer_create;
 mod immediate_parity;
 mod lzw;
 mod lzw_parity;
