@@ -1,18 +1,23 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Existing scene dependencies, defined later in this unity group. */
-static inline obs_scene_t *item_fields_lock(const obs_sceneitem_t *item);
-static inline void item_fields_unlock(obs_scene_t *scene);
-static inline void size_from_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
-static void scene_item_bounds_update_transform(obs_sceneitem_t *item);
+/* Existing scene dependencies, kept in the unported scene unit. */
+obs_scene_t *obs_sceneitem_fields_lock(const obs_sceneitem_t *item);
+void obs_sceneitem_fields_unlock(obs_scene_t *scene);
+void obs_sceneitem_bounds_from_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
+void obs_sceneitem_bounds_update(obs_sceneitem_t *item);
+EXPORT uint32_t obs_scene_bounds_valid_type(int64_t type);
 
-#define do_update_transform(item) scene_item_bounds_update_transform(item)
+#define item_fields_lock obs_sceneitem_fields_lock
+#define item_fields_unlock obs_sceneitem_fields_unlock
+#define size_from_absolute obs_sceneitem_bounds_from_absolute
+#define do_update_transform obs_sceneitem_bounds_update
+#define valid_bounds_type obs_scene_bounds_valid_type
 
 /* A bounds type outside the enum (a hand-edited or foreign scene
  * collection, undo data, a plugin) has no bounding box: OBS_BOUNDS_NONE.
  * Takes the int64 a load reads, before any cast truncates it, and an enum
  * value from a setter (an unsigned or a signed int, by compiler). */
-static inline enum obs_bounds_type valid_bounds_type(int64_t type)
+uint32_t valid_bounds_type(int64_t type)
 {
 	if (type < OBS_BOUNDS_NONE || type > OBS_BOUNDS_MAX_ONLY)
 		return OBS_BOUNDS_NONE;
@@ -64,3 +69,8 @@ void obs_sceneitem_set_bounds(obs_sceneitem_t *item, const struct vec2 *bounds)
 }
 
 #undef do_update_transform
+
+#undef valid_bounds_type
+#undef size_from_absolute
+#undef item_fields_unlock
+#undef item_fields_lock

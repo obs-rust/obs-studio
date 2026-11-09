@@ -20,15 +20,28 @@ pub trait Target {
 
 /// Unknown enum values mean no bounds, including untruncated scene-load values.
 pub fn valid_bounds_type(value: i64) -> u32 {
-    todo!()
+    if (0..=6).contains(&value) {
+        value as u32
+    } else {
+        0
+    }
 }
 
 /// Convert a size only when the item uses relative coordinates.
 pub fn bounds_size(value: Vec2, absolute: bool, height: f32) -> Vec2 {
-    todo!()
+    if absolute {
+        value
+    } else {
+        crate::coords::size_from_absolute(value, height)
+    }
 }
 
 /// A missing item is a no-op. Updates occur after releasing the field lock.
 pub fn apply<T: Target>(target: Option<&mut T>, value: Write) {
-    todo!()
+    if let Some(target) = target {
+        target.lock();
+        target.write(value);
+        target.unlock();
+        target.update();
+    }
 }

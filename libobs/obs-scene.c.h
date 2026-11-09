@@ -354,6 +354,24 @@ static inline void size_from_absolute(struct vec2 *dst, const struct vec2 *v, co
 	obs_scene_size_from_absolute(dst, v, y);
 }
 
+/* Private dependencies shared by the original C setters and Rust shims. */
+uint32_t obs_scene_bounds_valid_type(int64_t type);
+EXPORT float obs_sceneitem_bounds_height_dependency(const obs_sceneitem_t *item);
+void obs_sceneitem_bounds_from_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
+EXPORT void obs_sceneitem_bounds_update_dependency(obs_sceneitem_t *item);
+
+float obs_sceneitem_bounds_height_dependency(const obs_sceneitem_t *item)
+{
+	float x, y;
+	get_scene_dimensions(item, &x, &y);
+	return y;
+}
+
+void obs_sceneitem_bounds_from_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item)
+{
+	size_from_absolute(dst, v, item);
+}
+
 static inline void size_to_absolute(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item)
 {
 	float x, y;
@@ -1107,7 +1125,7 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 	set_visibility(item, visible);
 	obs_sceneitem_set_locked(item, lock);
 
-	item->bounds_type = valid_bounds_type(obs_data_get_int(item_data, "bounds_type"));
+	item->bounds_type = obs_scene_bounds_valid_type(obs_data_get_int(item_data, "bounds_type"));
 	item->bounds_align = (uint32_t)obs_data_get_int(item_data, "bounds_align");
 	item->crop_to_bounds = obs_data_get_bool(item_data, "bounds_crop");
 	obs_data_get_vec2(item_data, "bounds", &item->bounds);
@@ -2433,7 +2451,7 @@ void load_transform_states(obs_data_t *temp, void *vp_scene)
 	obs_data_get_vec2(temp, "scale", &info.scale);
 	info.rot = (float)obs_data_get_double(temp, "rot");
 	info.alignment = (uint32_t)obs_data_get_int(temp, "alignment");
-	info.bounds_type = valid_bounds_type(obs_data_get_int(temp, "bounds_type"));
+	info.bounds_type = obs_scene_bounds_valid_type(obs_data_get_int(temp, "bounds_type"));
 	info.bounds_alignment = (uint32_t)obs_data_get_int(temp, "bounds_alignment");
 	obs_data_get_vec2(temp, "bounds", &info.bounds);
 	info.crop_to_bounds = obs_data_get_bool(temp, "crop_to_bounds");
@@ -2512,7 +2530,7 @@ void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
 	} while (false)
 
 /* Dependency of the extracted bounds setters; keep update dispatch here. */
-static void scene_item_bounds_update_transform(obs_sceneitem_t *item)
+void obs_sceneitem_bounds_update_dependency(obs_sceneitem_t *item)
 {
 	do_update_transform(item);
 }
@@ -2779,7 +2797,7 @@ static inline void scene_item_set_info_internal(obs_sceneitem_t *item, const str
 
 	item->rot = info->rot;
 	item->align = info->alignment;
-	item->bounds_type = valid_bounds_type(info->bounds_type);
+	item->bounds_type = obs_scene_bounds_valid_type(info->bounds_type);
 	item->bounds_align = info->bounds_alignment;
 }
 

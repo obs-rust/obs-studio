@@ -1,0 +1,22 @@
+# Extract the real adapter, dropping only its production PCH include.
+file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-scene-item-bounds-fields.c.h" _bounds_adapter)
+string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _bounds_adapter "${_bounds_adapter}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/scene_item_bounds_fields.inc" "${_bounds_adapter}")
+
+# The bounds shims retain the real scene's coordinate and transform dependencies.
+function(_scene_item_bounds_setters_link_support)
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if(_target MATCHES "^test_scene" AND "libobs_rust-static" IN_LIST _links)
+      get_target_property(_sources ${_target} SOURCES)
+      set(_adapter "${CMAKE_CURRENT_SOURCE_DIR}/scene-item-bounds-link-support.c")
+      if(NOT _adapter IN_LIST _sources)
+        target_sources(${_target} PRIVATE "${_adapter}")
+        target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_CURRENT_BINARY_DIR}")
+        target_link_libraries(${_target} PRIVATE OBS::libobs "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>")
+      endif()
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _scene_item_bounds_setters_link_support)

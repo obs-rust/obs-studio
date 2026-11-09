@@ -14,7 +14,9 @@ struct Item {
     relative: bool,
 }
 impl Target for Item {
-    fn lock(&mut self) { self.events.push("lock"); }
+    fn lock(&mut self) {
+        self.events.push("lock");
+    }
     fn write(&mut self, value: Write) {
         self.events.push("write");
         match value {
@@ -27,10 +29,14 @@ impl Target for Item {
             }
         }
     }
-    fn unlock(&mut self) { self.events.push("unlock"); }
+    fn unlock(&mut self) {
+        self.events.push("unlock");
+    }
     fn update(&mut self) {
         self.events.push("update");
-        if !self.normal { self.update_transform = true; }
+        if !self.normal {
+            self.update_transform = true;
+        }
     }
 }
 fn write(item: &mut Item, value: Write) {
@@ -42,7 +48,12 @@ fn write(item: &mut Item, value: Write) {
 }
 #[test]
 fn bounds_writes_mirrors_c() {
-    for value in [Write::Type(i64::MAX), Write::Alignment(u32::MAX), Write::Crop(true), Write::Size(Vec2::new(0.0, 0.0))] {
+    for value in [
+        Write::Type(i64::MAX),
+        Write::Alignment(u32::MAX),
+        Write::Crop(true),
+        Write::Size(Vec2::new(0.0, 0.0)),
+    ] {
         apply::<Item>(None, value);
     }
     for _parented in [false, true] {
@@ -72,7 +83,12 @@ fn bounds_writes_mirrors_c() {
 }
 #[test]
 fn relative_bounds_mirrors_c() {
-    let mut item = Item { normal: true, deferred: true, relative: true, ..Item::default() };
+    let mut item = Item {
+        normal: true,
+        deferred: true,
+        relative: true,
+        ..Item::default()
+    };
     let input = Vec2::new(540.0, -270.0);
     write(&mut item, Write::Size(input));
     assert_eq!(item.size, [1.0, -0.5]);

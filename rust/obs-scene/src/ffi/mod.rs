@@ -25,6 +25,7 @@ pub mod scene_bounds_place;
 pub mod item_state_getters;
 
 pub mod item_bounds_getters;
+pub mod item_bounds_setters;
 pub mod item_render_getters;
 pub mod item_scale_getter;
 

@@ -1,0 +1,5 @@
+obs_scene_bounds_valid_type
+obs_sceneitem_set_bounds
+obs_sceneitem_set_bounds_alignment
+obs_sceneitem_set_bounds_crop
+obs_sceneitem_set_bounds_type
