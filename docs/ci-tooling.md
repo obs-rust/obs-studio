@@ -417,7 +417,10 @@ the paths that select them, so a change only triggers the tests it can affect.
   Rust tests and Tier 2 for paths that select them **and for core code**
   (`libobs/`, `rust/`, Cargo files). This retains coverage for native core
   regressions (#2916, #2910). Merge groups run only Linux
-  execution, including for platform-specific diffs. Native Rust tests and
+  execution in the Fast Gate, including for platform-specific diffs. Merge
+  groups skip Linux Tier 2, Qt, cross-compilation, cross lint and the Windows
+  MSVC link check as well; these remain on their existing PR/master paths.
+  Native Rust tests and
   Tier 2 remain selected on master pushes, and full native application builds
   remain on nightly/manual/release events. This supersedes #3606's native
   queue policy: hosted native runner capacity can prevent queue admission
@@ -475,11 +478,12 @@ independent work can finish after Fast Gate fails.
 Measure runner cost and actual gate time rather than treating the theoretical
 overlap as a proven speedup (#930, #1286).
 
-Tier 2 uses one complete suite per mode on PRs and merge groups, each in its
-own runner environment: two test jobs rather than six. Main pushes, nightly
-and release runs retain the suite plus two serial partitions per backend.
+Tier 2 uses one complete suite per mode on PRs, each in its
+own runner environment: two test jobs rather than six. Merge groups skip Tier 2.
+Main pushes, nightly and release runs retain the suite plus two serial partitions
+per backend.
 The [runner-capacity measurement](ci-tier2-queue-capacity.md) explains the
-tradeoff: fewer allocations while keeping every test on the queue path.
+earlier tradeoff: fewer allocations while retaining every test in that lane.
 Deinterlacing retains
 `RUN_SERIAL` because CI still dropped fields with bounded software-renderer
 workers. The other nine former barriers
@@ -853,9 +857,17 @@ PR and merge-group scope still use their own bases.
 
 ## Merge queue admission policy
 
-The merge queue prioritizes compilation errors and integrity regressions:
-changed-path compilation, formatting/lint correctness, unit tests, ABI and
-behavior checks, and the selected C/Rust differential and Tier 2 suites.
+The merge queue runs the Fast Gate (format/lint and one Linux build/Rust test
+lane, including touched Linux targets), plus the Format checks and CI self-tests.
+Rust tests execute on the merge result even when a prior lane proof exists, to
+catch semantic conflicts between queued PRs. Docs-only groups retain their
+existing Fast Gate skip. Event/scope selection, CI Mode, cancellation of
+superseded groups, CI Gate and the final cache sweep remain orchestration jobs.
+Sanitizers, all Tier 2 lanes, Windows MSVC linking, Windows/macOS Rust tests,
+cross-compilation, cross lint, Qt, and Flatpak/AppImage/full app builds do not run
+on `merge_group`. PR lane selection and master push coverage are unchanged.
+Skipped jobs still report skipped conclusions; the existing gate accepts them,
+just as for docs-only PRs, while failures and cancellations still fail it.
 `CI Gate ✅` is the required merge check. Keep its dependencies limited to
 these checks. Cache maintenance stays independent and cannot block this gate.
 
@@ -873,6 +885,34 @@ and Rust. Any new security integration must be reviewed for its event triggers,
 required-check settings and runner use before enabling it. Do not add a security
 scan to `CI Gate`, merge rules or queue cancellation dependencies. Nightly
 failures are investigated through nightly reports rather than blocking the queue.
+
+### Opt-in merge-queue runner
+
+Set the repository Actions variable `MQ_RUNNER_LABELS` to a JSON array such as
+`["self-hosted","linux","x64","obs-mq"]` to route Linux jobs on `merge_group`
+to runners matching **all** those labels. An unset or empty variable keeps each
+job's original hosted label. Pull requests, master pushes, manual/release runs,
+and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
+retain their matrix and hosted fallback. Required job/check names are unchanged.
+The existing Format workflow's Linux Checks job uses the same selection so it
+does not hold the gate waiting for hosted capacity.
+
+On a Linux x64 host chosen by the maintainer, open repository **Settings →
+Actions → Runners → New self-hosted runner**, select Linux/x64, and follow the
+shown download and verification commands. Use the temporary registration token
+shown there to register the runner:
+
+```sh
+./config.sh --url https://github.com/obs-rust/obs-studio --token <temporary-token> --labels obs-mq
+```
+
+The runner adds the `self-hosted`, `linux`, and `x64` default labels. Install/start it as a service
+using the runner's documented service commands, then set `MQ_RUNNER_LABELS`
+only after it is online. Use an Ubuntu host compatible with the job's existing
+apt/toolchain prerequisites. Container jobs require Docker installed and usable
+by the runner account; the Tier 2 build and Flatpak jobs use `container:`, though
+they are not selected on the trimmed queue path. This change neither registers
+nor configures a runner. Clear the variable to return to hosted Linux runners.
 
 ### Host Ubuntu package acquisition (#1269)
 

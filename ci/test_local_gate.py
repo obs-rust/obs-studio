@@ -194,7 +194,7 @@ class CrossTargetsTest(unittest.TestCase):
                          "local-gate.toml", ".github/workflows/build-project.yaml"):
                 with self.subTest(event=event, path=path):
                     selected = scope([path], event=event)
-                    self.assertTrue(selected.cross_lint)
+                    self.assertEqual(selected.cross_lint, event == "pull_request")
                     self.assertFalse(selected.macos)
                     self.assertEqual(selected.windows, event == "pull_request" and path == "ci/ci_scope.py")
             for path in ("docs/ci-tooling.md", "rust/obs-util/src/dstr.rs"):

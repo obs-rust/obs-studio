@@ -169,6 +169,7 @@ class Scope:
     cross_targets: str = ""
     asan: bool = False
     cross_lint: bool = False
+    windows_link: bool = False
 
 
 # The path -> lane table (#992). Adding a module is adding a row. Globs use
@@ -584,6 +585,13 @@ def scope(
     macos |= MACOS in native
     windows |= WINDOWS in native
     docs_only = bool(files) and all(is_docs(path) for path in files)
+    # PRs already validated the expensive lanes. The merge result keeps the
+    # Fast Gate's Linux build/tests (and touched Linux targets), plus format.
+    if event == "merge_group":
+        return Scope(
+            core, False, False, docs_only=docs_only,
+            linux_targets=",".join(sorted(targets)),
+        )
     # #2923: the ratchet's blind spot is the configuration. A PR that changes a
     # compile input of a target which already names a conversion group runs the
     # sanitizer lane — a source below it, or the CMakeLists that names the group
@@ -606,6 +614,7 @@ def scope(
         docs_only,
         cross_targets(files, read),
         asan,
+        windows_link=bool(files) and not docs_only,
         # Exercise the cross lane when its own implementation/orchestration changes.
         cross_lint=bool(set(files) & {
             "ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",

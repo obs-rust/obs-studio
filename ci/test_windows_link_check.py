@@ -67,18 +67,18 @@ class WorkflowTest(unittest.TestCase):
     def test_runs_the_script_in_one_line(self):
         self.assertIn("run: uv run --no-project ci/windows_link_check.py", self.block)
 
-    def test_selected_on_the_deferred_pr_and_queue_tier(self):
+    def test_selected_on_the_deferred_pr_tier(self):
         self.assertIn("needs.check-event.outputs.deferred == 'true'", self.condition)
-        self.assertNotIn("github.event_name", self.condition)  # pull_request and merge_group alike
+        self.assertIn("needs.check-event.outputs.windows_link == 'true'", self.condition)
 
     def test_never_stands_down_on_proofs_or_attestation(self):
-        # A lane proof or stamp would leave the queue run with no conclusion.
-        for skip in ("ci-mode", "cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows"):
+        # Every selected PR must link, regardless of proofs or attestations.
+        for skip in ("ci-mode", "cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows =="):
             self.assertNotIn(skip, self.condition)
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
 
     def test_is_linux_hosted_and_bounded(self):
-        self.assertIn("runs-on: ubuntu-26.04", self.block)
+        self.assertIn("|| 'ubuntu-26.04' }}", self.block)
         minutes = int(re.search(r"timeout-minutes: (\d+)", self.block).group(1))
         self.assertLessEqual(minutes, 30)  # far inside the queue's 60-minute response timeout
 
