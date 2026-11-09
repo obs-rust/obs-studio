@@ -29,5 +29,6 @@
 #include "libobs/obs-service-state-adapter.c.h"
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"
+#include "libobs/obs-video-stop-requested.c.h"
 #include "libobs/obs-video.c.h"
 #include "libobs/obs-weak-encoder-identity-fields.c.h"
