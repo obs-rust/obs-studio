@@ -463,6 +463,13 @@ not get a line.
   published; the last frame stays on screen and the recording continues.
   *macOS*, pending merge. Issue
   [#2223](https://github.com/obs-rust/obs-studio/issues/2223).
+- **OBS ends when a plugin blocks its exit.** When OBS has finished its
+  shutdown but the process does not end within 10 s (for example, a
+  plugin's static destructor waits for a thread that never stops), OBS
+  writes `exit-watchdog: exit did not finish in 10 s ...` to its log and
+  ends with exit code 124, instead of staying in the background without a
+  window. *Linux, macOS*, pending merge. Issue
+  [#4065](https://github.com/obs-rust/obs-studio/issues/4065).
 - Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel

@@ -594,6 +594,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "obs-exit-watchdog"
+version = "0.1.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "obs-fallback-warning"
 version = "0.1.0"
 
@@ -602,6 +609,7 @@ name = "obs-frontend"
 version = "0.1.0"
 dependencies = [
  "obs-camera-busy",
+ "obs-exit-watchdog",
  "obs-fallback-warning",
  "obs-gpu-status",
 ]
@@ -612,6 +620,7 @@ version = "0.1.0"
 dependencies = [
  "libloading",
  "obs-camera-busy",
+ "obs-exit-watchdog",
  "obs-fallback-warning",
 ]
 

@@ -22,6 +22,9 @@
     "build/frontend.camera-busy+.hpp.cpp",
     "utility/CameraBusy.hpp"
   ],
+  "EXIT_WATCHDOG_RUST_HEADER": [
+    "utility/obs-exit-watchdog.h"
+  ],
   "FALLBACK_WARNING_RUST_HEADER": [
     "utility/obs-fallback-warning.h"
   ],
