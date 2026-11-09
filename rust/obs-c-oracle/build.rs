@@ -628,6 +628,11 @@ fn main() {
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
+    std::fs::write(
+        extract_dir.join("hotkey-unregister.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-hotkey-unregister.c.h")),
+    )
+    .expect("write original hotkey unregister extract");
     for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

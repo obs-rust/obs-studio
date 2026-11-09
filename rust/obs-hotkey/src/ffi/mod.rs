@@ -23,4 +23,5 @@ pub mod portal_shortcut_status;
 pub mod press;
 pub mod save_load;
 pub mod translations;
+pub mod unregister;
 pub mod windows_keys;
