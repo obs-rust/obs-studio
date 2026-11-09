@@ -6,9 +6,18 @@ pub fn update<H>(
     present: bool,
     adding: bool,
     handler: impl FnOnce() -> H,
-    change: impl FnMut(&H, &'static CStr),
+    mut change: impl FnMut(&H, &'static CStr),
     log: impl FnOnce(&'static CStr),
 ) {
-    let _ = (present, adding, handler, change, log);
-    todo!()
+    if !present {
+        log(if adding {
+            c"obs_source_add_audio_pause_callback"
+        } else {
+            c"obs_source_remove_audio_pause_callback"
+        });
+        return;
+    }
+    let handler = handler();
+    change(&handler, c"media_pause");
+    change(&handler, c"media_stopped");
 }

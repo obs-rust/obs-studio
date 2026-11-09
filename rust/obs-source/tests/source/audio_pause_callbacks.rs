@@ -9,19 +9,27 @@ struct Signals {
 }
 impl Signals {
     fn change(&mut self, adding: bool, param: usize) {
-        update(true, adding, || (), |(), name| {
-            if adding {
-                if !self.subscriptions.contains(&(name, param)) {
-                    self.subscriptions.push((name, param));
+        update(
+            true,
+            adding,
+            || (),
+            |(), name| {
+                if adding {
+                    if !self.subscriptions.contains(&(name, param)) {
+                        self.subscriptions.push((name, param));
+                    }
+                } else {
+                    self.subscriptions.retain(|entry| *entry != (name, param));
                 }
-            } else {
-                self.subscriptions.retain(|entry| *entry != (name, param));
-            }
-        }, |_| panic!("valid source"));
+            },
+            |_| panic!("valid source"),
+        );
     }
     fn emit(&mut self, name: &core::ffi::CStr) {
         for &(signal, param) in &self.subscriptions {
-            if signal == name { self.calls[param] += 1; }
+            if signal == name {
+                self.calls[param] += 1;
+            }
         }
     }
 }
@@ -46,9 +54,18 @@ fn subscriptions_and_removal_from_c() {
 
 #[test]
 fn null_source_from_c() {
-    for (adding, name) in [(true, c"obs_source_add_audio_pause_callback"), (false, c"obs_source_remove_audio_pause_callback")] {
+    for (adding, name) in [
+        (true, c"obs_source_add_audio_pause_callback"),
+        (false, c"obs_source_remove_audio_pause_callback"),
+    ] {
         let logs = RefCell::new(Vec::new());
-        update(false, adding, || panic!("must not acquire handler"), |_: &(), _| panic!("must not invoke callback"), |name| logs.borrow_mut().push(name));
+        update(
+            false,
+            adding,
+            || panic!("must not acquire handler"),
+            |_: &(), _| panic!("must not invoke callback"),
+            |name| logs.borrow_mut().push(name),
+        );
         assert_eq!(*logs.borrow(), [name]);
     }
 }
@@ -56,9 +73,18 @@ fn null_source_from_c() {
 #[test]
 fn acquires_handler_once_before_paired_updates() {
     let events = RefCell::new(Vec::new());
-    update(true, true, || { events.borrow_mut().push("get"); 42 }, |handler, name| {
-        assert_eq!(*handler, 42);
-        events.borrow_mut().push(name.to_str().unwrap());
-    }, |_| panic!("valid source"));
+    update(
+        true,
+        true,
+        || {
+            events.borrow_mut().push("get");
+            42
+        },
+        |handler, name| {
+            assert_eq!(*handler, 42);
+            events.borrow_mut().push(name.to_str().unwrap());
+        },
+        |_| panic!("valid source"),
+    );
     assert_eq!(*events.borrow(), ["get", "media_pause", "media_stopped"]);
 }

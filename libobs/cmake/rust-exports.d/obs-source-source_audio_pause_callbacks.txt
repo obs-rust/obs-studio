@@ -1,0 +1,2 @@
+obs_source_add_audio_pause_callback
+obs_source_remove_audio_pause_callback
