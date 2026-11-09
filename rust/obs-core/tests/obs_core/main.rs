@@ -22,6 +22,7 @@ mod canvas_flags_getter_parity;
 mod canvas_readonly_getters;
 mod canvas_readonly_getters_parity;
 mod canvas_ref;
+mod canvas_ref_parity;
 mod canvas_rules;
 mod canvas_rules_parity;
 mod canvas_video_getter;
