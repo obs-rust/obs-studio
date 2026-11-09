@@ -275,6 +275,7 @@
 #include "obs-source-frame-copy.h"
 #include "obs-source-media-admission.h"
 #include "obs-source-monitoring.h"
+#include "obs-source-mute-monitor-hotkey-seam.h"
 #include "obs-source-ptm-gate.h"
 #include "obs-source-push-hotkey-seam.h"
 #include "obs-source-render-route.h"

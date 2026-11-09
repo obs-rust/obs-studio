@@ -10,6 +10,9 @@ pub trait Control {
 
 /// Return true only when a press changes the selected control.
 pub fn event(control: &mut impl Control, target: bool, pressed: bool) -> bool {
-    let _ = (control, target, pressed);
-    todo!("source mute/monitor hotkey port")
+    if !pressed || control.enabled() == target {
+        return false;
+    }
+    control.set_enabled(target);
+    true
 }

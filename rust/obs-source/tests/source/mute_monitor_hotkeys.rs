@@ -14,7 +14,11 @@ struct Source {
 impl Control for Source {
     fn enabled(&mut self) -> bool {
         self.reads += 1;
-        if self.monitor { self.monitored } else { self.muted }
+        if self.monitor {
+            self.monitored
+        } else {
+            self.muted
+        }
     }
     fn set_enabled(&mut self, enabled: bool) {
         if self.monitor {
@@ -67,31 +71,48 @@ fn mirrors_c_callback_matrix() {
 fn mirrors_c_routed_pairs() {
     use obs_hotkey::pair::{Half, PairLatches, event as route};
     for monitor in [false, true] {
-        let mut source = Source { monitor, ..Source::default() };
+        let mut source = Source {
+            monitor,
+            ..Source::default()
+        };
         let mut pair = PairLatches::default();
         {
-        let mut trigger = |pair: &mut PairLatches, half: Half, pressed| {
-            route(pair, half, pressed, |_| event(&mut source, half == Half::First, pressed));
-        };
-        trigger(&mut pair, Half::First, false);
-        trigger(&mut pair, Half::Second, true);
-        assert!(!pair.first);
-        assert!(!pair.second);
-        trigger(&mut pair, Half::First, true);
-        assert!(pair.first);
-        trigger(&mut pair, Half::First, true);
-        trigger(&mut pair, Half::Second, true);
-        assert!(pair.first);
-        assert!(!pair.second);
-        trigger(&mut pair, Half::First, false);
-        assert!(!pair.first);
-        // Inspect between events without holding the trigger's mutable borrow.
+            let mut trigger = |pair: &mut PairLatches, half: Half, pressed| {
+                route(pair, half, pressed, |_| {
+                    event(&mut source, half == Half::First, pressed)
+                });
+            };
+            trigger(&mut pair, Half::First, false);
+            trigger(&mut pair, Half::Second, true);
+            assert!(!pair.first);
+            assert!(!pair.second);
+            trigger(&mut pair, Half::First, true);
+            assert!(pair.first);
+            trigger(&mut pair, Half::First, true);
+            trigger(&mut pair, Half::Second, true);
+            assert!(pair.first);
+            assert!(!pair.second);
+            trigger(&mut pair, Half::First, false);
+            assert!(!pair.first);
+            // Inspect between events without holding the trigger's mutable borrow.
         }
-        assert!(if monitor { source.monitored } else { source.muted });
-        route(&mut pair, Half::Second, true, |_| event(&mut source, false, true));
+        assert!(if monitor {
+            source.monitored
+        } else {
+            source.muted
+        });
+        route(&mut pair, Half::Second, true, |_| {
+            event(&mut source, false, true)
+        });
         assert!(pair.second);
-        route(&mut pair, Half::Second, false, |_| event(&mut source, false, false));
+        route(&mut pair, Half::Second, false, |_| {
+            event(&mut source, false, false)
+        });
         assert!(!pair.second);
-        assert!(!if monitor { source.monitored } else { source.muted });
+        assert!(!if monitor {
+            source.monitored
+        } else {
+            source.muted
+        });
     }
 }
