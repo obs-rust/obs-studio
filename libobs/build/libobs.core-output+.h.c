@@ -73,6 +73,7 @@
 #include "libobs/obs-video-render-passes.c.h"
 #include "libobs/obs-video-render-size.c.h"
 #include "libobs/obs-video-scale-effects.c.h"
+#include "libobs/obs-video-scale-effects-dispatch.c.h"
 #include "libobs/obs-video-stop-requested.c.h"
 #include "libobs/obs-video.c.h"
 #include "libobs/obs-weak-encoder-identity-fields.c.h"
