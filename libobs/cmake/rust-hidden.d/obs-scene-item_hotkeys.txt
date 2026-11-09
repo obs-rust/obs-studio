@@ -1,0 +1,2 @@
+obs_sceneitem_hotkey_trigger
+obs_sceneitem_hotkey_rename
