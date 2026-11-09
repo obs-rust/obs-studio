@@ -6,7 +6,6 @@ use proptest::prelude::*;
 use std::ffi::{CStr, c_char, c_int};
 
 #[repr(C)]
-
 struct Trace {
     context: c_int,
     path: c_int,
