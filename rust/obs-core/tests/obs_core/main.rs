@@ -97,6 +97,7 @@ mod video_plan;
 mod video_plan_parity;
 mod view;
 mod view_parity;
+mod weak_object_expired;
 mod weak_object_identity;
 mod weak_object_identity_parity;
 mod win_crash_report;
