@@ -40,6 +40,7 @@ class HotkeyRegistrationExtractionTest(unittest.TestCase):
             with self.subTest(target=name):
                 # Library fallback registers against a different `obs` global.
                 self.assertIn(EXTRACTED, target["sources"])
+                self.assertEqual(target.get("pch"), "libobs/build/libobs.pch.h")
                 groups = list(target.get("unity_groups", {}).values())
                 self.assertIn([EXTRACTED, ORIGINAL], groups)
                 self.assertCountEqual(
