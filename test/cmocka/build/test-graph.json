@@ -4968,6 +4968,21 @@
       ],
       "requires": "ENABLE_HEVC"
     },
+    "test_hotkey_background_app_id": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_app_id.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_background_query": {
       "sources": [
         "test/cmocka/test_hotkey_background_query.c"
@@ -9787,6 +9802,8 @@
       "sources": [
         "test/cmocka/test_portal_shortcuts.c",
         "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-app-id-fields.c.h",
+        "libobs/obs-hotkey-background-app-id.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -17416,6 +17433,9 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c"
       ],
+      "watch_inputs": [
+        "Cargo.toml"
+      ],
       "includes": [
         ".",
         "libobs",
@@ -19865,6 +19885,18 @@
     },
     "test_hevc": {
       "target": "test_hevc"
+    },
+    "test_hotkey_background_app_id": {
+      "target": "test_hotkey_background_app_id",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_hotkey_background_query": {
       "target": "test_hotkey_background_query",

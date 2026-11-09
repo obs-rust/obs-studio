@@ -78,6 +78,8 @@
       "sources": [
         "test/cmocka/test_portal_shortcuts.c",
         "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-app-id-fields.c.h",
+        "libobs/obs-hotkey-background-app-id.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",

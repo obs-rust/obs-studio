@@ -99,6 +99,16 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/weak-object-identity-link-stub.c",
                 ])
 
+    def test_portal_app_id_getter_uses_live_hotkey_adapters(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        target = graph["targets"]["test_portal_shortcuts"]
+        for source in ["libobs/obs-hotkey.c.h",
+                       "libobs/obs-hotkey-background-app-id.c.h",
+                       "libobs/obs-hotkey-background-app-id-fields.c.h"]:
+            self.assertEqual(target["sources"].count(source), 1)
+        self.assertIn("obs=hotkey_test_obs", target["definitions"])
+        self.assertFalse(any("app-id-link-stub" in source for source in target["sources"]))
+
     def test_core_texture_activity_supplies_standalone_field_adapters(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/core-texture-activity.json"

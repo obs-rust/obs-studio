@@ -1,0 +1,7 @@
+{
+  "test_windows_keys_steps_rust": {
+    "watch_inputs": [
+      "Cargo.toml"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+obs_hotkeys_get_background_app_id

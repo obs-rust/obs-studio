@@ -60,6 +60,13 @@ panic = "abort"
 # The bench profile inherits this, so record.py measures it.
 lto = "thin"
 
+# Keep unrelated hotkey FFI modules in separate archive members, as in debug
+# builds. The standalone Windows-key fixture links hidden Windows-key shims;
+# merging in the app-ID shim also pulls private adapters that need libobs's
+# unexported core global. Thin LTO still optimizes calls across the members.
+[profile.release.package.obs-hotkey]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]
