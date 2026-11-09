@@ -20,7 +20,7 @@
 #include "libobs/obs-scene-item-visible-fields.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
-#include "libobs/obs-source-async-decoupled.c.h"
+#include "libobs/obs-source-async-decoupled-fields.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"
 #include "libobs/obs-source-audio-active-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"

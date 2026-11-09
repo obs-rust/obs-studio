@@ -1467,6 +1467,12 @@ struct obs_source_async_flag_fields {
 };
 struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
 
+/* Private operations for the Rust async-decoupling core; source is live and non-NULL. */
+void obs_source_async_decoupled_store(obs_source_t *source, bool value);
+void obs_source_async_decoupled_lock(obs_source_t *source);
+void obs_source_async_decoupled_invalidate(obs_source_t *source);
+void obs_source_async_decoupled_unlock(obs_source_t *source);
+
 /* Borrowed addresses only; source must be non-NULL and live. No ownership or
  * synchronization changes, and each getter reads only its requested field. */
 struct obs_source_boolean_query_fields {
