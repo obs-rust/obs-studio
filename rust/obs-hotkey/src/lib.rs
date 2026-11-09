@@ -39,6 +39,7 @@ pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
 pub mod identity_getters;
+pub mod identity_setters;
 mod key_route;
 pub mod name_map;
 pub mod nix_hotkey_state;
