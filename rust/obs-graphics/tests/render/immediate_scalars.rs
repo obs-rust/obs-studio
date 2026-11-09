@@ -17,14 +17,25 @@ fn test_graphics_immediate_render_scalar_inputs() {
 
 #[test]
 fn exact_components_including_signed_zero_and_nonfinite() {
-    let edges = [0, 0x80000000, 1, 0x80000001, 0x007fffff, 0x00800000,
-        0x3f800000, 0xbf800000, 0x7f7fffff, 0xff7fffff,
-        0x7f800000, 0xff800000, 0x7fc12345, 0xffc54321, 0x7f800001];
+    let edges = [
+        0, 0x80000000, 1, 0x80000001, 0x007fffff, 0x00800000, 0x3f800000, 0xbf800000, 0x7f7fffff,
+        0xff7fffff, 0x7f800000, 0xff800000, 0x7fc12345, 0xffc54321, 0x7f800001,
+    ];
     for x in edges {
         for y in edges {
-            assert_eq!(bits(vertex2f(f32::from_bits(x), f32::from_bits(y))), [x, y, 0, 0]);
+            assert_eq!(
+                bits(vertex2f(f32::from_bits(x), f32::from_bits(y))),
+                [x, y, 0, 0]
+            );
             for z in edges {
-                assert_eq!(bits(normal3f(f32::from_bits(x), f32::from_bits(y), f32::from_bits(z))), [x, y, z, 0]);
+                assert_eq!(
+                    bits(normal3f(
+                        f32::from_bits(x),
+                        f32::from_bits(y),
+                        f32::from_bits(z)
+                    )),
+                    [x, y, z, 0]
+                );
             }
         }
     }
