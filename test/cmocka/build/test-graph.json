@@ -14162,6 +14162,17 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_push_hotkeys": {
+      "sources": [
+        "test/cmocka/test_source_push_hotkeys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_push_queries": {
       "sources": [
         "test/cmocka/test_source_push_queries.c"
@@ -23369,6 +23380,12 @@
     "test_source_ptm_gate_steps_rust": {
       "target": "test_source_ptm_gate_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_push_hotkeys": {
+      "target": "test_source_push_hotkeys",
       "command": [
         "${target}"
       ]
