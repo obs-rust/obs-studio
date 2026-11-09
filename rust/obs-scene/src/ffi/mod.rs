@@ -39,3 +39,4 @@ pub mod item_group_scene;
 pub mod item_visible;
 
 pub mod item_blending_mode;
+pub mod item_scale_filter;
