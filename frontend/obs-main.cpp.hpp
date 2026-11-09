@@ -839,6 +839,17 @@ int main(int argc, char *argv[])
 	blog(LOG_INFO, "Number of memory leaks: %ld", bnum_allocs());
 	base_set_log_handler(nullptr, nullptr);
 
+#ifdef OBS_FRONTEND_RUST
+	/* A plugin's static destructor or atexit handler can block exit()
+	 * after main() returns (#3739). The watchdog ends the process then,
+	 * with one line in this log file (#4065). */
+	BPtr<char> watchdogLog;
+	if (!currentLogFile.empty()) {
+		watchdogLog = GetAppConfigPathPtr(("obs-studio/logs/" + currentLogFile).c_str());
+	}
+	obs_exit_watchdog_arm(watchdogLog);
+#endif
+
 	if (restart || restart_safe) {
 		auto executable = arguments.takeFirst();
 		QProcess::startDetached(executable, arguments);

@@ -103,6 +103,7 @@ include(cmake/feature-whatsnew.cmake)
 include(cmake/feature-idian-playground.cmake)
 include(cmake/frontend-rust.cmake)
 include(cmake/feature-camera-busy.cmake)
+include(cmake/feature-exit-watchdog.cmake)
 include(cmake/feature-fallback-warning.cmake)
 include(cmake/feature-gpu-status.cmake)
 

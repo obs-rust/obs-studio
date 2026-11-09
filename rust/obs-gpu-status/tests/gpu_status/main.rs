@@ -8,6 +8,9 @@ mod camera_busy;
 mod classify;
 mod device_cache;
 mod dxgi;
+// obs-exit-watchdog (#4065): the frontend's other Rust, same category.
+#[path = "../../../obs-exit-watchdog/tests/exit_watchdog/main.rs"]
+mod exit_watchdog;
 mod fdinfo;
 mod ffi;
 // obs-fallback-warning (#2218): the frontend's other Rust, same category.
