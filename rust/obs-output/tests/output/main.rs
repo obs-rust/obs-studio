@@ -195,3 +195,5 @@ mod output_video_encoder_getter_parity;
 mod output_settings;
 
 mod output_settings_parity;
+
+mod output_mixer_setters;
