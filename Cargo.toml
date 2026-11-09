@@ -67,6 +67,11 @@ lto = "thin"
 [profile.release.package.obs-hotkey]
 codegen-units = 256
 
+# Source-step fixtures must not pull caption storage and its obs-util host
+# dependencies just because their FFI shares an optimized archive member.
+[profile.release.package.obs-source]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]
