@@ -2672,3 +2672,5 @@ struct obs_output_connect_time_fields {
 	int (*callback)(void *data);
 };
 extern struct obs_output_connect_time_fields obs_output_connect_time_fields(const obs_output_t *output);
+
+#include "libobs/obs-canvas-signals.h"

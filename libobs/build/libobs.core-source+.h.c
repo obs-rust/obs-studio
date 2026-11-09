@@ -8,7 +8,7 @@
 #include "libobs/obs-canvas-ref-fields.c.h"
 #include "libobs/obs-canvas-scene-fields.c.h"
 #include "libobs/obs-canvas-set-name-fields.c.h"
-#include "libobs/obs-canvas-signals.c.h"
+#include "libobs/obs-canvas-signals-fields.c.h"
 #include "libobs/obs-canvas-video-fields.c.h"
 #include "libobs/obs-canvas-video-info-fields.c.h"
 #include "libobs/obs-canvas.c.h"

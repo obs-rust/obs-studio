@@ -17,7 +17,7 @@
 
 #include "libobs/build/libobs.pch.h"
 
-static inline void canvas_dosignal(obs_canvas_t *canvas, const char *signal_obs, const char *signal_canvas)
+void canvas_dosignal(obs_canvas_t *canvas, const char *signal_obs, const char *signal_canvas)
 {
 	struct calldata data;
 	uint8_t stack[128];
@@ -30,7 +30,7 @@ static inline void canvas_dosignal(obs_canvas_t *canvas, const char *signal_obs,
 		signal_handler_signal(canvas->context.signals, signal_canvas, &data);
 }
 
-static inline void canvas_dosignal_source(const char *signal, obs_canvas_t *canvas, obs_source_t *source)
+void canvas_dosignal_source(const char *signal, obs_canvas_t *canvas, obs_source_t *source)
 {
 	struct calldata data;
 	uint8_t stack[128];
