@@ -6,5 +6,14 @@ pub fn get<T: Copy + Default>(
     addref: impl FnOnce(T),
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    todo!()
+    match source {
+        Some(settings) => {
+            addref(settings);
+            settings
+        }
+        None => {
+            log(c"obs_source_get_settings");
+            T::default()
+        }
+    }
 }
