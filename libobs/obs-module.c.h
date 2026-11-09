@@ -19,7 +19,7 @@
 
 extern const char *get_module_extension(void);
 
-obs_module_t *loadingModule = NULL;
+extern obs_module_t *loadingModule;
 
 static inline int req_func_not_found(const char *name, const char *path)
 {
@@ -197,28 +197,6 @@ bool obs_create_disabled_module(obs_module_t **module, const char *path, const c
 	obs->first_disabled_module = (*module);
 
 	return true;
-}
-
-bool obs_init_module(obs_module_t *module)
-{
-	if (!module || !obs)
-		return false;
-	if (module->loaded)
-		return true;
-
-	const char *profile_name =
-		profile_store_name(obs_get_profiler_name_store(), "obs_init_module(%s)", module->file);
-	profile_start(profile_name);
-
-	loadingModule = module;
-	module->loaded = module->load();
-	loadingModule = NULL;
-
-	if (!module->loaded)
-		blog(LOG_WARNING, "Failed to initialize module '%s'", module->file);
-
-	profile_end(profile_name);
-	return module->loaded;
 }
 
 extern void get_plugin_info(const char *path, bool *is_obs_plugin);
