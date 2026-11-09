@@ -667,6 +667,40 @@ static void stale_audio_is_dropped(void **state)
 	close(p[1]);
 }
 
+/* Under PipeWire the audio comes out of the pipe tunnel 8192 frames after
+ * the FIFO; PulseAudio's own module adds nothing. */
+static void pipewire_tunnel_lead_is_8192_frames(void **state)
+{
+	(void)state;
+	const char *pipewire = "53\talsa_input.pci\tPipeWire\ts32le 2ch 48000Hz\tSUSPENDED\n";
+	const char *pulse = "1\talsa_input.pci\tmodule-alsa-card.c\ts16le 2ch 44100Hz\tSUSPENDED\n";
+	assert_int_equal(vmic_tunnel_lead_ns(pipewire, 48000), 170666666ULL);
+	assert_int_equal(vmic_tunnel_lead_ns(pipewire, 44100), 185759637ULL);
+	assert_int_equal(vmic_tunnel_lead_ns(pulse, 48000), 0);
+	assert_int_equal(vmic_tunnel_lead_ns(NULL, 48000), 0);
+	assert_int_equal(vmic_tunnel_lead_ns(pipewire, 0), 0);
+}
+
+/* A frame also waits out the audio's extra way through the sound server. */
+static void video_waits_for_the_tunnel(void **state)
+{
+	(void)state;
+	int dev[2], mic[2];
+	struct virtualcam_data *vcam = sync_vcam(dev, mic);
+	vcam->mic_lead_ns = MS(100);
+
+	send_frame(vcam, MS(1000));
+	send_audio(vcam, MS(1000), 1024);
+	send_audio(vcam, 1021333333ULL, 1024);
+	send_audio(vcam, 1042666667ULL, 1024);
+	send_audio(vcam, 1064000000ULL, 1024); /* up to 1085.3 */
+	assert_int_equal(queued_bytes(dev[0]), 0);
+	send_audio(vcam, 1085333333ULL, 1024); /* up to 1106.7 */
+	assert_int_equal(queued_bytes(dev[0]), SYNC_FRAME);
+
+	sync_done(vcam, dev, mic);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -689,6 +723,8 @@ int main(void)
 		cmocka_unit_test(video_is_not_held_without_microphone),
 		cmocka_unit_test(held_video_is_bounded),
 		cmocka_unit_test(stale_audio_is_dropped),
+		cmocka_unit_test(pipewire_tunnel_lead_is_8192_frames),
+		cmocka_unit_test(video_waits_for_the_tunnel),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

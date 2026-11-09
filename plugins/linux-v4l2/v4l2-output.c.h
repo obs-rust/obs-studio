@@ -36,6 +36,8 @@ struct virtualcam_data {
 	/* A read end of the same FIFO, to throw away audio nobody read. */
 	int mic_drain;
 	uint32_t mic_rate;
+	/* How much longer than the video the audio takes past the FIFO. */
+	uint64_t mic_lead_ns;
 	struct vcam_sync sync;
 	size_t mic_pipe_size;
 	struct vmic_tail mic_tail;
@@ -268,6 +270,19 @@ static size_t vmic_drop_stale(int drain_fd, int fd, size_t keep)
 		dropped += (size_t)got;
 	}
 	return dropped;
+}
+
+/* PipeWire's pipe tunnel (what pipewire-pulse loads for module-pipe-source)
+ * keeps 8192 frames buffered and no argument changes that (module-pipe-tunnel.c,
+ * target_buffer), so its audio comes out that much after the FIFO; PulseAudio's
+ * own module reads the FIFO directly. sources is "pactl list sources short",
+ * whose third column is the driver (#4087). */
+#define VMIC_PIPEWIRE_TUNNEL_FRAMES 8192
+static uint64_t vmic_tunnel_lead_ns(const char *sources, uint32_t rate)
+{
+	UNUSED_PARAMETER(sources);
+	UNUSED_PARAMETER(rate);
+	return 0;
 }
 
 /* Frees the frames waiting for their audio; under sync.mutex. */
@@ -1192,3 +1207,4 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_DIR_NAME
 #undef VMIC_PA_TIMEOUT_NS
 #undef VCAM_SYNC_FRAMES
+#undef VMIC_PIPEWIRE_TUNNEL_FRAMES
