@@ -64,6 +64,7 @@ pub mod decl;
 pub mod deque;
 pub mod dstr;
 pub mod dstr_libc;
+pub mod effect_destroy;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;

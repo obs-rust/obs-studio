@@ -2262,6 +2262,30 @@
         }
       ]
     },
+    "test_effect_destroy": {
+      "sources": [
+        "test/cmocka/test_effect_destroy.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_effect_int_bool_defaults": {
       "sources": [
         "test/cmocka/test_effect_int_bool_defaults.c"
@@ -19029,6 +19053,23 @@
     "test_dynamics_threshold": {
       "target": "test_dynamics_threshold",
       "requires": true
+    },
+    "test_effect_destroy": {
+      "target": "test_effect_destroy",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_effect_int_bool_defaults": {
       "target": "test_effect_int_bool_defaults",
