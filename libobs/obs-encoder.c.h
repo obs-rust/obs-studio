@@ -1999,14 +1999,6 @@ void obs_encoder_set_preferred_range(obs_encoder_t *encoder, enum video_range_ty
 	encoder->preferred_range = range;
 }
 
-enum video_range_type obs_encoder_get_preferred_range(const obs_encoder_t *encoder)
-{
-	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
-		return VIDEO_RANGE_DEFAULT;
-
-	return encoder->preferred_range;
-}
-
 void obs_encoder_release(obs_encoder_t *encoder)
 {
 	if (!encoder)
