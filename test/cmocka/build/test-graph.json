@@ -693,6 +693,15 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_audio_resampler_api": {
+      "sources": [
+        "test/cmocka/test_audio_resampler_api.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_audio_resampler_drift_steps": {
       "sources": [
         "test/cmocka/test_audio_resampler_drift_steps.c",
@@ -18427,6 +18436,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_audio_resampler_api": {
+      "target": "test_audio_resampler_api"
     },
     "test_audio_resampler_drift_steps": {
       "target": "test_audio_resampler_drift_steps",
