@@ -10,10 +10,40 @@ fn supported_media() {
                 let (new_video, new_audio) = if clear { (0, 0) } else { (3, 4) };
                 let before = (video, audio);
                 let mut logs = Vec::new();
-                set_media(Some(Media { flags: flags | if encoded { 8 } else { 0 }, video: &mut video, audio: &mut audio }), new_video, new_audio, |message| logs.push(message));
-                assert_eq!(video, if !encoded && flags & 1 != 0 { new_video } else { before.0 });
-                assert_eq!(audio, if !encoded && flags & 2 != 0 { new_audio } else { before.1 });
-                assert_eq!(logs, if encoded { vec![Diagnostic::EncodedOutput] } else { vec![] });
+                set_media(
+                    Some(Media {
+                        flags: flags | if encoded { 4 } else { 0 },
+                        video: &mut video,
+                        audio: &mut audio,
+                    }),
+                    new_video,
+                    new_audio,
+                    |message| logs.push(message),
+                );
+                assert_eq!(
+                    video,
+                    if !encoded && flags & 1 != 0 {
+                        new_video
+                    } else {
+                        before.0
+                    }
+                );
+                assert_eq!(
+                    audio,
+                    if !encoded && flags & 2 != 0 {
+                        new_audio
+                    } else {
+                        before.1
+                    }
+                );
+                assert_eq!(
+                    logs,
+                    if encoded {
+                        vec![Diagnostic::EncodedOutput]
+                    } else {
+                        vec![]
+                    }
+                );
             }
         }
     }

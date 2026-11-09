@@ -1,6 +1,6 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
-/* Defined by obs-output.c.h later in the core-output unity group. */
+/* Supplied by the isolated C-reference/oracle support group. */
 static inline bool log_flag_encoded(const struct obs_output *output, const char *func_name, bool inverse_log);
 static inline bool flag_video(const struct obs_output *output);
 static inline bool flag_audio(const struct obs_output *output);
