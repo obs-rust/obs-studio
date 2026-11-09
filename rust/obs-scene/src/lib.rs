@@ -30,6 +30,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod atomic_update;
 pub mod audio_actions;
 pub mod audio_mix;
 pub mod audio_window;
