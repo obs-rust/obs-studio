@@ -20,6 +20,20 @@ pub trait Device<D> {
     fn create(&mut self, request: Request<D>) -> Option<Self::Texture>;
 }
 
-pub fn create<D: Copy, H: Device<D>>(_host: &mut H, _request: Request<D>) -> Option<H::Texture> {
-    todo!()
+pub fn create<D: Copy, H: Device<D>>(host: &mut H, mut request: Request<D>) -> Option<H::Texture> {
+    if !host.has_context() {
+        host.no_context(request.cube);
+        return None;
+    }
+    let plan =
+        crate::sprite::texture_flags(request.width, request.height, request.flags, request.levels);
+    if plan.warning != MipWarning::Ok {
+        host.warning(plan.warning);
+    }
+    if request.cube && plan.warning == MipWarning::RenderTarget {
+        request.data = None;
+    }
+    request.flags = plan.flags;
+    request.levels = plan.levels;
+    host.create(request)
 }

@@ -57,6 +57,8 @@ void oracle_texrender_device_clear_log(void);
 void oracle_texrender_device_quiet(bool on);
 void oracle_texrender_device_fail_creates(uint32_t mask);
 void oracle_texrender_device_note(const char *text);
+gs_texture_t *oracle_texrender_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format,
+					      uint32_t levels, const uint8_t **data, uint32_t flags);
 
 RECORD_FORMAT static void record(const char *format, ...)
 {
@@ -166,8 +168,8 @@ void oracle_texrender_device_clear_log(void)
 	call_log[0] = 0;
 }
 
-gs_texture_t *gs_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format, uint32_t levels,
-				const uint8_t **data, uint32_t flags)
+gs_texture_t *oracle_texrender_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format,
+					      uint32_t levels, const uint8_t **data, uint32_t flags)
 {
 	/* image-file passes its pixels: record a hash of the RGBA bytes. */
 	if (data && *data)

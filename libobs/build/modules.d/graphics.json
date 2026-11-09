@@ -3,7 +3,8 @@
   "groups": [
     "effect-parser-funcs",
     "graphics",
-    "graphics-linear-srgb"
+    "graphics-linear-srgb",
+    "graphics-texture-creators-fields"
   ],
   "depends": []
 }

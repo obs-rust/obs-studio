@@ -1,4 +1,16 @@
-#include "libobs/build/libobs-graphics.pch.h"
+#include "libobs/build/libobs-ported-texture-creators.pch.h"
+
+/* The extraction originally shared graphics.c.h's file-local context. */
+static bool texture_creator_valid(const char *function)
+{
+	if (!gs_get_context()) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", function);
+		return false;
+	}
+	return true;
+}
+#define thread_graphics gs_get_context()
+#define gs_valid texture_creator_valid
 
 gs_texture_t *gs_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format, uint32_t levels,
 				const uint8_t **data, uint32_t flags)
@@ -59,3 +71,6 @@ gs_texture_t *gs_cubetexture_create(uint32_t size, enum gs_color_format color_fo
 	return graphics->exports.device_cubetexture_create(graphics->device, size, color_format, plan.levels, data,
 							   plan.flags);
 }
+
+#undef thread_graphics
+#undef gs_valid
