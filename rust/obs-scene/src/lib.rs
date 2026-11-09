@@ -36,6 +36,7 @@ pub mod audio_window;
 pub mod blend;
 pub mod bounds;
 pub mod bounds_place;
+pub mod color_space;
 pub mod coords;
 pub mod crop;
 pub mod extent;

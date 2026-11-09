@@ -8,6 +8,7 @@ mod audio_window;
 mod audio_window_parity;
 mod blend;
 mod bounds;
+mod color_space;
 mod coords;
 mod crop;
 mod crop_parity;
