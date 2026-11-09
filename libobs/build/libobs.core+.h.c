@@ -20,6 +20,7 @@
 #include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-enum.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
+#include "libobs/obs-hotkey-identity-setters.c.h"
 #include "libobs/obs-hotkey-object-fields.c.h"
 #include "libobs/obs-hotkey-owned-translations-fields.c.h"
 #include "libobs/obs-hotkey-register.c.h"
