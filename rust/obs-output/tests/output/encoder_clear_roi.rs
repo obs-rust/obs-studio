@@ -9,14 +9,20 @@ struct State {
     emptied_before_lock: bool,
 }
 impl RoiState for State {
-    fn count(&self) -> usize { self.count }
+    fn count(&self) -> usize {
+        self.count
+    }
     fn with_locked_fields(&mut self, update: impl FnOnce(&mut usize, &mut u32)) {
         self.locks += 1;
-        if self.emptied_before_lock { self.count = 0; }
+        if self.emptied_before_lock {
+            self.count = 0;
+        }
         update(&mut self.count, &mut self.increment);
     }
 }
-fn clear(state: &mut State) { clear_roi(Some(state), || panic!("valid encoder")); }
+fn clear(state: &mut State) {
+    clear_roi(Some(state), || panic!("valid encoder"));
+}
 
 #[test]
 fn test_increment_after_add_and_clear() {
@@ -44,8 +50,12 @@ fn test_increment_after_add_and_clear() {
 }
 #[test]
 fn full_width_wrapping_and_no_locked_recheck() {
-    let mut state = State { count: usize::MAX, increment: u32::MAX,
-        emptied_before_lock: true, ..State::default() };
+    let mut state = State {
+        count: usize::MAX,
+        increment: u32::MAX,
+        emptied_before_lock: true,
+        ..State::default()
+    };
     clear(&mut state);
     assert_eq!(state.count, 0);
     assert_eq!(state.increment, 0);

@@ -8,6 +8,15 @@ pub trait RoiState {
 
 /// NULL is diagnosed; an empty pre-lock count is a no-op.
 pub fn clear_roi(state: Option<&mut impl RoiState>, invalid: impl FnOnce()) {
-    let _ = (state, invalid);
-    todo!()
+    let Some(state) = state else {
+        invalid();
+        return;
+    };
+    if state.count() == 0 {
+        return;
+    }
+    state.with_locked_fields(|count, increment| {
+        *count = 0;
+        *increment = increment.wrapping_add(1);
+    });
 }
