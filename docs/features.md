@@ -75,6 +75,12 @@ not get a line.
 
 ### Headless and automation
 
+- **Typed MCP control.** Existing OBS MCP tools publish input and output schemas,
+  structured results and machine-readable domain errors. Read operations carry
+  annotations, and repeated output start/stop calls succeed with current state.
+  *All*, 2026-11-09. Issue [#4445](https://github.com/obs-rust/obs-studio/issues/4445),
+  PR [#4450](https://github.com/obs-rust/obs-studio/pull/4450).
+
 - **`--disable-shutdown-check` works again.** After an unclean stop (power
   loss, OOM killer, a hard stop of the VM or container), OBS starts without
   the "Crash Detected" dialog and logs the unclean shutdown as a warning on
