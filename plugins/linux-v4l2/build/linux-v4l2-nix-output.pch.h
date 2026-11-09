@@ -11,6 +11,7 @@
 #include <obs-module.h>
 #include <util/dstr.h>
 #include <util/platform.h>
+#include <util/threading.h>
 #include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>

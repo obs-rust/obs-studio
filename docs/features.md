@@ -902,6 +902,12 @@ area.
   Virtual Camera starts even with the microphone turned off, and the log says
   when `pactl` itself cannot run. *Linux*, 2026-11-06.
   Issue [#3797](https://github.com/obs-rust/obs-studio/issues/3797).
+- The Linux virtual microphone, now listed as "OBS Audio", stays in sync with
+  the Virtual Camera picture: each frame waits until its audio has gone out
+  (audio used to trail by ~0.7 s), and an app that links later hears current
+  audio instead of a stale backlog. `ci/vcam_av_sync.py` measures the offset
+  over obs-websocket. *Linux*, 2026-11-08.
+  Issue [#4087](https://github.com/obs-rust/obs-studio/issues/4087).
 - The OBS Virtual Microphone no longer turns into noise or swaps channels
   after the sound server falls behind: a packet the pipe takes only part of
   is finished before the next one. *Linux*, 2026-10-31.

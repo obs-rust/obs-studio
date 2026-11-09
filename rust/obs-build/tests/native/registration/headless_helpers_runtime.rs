@@ -25,7 +25,7 @@ fn assert_cases(output: &std::process::Output, name: &str) {
     let count = match name {
         "test_text_file" => 11,
         "test_v4l2_vcam_write" => 3,
-        "test_v4l2_vcam_audio" => 14,
+        "test_v4l2_vcam_audio" => 20,
         "test_v4l2_fd_cloexec" => 4,
         "test_hotkey_background_ui" => 27,
         "test_hotkey_background_use_key" => 5,
