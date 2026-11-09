@@ -93,6 +93,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/output-pause-query-link-stubs.c",
                     "test/cmocka/output-service-getter-link-stub.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
+                    "test/cmocka/scene-item-blending-mode-link-support.c",
                     "test/cmocka/scene-item-group-scene-link-support.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",

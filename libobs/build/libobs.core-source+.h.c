@@ -21,7 +21,7 @@
 #include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene-item-blending-method.c.h"
-#include "libobs/obs-scene-item-blending-mode.c.h"
+#include "libobs/obs-scene-item-blending-mode-fields.c.h"
 #include "libobs/obs-scene-item-bounds-setters.c.h"
 #include "libobs/obs-scene-item-group-resize-defer.c.h"
 #include "libobs/obs-scene-item-group-scene-fields.c.h"

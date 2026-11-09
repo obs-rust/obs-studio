@@ -6,12 +6,22 @@ fn test_scaled_mix_alpha_and_test_darken_transparent_modes() {
     for value in [0, 1, 2, 5, 6, 7, u32::MAX, 0x8000_0000] {
         let mut mode = 17;
         let mut dirty = false;
-        set(Some(&mut mode), value, || dirty = true, || panic!("live item"));
+        set(
+            Some(&mut mode),
+            value,
+            || dirty = true,
+            || panic!("live item"),
+        );
         assert_eq!(mode, value);
         assert!(dirty);
         // An unchanged mode must still mark a fresh transform dirty.
         dirty = false;
-        set(Some(&mut mode), value, || dirty = true, || panic!("live item"));
+        set(
+            Some(&mut mode),
+            value,
+            || dirty = true,
+            || panic!("live item"),
+        );
         assert!(dirty);
     }
 }
