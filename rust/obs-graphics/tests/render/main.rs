@@ -37,6 +37,7 @@ mod sprite;
 mod sprite_parity;
 mod state_stacks;
 mod state_stacks_parity;
+mod texture_creators;
 mod texture_metadata;
 mod texture_metadata_parity;
 mod texture_planar_creators;
