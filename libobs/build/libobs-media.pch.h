@@ -58,3 +58,21 @@
 #if FFMPEG_HAS_EXIF_API
 #include <libavcodec/exif.h>
 #endif
+
+/* Shared state and static seams for the image decode unity fragments. */
+struct ffmpeg_image {
+	const char *file;
+	AVFormatContext *fmt_ctx;
+	AVCodecContext *decoder_ctx;
+
+	int cx, cy;
+	enum AVPixelFormat format;
+
+	/* The texture size limit of the graphics device, 0 if unknown. */
+	uint32_t max_size;
+	bool too_large;
+};
+
+static bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy);
+static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame,
+					 enum gs_image_alpha_mode alpha_mode);
