@@ -6,6 +6,7 @@
 #include "libobs/obs-encoder-audio-buffers.c.h"
 #include "libobs/obs-encoder-audio-getters-fields.c.h"
 #include "libobs/obs-encoder-clear-roi.c.h"
+#include "libobs/obs-encoder-configuration.c.h"
 #include "libobs/obs-encoder-counter-fields.c.h"
 #include "libobs/obs-encoder-dimensions-fields.c.h"
 #include "libobs/obs-encoder-frame-rate-divisor-fields.c.h"
