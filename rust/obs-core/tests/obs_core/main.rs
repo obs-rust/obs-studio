@@ -47,6 +47,7 @@ mod global_getters;
 mod global_getters_parity;
 mod module_failure_info;
 mod module_failure_info_parity;
+mod module_init;
 mod module_load_rules;
 mod module_load_rules_parity;
 mod module_load_rules_skip;
