@@ -36,17 +36,34 @@ impl BackgroundError for Backend {
 #[test]
 fn native_without_portal_client() {
     for available in [false, true] {
-        let mut backend = Backend { available, error: None, held: false, events: vec![] };
+        let mut backend = Backend {
+            available,
+            error: None,
+            held: false,
+            events: vec![],
+        };
         assert_eq!(query(&mut backend), None);
         assert!(!backend.held);
-        assert_eq!(backend.events, if available { vec!["lock", "unlock"] } else { vec!["lock"] });
+        assert_eq!(
+            backend.events,
+            if available {
+                vec!["lock", "unlock"]
+            } else {
+                vec!["lock"]
+            }
+        );
     }
 }
 
 #[test]
 fn status_without_portal_and_status_reports_portal_error() {
     for error in ["", "No portal available", "An app id is required"] {
-        let mut backend = Backend { available: true, error: Some(error), held: false, events: vec![] };
+        let mut backend = Backend {
+            available: true,
+            error: Some(error),
+            held: false,
+            events: vec![],
+        };
         let owned = query(&mut backend).expect("portal error copy");
         assert_eq!(owned, error);
         assert!(!backend.held);
@@ -58,7 +75,12 @@ fn status_without_portal_and_status_reports_portal_error() {
 
 #[test]
 fn failed_lock_never_reads_or_copies_error() {
-    let mut backend = Backend { available: false, error: Some("unreachable"), held: false, events: vec![] };
+    let mut backend = Backend {
+        available: false,
+        error: Some("unreachable"),
+        held: false,
+        events: vec![],
+    };
     assert_eq!(query(&mut backend), None);
     assert_eq!(backend.events, ["lock"]);
 }
