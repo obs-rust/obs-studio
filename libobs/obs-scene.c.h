@@ -3326,7 +3326,6 @@ obs_sceneitem_t *obs_scene_insert_group2(obs_scene_t *scene, const char *name, o
 	return item;
 }
 
-
 void obs_sceneitem_group_ungroup(obs_sceneitem_t *item)
 {
 	if (!item || !item->is_group)
