@@ -1,7 +1,6 @@
 {
   "description": "libobs/graphics: the graphics subsystem.",
   "groups": [
-    "effect",
     "effect-parser-funcs",
     "graphics",
     "graphics-linear-srgb"

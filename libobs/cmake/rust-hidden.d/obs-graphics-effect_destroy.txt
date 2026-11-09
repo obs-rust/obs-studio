@@ -1,0 +1,3 @@
+# graphics/effect.c: gs_destroy() in graphics.c calls it for every cached
+# effect; the C has no EXPORT.
+gs_effect_actually_destroy

@@ -2,6 +2,7 @@
 
 pub mod axisang;
 pub mod bounds;
+pub mod effect_destroy;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;

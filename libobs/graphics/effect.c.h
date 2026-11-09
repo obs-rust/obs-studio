@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-effect.pch.h"
+#include "libobs/build/libobs-ported-effect.pch.h"
 
 void gs_effect_actually_destroy(gs_effect_t *effect);
 
