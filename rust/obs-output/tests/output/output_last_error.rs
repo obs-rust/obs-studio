@@ -26,7 +26,9 @@ fn old_message_is_dropped_before_duplication() {
     use std::cell::Cell;
     struct Message<'a>(&'a Cell<usize>);
     impl Drop for Message<'_> {
-        fn drop(&mut self) { self.0.set(self.0.get() + 1); }
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
     }
     let drops = Cell::new(0);
     let mut message = Some(Message(&drops));
