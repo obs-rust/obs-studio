@@ -111,7 +111,10 @@ def attest() -> bool:
 
     soldr = shutil.which("soldr")
     if soldr and supports([soldr, "lint", "--help"], "--attest"):
-        evidence = ROOT / ".git" / "soldr-attest.json"
+        # A worktree's `.git` is a file, not a directory, so the git dir is
+        # resolved rather than assumed.
+        git_dir = git("rev-parse", "--git-dir", capture=True).stdout.strip() or ".git"
+        evidence = Path(git_dir) / "soldr-attest.json"
         proc = run([soldr, "lint", "rust", "--attest", "--format", "json"], capture=True, check=False)
         if proc.returncode != 0:
             print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
