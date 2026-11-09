@@ -318,8 +318,19 @@ struct vmic_pw_read {
 };
 static struct vmic_pw_read vmic_pw_plan(uint32_t have, uint32_t want, bool *primed)
 {
-	UNUSED_PARAMETER(primed);
-	struct vmic_pw_read r = {0, have < want ? have : want};
+	struct vmic_pw_read r = {0, 0};
+	if (!*primed) {
+		if (have < want || have - want < VMIC_PW_KEEP_FRAMES)
+			return r;
+		*primed = true;
+	}
+	if (have > want && have - want > VMIC_PW_HIGH_FRAMES) {
+		r.skip = have - want - VMIC_PW_KEEP_FRAMES;
+		have -= r.skip;
+	}
+	r.take = have < want ? have : want;
+	if (have < want)
+		*primed = false;
 	return r;
 }
 
@@ -609,6 +620,10 @@ struct vmic_pw {
 	struct spa_hook listener;
 	struct spa_ringbuffer ring;
 	bool primed;
+	/* Counted on PipeWire's thread, logged from the output thread. */
+	volatile long underruns;
+	volatile long skipped;
+	uint64_t next_report;
 	uint8_t data[VMIC_PW_RING];
 };
 
@@ -632,7 +647,12 @@ static void vmic_pw_process(void *arg)
 	uint32_t have = avail > 0 ? (uint32_t)avail / VMIC_PW_STRIDE : 0;
 	/* Audio nobody read (no app linked) or a backlog that grew: start
 	 * from the newest instead of staying behind. */
+	bool was_primed = pw->primed;
 	struct vmic_pw_read plan = vmic_pw_plan(have, want, &pw->primed);
+	if (was_primed && !pw->primed)
+		os_atomic_inc_long(&pw->underruns);
+	if (plan.skip)
+		os_atomic_store_long(&pw->skipped, os_atomic_load_long(&pw->skipped) + (long)plan.skip);
 	index += plan.skip * VMIC_PW_STRIDE;
 	uint32_t n = plan.take;
 	spa_ringbuffer_read_data(&pw->ring, pw->data, VMIC_PW_RING, index % VMIC_PW_RING, d->data, n * VMIC_PW_STRIDE);
@@ -757,6 +777,15 @@ static void vmic_pw_stop(struct virtualcam_data *vcam)
  * reads the node; the reader then starts from the newest audio. */
 static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
 {
+	uint64_t now = os_gettime_ns();
+	if (now >= pw->next_report) {
+		long underruns = os_atomic_exchange_long(&pw->underruns, 0);
+		long skipped = os_atomic_exchange_long(&pw->skipped, 0);
+		if (pw->next_report && (underruns || skipped))
+			blog(LOG_INFO, "Virtual microphone: %ld underruns, %ld stale frames dropped in the last minute",
+			     underruns, skipped);
+		pw->next_report = now + 60000000000ULL;
+	}
 	uint32_t index;
 	int32_t filled = spa_ringbuffer_get_write_index(&pw->ring, &index);
 	if (filled < 0 || (size_t)filled + size > VMIC_PW_RING)
