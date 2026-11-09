@@ -56,6 +56,7 @@ mod push_queries_parity;
 mod render_route;
 mod render_route_parity;
 mod save_load;
+mod save_load_parity;
 mod size_route;
 mod size_route_parity;
 mod source_duplicate;

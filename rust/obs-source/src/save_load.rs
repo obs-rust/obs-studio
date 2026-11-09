@@ -17,16 +17,33 @@ pub trait Backend {
 }
 
 /// Save signals precede the optional callback.
-pub fn save<B: Backend>(_backend: &mut B, _source: B::Source) {
-    todo!()
+pub fn save<B: Backend>(backend: &mut B, source: B::Source) {
+    if !backend.valid(source, "obs_source_save") {
+        return;
+    }
+    backend.signal(source, true);
+    backend.callback(source, true);
 }
 
 /// The optional load callback precedes load signals.
-pub fn load<B: Backend>(_backend: &mut B, _source: B::Source) {
-    todo!()
+pub fn load<B: Backend>(backend: &mut B, source: B::Source) {
+    if !backend.valid(source, "obs_source_load") {
+        return;
+    }
+    backend.callback(source, false);
+    backend.signal(source, false);
 }
 
 /// Load the parent, then direct filters in reverse stored order.
-pub fn load2<B: Backend>(_backend: &mut B, _source: B::Source) {
-    todo!()
+pub fn load2<B: Backend>(backend: &mut B, source: B::Source) {
+    if !backend.valid(source, "obs_source_load2") {
+        return;
+    }
+    load(backend, source);
+    let mut index = backend.filter_count(source);
+    while index > 0 {
+        index -= 1;
+        let filter = backend.filter(source, index);
+        load(backend, filter);
+    }
 }

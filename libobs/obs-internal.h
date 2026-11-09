@@ -1561,6 +1561,13 @@ extern obs_source_t *obs_source_create_set_last_ver(obs_canvas_t *canvas, const 
 						    const char *uuid, obs_data_t *settings, obs_data_t *hotkey_data,
 						    uint32_t last_obs_ver, bool is_private);
 
+/* Private live-source seam for the Rust save/load orchestrator. */
+extern void *obs_source_save_load_data(obs_source_t *source);
+extern void obs_source_save_load_callback(obs_source_t *source, bool save);
+extern void obs_source_save_load_signal(obs_source_t *source, bool save);
+extern size_t obs_source_save_load_filter_count(obs_source_t *source);
+extern obs_source_t *obs_source_save_load_filter(obs_source_t *source, size_t index);
+
 extern void obs_source_destroy(struct obs_source *source);
 extern void obs_source_addref(obs_source_t *source);
 
