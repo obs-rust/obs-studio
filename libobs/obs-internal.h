@@ -1482,6 +1482,11 @@ struct obs_source_filter_count_fields {
 };
 extern struct obs_source_filter_count_fields obs_source_filter_count_fields(const obs_source_t *source);
 
+/* Caption list addresses and mutex operations for Rust registration. Non-NULL only. */
+extern struct darray *obs_source_caption_callback_fields(obs_source_t *source);
+extern void obs_source_caption_callback_lock(obs_source_t *source);
+extern void obs_source_caption_callback_unlock(obs_source_t *source);
+
 struct obs_source_handler_getters_fields {
 	proc_handler_t *const *proc;
 };

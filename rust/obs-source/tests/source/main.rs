@@ -24,6 +24,7 @@ mod base_size_parity;
 mod boolean_queries;
 mod boolean_queries_parity;
 mod caption_callbacks;
+mod caption_callbacks_parity;
 mod color_space;
 mod color_space_parity;
 mod conversion_plan;
