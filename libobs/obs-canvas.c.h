@@ -447,17 +447,6 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 	}
 }
 
-obs_scene_t *obs_canvas_scene_create(obs_canvas_t *canvas, const char *name)
-{
-	struct obs_source *source = obs_source_create_canvas(canvas, "scene", name, NULL, NULL);
-	return source->context.data;
-}
-
-void obs_canvas_scene_remove(obs_scene_t *scene)
-{
-	obs_canvas_remove_source(scene->source);
-}
-
 void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
 {
 	if (obs_canvas_rules_name_empty(name))
