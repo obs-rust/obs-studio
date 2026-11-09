@@ -25,6 +25,9 @@ struct vcam_sync {
 	uint64_t audio_end;
 };
 
+/* The OBS Audio node when PipeWire runs (#4119); defined below. */
+struct vmic_pw;
+
 struct virtualcam_data {
 	obs_output_t *output;
 	int device;
@@ -38,6 +41,7 @@ struct virtualcam_data {
 	uint32_t mic_rate;
 	/* How much longer than the video the audio takes past the FIFO. */
 	uint64_t mic_lead_ns;
+	struct vmic_pw *mic_pw;
 	struct vcam_sync sync;
 	size_t mic_pipe_size;
 	struct vmic_tail mic_tail;
@@ -298,6 +302,19 @@ static uint64_t vmic_tunnel_lead_ns(const char *sources, uint32_t rate)
 			break;
 		line = end + 1;
 	}
+	return 0;
+}
+
+/* The PipeWire node's reader keeps at most this much audio beyond what a
+ * cycle asks for, and drops older audio only past the high mark, so libobs's
+ * 1024-frame packets never trip it in steady state (#4119). Returns the
+ * frames to skip. */
+#define VMIC_PW_KEEP_FRAMES 1024
+#define VMIC_PW_HIGH_FRAMES 3072
+static uint32_t vmic_pw_skip(uint32_t have, uint32_t want)
+{
+	UNUSED_PARAMETER(have);
+	UNUSED_PARAMETER(want);
 	return 0;
 }
 
@@ -575,6 +592,62 @@ static char *vmic_pa_list(bool modules)
 #endif
 
 /* Whether pactl itself can run at all, whatever the sound server would say (#3797). */
+#ifdef HAVE_PIPEWIRE
+/* OBS Audio as a native PipeWire Audio/Source node (#4119). The output thread
+ * writes libobs packets into the ring; PipeWire's process callback reads it.
+ * One writer, one reader: spa_ringbuffer needs no lock. */
+#define VMIC_PW_RING (1u << 18)
+struct vmic_pw {
+	struct pw_thread_loop *loop;
+	struct pw_stream *stream;
+	struct spa_hook listener;
+	struct spa_ringbuffer ring;
+	uint8_t data[VMIC_PW_RING];
+};
+
+static bool vmic_pw_start(struct virtualcam_data *vcam, const char *name, const char *description, uint32_t rate)
+{
+	UNUSED_PARAMETER(vcam);
+	UNUSED_PARAMETER(name);
+	UNUSED_PARAMETER(description);
+	UNUSED_PARAMETER(rate);
+	return false;
+}
+
+static void vmic_pw_stop(struct virtualcam_data *vcam)
+{
+	UNUSED_PARAMETER(vcam);
+}
+
+static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
+{
+	UNUSED_PARAMETER(pw);
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(size);
+}
+#else
+static bool vmic_pw_start(struct virtualcam_data *vcam, const char *name, const char *description, uint32_t rate)
+{
+	UNUSED_PARAMETER(vcam);
+	UNUSED_PARAMETER(name);
+	UNUSED_PARAMETER(description);
+	UNUSED_PARAMETER(rate);
+	return false;
+}
+
+static void vmic_pw_stop(struct virtualcam_data *vcam)
+{
+	UNUSED_PARAMETER(vcam);
+}
+
+static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
+{
+	UNUSED_PARAMETER(pw);
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(size);
+}
+#endif
+
 static bool vmic_pactl_runs(void)
 {
 	char *version = run_pactl("--version");
@@ -585,6 +658,7 @@ static bool vmic_pactl_runs(void)
 
 static void vmic_stop(struct virtualcam_data *vcam)
 {
+	vmic_pw_stop(vcam);
 	pthread_mutex_lock(&vcam->sync.mutex);
 	if (vcam->mic_fifo >= 0) {
 		close(vcam->mic_fifo);
@@ -791,6 +865,18 @@ static void vmic_start(struct virtualcam_data *vcam)
 		snprintf(description, sizeof(description), "OBS Audio (%d)", k);
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
+	/* A native node first: no FIFO, no tunnel buffer (#4119). */
+	if (vmic_pw_start(vcam, source, description, rate)) {
+		struct audio_convert_info pw_aci = {0};
+		pw_aci.format = AUDIO_FORMAT_FLOAT;
+		pw_aci.speakers = SPEAKERS_STEREO;
+		pw_aci.samples_per_sec = rate;
+		obs_output_set_audio_conversion(vcam->output, &pw_aci);
+		obs_output_set_mixer(vcam->output, vcam->audio_mixer);
+		blog(LOG_INFO, "Virtual microphone '%s' started (PipeWire node, %u Hz, track %zu)", source, rate,
+		     vcam->audio_mixer + 1);
+		return;
+	}
 	struct dstr args;
 	dstr_init(&args);
 	dstr_printf(&args,
@@ -932,6 +1018,13 @@ static void vmic_start(struct virtualcam_data *vcam)
 static void vmic_stop(struct virtualcam_data *vcam)
 {
 	UNUSED_PARAMETER(vcam);
+}
+
+static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
+{
+	UNUSED_PARAMETER(pw);
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(size);
 }
 #endif
 
@@ -1198,6 +1291,8 @@ static void virtual_audio(void *param, struct audio_data *frames)
 	/* Keep at most one packet unread, so a reader hears the newest audio. */
 	vmic_drop_stale(vcam->mic_drain, vcam->mic_fifo, size);
 	vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, &vcam->mic_tail, frames->data[0], size);
+	if (vcam->mic_pw)
+		vmic_pw_write(vcam->mic_pw, frames->data[0], size);
 
 	uint64_t end = frames->timestamp + util_mul_div64(frames->frames, 1000000000ULL, vcam->mic_rate);
 	pthread_mutex_lock(&vcam->sync.mutex);
@@ -1229,3 +1324,6 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_PA_TIMEOUT_NS
 #undef VCAM_SYNC_FRAMES
 #undef VMIC_PIPEWIRE_TUNNEL_FRAMES
+#undef VMIC_PW_KEEP_FRAMES
+#undef VMIC_PW_HIGH_FRAMES
+#undef VMIC_PW_RING

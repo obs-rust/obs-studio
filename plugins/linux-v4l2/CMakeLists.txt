@@ -39,6 +39,14 @@ if(PulseAudio_FOUND)
   target_compile_definitions(linux-v4l2 PRIVATE HAVE_LIBPULSE)
 endif()
 
+# With PipeWire the microphone is a native Audio/Source node: module-pipe-source
+# under pipewire-pulse buffers a fixed 8192 frames (obs-rust/obs-studio#4119).
+find_package(PipeWire 0.3.33)
+if(PipeWire_FOUND)
+  target_link_libraries(linux-v4l2 PRIVATE PipeWire::PipeWire)
+  target_compile_definitions(linux-v4l2 PRIVATE HAVE_PIPEWIRE)
+endif()
+
 if(ENABLE_UDEV)
   find_package(Libudev REQUIRED)
   target_sources(linux-v4l2 PRIVATE build/linux-v4l2.nix-udev+.h.c)
