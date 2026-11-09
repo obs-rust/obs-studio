@@ -693,25 +693,11 @@ gs_vertbuffer_t *gs_render_save(void)
 	return gs_vertexbuffer_create(vbd, 0);
 }
 
-void gs_vertex2f(float x, float y)
-{
-	struct vec3 v3;
-	vec3_set(&v3, x, y, 0.0f);
-	gs_vertex3v(&v3);
-}
-
 void gs_vertex3f(float x, float y, float z)
 {
 	struct vec3 v3;
 	vec3_set(&v3, x, y, z);
 	gs_vertex3v(&v3);
-}
-
-void gs_normal3f(float x, float y, float z)
-{
-	struct vec3 v3;
-	vec3_set(&v3, x, y, z);
-	gs_normal3v(&v3);
 }
 
 static inline bool validvertsize(graphics_t *graphics, size_t num, const char *name)
