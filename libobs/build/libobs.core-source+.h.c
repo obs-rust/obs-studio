@@ -45,6 +45,7 @@
 #include "libobs/obs-source-filter-relationship-fields.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-hidden-setter.c.h"
+#include "libobs/obs-source-icon-type-getter.c.h"
 #include "libobs/obs-source-identity-getter-fields.c.h"
 #include "libobs/obs-source-properties.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"

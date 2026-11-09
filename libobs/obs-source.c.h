@@ -4559,12 +4559,6 @@ void obs_source_set_audio_active(obs_source_t *source, bool active)
 	}
 }
 
-enum obs_icon_type obs_source_get_icon_type(const char *id)
-{
-	const struct obs_source_info *info = get_source_info(id);
-	return (info) ? info->icon_type : OBS_ICON_TYPE_UNKNOWN;
-}
-
 const char *obs_source_get_dark_icon(const char *id)
 {
 	if (obs_source_get_icon_type(id) != OBS_ICON_TYPE_CUSTOM)
