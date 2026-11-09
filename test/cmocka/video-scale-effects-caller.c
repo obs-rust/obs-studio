@@ -5,9 +5,16 @@ extern struct obs_core *scale_effects_test_obs;
 #define obs scale_effects_test_obs
 #define obs_graphics_thread scale_effects_test_graphics_thread
 #define obs_graphics_thread_loop scale_effects_test_graphics_thread_loop
+#ifdef VIDEO_SCALE_EFFECT_CALLER_EXTRACT
+#include "libobs/build/libobs.pch.h"
+uint32_t obs_video_loaded_scale_effects(const struct obs_core_video *video);
+gs_effect_t *obs_video_scale_effect_pointer(const struct obs_core_video *video, enum obs_video_scale_effect effect);
+#include "video-scale-effects-caller.inc"
+#else
 #include "libobs/obs-video-frame-copy.c.h"
 #include "libobs/obs-video-stop-requested.c.h"
 #include "libobs/obs-video.c.h"
+#endif
 
 struct obs_core *scale_effects_test_obs;
 

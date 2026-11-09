@@ -1,0 +1,2 @@
+obs_video_loaded_scale_effects
+obs_video_scale_effect_pointer

@@ -12,6 +12,9 @@ fn all_effect_presence_masks() {
         for unknown in [i32::MIN, -1, 5, 99, i32::MAX] {
             assert_eq!(selected(&effects, unknown), effects[0]);
         }
-        assert_eq!(effects, core::array::from_fn(|i| (mask & (1 << i) != 0).then_some(i + 1)));
+        assert_eq!(
+            effects,
+            core::array::from_fn(|i| (mask & (1 << i) != 0).then_some(i + 1))
+        );
     }
 }
