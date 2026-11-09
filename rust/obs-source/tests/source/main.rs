@@ -46,6 +46,7 @@ mod frame_copy_parity;
 mod handler_getters;
 mod handler_getters_parity;
 mod interaction;
+mod interaction_parity;
 mod media_admission;
 mod media_admission_parity;
 mod monitoring;

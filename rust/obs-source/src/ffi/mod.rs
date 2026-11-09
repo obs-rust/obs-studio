@@ -25,6 +25,7 @@ pub mod source_filter_relationship_getters;
 pub mod source_frame_copy;
 pub mod source_handler_getters;
 pub mod source_identity_getters;
+pub mod source_interaction;
 pub mod source_media_admission;
 pub mod source_monitoring;
 pub mod source_ptm_gate;

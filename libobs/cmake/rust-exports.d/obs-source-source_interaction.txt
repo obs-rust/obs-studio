@@ -1,0 +1,5 @@
+obs_source_send_focus
+obs_source_send_key_click
+obs_source_send_mouse_click
+obs_source_send_mouse_move
+obs_source_send_mouse_wheel
