@@ -3747,11 +3747,6 @@ obs_object_t *obs_weak_object_get_object(obs_weak_object_t *weak)
 	return NULL;
 }
 
-bool obs_weak_object_expired(obs_weak_object_t *weak)
-{
-	return weak ? obs_weak_ref_expired(&weak->ref) : true;
-}
-
 obs_canvas_t *obs_get_main_canvas(void)
 {
 	return obs_canvas_get_ref(obs->data.main_canvas);
