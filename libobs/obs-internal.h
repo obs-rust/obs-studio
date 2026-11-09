@@ -2257,6 +2257,20 @@ extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const ob
 
 extern struct obs_encoder_info *find_encoder(const char *id);
 extern bool obs_encoder_reroute_allowed(void);
+/* Borrowed reroute view; both arguments must be non-NULL and live. */
+struct obs_encoder_reroute_fields {
+	void *active;
+	const void *replacement;
+	size_t size;
+	int original_type;
+	int replacement_type;
+	const char *original_codec;
+	const char *replacement_codec;
+	obs_data_t *settings;
+	void *(*create)(obs_data_t *, obs_encoder_t *);
+};
+struct obs_encoder_reroute_fields obs_encoder_reroute_fields(obs_encoder_t *encoder,
+							     const struct obs_encoder_info *info);
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
 extern bool obs_encoder_initialize(obs_encoder_t *encoder);

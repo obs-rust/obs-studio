@@ -13,6 +13,22 @@ pub trait Environment {
     fn install_create(&mut self, candidate: Self::Candidate) -> Self::Output;
 }
 
-pub fn create<E: Environment>(_env: &mut E) -> Option<E::Output> {
-    todo!()
+pub fn create<E: Environment>(env: &mut E) -> Option<E::Output> {
+    if !env.encoder_present() {
+        env.null_parameter(true);
+        return None;
+    }
+    if !env.id_present() {
+        env.null_parameter(false);
+        return None;
+    }
+    if !env.allowed() {
+        return None;
+    }
+    let candidate = env.lookup()?;
+    let (original, replacement) = env.kinds(&candidate);
+    if original != replacement || !env.codecs_equal(&candidate) {
+        return None;
+    }
+    Some(env.install_create(candidate))
 }
