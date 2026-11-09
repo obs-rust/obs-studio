@@ -160,3 +160,5 @@ mod output_total_frames_parity;
 mod output_connect_time;
 
 mod output_connect_time_parity;
+
+mod output_conversion_callbacks;
