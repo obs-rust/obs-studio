@@ -3959,6 +3959,12 @@ static void source_signal_push_to_changed(obs_source_t *source, const char *sign
 	signal_handler_signal(source->context.signals, signal, &data);
 }
 
+/* Keep signal construction in obs-source.c.h for the extracted setters. */
+void obs_source_push_to_enable_signal_changed(obs_source_t *source, const char *signal, bool enabled)
+{
+	source_signal_push_to_changed(source, signal, enabled);
+}
+
 static void source_signal_push_to_delay(obs_source_t *source, const char *signal, uint64_t delay)
 {
 	struct calldata data;
@@ -3971,24 +3977,6 @@ static void source_signal_push_to_delay(obs_source_t *source, const char *signal
 	signal_handler_signal(source->context.signals, signal, &data);
 }
 
-void obs_source_enable_push_to_mute(obs_source_t *source, bool enabled)
-{
-	if (!obs_source_valid(source, "obs_source_enable_push_to_mute"))
-		return;
-
-	pthread_mutex_lock(&source->audio_mutex);
-	bool changed = obs_source_monitoring_changes(source->push_to_mute_enabled, enabled);
-	if (obs_source_monitoring_push_to_logs(obs_source_get_output_flags(source), changed))
-		blog(LOG_INFO, "source '%s' %s push-to-mute", obs_source_get_name(source),
-		     enabled ? "enabled" : "disabled");
-
-	source->push_to_mute_enabled = enabled;
-
-	if (changed)
-		source_signal_push_to_changed(source, "push_to_mute_changed", enabled);
-	pthread_mutex_unlock(&source->audio_mutex);
-}
-
 void obs_source_set_push_to_mute_delay(obs_source_t *source, uint64_t delay)
 {
 	if (!obs_source_valid(source, "obs_source_set_push_to_mute_delay"))
@@ -3998,24 +3986,6 @@ void obs_source_set_push_to_mute_delay(obs_source_t *source, uint64_t delay)
 	source->push_to_mute_delay = delay;
 
 	source_signal_push_to_delay(source, "push_to_mute_delay", delay);
-	pthread_mutex_unlock(&source->audio_mutex);
-}
-
-void obs_source_enable_push_to_talk(obs_source_t *source, bool enabled)
-{
-	if (!obs_source_valid(source, "obs_source_enable_push_to_talk"))
-		return;
-
-	pthread_mutex_lock(&source->audio_mutex);
-	bool changed = obs_source_monitoring_changes(source->push_to_talk_enabled, enabled);
-	if (obs_source_monitoring_push_to_logs(obs_source_get_output_flags(source), changed))
-		blog(LOG_INFO, "source '%s' %s push-to-talk", obs_source_get_name(source),
-		     enabled ? "enabled" : "disabled");
-
-	source->push_to_talk_enabled = enabled;
-
-	if (changed)
-		source_signal_push_to_changed(source, "push_to_talk_changed", enabled);
 	pthread_mutex_unlock(&source->audio_mutex);
 }
 

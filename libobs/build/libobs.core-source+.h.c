@@ -52,6 +52,7 @@
 #include "libobs/obs-source-identity-getter-fields.c.h"
 #include "libobs/obs-source-properties.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
+#include "libobs/obs-source-push-to-enable.c.h"
 #include "libobs/obs-source-save-load.c.h"
 #include "libobs/obs-source-settings-getter.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
