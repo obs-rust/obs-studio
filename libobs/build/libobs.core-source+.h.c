@@ -33,6 +33,7 @@
 #include "libobs/obs-source-filter-relationship-fields.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-identity-getter-fields.c.h"
+#include "libobs/obs-source-interaction.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
