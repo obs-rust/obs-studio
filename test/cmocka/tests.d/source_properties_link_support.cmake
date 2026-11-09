@@ -1,8 +1,18 @@
 # Compile the real adapter for legacy Rust-static source-step consumers.
 function(_source_properties_link_support)
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/libobs/obs-source-properties-fields.c.h")
+  set_property(
+    DIRECTORY
+    APPEND
+    PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/libobs/obs-source-properties-fields.c.h"
+  )
   file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-source-properties-fields.c.h" _adapter_body)
-  string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "#include \"obs-internal.h\"" _adapter_body "${_adapter_body}")
+  string(
+    REPLACE
+    "#include \"libobs/build/libobs.pch.h\""
+    "#include \"obs-internal.h\""
+    _adapter_body
+    "${_adapter_body}"
+  )
   set(_adapter "${CMAKE_CURRENT_BINARY_DIR}/source-properties-link-support.c")
   file(WRITE "${_adapter}" "${_adapter_body}")
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
