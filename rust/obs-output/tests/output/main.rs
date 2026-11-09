@@ -71,6 +71,7 @@ mod output_pause_queries;
 mod output_pause_queries_parity;
 mod output_protocols;
 mod output_protocols_parity;
+mod output_reconnecting;
 mod output_reconnect;
 mod output_reconnect_parity;
 mod output_service_getter;
