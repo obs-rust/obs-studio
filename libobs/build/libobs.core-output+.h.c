@@ -16,6 +16,7 @@
 #include "libobs/obs-encoder-state-queries-fields.c.h"
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"
+#include "libobs/obs-output-connect-time.c.h"
 #include "libobs/obs-output-flags-fields.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
 #include "libobs/obs-output-identity-fields.c.h"
