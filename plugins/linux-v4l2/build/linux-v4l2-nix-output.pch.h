@@ -27,6 +27,11 @@
 
 #include "vcam-format.h"
 
+#ifdef HAVE_PIPEWIRE
+#include <pipewire/pipewire.h>
+#include <spa/param/audio/format-utils.h>
+#include <spa/utils/ringbuffer.h>
+#endif
 #ifdef HAVE_LIBPULSE
 #include <pulse/pulseaudio.h>
 #endif

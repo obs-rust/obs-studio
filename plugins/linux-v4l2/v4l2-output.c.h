@@ -25,6 +25,9 @@ struct vcam_sync {
 	uint64_t audio_end;
 };
 
+/* The OBS Audio node when PipeWire runs (#4119); defined below. */
+struct vmic_pw;
+
 struct virtualcam_data {
 	obs_output_t *output;
 	int device;
@@ -38,6 +41,7 @@ struct virtualcam_data {
 	uint32_t mic_rate;
 	/* How much longer than the video the audio takes past the FIFO. */
 	uint64_t mic_lead_ns;
+	struct vmic_pw *mic_pw;
 	struct vcam_sync sync;
 	size_t mic_pipe_size;
 	struct vmic_tail mic_tail;
@@ -299,6 +303,35 @@ static uint64_t vmic_tunnel_lead_ns(const char *sources, uint32_t rate)
 		line = end + 1;
 	}
 	return 0;
+}
+
+/* The PipeWire node's reader is a jitter buffer (#4119). libobs hands over
+ * 1024-frame packets on its audio thread, not evenly enough to read the ring
+ * down to empty, so the reader starts (and, after running dry, restarts) only
+ * once VMIC_PW_KEEP_FRAMES beyond a cycle's request are waiting, and drops
+ * older audio only past VMIC_PW_HIGH_FRAMES, back down to the keep level. */
+#define VMIC_PW_KEEP_FRAMES 2048
+#define VMIC_PW_HIGH_FRAMES 4096
+struct vmic_pw_read {
+	uint32_t skip; /* frames to drop first */
+	uint32_t take; /* frames to copy; the rest of the cycle is silence */
+};
+static struct vmic_pw_read vmic_pw_plan(uint32_t have, uint32_t want, bool *primed)
+{
+	struct vmic_pw_read r = {0, 0};
+	if (!*primed) {
+		if (have < want || have - want < VMIC_PW_KEEP_FRAMES)
+			return r;
+		*primed = true;
+	}
+	if (have > want && have - want > VMIC_PW_HIGH_FRAMES) {
+		r.skip = have - want - VMIC_PW_KEEP_FRAMES;
+		have -= r.skip;
+	}
+	r.take = have < want ? have : want;
+	if (have < want)
+		*primed = false;
+	return r;
 }
 
 /* Frees the frames waiting for their audio; under sync.mutex. */
@@ -575,6 +608,215 @@ static char *vmic_pa_list(bool modules)
 #endif
 
 /* Whether pactl itself can run at all, whatever the sound server would say (#3797). */
+#ifdef HAVE_PIPEWIRE
+/* OBS Audio as a native PipeWire Audio/Source node (#4119). The output thread
+ * writes libobs packets into the ring; PipeWire's process callback reads it.
+ * One writer, one reader: spa_ringbuffer needs no lock. */
+#define VMIC_PW_RING (1u << 18)
+#define VMIC_PW_STRIDE ((uint32_t)(VMIC_CHANNELS * sizeof(float)))
+struct vmic_pw {
+	struct pw_thread_loop *loop;
+	struct pw_stream *stream;
+	struct spa_hook listener;
+	struct spa_ringbuffer ring;
+	bool primed;
+	/* Counted on PipeWire's thread, logged from the output thread. */
+	volatile long underruns;
+	volatile long skipped;
+	uint64_t next_report;
+	uint8_t data[VMIC_PW_RING];
+};
+
+static void vmic_pw_process(void *arg)
+{
+	struct vmic_pw *pw = arg;
+	struct pw_buffer *b = pw_stream_dequeue_buffer(pw->stream);
+	if (!b)
+		return;
+	struct spa_data *d = &b->buffer->datas[0];
+	if (!d->data) {
+		pw_stream_queue_buffer(pw->stream, b);
+		return;
+	}
+	uint32_t want = d->maxsize / VMIC_PW_STRIDE;
+	if (b->requested && b->requested < want)
+		want = (uint32_t)b->requested;
+
+	uint32_t index;
+	int32_t avail = spa_ringbuffer_get_read_index(&pw->ring, &index);
+	uint32_t have = avail > 0 ? (uint32_t)avail / VMIC_PW_STRIDE : 0;
+	/* Audio nobody read (no app linked) or a backlog that grew: start
+	 * from the newest instead of staying behind. */
+	bool was_primed = pw->primed;
+	struct vmic_pw_read plan = vmic_pw_plan(have, want, &pw->primed);
+	if (was_primed && !pw->primed)
+		os_atomic_inc_long(&pw->underruns);
+	if (plan.skip)
+		os_atomic_store_long(&pw->skipped, os_atomic_load_long(&pw->skipped) + (long)plan.skip);
+	index += plan.skip * VMIC_PW_STRIDE;
+	uint32_t n = plan.take;
+	spa_ringbuffer_read_data(&pw->ring, pw->data, VMIC_PW_RING, index % VMIC_PW_RING, d->data, n * VMIC_PW_STRIDE);
+	spa_ringbuffer_read_update(&pw->ring, (int32_t)(index + n * VMIC_PW_STRIDE));
+	if (n < want)
+		memset((uint8_t *)d->data + n * VMIC_PW_STRIDE, 0, (want - n) * VMIC_PW_STRIDE);
+	d->chunk->offset = 0;
+	d->chunk->stride = (int32_t)VMIC_PW_STRIDE;
+	d->chunk->size = want * VMIC_PW_STRIDE;
+	pw_stream_queue_buffer(pw->stream, b);
+}
+
+static void vmic_pw_state_changed(void *arg, enum pw_stream_state old, enum pw_stream_state state, const char *error)
+{
+	UNUSED_PARAMETER(old);
+	UNUSED_PARAMETER(state);
+	UNUSED_PARAMETER(error);
+	struct vmic_pw *pw = arg;
+	pw_thread_loop_signal(pw->loop, false);
+}
+
+static const struct pw_stream_events vmic_pw_events = {
+	PW_VERSION_STREAM_EVENTS,
+	.state_changed = vmic_pw_state_changed,
+	.process = vmic_pw_process,
+};
+
+/* Fails (and the pipe source is used instead) when no PipeWire daemon
+ * answers or the node cannot be made. */
+static bool vmic_pw_start(struct virtualcam_data *vcam, const char *name, const char *description, uint32_t rate)
+{
+	if (rate == 0)
+		return false;
+	pw_init(NULL, NULL);
+	struct vmic_pw *pw = bzalloc(sizeof(*pw));
+	spa_ringbuffer_init(&pw->ring);
+	pw->loop = pw_thread_loop_new("obs-virtual-microphone", NULL);
+	if (!pw->loop) {
+		bfree(pw);
+		return false;
+	}
+
+	char latency[32];
+	snprintf(latency, sizeof(latency), "256/%u", rate);
+	struct pw_properties *props = pw_properties_new(PW_KEY_MEDIA_CLASS, "Audio/Source", PW_KEY_NODE_NAME, name,
+							PW_KEY_NODE_DESCRIPTION, description, PW_KEY_NODE_LATENCY,
+							latency, PW_KEY_NODE_VIRTUAL, "true", PW_KEY_MEDIA_ROLE,
+							"Communication", NULL);
+
+	pw_thread_loop_lock(pw->loop);
+	if (pw_thread_loop_start(pw->loop) < 0) {
+		pw_thread_loop_unlock(pw->loop);
+		pw_properties_free(props);
+		pw_thread_loop_destroy(pw->loop);
+		bfree(pw);
+		return false;
+	}
+	pw->stream = pw_stream_new_simple(pw_thread_loop_get_loop(pw->loop), name, props, &vmic_pw_events, pw);
+	bool ok = pw->stream != NULL;
+	if (ok) {
+		uint8_t buf[512];
+		struct spa_pod_builder bld = SPA_POD_BUILDER_INIT(buf, sizeof(buf));
+		struct spa_audio_info_raw info = {.format = SPA_AUDIO_FORMAT_F32,
+						  .rate = rate,
+						  .channels = VMIC_CHANNELS};
+		info.position[0] = SPA_AUDIO_CHANNEL_FL;
+		info.position[1] = SPA_AUDIO_CHANNEL_FR;
+		const struct spa_pod *params[1] = {spa_format_audio_raw_build(&bld, SPA_PARAM_EnumFormat, &info)};
+		/* No AUTOCONNECT: it is a device apps link to, not a stream to
+		 * play on the speakers. */
+		ok = pw_stream_connect(pw->stream, PW_DIRECTION_OUTPUT, PW_ID_ANY,
+				       PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS, params, 1) == 0;
+	}
+	/* Wait until the daemon took the node, or gave up on it. */
+	uint64_t deadline = os_gettime_ns() + 3000000000ULL;
+	while (ok) {
+		const char *error = NULL;
+		enum pw_stream_state state = pw_stream_get_state(pw->stream, &error);
+		if (state == PW_STREAM_STATE_ERROR || state == PW_STREAM_STATE_UNCONNECTED) {
+			blog(LOG_INFO, "Virtual microphone: PipeWire node failed (%s)", error ? error : "unconnected");
+			ok = false;
+			break;
+		}
+		if (state == PW_STREAM_STATE_PAUSED || state == PW_STREAM_STATE_STREAMING)
+			break;
+		if (os_gettime_ns() > deadline) {
+			ok = false;
+			break;
+		}
+		pw_thread_loop_timed_wait(pw->loop, 1);
+	}
+	pw_thread_loop_unlock(pw->loop);
+	if (!ok) {
+		pw_thread_loop_stop(pw->loop);
+		if (pw->stream)
+			pw_stream_destroy(pw->stream);
+		pw_thread_loop_destroy(pw->loop);
+		bfree(pw);
+		return false;
+	}
+	vcam->mic_pw = pw;
+	vcam->mic_rate = rate;
+	/* The audio waits in the jitter buffer; so does the picture. */
+	vcam->mic_lead_ns = util_mul_div64(VMIC_PW_KEEP_FRAMES, 1000000000ULL, rate);
+	return true;
+}
+
+static void vmic_pw_stop(struct virtualcam_data *vcam)
+{
+	struct vmic_pw *pw = vcam->mic_pw;
+	if (!pw)
+		return;
+	pthread_mutex_lock(&vcam->sync.mutex);
+	vcam->mic_pw = NULL;
+	pthread_mutex_unlock(&vcam->sync.mutex);
+	pw_thread_loop_stop(pw->loop);
+	pw_stream_destroy(pw->stream);
+	pw_thread_loop_destroy(pw->loop);
+	bfree(pw);
+}
+
+/* Drops the packet when the ring is full, which only happens while no app
+ * reads the node; the reader then starts from the newest audio. */
+static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
+{
+	uint64_t now = os_gettime_ns();
+	if (now >= pw->next_report) {
+		long underruns = os_atomic_exchange_long(&pw->underruns, 0);
+		long skipped = os_atomic_exchange_long(&pw->skipped, 0);
+		if (pw->next_report && (underruns || skipped))
+			blog(LOG_INFO, "Virtual microphone: %ld underruns, %ld stale frames dropped in the last minute",
+			     underruns, skipped);
+		pw->next_report = now + 60000000000ULL;
+	}
+	uint32_t index;
+	int32_t filled = spa_ringbuffer_get_write_index(&pw->ring, &index);
+	if (filled < 0 || (size_t)filled + size > VMIC_PW_RING)
+		return;
+	spa_ringbuffer_write_data(&pw->ring, pw->data, VMIC_PW_RING, index % VMIC_PW_RING, data, (uint32_t)size);
+	spa_ringbuffer_write_update(&pw->ring, (int32_t)(index + (uint32_t)size));
+}
+#else
+static bool vmic_pw_start(struct virtualcam_data *vcam, const char *name, const char *description, uint32_t rate)
+{
+	UNUSED_PARAMETER(vcam);
+	UNUSED_PARAMETER(name);
+	UNUSED_PARAMETER(description);
+	UNUSED_PARAMETER(rate);
+	return false;
+}
+
+static void vmic_pw_stop(struct virtualcam_data *vcam)
+{
+	UNUSED_PARAMETER(vcam);
+}
+
+static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
+{
+	UNUSED_PARAMETER(pw);
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(size);
+}
+#endif
+
 static bool vmic_pactl_runs(void)
 {
 	char *version = run_pactl("--version");
@@ -585,6 +827,7 @@ static bool vmic_pactl_runs(void)
 
 static void vmic_stop(struct virtualcam_data *vcam)
 {
+	vmic_pw_stop(vcam);
 	pthread_mutex_lock(&vcam->sync.mutex);
 	if (vcam->mic_fifo >= 0) {
 		close(vcam->mic_fifo);
@@ -791,6 +1034,18 @@ static void vmic_start(struct virtualcam_data *vcam)
 		snprintf(description, sizeof(description), "OBS Audio (%d)", k);
 
 	uint32_t rate = audio_output_get_sample_rate(obs_get_audio());
+	/* A native node first: no FIFO, no tunnel buffer (#4119). */
+	if (vmic_pw_start(vcam, source, description, rate)) {
+		struct audio_convert_info pw_aci = {0};
+		pw_aci.format = AUDIO_FORMAT_FLOAT;
+		pw_aci.speakers = SPEAKERS_STEREO;
+		pw_aci.samples_per_sec = rate;
+		obs_output_set_audio_conversion(vcam->output, &pw_aci);
+		obs_output_set_mixer(vcam->output, vcam->audio_mixer);
+		blog(LOG_INFO, "Virtual microphone '%s' started (PipeWire node, %u Hz, track %zu)", source, rate,
+		     vcam->audio_mixer + 1);
+		return;
+	}
 	struct dstr args;
 	dstr_init(&args);
 	dstr_printf(&args,
@@ -932,6 +1187,13 @@ static void vmic_start(struct virtualcam_data *vcam)
 static void vmic_stop(struct virtualcam_data *vcam)
 {
 	UNUSED_PARAMETER(vcam);
+}
+
+static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
+{
+	UNUSED_PARAMETER(pw);
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(size);
 }
 #endif
 
@@ -1168,7 +1430,7 @@ static void virtual_video(void *param, struct video_data *frame)
 
 	pthread_mutex_lock(&sync->mutex);
 	/* No running microphone (mic_rate is set only by vmic_start): nothing to wait for. */
-	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0 ||
+	if ((vcam->mic_fifo < 0 && !vcam->mic_pw) || vcam->mic_rate == 0 ||
 	    (sync->len == 0 && frame->timestamp + vcam->mic_lead_ns <= sync->audio_end)) {
 		vcam_write_frame(vcam, frame->data[0]);
 		pthread_mutex_unlock(&sync->mutex);
@@ -1192,7 +1454,7 @@ static void virtual_video(void *param, struct video_data *frame)
 static void virtual_audio(void *param, struct audio_data *frames)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)param;
-	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0)
+	if ((vcam->mic_fifo < 0 && !vcam->mic_pw) || vcam->mic_rate == 0)
 		return;
 	size_t size = (size_t)frames->frames * VMIC_CHANNELS * sizeof(float);
 	/* Keep at most one packet unread, so a reader hears the newest audio. */
@@ -1201,6 +1463,9 @@ static void virtual_audio(void *param, struct audio_data *frames)
 
 	uint64_t end = frames->timestamp + util_mul_div64(frames->frames, 1000000000ULL, vcam->mic_rate);
 	pthread_mutex_lock(&vcam->sync.mutex);
+	/* Under the mutex: vmic_pw_stop clears mic_pw under it before freeing. */
+	if (vcam->mic_pw)
+		vmic_pw_write(vcam->mic_pw, frames->data[0], size);
 	if (end > vcam->sync.audio_end)
 		vcam->sync.audio_end = end;
 	vcam_sync_flush(vcam);
@@ -1229,3 +1494,7 @@ struct obs_output_info virtualcam_info = {
 #undef VMIC_PA_TIMEOUT_NS
 #undef VCAM_SYNC_FRAMES
 #undef VMIC_PIPEWIRE_TUNNEL_FRAMES
+#undef VMIC_PW_KEEP_FRAMES
+#undef VMIC_PW_HIGH_FRAMES
+#undef VMIC_PW_RING
+#undef VMIC_PW_STRIDE

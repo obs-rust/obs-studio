@@ -18,6 +18,7 @@
 #include <cmocka.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <math.h>
 
 #include "plugins/linux-v4l2/v4l2-output.c.h"
 
@@ -705,6 +706,157 @@ static void video_waits_for_the_tunnel(void **state)
 	sync_done(vcam, dev, mic);
 }
 
+/* #4119: the PipeWire node's reader is a jitter buffer. It waits for
+ * 2048 frames beyond a cycle's request before it plays (and again after it
+ * ran dry), and drops audio only past 4096, back down to 2048. */
+static void pipewire_reader_is_a_jitter_buffer(void **state)
+{
+	(void)state;
+	bool primed = false;
+	struct vmic_pw_read r = vmic_pw_plan(0, 256, &primed);
+	assert_int_equal(r.skip, 0);
+	assert_int_equal(r.take, 0);
+	r = vmic_pw_plan(256 + 2047, 256, &primed);
+	assert_int_equal(r.take, 0);
+	assert_false(primed);
+	r = vmic_pw_plan(256 + 2048, 256, &primed);
+	assert_int_equal(r.take, 256);
+	assert_true(primed);
+
+	/* Primed: a backlog up to the high mark stays. */
+	r = vmic_pw_plan(256 + 4096, 256, &primed);
+	assert_int_equal(r.skip, 0);
+	assert_int_equal(r.take, 256);
+	r = vmic_pw_plan(256 + 4097, 256, &primed);
+	assert_int_equal(r.skip, 4097 - 2048);
+	assert_int_equal(r.take, 256);
+
+	/* Running dry plays what is left, then waits for the keep level. */
+	r = vmic_pw_plan(100, 256, &primed);
+	assert_int_equal(r.take, 100);
+	assert_false(primed);
+	r = vmic_pw_plan(1024, 256, &primed);
+	assert_int_equal(r.take, 0);
+}
+
+/* A frame waits for its audio when the microphone is the PipeWire node too. */
+static void video_waits_for_pipewire_audio(void **state)
+{
+	(void)state;
+#ifdef HAVE_PIPEWIRE
+	int dev[2], mic[2];
+	struct virtualcam_data *vcam = sync_vcam(dev, mic);
+	close(vcam->mic_fifo);
+	vcam->mic_fifo = -1;
+	struct vmic_pw *pw = bzalloc(sizeof(*pw));
+	spa_ringbuffer_init(&pw->ring);
+	vcam->mic_pw = pw;
+
+	send_frame(vcam, MS(1000));
+	assert_int_equal(queued_bytes(dev[0]), 0);
+	send_audio(vcam, MS(1000), 1024);
+	assert_int_equal(queued_bytes(dev[0]), SYNC_FRAME);
+	uint32_t idx;
+	assert_int_equal(spa_ringbuffer_get_read_index(&pw->ring, &idx), 1024 * 2 * (int)sizeof(float));
+
+	vcam->mic_pw = NULL;
+	bfree(pw);
+	sync_done(vcam, dev, mic);
+#else
+	skip();
+#endif
+}
+
+#ifdef HAVE_PIPEWIRE
+struct pw_capture {
+	struct pw_stream *stream;
+	struct spa_hook listener;
+	volatile float peak;
+};
+
+static void pw_capture_process(void *arg)
+{
+	struct pw_capture *cap = arg;
+	struct pw_buffer *b = pw_stream_dequeue_buffer(cap->stream);
+	if (!b)
+		return;
+	struct spa_data *d = &b->buffer->datas[0];
+	if (d->data && d->chunk) {
+		const float *f = (const float *)((const uint8_t *)d->data + d->chunk->offset);
+		for (uint32_t i = 0; i < d->chunk->size / sizeof(float); i++)
+			if (fabsf(f[i]) > cap->peak)
+				cap->peak = fabsf(f[i]);
+	}
+	pw_stream_queue_buffer(cap->stream, b);
+}
+
+static const struct pw_stream_events pw_capture_events = {
+	PW_VERSION_STREAM_EVENTS,
+	.process = pw_capture_process,
+};
+#endif
+
+/* Against the private PipeWire: the node is listed under its name, and a
+ * tone written through virtual_audio reaches a capture stream linked to it. */
+static void pipewire_node_carries_audio(void **state)
+{
+	(void)state;
+#ifdef HAVE_PIPEWIRE
+	if (!getenv("PULSE_SERVER"))
+		skip();
+
+	struct virtualcam_data *vcam = virtualcam_create(NULL, NULL);
+	bool started = vmic_pw_start(vcam, "obs_vmic_pw_test", "OBS Audio", 48000);
+	/* Frames also wait out the jitter buffer: 2048 frames at 48 kHz. */
+	uint64_t lead = vcam->mic_lead_ns;
+	char *sources = started ? vmic_pa_list(false) : NULL;
+	bool listed = sources && vmic_source_listed(sources, "obs_vmic_pw_test");
+	bfree(sources);
+
+	struct pw_capture cap = {0};
+	struct pw_thread_loop *loop = pw_thread_loop_new("vmic-test-capture", NULL);
+	pw_thread_loop_lock(loop);
+	cap.stream = pw_stream_new_simple(pw_thread_loop_get_loop(loop), "vmic-test-capture",
+					  pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio", PW_KEY_MEDIA_CATEGORY,
+							    "Capture", PW_KEY_TARGET_OBJECT, "obs_vmic_pw_test", NULL),
+					  &pw_capture_events, &cap);
+	uint8_t buf[512];
+	struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buf, sizeof(buf));
+	struct spa_audio_info_raw info = {.format = SPA_AUDIO_FORMAT_F32, .rate = 48000, .channels = 2};
+	const struct spa_pod *params[1] = {spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info)};
+	pw_stream_connect(cap.stream, PW_DIRECTION_INPUT, PW_ID_ANY,
+			  PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS, params,
+			  1);
+	pw_thread_loop_unlock(loop);
+	pw_thread_loop_start(loop);
+
+	static float tone[1024 * 2];
+	for (size_t i = 0; i < 1024 * 2; i++)
+		tone[i] = 0.5f;
+	struct audio_data audio = {0};
+	audio.data[0] = (uint8_t *)tone;
+	audio.frames = 1024;
+	for (int n = 0; started && n < 150 && cap.peak < 0.25f; n++) {
+		audio.timestamp = MS(1000) + util_mul_div64((uint64_t)n * 1024, 1000000000ULL, 48000);
+		virtual_audio(vcam, &audio);
+		usleep(21333);
+	}
+	float peak = cap.peak;
+
+	pw_thread_loop_stop(loop);
+	pw_stream_destroy(cap.stream);
+	pw_thread_loop_destroy(loop);
+	virtualcam_destroy(vcam); /* stops the node */
+
+	assert_true(started);
+	assert_true(listed);
+	assert_true(peak > 0.25f);
+	assert_int_equal(lead, 42666666ULL);
+#else
+	skip();
+#endif
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -729,6 +881,9 @@ int main(void)
 		cmocka_unit_test(stale_audio_is_dropped),
 		cmocka_unit_test(pipewire_tunnel_lead_is_8192_frames),
 		cmocka_unit_test(video_waits_for_the_tunnel),
+		cmocka_unit_test(pipewire_reader_is_a_jitter_buffer),
+		cmocka_unit_test(video_waits_for_pipewire_audio),
+		cmocka_unit_test(pipewire_node_carries_audio),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
