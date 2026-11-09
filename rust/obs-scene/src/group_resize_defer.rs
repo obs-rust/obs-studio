@@ -11,9 +11,11 @@ pub trait ResizeDeferral {
 }
 
 pub fn begin(item: &impl ResizeDeferral) {
-    todo!()
+    item.increment();
 }
 
 pub fn end(item: &impl ResizeDeferral) {
-    todo!()
+    if item.decrement() == 0 {
+        item.schedule_resize();
+    }
 }

@@ -39,6 +39,7 @@ mod bounds_place_parity;
 mod group_queries;
 mod group_queries_parity;
 mod group_resize_defer;
+mod group_resize_defer_parity;
 mod group_transform;
 mod group_transform_parity;
 
