@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "media-io/video-frame.h"
 #include "media-io/video-io.h"
 
 /* Private adapter, not a new public API: the output frame copy of

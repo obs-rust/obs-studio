@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-frame-copy.pch.h"
 
 /* One copy of the plan (obs-video-copy-plan.c): returns where the source
  * ended. */
