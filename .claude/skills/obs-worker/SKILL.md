@@ -38,6 +38,36 @@ you last read them (`git log -1 --format=%cs -- <file>`).
 git fetch origin && git rebase --autostash origin/master
 ```
 
+**Check that master is green** before you branch for new work. PR and
+merge-queue CI do not run every lane that a master push runs, so a merge can
+break master while its own checks were green (#4059 broke every master push
+run for 13 hours, #4168). Read the newest push runs:
+
+```sh
+gh run list -R obs-rust/obs-studio --branch master --event push -L 10 \
+  --json conclusion,headSha,createdAt,databaseId
+```
+
+If the newest completed run failed, find the first red commit (the runs in
+time order) and read its failing job log (`gh run view <run> --log-failed`).
+Then:
+
+- **An infrastructure flake** (a download that fails with HTTP 5xx, a lost
+  runner): rerun the failed jobs of that run only
+  (`gh run rerun <run> --failed`). Do not file an issue.
+- **A real break:** first search open and closed issues and open PRs for the
+  error text and the file. Several workers see the same red master, and only
+  one of them fixes it. If nobody has it, file it, claim it and forward-fix
+  it before your own work. The issue and the PR name the causing PR and the
+  first red run ("broken by #4059, run 42516069306").
+- **A break you cannot fix:** file the issue with the same data and say why.
+
+While master is red, unrelated work can continue. Do not trust a failed check
+that has the same cause as the red master, and rebase after the fix merges.
+
+Then read what changed on your earlier work (§7, "After the merge"): new
+comments on your issues and PRs can be the most important next work.
+
 Work in your own branch, named `port/<unit>`, `fix/<issue>-<topic>`,
 `test/<unit>` or `infra/<topic>`, in the checkout you were started in. Don't
 touch other people's branches, and don't delete local branches you didn't
@@ -318,6 +348,26 @@ running, wait and retry.
   landings, or user-facing features that still need checking on a
   device: watch those through to merge.
 
+- **After the merge, check the master push run of your merge commit**
+  (`gh run list -R obs-rust/obs-studio --branch master --event push --commit <sha>`).
+  If it fails for a reason the PR's own CI did not run, §1 applies, and the
+  causing PR is yours.
+- **Keep reading your issues and PRs after the merge.** Reviewers and users
+  comment after a merge, and a question that nobody answers can hide a bug (a
+  review question on #4049 had no answer when it merged; a related bug in the
+  same code followed in #4143). Before new work, list what changed since your
+  last check, your PRs merged in the last 7 days included, and read every
+  comment newer than your own last one:
+
+  ```sh
+  gh search issues --repo obs-rust/obs-studio --involves @me --updated ">=<date>"
+  gh search prs --repo obs-rust/obs-studio --involves @me --updated ">=<date>"
+  ```
+
+  Do not use the notifications inbox as the trigger: several agents can act
+  as one account, and a person can mark notifications as read. An unanswered
+  question or review comment is work: answer it, or file the follow-up it
+  asks for.
 - After the merge, ask whether this work taught something that cost hours to
   find and that the next worker would find again. If so, open a follow-up PR
   with a concept in `docs/knowledge/` ([when to write one](../../../docs/knowledge/index.md#when-to-write-a-concept)).
