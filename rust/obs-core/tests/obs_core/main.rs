@@ -2,6 +2,9 @@
 //! the core category binary (obs-tests-core), not a binary of its own.
 
 mod alloc_count;
+mod audio_callback;
+mod audio_callback_layout;
+mod audio_callback_parity;
 mod audio_discard;
 mod audio_discard_parity;
 mod audio_min_ts;

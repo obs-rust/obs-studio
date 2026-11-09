@@ -34,13 +34,15 @@
 //! `libobs/obs-win-crash-report.c.h` (from `obs-win-crash-handler.c.h`),
 //! the Windows crash report rules; and `libobs/obs-windows-symbol-paths.c.h`
 //! and `libobs/obs-windows-system-info.c.h` (from `obs-windows.c.h`), the
-//! Windows debug symbol search path and system info log rules.
+//! Windows debug symbol search path and system info log rules; and
+//! `libobs/obs-audio.c.h` itself, the audio tick (`audio_callback()`), over
+//! the core-audio seam.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
 //! [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`module_load_rules`], [`module_register_copy`],
-//! [`audio_mix`],
+//! [`audio_mix`], [`audio_callback`],
 //! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_output_step`],
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
@@ -74,10 +76,14 @@
 //! their milliseconds, the command line copy, the data file search, the data path and latest input
 //! type rules, the monitoring device checks, which mixes count toward
 //! the frame counts, the task queue's route and the video level checks.
+//! [`audio_callback`] runs one audio tick: the render order, the render,
+//! the buffering, the mix, the discard and the audio tasks, in the C's
+//! order and under its locks.
 //! The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
+pub mod audio_callback;
 pub mod audio_discard;
 pub mod audio_min_ts;
 pub mod audio_mix;
