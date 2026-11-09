@@ -27,6 +27,7 @@ mod effect_passes_parity;
 mod linear_srgb;
 mod linear_srgb_parity;
 mod shader_param_names;
+mod shader_file;
 mod shader_param_names_parity;
 mod shader_param_values;
 mod shader_param_values_parity;
