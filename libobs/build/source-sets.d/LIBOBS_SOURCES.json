@@ -1,4 +1,5 @@
 [
+  "build/libobs.ported-output-active+.h.c",
   "obs-audio-controls.h",
   "obs-audio-discard.h",
   "obs-audio-min-ts.h",

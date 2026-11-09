@@ -688,11 +688,6 @@ void obs_output_force_stop(obs_output_t *output)
 	obs_output_actual_stop(output, true, 0);
 }
 
-bool obs_output_active(const obs_output_t *output)
-{
-	return (output != NULL) ? (active(output) || reconnecting(output)) : false;
-}
-
 uint32_t obs_get_output_flags(const char *id)
 {
 	const struct obs_output_info *info = find_output(id);
