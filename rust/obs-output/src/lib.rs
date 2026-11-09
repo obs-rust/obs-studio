@@ -135,6 +135,7 @@ pub mod encoder_lifecycle;
 pub mod encoder_metadata;
 pub mod encoder_packet_ts;
 pub mod encoder_pause;
+pub mod encoder_preferred_color_space;
 pub mod encoder_preferred_format;
 pub mod encoder_preferred_range;
 pub mod encoder_roi;

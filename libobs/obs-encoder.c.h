@@ -1952,14 +1952,6 @@ void obs_encoder_set_preferred_color_space(obs_encoder_t *encoder, enum video_co
 	encoder->preferred_space = colorspace;
 }
 
-enum video_colorspace obs_encoder_get_preferred_color_space(const obs_encoder_t *encoder)
-{
-	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
-		return VIDEO_CS_DEFAULT;
-
-	return encoder->preferred_space;
-}
-
 void obs_encoder_set_preferred_range(obs_encoder_t *encoder, enum video_range_type range)
 {
 	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
