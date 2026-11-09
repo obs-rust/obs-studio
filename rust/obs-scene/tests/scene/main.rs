@@ -66,3 +66,4 @@ mod item_transition_getters_parity;
 
 mod item_visible;
 mod item_visible_parity;
+mod item_group_scene;
