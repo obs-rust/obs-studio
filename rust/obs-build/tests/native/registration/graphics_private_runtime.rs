@@ -38,6 +38,7 @@ fn assert_cases(output: &Output, name: &str) {
         "test_scene_item_transform_steps_rust" => 13,
         "test_scene_transform_update_steps_rust" => 9,
         "test_pulse_monitor_steps_rust" | "test_sprite_geometry_steps_rust" => 20,
+        "test_source_init_context_rust" => 1,
         "test_source_duplicate_steps_rust" => 13,
         "test_source_filter_chain_steps_rust" => 12,
         "test_transition_clock_steps_rust" => 20,
@@ -67,6 +68,7 @@ fn assert_binding(binary: &Path, core: &Path) {
                 | "test_scene_item_order_steps_rust"
                 | "test_scene_transform_update_steps_rust"
                 | "test_pulse_monitor_steps_rust"
+                | "test_source_init_context_rust"
                 | "test_source_duplicate_steps_rust"
                 | "test_source_filter_chain_steps_rust"
                 | "test_transition_sample_time_steps_rust"
@@ -173,6 +175,15 @@ find_package(LibUUID REQUIRED)
 find_package(Gio REQUIRED)
 include("{}/test/cmocka/tests.d/test_windows_keys_steps.cmake")
 "#,
+            root.display()
+        )
+    } else if family == "private-source" {
+        interfaces.insert(
+            "OBS::source-init-context-rust-headers".into(),
+            obs_build::validation::headless::prepare_source_context_rust_headers(build, root).unwrap(),
+        );
+        format!(
+            "include(\"{}/test/cmocka/tests.d/test_source_init_context.cmake\")\n",
             root.display()
         )
     } else {

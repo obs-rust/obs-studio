@@ -380,7 +380,7 @@ class NativeB2Portability(unittest.TestCase):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(consumers), 27)
+        self.assertEqual(len(consumers), 28)
         for name in consumers:
             with self.subTest(target=name):
                 target = graph["targets"][name]
@@ -399,7 +399,7 @@ class NativeB2Portability(unittest.TestCase):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(consumers), 27)
+        self.assertEqual(len(consumers), 28)
         for name in consumers:
             with self.subTest(target=name):
                 target = graph["targets"][name]
@@ -436,7 +436,7 @@ class NativeB2Portability(unittest.TestCase):
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-deinterlace-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(supported), 27)
+        self.assertEqual(len(supported), 28)
         for name in supported:
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])
@@ -448,7 +448,7 @@ class NativeB2Portability(unittest.TestCase):
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(supported), 27)
+        self.assertEqual(len(supported), 28)
         for name in supported:
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])
@@ -460,7 +460,7 @@ class NativeB2Portability(unittest.TestCase):
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-filter-relationship-getter-link-stubs.c" in target["sources"]]
-        self.assertEqual(len(supported), 27)
+        self.assertEqual(len(supported), 28)
         for name in supported:
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])

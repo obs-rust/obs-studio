@@ -230,6 +230,19 @@
       }
     ]
   },
+  "test_source_init_context_rust": {
+    "sources": [
+      "test/cmocka/source-push-query-link-stubs.c"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
   "test_source_media_admission_steps_rust": {
     "sources": [
       "test/cmocka/source-push-query-link-stubs.c"

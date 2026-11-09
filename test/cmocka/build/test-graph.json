@@ -13861,13 +13861,25 @@
     },
     "test_source_init_context_rust": {
       "sources": [
-        "test/cmocka/test_source_init_context.c"
+        "test/cmocka/test_source_init_context.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-base-size-link-stubs.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-identity-getter-link-stubs.c",
+        "test/cmocka/source-push-query-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c"
       ],
       "header_libraries": [
-        "OBS::source-init-context-rust-headers"
+        "OBS::source-init-context-rust-headers",
+        "OBS::libobs",
+        "SIMDe::SIMDe"
       ],
       "includes": [
-        "deps/libcaption"
+        "deps/libcaption",
+        "libobs"
       ],
       "watch_inputs": [
         "libobs/obs-source-init-context.c.h",
@@ -13880,7 +13892,9 @@
           "requires": "OS_WINDOWS"
         },
         "OBS::native-test-cmocka",
-        "libobs_rust-static"
+        "libobs_rust-static",
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
