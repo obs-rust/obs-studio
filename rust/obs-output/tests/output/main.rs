@@ -99,6 +99,7 @@ mod output_reconnect_settings_parity;
 mod output_reconnecting;
 mod output_reconnecting_parity;
 mod output_service_getter;
+mod output_set_media;
 mod output_service_getter_parity;
 mod output_slots;
 mod output_slots_parity;
