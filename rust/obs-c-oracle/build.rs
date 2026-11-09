@@ -653,6 +653,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-core-global-getters.c.h")),
     )
     .expect("write global getter extract");
+    std::fs::write(
+        extract_dir.join("source_audio_active_setter.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-audio-active-setter.c.h")),
+    )
+    .expect("write original audio-active setter extract");
     oracle.include(&extract_dir);
 
     oracle
