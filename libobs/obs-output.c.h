@@ -1243,15 +1243,6 @@ void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 	service->output = output;
 }
 
-void obs_output_set_reconnect_settings(obs_output_t *output, int retry_count, int retry_sec)
-{
-	if (!obs_output_valid(output, "obs_output_set_reconnect_settings"))
-		return;
-
-	output->reconnect_retry_max = retry_count;
-	output->reconnect_retry_sec = retry_sec;
-}
-
 uint64_t obs_output_get_total_bytes(const obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_get_total_bytes"))
