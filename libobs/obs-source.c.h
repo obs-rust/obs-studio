@@ -4059,11 +4059,6 @@ void obs_source_enum_filters(obs_source_t *source, obs_source_enum_proc_t callba
 	pthread_mutex_unlock(&source->filter_mutex);
 }
 
-void obs_source_set_hidden(obs_source_t *source, bool hidden)
-{
-	source->temp_removed = hidden;
-}
-
 obs_source_t *obs_source_get_filter_by_name(obs_source_t *source, const char *name)
 {
 	obs_source_t *filter = NULL;
