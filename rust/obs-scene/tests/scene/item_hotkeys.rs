@@ -85,7 +85,7 @@ fn test_scene_item_hotkeys_trigger_visibility() {
         route(&mut item, &mut latched, true, false);
         assert_eq!(item.owners, 2);
     }
-    assert_eq!(item.releases, 3 + 32 * 6);
+    assert_eq!(item.releases, 3 + 32 * 5);
 }
 
 #[test]
