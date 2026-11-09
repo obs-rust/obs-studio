@@ -2303,28 +2303,12 @@ void gs_samplerstate_destroy(gs_samplerstate_t *samplerstate)
 	thread_graphics->exports.gs_samplerstate_destroy(samplerstate);
 }
 
-void gs_vertexbuffer_flush(gs_vertbuffer_t *vertbuffer)
-{
-	if (!gs_valid_p("gs_vertexbuffer_flush", vertbuffer))
-		return;
-
-	thread_graphics->exports.gs_vertexbuffer_flush(vertbuffer);
-}
-
 void gs_vertexbuffer_flush_direct(gs_vertbuffer_t *vertbuffer, const struct gs_vb_data *data)
 {
 	if (!gs_valid_p2("gs_vertexbuffer_flush_direct", vertbuffer, data))
 		return;
 
 	thread_graphics->exports.gs_vertexbuffer_flush_direct(vertbuffer, data);
-}
-
-struct gs_vb_data *gs_vertexbuffer_get_data(const gs_vertbuffer_t *vertbuffer)
-{
-	if (!gs_valid_p("gs_vertexbuffer_get_data", vertbuffer))
-		return NULL;
-
-	return thread_graphics->exports.gs_vertexbuffer_get_data(vertbuffer);
 }
 
 void gs_indexbuffer_destroy(gs_indexbuffer_t *indexbuffer)
