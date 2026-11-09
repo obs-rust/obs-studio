@@ -3326,10 +3326,6 @@ obs_sceneitem_t *obs_scene_insert_group2(obs_scene_t *scene, const char *name, o
 	return item;
 }
 
-obs_scene_t *obs_sceneitem_group_get_scene(const obs_sceneitem_t *item)
-{
-	return (item && item->is_group) ? item->source->context.data : NULL;
-}
 
 void obs_sceneitem_group_ungroup(obs_sceneitem_t *item)
 {
