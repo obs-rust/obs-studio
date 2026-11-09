@@ -14,7 +14,7 @@ struct vmic_tail {
  * frame as it renders but its audio only after the audio buffering, so with
  * the microphone on, frames wait here until the audio with the same timestamp
  * has gone to the microphone. Bounded, so the picture never stops. */
-#define VCAM_SYNC_FRAMES 64
+#define VCAM_SYNC_FRAMES 128
 struct vcam_sync {
 	pthread_mutex_t mutex;
 	uint8_t *frame[VCAM_SYNC_FRAMES];
@@ -280,8 +280,24 @@ static size_t vmic_drop_stale(int drain_fd, int fd, size_t keep)
 #define VMIC_PIPEWIRE_TUNNEL_FRAMES 8192
 static uint64_t vmic_tunnel_lead_ns(const char *sources, uint32_t rate)
 {
-	UNUSED_PARAMETER(sources);
-	UNUSED_PARAMETER(rate);
+	if (!sources || rate == 0)
+		return 0;
+	for (const char *line = sources; *line;) {
+		const char *end = strchr(line, '\n');
+		size_t len = end ? (size_t)(end - line) : strlen(line);
+		const char *tab1 = memchr(line, '\t', len);
+		const char *tab2 = tab1 ? memchr(tab1 + 1, '\t', len - (size_t)(tab1 + 1 - line)) : NULL;
+		if (tab2) {
+			const char *driver = tab2 + 1;
+			const char *tab3 = memchr(driver, '\t', len - (size_t)(driver - line));
+			size_t dlen = tab3 ? (size_t)(tab3 - driver) : len - (size_t)(driver - line);
+			if (dlen == strlen("PipeWire") && strncmp(driver, "PipeWire", dlen) == 0)
+				return util_mul_div64(VMIC_PIPEWIRE_TUNNEL_FRAMES, 1000000000ULL, rate);
+		}
+		if (!end)
+			break;
+		line = end + 1;
+	}
 	return 0;
 }
 
@@ -579,6 +595,7 @@ static void vmic_stop(struct virtualcam_data *vcam)
 		close(vcam->mic_drain);
 	vcam->mic_drain = -1;
 	vcam->mic_rate = 0;
+	vcam->mic_lead_ns = 0;
 	vmic_tail_free(&vcam->mic_tail);
 	if (vcam->mic_loaded) {
 		char args[64];
@@ -758,6 +775,7 @@ static void vmic_start(struct virtualcam_data *vcam)
 	char source[64];
 	char *sources = vmic_list_sources();
 	int k = vmic_pick_source_name(sources, source, sizeof(source));
+	vcam->mic_lead_ns = vmic_tunnel_lead_ns(sources, audio_output_get_sample_rate(obs_get_audio()));
 	bfree(sources);
 	if (k == 0) {
 		blog(LOG_WARNING, "Virtual microphone: nine are already in use; the Virtual Camera sends video only");
@@ -1134,7 +1152,7 @@ static void vcam_write_frame(struct virtualcam_data *vcam, const uint8_t *frame_
 static void vcam_sync_flush(struct virtualcam_data *vcam)
 {
 	struct vcam_sync *sync = &vcam->sync;
-	while (sync->len > 0 && sync->ts[sync->head] <= sync->audio_end) {
+	while (sync->len > 0 && sync->ts[sync->head] + vcam->mic_lead_ns <= sync->audio_end) {
 		vcam_write_frame(vcam, sync->frame[sync->head]);
 		sync->head = (sync->head + 1) % VCAM_SYNC_FRAMES;
 		sync->len--;
@@ -1148,7 +1166,8 @@ static void virtual_video(void *param, struct video_data *frame)
 
 	pthread_mutex_lock(&sync->mutex);
 	/* No running microphone (mic_rate is set only by vmic_start): nothing to wait for. */
-	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0 || (sync->len == 0 && frame->timestamp <= sync->audio_end)) {
+	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0 ||
+	    (sync->len == 0 && frame->timestamp + vcam->mic_lead_ns <= sync->audio_end)) {
 		vcam_write_frame(vcam, frame->data[0]);
 		pthread_mutex_unlock(&sync->mutex);
 		return;

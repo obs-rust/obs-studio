@@ -623,7 +623,7 @@ static void video_is_not_held_without_microphone(void **state)
 	sync_done(vcam, dev, mic);
 }
 
-/* Audio that stops never freezes the picture: past 64 waiting frames the
+/* Audio that stops never freezes the picture: past 128 waiting frames the
  * oldest goes out anyway. */
 static void held_video_is_bounded(void **state)
 {
@@ -631,7 +631,7 @@ static void held_video_is_bounded(void **state)
 	int dev[2], mic[2];
 	struct virtualcam_data *vcam = sync_vcam(dev, mic);
 
-	for (int i = 0; i < 64 + 5; i++)
+	for (int i = 0; i < 128 + 5; i++)
 		send_frame(vcam, MS(1000) + MS(i * 33));
 	assert_int_equal(queued_bytes(dev[0]), 5 * SYNC_FRAME);
 
