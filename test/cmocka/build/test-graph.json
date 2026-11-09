@@ -15305,6 +15305,22 @@
         "libobs/data"
       ]
     },
+    "test_source_mute_monitor_hotkeys": {
+      "sources": [
+        "test/cmocka/test_source_mute_monitor_hotkeys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_private_settings": {
       "sources": [
         "test/cmocka/test_source_private_settings.c"
@@ -19663,17 +19679,6 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
-    },
-    "test_source_mute_monitor_hotkeys": {
-      "sources": [
-        "test/cmocka/test_source_mute_monitor_hotkeys.c"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::caption",
-        "OBS::native-test-cmocka"
-      ],
-      "requires": "OS_LINUX"
     }
   },
   "tests": {
@@ -25079,6 +25084,12 @@
         ]
       ]
     },
+    "test_source_mute_monitor_hotkeys": {
+      "target": "test_source_mute_monitor_hotkeys",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_source_private_settings": {
       "target": "test_source_private_settings",
       "command": [
@@ -26497,12 +26508,6 @@
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
-      "command": [
-        "${target}"
-      ]
-    },
-    "test_source_mute_monitor_hotkeys": {
-      "target": "test_source_mute_monitor_hotkeys",
       "command": [
         "${target}"
       ]
