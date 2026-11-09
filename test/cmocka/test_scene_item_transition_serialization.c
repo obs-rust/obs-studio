@@ -107,6 +107,6 @@ static void saved_identity_and_settings(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {cmocka_unit_test(empty_slots), cmocka_unit_test(load_guards_and_durations),
-					 cmocka_unit_test(saved_identity_and_settings)};
+					   cmocka_unit_test(saved_identity_and_settings)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
