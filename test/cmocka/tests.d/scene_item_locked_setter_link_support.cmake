@@ -12,7 +12,10 @@ function(_scene_item_locked_setter_link_support)
     if(_target MATCHES "^test_scene" AND "libobs_rust-static" IN_LIST _links)
       target_sources(${_target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/scene-item-locked-fields.c")
       target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
-      target_link_libraries(${_target} PRIVATE "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>")
+      target_link_libraries(
+        ${_target}
+        PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
+      )
     endif()
   endforeach()
 endfunction()
