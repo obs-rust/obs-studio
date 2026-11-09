@@ -3,6 +3,6 @@
 
 /// Ends the process now with `code`.
 pub fn terminate(code: i32) -> ! {
-    let _ = code;
-    todo!("#4065")
+    // SAFETY: _exit takes any status and does not return.
+    unsafe { libc::_exit(code) }
 }
