@@ -30,7 +30,10 @@ impl Queue for Graphics {
         self.tasks.pop_front().unwrap()
     }
     fn run(&mut self, task: u32) {
-        assert!(!self.locked, "producer must acquire the mutex during a callback");
+        assert!(
+            !self.locked,
+            "producer must acquire the mutex during a callback"
+        );
         self.values.push(task);
         if self.callback_enqueue && task == 1 {
             // Public dispatch from the graphics thread is inline (unchanged C).
@@ -44,7 +47,10 @@ impl Queue for Graphics {
 
 #[test]
 fn graphics_fifo_matches_c() {
-    let mut queue = Graphics { tasks: (1..=4).collect(), ..Graphics::default() };
+    let mut queue = Graphics {
+        tasks: (1..=4).collect(),
+        ..Graphics::default()
+    };
     execute(&mut queue);
     assert_eq!(queue.values.len(), 4);
     assert_eq!(queue.values, [1, 2, 3, 4]);
@@ -54,7 +60,11 @@ fn graphics_fifo_matches_c() {
 
 #[test]
 fn graphics_callback_enqueue_matches_c() {
-    let mut queue = Graphics { tasks: [1, 4].into(), callback_enqueue: true, ..Graphics::default() };
+    let mut queue = Graphics {
+        tasks: [1, 4].into(),
+        callback_enqueue: true,
+        ..Graphics::default()
+    };
     execute(&mut queue);
     assert_eq!(queue.values.len(), 5);
     assert_eq!(queue.values, [1, 2, 3, 4, 5]);

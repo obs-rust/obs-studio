@@ -825,6 +825,8 @@ static inline void update_active_states(void)
 	pthread_mutex_unlock(&obs->video.mixes_mutex);
 }
 
+void obs_graphics_tasks_execute(struct obs_core_video *video);
+
 bool obs_graphics_thread_loop(struct obs_graphics_context *context)
 {
 	uint64_t frame_start = os_gettime_ns();
@@ -855,7 +857,7 @@ bool obs_graphics_thread_loop(struct obs_graphics_context *context)
 	profile_end(render_displays_name);
 	source_profiler_render_end();
 
-	execute_graphics_tasks();
+	obs_graphics_tasks_execute(&obs->video);
 
 	frame_time_ns = os_gettime_ns() - frame_start;
 

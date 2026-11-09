@@ -18,6 +18,12 @@ pub trait Queue {
 
 /// Drain the live queue, including work producers append during callbacks.
 pub fn execute<Q: Queue>(queue: &mut Q) {
-    let _ = queue;
-    todo!("graphics task drain")
+    queue.lock();
+    while queue.pending() {
+        let task = queue.pop();
+        queue.unlock();
+        queue.run(task);
+        queue.lock();
+    }
+    queue.unlock();
 }
