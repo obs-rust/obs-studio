@@ -173,6 +173,35 @@ class SanitizeHarnessTest(unittest.TestCase):
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
         return path
 
+    def test_toolchain_failure_reports_installer_exit_and_stderr_tail(self):
+        stubs = self.out / "stubs"
+        stubs.mkdir()
+        body = "echo quiet-stdout\n" + "".join(f"echo diagnostic-{i} >&2\n" for i in range(50)) + "exit 23\n"
+        write_stub(stubs, "uv", body)
+        env = dict(os.environ, SAN_OUT=str(self.out / "out"), PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}")
+        with patch.dict(os.environ, env, clear=True), patch.object(self.module, "build_obs") as build:
+            code, out, err = self.invoke("asan", "1")
+        self.assertEqual(code, 1)
+        build.assert_not_called()
+        self.assertIn("toolchain preparation failed", err)
+        self.assertIn("install_zccache.py", err)
+        self.assertIn("exit code 23", err)
+        self.assertEqual(
+            [line for line in err.splitlines() if line.startswith("diagnostic-")],
+            [f"diagnostic-{i}" for i in range(10, 50)],
+        )
+        self.assertNotIn("quiet-stdout", out + err)
+
+    def test_successful_toolchain_install_is_quiet(self):
+        stubs = self.out / "stubs"
+        stubs.mkdir()
+        write_stub(stubs, "uv", "echo quiet-stdout\necho quiet-stderr >&2\nexit 0\n")
+        printed, errors = io.StringIO(), io.StringIO()
+        with patch.dict(os.environ, PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}"):
+            with redirect_stdout(printed), redirect_stderr(errors):
+                self.assertTrue(self.module.prepare_toolchain(self.layout()))
+        self.assertEqual(printed.getvalue() + errors.getvalue(), "")
+
     def test_tool_flags_and_build_type(self):
         # -ffp-contract=off (#3362): the runner's gcc fuses a multiply and a
         # subtract into one FMA when nothing forbids it, the Tier 2 image's
