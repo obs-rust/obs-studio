@@ -930,6 +930,15 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-signals.c.h")),
     )
     .expect("write canvas signal extract");
+    std::fs::write(
+        extract_dir.join("video-scale-effects-caller.inc"),
+        extract_c(
+            &libobs.join("obs-video.c.h"),
+            "static inline gs_effect_t *get_scale_effect(",
+            "}",
+        ),
+    )
+    .expect("write real scale-effect caller extract");
     oracle.include(&extract_dir);
 
     oracle
