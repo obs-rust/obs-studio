@@ -27,37 +27,37 @@
  * !obs */
 bool obs_module_lists_seam_has_core(void)
 {
-	return false;
+	return !!obs;
 }
 
 /* obs_log_loaded_modules(): obs->first_module */
 obs_module_t *obs_module_lists_seam_first_module(void)
 {
-	return NULL;
+	return obs->first_module;
 }
 
 /* obs_module_get_config_path(): obs->module_config_path */
 const char *obs_module_lists_seam_module_config_path(void)
 {
-	return NULL;
+	return obs->module_config_path;
 }
 
 /* obs_add_module_path(): da_push_back(obs->module_paths, ..) */
 struct darray *obs_module_lists_seam_module_paths(void)
 {
-	return NULL;
+	return &obs->module_paths.da;
 }
 
 /* obs_add_safe_module(): da_push_back(obs->safe_modules, ..) */
 struct darray *obs_module_lists_seam_safe_modules(void)
 {
-	return NULL;
+	return &obs->safe_modules.da;
 }
 
 /* obs_add_disabled_module(): da_push_back(obs->disabled_modules, ..) */
 struct darray *obs_module_lists_seam_disabled_modules(void)
 {
-	return NULL;
+	return &obs->disabled_modules.da;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -66,55 +66,47 @@ struct darray *obs_module_lists_seam_disabled_modules(void)
 /* obs_log_loaded_modules(): mod->next */
 obs_module_t *obs_module_lists_seam_module_next(const obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return module->next;
 }
 
 /* obs_log_loaded_modules(): mod->file */
 const char *obs_module_lists_seam_module_file(const obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return module->file;
 }
 
 /* obs_find_module_file(): module->data_path */
 const char *obs_module_lists_seam_module_data_path(const obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return module->data_path;
 }
 
 /* obs_module_get_config_path(): module->mod_name */
 const char *obs_module_lists_seam_module_name(const obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return module->mod_name;
 }
 
 /* obs_module_add_source(): da_push_back(module->sources, ..) */
 struct darray *obs_module_lists_seam_module_sources(obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return &module->sources.da;
 }
 
 /* obs_module_add_output(): da_push_back(module->outputs, ..) */
 struct darray *obs_module_lists_seam_module_outputs(obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return &module->outputs.da;
 }
 
 /* obs_module_add_encoder(): da_push_back(module->encoders, ..) */
 struct darray *obs_module_lists_seam_module_encoders(obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return &module->encoders.da;
 }
 
 /* obs_module_add_service(): da_push_back(module->services, ..) */
 struct darray *obs_module_lists_seam_module_services(obs_module_t *module)
 {
-	UNUSED_PARAMETER(module);
-	return NULL;
+	return &module->services.da;
 }
