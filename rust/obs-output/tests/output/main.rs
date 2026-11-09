@@ -160,6 +160,4 @@ mod output_total_frames_parity;
 mod output_connect_time;
 
 mod output_connect_time_parity;
-
-mod output_frames_dropped;
-mod output_frames_dropped_parity;
+mod encoder_preferred_range;
