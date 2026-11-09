@@ -284,6 +284,7 @@
     "test_async_conversion_plan_rust": {
       "sources": [
         "test/cmocka/test_async_conversion_plan.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -307,7 +308,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-conversion-plan.h"
@@ -397,6 +399,7 @@
     "test_async_frame_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_async_frame_pacing_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -420,7 +423,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-async-pacing.h"
@@ -498,6 +502,7 @@
     "test_async_upload_steps_rust": {
       "sources": [
         "test/cmocka/test_async_upload_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -520,7 +525,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -658,6 +664,7 @@
     "test_audio_monitor_delay_steps_rust": {
       "sources": [
         "test/cmocka/test_audio_monitor_delay_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -675,7 +682,8 @@
         ]
       },
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -1457,6 +1465,7 @@
     "test_coreaudio_device_rules_rust": {
       "sources": [
         "test/cmocka/test_coreaudio_device_rules.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -1474,7 +1483,8 @@
         ]
       },
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -1543,6 +1553,7 @@
     "test_coreaudio_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_coreaudio_pacing_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -1560,7 +1571,8 @@
         ]
       },
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -1793,6 +1805,7 @@
     "test_deinterlace_draw_plan_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_draw_plan_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -1815,7 +1828,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -1880,6 +1894,7 @@
     "test_deinterlace_pacing_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_pacing_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -1903,7 +1918,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-deinterlace-pacing.h"
@@ -1944,6 +1960,7 @@
     "test_deinterlace_select_steps_rust": {
       "sources": [
         "test/cmocka/test_deinterlace_select_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -1967,7 +1984,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-deinterlace-pacing.h",
@@ -6934,6 +6952,7 @@
     "test_monitor_speaker_layout_rust": {
       "sources": [
         "test/cmocka/test_monitor_speaker_layout.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -6951,7 +6970,8 @@
         ]
       },
       "includes": [
-        "libobs/audio-monitoring"
+        "libobs/audio-monitoring",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -6985,6 +7005,7 @@
     "test_monitor_video_sync_rust": {
       "sources": [
         "test/cmocka/test_monitor_video_sync.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -7002,7 +7023,8 @@
         ]
       },
       "includes": [
-        "libobs/audio-monitoring"
+        "libobs/audio-monitoring",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -7037,6 +7059,7 @@
     "test_monitor_wasapi_steps_rust": {
       "sources": [
         "test/cmocka/test_monitor_wasapi_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -7054,7 +7077,8 @@
         ]
       },
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -10574,6 +10598,7 @@
     "test_pulse_monitor_steps_rust": {
       "sources": [
         "test/cmocka/test_pulse_monitor_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/output-handler-getter-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -10595,7 +10620,8 @@
         ]
       },
       "includes": [
-        "libobs/audio-monitoring/pulse"
+        "libobs/audio-monitoring/pulse",
+        "."
       ],
       "libraries": [
         "libobs_rust-static",
@@ -11762,6 +11788,7 @@
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_audio_window_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -11779,7 +11806,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-scene-audio-window.h",
@@ -12552,6 +12580,7 @@
       "sources": [
         "test/cmocka/scene-getter-log-link-stub.c",
         "test/cmocka/test_scene_render_plan_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
@@ -12568,7 +12597,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13262,6 +13292,7 @@
     "test_source_audio_input_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_input_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13285,7 +13316,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-audio-input.h"
@@ -13339,6 +13371,7 @@
     "test_source_audio_place_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_place_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13361,7 +13394,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13422,6 +13456,7 @@
     "test_source_audio_render_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_render_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13445,7 +13480,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-audio-render.h"
@@ -13518,6 +13554,7 @@
     "test_source_audio_timing_steps_rust": {
       "sources": [
         "test/cmocka/test_source_audio_timing_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13541,7 +13578,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-audio-timing.h"
@@ -13611,6 +13649,7 @@
     "test_source_color_space_steps_rust": {
       "sources": [
         "test/cmocka/test_source_color_space_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13634,7 +13673,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-color-space.h",
@@ -13701,6 +13741,7 @@
     "test_source_draw_plan_steps_rust": {
       "sources": [
         "test/cmocka/test_source_draw_plan_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13723,7 +13764,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13890,6 +13932,7 @@
     "test_source_frame_copy_steps_rust": {
       "sources": [
         "test/cmocka/test_source_frame_copy_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -13913,7 +13956,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-frame-copy.h",
@@ -14061,6 +14105,7 @@
     "test_source_media_admission_steps_rust": {
       "sources": [
         "test/cmocka/test_source_media_admission_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14083,7 +14128,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14163,6 +14209,7 @@
     "test_source_monitoring_steps_rust": {
       "sources": [
         "test/cmocka/test_source_monitoring_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14185,7 +14232,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14277,6 +14325,7 @@
     "test_source_ptm_gate_steps_rust": {
       "sources": [
         "test/cmocka/test_source_ptm_gate_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14300,7 +14349,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-ptm-gate.h"
@@ -14370,6 +14420,7 @@
     "test_source_render_route_steps_rust": {
       "sources": [
         "test/cmocka/test_source_render_route_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14392,7 +14443,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14458,6 +14510,7 @@
     "test_source_size_route_steps_rust": {
       "sources": [
         "test/cmocka/test_source_size_route_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14481,7 +14534,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-size.h"
@@ -14779,6 +14833,7 @@
     "test_source_video_tick_steps_rust": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14801,7 +14856,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14846,6 +14902,7 @@
     "test_source_volume_apply_steps_rust": {
       "sources": [
         "test/cmocka/test_source_volume_apply_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -14869,7 +14926,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-ptm-gate.h",
@@ -15608,6 +15666,7 @@
     "test_transition_load_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_load_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -15630,7 +15689,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -15716,6 +15776,7 @@
     "test_transition_render_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_render_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -15739,7 +15800,8 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "watch_inputs": [
         "libobs/obs-source-transition-render.h"
@@ -15914,6 +15976,7 @@
     "test_transition_start_steps_rust": {
       "sources": [
         "test/cmocka/test_transition_start_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
         "test/cmocka/core-texture-activity-link-stubs.c",
         "test/cmocka/encoder-state-query-link-stubs.c",
         "test/cmocka/source-getter-log-link-stub.c",
@@ -15936,7 +15999,8 @@
         "test/cmocka/weak-object-identity-link-stub.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "header_libraries": [
         "OBS::libobs",
