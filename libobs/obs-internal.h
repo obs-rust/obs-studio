@@ -2309,6 +2309,13 @@ struct obs_encoder_roi_state_fields {
 };
 extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
 
+/* Private encoder context/name view for the name setter; not public ABI. */
+struct obs_encoder_set_name_fields {
+	struct obs_context_data *context;
+	const char *name;
+};
+extern struct obs_encoder_set_name_fields obs_encoder_set_name_fields(obs_encoder_t *encoder);
+
 extern struct obs_encoder_info *find_encoder(const char *id);
 
 /* Read-only registry metadata addresses; registered info remains C-owned. */
