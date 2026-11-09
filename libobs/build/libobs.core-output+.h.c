@@ -16,6 +16,7 @@
 #include "libobs/obs-encoder-preferred-color-space-fields.c.h"
 #include "libobs/obs-encoder-preferred-format-fields.c.h"
 #include "libobs/obs-encoder-preferred-range-fields.c.h"
+#include "libobs/obs-encoder-properties.c.h"
 #include "libobs/obs-encoder-registry-queries.c.h"
 #include "libobs/obs-encoder-roi-state-fields.c.h"
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
