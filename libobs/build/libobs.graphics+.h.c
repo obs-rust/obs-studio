@@ -13,4 +13,5 @@
 #include "libobs/graphics/shader-file.c.h"
 #include "libobs/graphics/shader-parser.c.h"
 #include "libobs/graphics/texture-planar-creators.c.h"
+#include "libobs/graphics/vertexbuffer-access.c.h"
 #include "libobs/graphics/vertexbuffer-destroy.c.h"
