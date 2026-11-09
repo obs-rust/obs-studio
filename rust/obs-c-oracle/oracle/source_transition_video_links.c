@@ -1,8 +1,8 @@
-/* Test-only link stand-ins: obs_source_active(),
- * obs_source_get_color_space() and the graphics calls gs_matrix_mul(),
- * gs_clear(), gs_ortho(), gs_blend_state_push(), gs_blend_state_pop() and
- * gs_blend_function() under libobs's own names, for the test binaries that
- * link the obs-source-seam shims without libobs.
+/* Test-only link stand-ins: obs_source_get_color_space() and the graphics
+ * calls gs_matrix_mul(), gs_clear(), gs_ortho(), gs_blend_state_push(),
+ * gs_blend_state_pop() and gs_blend_function() under libobs's own names,
+ * for the test binaries that link the obs-source-seam shims without
+ * libobs.
  *
  * The transition video render shims
  * (rust/obs-source-seam/src/ffi/source_transition_video.rs) export the four
@@ -10,18 +10,13 @@
  * MSVC, MinGW and macOS linkers want every symbol an object names
  * resolved, used or not, so obs-tests-core needs a definition; libobs has
  * the real ones. The texrender calls, gs_matrix_push(), gs_matrix_pop(),
- * gs_get_color_space(), obs_source_video_render() and the reference calls
- * already have theirs.
+ * gs_get_color_space(), obs_source_video_render(), obs_source_active()
+ * (oracle/audio_callback_links.c) and the reference calls already have
+ * theirs.
  *
  * The tests never reach these: they run the shims with Calls of their own. */
 
 #include "obs.h"
-
-bool obs_source_active(const obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
-	return false;
-}
 
 enum gs_color_space obs_source_get_color_space(obs_source_t *source, size_t count,
 					       const enum gs_color_space *preferred_spaces)
