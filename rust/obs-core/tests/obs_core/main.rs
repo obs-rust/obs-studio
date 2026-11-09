@@ -99,6 +99,7 @@ mod source_load_parity;
 mod source_profiler;
 mod source_profiler_parity;
 mod tick_callbacks;
+mod tick_callbacks_parity;
 mod video_copy_plan;
 mod video_copy_plan_parity;
 mod video_frame_copy;

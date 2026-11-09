@@ -810,6 +810,11 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Live core required; storage is borrowed only under draw_callbacks_mutex. */
+extern struct darray *obs_core_tick_callbacks_array(struct obs_core *core);
+extern void obs_core_tick_callbacks_lock(struct obs_core *core);
+extern void obs_core_tick_callbacks_unlock(struct obs_core *core);
+
 /* Every field accessor requires a non-null owner, checked by the Rust shim. */
 struct obs_core_texture_activity_fields {
 	const bool *nv12;
