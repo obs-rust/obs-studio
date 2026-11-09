@@ -190,7 +190,19 @@ def main(argv: list[str]) -> int:
     )
     if pr.returncode != 0 or not pr.stdout.strip():
         title = git("log", "-1", "--format=%s", capture=True).stdout.strip()
-        run(["gh", "pr", "create", "--fill", "--title", title, "--head", branch])
+        create = ["gh", "pr", "create", "--fill", "--title", title, "--head", branch]
+        # Back pressure (ci/backpressure.py): while the merge queue lands fewer
+        # PRs than are in flight, or runners are starved, a new PR opens as a
+        # draft, so the work is published but takes no queue capacity. Mark it
+        # ready once the gate reads open again.
+        gate = subprocess.run(
+            ["uv", "run", "--no-project", "--script", str(ROOT / "ci" / "backpressure.py"), "--check"],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        if gate.returncode == 75:
+            print(f"./push: {gate.stdout.strip()}; opening the PR as a draft")
+            create.append("--draft")
+        run(create)
     else:
         print(f"./push: PR #{pr.stdout.strip()} already exists for {branch}")
 
