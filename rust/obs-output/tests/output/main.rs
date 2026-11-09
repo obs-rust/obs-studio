@@ -15,6 +15,7 @@ mod encoder_bind;
 mod encoder_bind_parity;
 mod encoder_clear_roi;
 mod encoder_clear_roi_parity;
+mod encoder_configuration;
 mod encoder_counters;
 mod encoder_counters_parity;
 mod encoder_dimensions;

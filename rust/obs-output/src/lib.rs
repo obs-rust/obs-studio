@@ -124,6 +124,7 @@ pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;
 pub mod encoder_bind;
 pub mod encoder_clear_roi;
+pub mod encoder_configuration;
 pub mod encoder_counters;
 pub mod encoder_dimensions;
 pub mod encoder_frame_rate_divisor;
