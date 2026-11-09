@@ -11,7 +11,8 @@
 static struct obs_core stop_core;
 static size_t stop_visits;
 static unsigned stop_mask;
-static max_align_t stop_outputs[4];
+/* MSVC's C headers lack max_align_t. These tokens are never dereferenced. */
+static long double stop_outputs[4];
 
 static bool stop_query(video_t *output)
 {
