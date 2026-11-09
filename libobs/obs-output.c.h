@@ -2584,17 +2584,7 @@ const char *obs_get_output_supported_audio_codecs(const char *id)
 	return info ? info->encoded_audio_codecs : NULL;
 }
 
-void obs_output_set_reconnect_callback(obs_output_t *output,
-				       bool (*reconnect_cb)(void *data, obs_output_t *output, int code), void *param)
-{
-	if (!reconnect_cb) {
-		output->reconnect_callback.reconnect_cb = NULL;
-		output->reconnect_callback.param = NULL;
-	} else {
-		output->reconnect_callback.reconnect_cb = reconnect_cb;
-		output->reconnect_callback.param = param;
-	}
-}
+
 
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef get_weak
