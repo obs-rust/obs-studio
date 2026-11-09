@@ -14078,6 +14078,17 @@
         "libobs/data"
       ]
     },
+    "test_source_mute_monitor_hotkeys": {
+      "sources": [
+        "test/cmocka/test_source_mute_monitor_hotkeys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    },
     "test_source_profiler": {
       "sources": [
         "test/cmocka/test_source_profiler.c"
@@ -23349,6 +23360,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_mute_monitor_hotkeys": {
+      "target": "test_source_mute_monitor_hotkeys",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_profiler": {
