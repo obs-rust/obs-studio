@@ -18,6 +18,23 @@ pub struct Metadata {
 }
 
 pub fn load(source: &mut impl ManifestSource) -> Option<Metadata> {
-    let _ = source;
-    todo!()
+    if !source.open() {
+        return None;
+    }
+    Some(Metadata {
+        strings: [
+            source.string("display_name"),
+            source.string("id"),
+            source.string("version"),
+            source.string("os_arch"),
+            source.string("name"),
+            source.string("description"),
+            source.string("long_description"),
+            source.url("repository"),
+            source.url("website"),
+            source.url("support"),
+        ],
+        has_banner: source.boolean("has_banner"),
+        has_icon: source.boolean("has_icon"),
+    })
 }

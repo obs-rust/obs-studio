@@ -18,12 +18,11 @@ static void check_manifest(void **state)
 	struct dstr path = {0};
 	dstr_copy(&path, fixture);
 	dstr_cat(&path, "/manifest.json");
-	const char *documents[] = {
-		"{\"display_name\":\"Shown\",\"id\":\"id\",\"version\":\"1.2\",\"os_arch\":\"arch\","
-		"\"name\":\"name\",\"description\":\"short\",\"long_description\":\"long\","
-		"\"urls\":{\"repository\":\"repo\",\"website\":\"web\",\"support\":\"help\"},"
-		"\"has_banner\":true,\"has_icon\":true}",
-		"{}", "not json", "[]", "{\"urls\":false,\"id\":12,\"has_icon\":\"yes\"}"};
+	const char *documents[] = {"{\"display_name\":\"Shown\",\"id\":\"id\",\"version\":\"1.2\",\"os_arch\":\"arch\","
+				   "\"name\":\"name\",\"description\":\"short\",\"long_description\":\"long\","
+				   "\"urls\":{\"repository\":\"repo\",\"website\":\"web\",\"support\":\"help\"},"
+				   "\"has_banner\":true,\"has_icon\":true}",
+				   "{}", "not json", "[]", "{\"urls\":false,\"id\":12,\"has_icon\":\"yes\"}"};
 	for (size_t i = 0; i < sizeof(documents) / sizeof(*documents); ++i) {
 		assert_true(os_quick_write_utf8_file(path.array, documents[i], strlen(documents[i]), false));
 		struct obs_module module = {.data_path = (char *)fixture};
@@ -31,9 +30,9 @@ static void check_manifest(void **state)
 		struct obs_module_metadata *m = module.metadata;
 		/* Characterized, not endorsed: invalid JSON still allocates empty metadata. */
 		assert_non_null(m);
-		const char *actual[] = {m->display_name, m->id, m->version, m->os_arch, m->name,
-				       m->description, m->long_description, m->repository_url, m->website_url,
-				       m->support_url};
+		const char *actual[] = {m->display_name, m->id,          m->version,          m->os_arch,
+					m->name,         m->description, m->long_description, m->repository_url,
+					m->website_url,  m->support_url};
 		const char *expected[] = {"Shown", "id", "1.2", "arch", "name", "short", "long", "repo", "web", "help"};
 		for (size_t j = 0; j < 10; ++j)
 			assert_string_equal(actual[j], i == 0 ? expected[j] : "");

@@ -20,7 +20,7 @@
 #include "libobs/obs-hotkey.c.h"
 #include "libobs/obs-module-init-fields.c.h"
 #include "libobs/obs-module-lists-seam.c.h"
-#include "libobs/obs-module-load-metadata.c.h"
+#include "libobs/obs-module-load-metadata-fields.c.h"
 #include "libobs/obs-module-locale-getters-fields.c.h"
 #include "libobs/obs-module-metadata-adapter.c.h"
 #include "libobs/obs-module-name-lookup-fields.c.h"

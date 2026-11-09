@@ -188,6 +188,8 @@ struct obs_module_metadata {
 	char *name;
 };
 
+int obs_module_load_metadata(struct obs_module *mod);
+
 typedef const char *(*obs_module_metadata_callback_t)(void);
 
 /* Private field-pointer seam: Rust never mirrors struct obs_module. */
