@@ -1,24 +1,24 @@
 {
   "repo": "obs-rust/obs-studio",
-  "generated_at": "2026-11-09T00:04:43Z",
-  "generated_pacific": "Nov 08, 2026 04:04 PM PST",
+  "generated_at": "2026-11-09T06:50:36Z",
+  "generated_pacific": "Nov 08, 2026 10:50 PM PST",
   "since": "2026-11-08T08:00:00Z",
   "since_caption": "new since 12:00 AM Pacific (America/Los_Angeles)",
-  "today_total": 50,
+  "today_total": 65,
   "ranked_by": "merged_prs",
-  "merged_pr_total": 2346,
+  "merged_pr_total": 2361,
   "unattributed_prs": [],
   "contributors": [
     {
       "login": "zackees",
       "avatar_url": "https://github.com/zackees.png?size=200",
-      "merged_prs": 1529,
-      "issues_filed": 847,
-      "today_prs": 39,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+39 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+39</span>",
-      "score": 1529,
+      "merged_prs": 1541,
+      "issues_filed": 862,
+      "today_prs": 51,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+51 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+51</span>",
+      "score": 1541,
       "first_contribution": "2026-10-08T20:57:49Z",
-      "last_contribution": "2026-11-08T23:57:19Z",
+      "last_contribution": "2026-11-09T06:19:12Z",
       "pr_numbers": [
         2,
         3,
@@ -1455,6 +1455,7 @@
         3887,
         3890,
         3891,
+        3893,
         3896,
         3898,
         3899,
@@ -1544,13 +1545,39 @@
         4063,
         4067,
         4070,
+        4075,
+        4076,
         4078,
         4081,
         4082,
         4084,
-        4088
+        4088,
+        4090,
+        4093,
+        4096,
+        4097,
+        4099,
+        4101,
+        4102,
+        4106,
+        4135
       ],
       "issue_numbers": [
+        4131,
+        4130,
+        4128,
+        4123,
+        4122,
+        4119,
+        4118,
+        4116,
+        4114,
+        4111,
+        4109,
+        4105,
+        4104,
+        4100,
+        4098,
         4089,
         4087,
         4086,
@@ -2404,13 +2431,13 @@
     {
       "login": "rdoupe",
       "avatar_url": "https://github.com/rdoupe.png?size=200",
-      "merged_prs": 499,
-      "issues_filed": 494,
-      "today_prs": 7,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+7 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+7</span>",
-      "score": 499,
+      "merged_prs": 501,
+      "issues_filed": 499,
+      "today_prs": 9,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+9 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+9</span>",
+      "score": 501,
       "first_contribution": "2026-10-10T22:17:15Z",
-      "last_contribution": "2026-11-08T23:27:58Z",
+      "last_contribution": "2026-11-09T05:52:46Z",
       "pr_numbers": [
         109,
         193,
@@ -2910,9 +2937,16 @@
         4034,
         4048,
         4061,
-        4077
+        4071,
+        4077,
+        4108
       ],
       "issue_numbers": [
+        4133,
+        4126,
+        4120,
+        4113,
+        4103,
         4092,
         4091,
         4074,
@@ -4129,6 +4163,25 @@
       "rank": 13
     },
     {
+      "login": "amsterdamboomer",
+      "avatar_url": "https://github.com/amsterdamboomer.png?size=200",
+      "merged_prs": 2,
+      "issues_filed": 1,
+      "today_prs": 1,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+1 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+1</span>",
+      "score": 2,
+      "first_contribution": "2026-10-26T14:36:11Z",
+      "last_contribution": "2026-11-09T01:05:17Z",
+      "pr_numbers": [
+        2483,
+        3888
+      ],
+      "issue_numbers": [
+        2482
+      ],
+      "rank": 14
+    },
+    {
       "login": "Hermes Agent",
       "avatar_url": "https://github.com/Hermes Agent.png?size=200",
       "merged_prs": 2,
@@ -4143,7 +4196,7 @@
         3110
       ],
       "issue_numbers": [],
-      "rank": 14
+      "rank": 15
     },
     {
       "login": "nmoinvaz",
@@ -4159,24 +4212,6 @@
         402
       ],
       "issue_numbers": [],
-      "rank": 15
-    },
-    {
-      "login": "amsterdamboomer",
-      "avatar_url": "https://github.com/amsterdamboomer.png?size=200",
-      "merged_prs": 1,
-      "issues_filed": 1,
-      "today_prs": 0,
-      "today_badge": "<span class=\"delta delta-none\" title=\"none since midnight Pacific\">&ndash;</span>",
-      "score": 1,
-      "first_contribution": "2026-10-26T14:36:11Z",
-      "last_contribution": "2026-10-26T14:36:11Z",
-      "pr_numbers": [
-        2483
-      ],
-      "issue_numbers": [
-        2482
-      ],
       "rank": 16
     }
   ]
