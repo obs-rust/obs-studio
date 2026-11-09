@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-ported-service-getters.pch.h"
+#include "libobs/build/libobs.pch.h"
 
 enum video_range_type obs_encoder_get_preferred_range(const obs_encoder_t *encoder)
 {
