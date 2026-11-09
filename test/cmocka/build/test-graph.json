@@ -6624,6 +6624,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_module_lists": {
+      "sources": [
+        "test/cmocka/test_module_lists.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_module_load_rules_skip_steps": {
       "sources": [
         "test/cmocka/test_module_load_rules_skip_steps.c",
@@ -20498,6 +20507,20 @@
     "test_module_failure_info": {
       "target": "test_module_failure_info",
       "timeout_seconds": 30
+    },
+    "test_module_lists": {
+      "target": "test_module_lists",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_module_load_rules_skip_steps": {
       "target": "test_module_load_rules_skip_steps",
