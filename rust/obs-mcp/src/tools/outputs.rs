@@ -97,7 +97,7 @@ typed_tool!(
     EmptyInput,
     ActiveOutput,
     IDEMPOTENT,
-    "Start record output.",
+    "Start recording.",
     |backend, _input| {
         backend.start_output(OutputRequest {
             kind: OutputKind::Record,
@@ -111,7 +111,7 @@ typed_tool!(
     EmptyInput,
     ActiveOutput,
     IDEMPOTENT,
-    "Stop record output.",
+    "Stop recording.",
     |backend, _input| {
         backend.stop_output(OutputRequest {
             kind: OutputKind::Record,
@@ -125,7 +125,7 @@ typed_tool!(
     EmptyInput,
     OutputStatus,
     READ_ONLY,
-    "Status record output.",
+    "Report whether recording is active, with duration_ms and bytes where known.",
     |backend, _input| {
         Ok(backend.output_status(OutputRequest {
             kind: OutputKind::Record,
@@ -139,7 +139,7 @@ typed_tool!(
     EmptyInput,
     ActiveOutput,
     IDEMPOTENT,
-    "Start stream output.",
+    "Start streaming.",
     |backend, _input| {
         backend.start_output(OutputRequest {
             kind: OutputKind::Stream,
@@ -153,7 +153,7 @@ typed_tool!(
     EmptyInput,
     ActiveOutput,
     IDEMPOTENT,
-    "Stop stream output.",
+    "Stop streaming.",
     |backend, _input| {
         backend.stop_output(OutputRequest {
             kind: OutputKind::Stream,
@@ -167,7 +167,7 @@ typed_tool!(
     EmptyInput,
     OutputStatus,
     READ_ONLY,
-    "Status stream output.",
+    "Report whether streaming is active, with duration_ms and bytes where known.",
     |backend, _input| {
         Ok(backend.output_status(OutputRequest {
             kind: OutputKind::Stream,

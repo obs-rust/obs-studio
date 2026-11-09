@@ -127,8 +127,8 @@ pub trait TypedTool {
     /// # Errors
     /// Reports output serialization failures without panicking the server.
     fn content(output: &Self::Output) -> Result<Vec<Content>, ToolError> {
-        serde_json::to_string(output)
-            .map(|text| vec![Content::Text(text)])
+        serde_json::to_value(output)
+            .map(|value| vec![Content::Text(value.to_string())])
             .map_err(|error| ToolError::processing(error.to_string()))
     }
 }
@@ -151,7 +151,9 @@ impl<T: TypedTool> Tool for T {
     fn call(&self, arguments: &Value) -> Result<String, String> {
         let input = parse_input(arguments)?;
         let output = TypedTool::call(self, input).map_err(|e| e.to_string())?;
-        serde_json::to_string(&output).map_err(|e| e.to_string())
+        serde_json::to_value(output)
+            .map(|value| value.to_string())
+            .map_err(|e| e.to_string())
     }
     fn call_content(&self, arguments: &Value) -> Result<Vec<Content>, String> {
         let input = parse_input(arguments)?;
