@@ -9,6 +9,7 @@
 #include "libobs/obs-core-monitoring-device-fields.c.h"
 #include "libobs/obs-core-output-protocol-registry.c.h"
 #include "libobs/obs-core-texture-activity-fields.c.h"
+#include "libobs/obs-core-tick-callbacks.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
 #include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
