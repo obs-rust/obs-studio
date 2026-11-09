@@ -17382,6 +17382,21 @@
         }
       ]
     },
+    "test_weak_object_expired": {
+      "sources": [
+        "test/cmocka/test_weak_object_expired.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_weak_object_identity": {
       "sources": [
         "test/cmocka/test_weak_object_identity.c"
@@ -24508,6 +24523,12 @@
     },
     "test_weak_encoder_identity": {
       "target": "test_weak_encoder_identity",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_weak_object_expired": {
+      "target": "test_weak_object_expired",
       "command": [
         "${target}"
       ]
