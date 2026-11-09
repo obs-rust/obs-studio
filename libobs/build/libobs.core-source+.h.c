@@ -12,7 +12,7 @@
 #include "libobs/obs-display.c.h"
 #include "libobs/obs-object-query-fields.c.h"
 #include "libobs/obs-object-validity-fields.c.h"
-#include "libobs/obs-scene-color-space.c.h"
+#include "libobs/obs-scene-color-space-fields.c.h"
 #include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
