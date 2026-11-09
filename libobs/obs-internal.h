@@ -2335,6 +2335,23 @@ struct obs_encoder_dimensions_fields {
 };
 struct obs_encoder_dimensions_fields obs_encoder_dimensions_fields(const obs_encoder_t *encoder);
 
+/* Mutable audio-buffer view borrowed for one lifecycle operation. */
+struct obs_encoder_audio_buffers_view {
+	struct deque *input;
+	uint8_t **output;
+	uint32_t *rate;
+	size_t *planes;
+	size_t *blocksize;
+	size_t *frames;
+	size_t *bytes;
+	size_t (*frame_size)(void *);
+	void *context;
+};
+void obs_encoder_audio_buffers_free(struct obs_encoder_audio_buffers_view *view);
+void obs_encoder_audio_buffers_reset(struct obs_encoder_audio_buffers_view *view);
+void obs_encoder_audio_buffers_initialize(struct obs_encoder_audio_buffers_view *view, uint32_t rate,
+					  enum audio_format format, enum speaker_layout speakers);
+
 /* Borrowed audio field addresses, without allocation or value conversion. */
 struct obs_encoder_audio_getters_fields {
 	const enum obs_encoder_type *type;

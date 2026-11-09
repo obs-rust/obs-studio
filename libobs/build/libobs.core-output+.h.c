@@ -3,7 +3,7 @@
 #include "libobs/build/libobs.pch.h"
 
 #include "libobs/obs-audio-seam.c.h"
-#include "libobs/obs-encoder-audio-buffers.c.h"
+#include "libobs/obs-encoder-audio-buffers-fields.c.h"
 #include "libobs/obs-encoder-audio-getters-fields.c.h"
 #include "libobs/obs-encoder-clear-roi-fields.c.h"
 #include "libobs/obs-encoder-configuration-fields.c.h"
