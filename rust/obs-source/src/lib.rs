@@ -169,6 +169,7 @@ pub mod deinterlace_draw;
 pub mod deinterlace_getters;
 pub mod deinterlace_pacing;
 pub mod deinterlace_select;
+pub mod deinterlace_texture;
 pub mod draw_plan;
 pub mod draw_technique;
 pub mod filter_count;
