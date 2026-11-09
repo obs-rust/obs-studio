@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --no-project --script
 """The pre-commit hook body: format the Rust tree before it is committed.
 
 Installed by `./install-hooks` (or `./push --install-hooks`). It runs the same
