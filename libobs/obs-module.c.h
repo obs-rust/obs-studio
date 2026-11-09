@@ -561,46 +561,6 @@ void free_module(struct obs_module *mod)
 	bfree(mod);
 }
 
-lookup_t *obs_module_load_locale(obs_module_t *module, const char *default_locale, const char *locale)
-{
-	char *name = NULL;
-	lookup_t *lookup = NULL;
-
-	if (!module || !default_locale || !locale) {
-		blog(LOG_WARNING, "obs_module_load_locale: Invalid parameters");
-		return NULL;
-	}
-
-	name = obs_module_locale_default_file(default_locale);
-
-	char *file = obs_find_module_file(module, name);
-	if (file)
-		lookup = text_lookup_create(file);
-
-	bfree(file);
-
-	if (!lookup) {
-		blog(LOG_WARNING, "Failed to load '%s' text for module: '%s'", default_locale, module->file);
-		goto cleanup;
-	}
-
-	if (obs_module_locale_is_default(locale, default_locale))
-		goto cleanup;
-
-	bfree(name);
-	name = obs_module_locale_file(locale);
-
-	file = obs_find_module_file(module, name);
-
-	if (!text_lookup_add(lookup, file))
-		blog(LOG_WARNING, "Failed to load '%s' text for module: '%s'", locale, module->file);
-
-	bfree(file);
-cleanup:
-	bfree(name);
-	return lookup;
-}
-
 /* A registration copies only the fields of the caller's structure that lie
  * wholly within its size, the rule HAS_VAL() applies to the callbacks. A
  * field the size ends inside stays zero instead of keeping some of the
