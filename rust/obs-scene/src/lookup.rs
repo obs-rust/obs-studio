@@ -24,6 +24,31 @@ pub enum Query<'a> {
 }
 
 /// Return the original first matching item, without acquiring a reference.
-pub fn find<A: Access>(_access: &A, _scene: Option<A::Scene>, _query: Query<'_>) -> Option<A::Item> {
-    todo!("scene lookup port")
+pub fn find<A: Access>(access: &A, scene: Option<A::Scene>, query: Query<'_>) -> Option<A::Item> {
+    let scene = scene?;
+    if matches!(query, Query::Group(None | Some([]))) {
+        return None;
+    }
+    access.with_scene(scene, |mut item| {
+        while let Some(current) = item {
+            let matches = match query {
+                Query::Name(name) | Query::RecursiveName(name) => {
+                    access.name(current) == Some(name)
+                }
+                Query::Id(id) => access.id(current) == id,
+                Query::Group(name) => access.is_group(current) && access.name(current) == name,
+            };
+            if matches {
+                return Some(current);
+            }
+            if let Query::RecursiveName(name) = query
+                && access.is_group(current)
+                && let Some(child) = find(access, access.group(current), Query::Name(name))
+            {
+                return Some(child);
+            }
+            item = access.next(current);
+        }
+        None
+    })
 }

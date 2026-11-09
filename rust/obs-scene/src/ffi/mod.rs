@@ -44,3 +44,4 @@ pub mod item_blending_mode;
 pub mod item_locked_setter;
 pub mod item_scale_filter;
 pub mod item_transition_serialization;
+pub mod lookup;
