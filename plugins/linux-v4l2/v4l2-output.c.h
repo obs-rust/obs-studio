@@ -597,7 +597,7 @@ static char *vmic_pa_list(bool modules)
  * writes libobs packets into the ring; PipeWire's process callback reads it.
  * One writer, one reader: spa_ringbuffer needs no lock. */
 #define VMIC_PW_RING (1u << 18)
-#define VMIC_PW_STRIDE (VMIC_CHANNELS * sizeof(float))
+#define VMIC_PW_STRIDE ((uint32_t)(VMIC_CHANNELS * sizeof(float)))
 struct vmic_pw {
 	struct pw_thread_loop *loop;
 	struct pw_stream *stream;
@@ -632,7 +632,7 @@ static void vmic_pw_process(void *arg)
 
 	uint32_t n = have < want ? have : want;
 	spa_ringbuffer_read_data(&pw->ring, pw->data, VMIC_PW_RING, index % VMIC_PW_RING, d->data, n * VMIC_PW_STRIDE);
-	spa_ringbuffer_read_update(&pw->ring, index + n * VMIC_PW_STRIDE);
+	spa_ringbuffer_read_update(&pw->ring, (int32_t)(index + n * VMIC_PW_STRIDE));
 	if (n < want)
 		memset((uint8_t *)d->data + n * VMIC_PW_STRIDE, 0, (want - n) * VMIC_PW_STRIDE);
 	d->chunk->offset = 0;
@@ -758,7 +758,7 @@ static void vmic_pw_write(struct vmic_pw *pw, const uint8_t *data, size_t size)
 	if (filled < 0 || (size_t)filled + size > VMIC_PW_RING)
 		return;
 	spa_ringbuffer_write_data(&pw->ring, pw->data, VMIC_PW_RING, index % VMIC_PW_RING, data, (uint32_t)size);
-	spa_ringbuffer_write_update(&pw->ring, index + (uint32_t)size);
+	spa_ringbuffer_write_update(&pw->ring, (int32_t)(index + (uint32_t)size));
 }
 #else
 static bool vmic_pw_start(struct virtualcam_data *vcam, const char *name, const char *description, uint32_t rate)
