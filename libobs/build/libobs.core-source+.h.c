@@ -44,6 +44,5 @@
 #include "libobs/obs-source-settings-getter.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
-#include "libobs/obs-source-transition-video.c.h"
 #include "libobs/obs-source.c.h"
 #include "libobs/obs-view.c.h"

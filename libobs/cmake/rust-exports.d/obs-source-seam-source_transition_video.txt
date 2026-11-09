@@ -1,0 +1,6 @@
+# obs-source-transition-video.c (obs-source-seam): the video render of a
+# transition in obs.h (EXPORT), called by the transition plugins.
+obs_transition_video_get_color_space
+obs_transition_video_render
+obs_transition_video_render2
+obs_transition_video_render_direct

@@ -13,3 +13,5 @@ mod transition_size_parity;
 mod transition_slots_parity;
 mod transition_stop_parity;
 mod transition_switch_parity;
+mod transition_video_layout;
+mod transition_video_parity;

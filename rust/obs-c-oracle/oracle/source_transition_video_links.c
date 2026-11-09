@@ -1,0 +1,61 @@
+/* Test-only link stand-ins: obs_source_get_color_space() and the graphics
+ * calls gs_matrix_mul(), gs_clear(), gs_ortho(), gs_blend_state_push(),
+ * gs_blend_state_pop() and gs_blend_function() under libobs's own names,
+ * for the test binaries that link the obs-source-seam shims without
+ * libobs.
+ *
+ * The transition video render shims
+ * (rust/obs-source-seam/src/ffi/source_transition_video.rs) export the four
+ * obs_transition_video_* functions, whose libobs calls name these. The
+ * MSVC, MinGW and macOS linkers want every symbol an object names
+ * resolved, used or not, so obs-tests-core needs a definition; libobs has
+ * the real ones. The texrender calls, gs_matrix_push(), gs_matrix_pop(),
+ * gs_get_color_space(), obs_source_video_render(), obs_source_active()
+ * (oracle/audio_callback_links.c) and the reference calls already have
+ * theirs.
+ *
+ * The tests never reach these: they run the shims with Calls of their own. */
+
+#include "obs.h"
+
+enum gs_color_space obs_source_get_color_space(obs_source_t *source, size_t count,
+					       const enum gs_color_space *preferred_spaces)
+{
+	UNUSED_PARAMETER(source);
+	UNUSED_PARAMETER(count);
+	UNUSED_PARAMETER(preferred_spaces);
+	return GS_CS_SRGB;
+}
+
+void gs_matrix_mul(const struct matrix4 *matrix)
+{
+	UNUSED_PARAMETER(matrix);
+}
+
+void gs_clear(uint32_t clear_flags, const struct vec4 *color, float depth, uint8_t stencil)
+{
+	UNUSED_PARAMETER(clear_flags);
+	UNUSED_PARAMETER(color);
+	UNUSED_PARAMETER(depth);
+	UNUSED_PARAMETER(stencil);
+}
+
+void gs_ortho(float left, float right, float top, float bottom, float znear, float zfar)
+{
+	UNUSED_PARAMETER(left);
+	UNUSED_PARAMETER(right);
+	UNUSED_PARAMETER(top);
+	UNUSED_PARAMETER(bottom);
+	UNUSED_PARAMETER(znear);
+	UNUSED_PARAMETER(zfar);
+}
+
+void gs_blend_state_push(void) {}
+
+void gs_blend_state_pop(void) {}
+
+void gs_blend_function(enum gs_blend_type src, enum gs_blend_type dest)
+{
+	UNUSED_PARAMETER(src);
+	UNUSED_PARAMETER(dest);
+}
