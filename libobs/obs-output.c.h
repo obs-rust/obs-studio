@@ -2561,8 +2561,6 @@ const char *obs_get_output_supported_audio_codecs(const char *id)
 	return info ? info->encoded_audio_codecs : NULL;
 }
 
-
-
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef get_weak
 
