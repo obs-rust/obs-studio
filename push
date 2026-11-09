@@ -64,6 +64,103 @@ def dirty() -> bool:
     return bool(git("status", "--porcelain", capture=True).stdout.strip())
 
 
+PROOFT_MIN_VERSION = (0, 1, 0)
+
+
+def _prooft_version(tool: str) -> tuple[int, int, int] | None:
+    """(major, minor, patch) from `prooft --version`, or None when unknown."""
+
+    proc = subprocess.run([tool, "--version"], text=True, capture_output=True)
+    if proc.returncode != 0:
+        return None
+    digits = [part for part in (proc.stdout + proc.stderr).replace("v", " ").split() if part[:1].isdigit()]
+    if not digits:
+        return None
+    parts = digits[0].split(".")
+    try:
+        numbers = tuple(int(p) for p in parts[:3])
+    except ValueError:
+        return None
+    return (numbers + (0, 0, 0))[:3]
+
+
+ATTEST_KEEP = 20
+ATTEST_MAX_AGE_DAYS = 7
+
+
+def evidence_path() -> Path:
+    """A per-commit evidence file, pruned periodically.
+
+    One file per commit, never a singleton: two agents pushing from the same
+    clone (or a worktree whose `.git` is a file) must not overwrite each
+    other's evidence. Pruning keeps the directory bounded -- it is scratch, not
+    a record, and the attestation itself lives in the commit message.
+    """
+
+    git_dir = Path(git("rev-parse", "--git-dir", capture=True).stdout.strip() or ".git")
+    sha = git("rev-parse", "HEAD", capture=True).stdout.strip() or "HEAD"
+    directory = git_dir / "soldr-attest"
+    directory.mkdir(parents=True, exist_ok=True)
+    prune_evidence(directory)
+    return directory / f"{sha.replace('/', '-')}.json"
+
+
+def prune_evidence(directory: Path) -> None:
+    """Drop stale evidence: older than a week, then all but the newest few."""
+
+    import time
+
+    now = time.time()
+    files = sorted(directory.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for index, path in enumerate(files):
+        age_days = (now - path.stat().st_mtime) / 86400
+        if index >= ATTEST_KEEP or age_days > ATTEST_MAX_AGE_DAYS:
+            path.unlink(missing_ok=True)
+
+
+def attest() -> bool:
+    """Stamp this commit's evidence. Returns whether a trailer was written.
+
+    prooft owns the trailer format and the lane rules, so it goes first; the
+    hand-rolled soldr+ghd path stays only as a deprecated fallback for
+    machines that predate it. A missing writer never invents evidence: it says
+    so and lets the push continue unless the caller demanded attestation.
+    """
+
+    prooft = shutil.which("prooft")
+    if prooft:
+        version = _prooft_version(prooft)
+        if version is None or version < PROOFT_MIN_VERSION:
+            print(f"./push: prooft {version or 'unknown'} is older than {PROOFT_MIN_VERSION}; skipping it")
+        else:
+            # prooft runs soldr lint's porcelain and stamps the Rust gates it
+            # proved, so the evidence and the trailer come from one component.
+            stamped = run([prooft, "soldr"], check=False)
+            if stamped.returncode == 0:
+                return True
+            print("./push: prooft soldr failed; see its output above", file=sys.stderr)
+            return False
+    else:
+        print("./push: prooft is not installed (uv tool install 'prooft>=0.1'); trying the deprecated path")
+
+    soldr = shutil.which("soldr")
+    if soldr and supports([soldr, "lint", "--help"], "--attest"):
+        evidence = evidence_path()
+        proc = run([soldr, "lint", "rust", "--attest", "--format", "json"], capture=True, check=False)
+        if proc.returncode != 0:
+            print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
+            return False
+        evidence.write_text(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "{}")
+        ghd = shutil.which("ghd")
+        if ghd and supports([ghd, "attest", "stamp", "--help"], "--evidence"):
+            print("./push: deprecated path: stamping with ghd instead of prooft")
+            return run([ghd, "attest", "stamp", "--evidence", str(evidence)], check=False).returncode == 0
+        print("./push: ghd has no `attest stamp`; the commit carries no Ci-Attestation trailer")
+    else:
+        print("./push: this soldr has no `lint rust --attest`; no client evidence is produced")
+    return False
+
+
 def main(argv: list[str]) -> int:
     branch = git("rev-parse", "--abbrev-ref", "HEAD", capture=True).stdout.strip()
     if branch in {"master", "HEAD"}:
@@ -73,31 +170,8 @@ def main(argv: list[str]) -> int:
         print("./push: working tree is dirty; commit or stash before pushing", file=sys.stderr)
         return 3
 
-    attested = False
-    soldr = shutil.which("soldr")
-    if soldr and supports([soldr, "lint", "--help"], "--attest"):
-        evidence = ROOT / ".git" / "soldr-attest.json"
-        proc = run(
-            [soldr, "lint", "rust", "--attest", "--format", "json"],
-            capture=True,
-            check=False,
-        )
-        if proc.returncode == 0:
-            evidence.write_text(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "{}")
-            ghd = shutil.which("ghd")
-            if ghd and supports([ghd, "attest", "stamp", "--help"], "--evidence"):
-                stamped = run(
-                    [ghd, "attest", "stamp", "--evidence", str(evidence)],
-                    check=False,
-                )
-                attested = stamped.returncode == 0
-            else:
-                print("./push: ghd has no `attest stamp` yet; the commit carries no Ci-Attestation trailer")
-        else:
-            print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
-            return 1
-    else:
-        print("./push: this soldr has no `lint rust --attest`; no client evidence is produced")
+    attested = attest()
+
 
     if not attested and REQUIRE:
         print(
