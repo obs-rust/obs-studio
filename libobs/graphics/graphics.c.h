@@ -1465,21 +1465,6 @@ gs_vertbuffer_t *gs_vertexbuffer_create(struct gs_vb_data *data, uint32_t flags)
 	return graphics->exports.device_vertexbuffer_create(graphics->device, data, flags);
 }
 
-gs_indexbuffer_t *gs_indexbuffer_create(enum gs_index_type type, void *indices, size_t num, uint32_t flags)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_indexbuffer_create"))
-		return NULL;
-
-	if (indices && num && (flags & GS_DUP_BUFFER) != 0) {
-		size_t size = type == GS_UNSIGNED_SHORT ? 2 : 4;
-		indices = bmemdup(indices, size * num);
-	}
-
-	return graphics->exports.device_indexbuffer_create(graphics->device, type, indices, num, flags);
-}
-
 gs_timer_t *gs_timer_create(void)
 {
 	graphics_t *graphics = thread_graphics;
