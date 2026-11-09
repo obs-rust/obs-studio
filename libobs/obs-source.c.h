@@ -4372,20 +4372,6 @@ obs_data_t *obs_source_get_private_settings(obs_source_t *source)
 	return source->private_settings;
 }
 
-void obs_source_set_async_decoupled(obs_source_t *source, bool decouple)
-{
-	if (!obs_ptr_valid(source, "obs_source_set_async_decoupled"))
-		return;
-
-	source->async_decoupled = decouple;
-	if (decouple) {
-		pthread_mutex_lock(&source->audio_buf_mutex);
-		source->timing_set = false;
-		reset_audio_data(source, 0);
-		pthread_mutex_unlock(&source->audio_buf_mutex);
-	}
-}
-
 /* hidden/undocumented export to allow source type redefinition for scripts */
 
 EXPORT void obs_enable_source_type(const char *name, bool enable);
