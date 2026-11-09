@@ -183,3 +183,5 @@ pub mod weak_encoder_identity;
 pub mod output_total_frames;
 
 pub mod output_connect_time;
+
+pub mod output_frames_dropped;
