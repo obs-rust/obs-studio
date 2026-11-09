@@ -10,3 +10,9 @@ pub fn get_id(value: Option<i64>, log_null: impl FnOnce()) -> i64 {
         }
     }
 }
+
+/// Replace the stored signed ID exactly, without validation or normalization.
+pub fn set_id(stored: &mut i64, id: i64) {
+    let _ = (stored, id);
+    todo!("port obs_sceneitem_set_id")
+}
