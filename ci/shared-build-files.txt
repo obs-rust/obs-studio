@@ -82,6 +82,7 @@ rust/obs-c-oracle/build.rs
 rust/obs-camera-busy/src/platform/mod.rs # new crate's platform boundary (#3724)
 rust/obs-core/src/platform/mod.rs
 rust/obs-data/build.rs
+rust/obs-exit-watchdog/src/platform/mod.rs # new crate's platform boundary (#4065)
 rust/obs-gpu-status/src/platform/mod.rs
 rust/obs-graphics/src/platform/mod.rs
 rust/obs-hotkey/build.rs
