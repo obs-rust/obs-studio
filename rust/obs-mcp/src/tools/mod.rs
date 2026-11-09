@@ -43,3 +43,5 @@ pub fn schema_snapshot() -> serde_json::Value {
     tools.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
     serde_json::json!({"tools": tools, "toolError": schemars::schema_for!(crate::server::ToolError)})
 }
+
+pub mod control;
