@@ -7,6 +7,10 @@ pub trait AtomicUpdate {
 }
 
 /// Run the update exactly once if the registry can be locked.
-pub fn update<B: AtomicUpdate>(_registry: &mut B, _callback: impl FnOnce(&mut B)) {
-    todo!()
+pub fn update<B: AtomicUpdate>(registry: &mut B, callback: impl FnOnce(&mut B)) {
+    if !registry.lock() {
+        return;
+    }
+    callback(registry);
+    registry.unlock();
 }

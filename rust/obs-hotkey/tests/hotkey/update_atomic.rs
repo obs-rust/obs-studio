@@ -33,7 +33,10 @@ fn failed_lock_is_noop() {
 
 #[test]
 fn synchronous_callback_and_recursive_update() {
-    let mut registry = Registry { initialized: true, ..Registry::default() };
+    let mut registry = Registry {
+        initialized: true,
+        ..Registry::default()
+    };
     let mut calls = 0;
     update(&mut registry, |registry| {
         calls += 1;
@@ -46,8 +49,15 @@ fn synchronous_callback_and_recursive_update() {
     });
     assert_eq!(calls, 2);
     assert_eq!(registry.depth, 0);
-    assert_eq!(registry.events, [
-        ("lock", 0), ("callback", 1), ("lock", 1),
-        ("nested", 2), ("unlock", 2), ("unlock", 1),
-    ]);
+    assert_eq!(
+        registry.events,
+        [
+            ("lock", 0),
+            ("callback", 1),
+            ("lock", 1),
+            ("nested", 2),
+            ("unlock", 2),
+            ("unlock", 1),
+        ]
+    );
 }

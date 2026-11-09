@@ -123,12 +123,18 @@ fn object(which: usize) -> *mut c_void {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_hotkey_seam_lock() -> bool {
+    if let Some(locked) = super::update_atomic_parity::lock() {
+        return locked;
+    }
     log("lock".into());
     REGISTRY.with_borrow(|r| r.lock_ok)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_hotkey_seam_unlock() {
+    if super::update_atomic_parity::unlock() {
+        return;
+    }
     log("unlock".into());
 }
 
