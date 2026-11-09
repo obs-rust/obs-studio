@@ -13,6 +13,6 @@ if(OS_LINUX AND TARGET OBS::libobs-opengl)
   endif()
   set_tests_properties(
     test_video_graphics_tasks
-    PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/libobs" TIMEOUT 60 LABELS graphics
+    PROPERTIES WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>" TIMEOUT 60 LABELS graphics
   )
 endif()
