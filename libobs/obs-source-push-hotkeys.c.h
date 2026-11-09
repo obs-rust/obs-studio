@@ -31,3 +31,11 @@ static void obs_source_hotkey_push_to_talk(void *data, obs_hotkey_id id, obs_hot
 
 	source->user_push_to_talk_pressed = pressed;
 }
+
+void obs_source_push_hotkey_dispatch(void *source, bool talk, bool pressed)
+{
+	if (talk)
+		obs_source_hotkey_push_to_talk(source, 0, NULL, pressed);
+	else
+		obs_source_hotkey_push_to_mute(source, 0, NULL, pressed);
+}
