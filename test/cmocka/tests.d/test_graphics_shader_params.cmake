@@ -1,0 +1,10 @@
+# Public scalar, matrix and vector shader writes with a recording backend (#4420).
+add_executable(test_graphics_shader_params test_graphics_shader_params.c)
+target_include_directories(test_graphics_shader_params PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_graphics_shader_params PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+if(TARGET OBS::w32-pthreads)
+  target_link_libraries(test_graphics_shader_params PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_graphics_shader_params)
+add_test(NAME test_graphics_shader_params COMMAND test_graphics_shader_params)
+set_tests_properties(test_graphics_shader_params PROPERTIES TIMEOUT 30)
