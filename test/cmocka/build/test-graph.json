@@ -19663,6 +19663,17 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_source_mute_monitor_hotkeys": {
+      "sources": [
+        "test/cmocka/test_source_mute_monitor_hotkeys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
     }
   },
   "tests": {
@@ -26486,6 +26497,12 @@
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_mute_monitor_hotkeys": {
+      "target": "test_source_mute_monitor_hotkeys",
       "command": [
         "${target}"
       ]
