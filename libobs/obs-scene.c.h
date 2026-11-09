@@ -3684,27 +3684,6 @@ void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)
 		update_item_transform(item, false);
 }
 
-void obs_sceneitem_set_transition(obs_sceneitem_t *item, bool show, obs_source_t *transition)
-{
-	if (!item)
-		return;
-
-	obs_source_t **target = show ? &item->show_transition : &item->hide_transition;
-	if (*target)
-		obs_source_release(*target);
-	*target = obs_source_get_ref(transition);
-}
-
-void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uint32_t duration_ms)
-{
-	if (!item)
-		return;
-	if (show)
-		item->show_transition_duration = duration_ms;
-	else
-		item->hide_transition_duration = duration_ms;
-}
-
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata)
 {
