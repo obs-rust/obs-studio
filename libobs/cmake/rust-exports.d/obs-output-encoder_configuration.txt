@@ -1,0 +1,3 @@
+obs_encoder_set_scaled_size
+obs_encoder_set_gpu_scale_type
+obs_encoder_set_frame_rate_divisor
