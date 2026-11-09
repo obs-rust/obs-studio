@@ -272,34 +272,6 @@ static void obs_source_init_finalize(struct obs_source *source, obs_canvas_t *ca
 	obs_context_data_insert_uuid(&source->context, &obs->data.sources_mutex, &obs->data.sources);
 }
 
-static bool obs_source_hotkey_mute(void *data, obs_hotkey_pair_id id, obs_hotkey_t *key, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(key);
-
-	struct obs_source *source = data;
-
-	if (!pressed || obs_source_muted(source))
-		return false;
-
-	obs_source_set_muted(source, true);
-	return true;
-}
-
-static bool obs_source_hotkey_unmute(void *data, obs_hotkey_pair_id id, obs_hotkey_t *key, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(key);
-
-	struct obs_source *source = data;
-
-	if (!pressed || !obs_source_muted(source))
-		return false;
-
-	obs_source_set_muted(source, false);
-	return true;
-}
-
 static void obs_source_hotkey_push_to_mute(void *data, obs_hotkey_id id, obs_hotkey_t *key, bool pressed)
 {
 	struct audio_action action = {.timestamp = os_gettime_ns(), .type = AUDIO_ACTION_PTM, .set = pressed};
@@ -330,34 +302,6 @@ static void obs_source_hotkey_push_to_talk(void *data, obs_hotkey_id id, obs_hot
 	pthread_mutex_unlock(&source->audio_actions_mutex);
 
 	source->user_push_to_talk_pressed = pressed;
-}
-
-static bool obs_source_hotkey_monitor_on(void *data, obs_hotkey_pair_id id, obs_hotkey_t *key, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(key);
-
-	struct obs_source *source = data;
-
-	if (!pressed || obs_source_get_monitoring_enabled(source))
-		return false;
-
-	obs_source_set_monitoring_enabled(source, true);
-	return true;
-}
-
-static bool obs_source_hotkey_monitor_off(void *data, obs_hotkey_pair_id id, obs_hotkey_t *key, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(key);
-
-	struct obs_source *source = data;
-
-	if (!pressed || !obs_source_get_monitoring_enabled(source))
-		return false;
-
-	obs_source_set_monitoring_enabled(source, false);
-	return true;
 }
 
 static void obs_source_init_audio_hotkeys(struct obs_source *source)
