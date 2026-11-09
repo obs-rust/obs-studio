@@ -1,0 +1,4 @@
+# obs-source-transition.c (obs-source-seam): the audio render of a
+# transition in obs.h (EXPORT), called by transition plugins from their
+# audio_render. Init and free are in rust-hidden.d.
+obs_transition_audio_render

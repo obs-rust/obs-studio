@@ -1,0 +1,5 @@
+# obs-source-transition.c (obs-source-seam): the transition part of a
+# source's create and destroy, declared in the private obs-internal.h and
+# called by obs-source.c.
+obs_transition_free
+obs_transition_init

@@ -57,12 +57,12 @@
     clippy::unreachable,
     clippy::todo
 )]
-// RED: the bodies are stubs until the port.
-#![allow(clippy::todo, unused_variables)]
-
 use std::ffi::CStr;
 
-use crate::transition_stop;
+use crate::transition_clock::{self, Clock};
+use crate::transition_render::{self, AUDIO_FRAMES, AudioStep, Place};
+use crate::transition_sample_time;
+use crate::transition_stop::{self, SOURCE_A, SOURCE_B};
 
 /// The name [`audio_render`] hands `transition_valid()`, which logs it for a
 /// NULL source.
@@ -200,12 +200,147 @@ impl<T: Transition> Copy for Request<T> {}
 /// `obs_transition_init()`: true when both mutexes and both texrenders
 /// were made.
 pub fn init<T: Transition>(transition: &T) -> bool {
-    todo!("obs_transition_init")
+    transition.init_mutex_values();
+    if transition.mutex_init() != 0 {
+        return false;
+    }
+    if transition.tex_mutex_init() != 0 {
+        return false;
+    }
+
+    transition.set_alignment(INIT_ALIGNMENT);
+    transition.set_texrender(SOURCE_A, transition.texrender_create());
+    transition.set_texrender(SOURCE_B, transition.texrender_create());
+    transition.set_source_active(SOURCE_A, true);
+
+    transition.texrender(SOURCE_A).is_some() && transition.texrender(SOURCE_B).is_some()
 }
 
 /// `obs_transition_free()`.
 pub fn free<T: Transition>(transition: &T) {
-    todo!("obs_transition_free")
+    transition.mutex_destroy();
+    transition.tex_mutex_destroy();
+
+    transition.enter_context(transition.graphics());
+    transition.texrender_destroy(transition.texrender(SOURCE_A));
+    transition.texrender_destroy(transition.texrender(SOURCE_B));
+    transition.leave_context();
+}
+
+/// `struct transition_state` as the audio render fills it under the lock:
+/// the children's references, the audio flag and the clock. The C copies
+/// `transitioning_video` too, and nothing reads it; the read is kept.
+struct Copied<C> {
+    sources: [Option<C>; 2],
+    transitioning_audio: bool,
+    clock: Clock,
+}
+
+/// `mix_child()`: `count` samples of one channel of the child's audio
+/// `input`, from its first, times the callback's value at each sample's
+/// time, added into `output` from frame `pos`. The context data is read
+/// once, before the first sample.
+#[allow(clippy::too_many_arguments)]
+fn mix_child<T: Transition>(
+    transition: &T,
+    clock: Clock,
+    output: T::Samples,
+    pos: usize,
+    input: T::Samples,
+    count: usize,
+    sample_rate: usize,
+    ts: u64,
+    mix: T::MixCallback,
+) {
+    let context_data = transition.context_data();
+
+    for i in 0..count {
+        let t = transition_sample_time::sample_time(clock, ts, sample_rate, i);
+        let value = transition.call_mix(mix, context_data, t);
+        // pos + i < AUDIO_FRAMES: the place rule caps pos, count is the rest.
+        let frame = pos.wrapping_add(i);
+        let sum = transition.sample(output, frame) + transition.sample(input, i) * value;
+        transition.set_sample(output, frame, sum);
+    }
+}
+
+/// `transition_process_audio()`: one child's audio mixed into the caller's
+/// mix with `mix`, for each mix the mask selects and each channel asked
+/// for, when the child is there, its audio neither pending nor duplicated,
+/// and it starts within the tick.
+fn process_audio<T: Transition>(
+    transition: &T,
+    clock: Clock,
+    child: Option<T::Child>,
+    request: &Request<T>,
+    min_ts: u64,
+    mix: T::MixCallback,
+) {
+    let pending = child.is_some_and(|c| transition.child_audio_pending(c));
+    let duplicated = child.is_some_and(|c| transition.child_audio_is_duplicated(c));
+    let valid = transition_render::audio_valid(child.is_some(), pending, duplicated);
+    let Some(child) = child.filter(|_| valid) else {
+        return;
+    };
+
+    let ts = transition.audio_timestamp(child);
+    let place = transition_render::audio_place(ts, min_ts, request.sample_rate);
+    if place == Place::None {
+        return;
+    }
+    let child_audio = transition.audio_mix(child);
+
+    let Place::Mix(pos) = place else {
+        // PLACE_LATE
+        return;
+    };
+
+    let mut bit = 1u32;
+    for mix_idx in 0..MAX_AUDIO_MIXES {
+        let selected = request.mixers & bit != 0;
+        bit = bit.wrapping_shl(1);
+        if !selected {
+            continue;
+        }
+
+        for ch in 0..request.channels {
+            let output = transition.output_samples(request.audio, mix_idx, ch);
+            let input = transition.input_samples(&child_audio, mix_idx, ch);
+
+            mix_child(
+                transition,
+                clock,
+                output,
+                pos,
+                input,
+                AUDIO_FRAMES.saturating_sub(pos),
+                request.sample_rate,
+                ts,
+                mix,
+            );
+        }
+    }
+}
+
+/// `transition_live_sources()`: the children in the slots, leaving out any
+/// that was removed.
+fn live_sources<T: Transition>(transition: &T) -> [Option<T::Child>; 2] {
+    SLOTS.map(|idx| {
+        transition
+            .source(idx)
+            .filter(|&child| !transition.removed(child))
+    })
+}
+
+/// `transition_calc_min_ts()`: the earliest audio timestamp of the
+/// children whose audio is not pending, 0 for none.
+fn calc_min_ts<T: Transition>(transition: &T, sources: [Option<T::Child>; 2]) -> u64 {
+    let timestamps = sources.map(|source| match source {
+        Some(child) if !transition.child_audio_pending(child) => transition.audio_timestamp(child),
+        _ => 0,
+    });
+
+    transition_clock::min_ts(timestamps)
 }
 
 /// `obs_transition_audio_render()`: `None` for no transition or a source
@@ -213,5 +348,83 @@ pub fn free<T: Transition>(transition: &T) {
 /// with `*ts_out` unwritten); else the earliest audio timestamp of the
 /// children, which the C writes to `*ts_out` and returns as `ts != 0`.
 pub fn audio_render<T: Transition>(transition: Option<&T>, request: Request<T>) -> Option<u64> {
-    todo!("obs_transition_audio_render")
+    if !T::valid(transition, AUDIO_RENDER_LOG_NAME) {
+        return None;
+    }
+    let transition = transition?;
+    let mut stopped = false;
+    let mut t = 0.0f32;
+    let mut state = None;
+
+    transition.lock();
+
+    let mut sources = live_sources(transition);
+    let mut min_ts = calc_min_ts(transition, sources);
+
+    if min_ts != 0 {
+        t = transition_stop::calc_time(transition, min_ts);
+    }
+
+    let step = transition_render::audio_stop(
+        (min_ts != 0).then_some(t),
+        transition.transitioning_video(),
+        transition.transitioning_audio(),
+    );
+    if step != AudioStep::Keep {
+        transition.set_transitioning_audio(false);
+        if step == AudioStep::Stop {
+            transition_stop::stop(transition);
+            stopped = true;
+        }
+    }
+
+    if min_ts != 0 {
+        // The audio stop can make a removed child source A (#2185).
+        sources = live_sources(transition);
+        min_ts = calc_min_ts(transition, sources);
+        if min_ts != 0 {
+            let [a, b] = sources;
+            let sources = [transition.get_ref(a), transition.get_ref(b)];
+            let _transitioning_video = transition.transitioning_video();
+            let transitioning_audio = transition.transitioning_audio();
+            let clock = Clock {
+                mode: transition.mode(),
+                manual_val: transition.manual_val(),
+                start_time: transition.start_time(),
+                duration: transition.duration(),
+            };
+            state = Some(Copied {
+                sources,
+                transitioning_audio,
+                clock,
+            });
+        }
+    }
+
+    transition.unlock();
+
+    if let Some(state) = state {
+        let [a, b] = state.sources;
+        let mix = transition_render::audio_mix(state.transitioning_audio, a.is_some(), b.is_some());
+        if mix.mix_a {
+            process_audio(transition, state.clock, a, &request, min_ts, request.mix_a);
+        }
+        if mix.mix_b {
+            process_audio(transition, state.clock, b, &request, min_ts, request.mix_b);
+        }
+        if mix.copy_a
+            && let Some(a) = a
+        {
+            transition.copy_audio(request.audio, transition.child_audio_output_buf(a));
+        }
+
+        transition.release(a);
+        transition.release(b);
+    }
+
+    if stopped {
+        transition_stop::handle_stop(transition);
+    }
+
+    Some(min_ts)
 }
