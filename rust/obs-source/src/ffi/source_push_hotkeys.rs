@@ -2,51 +2,59 @@
 use crate::push_hotkeys::{self, Host, Kind};
 use core::ffi::c_void;
 
-unsafe extern "C" {
-    fn obs_source_push_hotkey_clock() -> u64;
-    fn obs_source_push_hotkey_lock(source: *mut c_void);
-    fn obs_source_push_hotkey_append(
-        source: *mut c_void,
-        timestamp: u64,
-        talk: bool,
-        pressed: bool,
-    );
-    fn obs_source_push_hotkey_unlock(source: *mut c_void);
-    fn obs_source_push_hotkey_store(source: *mut c_void, talk: bool, pressed: bool);
+struct Source {
+    source: *mut c_void,
+    clock: unsafe extern "C" fn() -> u64,
+    lock: unsafe extern "C" fn(*mut c_void),
+    append: unsafe extern "C" fn(*mut c_void, u64, bool, bool),
+    unlock: unsafe extern "C" fn(*mut c_void),
+    store: unsafe extern "C" fn(*mut c_void, bool, bool),
 }
-struct Source(*mut c_void);
 impl Host for Source {
     fn clock(&mut self) -> u64 {
-        // SAFETY: the private adapter reads the libobs monotonic clock.
-        unsafe { obs_source_push_hotkey_clock() }
+        // SAFETY: registration supplies the live libobs monotonic clock.
+        unsafe { (self.clock)() }
     }
     fn lock(&mut self) {
         // SAFETY: dispatch's caller supplies a live source for this entire event.
-        unsafe { obs_source_push_hotkey_lock(self.0) }
+        unsafe { (self.lock)(self.source) }
     }
     fn append(&mut self, timestamp: u64, kind: Kind, pressed: bool) {
         // SAFETY: the safe core holds this source's queue mutex around the append.
-        unsafe { obs_source_push_hotkey_append(self.0, timestamp, kind == Kind::Talk, pressed) }
+        unsafe { (self.append)(self.source, timestamp, kind == Kind::Talk, pressed) }
     }
     fn unlock(&mut self) {
         // SAFETY: the core paired this unlock with its lock on the same source.
-        unsafe { obs_source_push_hotkey_unlock(self.0) }
+        unsafe { (self.unlock)(self.source) }
     }
     fn store(&mut self, kind: Kind, pressed: bool) {
         // SAFETY: the source is live and the core has released the queue mutex.
-        unsafe { obs_source_push_hotkey_store(self.0, kind == Kind::Talk, pressed) }
+        unsafe { (self.store)(self.source, kind == Kind::Talk, pressed) }
     }
 }
 /// # Safety
 /// `source` must be a live registered hotkey's source, under the C callback contract.
+/// Callbacks must be the live C source adapters and clock for this event.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_push_hotkey_dispatch(
     source: *mut c_void,
     talk: bool,
     pressed: bool,
+    clock: unsafe extern "C" fn() -> u64,
+    lock: unsafe extern "C" fn(*mut c_void),
+    append: unsafe extern "C" fn(*mut c_void, u64, bool, bool),
+    unlock: unsafe extern "C" fn(*mut c_void),
+    store: unsafe extern "C" fn(*mut c_void, bool, bool),
 ) {
     push_hotkeys::event(
-        &mut Source(source),
+        &mut Source {
+            source,
+            clock,
+            lock,
+            append,
+            unlock,
+            store,
+        },
         if talk { Kind::Talk } else { Kind::Mute },
         pressed,
     );

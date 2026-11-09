@@ -53,7 +53,9 @@ static void push_append(struct obs_source *source, const struct audio_action *ac
 #define pthread_mutex_unlock push_unlock
 #define da_push_back(queue, action) push_append(source, action)
 #define obs_source_push_hotkey_dispatch oracle_push_hotkey_dispatch
-void oracle_push_hotkey_dispatch(void *source, bool talk, bool pressed);
+void oracle_push_hotkey_dispatch(void *source, bool talk, bool pressed, uint64_t (*clock)(void), void (*lock)(void *),
+				 void (*append)(void *, uint64_t, bool, bool), void (*unlock)(void *),
+				 void (*store)(void *, bool, bool));
 #include "obs-source-push-hotkeys.inc"
 #undef obs_source_push_hotkey_dispatch
 #undef da_push_back
@@ -70,7 +72,7 @@ void oracle_push_hotkey_event(uint64_t timestamp, bool mute, bool talk, bool kin
 	source.user_push_to_talk_pressed = talk;
 	out[0] = timestamp;
 	push_output = out;
-	oracle_push_hotkey_dispatch(&source, kind, pressed);
+	oracle_push_hotkey_dispatch(&source, kind, pressed, push_clock, NULL, NULL, NULL, NULL);
 	out[0] = source.audio_actions.timestamp;
 	out[1] = (uint64_t)source.audio_actions.type;
 	out[2] = source.audio_actions.set;

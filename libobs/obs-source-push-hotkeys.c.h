@@ -32,8 +32,15 @@ static void obs_source_hotkey_push_to_talk(void *data, obs_hotkey_id id, obs_hot
 	source->user_push_to_talk_pressed = pressed;
 }
 
-void obs_source_push_hotkey_dispatch(void *source, bool talk, bool pressed)
+void obs_source_push_hotkey_dispatch(void *source, bool talk, bool pressed, uint64_t (*clock)(void),
+				     void (*lock)(void *), void (*append)(void *, uint64_t, bool, bool),
+				     void (*unlock)(void *), void (*store)(void *, bool, bool))
 {
+	UNUSED_PARAMETER(clock);
+	UNUSED_PARAMETER(lock);
+	UNUSED_PARAMETER(append);
+	UNUSED_PARAMETER(unlock);
+	UNUSED_PARAMETER(store);
 	if (talk)
 		obs_source_hotkey_push_to_talk(source, 0, NULL, pressed);
 	else
