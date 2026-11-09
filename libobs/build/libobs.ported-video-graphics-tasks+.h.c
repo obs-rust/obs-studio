@@ -2,11 +2,5 @@
 
 #include "libobs/build/libobs.pch.h"
 
+#include "libobs/obs-video-graphics-tasks-reference.c.h"
 #include "libobs/obs-video-graphics-tasks.c.h"
-
-void obs_graphics_tasks_execute(struct obs_core_video *video);
-void obs_graphics_tasks_execute(struct obs_core_video *video)
-{
-	(void)video;
-	execute_graphics_tasks();
-}
