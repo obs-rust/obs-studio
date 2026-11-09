@@ -70,6 +70,7 @@ mod module_type_queries_parity;
 mod module_type_rules;
 mod module_type_rules_parity;
 mod monitoring_device_getter;
+mod monitoring_device_getter_parity;
 mod nix_log_rules;
 mod nix_log_rules_parity;
 mod nix_system_info;

@@ -8,6 +8,11 @@ pub enum Field {
 }
 
 /// Read only fields whose outputs are requested, without retaining their values.
-pub fn get<T: Copy>(_name: Option<&mut T>, _id: Option<&mut T>, _read: impl FnMut(Field) -> T) {
-    todo!()
+pub fn get<T: Copy>(name: Option<&mut T>, id: Option<&mut T>, mut read: impl FnMut(Field) -> T) {
+    if let Some(name) = name {
+        *name = read(Field::Name);
+    }
+    if let Some(id) = id {
+        *id = read(Field::Id);
+    }
 }

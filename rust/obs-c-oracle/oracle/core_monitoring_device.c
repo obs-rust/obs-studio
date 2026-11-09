@@ -4,6 +4,7 @@
 #define obs_get_audio_monitoring_device oracle_obs_get_audio_monitoring_device
 #include "obs-core-monitoring-device.c.h"
 #undef obs_get_audio_monitoring_device
+#include "core_monitoring_device_fields.inc"
 #undef obs
 
 static struct obs_core monitoring_device_state;
