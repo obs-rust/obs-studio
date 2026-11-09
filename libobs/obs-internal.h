@@ -1933,6 +1933,11 @@ struct obs_output_total_frames_fields {
 	const volatile long *frames;
 };
 extern struct obs_output_total_frames_fields obs_output_total_frames_fields(const obs_output_t *output);
+/* Borrowed atomic flag address; NULL output produces a NULL field. */
+struct obs_output_reconnecting_fields {
+	const volatile bool *reconnecting;
+};
+extern struct obs_output_reconnecting_fields obs_output_reconnecting_fields(const obs_output_t *output);
 
 /* Private member addresses; callers must reject NULL before taking them. */
 struct obs_output_pause_queries_fields {
