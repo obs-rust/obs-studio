@@ -30,7 +30,7 @@
 //! `obs_source::transition_stop::Transition` over the same seam (with the
 //! plugin's `transition_stop`, the signals and the video frame time
 //! through it), `obs_source_remove_active_child()` and
-//! `obs_source_release()`; and
+//! `obs_source_release()`;
 //! `libobs/obs-source-transition-switch.c.h`, the start and set of a
 //! transition, whose shims ([`ffi::source_transition_switch`]) implement
 //! `obs_source::transition_switch::Transition` over the same seam (with the
@@ -38,7 +38,17 @@
 //! source calls (`obs_source_get_ref()`, `obs_source_release()`, the
 //! active-child add and remove, `obs_source_get_name()`,
 //! `obs_source_enum_full_tree()` and `blog()`), `os_gettime_ns()` and the
-//! size port's recalculation ([`ffi::source_transition_size`]). The rest
+//! size port's recalculation ([`ffi::source_transition_size`]); and
+//! `libobs/obs-source-transition-video.c.h`, the video render of a
+//! transition, whose shims ([`ffi::source_transition_video`]) implement
+//! `obs_source::transition_video::Transition` over the same seam (with the
+//! matrices, the texrenders, both locks and the context data the draw
+//! callback is handed through it), the stop and size ports
+//! ([`ffi::source_transition_stop`], [`ffi::source_transition_size`]), the
+//! libobs source calls (`obs_source_active()`, `obs_source_get_ref()`,
+//! `obs_source_release()`, `obs_source_get_color_space()` and
+//! `obs_source_video_render()`), the signal, the transparent texture and
+//! the graphics calls. The rest
 //! of `libobs/obs-source-transition.c.h`, the audio render, init and free
 //! of a transition, has its shims in [`ffi::source_transition`], which
 //! implement `obs_source::transition_audio::Transition` on the stop shims'

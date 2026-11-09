@@ -2425,6 +2425,13 @@ area.
   gets a made-up time or a stray transition stop on that source: the time
   is 0 and the force stop does nothing. *All*, 2026-11-08. Issue
   [#4032](https://github.com/obs-rust/obs-studio/issues/4032).
+- A plugin or script that hands obs_transition_video_get_color_space a
+  missing transition no longer crashes OBS, and one that hands it a source
+  that is not a transition gets sRGB instead of a space made up from that
+  source's unused fields; obs_transition_video_render_direct's debug line
+  for a missing transition now names obs_transition_video_render_direct
+  instead of obs_transition_video_render. *All*, 2026-11-09. Issue
+  [#4091](https://github.com/obs-rust/obs-studio/issues/4091).
 
 ### Stability
 

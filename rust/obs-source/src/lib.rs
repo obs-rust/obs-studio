@@ -123,6 +123,12 @@
 //! `set_source()`, `activate_transition()`, `write_start_clock()` and the
 //! recursion check, generic over the transition seam and the libobs calls;
 //! its C shims are in `obs-source-seam` too);
+//! `libobs/obs-source-transition-video.c.h`, the video render of the
+//! transitions (`obs_transition_video_render()`, `_render2()`,
+//! `_get_color_space()` and `_render_direct()`, with `get_texture()`,
+//! `copy_transition_state()`, `render_child()` and `mix_spaces()`, generic
+//! over the transition seam, the libobs calls and the graphics calls; its
+//! C shims are in `obs-source-seam` too);
 //! `libobs/obs-source-video-tick.c.h`, the per-frame decisions of
 //! `obs_source_video_tick()` and `async_tick()` (which steps run, the
 //! deferred update, the show and activate edges, the plugin callback and
@@ -142,6 +148,7 @@
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
 //! [`transition_start`], [`transition_stop`], [`transition_switch`],
+//! [`transition_video`],
 //! [`video_tick`], [`volume_apply`] and
 //! [`volume_mul`]; [`draw_technique`] holds the
 //! technique and colour space values [`deinterlace_draw`] and [`draw_plan`]
