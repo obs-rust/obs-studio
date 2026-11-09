@@ -183,6 +183,7 @@ pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;
 pub mod video_render_size;
+pub mod video_scale_effects;
 pub mod video_stop_requested;
 pub mod view;
 pub mod weak_object_expired;
