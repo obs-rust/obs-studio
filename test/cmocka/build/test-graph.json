@@ -3457,6 +3457,28 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_preferred_range": {
+      "sources": [
+        "test/cmocka/test_encoder_preferred_range.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "definitions": [
+        "OBS_UNIT_TEST"
+      ]
+    },
     "test_encoder_roi": {
       "sources": [
         "test/cmocka/test_encoder_roi.c"
@@ -18259,28 +18281,6 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
-    },
-    "test_encoder_preferred_range": {
-      "sources": [
-        "test/cmocka/test_encoder_preferred_range.c"
-      ],
-      "includes": [
-        "libobs",
-        "deps/libcaption"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::native-test-cmocka",
-        "OBS::caption",
-        "Uthash::Uthash",
-        {
-          "name": "OBS::w32-pthreads",
-          "requires": "OS_WINDOWS"
-        }
-      ],
-      "definitions": [
-        "OBS_UNIT_TEST"
-      ]
     }
   },
   "tests": {
@@ -19573,6 +19573,12 @@
     },
     "test_encoder_pause_steps": {
       "target": "test_encoder_pause_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_encoder_preferred_range": {
+      "target": "test_encoder_preferred_range",
       "command": [
         "${target}"
       ]
@@ -24819,12 +24825,6 @@
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
-      "command": [
-        "${target}"
-      ]
-    },
-    "test_encoder_preferred_range": {
-      "target": "test_encoder_preferred_range",
       "command": [
         "${target}"
       ]
