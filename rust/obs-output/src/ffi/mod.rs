@@ -56,3 +56,5 @@ pub mod service_weak_release;
 pub mod weak_encoder_identity;
 
 pub mod output_total_frames;
+
+pub mod output_connect_time;
