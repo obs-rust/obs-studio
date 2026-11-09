@@ -324,6 +324,57 @@ class EmptyTestDiffTest(unittest.TestCase):
         test_diff.assert_not_called()
 
 
+class TestDiffGnuOracleTest(unittest.TestCase):
+    """--test-diff also builds the C oracle for windows-gnu when the diff
+    touches its C inputs, on a Linux host only (#4168)."""
+
+    def run_test_diff(self, files, platform="linux"):
+        cargo = []
+
+        def fake_subprocess(cmd, **kw):
+            if cmd[:2] == ["git", "diff"]:
+                return subprocess.CompletedProcess(cmd, 0, stdout="\n".join(files))
+            if "metadata" in cmd:
+                root = local_gate.ROOT
+                packages = [
+                    {"name": "obs-util", "manifest_path": str(root / "rust/obs-util/Cargo.toml"), "dependencies": []},
+                    {"name": "obs-c-oracle", "manifest_path": str(root / "rust/obs-c-oracle/Cargo.toml"),
+                     "dependencies": [{"name": "obs-util"}]},
+                ]
+                return subprocess.CompletedProcess(cmd, 0, stdout=__import__("json").dumps({"packages": packages}))
+            raise AssertionError(cmd)
+
+        with (
+            mock.patch.object(local_gate.subprocess, "run", side_effect=fake_subprocess),
+            mock.patch.object(local_gate, "rust_tests"),
+            mock.patch.object(local_gate, "run", side_effect=lambda cmd, *a, **k: cargo.append(cmd)),
+            mock.patch.object(local_gate, "soldr_cargo", side_effect=lambda args, env=None: cargo.append(["soldr", "cargo", *args])),
+            mock.patch.object(local_gate, "toolchain_gcc_ld", return_value="/sysroot/gcc-ld"),
+            mock.patch.object(local_gate.host_platform, "is_linux", return_value=platform == "linux"),
+            mock.patch.object(sys, "stdout", new=io.StringIO()),
+        ):
+            local_gate.test_diff("base")
+        return [c for c in cargo if "x86_64-pc-windows-gnu" in c]
+
+    def test_an_oracle_change_builds_the_oracle_for_windows_gnu(self):
+        calls = self.run_test_diff(["rust/obs-c-oracle/oracle/output_pause_queries.c"])
+        self.assertIn(["soldr", "rustup", "target", "add", "x86_64-pc-windows-gnu"], calls)
+        self.assertIn(
+            ["soldr", "cargo", "test", "-p", "obs-c-oracle", "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"], calls
+        )
+
+    def test_a_libobs_change_builds_it_too(self):
+        self.assertTrue(self.run_test_diff(["libobs/obs-output.c.h"]))
+
+    def test_a_crate_change_without_oracle_inputs_does_not(self):
+        self.assertEqual(self.run_test_diff(["rust/obs-util/src/lib.rs"]), [])
+
+    def test_not_on_a_macos_or_windows_host(self):
+        for platform in ("darwin", "win32"):
+            with self.subTest(platform=platform):
+                self.assertEqual(self.run_test_diff(["rust/obs-c-oracle/build.rs"], platform), [])
+
+
 class LaneGroupTest(unittest.TestCase):
     """The Docker Tier 2 lane shares no build directory with the host lanes, so
     it runs as its own heavy chain beside them instead of after them (#2769)."""
