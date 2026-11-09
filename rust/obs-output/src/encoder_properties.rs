@@ -18,6 +18,29 @@ pub trait Host {
 }
 
 /// Construct properties using type defaults or the instance's current settings.
-pub fn construct<H: Host>(_host: Option<&H>, _instance: bool) -> H::Properties {
-    todo!()
+pub fn construct<H: Host>(host: Option<&H>, instance: bool) -> H::Properties {
+    let Some(host) = host else {
+        return H::null();
+    };
+    if !host.has_properties2() && !host.has_properties() {
+        return H::null();
+    }
+    let settings = if instance {
+        host.settings()
+    } else {
+        let settings = host.create_settings();
+        host.defaults(settings);
+        host.defaults2(settings);
+        settings
+    };
+    let properties = if host.has_properties2() {
+        host.properties2(instance)
+    } else {
+        host.properties(instance)
+    };
+    host.apply(&properties, settings);
+    if !instance {
+        host.release(settings);
+    }
+    properties
 }
