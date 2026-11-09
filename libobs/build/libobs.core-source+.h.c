@@ -45,7 +45,7 @@
 #include "libobs/obs-source-async-flag-fields.c.h"
 #include "libobs/obs-source-async-rotation-fields.c.h"
 #include "libobs/obs-source-audio-active-fields.c.h"
-#include "libobs/obs-source-audio-active-setter.c.h"
+#include "libobs/obs-source-audio-active-setter-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-pause-callbacks.c.h"
