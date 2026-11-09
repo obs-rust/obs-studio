@@ -1,6 +1,6 @@
 //! Tier 1 mirrors test_source_init_context.c::characterize_results.
-use std::cell::Cell;
 use obs_source::init_context::initialize;
+use std::cell::Cell;
 
 #[test]
 fn characterize_results() {
@@ -52,20 +52,37 @@ fn characterize_results() {
                 for registration_result in [false, true] {
                     let calls = Cell::new(0);
                     let signal_token = Cell::new(false);
-                    let inputs = (populated.then_some(1), populated.then_some("source"),
-                        populated.then_some("uuid"), populated.then_some(2), private);
-                    let result = initialize(inputs, |received| {
-                        assert_eq!(calls.replace(1), 0);
-                        assert_eq!(received, (populated.then_some(1), populated.then_some("source"),
-                            populated.then_some("uuid"), populated.then_some(2), private));
-                        signal_token.set(true);
-                        init_result
-                    }, |signals| {
-                        assert_eq!(calls.replace(2), 1);
-                        assert!(signal_token.get());
-                        assert_eq!(signals, expected);
-                        registration_result
-                    });
+                    let inputs = (
+                        populated.then_some(1),
+                        populated.then_some("source"),
+                        populated.then_some("uuid"),
+                        populated.then_some(2),
+                        private,
+                    );
+                    let result = initialize(
+                        inputs,
+                        |received| {
+                            assert_eq!(calls.replace(1), 0);
+                            assert_eq!(
+                                received,
+                                (
+                                    populated.then_some(1),
+                                    populated.then_some("source"),
+                                    populated.then_some("uuid"),
+                                    populated.then_some(2),
+                                    private
+                                )
+                            );
+                            signal_token.set(true);
+                            init_result
+                        },
+                        |signals| {
+                            assert_eq!(calls.replace(2), 1);
+                            assert!(signal_token.get());
+                            assert_eq!(signals, expected);
+                            registration_result
+                        },
+                    );
                     assert_eq!(result, init_result && registration_result);
                     assert_eq!(calls.get(), if init_result { 2 } else { 1 });
                     assert!(signal_token.get());
