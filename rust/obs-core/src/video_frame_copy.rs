@@ -37,26 +37,47 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
-use crate::video_copy_plan::{COPY_MAX, CopyPlan, FrameCopy};
+use crate::video_copy_plan::{COPY_MAX, CopyPlan, FrameCopy, rgbx_copy_plan};
+
+/// `size_t` of a `u32`.
+fn size(value: u32) -> Option<usize> {
+    usize::try_from(value).ok()
+}
+
+/// The bytes from a copy's start that it touches at `stride`: the one copy,
+/// or `rows - 1` strides and one row. A copy of no bytes touches none.
+fn span(copy: &FrameCopy, stride: u32) -> Option<usize> {
+    if copy.bytes == 0 {
+        return Some(0);
+    }
+    if copy.whole {
+        return Some(copy.bytes);
+    }
+    match copy.rows.checked_sub(1) {
+        None => Some(0),
+        Some(last) => size(last)?
+            .checked_mul(size(stride)?)?
+            .checked_add(copy.bytes),
+    }
+}
 
 /// How many bytes of its source `copy` reads, from where it starts. `None`
 /// when that overflows `usize`.
 #[must_use]
 pub fn src_len(copy: &FrameCopy) -> Option<usize> {
-    let _ = copy;
-    todo!()
+    span(copy, copy.src_stride)
 }
 
 /// How many bytes of its destination `copy` writes, from where it starts.
 /// `None` when that overflows `usize`.
 #[must_use]
 pub fn dst_len(copy: &FrameCopy) -> Option<usize> {
-    let _ = copy;
-    todo!()
+    span(copy, copy.dst_stride)
 }
 
 /// How far `copy` moves its source on: the one copy's bytes, or `rows`
@@ -64,8 +85,11 @@ pub fn dst_len(copy: &FrameCopy) -> Option<usize> {
 /// `None` when that overflows `usize`.
 #[must_use]
 pub fn src_advance(copy: &FrameCopy) -> Option<usize> {
-    let _ = copy;
-    todo!()
+    if copy.whole {
+        Some(copy.bytes)
+    } else {
+        size(copy.rows)?.checked_mul(size(copy.src_stride)?)
+    }
 }
 
 /// `set_gpu_converted_plane()`: copies `src` into `dst` as `copy` says, and
@@ -73,8 +97,31 @@ pub fn src_advance(copy: &FrameCopy) -> Option<usize> {
 /// returns `None` when `src` is shorter than [`src_len`] or `dst` than
 /// [`dst_len`], or when either overflows.
 pub fn copy_plane(copy: &FrameCopy, src: &[u8], dst: &mut [u8]) -> Option<usize> {
-    let _ = (copy, src, dst);
-    todo!()
+    let advance = src_advance(copy)?;
+    if src.len() < src_len(copy)? || dst.len() < dst_len(copy)? {
+        return None;
+    }
+    if copy.bytes == 0 {
+        return Some(advance);
+    }
+    if copy.whole {
+        dst.get_mut(..copy.bytes)?
+            .copy_from_slice(src.get(..copy.bytes)?);
+    } else {
+        let src_stride = size(copy.src_stride)?;
+        let dst_stride = size(copy.dst_stride)?;
+        let (mut from, mut to) = (0_usize, 0_usize);
+        for _ in 0..copy.rows {
+            let row = src.get(from..from.checked_add(copy.bytes)?)?;
+            dst.get_mut(to..to.checked_add(copy.bytes)?)?
+                .copy_from_slice(row);
+            // The last row's strides may end past the slices: they are only
+            // counted, as the C's pointers are.
+            from = from.wrapping_add(src_stride);
+            to = to.wrapping_add(dst_stride);
+        }
+    }
+    Some(advance)
 }
 
 /// Where a copy of the plan reads.
@@ -102,10 +149,22 @@ pub struct Step {
 /// [`CopyPlan::count`] or [`COPY_MAX`], whichever is less, with where each
 /// one reads.
 pub fn steps(plan: &CopyPlan) -> impl Iterator<Item = Step> + '_ {
-    core::iter::from_fn(move || {
-        let _ = plan;
-        todo!()
-    })
+    let after_plane0 = plan.copies.first().and_then(src_advance);
+    plan.copies
+        .iter()
+        .take(plan.count)
+        .enumerate()
+        .map(move |(plane, copy)| Step {
+            plane,
+            copy: *copy,
+            source: if !copy.src_after_plane0 {
+                Some(Source::Plane(plane))
+            } else if plane == 0 {
+                None
+            } else {
+                after_plane0.map(Source::AfterPlane0)
+            },
+        })
 }
 
 /// `set_gpu_converted_data()` over slices: runs every [`steps`] copy from
@@ -117,8 +176,22 @@ pub fn copy_frame(
     src: [&[u8]; COPY_MAX],
     dst: &mut [&mut [u8]; COPY_MAX],
 ) -> usize {
-    let _ = (plan, src, dst);
-    todo!()
+    let mut ran = 0_usize;
+    for step in steps(plan) {
+        let from = match step.source {
+            None => continue,
+            Some(Source::Plane(i)) => src.get(i).copied(),
+            Some(Source::AfterPlane0(at)) => src.first().and_then(|s| s.get(at..)),
+        };
+        let (Some(from), Some(to)) = (from, dst.get_mut(step.plane)) else {
+            break;
+        };
+        if copy_plane(&step.copy, from, to).is_none() {
+            break;
+        }
+        ran = ran.saturating_add(1);
+    }
+    ran
 }
 
 /// `copy_rgbx_frame()` over slices: plane 0 of a `width` x `height` RGBA,
@@ -133,6 +206,6 @@ pub fn copy_rgbx_frame(
     dst: &mut [u8],
     dst_linesize: u32,
 ) -> bool {
-    let _ = (width, height, src, src_linesize, dst, dst_linesize);
-    todo!()
+    let copy = rgbx_copy_plan(width, height, src_linesize, dst_linesize);
+    copy_plane(&copy, src, dst).is_some()
 }
