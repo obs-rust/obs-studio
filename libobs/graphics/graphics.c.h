@@ -205,22 +205,6 @@ uint32_t gs_image_max_texture_size(void)
 	return (uint32_t)os_atomic_load_long(&max_texture_size);
 }
 
-static uint32_t device_max_texture_size(graphics_t *graphics)
-{
-	if (graphics->exports.device_get_max_texture_size)
-		return graphics->exports.device_get_max_texture_size(graphics->device);
-
-	/* Upper bounds fixed by the API: Direct3D 11 at feature level 11 and
-	 * up (8192 below), and Metal on every Mac. */
-	switch (graphics->exports.device_get_type()) {
-	case GS_DEVICE_DIRECT3D_11:
-	case GS_DEVICE_METAL:
-		return 16384;
-	default:
-		return 0;
-	}
-}
-
 int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 {
 	int errcode = GS_ERROR_FAIL;
@@ -1047,28 +1031,6 @@ void gs_draw_cube_backdrop(gs_texture_t *cubetex, const struct quat *rot, float 
 	UNUSED_PARAMETER(top);
 	UNUSED_PARAMETER(bottom);
 	UNUSED_PARAMETER(znear);
-}
-
-void gs_reset_viewport(void)
-{
-	uint32_t cx, cy;
-
-	if (!gs_valid("gs_reset_viewport"))
-		return;
-
-	gs_get_size(&cx, &cy);
-	gs_set_viewport(0, 0, (int)cx, (int)cy);
-}
-
-void gs_set_2d_mode(void)
-{
-	uint32_t cx, cy;
-
-	if (!gs_valid("gs_set_2d_mode"))
-		return;
-
-	gs_get_size(&cx, &cy);
-	gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -1.0, -1024.0f);
 }
 
 void gs_set_3d_mode(double fovy, double znear, double zvar)
