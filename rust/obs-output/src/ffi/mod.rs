@@ -17,6 +17,7 @@ pub mod encoder_metadata;
 pub mod encoder_packet_ts;
 pub mod encoder_pause;
 pub mod encoder_preferred_format;
+pub mod encoder_preferred_range;
 pub mod encoder_roi;
 pub mod encoder_roi_state;
 pub mod encoder_scaling_enabled;
@@ -57,5 +58,6 @@ pub mod weak_encoder_identity;
 
 pub mod output_total_frames;
 
-pub mod encoder_preferred_range;
 pub mod output_connect_time;
+
+pub mod output_frames_dropped;

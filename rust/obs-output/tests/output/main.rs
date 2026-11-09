@@ -39,6 +39,8 @@ mod encoder_pause;
 mod encoder_pause_parity;
 mod encoder_preferred_format;
 mod encoder_preferred_format_parity;
+mod encoder_preferred_range;
+mod encoder_preferred_range_parity;
 mod encoder_roi;
 mod encoder_roi_parity;
 mod encoder_roi_state;
@@ -154,7 +156,6 @@ mod weak_encoder_identity;
 
 mod weak_encoder_identity_parity;
 
-mod encoder_preferred_range;
 mod output_total_frames;
 mod output_total_frames_parity;
 
@@ -162,4 +163,5 @@ mod output_connect_time;
 
 mod output_connect_time_parity;
 
-mod encoder_preferred_range_parity;
+mod output_frames_dropped;
+mod output_frames_dropped_parity;
