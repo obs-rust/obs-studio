@@ -122,3 +122,36 @@ fn unmeasured_metrics_cannot_pass_a_threshold() {
     assert!(metric_at_most(Some(5.0), 5.0));
     assert!(!metric_at_most(Some(5.1), 5.0));
 }
+
+#[test]
+fn scheduler_oversleep_cannot_turn_a_timeout_into_success() {
+    struct Oversleep(Cell<u64>);
+    impl WaitClock for Oversleep {
+        fn now_ms(&self) -> u64 {
+            self.0.get()
+        }
+        fn wait_ms(&self, ms: u64) {
+            self.0.set(self.0.get() + ms + 10);
+        }
+    }
+    struct Late<'a>(&'a Oversleep);
+    impl WaitBackend for Late<'_> {
+        fn observe(&self, _: &ObserveInput) -> Result<Observation, ToolError> {
+            let active = self.0.now_ms() >= 15;
+            Ok(Observation {
+                satisfied: active,
+                value: LastValue::Output {
+                    active: Some(active),
+                },
+            })
+        }
+    }
+    let clock = Oversleep(Cell::new(0));
+    let result = run_wait(&Late(&clock), input(10), &clock).unwrap();
+    assert!(!result.satisfied);
+    assert_eq!(result.elapsed_ms, 20);
+    assert!(matches!(
+        result.last_value,
+        LastValue::Output { active: Some(true) }
+    ));
+}

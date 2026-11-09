@@ -182,19 +182,23 @@ pub fn run_wait<B: WaitBackend + ?Sized, C: WaitClock>(
     let observation = ObserveInput {
         condition: request.condition,
     };
+    let mut initial = true;
     loop {
         if backend.cancelled() {
             return Err(ToolError::not_ready("OBS control is shutting down"));
         }
         let current = backend.observe(&observation)?;
         let elapsed_ms = clock.now_ms().saturating_sub(start);
-        if current.satisfied || elapsed_ms >= request.timeout_ms {
+        let satisfied = current.satisfied
+            && (elapsed_ms <= request.timeout_ms || (initial && request.timeout_ms == 0));
+        if satisfied || elapsed_ms >= request.timeout_ms {
             return Ok(WaitOutput {
-                satisfied: current.satisfied,
+                satisfied,
                 elapsed_ms,
                 last_value: current.value,
             });
         }
+        initial = false;
         clock.wait_ms((request.timeout_ms - elapsed_ms).min(10));
     }
 }

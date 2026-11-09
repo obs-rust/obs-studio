@@ -49,7 +49,9 @@ pub trait OutputBackend {
     /// # Errors
     /// Reports start failure or an auto-wait timeout.
     fn start_with_wait(&self, request: OutputStartRequest) -> Result<ActiveOutput, ToolError> {
-        use super::waiting::{SystemClock, WaitClock, validate_timeout};
+        use super::waiting::{
+            Condition, OutputName, OutputState, SystemClock, WaitInput, run_wait, validate_timeout,
+        };
         if request.options.wait {
             validate_timeout(request.options.timeout_ms)?;
         }
@@ -60,19 +62,28 @@ pub trait OutputBackend {
         if !request.options.wait {
             return Ok(state);
         }
-        let clock = SystemClock::default();
-        loop {
-            if self.control_cancelled() {
-                return Err(ToolError::not_ready("OBS control is shutting down"));
-            }
-            if self.status(request.kind).active {
-                return Ok(ActiveOutput { active: true });
-            }
-            let elapsed = clock.now_ms();
-            if elapsed >= request.options.timeout_ms {
-                return Err(ToolError::not_ready("output start timed out"));
-            }
-            clock.wait_ms((request.options.timeout_ms - elapsed).min(10));
+        let output = match request.kind {
+            OutputKind::Record => OutputName::Record,
+            OutputKind::Stream => OutputName::Stream,
+        };
+        let result = run_wait(
+            &OutputWait {
+                backend: self,
+                kind: request.kind,
+            },
+            WaitInput {
+                condition: Condition::OutputState {
+                    output,
+                    state: OutputState::Active,
+                },
+                timeout_ms: request.options.timeout_ms,
+            },
+            &SystemClock::default(),
+        )?;
+        if result.satisfied {
+            Ok(ActiveOutput { active: true })
+        } else {
+            Err(ToolError::not_ready("output start timed out"))
         }
     }
 
@@ -279,4 +290,26 @@ pub struct OutputStartRequest {
     pub kind: OutputKind,
     /// Auto-wait options.
     pub options: OutputStartInput,
+}
+
+struct OutputWait<'a, B: OutputBackend + ?Sized> {
+    backend: &'a B,
+    kind: OutputKind,
+}
+impl<B: OutputBackend + ?Sized> super::waiting::WaitBackend for OutputWait<'_, B> {
+    fn cancelled(&self) -> bool {
+        self.backend.control_cancelled()
+    }
+    fn observe(
+        &self,
+        _: &super::waiting::ObserveInput,
+    ) -> Result<super::waiting::Observation, ToolError> {
+        let active = self.backend.status(self.kind).active;
+        Ok(super::waiting::Observation {
+            satisfied: active,
+            value: super::waiting::LastValue::Output {
+                active: Some(active),
+            },
+        })
+    }
 }
