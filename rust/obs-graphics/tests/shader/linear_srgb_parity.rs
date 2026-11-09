@@ -1,6 +1,6 @@
 //! Actual-header field seam and exact differential behavior for #3904.
 use obs_c_oracle as _;
-use obs_graphics::ffi::linear_srgb::gs_get_linear_srgb;
+use obs_graphics::ffi::linear_srgb::{gs_get_linear_srgb, gs_set_linear_srgb};
 use proptest::prelude::*;
 use std::ffi::{CStr, c_char, c_void};
 use std::mem::{align_of, size_of};
@@ -119,5 +119,70 @@ fn characterize_c_setter() {
                 }
             }
         }
+    }
+}
+
+// No intentional differences from the original C setter (#4141).
+fn compare_setter_sequence(present: bool, initial: bool, writes: &[bool]) {
+    // SAFETY: reset creates this thread's real-header fixture, with no concurrent
+    // access; neither implementation retains pointers to it after each call.
+    unsafe {
+        oracle_linear_srgb_reset(present, initial);
+        let expected: Vec<_> = writes
+            .iter()
+            .map(|&next| {
+                let previous = oracle_gs_set_linear_srgb(next);
+                let read = oracle_gs_get_linear_srgb();
+                (
+                    previous,
+                    read,
+                    oracle_linear_srgb_value(),
+                    oracle_linear_srgb_logs(),
+                    oracle_linear_srgb_level(),
+                    CStr::from_ptr(oracle_linear_srgb_log()).to_bytes().to_vec(),
+                )
+            })
+            .collect();
+        oracle_linear_srgb_reset(present, initial);
+        for (&next, expected) in writes.iter().zip(expected) {
+            let previous = gs_set_linear_srgb(next);
+            let read = gs_get_linear_srgb();
+            assert_eq!(
+                (
+                    previous,
+                    read,
+                    oracle_linear_srgb_value(),
+                    oracle_linear_srgb_logs(),
+                    oracle_linear_srgb_level(),
+                    CStr::from_ptr(oracle_linear_srgb_log()).to_bytes().to_vec()
+                ),
+                expected
+            );
+        }
+    }
+}
+
+#[test]
+fn setter_all_states_and_sequences_match_c() {
+    for present in [false, true] {
+        for initial in [false, true] {
+            for next in [false, true] {
+                compare_setter_sequence(present, initial, &[next, next, !next, next, !next]);
+            }
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: obs_c_oracle::parity::cases(256),
+        failure_persistence: None,
+        ..ProptestConfig::default()
+    })]
+
+    #[test]
+    fn setter_random_sequences_match_c(present in any::<bool>(), initial in any::<bool>(),
+        writes in prop::collection::vec(any::<bool>(), 0..64)) {
+        compare_setter_sequence(present, initial, &writes);
     }
 }

@@ -7,6 +7,5 @@ pub fn linear_srgb(value: Option<bool>) -> bool {
 /// Replace the current context's flag, returning its previous value.
 /// Without a context, return false and leave all state untouched.
 pub fn set_linear_srgb(value: Option<&mut bool>, next: bool) -> bool {
-    let _ = (value, next);
-    todo!("port gs_set_linear_srgb")
+    value.is_some_and(|value| std::mem::replace(value, next))
 }
