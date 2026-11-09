@@ -795,15 +795,15 @@ static void pipewire_node_carries_audio(void **state)
 	pw_thread_loop_lock(loop);
 	cap.stream = pw_stream_new_simple(pw_thread_loop_get_loop(loop), "vmic-test-capture",
 					  pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio", PW_KEY_MEDIA_CATEGORY,
-							    "Capture", PW_KEY_TARGET_OBJECT, "obs_vmic_pw_test",
-							    NULL),
+							    "Capture", PW_KEY_TARGET_OBJECT, "obs_vmic_pw_test", NULL),
 					  &pw_capture_events, &cap);
 	uint8_t buf[512];
 	struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buf, sizeof(buf));
 	struct spa_audio_info_raw info = {.format = SPA_AUDIO_FORMAT_F32, .rate = 48000, .channels = 2};
 	const struct spa_pod *params[1] = {spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &info)};
 	pw_stream_connect(cap.stream, PW_DIRECTION_INPUT, PW_ID_ANY,
-			  PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS, params, 1);
+			  PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS, params,
+			  1);
 	pw_thread_loop_unlock(loop);
 	pw_thread_loop_start(loop);
 
