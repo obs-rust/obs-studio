@@ -9,7 +9,10 @@ function(_scene_item_group_scene_link_support)
       if(NOT _adapter IN_LIST _sources)
         target_sources(${_target} PRIVATE "${_adapter}")
         target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
-        target_link_libraries(${_target} PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>")
+        target_link_libraries(
+          ${_target}
+          PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
+        )
       endif()
     endif()
   endforeach()
