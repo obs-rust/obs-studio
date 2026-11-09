@@ -476,9 +476,14 @@ def prepare_toolchain(layout: Layout) -> bool:
     done = subprocess.run(
         ["uv", "run", "--no-project", str(installer), str(layout.bin_dir)],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        errors="replace",
     )
     if done.returncode != 0:
+        print(f"toolchain preparation failed: {installer} (exit code {done.returncode})", file=sys.stderr)
+        if done.stderr:
+            print("\n".join(done.stderr.splitlines()[-40:]), file=sys.stderr)
         return False
     os.environ["PATH"] = f"{layout.bin_dir}{os.pathsep}{os.environ['PATH']}"
     os.environ["ZCCACHE_CACHE_DIR"] = os.environ.get("ZCCACHE_CACHE_DIR") or str(layout.root / "zccache")

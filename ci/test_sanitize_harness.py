@@ -186,8 +186,10 @@ class SanitizeHarnessTest(unittest.TestCase):
         self.assertIn("toolchain preparation failed", err)
         self.assertIn("install_zccache.py", err)
         self.assertIn("exit code 23", err)
-        self.assertEqual([line for line in err.splitlines() if line.startswith("diagnostic-")],
-                         [f"diagnostic-{i}" for i in range(10, 50)])
+        self.assertEqual(
+            [line for line in err.splitlines() if line.startswith("diagnostic-")],
+            [f"diagnostic-{i}" for i in range(10, 50)],
+        )
         self.assertNotIn("quiet-stdout", out + err)
 
     def test_successful_toolchain_install_is_quiet(self):
