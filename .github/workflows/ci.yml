@@ -82,7 +82,7 @@ jobs:
   cancel-superseded:
     name: Cancel Superseded Queue Runs 🧹
     if: ${{ !cancelled() && github.event_name == 'merge_group' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       actions: write
@@ -421,7 +421,7 @@ jobs:
     name: CI Gate ✅
     if: always()
     needs: [cancel-superseded, check-format, build-project, validate-data, update-documentation, tier2-setup-producer, tier2-setup-consumer, native-cache-consumer, flatpak-runtime-reuse]
-    runs-on: ubuntu-26.04
+    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
     permissions:
       actions: read
       contents: read
@@ -475,7 +475,7 @@ jobs:
           (github.event_name == 'merge_group' ||
            (github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository)) }}
-    runs-on: ubuntu-26.04
+    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
     timeout-minutes: 5
     steps:
       - name: Mark Lane Proof 🧾
@@ -497,7 +497,7 @@ jobs:
     name: Cache Janitor 🧹
     if: always() && github.event_name == 'merge_group'
     needs: [ci-pre, ci-gate, tier2-lane-proof]
-    runs-on: ubuntu-26.04
+    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
     timeout-minutes: 5
     # One sweep at a time, repo-wide; a running sweep is never cancelled.
     concurrency:

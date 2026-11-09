@@ -22,7 +22,7 @@ jobs:
   # same files), so they run here only on pushes.
   checks:
     timeout-minutes: 20
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-latest' }}
     outputs:
       swift: ${{ steps.diff.outputs.swift }}
     steps:

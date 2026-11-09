@@ -117,6 +117,66 @@ class CiScopeTest(unittest.TestCase):
         got = scope(["ci/ci_scope.py"], event="merge_group")
         self.assertFalse(got.windows or got.macos)
 
+    def test_merge_group_trims_repeated_lanes(self):
+        files = [
+            "libobs/obs.c.h", "frontend/widgets/OBSBasicWindow.cpp",
+            "ci/ci_scope.py", "rust/obs-util/src/platform/windows/mod.rs",
+            "rust/obs-util/src/platform/macos/mod.rs", "Cargo.lock",
+        ]
+        queued = scope(files, event="merge_group", ratchet_dirs=("libobs",))
+        for lane in ("macos", "windows", "qt", "tier2", "qt_sdk", "full",
+                     "cross_targets", "cross_lint", "asan", "windows_link"):
+            with self.subTest(lane=lane):
+                self.assertFalse(getattr(queued, lane))
+        self.assertTrue(queued.core)
+        self.assertFalse(queued.docs_only)
+        pr = scope(files, event="pull_request", ratchet_dirs=("libobs",))
+        self.assertTrue(pr.tier2 and pr.qt and pr.cross_lint and pr.windows_link)
+        pushed = scope(files, event="push", ref="master")
+        self.assertTrue(pushed.tier2 and pushed.qt and pushed.macos and pushed.windows)
+        self.assertTrue(pushed.cross_lint)
+
+    def test_queue_runner_selection_preserves_hosted_fallbacks(self):
+        import re
+
+        expected = {
+            "ci.yml": {
+                "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-26.04",
+                "tier2-lane-proof": "ubuntu-26.04", "cache-janitor": "ubuntu-26.04",
+            },
+            "build-project.yaml": dict.fromkeys((
+                "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
+                "rust-cross-lint", "rust-cross-proof", "rust-windows-link",
+                "rust-linux-tier2-build", "rust-linux-tier2", "linux-qt-frontend",
+            ), "ubuntu-26.04"),
+            "check-format.yaml": {"checks": "ubuntu-latest"},
+        }
+        for name, jobs in expected.items():
+            text = (ROOT / ".github/workflows" / name).read_text()
+            blocks = dict(re.findall(
+                r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
+            ))
+            for job, fallback in jobs.items():
+                with self.subTest(workflow=name, job=job):
+                    self.assertIn(
+                        "runs-on: ${{ (github.event_name == 'merge_group' && "
+                        "vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS)"
+                        f" || '{fallback}' }}}}", blocks[job],
+                    )
+            for runner in re.findall(r"^    runs-on: (.+)$", text, re.MULTILINE):
+                if runner.startswith(("macos-", "windows-")):
+                    self.assertNotIn("MQ_RUNNER_LABELS", runner)
+            if name == "build-project.yaml":
+                self.assertIn("startsWith(matrix.os, 'ubuntu-')", blocks["ubuntu-build"])
+                self.assertIn(" || matrix.os }}", blocks["ubuntu-build"])
+
+    def test_queue_runs_merge_result_tests_and_skips_windows_link(self):
+        text = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        job = text.split("  rust-windows-link:\n", 1)[1].split("    steps:", 1)[0]
+        self.assertIn("needs.check-event.outputs.windows_link == 'true'", job)
+        self.assertIn('echo "windows_link=${windows_link:-true}"', text)
+        self.assertIn("(github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')", text)
+
     def test_core_file_content_is_not_read(self):
         # Core files carry no platform defines (the ratchet lint enforces
         # it), so a core file is Linux-only whatever it contains (#897).
