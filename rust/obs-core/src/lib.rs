@@ -125,6 +125,7 @@ pub mod canvas_render;
 pub mod canvas_rules;
 pub mod canvas_scene;
 pub mod canvas_set_name;
+pub mod canvas_signals;
 pub mod canvas_video_getter;
 pub mod canvas_video_info_getter;
 pub mod context_names;
