@@ -46,6 +46,7 @@ mod save_load;
 mod save_load_parity;
 mod translations;
 mod translations_parity;
+mod unregister;
 mod windows_keys;
 mod windows_keys_parity;
 
