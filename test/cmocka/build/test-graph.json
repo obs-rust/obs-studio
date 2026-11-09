@@ -17382,6 +17382,21 @@
         }
       ]
     },
+    "test_weak_object_refs": {
+      "sources": [
+        "test/cmocka/test_weak_object_refs.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_whip_host_os_name": {
       "sources": [
         "test/cmocka/test_whip_host_os_name.cpp"
@@ -24493,6 +24508,12 @@
     },
     "test_weak_object_identity": {
       "target": "test_weak_object_identity",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_weak_object_refs": {
+      "target": "test_weak_object_refs",
       "command": [
         "${target}"
       ]
