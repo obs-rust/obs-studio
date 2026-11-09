@@ -12,6 +12,7 @@ mod image_file;
 mod image_file_layout;
 mod image_file_parity;
 mod image_init;
+mod image_init_parity;
 mod image_orient;
 mod image_orient_parity;
 mod image_pq_scrgb;

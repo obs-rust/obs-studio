@@ -1,21 +1,5 @@
 #include "build/libobs-media.pch.h"
 
-/* A picture wider or taller than the graphics device's texture size limit
- * cannot become a texture. Say so once, before anything is decoded. */
-bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy)
-{
-	if (!gs_ffmpeg_image_too_large(info->max_size, cx, cy))
-		return false;
-
-	if (!info->too_large)
-		blog(LOG_WARNING,
-		     "Image '%s' is %dx%d, larger than the maximum texture size of "
-		     "the graphics device (%" PRIu32 "x%" PRIu32 "); not loading it",
-		     info->file, cx, cy, info->max_size, info->max_size);
-	info->too_large = true;
-	return true;
-}
-
 static void *ffmpeg_image_copy_data_straight(struct ffmpeg_image *info, AVFrame *frame)
 {
 	const size_t linesize = (size_t)info->cx * 4;
@@ -242,7 +226,7 @@ uint8_t *gs_create_texture_file_data(const char *file, enum gs_color_format *for
 	struct ffmpeg_image image;
 	uint8_t *data = NULL;
 
-	if (ffmpeg_image_init(&image, file)) {
+	if (ffmpeg_image_init(&image, file, gs_image_max_texture_size)) {
 		struct gs_image_decode_context decode = {&image, ffmpeg_image_too_large, ffmpeg_image_reformat_frame};
 		data = gs_ffmpeg_image_decode(&decode, (int)GS_IMAGE_ALPHA_STRAIGHT);
 		if (data) {
@@ -271,7 +255,7 @@ uint8_t *gs_create_texture_file_data3(const char *file, enum gs_image_alpha_mode
 	struct ffmpeg_image image = {0};
 	uint8_t *data = NULL;
 
-	if (ffmpeg_image_init(&image, file)) {
+	if (ffmpeg_image_init(&image, file, gs_image_max_texture_size)) {
 		struct gs_image_decode_context decode = {&image, ffmpeg_image_too_large, ffmpeg_image_reformat_frame};
 		data = gs_ffmpeg_image_decode(&decode, (int)alpha_mode);
 		if (data) {

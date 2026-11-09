@@ -1,0 +1,24 @@
+# Standalone Rust-static consumers need the real private FFmpeg adapter too.
+# Extract only its PCH include, so these tests do not inherit all media-unity
+# dependencies. Every operation below remains the production implementation.
+function(_ffmpeg_image_init_link_support)
+  set(_source "${CMAKE_SOURCE_DIR}/libobs/graphics/graphics-ffmpeg-init-adapter.c.h")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_source}")
+  file(READ "${_source}" _body)
+  string(REPLACE "#include \"build/libobs-media.pch.h\"" "" _body "${_body}")
+  set(_adapter "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-image-init-link-support.c")
+  file(
+    WRITE "${_adapter}"
+    "#include <errno.h>\n#include <inttypes.h>\n#include <string.h>\n#include \"util/base.h\"\n#include <libavcodec/avcodec.h>\n#include <libavformat/avformat.h>\n#include \"graphics/graphics.h\"\n#include \"graphics/graphics-ffmpeg-orient.h\"\n#include \"graphics/graphics-ffmpeg-init-private.h\"\n${_body}"
+  )
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if("libobs_rust-static" IN_LIST _links)
+      target_sources(${_target} PRIVATE "${_adapter}")
+      target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+      target_link_libraries(${_target} PRIVATE FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil)
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _ffmpeg_image_init_link_support)

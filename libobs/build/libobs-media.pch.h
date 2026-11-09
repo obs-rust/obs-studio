@@ -19,6 +19,8 @@
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 
+#include "graphics/graphics-ffmpeg-init-private.h"
+
 #include "graphics/graphics-ffmpeg-host.h"
 
 /* graphics/graphics-ffmpeg-orient.c (ported; graphics-ffmpeg.c calls it) */

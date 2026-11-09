@@ -1,21 +1,5 @@
 #include "build/libobs-media.pch.h"
 
-struct ffmpeg_image {
-	const char *file;
-	AVFormatContext *fmt_ctx;
-	AVCodecContext *decoder_ctx;
-
-	int cx, cy;
-	enum AVPixelFormat format;
-
-	/* The texture size limit of the graphics device, 0 if unknown. */
-	uint32_t max_size;
-	bool too_large;
-};
-
-/* The size predicate remains in graphics-ffmpeg.c.h in this unity group. */
-static bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy);
-
 /* The decoder asks for the frame buffer once it has read the picture's
  * header and before it decodes the pixels. */
 static int ffmpeg_image_get_buffer(AVCodecContext *ctx, AVFrame *frame, int flags)
@@ -66,13 +50,13 @@ static bool ffmpeg_image_open_decoder_context(struct ffmpeg_image *info)
 	return true;
 }
 
-static void ffmpeg_image_free(struct ffmpeg_image *info)
+void ffmpeg_image_free(struct ffmpeg_image *info)
 {
 	avcodec_free_context(&info->decoder_ctx);
 	avformat_close_input(&info->fmt_ctx);
 }
 
-static bool ffmpeg_image_init(struct ffmpeg_image *info, const char *file)
+bool ffmpeg_image_init(struct ffmpeg_image *info, const char *file, uint32_t (*max_size)(void))
 {
 	int ret;
 
@@ -81,7 +65,7 @@ static bool ffmpeg_image_init(struct ffmpeg_image *info, const char *file)
 
 	memset(info, 0, sizeof(struct ffmpeg_image));
 	info->file = file;
-	info->max_size = gs_image_max_texture_size();
+	info->max_size = max_size();
 
 	ret = avformat_open_input(&info->fmt_ctx, file, NULL, NULL);
 	if (ret < 0) {
