@@ -1925,6 +1925,16 @@ struct obs_output_flags_fields {
 };
 extern struct obs_output_flags_fields obs_output_flags_fields(const obs_output_t *output);
 
+/* Opaque callback/context snapshot for the output properties Rust port. */
+struct obs_output_properties_fields {
+	void (*defaults)(obs_data_t *);
+	obs_properties_t *(*properties)(void *);
+	void *data;
+	obs_data_t *settings;
+};
+extern struct obs_output_properties_fields obs_output_properties_type_fields(const struct obs_output_info *info);
+extern struct obs_output_properties_fields obs_output_properties_instance_fields(const obs_output_t *output);
+
 /* Borrowed handler field addresses; callers must reject NULL before access. */
 struct obs_output_handler_getters_fields {
 	signal_handler_t *const *signal;

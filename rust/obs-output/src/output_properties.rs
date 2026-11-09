@@ -13,19 +13,36 @@ pub trait Host {
 }
 
 pub fn defaults<H: Host>(host: &H, info: Option<H::Info>) -> Option<H::Data> {
-    let _ = (host, info);
-    todo!()
+    let info = info?;
+    let data = host.create();
+    host.defaults(info, data);
+    Some(data)
 }
 
 pub fn type_properties<H: Host>(host: &H, info: Option<H::Info>) -> Option<H::Props> {
-    let _ = (host, info);
-    todo!()
+    let info = info?;
+    if !host.has_properties(info) {
+        return None;
+    }
+    let data = defaults(host, Some(info))?;
+    let props = host.properties(info, None);
+    host.apply(&props, data);
+    host.release(data);
+    Some(props)
 }
 
 pub fn properties<H: Host>(
     host: &H,
     output: Option<(H::Info, H::Data, H::Data)>,
 ) -> Option<H::Props> {
-    let _ = (host, output);
-    todo!()
+    let Some((info, data, settings)) = output else {
+        host.null_output();
+        return None;
+    };
+    if !host.has_properties(info) {
+        return None;
+    }
+    let props = host.properties(info, Some(data));
+    host.apply(&props, settings);
+    Some(props)
 }

@@ -197,6 +197,8 @@ mod output_frames_dropped_parity;
 
 mod output_properties;
 
+mod output_properties_parity;
+
 mod output_settings;
 
 mod output_settings_parity;

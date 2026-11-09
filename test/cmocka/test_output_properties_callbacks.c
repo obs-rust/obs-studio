@@ -10,17 +10,49 @@ static int token;
 static void *seen_data;
 static long long seen_value;
 static unsigned defaults_calls, properties_calls, apply_calls;
-static const char *name(void *data) { (void)data; return "properties trace"; }
+static const char *name(void *data)
+{
+	(void)data;
+	return "properties trace";
+}
 static void *create(obs_data_t *settings, obs_output_t *output)
-{ (void)settings; (void)output; return &token; }
-static void destroy(void *data) { assert_ptr_equal(data, &token); }
-static bool start(void *data) { (void)data; return false; }
-static void trace_stop(void *data, uint64_t ts) { (void)data; (void)ts; }
-static void packet(void *data, struct encoder_packet *p) { (void)data; (void)p; }
+{
+	(void)settings;
+	(void)output;
+	return &token;
+}
+static void destroy(void *data)
+{
+	assert_ptr_equal(data, &token);
+}
+static bool start(void *data)
+{
+	(void)data;
+	return false;
+}
+static void trace_stop(void *data, uint64_t ts)
+{
+	(void)data;
+	(void)ts;
+}
+static void packet(void *data, struct encoder_packet *p)
+{
+	(void)data;
+	(void)p;
+}
 static void defaults(obs_data_t *settings)
-{ defaults_calls++; obs_data_set_default_int(settings, "value", 17); }
+{
+	defaults_calls++;
+	obs_data_set_default_int(settings, "value", 17);
+}
 static bool modified(obs_properties_t *props, obs_property_t *prop, obs_data_t *settings)
-{ (void)props; (void)prop; apply_calls++; seen_value = obs_data_get_int(settings, "value"); return false; }
+{
+	(void)props;
+	(void)prop;
+	apply_calls++;
+	seen_value = obs_data_get_int(settings, "value");
+	return false;
+}
 static obs_properties_t *properties(void *data)
 {
 	properties_calls++;
@@ -34,9 +66,16 @@ static void trace(void **state)
 {
 	(void)state;
 	assert_true(obs_startup("en-US", NULL, NULL));
-	struct obs_output_info info = {.id = "properties_trace", .flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED,
-		.get_name = name, .create = create, .destroy = destroy, .start = start, .stop = trace_stop,
-		.encoded_packet = packet, .get_defaults = defaults, .get_properties = properties};
+	struct obs_output_info info = {.id = "properties_trace",
+				       .flags = OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED,
+				       .get_name = name,
+				       .create = create,
+				       .destroy = destroy,
+				       .start = start,
+				       .stop = trace_stop,
+				       .encoded_packet = packet,
+				       .get_defaults = defaults,
+				       .get_properties = properties};
 	obs_register_output(&info);
 	obs_properties_t *props = obs_get_output_properties(info.id);
 	assert_non_null(props);
