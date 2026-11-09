@@ -157,6 +157,7 @@
 
 #![deny(unsafe_code)]
 
+pub mod async_compensation;
 pub mod async_flag_getters;
 pub mod async_pacing;
 pub mod async_upload;
