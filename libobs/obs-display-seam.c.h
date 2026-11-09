@@ -20,6 +20,11 @@
 /* Private adapter, not a new public API (obs-display-seam.h). Each body is
  * copied from the line of obs-display.c named beside it. */
 
+/* The clear flags obs-canvas-draw.h copies. */
+_Static_assert(OBS_DISPLAY_CLEAR_COLOR == GS_CLEAR_COLOR, "GS_CLEAR_COLOR");
+_Static_assert(OBS_DISPLAY_CLEAR_DEPTH == GS_CLEAR_DEPTH, "GS_CLEAR_DEPTH");
+_Static_assert(OBS_DISPLAY_CLEAR_STENCIL == GS_CLEAR_STENCIL, "GS_CLEAR_STENCIL");
+
 /* ------------------------------------------------------------------------- */
 /* The two mutexes */
 
