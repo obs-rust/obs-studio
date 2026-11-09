@@ -69,3 +69,4 @@ mod vertexbuffer_destroy;
 mod vertexbuffer_destroy_parity;
 mod voltexture_metadata;
 mod voltexture_metadata_parity;
+mod viewport;
