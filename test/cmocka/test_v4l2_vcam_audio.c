@@ -807,6 +807,8 @@ static void pipewire_node_carries_audio(void **state)
 
 	struct virtualcam_data *vcam = virtualcam_create(NULL, NULL);
 	bool started = vmic_pw_start(vcam, "obs_vmic_pw_test", "OBS Audio", 48000);
+	/* Frames also wait out the jitter buffer: 2048 frames at 48 kHz. */
+	uint64_t lead = vcam->mic_lead_ns;
 	char *sources = started ? vmic_pa_list(false) : NULL;
 	bool listed = sources && vmic_source_listed(sources, "obs_vmic_pw_test");
 	bfree(sources);
@@ -849,6 +851,7 @@ static void pipewire_node_carries_audio(void **state)
 	assert_true(started);
 	assert_true(listed);
 	assert_true(peak > 0.25f);
+	assert_int_equal(lead, 42666666ULL);
 #else
 	skip();
 #endif
