@@ -1,7 +1,10 @@
 # Actual-library characterization before extracting the C functions for a Rust port.
 add_executable(test_output_conversion_callbacks test_output_conversion_callbacks.c)
 target_include_directories(test_output_conversion_callbacks PRIVATE ${CMOCKA_INCLUDE_DIR})
-target_link_libraries(test_output_conversion_callbacks PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+target_link_libraries(
+  test_output_conversion_callbacks
+  PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES}
+)
 if(OS_WINDOWS)
   target_link_libraries(test_output_conversion_callbacks PRIVATE OBS::w32-pthreads)
 endif()
