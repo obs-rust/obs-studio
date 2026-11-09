@@ -40,6 +40,7 @@
 
 #include "obs.h"
 #include "obs-canvas-flags-fields.h"
+#include "obs-encoder-init-fields.h"
 #include "obs-hotkey-background-app-id-fields.h"
 #include "obs-video-stats.h"
 
