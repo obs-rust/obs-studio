@@ -33,6 +33,7 @@ mod immediate;
 mod immediate_parity;
 mod immediate_scalars;
 mod immediate_scalars_parity;
+mod indexbuffer_create;
 mod lzw;
 mod lzw_parity;
 mod sprite;
