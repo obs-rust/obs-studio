@@ -2,6 +2,7 @@
 
 #include "libobs/build/libobs-graphics.pch.h"
 
+#include "libobs/graphics/blend-entrypoints-fields.c.h"
 #include "libobs/graphics/effect-parser-lifecycle-adapter.c.h"
 #include "libobs/graphics/effect-parser.c.h"
 #include "libobs/graphics/graphics-imports.c.h"
@@ -11,7 +12,6 @@
 #include "libobs/graphics/matrix-entrypoints.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/shader-parser.c.h"
-#include "libobs/graphics/state-blend-entrypoints.c.h"
 #include "libobs/graphics/texture-creators.c.h"
 #include "libobs/graphics/timer-range-dispatch.c.h"
 #include "libobs/graphics/vertexbuffer-access.c.h"

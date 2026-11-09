@@ -1,6 +1,7 @@
 //! C ABI shims replacing the original libobs `EXPORT` symbols.
 
 pub mod axisang;
+pub mod blend_entrypoints;
 pub mod bounds;
 pub mod cubetexture_access;
 pub mod effect_destroy;

@@ -644,6 +644,7 @@ fn main() {
         "timer-dispatch",
         "voltexture-metadata",
         "vertexbuffer-destroy",
+        "blend-entrypoints-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
@@ -663,6 +664,14 @@ fn main() {
         extract_after_libobs_pch(&manifest.join("legacy/obs-video-render-size.inc")),
     )
     .expect("write render size extract");
+    std::fs::write(
+        extract_dir.join("state-blend-entrypoints.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/state-blend-entrypoints.c.h"),
+            "#include \"libobs/build/libobs-ported-blend-entrypoints.pch.h\"",
+        ),
+    )
+    .expect("write original blend entry points");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));

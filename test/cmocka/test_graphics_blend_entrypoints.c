@@ -22,7 +22,10 @@ static void capture(int level, const char *format, va_list args, void *param)
 	logs++;
 	vsnprintf(message, sizeof(message), format, args);
 }
-static void context(gs_device_t *device) { (void)device; }
+static void context(gs_device_t *device)
+{
+	(void)device;
+}
 static void enable(gs_device_t *device, bool value)
 {
 	(void)device;
@@ -30,8 +33,8 @@ static void enable(gs_device_t *device, bool value)
 	trace[calls++] = 1;
 	observed.enabled = value;
 }
-static void factors(gs_device_t *device, enum gs_blend_type sc, enum gs_blend_type dc,
-		    enum gs_blend_type sa, enum gs_blend_type da)
+static void factors(gs_device_t *device, enum gs_blend_type sc, enum gs_blend_type dc, enum gs_blend_type sa,
+		    enum gs_blend_type da)
 {
 	(void)device;
 	assert_true(calls < 3);
@@ -79,10 +82,10 @@ static void entrypoints(void **unused)
 	gs_enter_context(&g);
 	gs_blend_state_pop();
 	assert_int_equal(calls, 0);
-	const struct blend_state defaults = {true, GS_BLEND_SRCALPHA, GS_BLEND_INVSRCALPHA,
-		GS_BLEND_ONE, GS_BLEND_INVSRCALPHA, GS_BLEND_OP_ADD};
-	const struct blend_state saved = {false, GS_BLEND_ONE, GS_BLEND_ZERO,
-		GS_BLEND_SRCALPHA, GS_BLEND_ONE, GS_BLEND_OP_SUBTRACT};
+	const struct blend_state defaults = {true,         GS_BLEND_SRCALPHA,    GS_BLEND_INVSRCALPHA,
+					     GS_BLEND_ONE, GS_BLEND_INVSRCALPHA, GS_BLEND_OP_ADD};
+	const struct blend_state saved = {false,        GS_BLEND_ONE,        GS_BLEND_ZERO, GS_BLEND_SRCALPHA,
+					  GS_BLEND_ONE, GS_BLEND_OP_SUBTRACT};
 	g.cur_blend_state = saved;
 	gs_blend_state_push();
 	assert_int_equal(g.blend_state_stack.num, 1);
@@ -110,16 +113,22 @@ static void entrypoints(void **unused)
 	/* All combinations of the three independently conditional reset calls. */
 	for (unsigned mask = 0; mask < 8; mask++) {
 		g.cur_blend_state = defaults;
-		if (mask & 1) g.cur_blend_state.enabled = false;
-		if (mask & 2) g.cur_blend_state.src_c = GS_BLEND_ZERO;
-		if (mask & 4) g.cur_blend_state.op = GS_BLEND_OP_SUBTRACT;
+		if (mask & 1)
+			g.cur_blend_state.enabled = false;
+		if (mask & 2)
+			g.cur_blend_state.src_c = GS_BLEND_ZERO;
+		if (mask & 4)
+			g.cur_blend_state.op = GS_BLEND_OP_SUBTRACT;
 		calls = 0;
 		gs_reset_blend_state();
 		unsigned n = 0;
-		if (mask & 1) assert_int_equal(trace[n++], 1);
-		if (mask & 2) assert_int_equal(trace[n++], 2);
+		if (mask & 1)
+			assert_int_equal(trace[n++], 1);
+		if (mask & 2)
+			assert_int_equal(trace[n++], 2);
 		/* Characterized: changing factors also forces the ADD callback. */
-		if (mask & 6) assert_int_equal(trace[n++], 3);
+		if (mask & 6)
+			assert_int_equal(trace[n++], 3);
 		assert_int_equal(calls, n);
 		equal_state(g.cur_blend_state, defaults);
 		calls = 0;

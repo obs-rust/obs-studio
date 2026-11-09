@@ -1,8 +1,9 @@
 //! obs-graphics integration tests: rendering helpers over the graphics subsystem.
 
+mod blend_entrypoints;
+mod blend_entrypoints_parity;
 mod cubetexture_access;
 mod cubetexture_access_parity;
-mod blend_entrypoints;
 mod gif;
 mod gif_blocks;
 mod gif_blocks_parity;
