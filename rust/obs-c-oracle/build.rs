@@ -654,6 +654,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-core-global-getters.c.h")),
     )
     .expect("write global getter extract");
+    std::fs::write(
+        extract_dir.join("obs-hotkey-register.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-hotkey-register.c.h")),
+    )
+    .expect("write single registration oracle");
     oracle.include(&extract_dir);
 
     oracle

@@ -23,33 +23,66 @@ pub struct World {
 }
 impl Default for World {
     fn default() -> Self {
-        Self { available: true, private: false, next: 0, events: vec![], entries: vec![] }
+        Self {
+            available: true,
+            private: false,
+            next: 0,
+            events: vec![],
+            entries: vec![],
+        }
     }
 }
 impl Registry for World {
     type Handle = usize;
-    fn source_private(&mut self, _: usize) -> bool { self.events.push("private"); self.private }
-    fn lock(&mut self) -> bool { self.events.push("lock"); self.available }
-    fn weak(&mut self, _: Kind, owner: usize) -> usize { self.events.push("weak"); owner + 100 }
-    fn context(&mut self, _: Kind, owner: usize) -> usize { self.events.push("context"); owner + 200 }
+    fn source_private(&mut self, _: usize) -> bool {
+        self.events.push("private");
+        self.private
+    }
+    fn lock(&mut self) -> bool {
+        self.events.push("lock");
+        self.available
+    }
+    fn weak(&mut self, _: Kind, owner: usize) -> usize {
+        self.events.push("weak");
+        owner + 100
+    }
+    fn context(&mut self, _: Kind, owner: usize) -> usize {
+        self.events.push("context");
+        owner + 200
+    }
     fn insert(&mut self, kind: Kind, weak: Option<usize>, context: Option<usize>) -> usize {
         self.events.push("insert");
         let id = self.next;
         self.next = self.next.wrapping_add(1);
         self.entries.push(Entry {
-            kind, weak, context, name: "registration.name", description: "registration description",
-            partner: usize::MAX, bindings: if context.is_some() { vec![("OBS_KEY_A", true)] } else { vec![] }, presses: vec![],
+            kind,
+            weak,
+            context,
+            name: "registration.name",
+            description: "registration description",
+            partner: usize::MAX,
+            bindings: if context.is_some() {
+                vec![("OBS_KEY_A", true)]
+            } else {
+                vec![]
+            },
+            presses: vec![],
         });
         id
     }
-    fn unlock(&mut self) { self.events.push("unlock"); }
+    fn unlock(&mut self) {
+        self.events.push("unlock");
+    }
 }
 
 pub const OWNED: [Kind; 4] = [Kind::Source, Kind::Output, Kind::Encoder, Kind::Service];
 
 #[test]
 fn test_hotkey_register_unavailable_core() {
-    let mut world = World { available: false, ..World::default() };
+    let mut world = World {
+        available: false,
+        ..World::default()
+    };
     assert_eq!(register(&mut world, Kind::Frontend, None), None);
     for kind in OWNED {
         assert_eq!(register(&mut world, kind, None), None);
@@ -84,7 +117,9 @@ fn test_hotkey_register_frontend_and_admission() {
     check_key(&mut world, id, Kind::Frontend, None);
     assert_eq!(world.events, ["lock", "insert", "unlock"]);
     world.events.clear();
-    for kind in OWNED { assert_eq!(register(&mut world, kind, None), None); }
+    for kind in OWNED {
+        assert_eq!(register(&mut world, kind, None), None);
+    }
     assert!(world.events.is_empty()); // NULL never reaches a field accessor.
     world.private = true;
     assert_eq!(register(&mut world, Kind::Source, Some(1)), None);
@@ -109,7 +144,9 @@ fn test_hotkey_register_owned_registration() {
         assert_eq!(world.entries[id].bindings, [("OBS_KEY_A", true)]);
         let expected = if kind == Kind::Source {
             vec!["private", "lock", "weak", "context", "insert", "unlock"]
-        } else { vec!["lock", "weak", "context", "insert", "unlock"] };
+        } else {
+            vec!["lock", "weak", "context", "insert", "unlock"]
+        };
         assert_eq!(world.events, expected);
     }
     world.entries.clear(); // owner teardown removes its registered hotkeys.

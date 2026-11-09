@@ -1,12 +1,15 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Private dependencies remain in obs-hotkey.c.h. The declarations allow this
- * extracted unit to retain its sorted position in the core unity group. */
-static inline bool lock(void);
-static inline void unlock(void);
-static inline obs_hotkey_id obs_hotkey_register_internal(obs_hotkey_registerer_t type, void *registerer,
-							 struct obs_context_data *context, const char *name,
-							 const char *description, obs_hotkey_func func, void *data);
+/* Private one-call seams keep the C reference independent of the core unity group. */
+#define lock obs_hotkey_register_lock
+#define unlock obs_hotkey_register_unlock
+#define obs_hotkey_register_internal obs_hotkey_register_insert
+
+extern bool obs_hotkey_register_lock(void);
+extern void obs_hotkey_register_unlock(void);
+extern obs_hotkey_id obs_hotkey_register_insert(obs_hotkey_registerer_t type, void *registerer,
+						struct obs_context_data *context, const char *name,
+						const char *description, obs_hotkey_func func, void *data);
 
 obs_hotkey_id obs_hotkey_register_frontend(const char *name, const char *description, obs_hotkey_func func, void *data)
 {
@@ -75,3 +78,7 @@ obs_hotkey_id obs_hotkey_register_source(obs_source_t *source, const char *name,
 	unlock();
 	return id;
 }
+
+#undef obs_hotkey_register_internal
+#undef unlock
+#undef lock

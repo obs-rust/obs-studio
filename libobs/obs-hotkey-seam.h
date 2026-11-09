@@ -50,3 +50,13 @@ struct obs_context_data *obs_hotkey_seam_source_context(obs_source_t *source);
 
 /* obs_hotkey_register_internal() loads the bindings a hotkey has stored. */
 void load_bindings(obs_hotkey_t *hotkey, obs_data_array_t *data, bool removed, bool saved);
+
+/* Single-registration engine dependencies, not public API. */
+bool obs_hotkey_register_lock(void);
+void obs_hotkey_register_unlock(void);
+bool obs_hotkey_register_private(void *owner);
+void *obs_hotkey_register_weak(obs_hotkey_registerer_t type, void *owner);
+struct obs_context_data *obs_hotkey_register_context(obs_hotkey_registerer_t type, void *owner);
+obs_hotkey_id obs_hotkey_register_insert(obs_hotkey_registerer_t type, void *registerer,
+					 struct obs_context_data *context, const char *name, const char *description,
+					 obs_hotkey_func func, void *data);

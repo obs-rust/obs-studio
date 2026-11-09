@@ -1,0 +1,5 @@
+obs_hotkey_register_encoder
+obs_hotkey_register_frontend
+obs_hotkey_register_output
+obs_hotkey_register_service
+obs_hotkey_register_source

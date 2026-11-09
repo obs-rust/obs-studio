@@ -147,6 +147,62 @@ static inline obs_hotkey_id obs_hotkey_register_internal(obs_hotkey_registerer_t
 	return result;
 }
 
+/* Mechanical private dependencies of the Rust single-registration wrappers.
+ * Each call uses this translation unit's core, including isolated C fixtures. */
+bool obs_hotkey_register_lock(void)
+{
+	return lock();
+}
+
+void obs_hotkey_register_unlock(void)
+{
+	unlock();
+}
+
+bool obs_hotkey_register_private(void *owner)
+{
+	return ((obs_source_t *)owner)->context.private;
+}
+
+void *obs_hotkey_register_weak(obs_hotkey_registerer_t type, void *owner)
+{
+	switch (type) {
+	case OBS_HOTKEY_REGISTERER_SOURCE:
+		return obs_source_get_weak_source(owner);
+	case OBS_HOTKEY_REGISTERER_OUTPUT:
+		return obs_output_get_weak_output(owner);
+	case OBS_HOTKEY_REGISTERER_ENCODER:
+		return obs_encoder_get_weak_encoder(owner);
+	case OBS_HOTKEY_REGISTERER_SERVICE:
+		return obs_service_get_weak_service(owner);
+	default:
+		return NULL;
+	}
+}
+
+struct obs_context_data *obs_hotkey_register_context(obs_hotkey_registerer_t type, void *owner)
+{
+	switch (type) {
+	case OBS_HOTKEY_REGISTERER_SOURCE:
+		return &((obs_source_t *)owner)->context;
+	case OBS_HOTKEY_REGISTERER_OUTPUT:
+		return &((obs_output_t *)owner)->context;
+	case OBS_HOTKEY_REGISTERER_ENCODER:
+		return &((obs_encoder_t *)owner)->context;
+	case OBS_HOTKEY_REGISTERER_SERVICE:
+		return &((obs_service_t *)owner)->context;
+	default:
+		return NULL;
+	}
+}
+
+obs_hotkey_id obs_hotkey_register_insert(obs_hotkey_registerer_t type, void *registerer,
+					 struct obs_context_data *context, const char *name, const char *description,
+					 obs_hotkey_func func, void *data)
+{
+	return obs_hotkey_register_internal(type, registerer, context, name, description, func, data);
+}
+
 static obs_hotkey_pair_t *create_hotkey_pair(struct obs_context_data *context, obs_hotkey_active_func func0,
 					     obs_hotkey_active_func func1, void *data0, void *data1)
 {

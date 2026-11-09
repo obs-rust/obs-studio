@@ -43,6 +43,7 @@ mod portal_shortcut_status_parity;
 mod press;
 mod press_parity;
 mod register;
+mod register_parity;
 mod save_load;
 mod save_load_parity;
 mod translations;
