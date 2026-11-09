@@ -158,3 +158,4 @@ mod output_total_frames;
 mod output_total_frames_parity;
 
 mod output_frames_dropped;
+mod output_frames_dropped_parity;
