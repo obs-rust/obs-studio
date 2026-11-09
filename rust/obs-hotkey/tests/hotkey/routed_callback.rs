@@ -1,4 +1,5 @@
-//! Safe equivalents of routed dispatch exercised by test_hotkey_pair_latch.
+//! Safe routed dispatch edges; pair.rs also runs all eleven 1:1 pair-latch
+//! characterizations through this core, including its recursive callback case.
 use obs_hotkey::routed_callback::{Registry, trigger};
 
 #[derive(Default)]

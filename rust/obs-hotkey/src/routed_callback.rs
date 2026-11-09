@@ -11,6 +11,14 @@ pub trait Registry {
 }
 
 /// Dispatch directly to a registered callback when rerouting is enabled.
-pub fn trigger<R: Registry>(_registry: &mut R, _id: usize, _pressed: bool) {
-    todo!("#4242 routed callback dispatch")
+pub fn trigger<R: Registry>(registry: &mut R, id: usize, pressed: bool) {
+    if !registry.lock() {
+        return;
+    }
+    if registry.enabled()
+        && let Some(hotkey) = registry.find(id)
+    {
+        registry.call(hotkey, id, pressed);
+    }
+    registry.unlock();
 }
