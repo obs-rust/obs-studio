@@ -6,7 +6,10 @@ function(_source_audio_active_setter_link_support)
     STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/source-audio-active-setter-link-support.c"
   )
-  target_include_directories(source-audio-active-setter-link-support PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+  target_include_directories(
+    source-audio-active-setter-link-support
+    PRIVATE "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_BINARY_DIR}/config"
+  )
   target_link_libraries(
     source-audio-active-setter-link-support
     PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
