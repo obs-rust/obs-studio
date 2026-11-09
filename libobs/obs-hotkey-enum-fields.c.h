@@ -1,5 +1,9 @@
 #include "libobs/build/libobs.pch.h"
 
+obs_hotkey_t *obs_hotkey_enum_first(void);
+obs_hotkey_t *obs_hotkey_enum_next(obs_hotkey_t *hotkey);
+obs_hotkey_id obs_hotkey_enum_context_id(const struct obs_context_data *context, size_t index);
+
 obs_hotkey_t *obs_hotkey_enum_first(void)
 {
 	return obs->hotkeys.hotkeys;
