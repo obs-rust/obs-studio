@@ -616,6 +616,8 @@ fn main() {
         "effect-parser-lifecycle",
         "effect-parser-lifecycle-adapter",
         "obs-graphics-adapter",
+        "indexbuffer-create",
+        "indexbuffer-create-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

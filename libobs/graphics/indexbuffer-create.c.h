@@ -1,5 +1,10 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
+extern graphics_t *obs_graphics_indexbuffer_context(void);
+
+#define thread_graphics gs_get_context()
+#define gs_valid(function) (obs_graphics_indexbuffer_context() != NULL)
+
 gs_indexbuffer_t *gs_indexbuffer_create(enum gs_index_type type, void *indices, size_t num, uint32_t flags)
 {
 	graphics_t *graphics = thread_graphics;
@@ -14,3 +19,6 @@ gs_indexbuffer_t *gs_indexbuffer_create(enum gs_index_type type, void *indices, 
 
 	return graphics->exports.device_indexbuffer_create(graphics->device, type, indices, num, flags);
 }
+
+#undef gs_valid
+#undef thread_graphics
