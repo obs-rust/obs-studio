@@ -13,6 +13,7 @@ mod async_rotation_parity;
 mod async_upload;
 mod async_upload_parity;
 mod audio_active;
+mod audio_active_setter;
 mod audio_active_parity;
 mod audio_input;
 mod audio_input_parity;
