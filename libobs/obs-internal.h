@@ -1940,6 +1940,13 @@ struct obs_output_mixer_getters_fields {
 };
 extern struct obs_output_mixer_getters_fields obs_output_mixer_getters_fields(const obs_output_t *output);
 
+/* Plugin callback and borrowed plugin data; caller must reject NULL. */
+struct obs_output_congestion_fields {
+	float (*callback)(void *data);
+	void *data;
+};
+extern struct obs_output_congestion_fields obs_output_congestion_fields(const obs_output_t *output);
+
 /* Borrowed atomic C long address; NULL output produces a NULL field. */
 struct obs_output_total_frames_fields {
 	const volatile long *frames;
