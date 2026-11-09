@@ -21,6 +21,7 @@ mod image_wic_checks;
 mod image_wic_checks_parity;
 mod immediate;
 mod immediate_parity;
+mod immediate_scalars;
 mod lzw;
 mod lzw_parity;
 mod sprite;
