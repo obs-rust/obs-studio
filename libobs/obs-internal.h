@@ -1464,6 +1464,9 @@ struct obs_source_deinterlace_fields {
 };
 
 struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
+/* Non-NULL live source required. Borrowed atomic storage; no lock or mutation. */
+volatile bool *obs_source_async_compensation_field(obs_source_t *source);
+
 /* Borrowed addresses only; Rust owns the getter decisions and reads only the
  * requested field under the original caller's synchronization contract. */
 struct obs_source_async_flag_fields {

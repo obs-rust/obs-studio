@@ -12,7 +12,11 @@ fn test_source_audio_input_compensation_enable_disable() {
         samples_per_sec: 48_000,
         speakers: 2,
     };
-    assert!(!resampler_needed(format, format, value.load(Ordering::SeqCst)));
+    assert!(!resampler_needed(
+        format,
+        format,
+        value.load(Ordering::SeqCst)
+    ));
     for requested in [true, true, false, false, true, false] {
         set(Some(&value), requested, || panic!("valid source logged"));
         assert_eq!(value.load(Ordering::SeqCst), requested);

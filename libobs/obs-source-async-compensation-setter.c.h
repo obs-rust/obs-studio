@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 void obs_source_set_async_compensation(obs_source_t *source, bool compensate)
 {
