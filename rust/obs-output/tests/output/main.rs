@@ -161,3 +161,5 @@ mod output_connect_time;
 
 mod output_connect_time_parity;
 mod encoder_preferred_range;
+
+mod encoder_preferred_range_parity;

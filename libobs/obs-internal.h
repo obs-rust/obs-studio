@@ -2307,6 +2307,13 @@ struct obs_encoder_preferred_format_fields {
 };
 struct obs_encoder_preferred_format_fields obs_encoder_preferred_format_fields(const obs_encoder_t *encoder);
 
+/* Borrowed addresses only; the encoder remains owned by C. */
+struct obs_encoder_preferred_range_fields {
+	const enum obs_encoder_type *kind;
+	const enum video_range_type *range;
+};
+struct obs_encoder_preferred_range_fields obs_encoder_preferred_range_fields(const obs_encoder_t *encoder);
+
 /* Borrowed scaled-axis addresses, with no ownership or value conversion. */
 struct obs_encoder_scaling_enabled_fields {
 	const uint32_t *width;
