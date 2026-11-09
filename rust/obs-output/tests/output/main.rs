@@ -45,6 +45,7 @@ mod encoder_preferred_format;
 mod encoder_preferred_format_parity;
 mod encoder_preferred_range;
 mod encoder_preferred_range_parity;
+mod encoder_properties;
 mod encoder_registry_queries;
 mod encoder_roi;
 mod encoder_roi_parity;
