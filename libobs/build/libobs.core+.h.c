@@ -17,6 +17,7 @@
 #include "libobs/obs-module-init.c.h"
 #include "libobs/obs-module-lists.c.h"
 #include "libobs/obs-module-load-locale.c.h"
+#include "libobs/obs-module-load-metadata.c.h"
 #include "libobs/obs-module-locale-getters-fields.c.h"
 #include "libobs/obs-module-metadata-adapter.c.h"
 #include "libobs/obs-module-name-lookup-fields.c.h"
