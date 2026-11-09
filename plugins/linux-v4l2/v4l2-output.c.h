@@ -525,7 +525,9 @@ static void vmic_pa_source_cb(pa_context *ctx, const pa_source_info *info, int e
 		data->failed = true;
 	if (eol || !info)
 		return;
-	dstr_catf(&data->text, "%u\t%s\t\n", info->index, info->name ? info->name : "");
+	/* Same columns as "pactl list sources short": the driver tells PipeWire apart (#4087). */
+	dstr_catf(&data->text, "%u\t%s\t%s\t\n", info->index, info->name ? info->name : "",
+		  info->driver ? info->driver : "");
 }
 
 /* "pactl list modules short" (modules) or "pactl list sources short" text:
