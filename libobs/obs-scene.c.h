@@ -2866,31 +2866,6 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 	return true;
 }
 
-bool obs_sceneitem_set_locked(obs_sceneitem_t *item, bool lock)
-{
-	struct calldata cd;
-	uint8_t stack[256];
-
-	if (!item)
-		return false;
-
-	if (item->locked == lock)
-		return false;
-
-	if (!item->parent)
-		return false;
-
-	item->locked = lock;
-
-	calldata_init_fixed(&cd, stack, sizeof(stack));
-	calldata_set_ptr(&cd, "item", item);
-	calldata_set_bool(&cd, "locked", lock);
-
-	signal_parent(item->parent, "item_locked", &cd);
-
-	return true;
-}
-
 static bool sceneitems_match(obs_scene_t *scene, obs_sceneitem_t *const *items, size_t size, bool *order_matches)
 {
 	obs_sceneitem_t *item = scene->first_item;
