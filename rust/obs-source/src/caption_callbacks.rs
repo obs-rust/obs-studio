@@ -9,7 +9,23 @@ pub trait Registry {
     fn erase(&mut self, index: usize);
 }
 
-pub fn update<R: Registry>(registry: Option<&mut R>, pair: R::Pair, add: bool, log: impl FnOnce(&'static CStr)) {
-    let _ = (registry, pair, add, log);
-    todo!()
+pub fn update<R: Registry>(
+    registry: Option<&mut R>,
+    pair: R::Pair,
+    add: bool,
+    log: impl FnOnce(&'static CStr),
+) {
+    let Some(registry) = registry else {
+        log(if add {
+            c"obs_source_add_caption_callback"
+        } else {
+            c"obs_source_remove_caption_callback"
+        });
+        return;
+    };
+    if add {
+        registry.append(pair);
+    } else if let Some(index) = (0..registry.count()).find(|&i| registry.pair(i) == pair) {
+        registry.erase(index);
+    }
 }

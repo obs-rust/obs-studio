@@ -1566,6 +1566,11 @@ struct obs_source_properties_fields {
 struct obs_source_properties_fields obs_source_properties_info_fields(const struct obs_source_info *info);
 struct obs_source_properties_fields obs_source_properties_instance_fields(const obs_source_t *source);
 
+/* Caption list addresses and mutex operations for Rust registration. Non-NULL only. */
+extern struct darray *obs_source_caption_callback_fields(obs_source_t *source);
+extern void obs_source_caption_callback_lock(obs_source_t *source);
+extern void obs_source_caption_callback_unlock(obs_source_t *source);
+
 struct obs_source_handler_getters_fields {
 	proc_handler_t *const *proc;
 };
