@@ -43,4 +43,5 @@ pub mod timer_dispatch;
 pub mod vec2;
 pub mod vec3;
 pub mod vec4;
+pub mod vertexbuffer_destroy;
 pub mod voltexture_metadata;
