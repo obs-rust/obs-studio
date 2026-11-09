@@ -47,6 +47,7 @@ mod encoder_roi_state;
 mod encoder_roi_state_parity;
 mod encoder_scaling_enabled;
 mod encoder_scaling_enabled_parity;
+mod encoder_set_preferred_format;
 mod encoder_size;
 mod encoder_size_parity;
 mod encoder_state_queries;
