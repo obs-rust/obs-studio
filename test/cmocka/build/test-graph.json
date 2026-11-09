@@ -16800,6 +16800,31 @@
         }
       ]
     },
+    "test_video_stop_requested": {
+      "sources": [
+        "test/cmocka/test_video_stop_requested.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_view": {
       "sources": [
         "test/cmocka/test_view.c"
@@ -24155,6 +24180,12 @@
     },
     "test_video_stats_race": {
       "target": "test_video_stats_race"
+    },
+    "test_video_stop_requested": {
+      "target": "test_video_stop_requested",
+      "command": [
+        "${target}"
+      ]
     },
     "test_view": {
       "target": "test_view",

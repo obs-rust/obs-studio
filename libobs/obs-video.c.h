@@ -882,19 +882,6 @@ static inline void update_active_states(void)
 	pthread_mutex_unlock(&obs->video.mixes_mutex);
 }
 
-static inline bool stop_requested(void)
-{
-	bool success = true;
-
-	pthread_mutex_lock(&obs->video.mixes_mutex);
-	for (size_t i = 0, num = obs->video.mixes.num; i < num; i++)
-		if (!video_output_stopped(obs->video.mixes.array[i]->video))
-			success = false;
-	pthread_mutex_unlock(&obs->video.mixes_mutex);
-
-	return success;
-}
-
 bool obs_graphics_thread_loop(struct obs_graphics_context *context)
 {
 	uint64_t frame_start = os_gettime_ns();
