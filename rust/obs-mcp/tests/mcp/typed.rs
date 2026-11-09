@@ -91,7 +91,8 @@ fn schema_snapshot_has_not_drifted() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/rust-port/control-api.schema.json");
     if std::env::var_os("OBS_UPDATE_CONTROL_SCHEMA").is_some() {
-        std::fs::write(&path, serde_json::to_string_pretty(&actual).unwrap() + "\n").unwrap();
+        std::fs::write(&path, format!("{{\n  \"toolError\": {},\n  \"tools\": [\n{}\n  ]\n}}\n",
+                actual["toolError"], actual["tools"].as_array().unwrap().iter().map(|tool| format!("    {tool}")).collect::<Vec<_>>().join(",\n"))).unwrap();
     }
     let expected: serde_json::Value =
         serde_json::from_slice(&std::fs::read(path).expect("committed schema snapshot")).unwrap();
