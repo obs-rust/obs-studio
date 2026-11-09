@@ -33,6 +33,7 @@ use obs_c_oracle as _; // blog
 use obs_util as _; // base log handler
 
 pub mod background_app_id;
+pub mod background_control;
 pub mod background_query;
 pub mod binding_getters;
 pub mod binding_press;
