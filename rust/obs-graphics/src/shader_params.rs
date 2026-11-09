@@ -25,6 +25,11 @@ pub fn write<P, V>(
     value: Option<V>,
     dispatch: impl FnOnce(P, V),
 ) -> Result<(), WriteError> {
-    let _ = (context, parameter, value, dispatch);
-    todo!("#4424 shader parameter dispatch")
+    if !context {
+        return Err(WriteError::NoContext);
+    }
+    let parameter = parameter.ok_or(WriteError::NullParameter)?;
+    let value = value.ok_or(WriteError::NullValue)?;
+    dispatch(parameter, value);
+    Ok(())
 }

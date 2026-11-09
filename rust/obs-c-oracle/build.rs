@@ -682,6 +682,9 @@ fn main() {
         "graphics-viewport-fields",
         "matrix-entrypoints",
         "matrix-entrypoints-fields",
+        "graphics-shader-params",
+        "graphics-shader-params-checks",
+        "graphics-shader-params-adapter",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
