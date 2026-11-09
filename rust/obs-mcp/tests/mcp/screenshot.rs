@@ -127,6 +127,17 @@ fn lists_screenshot_with_optional_arguments() {
     let tools = r["result"]["tools"].as_array().unwrap();
     assert_eq!(tools.len(), 1);
     assert_eq!(tools[0]["name"], "screenshot");
+    let snapshot = obs_mcp::tools::schema_snapshot();
+    let contract = snapshot["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["name"] == "screenshot")
+        .unwrap();
+    for field in ["inputSchema", "outputSchema", "annotations"] {
+        assert_eq!(tools[0][field], contract[field]);
+    }
+
     let schema = &tools[0]["inputSchema"];
     assert_eq!(schema["type"], "object");
     assert_eq!(schema["additionalProperties"], false);
@@ -210,8 +221,15 @@ fn invalid_arguments_never_reach_the_backend() {
         json!({"width": 1.5}),
         json!({"width": 99_999_999_999_u64}),
     ] {
-        let result = shoot(&mut s, &args);
-        assert_eq!(result["isError"], true, "{args}");
+        let response = rpc(
+            &mut s,
+            "tools/call",
+            &json!({"name":"screenshot", "arguments":args}),
+        );
+        assert!(
+            response["error"]["code"] == -32602 || response["result"]["isError"] == true,
+            "{args}: {response}"
+        );
     }
     assert!(fake.requests.borrow().is_empty());
 }

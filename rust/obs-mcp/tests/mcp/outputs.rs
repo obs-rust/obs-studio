@@ -94,8 +94,23 @@ fn lists_six_tools_with_empty_object_schemas() {
         ]
     );
     for t in tools {
+        let snapshot = obs_mcp::tools::schema_snapshot();
+        let contract = snapshot["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["name"] == t["name"])
+            .unwrap();
+        for field in ["inputSchema", "outputSchema", "annotations"] {
+            assert_eq!(t[field], contract[field]);
+        }
+
         assert_eq!(t["inputSchema"]["type"], "object");
-        assert_eq!(t["inputSchema"]["properties"], json!({}));
+        if t["name"].as_str().unwrap().ends_with("start") {
+            assert!(t["inputSchema"]["properties"].get("wait").is_some());
+        } else {
+            assert_eq!(t["inputSchema"]["properties"], json!({}));
+        }
         assert_eq!(t["inputSchema"]["additionalProperties"], false);
         assert!(!t["description"].as_str().unwrap().is_empty());
     }
@@ -151,18 +166,28 @@ fn record_and_stream_are_independent() {
         call(&mut s, "record_status", &json!({})),
         (false, json!({"active": false}))
     );
-    assert!(call(&mut s, "record_stop", &json!({})).0);
+    assert_eq!(
+        call(&mut s, "record_stop", &json!({})),
+        (false, json!({"active": false}))
+    );
     assert_eq!(call(&mut s, "stream_status", &json!({})).1["active"], true);
 }
 
 #[test]
-fn backend_errors_become_tool_errors() {
+fn start_and_stop_are_idempotent() {
     let mut s = server();
-    let (is_err, msg) = call(&mut s, "record_stop", &json!({}));
-    assert!(is_err);
-    assert!(msg.as_str().unwrap().contains("not active"));
-    assert!(!call(&mut s, "stream_start", &json!({})).0);
-    let (is_err, msg) = call(&mut s, "stream_start", &json!({}));
-    assert!(is_err);
-    assert!(msg.as_str().unwrap().contains("already active"));
+    for name in [
+        "record_stop",
+        "record_stop",
+        "record_start",
+        "record_start",
+        "record_stop",
+        "record_stop",
+    ] {
+        let active = name.ends_with("start");
+        assert_eq!(
+            call(&mut s, name, &json!({})),
+            (false, json!({"active": active}))
+        );
+    }
 }

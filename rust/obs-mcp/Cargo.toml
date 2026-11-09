@@ -19,7 +19,7 @@ test = false
 # Binds the backend traits to libobs through obs-sys (#3283). Off by default:
 # it needs the libobs symbols at link time, which only the application and the
 # `bundled-native` contract tests provide.
-libobs = ["dep:obs-sys", "dep:libc"]
+libobs = ["dep:obs-sys", "dep:libc", "dep:obs-callback"]
 # Test-only fault injection (with `libobs`): `host::fail_audio_mixer` makes the next start
 # behave as if libobs could not open its audio mixer (#3491). Enabled only by
 # obs-studio-rust's dev-dependency, so no shipped build can reach it; the
@@ -27,6 +27,9 @@ libobs = ["dep:obs-sys", "dep:libc"]
 fault-injection = []
 
 [dependencies]
+obs-callback = { path = "../obs-callback", optional = true }
+schemars = { workspace = true, features = ["derive", "std"] }
+serde_path_to_error = { workspace = true }
 obs-sys = { path = "../obs-sys", optional = true }
 serde = { workspace = true, default-features = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }

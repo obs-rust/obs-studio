@@ -147,6 +147,9 @@ fn rpc(s: &mut Server, method: &str, params: &Value) -> Value {
 /// Calls a tool; returns (isError, parsed JSON text or the error text).
 fn call(s: &mut Server, name: &str, args: &Value) -> (bool, Value) {
     let r = rpc(s, "tools/call", &json!({"name": name, "arguments": args}));
+    if let Some(error) = r.get("error") {
+        return (true, error["message"].clone());
+    }
     let res = &r["result"];
     let text = res["content"][0]["text"].as_str().expect("text content");
     let is_err = res["isError"] == true;
@@ -186,6 +189,17 @@ fn lists_seven_tools_with_object_schemas() {
         ]
     );
     for t in tools {
+        let snapshot = obs_mcp::tools::schema_snapshot();
+        let contract = snapshot["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["name"] == t["name"])
+            .unwrap();
+        for field in ["inputSchema", "outputSchema", "annotations"] {
+            assert_eq!(t[field], contract[field]);
+        }
+
         assert_eq!(t["inputSchema"]["type"], "object");
         assert!(!t["description"].as_str().unwrap().is_empty());
     }
@@ -199,8 +213,11 @@ fn lists_seven_tools_with_object_schemas() {
         "object"
     );
     let xf = &find("scene_item_set_transform")["inputSchema"]["properties"];
-    assert_eq!(xf["position"]["required"], json!(["x", "y"]));
-    assert_eq!(xf["rotation"]["type"], "number");
+    assert_eq!(
+        find("scene_item_set_transform")["inputSchema"]["$defs"]["Pair"]["required"],
+        json!(["x", "y"])
+    );
+    assert_eq!(xf["rotation"]["type"], json!(["number", "null"]));
 }
 
 #[test]
@@ -442,7 +459,11 @@ fn bad_arguments_are_tool_errors() {
     };
     let cases = [
         ("source_create", json!({}), "kind"),
-        ("source_create", json!({"kind": "k", "name": ""}), "name"),
+        (
+            "source_create",
+            json!({"kind": "k", "name": "", "settings": {}}),
+            "name",
+        ),
         (
             "source_create",
             json!({"kind": "k", "name": "n"}),

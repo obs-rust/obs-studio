@@ -23,3 +23,9 @@ pub(crate) fn roundtrip(input: &str) -> Vec<Value> {
         .map(|l| serde_json::from_str(l).expect("output line is JSON"))
         .collect()
 }
+
+mod typed;
+
+mod control;
+
+mod waiting;

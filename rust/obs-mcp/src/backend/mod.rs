@@ -31,8 +31,10 @@ use serde_json::{Value, json};
 use crate::ffi::{self, CpuUsage, Output, Source};
 use crate::resources::stats::{Stats, StatsBackend};
 use crate::resources::{self, ResourceRegistry};
-use crate::server::{Server, ToolRegistry};
-use crate::tools::outputs::{self, OutputBackend, OutputKind, OutputStatus};
+use crate::server::{Server, ToolError, ToolRegistry};
+use crate::tools::outputs::{
+    self, ActiveOutput, OutputBackend, OutputKind, OutputRequest, OutputStatus,
+};
 use crate::tools::scenes::{self, SceneBackend};
 use crate::tools::screenshot::{self, CaptureBackend, Frame};
 use crate::tools::sources::{self, ItemInfo, ItemRef, SourceBackend, SourceInfo, Transform};
@@ -53,6 +55,9 @@ pub struct ObsBackend {
     /// Why the host could not create the outputs, quoted in the errors that need them.
     output_error: Option<String>,
     cpu: Option<CpuUsage>,
+    camera: RefCell<Option<Output>>,
+    cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    baseline: RefCell<Option<crate::tools::control::StatsBaseline>>,
 }
 
 impl Default for ObsBackend {
@@ -76,6 +81,9 @@ impl ObsBackend {
             video_error: None,
             output_error: None,
             cpu: CpuUsage::start(),
+            camera: RefCell::new(None),
+            cancellation: None,
+            baseline: RefCell::new(None),
         }
     }
 
@@ -129,6 +137,10 @@ impl ObsBackend {
         sources::register(&mut tools, &sources);
         outputs::register(&mut tools, &outputs);
         screenshot::register(&mut tools, &capture);
+        let control: Rc<dyn crate::tools::control::ControlBackend> = Rc::clone(backend) as _;
+        crate::tools::control::register(&mut tools, &control);
+        let waiting: Rc<dyn crate::tools::waiting::WaitBackend> = Rc::clone(backend) as _;
+        crate::tools::waiting::register(&mut tools, &waiting);
 
         let mut resources = ResourceRegistry::new();
         resources::scenes::register(&mut resources, &scenes, &sources);
@@ -334,6 +346,33 @@ fn narrow(value: f64) -> f32 {
 }
 
 impl OutputBackend for ObsBackend {
+    fn control_cancelled(&self) -> bool {
+        crate::tools::waiting::WaitBackend::cancelled(self)
+    }
+    fn start_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        let output = self.output(request.kind).map_err(ToolError::not_ready)?;
+        if !output.active() {
+            if request.kind == OutputKind::Record {
+                self.prepare_recording(&output)
+                    .map_err(ToolError::processing)?;
+            }
+            output.start().map_err(ToolError::processing)?;
+        }
+        Ok(ActiveOutput {
+            active: output.active(),
+        })
+    }
+
+    fn stop_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        let output = self.output(request.kind).map_err(ToolError::not_ready)?;
+        if output.active() {
+            output.stop();
+        }
+        Ok(ActiveOutput {
+            active: output.active(),
+        })
+    }
+
     fn start(&self, kind: OutputKind) -> Result<(), String> {
         let output = self.output(kind)?;
         if output.active() {
@@ -446,3 +485,7 @@ impl StatsBackend for ObsBackend {
         }
     }
 }
+
+mod control;
+
+mod waiting;

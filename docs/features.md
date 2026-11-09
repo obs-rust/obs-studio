@@ -75,6 +75,24 @@ not get a line.
 
 ### Headless and automation
 
+- **Bounded MCP waits.** Agents can wait for typed output/source/media/metric
+  conditions and request automatic waits on starts, without GUI interaction or
+  fixed sleeps. Timeouts return the last observation. *All*, 2026-11-09.
+  Issue [#4447](https://github.com/obs-rust/obs-studio/issues/4447),
+  PR [#4454](https://github.com/obs-rust/obs-studio/pull/4454).
+
+- **Virtual device and media control.** MCP can start/stop Virtual Camera, inspect
+  its paired mic, restart media, inspect pipeline graphs and read/reset measured
+  stage counters. Unmeasured device/sync values stay null. *All* (device support
+  depends on the loaded plugin), 2026-11-09. Issue [#4446](https://github.com/obs-rust/obs-studio/issues/4446),
+  PR [#4452](https://github.com/obs-rust/obs-studio/pull/4452).
+
+- **Typed MCP control.** Existing OBS MCP tools publish input and output schemas,
+  structured results and machine-readable domain errors. Read operations carry
+  annotations, and repeated output start/stop calls succeed with current state.
+  *All*, 2026-11-09. Issue [#4445](https://github.com/obs-rust/obs-studio/issues/4445),
+  PR [#4450](https://github.com/obs-rust/obs-studio/pull/4450).
+
 - **`--disable-shutdown-check` works again.** After an unclean stop (power
   loss, OOM killer, a hard stop of the VM or container), OBS starts without
   the "Crash Detected" dialog and logs the unclean shutdown as a warning on
