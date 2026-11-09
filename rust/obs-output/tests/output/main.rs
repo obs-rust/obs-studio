@@ -90,6 +90,7 @@ mod output_protocols;
 mod output_protocols_parity;
 mod output_reconnect;
 mod output_reconnect_parity;
+mod output_reconnect_settings;
 mod output_reconnecting;
 mod output_reconnecting_parity;
 mod output_service_getter;
