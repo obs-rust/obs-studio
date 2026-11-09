@@ -50,6 +50,40 @@ pub trait Decoder {
 }
 
 /// Decode one image, preserving the original packet/frame lifecycle.
-pub fn decode<D: Decoder>(_decoder: &mut D) -> Option<D::Output> {
-    todo!()
+pub fn decode<D: Decoder>(decoder: &mut D) -> Option<D::Output> {
+    if !decoder.allocate() {
+        decoder.warn(Warning::Allocate);
+        return None;
+    }
+    let output = decode_allocated(decoder);
+    decoder.cleanup();
+    output
+}
+
+fn decode_allocated<D: Decoder>(decoder: &mut D) -> Option<D::Output> {
+    if let Err(error) = decoder.read() {
+        decoder.warn(Warning::Read(error));
+        return None;
+    }
+    loop {
+        let status = match decoder.send() {
+            Status::Ready => decoder.receive(),
+            other => other,
+        };
+        match status {
+            Status::Ready => break,
+            Status::Retry => continue,
+            Status::Error(error) => {
+                if !decoder.too_large() {
+                    decoder.warn(Warning::Decode(error));
+                }
+                return None;
+            }
+        }
+    }
+    if decoder.check_size() {
+        return None;
+    }
+    decoder.update();
+    Some(decoder.reformat())
 }

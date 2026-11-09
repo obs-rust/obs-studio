@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-media.pch.h"
+#include "libobs/build/libobs-ported-graphics-ffmpeg-decode.pch.h"
 
 static void *ffmpeg_image_decode(struct ffmpeg_image *info, enum gs_image_alpha_mode alpha_mode)
 {

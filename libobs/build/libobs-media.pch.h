@@ -59,20 +59,10 @@
 #include <libavcodec/exif.h>
 #endif
 
-/* Shared state and static seams for the image decode unity fragments. */
-struct ffmpeg_image {
-	const char *file;
-	AVFormatContext *fmt_ctx;
-	AVCodecContext *decoder_ctx;
+/* Private state and C-reference seams for the image decode unity fragments. */
+#include "libobs/graphics/graphics-ffmpeg-image-private.h"
 
-	int cx, cy;
-	enum AVPixelFormat format;
+bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy);
+void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode);
 
-	/* The texture size limit of the graphics device, 0 if unknown. */
-	uint32_t max_size;
-	bool too_large;
-};
-
-static bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy);
-static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame,
-					 enum gs_image_alpha_mode alpha_mode);
+void *gs_ffmpeg_image_decode(void *info, int alpha_mode);

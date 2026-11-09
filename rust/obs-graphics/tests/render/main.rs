@@ -7,6 +7,7 @@ mod gif_frame;
 mod gif_frame_parity;
 mod gif_parity;
 mod image_decode;
+mod image_decode_parity;
 mod image_file;
 mod image_file_layout;
 mod image_file_parity;

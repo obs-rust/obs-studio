@@ -2,7 +2,7 @@
 
 /* A picture wider or taller than the graphics device's texture size limit
  * cannot become a texture. Say so once, before anything is decoded. */
-static bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy)
+bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy)
 {
 	if (!gs_ffmpeg_image_too_large(info->max_size, cx, cy))
 		return false;
@@ -217,7 +217,7 @@ _Static_assert(GS_FFMPEG_RGBA64_ALPHA_PREMULTIPLY_SRGB == GS_IMAGE_ALPHA_PREMULT
 	       "GS_IMAGE_ALPHA_PREMULTIPLY_SRGB");
 _Static_assert(GS_FFMPEG_RGBA64_ALPHA_PREMULTIPLY == GS_IMAGE_ALPHA_PREMULTIPLY, "GS_IMAGE_ALPHA_PREMULTIPLY");
 
-static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
+void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
 {
 	struct SwsContext *sws_ctx = NULL;
 	void *data = NULL;
@@ -345,7 +345,8 @@ uint8_t *gs_create_texture_file_data(const char *file, enum gs_color_format *for
 	uint8_t *data = NULL;
 
 	if (ffmpeg_image_init(&image, file)) {
-		data = ffmpeg_image_decode(&image, GS_IMAGE_ALPHA_STRAIGHT);
+		struct gs_image_decode_context decode = {&image, ffmpeg_image_too_large, ffmpeg_image_reformat_frame};
+		data = gs_ffmpeg_image_decode(&decode, (int)GS_IMAGE_ALPHA_STRAIGHT);
 		if (data) {
 			*format = (enum gs_color_format)gs_ffmpeg_image_color_format(image.format);
 			*cx_out = (uint32_t)image.cx;
@@ -373,7 +374,8 @@ uint8_t *gs_create_texture_file_data3(const char *file, enum gs_image_alpha_mode
 	uint8_t *data = NULL;
 
 	if (ffmpeg_image_init(&image, file)) {
-		data = ffmpeg_image_decode(&image, alpha_mode);
+		struct gs_image_decode_context decode = {&image, ffmpeg_image_too_large, ffmpeg_image_reformat_frame};
+		data = gs_ffmpeg_image_decode(&decode, (int)alpha_mode);
 		if (data) {
 			*format = (enum gs_color_format)gs_ffmpeg_image_color_format(image.format);
 			*cx_out = (uint32_t)image.cx;
