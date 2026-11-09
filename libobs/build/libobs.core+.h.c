@@ -19,5 +19,6 @@
 #include "libobs/obs-module-name-lookup-fields.c.h"
 #include "libobs/obs-module-type-query-fields.c.h"
 #include "libobs/obs-module.c.h"
+#include "libobs/obs-shutdown-detach.c.h"
 #include "libobs/obs-weak-object-identity-fields.c.h"
 #include "libobs/obs.c.h"
