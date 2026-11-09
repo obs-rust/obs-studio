@@ -322,8 +322,20 @@ fn c_rate_conversion_delay_samples() {
 pub(super) static KERNEL_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
+fn dependency_double_integer_saturation_is_defined() {
+    let _lock = KERNEL_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut rs = CheckedResampler::create(info(48000, 2, 1), info(48000, 4, 1)).unwrap();
+    let input = floats(&[f32::NEG_INFINITY, -1.0, 1.0, f32::INFINITY, f32::NAN]);
+    let (_, _, output) = rs.resample(&[input], 5).unwrap();
+    assert_eq!(
+        output,
+        vec![shorts(&[i16::MIN, i16::MIN, i16::MAX, i16::MAX, 0])]
+    );
+}
+
+#[test]
 fn c_invalid_sample_rate() {
-    let _lock=KERNEL_LOCK.lock().unwrap_or_else(|e|e.into_inner());
-    assert!(CheckedResampler::create(info(0,4,2),stereo(4)).is_none());
-    assert!(CheckedResampler::create(stereo(4),info(0,4,2)).is_none());
+    let _lock = KERNEL_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    assert!(CheckedResampler::create(info(0, 4, 2), stereo(4)).is_none());
+    assert!(CheckedResampler::create(stereo(4), info(0, 4, 2)).is_none());
 }
