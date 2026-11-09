@@ -14,10 +14,12 @@ pub trait Host {
 
 /// Create a scene source on the requested canvas and return its context data.
 pub fn create<H: Host>(host: &mut H, canvas: H::Handle, name: H::Name) -> H::Handle {
-    todo!()
+    let source = host.create_scene_source(canvas, name);
+    host.source_scene(source)
 }
 
 /// Remove the scene's source from its canvas, leaving the scene alive.
 pub fn remove<H: Host>(host: &mut H, scene: H::Handle) {
-    todo!()
+    let source = host.scene_source(scene);
+    host.remove_source(source);
 }

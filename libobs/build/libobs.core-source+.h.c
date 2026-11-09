@@ -6,7 +6,7 @@
 #include "libobs/obs-canvas-flags-fields.c.h"
 #include "libobs/obs-canvas-readonly-fields.c.h"
 #include "libobs/obs-canvas-ref-fields.c.h"
-#include "libobs/obs-canvas-scene.c.h"
+#include "libobs/obs-canvas-scene-fields.c.h"
 #include "libobs/obs-canvas-set-name.c.h"
 #include "libobs/obs-canvas-signals.c.h"
 #include "libobs/obs-canvas-video-fields.c.h"

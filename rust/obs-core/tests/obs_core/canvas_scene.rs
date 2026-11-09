@@ -13,8 +13,12 @@ impl Host for CanvasHost {
         self.scenes.push((self.scenes.len(), name, Some(canvas)));
         self.scenes.len() - 1
     }
-    fn source_scene(&self, source: usize) -> usize { self.scenes[source].0 }
-    fn scene_source(&self, scene: usize) -> usize { scene }
+    fn source_scene(&self, source: usize) -> usize {
+        self.scenes[source].0
+    }
+    fn scene_source(&self, scene: usize) -> usize {
+        scene
+    }
     fn remove_source(&mut self, source: usize) {
         self.calls.push("remove");
         self.scenes[source].2 = None;
@@ -22,7 +26,10 @@ impl Host for CanvasHost {
 }
 impl CanvasHost {
     fn find(&self, canvas: usize, name: &str) -> Option<usize> {
-        self.scenes.iter().find(|(_, n, c)| *n == name && *c == Some(canvas)).map(|s| s.0)
+        self.scenes
+            .iter()
+            .find(|(_, n, c)| *n == name && *c == Some(canvas))
+            .map(|s| s.0)
     }
 }
 

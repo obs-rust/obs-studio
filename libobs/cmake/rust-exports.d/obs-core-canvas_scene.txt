@@ -1,0 +1,2 @@
+obs_canvas_scene_create
+obs_canvas_scene_remove
