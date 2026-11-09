@@ -71,6 +71,7 @@
 #include "libobs/obs-source-mute-monitor-hotkeys.c.h"
 #include "libobs/obs-source-name-fields.c.h"
 #include "libobs/obs-source-properties.c.h"
+#include "libobs/obs-source-push-hotkeys.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
 #include "libobs/obs-source-push-to-enable-fields.c.h"
 #include "libobs/obs-source-save-load.c.h"
