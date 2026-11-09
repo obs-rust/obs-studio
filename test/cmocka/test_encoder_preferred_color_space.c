@@ -18,8 +18,8 @@ static void test_stored_spaces(void **state)
 	(void)state;
 	struct obs_encoder encoder = {0};
 	struct obs_encoder before;
-	const enum video_colorspace spaces[] = {VIDEO_CS_DEFAULT, VIDEO_CS_601, VIDEO_CS_709, VIDEO_CS_SRGB,
-					       VIDEO_CS_2100_PQ, VIDEO_CS_2100_HLG};
+	const enum video_colorspace spaces[] = {VIDEO_CS_DEFAULT, VIDEO_CS_601,     VIDEO_CS_709,
+						VIDEO_CS_SRGB,    VIDEO_CS_2100_PQ, VIDEO_CS_2100_HLG};
 	for (size_t kind = 0; kind < 2; kind++) {
 		encoder.info.type = kind ? OBS_ENCODER_VIDEO : OBS_ENCODER_AUDIO;
 		encoder.orig_info.type = kind ? OBS_ENCODER_AUDIO : OBS_ENCODER_VIDEO;

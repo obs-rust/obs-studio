@@ -38,6 +38,7 @@ mod encoder_packet_ts_parity;
 mod encoder_pause;
 mod encoder_pause_parity;
 mod encoder_preferred_color_space;
+mod encoder_preferred_color_space_parity;
 mod encoder_preferred_format;
 mod encoder_preferred_format_parity;
 mod encoder_preferred_range;

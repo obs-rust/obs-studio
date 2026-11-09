@@ -13,7 +13,7 @@
 #include "libobs/obs-encoder-group-lifecycle.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
-#include "libobs/obs-encoder-preferred-color-space.c.h"
+#include "libobs/obs-encoder-preferred-color-space-fields.c.h"
 #include "libobs/obs-encoder-preferred-format-fields.c.h"
 #include "libobs/obs-encoder-preferred-range-fields.c.h"
 #include "libobs/obs-encoder-registry-queries.c.h"

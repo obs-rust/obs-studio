@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 enum video_colorspace obs_encoder_get_preferred_color_space(const obs_encoder_t *encoder)
 {
