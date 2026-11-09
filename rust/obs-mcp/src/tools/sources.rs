@@ -67,6 +67,15 @@ pub struct Transform {
 /// Methods take `&self`: libobs owns the state, so implementations use their
 /// own interior mutability.
 pub trait SourceBackend {
+    /// Remove an owned or application source, including its scene references.
+    /// # Errors
+    /// Reports a missing source or unsupported removal.
+    fn remove_source(&self, _request: RemoveInput) -> Result<NameOutput, ToolError> {
+        Err(ToolError::processing(
+            "source removal is not supported by this backend",
+        ))
+    }
+
     /// Typed `ListSources` backend operation.
     /// # Errors
     /// Reports invalid state, a missing resource or processing failure.
@@ -289,6 +298,12 @@ pub struct CreateOutput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub item: Option<i64>,
 }
+/// Remove a source by name.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RemoveInput {
+    pub name: String,
+}
 /// Settings update.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -467,6 +482,16 @@ typed_tool!(
     |backend, input| { backend.create_source(input) }
 );
 typed_tool!(
+    RemoveSource,
+    "source_remove",
+    SourceBackend,
+    RemoveInput,
+    NameOutput,
+    MUTATING,
+    "Remove a source and its references from scenes.",
+    |backend, input| { backend.remove_source(input) }
+);
+typed_tool!(
     SetSettings,
     "source_set_settings",
     SourceBackend,
@@ -516,12 +541,15 @@ typed_tool!(
     "Set the position, scale and/or rotation of a scene item, named by `item` (id from scene_items_list) or `source`.",
     |backend, input| { backend.update_transform(input) }
 );
-/// Registers seven typed source tools.
+/// Registers typed source tools, including probe cleanup.
 pub fn register(registry: &mut ToolRegistry, backend: &Rc<dyn SourceBackend>) {
     registry.register(Box::new(ListSources {
         backend: Rc::clone(backend),
     }));
     registry.register(Box::new(CreateSource {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(RemoveSource {
         backend: Rc::clone(backend),
     }));
     registry.register(Box::new(SetSettings {
@@ -547,6 +575,7 @@ pub fn schemas() -> Vec<serde_json::Value> {
     vec![
         crate::server::tool_schema::<ListSources>(),
         crate::server::tool_schema::<CreateSource>(),
+        crate::server::tool_schema::<RemoveSource>(),
         crate::server::tool_schema::<SetSettings>(),
         crate::server::tool_schema::<AddItem>(),
         crate::server::tool_schema::<ListItems>(),

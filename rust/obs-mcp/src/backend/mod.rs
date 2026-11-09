@@ -287,6 +287,23 @@ impl SceneBackend for ObsBackend {
 }
 
 impl SourceBackend for ObsBackend {
+    fn remove_source(
+        &self,
+        request: crate::tools::sources::RemoveInput,
+    ) -> Result<crate::tools::sources::NameOutput, crate::server::ToolError> {
+        let source = Source::by_name(&request.name).ok_or_else(|| {
+            crate::server::ToolError::not_found(format!("no source named '{}'", request.name))
+        })?;
+        if source.is_scene() {
+            return Err(crate::server::ToolError::wrong_state(
+                "use scene_remove for scenes",
+            ));
+        }
+        source.remove();
+        self.owned.borrow_mut().remove(&request.name);
+        Ok(crate::tools::sources::NameOutput { name: request.name })
+    }
+
     fn sources(&self) -> Vec<SourceInfo> {
         sorted(ffi::inputs())
             .into_iter()

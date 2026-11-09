@@ -3069,3 +3069,7 @@ area.
 
 - **Control socket** (#4456): private Unix MCP endpoint, `--mcp-attach` stdio proxy,
   and an in-app frontend module that controls the existing OBS instance.
+
+- **Typed control client and probe** (#4457): fluent Rust socket client and
+  `ci/vcam_av_sync.py --transport mcp` with automatic fallback when the websocket
+  service is absent, bounded capture shutdown, typed waits and probe cleanup.

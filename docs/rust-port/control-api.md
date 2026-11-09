@@ -71,3 +71,24 @@ Keep its stdin open for the test's lifetime; EOF stops the socket and libobs.
 The attached backend resolves frontend scenes and output names on each call,
 preserves coordinate settings, and queues scene changes through the graphics
 thread so the frontend's UI mutation path cannot block shutdown.
+
+## Clients and the A/V probe
+
+```rust,ignore
+let obs = obs_mcp::client::Client::attach(Default::default())?;
+obs.vcam().start(obs_mcp::tools::control::StartInput {
+    wait: true, ..Default::default()
+})?;
+obs.wait_for(condition).timeout_ms(5000).call()?;
+```
+
+`uv run --script ci/vcam_av_sync.py measure --transport mcp --mcp-socket PATH`
+creates a uniquely named media probe in the program scene, waits for playback,
+starts independent ffmpeg v4l2/PulseAudio capture, restarts the clip and reports
+A/V offset, per-path latency and `stats_get`. `source_remove` cleans up the probe.
+`--transport auto` (default) falls back to MCP only when the websocket connection
+cannot be opened. `--transport websocket` preserves the original path. Auth and
+protocol failures are surfaced rather than retried with a second transport.
+Capture timing is relative to the media restart response wall clock; the server
+keeps end-to-end offset null until an independent capture probe measures it.
+Run actual device capture only inside bosn. No GUI interaction is required.
