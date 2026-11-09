@@ -1,5 +1,7 @@
 #include "libobs/build/libobs.pch.h"
 
+void obs_encoder_group_actually_destroy(obs_encoder_group_t *group);
+
 obs_encoder_group_t *obs_encoder_group_create(void)
 {
 	struct obs_encoder_group *group = bzalloc(sizeof(struct obs_encoder_group));
