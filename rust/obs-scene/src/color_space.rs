@@ -8,6 +8,8 @@ pub const VIDEO_CS_2100_HLG: i32 = 5;
 
 /// Missing video information and non-HDR video use sRGB.
 pub fn video_color_space(video: Option<i32>) -> i32 {
-    let _ = video;
-    todo!("port scene_video_get_color_space")
+    match video {
+        Some(VIDEO_CS_2100_PQ | VIDEO_CS_2100_HLG) => GS_CS_709_EXTENDED,
+        _ => GS_CS_SRGB,
+    }
 }

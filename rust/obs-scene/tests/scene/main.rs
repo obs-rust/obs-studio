@@ -11,6 +11,7 @@ mod audio_window_parity;
 mod blend;
 mod bounds;
 mod color_space;
+mod color_space_parity;
 mod coords;
 mod crop;
 mod crop_parity;

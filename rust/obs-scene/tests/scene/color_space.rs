@@ -16,12 +16,18 @@ fn test_scene_color_space_srgb_ignores_hdr_preference() {
 
 #[test]
 fn test_scene_color_space_pq_ignores_srgb_preference() {
-    assert_eq!(video_color_space(Some(VIDEO_CS_2100_PQ)), GS_CS_709_EXTENDED);
+    assert_eq!(
+        video_color_space(Some(VIDEO_CS_2100_PQ)),
+        GS_CS_709_EXTENDED
+    );
 }
 
 #[test]
 fn test_scene_color_space_hlg_ignores_srgb_preference() {
-    assert_eq!(video_color_space(Some(VIDEO_CS_2100_HLG)), GS_CS_709_EXTENDED);
+    assert_eq!(
+        video_color_space(Some(VIDEO_CS_2100_HLG)),
+        GS_CS_709_EXTENDED
+    );
 }
 
 #[test]
