@@ -22,6 +22,7 @@
 #include "libobs/obs-output-mixer-getters-fields.c.h"
 #include "libobs/obs-output-pause-queries-fields.c.h"
 #include "libobs/obs-output-protocol-getter-fields.c.h"
+#include "libobs/obs-output-reconnecting-fields.c.h"
 #include "libobs/obs-output-service-getter-fields.c.h"
 #include "libobs/obs-output-supported-codecs-fields.c.h"
 #include "libobs/obs-output-total-frames-fields.c.h"

@@ -39,6 +39,7 @@ pub mod output_protocols;
 pub mod output_raw_audio;
 pub mod output_raw_audio_trim;
 pub mod output_reconnect;
+pub mod output_reconnecting;
 pub mod output_service_getter;
 pub mod output_slots;
 pub mod output_start;
