@@ -1,9 +1,6 @@
 # Characterizes static C source only, in both Tier 2 modes. This deliberately
 # extracts the real bodies rather than copying them into a stand-in encoder.
-set(_encoder_buffers_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-audio-buffers.c.h")
-if(NOT EXISTS "${_encoder_buffers_source}")
-  set(_encoder_buffers_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder.c.h")
-endif()
+set(_encoder_buffers_source "${CMAKE_SOURCE_DIR}/rust/obs-c-oracle/legacy/obs-encoder-audio-buffers.c")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_encoder_buffers_source}")
 file(READ "${_encoder_buffers_source}" _encoder_buffers_text)
 set(_encoder_buffers_header "")
