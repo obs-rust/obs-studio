@@ -39,6 +39,7 @@
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-enabled-setter.c.h"
 #include "libobs/obs-source-filter-count-fields.c.h"
+#include "libobs/obs-source-filter-index.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-hidden-setter.c.h"
