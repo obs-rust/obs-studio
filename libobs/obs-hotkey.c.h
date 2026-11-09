@@ -998,25 +998,6 @@ unlock:
 	unlock();
 }
 
-void obs_hotkey_set_callback_routing_func(obs_hotkey_callback_router_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	obs->hotkeys.router_func = func;
-	obs->hotkeys.router_func_data = data;
-	unlock();
-}
-
-void obs_hotkey_enable_callback_rerouting(bool enable)
-{
-	if (!lock())
-		return;
-
-	obs->hotkeys.reroute_hotkeys = enable;
-	unlock();
-}
-
 /* The key name store (obs->hotkeys.translations[]): obs_hotkeys_set_translations_s()
  * in obs-hotkey-translations.c.h calls it for each name it sets. Declared in
  * obs-internal.h; not exported. */
