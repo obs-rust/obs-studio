@@ -1265,16 +1265,6 @@ uint64_t obs_output_get_total_bytes(const obs_output_t *output)
 	return output->info.get_total_bytes(output->context.data);
 }
 
-int obs_output_get_frames_dropped(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_frames_dropped"))
-		return 0;
-	if (!output->info.get_dropped_frames)
-		return 0;
-
-	return output->info.get_dropped_frames(output->context.data);
-}
-
 void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32_t height, size_t idx)
 {
 	if (!obs_output_valid(output, "obs_output_set_preferred_size2"))
