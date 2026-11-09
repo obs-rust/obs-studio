@@ -37,4 +37,3 @@ int obs_module_load_metadata(struct obs_module *mod)
 	mod->metadata = md;
 	return MODULE_SUCCESS;
 }
-
