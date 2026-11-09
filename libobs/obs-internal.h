@@ -1476,6 +1476,12 @@ struct obs_source_boolean_query_fields {
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
 
 /* Borrowed procedure-handler address. Caller rejects NULL before access. */
+/* Read-only count address; source lifetime and synchronization stay with C. */
+struct obs_source_filter_count_fields {
+	const size_t *count;
+};
+extern struct obs_source_filter_count_fields obs_source_filter_count_fields(const obs_source_t *source);
+
 struct obs_source_handler_getters_fields {
 	proc_handler_t *const *proc;
 };

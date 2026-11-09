@@ -38,6 +38,7 @@ mod deinterlace_select_parity;
 mod draw_plan;
 mod draw_plan_parity;
 mod filter_count;
+mod filter_count_parity;
 mod filter_relationship_getters;
 mod filter_relationship_getters_parity;
 mod frame_copy;

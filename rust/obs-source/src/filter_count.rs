@@ -2,5 +2,11 @@
 use core::ffi::CStr;
 
 pub fn count(source: Option<usize>, log: impl FnOnce(&'static CStr)) -> usize {
-    todo!()
+    match source {
+        Some(count) => count,
+        None => {
+            log(c"obs_source_filter_count");
+            0
+        }
+    }
 }
