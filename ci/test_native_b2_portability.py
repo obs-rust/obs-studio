@@ -98,6 +98,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/source-handler-getter-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
+                    "test/cmocka/scene-item-group-scene-link-support.c",
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):
@@ -319,6 +320,30 @@ class NativeB2Portability(unittest.TestCase):
         self.assertIn("libobs_rust-static", legacy)
         self.assertIn('_target STREQUAL "test_scene_item_crop_rust"', legacy)
         self.assertIn("scene-source-getter-link-support.c", legacy)
+
+    def test_scene_group_scene_supplies_live_adapters_to_static_consumers(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-item-group-scene.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if name.startswith("test_scene") and "libobs_rust-static" in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        adapter = "test/cmocka/scene-item-group-scene-link-support.c"
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(support[name]["sources"], [adapter])
+                self.assertEqual(graph["targets"][name]["sources"].count(adapter), 1)
+                for library in ("OBS::caption", "Uthash::Uthash"):
+                    self.assertIn(library, graph["targets"][name]["libraries"])
+        for path in [adapter, "libobs/obs-scene-item-group-scene-fields.c.h"]:
+            text = (ROOT / path).read_text()
+            self.assertIn("return &item->is_group;", text)
+            self.assertIn("return &item->source->context.data;", text)
+            self.assertNotIn("abort(", text)
+        legacy = (ROOT / "test/cmocka/tests.d/scene_item_group_scene_link_support.cmake").read_text()
+        self.assertIn("scene-item-group-scene-link-support.c", legacy)
+        self.assertIn("libobs_rust-static", legacy)
+        self.assertIn("OBS::w32-pthreads", legacy)
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

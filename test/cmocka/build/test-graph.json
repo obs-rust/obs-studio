@@ -11704,7 +11704,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11795,7 +11796,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -11807,7 +11809,9 @@
           "requires": {
             "not": "MSVC"
           }
-        }
+        },
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "includes": [
         "libobs"
@@ -12099,7 +12103,8 @@
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-support.c"
+        "test/cmocka/scene-source-getter-link-support.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "includes": [
         "libobs"
@@ -12108,7 +12113,9 @@
         "OBS::libobs",
         "libobs_rust-static",
         "OBS::native-test-cmocka",
-        "m"
+        "m",
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "requires": {
         "all": [
@@ -12176,13 +12183,16 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
         "OBS::libobs",
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "includes": [
         "libobs"
@@ -12216,13 +12226,16 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
         "OBS::libobs",
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "includes": [
         "libobs"
@@ -12354,7 +12367,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12366,7 +12380,9 @@
           "requires": {
             "not": "MSVC"
           }
-        }
+        },
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "includes": [
         "libobs"
@@ -12478,7 +12494,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "includes": [
         "libobs"
@@ -12595,7 +12612,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "test/cmocka/scene-item-group-scene-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -12604,7 +12622,9 @@
       "libraries": [
         "OBS::libobs",
         "libobs_rust-static",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
       ]
     },
     "test_scene_transform_update_walk": {
