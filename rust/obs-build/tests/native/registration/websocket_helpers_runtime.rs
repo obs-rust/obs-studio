@@ -19,7 +19,10 @@ fn cases(output: &std::process::Output, name: &str) {
     )
     .replace("\r\n", "\n");
     let count = match name {
-        "test_ws_current_scene_removed" => 4,
+        "test_ws_current_scene_removed"
+        | "test_ws_filter_settings_event"
+        | "test_ws_transform_bounds" => 4,
+        "test_ws_remove_input" => 2,
         "test_ws_list_property_items" => 3,
         _ => 5,
     };
@@ -34,7 +37,7 @@ fn cases(output: &std::process::Output, name: &str) {
 fn unavailable_owners(directory: &Path, root: &str) {
     let absent = directory.join("absent-sources");
     fs::create_dir_all(&absent).unwrap();
-    for (mode, source_root, qt, expected_names) in [
+    for (mode, source_root, qt, mut expected_names) in [
         ("no-source", absent.as_path(), "ON", vec![]),
         (
             "no-qt",
@@ -45,6 +48,9 @@ fn unavailable_owners(directory: &Path, root: &str) {
                 "test_ws_image_mime",
                 "test_ws_list_property_items",
                 "test_ws_scene_count",
+                "test_ws_filter_settings_event",
+                "test_ws_remove_input",
+                "test_ws_transform_bounds",
             ],
         ),
     ] {
@@ -75,6 +81,7 @@ fn unavailable_owners(directory: &Path, root: &str) {
             .iter()
             .map(|test| test["name"].as_str().unwrap())
             .collect();
+        expected_names.sort_unstable();
         assert_eq!(names, expected_names);
     }
 }
@@ -90,22 +97,8 @@ fn canonical_websocket_helpers_run_unchanged() {
         profile: Default::default(),
     };
     let core = built_core(&build, &root);
-    let interfaces = std::collections::BTreeMap::from([
-        ("OBS::libobs".into(), core.dependency.clone()),
-        (
-            "nlohmann_json::nlohmann_json".into(),
-            Dependency::package(&build.target, "nlohmann_json").unwrap(),
-        ),
-        (
-            "OBS::native-test-cmocka".into(),
-            Dependency::package(&build.target, "cmocka").unwrap(),
-        ),
-        (
-            "Qt6::Core".into(),
-            Dependency::package(&build.target, "Qt6Core").unwrap(),
-        ),
-    ]);
-    let facts = std::collections::BTreeMap::from([
+    let interfaces = helper_interfaces(&build, &core);
+    let mut facts = std::collections::BTreeMap::from([
         ("OS_LINUX".into(), true),
         ("OS_WINDOWS".into(), false),
         ("HAVE_WS_BATCH_ORDER_TEST_OWNER".into(), true),
@@ -115,7 +108,25 @@ fn canonical_websocket_helpers_run_unchanged() {
         ("HAVE_WS_IMAGE_MIME_TEST_OWNER".into(), true),
         ("HAVE_WS_SESSION_DURATION_TEST_OWNER".into(), true),
     ]);
-    let graph = Graph::parse(&expected().to_string()).unwrap();
+    for name in CASES {
+        facts.insert(
+            format!(
+                "HAVE_{}_TEST_OWNER",
+                name.trim_start_matches("test_").to_uppercase()
+            ),
+            true,
+        );
+    }
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let mut selected = expected();
+    for section in ["targets", "tests"] {
+        for name in CASES {
+            selected[section][name] = raw[section][name].clone();
+        }
+    }
+    let graph = Graph::parse(&selected.to_string()).unwrap();
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), CASES.len());
     for name in CASES {
@@ -123,7 +134,12 @@ fn canonical_websocket_helpers_run_unchanged() {
         let loaded = String::from_utf8_lossy(&loaded.stdout);
         if matches!(
             name,
-            "test_ws_batch_order" | "test_ws_current_scene_removed" | "test_ws_list_property_items"
+            "test_ws_batch_order"
+                | "test_ws_current_scene_removed"
+                | "test_ws_list_property_items"
+                | "test_ws_filter_settings_event"
+                | "test_ws_remove_input"
+                | "test_ws_transform_bounds"
         ) {
             assert!(
                 loaded.contains(core.dependency.artifacts[0].to_str().unwrap()),
@@ -133,14 +149,16 @@ fn canonical_websocket_helpers_run_unchanged() {
             assert!(!loaded.contains("libobs.so"), "{name}: {loaded}");
         }
         let test = graph.tests[name].resolve_runtime(&interfaces).unwrap();
-        cases(
-            &checked(
-                &mut test
-                    .command(&root, &build.output, &artifacts[name])
-                    .unwrap(),
-            ),
-            name,
-        );
+        for _ in 0..repetitions(name) {
+            cases(
+                &checked(
+                    &mut test
+                        .command(&root, &build.output, &artifacts[name])
+                        .unwrap(),
+                ),
+                name,
+            );
+        }
     }
     cmake_replay(directory.path(), &root, &core);
 }
@@ -157,6 +175,7 @@ enable_testing()
 set(OS_LINUX TRUE)
 set(OS_WINDOWS FALSE)
 {core_cmake}
+find_package(X11 REQUIRED)
 find_package(nlohmann_json 3.11 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
@@ -193,7 +212,12 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{GRAPH_ROOT}
         let loaded = String::from_utf8_lossy(&loaded.stdout);
         if matches!(
             name,
-            "test_ws_batch_order" | "test_ws_current_scene_removed" | "test_ws_list_property_items"
+            "test_ws_batch_order"
+                | "test_ws_current_scene_removed"
+                | "test_ws_list_property_items"
+                | "test_ws_filter_settings_event"
+                | "test_ws_remove_input"
+                | "test_ws_transform_bounds"
         ) {
             assert!(
                 loaded.contains(core.dependency.artifacts[0].to_str().unwrap()),
@@ -202,16 +226,50 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{GRAPH_ROOT}
         } else {
             assert!(!loaded.contains("libobs.so"), "{name}: {loaded}");
         }
-        cases(
-            &checked(
-                Command::new("ctest")
-                    .arg("--test-dir")
-                    .arg(&output)
-                    .args(["-V", "--no-tests=error", "-R"])
-                    .arg(format!("^{name}$")),
-            ),
-            name,
-        );
+        for _ in 0..repetitions(name) {
+            cases(
+                &checked(
+                    Command::new("ctest")
+                        .arg("--test-dir")
+                        .arg(&output)
+                        .args(["-V", "--no-tests=error", "-R"])
+                        .arg(format!("^{name}$")),
+                ),
+                name,
+            );
+        }
     }
     unavailable_owners(directory, &root);
+}
+
+fn repetitions(name: &str) -> usize {
+    match name {
+        "test_ws_filter_settings_event" | "test_ws_remove_input" | "test_ws_transform_bounds" => 5,
+        _ => 1,
+    }
+}
+fn helper_interfaces(
+    build: &NativeBuild,
+    core: &BuiltCore,
+) -> std::collections::BTreeMap<String, Dependency> {
+    let mut interfaces = std::collections::BTreeMap::from([
+        ("OBS::libobs".into(), core.dependency.clone()),
+        (
+            "nlohmann_json::nlohmann_json".into(),
+            Dependency::package(&build.target, "nlohmann_json").unwrap(),
+        ),
+        (
+            "OBS::native-test-cmocka".into(),
+            Dependency::package(&build.target, "cmocka").unwrap(),
+        ),
+        (
+            "Qt6::Core".into(),
+            Dependency::package(&build.target, "Qt6Core").unwrap(),
+        ),
+    ]);
+    interfaces.insert(
+        "X11::X11".into(),
+        Dependency::package(&build.target, "x11").unwrap(),
+    );
+    interfaces
 }
