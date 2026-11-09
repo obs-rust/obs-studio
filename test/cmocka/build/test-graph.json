@@ -5596,6 +5596,16 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_indexbuffer_create": {
+      "sources": [
+        "test/cmocka/test_indexbuffer_create.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    },
     "test_ingest_refresh_wait": {
       "sources": [
         "test/cmocka/test_ingest_refresh_wait.c"
@@ -20357,6 +20367,12 @@
           }
         ]
       }
+    },
+    "test_indexbuffer_create": {
+      "target": "test_indexbuffer_create",
+      "command": [
+        "${target}"
+      ]
     },
     "test_ingest_refresh_wait": {
       "target": "test_ingest_refresh_wait",
