@@ -16,6 +16,7 @@ pub mod source_deinterlace_draw;
 pub mod source_deinterlace_getters;
 pub mod source_deinterlace_pacing;
 pub mod source_deinterlace_select;
+pub mod source_deinterlace_texture;
 pub mod source_draw_plan;
 pub mod source_draw_technique;
 pub mod source_duplicate;

@@ -36,6 +36,7 @@ mod deinterlace_pacing_parity;
 mod deinterlace_select;
 mod deinterlace_select_parity;
 mod deinterlace_texture;
+mod deinterlace_texture_parity;
 mod draw_plan;
 mod draw_plan_parity;
 mod filter_count;

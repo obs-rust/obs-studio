@@ -1453,6 +1453,8 @@ struct obs_source_filter_relationship_fields {
 struct obs_source_filter_relationship_fields obs_source_filter_relationship_fields(const obs_source_t *filter);
 /* Borrowed field addresses only: no Rust mirror of the private source layout,
  * ownership, synchronization, or getter decisions in the C adapter. */
+#include "libobs/obs-source-deinterlace-texture-fields.h"
+
 struct obs_source_deinterlace_fields {
 	const enum obs_deinterlace_mode *mode;
 	const bool *top_first;
