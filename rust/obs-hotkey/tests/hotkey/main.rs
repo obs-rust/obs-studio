@@ -2,6 +2,8 @@
 
 mod background_app_id;
 mod background_app_id_parity;
+mod background_error;
+mod background_error_parity;
 mod background_query;
 mod background_query_parity;
 mod binding_getters;

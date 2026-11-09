@@ -5079,6 +5079,21 @@
         }
       ]
     },
+    "test_hotkey_background_error": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_error.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_background_query": {
       "sources": [
         "test/cmocka/test_hotkey_background_query.c"
@@ -9925,6 +9940,8 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-app-id-fields.c.h",
         "libobs/obs-hotkey-background-app-id.c.h",
+        "test/cmocka/hotkey-background-error-link-support.c",
+        "libobs/obs-hotkey-background-error.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -20204,6 +20221,18 @@
     },
     "test_hotkey_background_app_id": {
       "target": "test_hotkey_background_app_id",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
+    "test_hotkey_background_error": {
+      "target": "test_hotkey_background_error",
       "command": [
         "${target}"
       ],

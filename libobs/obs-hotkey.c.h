@@ -814,16 +814,6 @@ enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *fla
 	return state;
 }
 
-char *obs_hotkeys_get_background_error(void)
-{
-	if (!lock())
-		return NULL;
-
-	char *error = obs->hotkeys.background.error ? bstrdup(obs->hotkeys.background.error) : NULL;
-	unlock();
-	return error;
-}
-
 char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 {
 	if (!lock())
