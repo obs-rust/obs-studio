@@ -19,6 +19,7 @@
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder-state-queries-fields.c.h"
 #include "libobs/obs-encoder.c.h"
+#include "libobs/obs-output-active-fields.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"
 #include "libobs/obs-output-caption-queue.c.h"
 #include "libobs/obs-output-connect-time-fields.c.h"

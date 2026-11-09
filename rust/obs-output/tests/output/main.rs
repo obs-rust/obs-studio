@@ -53,6 +53,8 @@ mod encoder_state_queries;
 mod encoder_state_queries_parity;
 mod interleave;
 mod interleave_parity;
+mod output_active;
+mod output_active_parity;
 mod output_begin;
 mod output_begin_parity;
 mod output_can_pause;
