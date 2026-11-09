@@ -1,1 +1,2 @@
 gs_get_linear_srgb
+gs_set_linear_srgb

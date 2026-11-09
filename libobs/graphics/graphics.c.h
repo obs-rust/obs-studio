@@ -1680,18 +1680,6 @@ bool gs_framebuffer_srgb_enabled(void)
 	return graphics->exports.device_framebuffer_srgb_enabled(graphics->device);
 }
 
-bool gs_set_linear_srgb(bool linear_srgb)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_linear_srgb"))
-		return false;
-
-	const bool previous = graphics->linear_srgb;
-	graphics->linear_srgb = linear_srgb;
-	return previous;
-}
-
 void gs_copy_texture(gs_texture_t *dst, gs_texture_t *src)
 {
 	graphics_t *graphics = thread_graphics;
