@@ -14,6 +14,7 @@
 #include "libobs/obs-object-validity-fields.c.h"
 #include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
+#include "libobs/obs-scene-item-hotkeys.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-set-id.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
