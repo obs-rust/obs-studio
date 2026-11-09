@@ -149,6 +149,7 @@ mod video_pacing;
 mod video_pacing_parity;
 mod video_plan;
 mod video_plan_parity;
+mod video_render_passes;
 mod video_render_size;
 mod video_render_size_parity;
 mod video_scale_effects;
