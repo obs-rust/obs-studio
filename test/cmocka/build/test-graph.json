@@ -19854,6 +19854,25 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_hotkey_background_control": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_control.c",
+        "libobs/obs-hotkey-background-control.c.h"
+      ],
+      "definitions": [
+        "obs=control_test_obs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
     }
   },
   "tests": {
@@ -26745,6 +26764,12 @@
     },
     "test_youtube_broadcast_settings": {
       "target": "test_youtube_broadcast_settings",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_hotkey_background_control": {
+      "target": "test_hotkey_background_control",
       "command": [
         "${target}"
       ]
