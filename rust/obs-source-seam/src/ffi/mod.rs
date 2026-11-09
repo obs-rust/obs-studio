@@ -3,6 +3,7 @@
 pub mod source_audio_input_path;
 pub mod source_audio_output;
 pub mod source_audio_settings;
+pub mod source_init_context;
 pub mod source_transition;
 pub mod source_transition_access;
 pub mod source_transition_restore;

@@ -13859,6 +13859,31 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_init_context_rust": {
+      "sources": [
+        "test/cmocka/test_source_init_context.c"
+      ],
+      "header_libraries": [
+        "OBS::source-init-context-rust-headers"
+      ],
+      "includes": [
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-init-context.c.h",
+        "libobs/obs-source-init-context-fields.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka",
+        "libobs_rust-static"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_source_label_destroy": {
       "sources": [
         "test/cmocka/test_source_label_destroy.cpp",
@@ -23324,6 +23349,13 @@
     },
     "test_source_init_context": {
       "target": "test_source_init_context",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_source_init_context_rust": {
+      "target": "test_source_init_context_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

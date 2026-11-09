@@ -31,9 +31,42 @@ pub fn prepare_headers(build: &NativeBuild, root: &Path) -> Result<Dependency, S
             .ok_or_else(|| format!("missing trailing {end} in {source}"))?;
         fs::write(output.join(destination), &text[first..last]).map_err(|e| e.to_string())?;
     }
+    let source_context = fs::read_to_string(root.join("libobs/obs-source-init-context.c.h"))
+        .map_err(|e| e.to_string())?;
+    let body = source_context
+        .strip_prefix("#include \"libobs/build/libobs.pch.h\"\n")
+        .ok_or("source context PCH changed")?;
+    fs::write(
+        output.join("source-init-context-characterization.inc"),
+        body,
+    )
+    .map_err(|e| e.to_string())?;
     fs::copy(
         root.join("test/cmocka/fixtures/lua-graphics-lock-original.h"),
         output.join("lua-graphics-lock-under-test.h"),
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(Dependency {
+        include_dirs: vec![output],
+        ..Default::default()
+    })
+}
+
+/// Production adapter under the unchanged C test's dependency macros.
+pub fn prepare_source_context_rust_headers(
+    build: &NativeBuild,
+    root: &Path,
+) -> Result<Dependency, String> {
+    let output = build.output.join("source-init-context-rust-headers");
+    fs::create_dir_all(&output).map_err(|e| e.to_string())?;
+    let text = fs::read_to_string(root.join("libobs/obs-source-init-context-fields.c.h"))
+        .map_err(|e| e.to_string())?;
+    let body = text
+        .strip_prefix("#include \"libobs/build/libobs.pch.h\"\n")
+        .ok_or("source context adapter PCH changed")?;
+    fs::write(
+        output.join("source-init-context-characterization.inc"),
+        body,
     )
     .map_err(|e| e.to_string())?;
     Ok(Dependency {

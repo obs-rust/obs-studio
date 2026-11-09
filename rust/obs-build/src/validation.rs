@@ -465,6 +465,10 @@ pub fn build_c_tests(
         "OBS::headless-characterization-headers".into(),
         headless::prepare_headers(build, &root)?,
     );
+    interfaces.insert(
+        "OBS::source-init-context-rust-headers".into(),
+        headless::prepare_source_context_rust_headers(build, &root)?,
+    );
     let caption = crate::libobs::build_caption(build, &root)?;
     interfaces.insert(
         "OBS::caption".into(),
