@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-output",
+    "core-scene-lookup",
     "core-source",
     "null-audio",
     "util-cf"
