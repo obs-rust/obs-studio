@@ -45,6 +45,7 @@ pub mod video_pacing;
 pub mod video_plan;
 pub mod view;
 pub mod weak_object_identity;
+pub mod weak_object_refs;
 pub mod win_crash_report;
 pub mod win_symbol_paths;
 pub mod win_system_info;

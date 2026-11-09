@@ -877,6 +877,15 @@ struct obs_weak_object_identity_fields {
 };
 struct obs_weak_object_identity_fields obs_weak_object_identity_fields(const obs_weak_object_t *weak);
 
+/* Borrowed fields; callers reject NULL before invoking these adapters. */
+struct obs_weak_object_refs_fields {
+	volatile long *refs;
+	volatile long *weak_refs;
+	struct obs_context_data *object;
+};
+struct obs_weak_object_refs_fields obs_weak_object_refs_fields(obs_weak_object_t *weak);
+obs_weak_object_t *obs_object_refs_control(obs_object_t *object);
+
 typedef void (*obs_destroy_cb)(void *obj);
 
 #include "obs-object-query-fields.h"
