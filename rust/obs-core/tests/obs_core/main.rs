@@ -95,6 +95,7 @@ mod view;
 mod view_parity;
 mod weak_object_identity;
 mod weak_object_identity_parity;
+mod weak_object_refs;
 mod win_crash_report;
 mod win_crash_report_alloc;
 mod win_crash_report_parity;
