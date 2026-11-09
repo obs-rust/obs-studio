@@ -113,6 +113,11 @@
 //! `transition_get_video_time()`, `transition_stop()` and
 //! `transition_handle_stop()`, generic over the transition seam and the
 //! libobs calls; its C shims are in `obs-source-seam` too);
+//! the rest of `libobs/obs-source-transition.c.h`, the audio render, init
+//! and free of the transitions (`obs_transition_audio_render()`,
+//! `obs_transition_init()` and `obs_transition_free()`, generic over the
+//! transition seam, the audio buffers and the libobs calls; its C shims are
+//! in `obs-source-seam` too);
 //! `libobs/obs-source-transition-switch.c.h`, the start and set of the
 //! transitions (`obs_transition_start()` and `obs_transition_set()`, with
 //! `set_source()`, `activate_transition()`, `write_start_clock()` and the
@@ -133,7 +138,7 @@
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
-//! [`transition_access`], [`transition_clock`], [`transition_load`], [`transition_render`],
+//! [`transition_access`], [`transition_audio`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
 //! [`transition_start`], [`transition_stop`], [`transition_switch`],

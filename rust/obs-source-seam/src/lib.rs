@@ -38,7 +38,13 @@
 //! source calls (`obs_source_get_ref()`, `obs_source_release()`, the
 //! active-child add and remove, `obs_source_get_name()`,
 //! `obs_source_enum_full_tree()` and `blog()`), `os_gettime_ns()` and the
-//! size port's recalculation ([`ffi::source_transition_size`]).
+//! size port's recalculation ([`ffi::source_transition_size`]). The rest
+//! of `libobs/obs-source-transition.c.h`, the audio render, init and free
+//! of a transition, has its shims in [`ffi::source_transition`], which
+//! implement `obs_source::transition_audio::Transition` on the stop shims'
+//! `Seam`, over the same seam and the libobs source, audio and graphics
+//! calls (`obs_source_removed()`, the audio timestamp and mix reads,
+//! `obs_source_get_ref()`, the texrender calls and the graphics context).
 //!
 //! `libobs/obs-source-audio-settings.c.h`, the source audio settings, have
 //! their shims in [`ffi::source_audio_settings`], over
