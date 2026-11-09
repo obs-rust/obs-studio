@@ -41,7 +41,8 @@ int video_scale_effects_caller_check(void)
 		if (obs_video_loaded_scale_effects(&core.video) != mask)
 			return 1;
 		for (int selector = 0; selector < 5; selector++)
-			if (obs_video_scale_effect_pointer(&core.video, (enum obs_video_scale_effect)selector) != effects[selector])
+			if (obs_video_scale_effect_pointer(&core.video, (enum obs_video_scale_effect)selector) !=
+			    effects[selector])
 				return 2;
 		if (obs_video_scale_effect_pointer(&core.video, (enum obs_video_scale_effect)99) != effects[0])
 			return 3;
