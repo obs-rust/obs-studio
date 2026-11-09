@@ -755,7 +755,8 @@ static bool vmic_pw_start(struct virtualcam_data *vcam, const char *name, const 
 	}
 	vcam->mic_pw = pw;
 	vcam->mic_rate = rate;
-	vcam->mic_lead_ns = 0;
+	/* The audio waits in the jitter buffer; so does the picture. */
+	vcam->mic_lead_ns = util_mul_div64(VMIC_PW_KEEP_FRAMES, 1000000000ULL, rate);
 	return true;
 }
 
