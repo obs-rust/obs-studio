@@ -140,6 +140,7 @@ pub mod encoder_gpu_rescale;
 pub mod encoder_gpu_scaling_getters;
 pub mod encoder_group_lifecycle;
 pub mod encoder_group_reconfig;
+pub mod encoder_init;
 pub mod encoder_last_error;
 pub mod encoder_lifecycle;
 pub mod encoder_metadata;
