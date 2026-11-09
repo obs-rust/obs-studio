@@ -8,7 +8,7 @@ use crate::protocol::{Request, Response, error_code, read_message, write_message
 
 use crate::resources::ResourceRegistry;
 
-use super::{Content, ToolRegistry};
+use super::ToolRegistry;
 
 /// The MCP revision this server implements.
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -118,12 +118,8 @@ impl Server {
             .get("arguments")
             .cloned()
             .unwrap_or_else(|| json!({}));
-        let (content, is_error) = match tool.call_content(&arguments) {
-            Ok(items) => (items, false),
-            Err(text) => (vec![Content::Text(text)], true),
-        };
-        let content: Vec<Value> = content.iter().map(Content::to_json).collect();
-        Ok(json!({ "content": content, "isError": is_error }))
+        tool.call_result(&arguments)
+            .map_err(|message| (error_code::INVALID_PARAMS, message))
     }
 
     /// `resources/read`: an unknown URI is a protocol error.
