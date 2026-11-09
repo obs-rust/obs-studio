@@ -1,7 +1,7 @@
-/* Test-only link stand-ins: obs_source_removed(),
- * obs_source_get_audio_timestamp(), obs_source_get_audio_mix(),
- * gs_enter_context() and gs_leave_context() under libobs's own names, for
- * the test binaries that link the obs-source-seam shims without libobs.
+/* Test-only link stand-ins: obs_source_get_audio_timestamp(),
+ * obs_source_get_audio_mix(), gs_enter_context() and gs_leave_context()
+ * under libobs's own names, for the test binaries that link the
+ * obs-source-seam shims without libobs.
  *
  * The transition audio shims (rust/obs-source-seam/src/ffi/source_transition.rs)
  * export obs_transition_audio_render(), obs_transition_init() and
@@ -9,6 +9,7 @@
  * macOS linkers want every symbol an object names resolved, used or not, so
  * obs-tests-core needs a definition; libobs has the real ones.
  * obs_source_get_ref() and obs_source_release() (oracle/view.c),
+ * obs_source_removed() (oracle/audio_callback_links.c),
  * gs_texrender_create() and gs_texrender_destroy() (obs-graphics) and the
  * seam's graphics accessor (oracle/source_transition_settings.c) already
  * have theirs.
@@ -16,12 +17,6 @@
  * The tests never reach these: they run the shims with Calls of their own. */
 
 #include "obs.h"
-
-bool obs_source_removed(const obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
-	return false;
-}
 
 uint64_t obs_source_get_audio_timestamp(const obs_source_t *source)
 {
