@@ -6,7 +6,11 @@ fn item_group_scene() {
     assert_eq!(group_scene::<usize>(None, || panic!("absent item read")), 0);
     for bits in 0..32 {
         let is_group = bits & 1 != 0;
-        let scene = if bits & 8 != 0 { 1 + ((bits >> 4) & 1) } else { 0 };
+        let scene = if bits & 8 != 0 {
+            1 + ((bits >> 4) & 1)
+        } else {
+            0
+        };
         for _ in 0..2 {
             assert_eq!(
                 group_scene(Some(is_group), || {
