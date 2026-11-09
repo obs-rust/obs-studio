@@ -812,8 +812,14 @@ def lane_rust_test(fix: bool) -> None:
     for args in FEATURE_TEST_SETS:
         rust_tests(list(args))
     # Every test binary, C oracle included, must also link for a GCC-based
-    # Windows target (obs-rust/obs-studio#291). soldr provides the
-    # mingw-w64 cross toolchain; nothing runs, so no Wine is needed.
+    # Windows target (obs-rust/obs-studio#291).
+    windows_gnu_no_run(["--workspace"])
+
+
+def windows_gnu_no_run(packages: list[str]) -> None:
+    """Builds the test binaries of `packages` for x86_64-pc-windows-gnu
+    without running them. soldr provides the mingw-w64 cross toolchain;
+    nothing runs, so no Wine is needed."""
     # The target is added here, not in rust-toolchain.toml: listing it there
     # made soldr on a Windows host build and run every test as windows-gnu.
     run(["soldr", "rustup", "target", "add", "x86_64-pc-windows-gnu"])
@@ -821,7 +827,7 @@ def lane_rust_test(fix: bool) -> None:
     # place the oracle's rlib before the crates that call into it.
     gcc_ld = toolchain_gcc_ld()
     soldr_cargo(
-        ["test", "--workspace", "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"],
+        ["test", *packages, "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"],
         {"CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS": f"-C link-arg=-B{gcc_ld} -C link-arg=-fuse-ld=lld"},
     )
 
@@ -831,7 +837,7 @@ def test_diff(base: str) -> None:
     gate's PR-path test step (#992). The full lane runs on master."""
     import json
 
-    from rust_scope import affected
+    from rust_scope import affected, touches_gnu_oracle
 
     files = subprocess.run(["git", "diff", "--name-only", base, "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
     meta = json.loads(
@@ -843,10 +849,16 @@ def test_diff(base: str) -> None:
     }
     mode, names = affected(files, crates)
     print(f"== test scope: {mode} {names}", flush=True)
-    if mode == "skip":
-        return
-    pkgs = ["--workspace"] if mode == "workspace" else [a for n in names for a in ("-p", n)]
-    rust_tests(pkgs)
+    if mode != "skip":
+        pkgs = ["--workspace"] if mode == "workspace" else [a for n in names for a in ("-p", n)]
+        rust_tests(pkgs)
+    # The oracle gets its pthread renames only in a windows-gnu build, which
+    # the full lane runs on master only: a change to its C inputs builds it
+    # here, or it breaks master after the merge (#4168). Linux hosts only:
+    # soldr's mingw-w64 cross toolchain is for Linux.
+    if host_platform.is_linux() and touches_gnu_oracle(files):
+        print("== windows-gnu: the diff touches the C oracle's inputs", flush=True)
+        windows_gnu_no_run(["-p", "obs-c-oracle"])
 
 
 def lane_tier2_linux(fix: bool) -> None:

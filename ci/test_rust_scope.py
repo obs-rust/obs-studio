@@ -10,7 +10,7 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from rust_scope import affected
+from rust_scope import affected, touches_gnu_oracle
 
 CRATES = {
     "obs-util": ("rust/obs-util", set()),
@@ -19,6 +19,29 @@ CRATES = {
     "obs-gpu-status": ("rust/obs-gpu-status", set()),
 }
 BUILD = Path(__file__).resolve().parent.parent / ".github" / "workflows" / "build-project.yaml"
+
+
+class GnuOracleTest(unittest.TestCase):
+    """The C oracle gets its windows-gnu renames only in a windows-gnu build,
+    which the PR path never ran: #4059 broke it and reached master (#4168).
+    A diff that touches an input of the oracle's C build must build it."""
+
+    def test_oracle_c_inputs_build_it(self):
+        for path in (
+            "rust/obs-c-oracle/oracle/output_pause_queries.c",
+            "rust/obs-c-oracle/build.rs",
+            "libobs/obs-output.c.h",
+            "deps/w32-pthreads/pthread.c",
+            "plugins/obs-nvenc/cuda-helpers.c",
+            "rust/obs-hotkey/src/nix_wayland_keys/keysyms.rs",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(touches_gnu_oracle(["docs/features.md", path]))
+
+    def test_other_paths_do_not(self):
+        self.assertFalse(
+            touches_gnu_oracle(["rust/obs-util/src/lib.rs", "docs/features.md", "frontend/OBSApp.cpp", "plugins/obs-ffmpeg/obs-ffmpeg.c"])
+        )
 
 
 class AffectedTest(unittest.TestCase):
