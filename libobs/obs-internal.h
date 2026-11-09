@@ -1487,6 +1487,12 @@ struct obs_source_handler_getters_fields {
 };
 extern struct obs_source_handler_getters_fields obs_source_handler_getters_fields(const obs_source_t *source);
 
+/* Borrowed type-data member address; caller rejects NULL before access. */
+struct obs_source_type_data_fields {
+	void *const *data;
+};
+extern struct obs_source_type_data_fields obs_source_type_data_fields(const obs_source_t *source);
+
 /* Borrowed identity field addresses. Caller must reject NULL before access. */
 struct obs_source_identity_getter_fields {
 	const char *const *uuid;
