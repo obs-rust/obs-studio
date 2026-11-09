@@ -41,8 +41,8 @@ static void context(gs_device_t *device)
 	assert_ptr_equal(device, graphics.device);
 }
 
-static bool native_create(gs_device_t *device, gs_texture_t **y, gs_texture_t **uv, uint32_t width,
-			  uint32_t height, uint32_t flags)
+static bool native_create(gs_device_t *device, gs_texture_t **y, gs_texture_t **uv, uint32_t width, uint32_t height,
+			  uint32_t flags)
 {
 	assert_ptr_equal(device, graphics.device);
 	assert_int_equal(width, expected_width);
@@ -55,8 +55,8 @@ static bool native_create(gs_device_t *device, gs_texture_t **y, gs_texture_t **
 	return native_success;
 }
 
-static gs_texture_t *create_plane(gs_device_t *device, uint32_t width, uint32_t height,
-				 enum gs_color_format format, uint32_t levels, const uint8_t **data, uint32_t flags)
+static gs_texture_t *create_plane(gs_device_t *device, uint32_t width, uint32_t height, enum gs_color_format format,
+				  uint32_t levels, const uint8_t **data, uint32_t flags)
 {
 	unsigned plane = create_calls++;
 	assert_true(plane < 2);
@@ -126,7 +126,7 @@ static void rejected_inputs(void **state)
 		assert_int_equal(logs, 1);
 		assert_int_equal(last_level, LOG_DEBUG);
 		assert_string_equal(last_log, p010 ? "gs_texture_create_p010: called while not in a graphics context"
-						 : "gs_texture_create_nv12: called while not in a graphics context");
+						   : "gs_texture_create_nv12: called while not in a graphics context");
 		gs_enter_context(&graphics);
 		graphics.exports.device_texture_create_nv12 = native_create;
 		graphics.exports.device_texture_create_p010 = native_create;
@@ -139,7 +139,7 @@ static void rejected_inputs(void **state)
 			assert_int_equal(logs, 1);
 			assert_int_equal(last_level, LOG_ERROR);
 			assert_string_equal(last_log, p010 ? "P010 textures must have dimensions divisible by 2."
-							 : "NV12 textures must have dimensions divisible by 2.");
+							   : "NV12 textures must have dimensions divisible by 2.");
 			assert_int_equal(native_calls, 0);
 			assert_int_equal(create_calls, 0);
 			assert_int_equal(destroy_calls, 0);
@@ -168,7 +168,8 @@ static void native_and_fallback(void **state)
 					for (failures = 0; failures < 4; failures++) {
 						reset();
 						gs_texture_t *y = token(2), *uv = token(3);
-						bool success = create_pair(&y, &uv, expected_width, expected_height, expected_flags);
+						bool success = create_pair(&y, &uv, expected_width, expected_height,
+									   expected_flags);
 						assert_int_equal(success, native_success || failures == 0);
 						assert_int_equal(native_calls, native != 0);
 						assert_int_equal(create_calls, native_success ? 0 : 2);
@@ -182,7 +183,8 @@ static void native_and_fallback(void **state)
 							assert_null(uv);
 							assert_int_equal(destroy_calls, failures == 3 ? 0 : 1);
 							if (destroy_calls)
-								assert_ptr_equal(destroyed[0], token(failures == 1 ? 1 : 0));
+								assert_ptr_equal(destroyed[0],
+										 token(failures == 1 ? 1 : 0));
 						}
 					}
 				}
@@ -195,6 +197,6 @@ static void native_and_fallback(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {cmocka_unit_test_setup_teardown(rejected_inputs, setup, teardown),
-					 cmocka_unit_test_setup_teardown(native_and_fallback, setup, teardown)};
+					   cmocka_unit_test_setup_teardown(native_and_fallback, setup, teardown)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
