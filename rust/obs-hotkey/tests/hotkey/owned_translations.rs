@@ -30,6 +30,17 @@ impl Slots {
     fn scene_snapshot(&self) -> [Option<Vec<u8>>; 2] {
         std::array::from_fn(|i| self.0[i + 6].clone())
     }
+    fn registered_scene(&self) -> [Option<Vec<u8>>; 2] {
+        // Scene registration uses these same already-ported dstr operations.
+        // Keep the C test's formatted-description assertions as well as the
+        // raw stored-template assertions for the setter itself.
+        std::array::from_fn(|i| {
+            let mut description = obs_util::dstr::Dstr::new();
+            description.copy(self.0[i + 6].as_deref().unwrap_or_default());
+            description.replace(b"%1", b"item");
+            (description.capacity() != 0).then(|| description.as_bytes().to_vec())
+        })
+    }
 }
 fn audio(values: [&str; 6]) -> [Option<Vec<u8>>; 6] {
     values.map(|v| Some(v.as_bytes().to_vec()))
@@ -79,10 +90,24 @@ fn mirrors_c_scene_copies_replaces_and_formats() {
         slots.scene_snapshot(),
         [Some(b"Show %1 / %1".to_vec()), Some(b"Hide %1".to_vec())]
     );
+    assert_eq!(
+        slots.registered_scene(),
+        [
+            Some(b"Show item / item".to_vec()),
+            Some(b"Hide item".to_vec())
+        ]
+    );
     slots.scene([Some(b"Visible %1"), Some(b"Hidden %1")]);
     assert_eq!(
         slots.scene_snapshot(),
         [Some(b"Visible %1".to_vec()), Some(b"Hidden %1".to_vec())]
+    );
+    assert_eq!(
+        slots.registered_scene(),
+        [
+            Some(b"Visible item".to_vec()),
+            Some(b"Hidden item".to_vec())
+        ]
     );
 }
 
@@ -106,8 +131,13 @@ fn mirrors_c_null_empty_and_group_isolation() {
         slots.scene_snapshot(),
         [Some(b"Show %1".to_vec()), Some(b"Hide %1".to_vec())]
     );
+    assert_eq!(
+        slots.registered_scene(),
+        [Some(b"Show item".to_vec()), Some(b"Hide item".to_vec())]
+    );
     slots.scene([None, Some(b"")]);
     assert_eq!(slots.scene_snapshot(), [None, Some(vec![])]);
+    assert_eq!(slots.registered_scene(), [None, None]);
     assert_eq!(slots.audio_snapshot(), mixed.map(|v| v.map(<[u8]>::to_vec)));
     slots.audio([None; 6]);
     assert_eq!(slots.audio_snapshot(), [const { None }; 6]);
@@ -123,5 +153,39 @@ fn mirrors_c_null_empty_and_group_isolation() {
         slots.scene_snapshot(),
         [Some(b"Restored %1".to_vec()), Some(b"Hidden %1".to_vec())]
     );
+    assert_eq!(
+        slots.registered_scene(),
+        [
+            Some(b"Restored item".to_vec()),
+            Some(b"Hidden item".to_vec())
+        ]
+    );
     assert_eq!(slots.audio_snapshot(), restored);
+}
+
+#[test]
+fn releases_then_duplicates_then_writes_in_c_slot_order() {
+    struct Trace(Vec<(&'static str, usize)>);
+    impl Storage for Trace {
+        type Input = usize;
+        type Owned = usize;
+        fn release(&mut self, slot: usize) {
+            self.0.push(("free", slot));
+        }
+        fn duplicate(&mut self, value: usize) -> usize {
+            self.0.push(("copy", value));
+            value
+        }
+        fn write(&mut self, slot: usize, value: usize) {
+            assert_eq!(slot, value);
+            self.0.push(("write", slot));
+        }
+    }
+    let mut trace = Trace(Vec::new());
+    set_audio(&mut trace, [0, 1, 2, 3, 4, 5]);
+    set_sceneitem(&mut trace, [6, 7]);
+    let expected: Vec<_> = (0..8)
+        .flat_map(|i| [("free", i), ("copy", i), ("write", i)])
+        .collect();
+    assert_eq!(trace.0, expected);
 }
