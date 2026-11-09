@@ -53,6 +53,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "private-renderer"
                 | "private-parser"
                 | "windows-keys"
+                | "hotkey-control"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }
@@ -61,7 +62,11 @@ fn load(directory: &Path) -> Result<Entries, String> {
             let entry = read(&path)?;
             let graph = Graph::parse(&entry.to_string())?;
             let base = path.file_stem().unwrap().to_str().unwrap().to_owned();
-            let name = format!("{base}_rust");
+            let name = if family_name == "hotkey-control" {
+                base.clone()
+            } else {
+                format!("{base}_rust")
+            };
             if path.extension().is_none_or(|ext| ext != "json")
                 || graph.targets.len() != 1
                 || graph.tests.len() != 1
@@ -230,6 +235,20 @@ fn entries_cover_every_rust_static_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let actual = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     assert_coverage(&entries.graph, &actual);
+    // Hotkey fixtures predate the `_rust` naming convention. Their C tests
+    // keep their names while selecting the real Rust control and C adapter.
+    for name in &entries.families["hotkey-control"] {
+        assert_eq!(
+            format!("{:#?}", entries.graph.targets[name]),
+            format!("{:#?}", actual.targets[name]),
+            "{name}: target"
+        );
+        assert_eq!(
+            format!("{:#?}", entries.graph.tests[name]),
+            format!("{:#?}", actual.tests[name]),
+            "{name}: test"
+        );
+    }
 }
 
 #[test]

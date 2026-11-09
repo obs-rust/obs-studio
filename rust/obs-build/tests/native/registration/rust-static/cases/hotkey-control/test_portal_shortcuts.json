@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_portal_shortcuts": {
+      "sources": [
+        "test/cmocka/test_portal_shortcuts.c",
+        "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-app-id-fields.c.h",
+        "libobs/obs-hotkey-background-app-id.c.h",
+        "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-background-control-fields.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "libobs/obs-nix-portal-shortcut-ids.c.h",
+        "libobs/obs-nix-portal-shortcut-sets.c.h",
+        "libobs/obs-nix-portal-shortcut-status.c.h",
+        "libobs/obs-nix-portal-shortcuts.c.h"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "gio::gio",
+        "PkgConfig::PORTAL_TEST_GLIB",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs",
+        "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
+        "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+      ]
+    }
+  },
+  "tests": {
+    "test_portal_shortcuts": {
+      "target": "test_portal_shortcuts",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      }
+    }
+  }
+}

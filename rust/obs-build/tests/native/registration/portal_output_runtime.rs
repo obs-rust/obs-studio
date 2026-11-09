@@ -2,6 +2,13 @@ use super::*;
 use obs_build::validation::graph::Dependency;
 use std::process::{Command, Output};
 
+fn control_rust_archive() -> std::path::PathBuf {
+    std::path::PathBuf::from(
+        std::env::var_os("OBS_BUILD_RUST_ARCHIVE")
+            .expect("background control fixtures require the production Rust archive"),
+    )
+}
+
 fn checked(command: &mut Command) -> Output {
     let output = command.output().unwrap();
     assert!(
@@ -172,6 +179,10 @@ fn interfaces(
     let mut interfaces = std::collections::BTreeMap::from([
         ("OBS::libobs".into(), core),
         (
+            "libobs_rust-static".into(),
+            Dependency::rust_static(&build.target, &control_rust_archive()).unwrap(),
+        ),
+        (
             "OBS::caption".into(),
             Dependency {
                 artifacts: vec![caption.to_owned()],
@@ -233,6 +244,8 @@ set(CMAKE_MODULE_PATH "{root}/cmake/finders")
 {core}
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
+add_library(libobs_rust-static STATIC IMPORTED)
+set_target_properties(libobs_rust-static PROPERTIES IMPORTED_LOCATION "{control_archive}" INTERFACE_LINK_LIBRARIES "dl;pthread;m")
 add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 find_package(Uthash REQUIRED)
 add_library(OBS::caption STATIC IMPORTED)
@@ -248,6 +261,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 "#,
         root = root.to_string_lossy().replace('\\', "/"),
         core = core,
+        control_archive = control_rust_archive().to_string_lossy().replace('\\', "/"),
         runtime = runtime.to_string_lossy().replace('\\', "/"),
         caption = caption.to_string_lossy().replace('\\', "/"),
         renderer = renderer.to_string_lossy().replace('\\', "/")

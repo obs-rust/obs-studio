@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_wayland_hotkeys": {
+      "sources": [
+        "test/cmocka/test_wayland_hotkeys.c",
+        "libobs/obs-hotkey-binding-press.c.h",
+        "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-background-control-fields.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h",
+        "libobs/obs-nix-hotkey-state.c.h"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      },
+      "definitions": [
+        "obs=hotkey_test_obs",
+        "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
+        "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs.pch.h",
+        "libobs/build/libobs-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static"
+      ]
+    }
+  },
+  "tests": {
+    "test_wayland_hotkeys": {
+      "target": "test_wayland_hotkeys",
+      "command": [
+        "${target}"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD"
+        ]
+      }
+    }
+  }
+}

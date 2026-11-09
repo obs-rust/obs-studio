@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_background_control": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_control.c",
+        "libobs/obs-hotkey-background-control-fields.c.h"
+      ],
+      "definitions": [
+        "obs=control_test_obs",
+        "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
+        "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "libobs_rust-static"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_background_control": {
+      "target": "test_hotkey_background_control",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -81,7 +81,7 @@
         "libobs/obs-hotkey-background-app-id-fields.c.h",
         "libobs/obs-hotkey-background-app-id.c.h",
         "libobs/obs-hotkey-background-query.c.h",
-        "libobs/obs-hotkey-background-control.c.h",
+        "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -110,13 +110,17 @@
         "OBS::caption",
         "gio::gio",
         "PkgConfig::PORTAL_TEST_GLIB",
-        "OBS::native-test-cmocka"
+        "OBS::native-test-cmocka",
+        "libobs_rust-static"
       ],
       "includes": [
         "libobs"
       ],
       "definitions": [
-        "obs=hotkey_test_obs"
+        "obs=hotkey_test_obs",
+        "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
+        "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
       ]
     },
     "test_output_stop_while_reconnecting": {

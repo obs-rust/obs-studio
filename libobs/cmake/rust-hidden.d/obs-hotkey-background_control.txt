@@ -1,0 +1,3 @@
+obs_hotkey_background_control_configure_request
+obs_hotkey_background_control_probe_request
+obs_hotkey_background_control_retry_request
