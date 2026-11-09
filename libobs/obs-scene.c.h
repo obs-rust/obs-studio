@@ -2986,14 +2986,6 @@ void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type f
 	os_atomic_set_bool(&item->update_transform, true);
 }
 
-void obs_sceneitem_set_blending_method(obs_sceneitem_t *item, enum obs_blending_method method)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_method"))
-		return;
-
-	item->blend_method = method;
-}
-
 void obs_sceneitem_set_blending_mode(obs_sceneitem_t *item, enum obs_blending_type type)
 {
 	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_mode"))
