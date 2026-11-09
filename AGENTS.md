@@ -111,6 +111,14 @@ unit-test jobs. Without a stamp, PR CI runs the full suite. Environment
 errors (soldr permissions, disk, Docker, host FFmpeg): see
 [docs/rust-port/troubleshooting.md](docs/rust-port/troubleshooting.md).
 
+**Push through `./push`, not a bare `git push`.** It runs the client-side
+attestation (`soldr lint rust --attest`), stamps that evidence into the commit
+message as `Ci-Attestation:` trailers (`ghd attest stamp`), pushes the branch,
+and opens the PR if there is none. Those trailers are what let CI skip work the
+client already did; a bare push leaves CI to run everything, and the agent
+guardrails refuse it. Set `PUSH_REQUIRE_ATTESTATION=1` to make a missing
+attestation an error instead of a warning.
+
 - `./lint` (8 s): clang-format 22.1.3 and gersemi 0.25.0 pinned via uvx, rustfmt, clippy, and the repo Dylints (`dylints/*`). `./lint --fix` rewrites files.
 - `./unittest`: Rust Tiers 1-3, then Tier 2 (cmocka against hybrid libobs and the explicit C reference, one build in Docker; ~30-40 s warm thanks to zccache).
 - To let CI skip the Linux unit-test jobs, commit, then run

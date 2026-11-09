@@ -1,0 +1,132 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+"""Push a branch the way CI expects: attest, stamp, push, then open the PR.
+
+This is the single entry point agents should use. It composes three tools that
+each do one thing -- `soldr` proves the client-side work, `ghd` writes the
+evidence into the commit message, `gh`/`ghd` open the PR -- and refuses to push
+a branch whose evidence does not exist yet.
+
+The chain it implements:
+
+    ./push -> soldr lint rust --attest -> ghd attest stamp -> git push -> PR
+
+Two of those tools are newer than this script. When a local toolchain cannot do
+its step, `./push` says so plainly and falls back to the pre-existing path (push
+the branch and let the local gate stamp it), instead of pretending the evidence
+was produced. Set PUSH_REQUIRE_ATTESTATION=1 to make a missing toolchain an
+error -- that is the switch for the enforce phase.
+
+Exit codes: 0 pushed, 1 a step failed, 2 usage, 3 refused (dirty tree or missing
+evidence under PUSH_REQUIRE_ATTESTATION).
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REQUIRE = os.environ.get("PUSH_REQUIRE_ATTESTATION") == "1"
+
+
+def run(args: list[str], *, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
+    """Run one command, echoing it so the agent's log shows the real pipeline."""
+
+    print(f"+ {' '.join(args)}", flush=True)
+    return subprocess.run(
+        args,
+        cwd=ROOT,
+        text=True,
+        capture_output=capture,
+        check=check,
+    )
+
+
+def git(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
+    return run(["git", *args], capture=capture)
+
+
+def supports(args: list[str], needle: str) -> bool:
+    """Whether an installed tool advertises a subcommand or flag we depend on."""
+
+    proc = subprocess.run(args, cwd=ROOT, text=True, capture_output=True)
+    return needle in (proc.stdout or "") + (proc.stderr or "")
+
+
+def dirty() -> bool:
+    return bool(git("status", "--porcelain", capture=True).stdout.strip())
+
+
+def main(argv: list[str]) -> int:
+    branch = git("rev-parse", "--abbrev-ref", "HEAD", capture=True).stdout.strip()
+    if branch in {"master", "HEAD"}:
+        print("./push: refusing to push from %s; make a branch first" % branch, file=sys.stderr)
+        return 3
+    if dirty():
+        print("./push: working tree is dirty; commit or stash before pushing", file=sys.stderr)
+        return 3
+
+    attested = False
+    soldr = shutil.which("soldr")
+    if soldr and supports([soldr, "lint", "--help"], "--attest"):
+        evidence = ROOT / ".git" / "soldr-attest.json"
+        proc = run(
+            [soldr, "lint", "rust", "--attest", "--format", "json"],
+            capture=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            evidence.write_text(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "{}")
+            ghd = shutil.which("ghd")
+            if ghd and supports([ghd, "attest", "stamp", "--help"], "--evidence"):
+                stamped = run(
+                    [ghd, "attest", "stamp", "--evidence", str(evidence)],
+                    check=False,
+                )
+                attested = stamped.returncode == 0
+            else:
+                print("./push: ghd has no `attest stamp` yet; the commit carries no Ci-Attestation trailer")
+        else:
+            print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
+            return 1
+    else:
+        print("./push: this soldr has no `lint rust --attest`; no client evidence is produced")
+
+    if not attested and REQUIRE:
+        print(
+            "./push: PUSH_REQUIRE_ATTESTATION=1 but no attestation was produced; refusing",
+            file=sys.stderr,
+        )
+        return 3
+
+    run(["git", "push", "-u", "origin", branch])
+
+    pr = subprocess.run(
+        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if pr.returncode != 0 or not pr.stdout.strip():
+        title = git("log", "-1", "--format=%s", capture=True).stdout.strip()
+        run(["gh", "pr", "create", "--fill", "--title", title, "--head", branch])
+    else:
+        print(f"./push: PR #{pr.stdout.strip()} already exists for {branch}")
+
+    if not attested:
+        print(
+            "./push: pushed without client attestation. The local gate still stamps the "
+            "commit (`ci-lint local-gate run`); run it and push again if CI asks for it."
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

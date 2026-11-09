@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --no-project --script
-"""PreToolUse hook: deny bare Rust tools, bare python/pip (obs-rust/obs-studio#691)
-and `gh api graphql`.
+"""PreToolUse hook: deny bare Rust tools, bare python/pip (obs-rust/obs-studio#691),
+`gh api graphql`, and pushes that bypass `./push`.
 
 Rust tools (cargo, rustup, rustc, ...) go through `soldr`, which pins the
 toolchain and routes compiles through its zccache; Python goes through uv
@@ -163,6 +163,37 @@ def gh_api_endpoint(tokens):
     return ""
 
 
+PUSH_GUARD_REASON = (
+    "push through ./push, not a bare `git push` / `gh pr create`: ./push runs the "
+    "client attestation (`soldr lint rust --attest`), stamps it into the commit "
+    "message (`ghd attest stamp`) and then pushes and opens the PR. A bare push "
+    "skips that evidence, so CI re-runs everything the client could have proven."
+)
+
+
+def check_push_guard(command):
+    """Return the push-guard message when a segment pushes outside ./push.
+
+    Rollout-shape: `PUSH_GUARD=warn` (the default) reports and allows, so
+    existing agents keep working while they learn the new path; `PUSH_GUARD=deny`
+    refuses; `PUSH_GUARD=off` disables the rule entirely."""
+    mode = os.environ.get("PUSH_GUARD", "warn").lower()
+    if mode == "off":
+        return None
+    for segment in tokenize_segments(command):
+        tokens = command_words(segment)
+        if not tokens:
+            continue
+        first = os.path.basename(tokens[0])
+        if first in {"push", "./push"}:
+            continue
+        pushes = first == "git" and "push" in tokens[1:2] + tokens[1:3]
+        opens = first == "gh" and tokens[1:2] == ["pr"] and "create" in tokens[2:4]
+        if pushes or opens:
+            return mode, PUSH_GUARD_REASON
+    return None
+
+
 def check_command(command, depth=0, rust=True):  # noqa: C901
     """Return (tool, reason) for the first forbidden invocation, else None.
 
@@ -251,7 +282,24 @@ def main():
         return
     if not isinstance(data, dict) or data.get("tool_name", "") not in SHELL_TOOL_NAMES:
         return
-    result = check_command(extract_command(data), rust=rust)
+    command = extract_command(data)
+    guard = check_push_guard(command)
+    if guard is not None:
+        mode, reason = guard
+        if mode == "deny":
+            json.dump(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": reason,
+                    }
+                },
+                sys.stdout,
+            )
+            return
+        json.dump({"systemMessage": f"tool_guard (warn): {reason}"}, sys.stdout)
+    result = check_command(command, rust=rust)
     if result:
         json.dump(
             {

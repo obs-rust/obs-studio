@@ -48,10 +48,31 @@ switch branches in this same checkout, so uncommitted edits get left behind.
 Nobody knows whose they are, and they get shipped twice. Before you stop,
 switch away or hand off, do one of these:
 
-- Commit and push the work (a draft PR is fine).
+- Commit and push the work (a draft PR is fine) — through `./push`, never a
+  bare `git push`.
 - Stash it with a message that names the issue:
   `git stash push -m "<issue>: <what>" -- <paths>`.
 - Discard it.
+
+### Push with `./push`
+
+`./push` is the repo's single push entry point. It runs `soldr lint rust
+--attest`, asks `ghd attest stamp` to write the resulting evidence into the
+commit message as `Ci-Attestation:` trailers, pushes the branch, and opens the
+PR if there is not one already. That is what lets CI skip remote work instead of
+repeating it: the trailers are the proof that the client already ran fmt, clippy,
+dylint and the host tests.
+
+```bash
+./push                    # attest, stamp, push, open (or reuse) the PR
+PUSH_REQUIRE_ATTESTATION=1 ./push   # refuse to push without evidence
+```
+
+A bare `git push`/`gh pr create` bypasses the attestation, so CI falls back to
+running everything — and agent guardrails refuse it. If a step in the chain is
+not available in your toolchain yet, `./push` says which one and falls back to
+pushing without evidence, which is why the gate still exists: run
+`ci-lint local-gate run` and push the stamped commit.
 
 When you find a dirty branch with no commits, no remote and no PR, someone
 left it behind. Before you package it, check whether master already has the
