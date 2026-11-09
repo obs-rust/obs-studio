@@ -56,7 +56,8 @@ static void conversion_guards(void **state)
 	struct obs_output output = {0};
 	output.context.name = "fixture";
 	struct video_scale_info video = {.format = VIDEO_FORMAT_I420, .width = 320, .height = 240};
-	struct audio_convert_info audio = {.format = AUDIO_FORMAT_FLOAT, .samples_per_sec = 48000,
+	struct audio_convert_info audio = {.format = AUDIO_FORMAT_FLOAT,
+					   .samples_per_sec = 48000,
 					   .speakers = SPEAKERS_STEREO};
 	/* Both null: the output guard wins over the conversion guard. */
 	obs_output_set_video_conversion(NULL, NULL);
@@ -68,8 +69,12 @@ static void conversion_guards(void **state)
 	obs_output_set_audio_conversion(NULL, &audio);
 	expect_log(LOG_DEBUG, "obs_output_set_audio_conversion: Null 'output' parameter");
 
-	const uint32_t flags[] = {0, OBS_OUTPUT_VIDEO, OBS_OUTPUT_AUDIO, OBS_OUTPUT_AV,
-				  OBS_OUTPUT_ENCODED, OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED};
+	const uint32_t flags[] = {0,
+				  OBS_OUTPUT_VIDEO,
+				  OBS_OUTPUT_AUDIO,
+				  OBS_OUTPUT_AV,
+				  OBS_OUTPUT_ENCODED,
+				  OBS_OUTPUT_AV | OBS_OUTPUT_ENCODED};
 	for (size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		output.info.flags = flags[i];
 		/* Pin unchanged prior state, including a previously set conversion. */
@@ -86,16 +91,20 @@ static void conversion_guards(void **state)
 		assert_memory_equal(&output, &before, sizeof(output));
 		if ((flags[i] & OBS_OUTPUT_ENCODED) || !(flags[i] & OBS_OUTPUT_VIDEO)) {
 			obs_output_set_video_conversion(&output, &video);
-			expect_log(LOG_WARNING, (flags[i] & OBS_OUTPUT_ENCODED)
-						       ? "Output 'fixture': Tried to use obs_output_set_video_conversion on an encoded output"
-						       : "Output 'fixture': Tried to use obs_output_set_video_conversion on a non-video output");
+			expect_log(
+				LOG_WARNING,
+				(flags[i] & OBS_OUTPUT_ENCODED)
+					? "Output 'fixture': Tried to use obs_output_set_video_conversion on an encoded output"
+					: "Output 'fixture': Tried to use obs_output_set_video_conversion on a non-video output");
 			assert_memory_equal(&output, &before, sizeof(output));
 		}
 		if ((flags[i] & OBS_OUTPUT_ENCODED) || !(flags[i] & OBS_OUTPUT_AUDIO)) {
 			obs_output_set_audio_conversion(&output, &audio);
-			expect_log(LOG_WARNING, (flags[i] & OBS_OUTPUT_ENCODED)
-						       ? "Output 'fixture': Tried to use obs_output_set_audio_conversion on an encoded output"
-						       : "Output 'fixture': Tried to use obs_output_set_audio_conversion on a non-audio output");
+			expect_log(
+				LOG_WARNING,
+				(flags[i] & OBS_OUTPUT_ENCODED)
+					? "Output 'fixture': Tried to use obs_output_set_audio_conversion on an encoded output"
+					: "Output 'fixture': Tried to use obs_output_set_audio_conversion on a non-audio output");
 			assert_memory_equal(&output, &before, sizeof(output));
 		}
 	}
@@ -108,9 +117,13 @@ static void conversion_copies(void **state)
 	for (size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		struct obs_output output = {0};
 		output.info.flags = flags[i];
-		struct video_scale_info video = {.format = VIDEO_FORMAT_NV12, .width = 641, .height = 359,
-						.colorspace = VIDEO_CS_709, .range = VIDEO_RANGE_FULL};
-		struct audio_convert_info audio = {.format = AUDIO_FORMAT_FLOAT_PLANAR, .samples_per_sec = 44100,
+		struct video_scale_info video = {.format = VIDEO_FORMAT_NV12,
+						 .width = 641,
+						 .height = 359,
+						 .colorspace = VIDEO_CS_709,
+						 .range = VIDEO_RANGE_FULL};
+		struct audio_convert_info audio = {.format = AUDIO_FORMAT_FLOAT_PLANAR,
+						   .samples_per_sec = 44100,
 						   .speakers = SPEAKERS_5POINT1};
 		if (flags[i] & OBS_OUTPUT_VIDEO) {
 			obs_output_set_video_conversion(&output, &video);
@@ -197,7 +210,7 @@ static void packet_callbacks(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {cmocka_unit_test_setup_teardown(conversion_guards, setup, teardown),
-					 cmocka_unit_test_setup_teardown(conversion_copies, setup, teardown),
-					 cmocka_unit_test_setup_teardown(packet_callbacks, setup, teardown)};
+					   cmocka_unit_test_setup_teardown(conversion_copies, setup, teardown),
+					   cmocka_unit_test_setup_teardown(packet_callbacks, setup, teardown)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
