@@ -15119,7 +15119,7 @@
         "OBS::headless-characterization-headers"
       ],
       "watch_inputs": [
-        "libobs/obs-source.c.h"
+        "libobs/obs-source-init-context.c.h"
       ],
       "libraries": [
         "OBS::libobs",
