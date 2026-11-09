@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-ported-service-getters.pch.h"
+#include "libobs/build/libobs-ported-output-mixer-getters.pch.h"
 
 float obs_output_get_congestion(obs_output_t *output)
 {

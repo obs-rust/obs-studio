@@ -22,14 +22,10 @@
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output-active-fields.c.h"
 #include "libobs/obs-output-can-pause-fields.c.h"
-<<<<<<< HEAD
 #include "libobs/obs-output-caption-queue.c.h"
-#include "libobs/obs-output-congestion.c.h"
+#include "libobs/obs-output-congestion-fields.c.h"
 #include "libobs/obs-output-connect-time-fields.c.h"
 #include "libobs/obs-output-conversion-setters.c.h"
-=======
-#include "libobs/obs-output-congestion-fields.c.h"
->>>>>>> 5ccc673af (obs-output: port congestion query with C parity GREEN (#4130))
 #include "libobs/obs-output-flags-fields.c.h"
 #include "libobs/obs-output-frames-dropped-fields.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
