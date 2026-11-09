@@ -2282,6 +2282,14 @@ struct obs_encoder_roi_state_fields {
 extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
 
 extern struct obs_encoder_info *find_encoder(const char *id);
+
+/* Read-only registry metadata addresses; registered info remains C-owned. */
+struct obs_encoder_registry_query_fields {
+	const enum obs_encoder_type *kind;
+	const uint32_t *caps;
+};
+struct obs_encoder_registry_query_fields obs_encoder_registry_query_fields(const struct obs_encoder_info *info);
+
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
 extern bool obs_encoder_initialize(obs_encoder_t *encoder);
@@ -2346,7 +2354,6 @@ struct obs_encoder_preferred_range_fields {
 	const enum video_range_type *range;
 };
 struct obs_encoder_preferred_range_fields obs_encoder_preferred_range_fields(const obs_encoder_t *encoder);
-
 
 /* Borrowed scaled-axis addresses, with no ownership or value conversion. */
 struct obs_encoder_scaling_enabled_fields {

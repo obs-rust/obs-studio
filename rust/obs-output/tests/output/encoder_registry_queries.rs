@@ -1,6 +1,9 @@
 //! Tier 1 mirrors of the registry-query assertions in the unchanged C tests.
 use obs_output::encoder_registry_queries::{caps, kind};
 
+#[path = "encoder_registry_queries_parity.rs"]
+mod parity;
+
 #[test]
 fn mirrors_test_encoder_output_getters_characterization_lookup_by_id() {
     assert_eq!(kind(Some(1)), 1);
