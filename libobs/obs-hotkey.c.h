@@ -524,59 +524,10 @@ struct obs_context_data *obs_hotkey_seam_source_context(obs_source_t *source)
 	return &source->context;
 }
 
-static void release_registerer(obs_hotkey_t *hotkey)
-{
-	switch (hotkey->registerer_type) {
-	case OBS_HOTKEY_REGISTERER_FRONTEND:
-		break;
-
-	case OBS_HOTKEY_REGISTERER_ENCODER:
-		obs_weak_encoder_release(hotkey->registerer);
-		break;
-
-	case OBS_HOTKEY_REGISTERER_OUTPUT:
-		obs_weak_output_release(hotkey->registerer);
-		break;
-
-	case OBS_HOTKEY_REGISTERER_SERVICE:
-		obs_weak_service_release(hotkey->registerer);
-		break;
-
-	case OBS_HOTKEY_REGISTERER_SOURCE:
-		obs_weak_source_release(hotkey->registerer);
-		break;
-	}
-
-	hotkey->registerer = NULL;
-}
-
-static inline void unregister_hotkey(obs_hotkey_id id)
-{
-	if (id >= obs->hotkeys.next_id)
-		return;
-
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
-	if (!hotkey)
-		return;
-
-	HASH_DEL(obs->hotkeys.hotkeys, hotkey);
-
-	hotkey_signal("hotkey_unregister", hotkey);
-
-	release_registerer(hotkey);
-
-	if (hotkey->registerer_type == OBS_HOTKEY_REGISTERER_SOURCE)
-		obs_weak_source_release(hotkey->registerer);
-
-	/* Before the frees: remove_bindings() releases every pressed binding it
-	 * removes, and the release reads this hotkey's pressed count. */
-	remove_bindings(id);
-
-	bfree(hotkey->name);
-	bfree(hotkey->description);
-	bfree(hotkey);
-}
+extern void obs_hotkey_unregister_release_registerer(obs_hotkey_t *hotkey);
+extern void obs_hotkey_unregister_one(obs_hotkey_id id);
+#define release_registerer obs_hotkey_unregister_release_registerer
+#define unregister_hotkey obs_hotkey_unregister_one
 
 static inline void unregister_hotkey_pair(obs_hotkey_pair_id id)
 {
@@ -1074,3 +1025,6 @@ void obs_hotkeys_set_sceneitem_hotkeys_translations(const char *show, const char
 #undef HASH_FIND_HKEY
 #undef NBSP
 #undef VOLUME_KEYS_FIXED
+
+#undef release_registerer
+#undef unregister_hotkey
