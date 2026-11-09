@@ -40,4 +40,5 @@ pub mod item_visible;
 
 pub mod item_blending_method;
 pub mod item_blending_mode;
+pub mod item_locked_setter;
 pub mod item_scale_filter;

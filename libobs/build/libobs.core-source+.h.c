@@ -25,7 +25,7 @@
 #include "libobs/obs-scene-item-group-resize-defer.c.h"
 #include "libobs/obs-scene-item-group-scene-fields.c.h"
 #include "libobs/obs-scene-item-hotkeys.c.h"
-#include "libobs/obs-scene-item-locked-setter.c.h"
+#include "libobs/obs-scene-item-locked-fields.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-transition-serialization.c.h"
