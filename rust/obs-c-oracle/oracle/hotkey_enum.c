@@ -127,3 +127,10 @@ size_t oracle_hotkey_enum_run(size_t live, const size_t *ids, size_t count, size
 	hkenum_trace = NULL;
 	return hkenum_count;
 }
+
+/* The field-adapter member shares this real C fixture, never a fake obs global. */
+struct obs_core *oracle_hotkey_enum_core(void);
+struct obs_core *oracle_hotkey_enum_core(void)
+{
+	return &hkenum_core;
+}

@@ -208,11 +208,6 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_hotkey_seam_enum_context() -> ! {
-        called("obs_hotkey_seam_enum_context")
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn obs_hotkey_seam_find() -> ! {
         called("obs_hotkey_seam_find")
     }
