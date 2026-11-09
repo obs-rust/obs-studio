@@ -30,7 +30,11 @@ fn oracle_input_hash(roots: &[PathBuf], flags: &[&str]) -> u64 {
     );
     let mut hash_inputs: Vec<PathBuf> = Vec::new();
     for root in roots {
-        collect_c_sources(root, &mut hash_inputs);
+        if root.is_file() {
+            hash_inputs.push(root.clone());
+        } else {
+            collect_c_sources(root, &mut hash_inputs);
+        }
     }
     hash_inputs.sort();
     for path in &hash_inputs {
@@ -740,12 +744,16 @@ fn main() {
     // important one: wrappers include its sources directly, so a libobs-only
     // change must change the hash. w32-pthreads only exists on Windows
     // checkouts; collect_c_sources tolerates its absence.
+    let scale_effect_caller = libobs
+        .with_file_name("test")
+        .join("cmocka/video-scale-effects-caller.c");
     let roots = [
         manifest.join("oracle"),
         manifest.join("vendor"),
         libobs.clone(),
         libobs.with_file_name("deps").join("w32-pthreads"),
         nvenc_dir.clone(),
+        scale_effect_caller.clone(),
     ];
     // platform-cocoa.m is Objective-C and returns NULL from a bool
     // (cfstr_copy_dstr). It is a separate cc build so that one warning
@@ -859,6 +867,7 @@ fn main() {
         }
     }
 
+    println!("cargo:rerun-if-changed={}", scale_effect_caller.display());
     println!("cargo:rerun-if-changed=oracle");
     println!("cargo:rerun-if-changed=vendor");
     // Cargo scans a watched directory recursively, so any libobs source or
