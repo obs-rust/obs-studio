@@ -2,12 +2,10 @@
 //!
 //! The first test mirrors the `module_locale` case of
 //! `test/cmocka/test_core_module_load.c` one to one, in the same order,
-//! with the same files and the same expected text. [`load`] stands for
-//! `obs_module_load_locale()`: it looks the [`default_file`] up with
-//! `module_paths::find_file` (`obs_find_module_file()`), stops when that is
-//! missing or the locale [`is_default`], and adds the [`locale_file`] when
-//! it exists. The root is "/R" where the C test writes "R", and the
-//! working directory of the empty data path case is "/R/loc", as there.
+//! with the same files and the same expected text. [`load`] calls the production
+//! safe `module_load_locale` core with a fake filesystem and lookup backend.
+//! The root is "/R" where the C test writes "R", and the working directory
+//! of the empty data path case is "/R/loc", as there.
 //!
 //! Cases marked "characterized, not endorsed" are odd but real (#1876) and
 //! kept as the C has them. The tests after the first pin the edges: NULL

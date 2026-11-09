@@ -21,6 +21,21 @@ pub fn load<L: LocaleLoader>(
     default: Option<&[u8]>,
     locale: Option<&[u8]>,
 ) -> Option<L::Lookup> {
-    let _ = (loader, module, default, locale);
-    todo!()
+    let (true, Some(default), Some(locale)) = (module, default, locale) else {
+        loader.invalid();
+        return None;
+    };
+    let Some(mut lookup) = loader.create(&crate::module_locale::default_file(Some(default))) else {
+        loader.failed(default);
+        return None;
+    };
+    if !crate::module_locale::is_default(Some(locale), Some(default))
+        && !loader.add(
+            &mut lookup,
+            &crate::module_locale::locale_file(Some(locale)),
+        )
+    {
+        loader.failed(locale);
+    }
+    Some(lookup)
 }

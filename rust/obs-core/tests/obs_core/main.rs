@@ -61,6 +61,7 @@ mod module_init_parity;
 mod module_lists;
 mod module_lists_parity;
 mod module_load_locale;
+mod module_load_locale_parity;
 mod module_load_rules;
 mod module_load_rules_parity;
 mod module_load_rules_skip;

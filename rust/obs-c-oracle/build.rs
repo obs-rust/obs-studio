@@ -625,6 +625,11 @@ fn main() {
     ] {
         std::fs::write(extract_dir.join(name), extract_c(src, start, end)).expect("write extract");
     }
+    std::fs::write(
+        extract_dir.join("obs-module-load-locale.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-module-load-locale.c.h")),
+    )
+    .expect("write module load locale extract");
     for stem in [
         "effect-parser-lifecycle",
         "effect-parser-lifecycle-adapter",
