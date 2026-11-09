@@ -4535,14 +4535,6 @@ void obs_source_set_async_unbuffered(obs_source_t *source, bool unbuffered)
 	source->async_unbuffered = unbuffered;
 }
 
-void obs_source_set_async_compensation(obs_source_t *source, bool compensate)
-{
-	if (!obs_source_valid(source, "obs_source_set_async_compensation"))
-		return;
-
-	os_atomic_store_bool(&source->async_compensation, compensate);
-}
-
 bool obs_source_async_compensation(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_async_compensation")
