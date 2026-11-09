@@ -2648,15 +2648,6 @@ void obs_source_filter_set_index(obs_source_t *source, obs_source_t *filter, siz
 		obs_source_dosignal(source, NULL, "reorder_filters");
 }
 
-obs_data_t *obs_source_get_settings(const obs_source_t *source)
-{
-	if (!obs_source_valid(source, "obs_source_get_settings"))
-		return NULL;
-
-	obs_data_addref(source->context.settings);
-	return source->context.settings;
-}
-
 struct obs_source_frame *filter_async_video(obs_source_t *source, struct obs_source_frame *in)
 {
 	size_t i;
