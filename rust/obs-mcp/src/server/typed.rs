@@ -29,8 +29,8 @@ impl ToolAnnotations {
     pub const MUTATING: Self = Self {
         read_only_hint: false,
         idempotent_hint: false,
-        destructive_hint: false,
-        open_world_hint: false,
+        destructive_hint: true,
+        open_world_hint: true,
     };
     /// Repeating start/stop succeeds with the current state.
     pub const IDEMPOTENT: Self = Self {
@@ -42,7 +42,7 @@ impl ToolAnnotations {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCategory {
-    /// A resource is absent or not ready (5xx).
+    /// A resource is absent or not ready (ResourceNotFound/NotReady).
     NotReady,
     /// The current state prevents the operation (6xx).
     WrongState,
@@ -63,34 +63,34 @@ pub struct ToolError {
     pub retryable: bool,
 }
 impl ToolError {
-    /// Processing failure (7xx control API range).
+    /// Processing failure (obs-websocket v5 RequestProcessingFailed, 702).
     pub fn processing(message: impl Into<String>) -> Self {
         Self {
-            code: 700,
+            code: 702,
             category: ErrorCategory::Processing,
             message: message.into(),
             retryable: false,
         }
     }
-    /// Missing resource (5xx control API range).
+    /// Missing resource (obs-websocket v5 ResourceNotFound, 600).
     pub fn not_found(message: impl Into<String>) -> Self {
         Self {
-            code: 500,
+            code: 600,
             category: ErrorCategory::NotReady,
             message: message.into(),
             retryable: false,
         }
     }
-    /// A required subsystem is unavailable (5xx control API range).
+    /// A required subsystem is unavailable (obs-websocket v5 NotReady, 207).
     pub fn not_ready(message: impl Into<String>) -> Self {
         Self {
-            code: 509,
+            code: 207,
             category: ErrorCategory::NotReady,
             message: message.into(),
             retryable: true,
         }
     }
-    /// Invalid resource state (6xx control API range).
+    /// Invalid resource state (obs-websocket v5 InvalidResourceState, 604).
     pub fn wrong_state(message: impl Into<String>) -> Self {
         Self {
             code: 604,
