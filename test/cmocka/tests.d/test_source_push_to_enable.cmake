@@ -1,7 +1,7 @@
 # Actual-library characterization; no OBS startup, devices or display needed.
 add_executable(test_source_push_to_enable test_source_push_to_enable.c)
 target_include_directories(test_source_push_to_enable PRIVATE ${CMOCKA_INCLUDE_DIR})
-target_link_libraries(test_source_push_to_enable PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+target_link_libraries(test_source_push_to_enable PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
 if(TARGET OBS::w32-pthreads)
   target_link_libraries(test_source_push_to_enable PRIVATE OBS::w32-pthreads)
 endif()
