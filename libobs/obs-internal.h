@@ -1944,6 +1944,12 @@ struct obs_output_reconnecting_fields {
 	const volatile bool *reconnecting;
 };
 extern struct obs_output_reconnecting_fields obs_output_reconnecting_fields(const obs_output_t *output);
+/* Borrowed atomic flag addresses; NULL output produces NULL fields. */
+struct obs_output_active_fields {
+	const volatile bool *active;
+	const volatile bool *reconnecting;
+};
+extern struct obs_output_active_fields obs_output_active_fields(const obs_output_t *output);
 
 /* Borrowed plugin callback and context; caller must reject NULL first. */
 struct obs_output_frames_dropped_fields {
