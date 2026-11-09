@@ -1076,12 +1076,6 @@ const char *obs_get_encoder_codec(const char *id)
 	return info ? info->codec : NULL;
 }
 
-enum obs_encoder_type obs_get_encoder_type(const char *id)
-{
-	struct obs_encoder_info *info = find_encoder(id);
-	return info ? info->type : OBS_ENCODER_AUDIO;
-}
-
 void obs_encoder_set_scaled_size(obs_encoder_t *encoder, uint32_t width, uint32_t height)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_set_scaled_size"))
@@ -2072,12 +2066,6 @@ obs_encoder_t *obs_weak_encoder_get_encoder(obs_weak_encoder_t *weak)
 		return weak->encoder;
 
 	return NULL;
-}
-
-uint32_t obs_get_encoder_caps(const char *encoder_id)
-{
-	struct obs_encoder_info *info = find_encoder(encoder_id);
-	return info ? info->caps : 0;
 }
 
 void obs_encoder_set_last_error(obs_encoder_t *encoder, const char *message)
