@@ -1,0 +1,7 @@
+# Public-API characterization, unchanged for the later Rust swap.
+add_executable(test_hotkey_owned_translations test_hotkey_owned_translations.c)
+target_include_directories(test_hotkey_owned_translations PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_hotkey_owned_translations PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_hotkey_owned_translations)
+add_test(NAME test_hotkey_owned_translations COMMAND test_hotkey_owned_translations)
+set_tests_properties(test_hotkey_owned_translations PROPERTIES TIMEOUT 30)
