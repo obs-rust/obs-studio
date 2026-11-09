@@ -55,6 +55,7 @@ mod push_queries;
 mod push_queries_parity;
 mod render_route;
 mod render_route_parity;
+mod settings_getter;
 mod size_route;
 mod size_route_parity;
 mod source_duplicate;
