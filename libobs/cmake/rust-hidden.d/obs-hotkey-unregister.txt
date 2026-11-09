@@ -1,0 +1,2 @@
+obs_hotkey_unregister_one
+obs_hotkey_unregister_release_registerer

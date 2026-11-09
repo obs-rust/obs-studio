@@ -20,16 +20,40 @@ pub trait Registry {
     fn clear_owner(&mut self, key: Self::Key);
     /// Remove bindings, releasing pressed bindings before object destruction.
     fn remove_bindings(&mut self, id: usize);
-    /// Free name, description, then the key.
+    /// Free the key's name.
+    fn free_name(&mut self, key: Self::Key);
+    /// Free the key's description.
+    fn free_description(&mut self, key: Self::Key);
+    /// Free the detached key itself.
     fn free(&mut self, key: Self::Key);
 }
 
 /// Release the weak owner, then clear the pointer even for frontend keys.
-pub fn release_registerer<R: Registry>(_registry: &mut R, _key: R::Key) {
-    todo!()
+pub fn release_registerer<R: Registry>(registry: &mut R, key: R::Key) {
+    let category = registry.category(key);
+    if (1..=4).contains(&category) {
+        registry.release(key, category);
+    }
+    registry.clear_owner(key);
 }
 
 /// Remove an existing key; future and already removed identifiers do nothing.
-pub fn unregister_hotkey<R: Registry>(_registry: &mut R, _id: usize) {
-    todo!()
+pub fn unregister_hotkey<R: Registry>(registry: &mut R, id: usize) {
+    if id >= registry.next_id() {
+        return;
+    }
+    let Some(key) = registry.find(id) else {
+        return;
+    };
+    registry.remove(key);
+    registry.notify(key);
+    release_registerer(registry, key);
+    // Characterized, not endorsed: the C releases the cleared source pointer.
+    if registry.category(key) == 1 {
+        registry.release(key, 1);
+    }
+    registry.remove_bindings(id);
+    registry.free_name(key);
+    registry.free_description(key);
+    registry.free(key);
 }
