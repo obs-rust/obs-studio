@@ -56,6 +56,7 @@ pub mod portal_shortcut_status;
 pub mod press;
 pub mod save_load;
 pub mod translations;
+pub mod update_atomic;
 pub mod windows_keys;
 
 #[allow(unsafe_code)]
