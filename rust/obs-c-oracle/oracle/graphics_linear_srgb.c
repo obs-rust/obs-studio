@@ -6,6 +6,7 @@
 #include "util/base.h"
 
 bool oracle_gs_get_linear_srgb(void);
+bool oracle_gs_set_linear_srgb(bool value);
 void oracle_linear_srgb_reset(bool present, bool value);
 unsigned oracle_linear_srgb_logs(void);
 int oracle_linear_srgb_level(void);
@@ -47,6 +48,9 @@ static void linear_srgb_blog(int level, const char *format, ...)
 #define gs_get_linear_srgb oracle_gs_get_linear_srgb
 #include "graphics-linear-srgb.inc"
 #undef gs_get_linear_srgb
+#define gs_set_linear_srgb oracle_gs_set_linear_srgb
+#include "graphics-set-linear-srgb.inc"
+#undef gs_set_linear_srgb
 #undef gs_get_context
 
 void oracle_linear_srgb_reset(bool present, bool value)

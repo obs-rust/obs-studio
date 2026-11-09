@@ -7,6 +7,7 @@ use std::mem::{align_of, size_of};
 
 unsafe extern "C" {
     fn oracle_gs_get_linear_srgb() -> bool;
+    fn oracle_gs_set_linear_srgb(value: bool) -> bool;
     fn oracle_linear_srgb_reset(present: bool, value: bool);
     fn oracle_linear_srgb_logs() -> u32;
     fn oracle_linear_srgb_level() -> i32;
@@ -89,6 +90,34 @@ proptest! {
     fn state_sequences_match_c(states in prop::collection::vec((any::<bool>(), any::<bool>()), 0..64)) {
         for (present, value) in states {
             compare(present, value);
+        }
+    }
+}
+
+#[test]
+fn characterize_c_setter() {
+    for present in [false, true] {
+        for previous in [false, true] {
+            for next in [false, true] {
+                // SAFETY: all state is this thread's initialized real-header C fixture.
+                unsafe {
+                    oracle_linear_srgb_reset(present, previous);
+                    assert_eq!(oracle_gs_set_linear_srgb(next), present && previous);
+                    assert_eq!(
+                        oracle_linear_srgb_value(),
+                        if present { next } else { previous }
+                    );
+                    assert_eq!(oracle_gs_set_linear_srgb(next), present && next);
+                    assert_eq!(oracle_linear_srgb_logs(), if present { 0 } else { 2 });
+                    if !present {
+                        assert_eq!(oracle_linear_srgb_level(), 400);
+                        assert_eq!(
+                            CStr::from_ptr(oracle_linear_srgb_log()).to_bytes(),
+                            b"gs_set_linear_srgb: called while not in a graphics context"
+                        );
+                    }
+                }
+            }
         }
     }
 }
