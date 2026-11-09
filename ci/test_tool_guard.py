@@ -287,5 +287,34 @@ class GraphqlGoesThroughTheScript(unittest.TestCase):
                 self.assertIsNone(GH_GRAPHQL_TEXT.search(line))
 
 
+class PushGuard(unittest.TestCase):
+    """Pushes leave through ./push so the commit carries its attestation."""
+
+    def guard(self, mode, line):
+        previous = os.environ.get("PUSH_GUARD")
+        os.environ["PUSH_GUARD"] = mode
+        try:
+            return tool_guard.check_push_guard(line)
+        finally:
+            if previous is None:
+                os.environ.pop("PUSH_GUARD", None)
+            else:
+                os.environ["PUSH_GUARD"] = previous
+
+    def test_bare_push_is_reported_in_warn_mode(self):
+        self.assertEqual(self.guard("warn", "git push origin HEAD")[0], "warn")
+
+    def test_bare_push_can_be_denied(self):
+        self.assertEqual(self.guard("deny", "git push -u origin HEAD")[0], "deny")
+
+    def test_pr_create_is_covered(self):
+        self.assertEqual(self.guard("deny", "gh pr create --fill")[0], "deny")
+
+    def test_off_and_the_script_itself_are_allowed(self):
+        self.assertIsNone(self.guard("off", "git push origin HEAD"))
+        self.assertIsNone(self.guard("deny", "./push"))
+        self.assertIsNone(self.guard("deny", 'echo "git push later"'))
+
+
 if __name__ == "__main__":
     unittest.main()
