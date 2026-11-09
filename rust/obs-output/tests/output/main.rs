@@ -61,6 +61,7 @@ mod output_can_pause;
 mod output_can_pause_parity;
 mod output_caption;
 mod output_caption_parity;
+mod output_congestion;
 mod output_flags;
 mod output_flags_parity;
 mod output_handler_getters;

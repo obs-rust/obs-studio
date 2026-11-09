@@ -147,6 +147,7 @@ pub mod output_active;
 pub mod output_begin;
 pub mod output_can_pause;
 pub mod output_caption;
+pub mod output_congestion;
 pub mod output_flags;
 pub mod output_handler_getters;
 pub mod output_identity;
