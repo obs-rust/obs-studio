@@ -8,7 +8,12 @@ fn second(data: usize, output: usize, code: i32) -> bool {
     data == 0 && output != 0 && code == 0
 }
 type Callback = fn(usize, usize, i32) -> bool;
-fn check(callback: Option<Callback>, data: usize, expected: Option<Callback>, expected_data: usize) {
+fn check(
+    callback: Option<Callback>,
+    data: usize,
+    expected: Option<Callback>,
+    expected_data: usize,
+) {
     assert_eq!(callback.map(|f| f as usize), expected.map(|f| f as usize));
     assert_eq!(data, expected_data);
 }
@@ -27,7 +32,8 @@ fn installs_and_replaces_both_fields() {
 
 #[test]
 fn null_callback_discards_the_supplied_data() {
-    check(select(Some(first as Callback), 17).0, 17, Some(first), 17);
+    let (callback, data) = select(Some(first as Callback), 17);
+    check(callback, data, Some(first), 17);
     let (callback, data) = select(None::<Callback>, 7);
     check(callback, data, None, 0);
     let (callback, data) = select(None::<Callback>, 0);
