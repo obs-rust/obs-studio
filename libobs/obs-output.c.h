@@ -927,19 +927,6 @@ bool obs_output_pause(obs_output_t *output, bool pause)
 	return success;
 }
 
-void obs_output_set_media(obs_output_t *output, video_t *video, audio_t *audio)
-{
-	if (!obs_output_valid(output, "obs_output_set_media"))
-		return;
-	if (log_flag_encoded(output, __func__, true))
-		return;
-
-	if (flag_video(output))
-		output->video = video;
-	if (flag_audio(output))
-		output->audio = audio;
-}
-
 video_t *obs_output_video(const obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_video"))
