@@ -54,12 +54,16 @@
     clippy::expect_used,
     clippy::panic,
     clippy::unimplemented,
-    clippy::unreachable
+    clippy::unreachable,
+    clippy::todo
 )]
 
 use std::ffi::CStr;
 
-pub use crate::transition_clock::{CS_709_EXTENDED, CS_SRGB, CS_SRGB_16F};
+use crate::transition_clock;
+use crate::transition_render::{self, Draw, VideoStep};
+
+pub use crate::transition_clock::{CS_709_EXTENDED, CS_709_SCRGB, CS_SRGB, CS_SRGB_16F};
 
 /// The name [`render`] and [`render2`] hand `transition_valid()`, which
 /// logs it for a NULL source.
@@ -93,6 +97,23 @@ pub const BLEND_INVSRCALPHA: i32 = 5;
 
 /// The near and far planes of a child's ortho projection.
 pub const ORTHO_Z: (f32, f32) = (-100.0, 100.0);
+
+/// `GS_RGBA` and `GS_RGBA16F` (`enum gs_color_format`), the formats
+/// [`format_from_space`] gives.
+pub const FORMAT_RGBA: i32 = 3;
+/// See [`FORMAT_RGBA`].
+pub const FORMAT_RGBA16F: i32 = 9;
+
+/// `gs_get_format_from_space()`, a `static inline` of `graphics.h` that
+/// libobs exports no symbol for: [`FORMAT_RGBA16F`] for `GS_CS_SRGB_16F`,
+/// `GS_CS_709_EXTENDED` and `GS_CS_709_SCRGB`, [`FORMAT_RGBA`] for
+/// `GS_CS_SRGB` and any other value.
+pub fn format_from_space(space: i32) -> i32 {
+    match space {
+        CS_SRGB_16F | CS_709_EXTENDED | CS_709_SCRGB => FORMAT_RGBA16F,
+        _ => FORMAT_RGBA,
+    }
+}
 
 /// A `struct matrix4`, as its sixteen floats (row `x`, `y`, `z`, then `t`).
 pub type Matrix = [f32; 16];
@@ -221,11 +242,68 @@ pub trait Transition {
     fn blend_state_pop(&self);
 }
 
+/// `copy_transition_state()`: both children, referenced (slot A first,
+/// each read then referenced), then both flags. The clock fields the C's
+/// `struct transition_state` leaves unset are not copied.
+fn copy_state<T: Transition>(transition: &T) -> ([Option<T::Child>; 2], bool, bool) {
+    let a = transition.get_ref(transition.source(0));
+    let b = transition.get_ref(transition.source(1));
+    let video = transition.transitioning_video();
+    let audio = transition.transitioning_audio();
+    ([a, b], video, audio)
+}
+
+#[expect(clippy::as_conversions, reason = "the C's (float) cast")]
+fn to_float(value: u32) -> f32 {
+    value as f32
+}
+
+/// `render_child()`: `child` into slot `idx`'s texrender, re-created first
+/// when its format is not `space`'s. The size is read before anything else,
+/// and the texrender field again for each call that takes it.
+fn render_child<T: Transition>(
+    transition: &T,
+    child: T::Child,
+    idx: usize,
+    matrix: &Matrix,
+    space: i32,
+) {
+    let cx = transition.cx();
+    let cy = transition.cy();
+
+    let format = transition.format_from_space(space);
+    if transition.texrender_format(transition.texrender(idx)) != format {
+        transition.texrender_destroy(transition.texrender(idx));
+        transition.set_texrender(idx, transition.texrender_create(format, ZS_NONE));
+    }
+
+    if transition.texrender_begin(transition.texrender(idx), cx, cy, space) {
+        transition.clear(CLEAR_COLOR, [0.0; 4], 0.0, 0);
+        transition.ortho(0.0, to_float(cx), 0.0, to_float(cy), ORTHO_Z.0, ORTHO_Z.1);
+
+        transition.matrix_push();
+        transition.matrix_mul(matrix);
+        transition.video_render(child);
+        transition.matrix_pop();
+
+        transition.texrender_end(transition.texrender(idx));
+    }
+}
+
+/// One child with its matrix, when there is one.
+fn draw_child<T: Transition>(transition: &T, child: Option<T::Child>, matrix: &Matrix) {
+    if let Some(child) = child {
+        transition.matrix_push();
+        transition.matrix_mul(matrix);
+        transition.video_render(child);
+        transition.matrix_pop();
+    }
+}
+
 /// `obs_transition_video_render()`: [`render2`] with the core's transparent
 /// texture (read first, as the C's argument) as the placeholder.
 pub fn render<T: Transition>(transition: Option<&T>, callback: Option<T::Callback>) {
-    let _ = (transition, callback);
-    todo!("obs_transition_video_render")
+    render2(transition, callback, T::transparent_texture());
 }
 
 /// `obs_transition_video_render2()`: one frame of the transition.
@@ -248,8 +326,82 @@ pub fn render2<T: Transition>(
     callback: Option<T::Callback>,
     placeholder: Option<T::Texture>,
 ) {
-    let _ = (transition, callback, placeholder);
-    todo!("obs_transition_video_render2")
+    if !T::valid(transition, RENDER_LOG_NAME) {
+        return;
+    }
+    let Some(transition) = transition else {
+        return;
+    };
+    let mut stopped = false;
+    let mut video_stopped = false;
+
+    // Starts write the clock under this lock with the transitioning flags;
+    // reading it before the lock could pair a new start with an old clock.
+    transition.lock();
+
+    let t = transition.video_time();
+
+    if transition_render::video_due(t, transition.transitioning_video()) {
+        transition.set_transitioning_video(false);
+        video_stopped = true;
+
+        // no inactive rule here: active is true
+        let step = transition_render::video_stop(transition.transitioning_audio(), true);
+        if step != VideoStep::End {
+            transition.stop();
+            stopped = true;
+        }
+    }
+    let ([a, b], video, audio) = copy_state(transition);
+    let matrix_a = transition.matrix(0);
+    let matrix_b = transition.matrix(1);
+
+    transition.unlock();
+
+    let locked = video && transition.trylock_textures();
+
+    match transition_render::draw(video, locked, callback.is_some(), audio) {
+        Draw::Callback => {
+            if let Some(callback) = callback {
+                let current_space = transition.current_color_space();
+                let source_space = transition.color_space(&[current_space]);
+                let texture = |idx: usize, child: Option<T::Child>, matrix: &Matrix| {
+                    let child = child?;
+                    render_child(transition, child, idx, matrix, source_space);
+                    transition.texrender_texture(transition.texrender(idx))
+                };
+                let tex_a = texture(0, a, &matrix_a).or(placeholder);
+                let tex_b = texture(1, b, &matrix_b).or(placeholder);
+
+                let cx = transition.cx();
+                let cy = transition.cy();
+                if cx != 0 && cy != 0 {
+                    transition.blend_state_push();
+                    transition.blend_function(BLEND_ONE, BLEND_INVSRCALPHA);
+
+                    transition.call_render(callback, tex_a, tex_b, t, cx, cy);
+
+                    transition.blend_state_pop();
+                }
+            }
+        }
+        Draw::B => draw_child(transition, b, &matrix_b),
+        Draw::A => draw_child(transition, a, &matrix_a),
+    }
+
+    if locked {
+        transition.unlock_textures();
+    }
+
+    transition.release(a);
+    transition.release(b);
+
+    if video_stopped {
+        transition.dosignal(VIDEO_STOP_SIGNALS.0, VIDEO_STOP_SIGNALS.1);
+    }
+    if stopped {
+        transition.handle_stop();
+    }
 }
 
 /// `obs_transition_video_get_color_space()`: [`CS_SRGB`] mixed with each
@@ -259,8 +411,25 @@ pub fn render2<T: Transition>(
 /// intentional difference: the C crashes on the first and mixes the
 /// second's unused slots).
 pub fn get_color_space<T: Transition>(transition: Option<&T>) -> i32 {
-    let _ = transition;
-    todo!("obs_transition_video_get_color_space")
+    if !T::valid(transition, GET_COLOR_SPACE_LOG_NAME) {
+        return CS_SRGB;
+    }
+    let Some(transition) = transition else {
+        return CS_SRGB;
+    };
+    let a = transition.source(0);
+    let b = transition.source(1);
+
+    let mut space = CS_SRGB;
+    if let Some(a) = a {
+        let child = transition.child_color_space(a, &PREFERRED_SPACES);
+        space = transition_clock::mix_spaces(space, child);
+    }
+    if let Some(b) = b {
+        let child = transition.child_color_space(b, &PREFERRED_SPACES);
+        space = transition_clock::mix_spaces(space, child);
+    }
+    space
 }
 
 /// `obs_transition_video_render_direct()`: the child `target` names while
@@ -272,6 +441,58 @@ pub fn get_color_space<T: Transition>(transition: Option<&T>) -> i32 {
 /// Logs its own name for no transition (an intentional difference: the C
 /// logs `"obs_transition_video_render"`).
 pub fn render_direct<T: Transition>(transition: Option<&T>, target: i32) -> bool {
-    let _ = (transition, target);
-    todo!("obs_transition_video_render_direct")
+    if !T::valid(transition, RENDER_DIRECT_LOG_NAME) {
+        return false;
+    }
+    let Some(transition) = transition else {
+        return false;
+    };
+    let mut stopped = false;
+    let mut video_stopped = false;
+
+    // Starts write the clock under this lock with the transitioning flags;
+    // reading it before the lock could pair a new start with an old clock.
+    transition.lock();
+
+    let t = transition.video_time();
+
+    if transition_render::video_due(t, transition.transitioning_video()) {
+        transition.set_transitioning_video(false);
+        video_stopped = true;
+
+        let step =
+            transition_render::video_stop(transition.transitioning_audio(), transition.active());
+        if step == VideoStep::StopAudio {
+            transition.set_transitioning_audio(false);
+        }
+
+        if step != VideoStep::End {
+            transition.stop();
+            stopped = true;
+        }
+    }
+    let ([a, b], video, audio) = copy_state(transition);
+    let transitioning = audio || video;
+    let matrix_a = transition.matrix(0);
+    let matrix_b = transition.matrix(1);
+
+    transition.unlock();
+
+    if transition_render::direct_index(transitioning, target) == 0 {
+        draw_child(transition, a, &matrix_a);
+    } else {
+        draw_child(transition, b, &matrix_b);
+    }
+
+    transition.release(a);
+    transition.release(b);
+
+    if video_stopped {
+        transition.dosignal(VIDEO_STOP_SIGNALS.0, VIDEO_STOP_SIGNALS.1);
+    }
+    if stopped {
+        transition.handle_stop();
+    }
+
+    transitioning
 }

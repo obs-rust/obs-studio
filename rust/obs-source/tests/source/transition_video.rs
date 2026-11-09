@@ -1134,3 +1134,16 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn format_from_space_is_the_header_inline() {
+    use obs_source::transition_video::{FORMAT_RGBA, FORMAT_RGBA16F, format_from_space};
+    assert_eq!((FORMAT_RGBA, FORMAT_RGBA16F), (3, 9));
+    assert_eq!(format_from_space(CS_SRGB), FORMAT_RGBA);
+    for space in [CS_SRGB_16F, CS_709_EXTENDED, CS_709_SCRGB] {
+        assert_eq!(format_from_space(space), FORMAT_RGBA16F);
+    }
+    for space in [-1, 4, 99, i32::MIN, i32::MAX] {
+        assert_eq!(format_from_space(space), FORMAT_RGBA);
+    }
+}
