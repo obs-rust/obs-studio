@@ -73,6 +73,7 @@ mod output_protocols;
 mod output_protocols_parity;
 mod output_reconnect;
 mod output_reconnect_callback;
+mod output_reconnect_callback_parity;
 mod output_reconnect_parity;
 mod output_reconnecting;
 mod output_reconnecting_parity;
