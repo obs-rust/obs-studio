@@ -34,7 +34,6 @@
 //!
 //! No intentional differences from the C.
 
-#![allow(unused_variables, reason = "RED: the bodies come with the port")]
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -42,11 +41,14 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
 use core::ffi::{CStr, c_int};
+
+use crate::canvas_draw;
 
 /// `"obs_display_init: Failed to create swap chain"`, logged at
 /// `LOG_ERROR`.
@@ -77,33 +79,53 @@ pub struct Vec4 {
 /// `gs_srgb_nonlinear_to_linear()` (`graphics/srgb.h`).
 #[must_use]
 pub fn srgb_nonlinear_to_linear(u: f32) -> f32 {
-    todo!()
+    if u <= 0.04045 {
+        u / 12.92
+    } else {
+        ((u + 0.055) / 1.055).powf(2.4)
+    }
 }
 
 /// `vec4_from_rgba()` (`graphics/vec4.h`): the four bytes of `rgba` in
 /// memory order (`memcpy()`), each over 255.
 #[must_use]
 pub fn vec4_from_rgba(rgba: u32) -> Vec4 {
-    todo!()
+    let [b0, b1, b2, b3] = rgba.to_ne_bytes();
+    Vec4 {
+        x: f32::from(b0) / 255.0,
+        y: f32::from(b1) / 255.0,
+        z: f32::from(b2) / 255.0,
+        w: f32::from(b3) / 255.0,
+    }
 }
 
 /// `vec4_from_rgba_srgb()` (`graphics/vec4.h`): [`vec4_from_rgba`], then
 /// the first three to linear.
 #[must_use]
 pub fn vec4_from_rgba_srgb(rgba: u32) -> Vec4 {
-    todo!()
+    let v = vec4_from_rgba(rgba);
+    Vec4 {
+        x: srgb_nonlinear_to_linear(v.x),
+        y: srgb_nonlinear_to_linear(v.y),
+        z: srgb_nonlinear_to_linear(v.z),
+        w: v.w,
+    }
 }
 
 /// `(float)cx`: round to nearest, as C converts.
 #[must_use]
+#[expect(
+    clippy::as_conversions,
+    reason = "u32 to f32 rounds to nearest, as C's (float) does"
+)]
 pub fn to_float(value: u32) -> f32 {
-    todo!()
+    value as f32
 }
 
 /// `(int)cx`: the same bits, as the C compilers OBS builds with convert.
 #[must_use]
 pub fn to_int(value: u32) -> c_int {
-    todo!()
+    c_int::from_ne_bytes(value.to_ne_bytes())
 }
 
 /// Everything the display reaches: the fields of `struct obs_display` and
@@ -292,7 +314,38 @@ pub trait Host {
 /// graphics data the swap chain and the size. `false` when the swap chain or
 /// a mutex cannot be made, with its error logged.
 pub fn init<H: Host>(host: &mut H, display: H::Display, graphics_data: Option<H::Data>) -> bool {
-    todo!()
+    host.init_mutex_values(display);
+
+    let workaround = host.host_clear_workaround();
+    host.set_use_clear_workaround(display, workaround);
+
+    if let Some(data) = graphics_data {
+        let swap = host.swapchain_create(data);
+        host.set_swap(display, swap);
+        if host.swap(display).is_none() {
+            host.log_error(SWAP_CHAIN_FAILED);
+            return false;
+        }
+
+        let cx = host.data_cx(data);
+        let cy = host.data_cy(data);
+        host.set_cx(display, cx);
+        host.set_cy(display, cy);
+        host.set_next_cx(display, cx);
+        host.set_next_cy(display, cy);
+    }
+
+    if host.callbacks_mutex_init(display) != 0 {
+        host.log_error(MUTEX_FAILED);
+        return false;
+    }
+    if host.info_mutex_init(display) != 0 {
+        host.log_error(MUTEX_FAILED);
+        return false;
+    }
+
+    host.set_enabled(display, true);
+    true
 }
 
 /// `obs_display_create()`: a zeroed display made inside the core's
@@ -303,29 +356,102 @@ pub fn create<H: Host>(
     graphics_data: Option<H::Data>,
     background_color: u32,
 ) -> Option<H::Display> {
-    todo!()
+    let display = host.alloc();
+
+    let graphics = host.graphics();
+    host.enter_context(graphics);
+
+    host.set_background_color(display, background_color);
+
+    let created = if init(host, display, graphics_data) {
+        host.lock_displays();
+        let head = host.first_display_ref();
+        host.set_prev_next(display, Some(head));
+        let first = host.first_display();
+        host.set_next(display, first);
+        host.set_first_display(Some(display));
+        if host.next(display).is_some() {
+            let link = host.next_ref(display);
+            if let Some(next) = host.next(display) {
+                host.set_prev_next(next, Some(link));
+            }
+        }
+        host.unlock_displays();
+        Some(display)
+    } else {
+        destroy(host, Some(display));
+        None
+    };
+
+    host.leave_context();
+
+    created
 }
 
 /// `obs_display_free()`: both mutexes, the callbacks and the swap chain.
 pub fn free<H: Host>(host: &mut H, display: H::Display) {
-    todo!()
+    host.callbacks_mutex_destroy(display);
+    host.info_mutex_destroy(display);
+    host.callbacks_free(display);
+
+    if let Some(swap) = host.swap(display) {
+        host.swapchain_destroy(swap);
+        host.set_swap(display, None);
+    }
 }
 
 /// `obs_display_destroy()`: unlinked from the display list, freed inside
 /// graphics, and deallocated. Nothing for `None`.
 pub fn destroy<H: Host>(host: &mut H, display: Option<H::Display>) {
-    todo!()
+    let Some(display) = display else {
+        return;
+    };
+
+    host.lock_displays();
+    // The C checks prev_next, then reads it again for the store.
+    if host.prev_next(display).is_some()
+        && let Some(link) = host.prev_next(display)
+    {
+        let next = host.next(display);
+        host.store_link(link, next);
+    }
+    if host.next(display).is_some() {
+        let prev_next = host.prev_next(display);
+        if let Some(next) = host.next(display) {
+            host.set_prev_next(next, prev_next);
+        }
+    }
+    host.unlock_displays();
+
+    host.enter_graphics();
+    free(host, display);
+    host.leave_graphics();
+
+    host.dealloc(display);
 }
 
 /// `obs_display_resize()`: the size the next render draws at.
 pub fn resize<H: Host>(host: &mut H, display: Option<H::Display>, cx: u32, cy: u32) {
-    todo!()
+    let Some(display) = display else {
+        return;
+    };
+
+    host.lock_info(display);
+    host.set_next_cx(display, cx);
+    host.set_next_cy(display, cy);
+    host.unlock_info(display);
 }
 
 /// `obs_display_update_color_space()`: the next render updates the swap
 /// chain's colour space.
 pub fn update_color_space<H: Host>(host: &mut H, display: Option<H::Display>) {
-    todo!()
+    let Some(display) = display else {
+        return;
+    };
+
+    host.lock_info(display);
+    host.set_update_color_space(display, true);
+    host.unlock_info(display);
 }
 
 /// `obs_display_add_draw_callback()`.
@@ -334,7 +460,13 @@ pub fn add_draw_callback<H: Host>(
     display: Option<H::Display>,
     callback: H::Callback,
 ) {
-    todo!()
+    let Some(display) = display else {
+        return;
+    };
+
+    host.lock_callbacks(display);
+    host.callbacks_push(display, callback);
+    host.unlock_callbacks(display);
 }
 
 /// `obs_display_remove_draw_callback()`: the first match only.
@@ -343,7 +475,75 @@ pub fn remove_draw_callback<H: Host>(
     display: Option<H::Display>,
     callback: H::Callback,
 ) {
-    todo!()
+    let Some(display) = display else {
+        return;
+    };
+
+    host.lock_callbacks(display);
+    host.callbacks_erase_item(display, callback);
+    host.unlock_callbacks(display);
+}
+
+/// `render_display_begin()`: the swap chain, the resize or colour-space
+/// update, and when the swap chain is ready the scene, the clear, the state
+/// and the solid-colour workaround. Whether it was ready.
+fn render_begin<H: Host>(
+    host: &mut H,
+    display: H::Display,
+    cx: u32,
+    cy: u32,
+    update_color_space: bool,
+) -> bool {
+    let swap = host.swap(display);
+    host.load_swapchain(swap);
+
+    if host.cx(display) != cx || host.cy(display) != cy {
+        host.resize(cx, cy);
+        host.set_cx(display, cx);
+        host.set_cy(display, cy);
+    } else if update_color_space {
+        host.gs_update_color_space();
+    }
+
+    let success = host.is_present_ready();
+    if success {
+        host.begin_scene();
+
+        let always_srgb = host.host_clear_color_always_srgb();
+        let mut clear_color = if !canvas_draw::clear_reads_space(always_srgb) {
+            let color = host.background_color(display);
+            vec4_from_rgba_srgb(color)
+        } else if canvas_draw::clear_linear(host.color_space()) {
+            let color = host.background_color(display);
+            vec4_from_rgba(color)
+        } else {
+            let color = host.background_color(display);
+            vec4_from_rgba_srgb(color)
+        };
+        clear_color.w = 1.0;
+
+        let use_clear_workaround = host.use_clear_workaround(display);
+
+        let clear_flags = canvas_draw::clear_flags(use_clear_workaround);
+        host.clear(clear_flags, clear_color, 1.0, 0);
+
+        host.enable_depth_test(false);
+        host.set_cull_mode(GS_NEITHER);
+
+        host.ortho(0.0, to_float(cx), 0.0, to_float(cy), -100.0, 100.0);
+        host.set_viewport(0, 0, to_int(cx), to_int(cy));
+
+        if canvas_draw::clear_draws_solid(use_clear_workaround) {
+            let solid_effect = host.solid_effect();
+            let param = host.param_by_name(solid_effect, COLOR_PARAM);
+            host.effect_set_vec4(param, clear_color);
+            while host.effect_loop(solid_effect, SOLID_TECHNIQUE) {
+                host.draw_sprite(cx, cy);
+            }
+        }
+    }
+
+    success
 }
 
 /// `render_display()`: nothing for `None` or a disabled display; otherwise
@@ -352,5 +552,37 @@ pub fn remove_draw_callback<H: Host>(
 /// callback in order under `draw_callbacks_mutex`, the scene ended and the
 /// frame presented.
 pub fn render<H: Host>(host: &mut H, display: Option<H::Display>) {
-    todo!()
+    let Some(display) = display else {
+        return;
+    };
+    if !host.enabled(display) {
+        return;
+    }
+
+    host.lock_info(display);
+
+    let cx = host.next_cx(display);
+    let cy = host.next_cy(display);
+    let update_color_space = host.update_color_space(display);
+
+    host.set_update_color_space(display, false);
+
+    host.unlock_info(display);
+
+    if render_begin(host, display, cx, cy, update_color_space) {
+        host.lock_callbacks(display);
+
+        let mut i: usize = 0;
+        while i < host.callbacks_num(display) {
+            let callback = host.callbacks_get(display, i);
+            host.call(callback, cx, cy);
+            i = i.wrapping_add(1);
+        }
+
+        host.unlock_callbacks(display);
+
+        host.end_scene();
+
+        host.present();
+    }
 }
