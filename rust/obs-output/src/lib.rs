@@ -178,3 +178,5 @@ pub use delay::{
 };
 
 pub mod weak_encoder_identity;
+
+pub mod output_total_frames;
