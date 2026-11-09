@@ -99,6 +99,7 @@ mod output_pause_queries_parity;
 mod output_protocols;
 mod output_protocols_parity;
 mod output_reconnect;
+mod output_reconnect_callback;
 mod output_reconnect_parity;
 mod output_reconnect_settings;
 mod output_reconnect_settings_parity;
