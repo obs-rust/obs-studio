@@ -1,10 +1,19 @@
 # Real registered-transition creation and ownership require core video.
 if(OS_LINUX)
   add_executable(test_scene_item_transition_serialization_lifetime test_scene_item_transition_serialization_lifetime.c)
-  target_include_directories(test_scene_item_transition_serialization_lifetime PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/deps/libcaption")
+  target_include_directories(
+    test_scene_item_transition_serialization_lifetime
+    PRIVATE ${CMOCKA_INCLUDE_DIR} "${CMAKE_SOURCE_DIR}/deps/libcaption"
+  )
   target_link_libraries(test_scene_item_transition_serialization_lifetime PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
-  target_compile_definitions(test_scene_item_transition_serialization_lifetime PRIVATE TEST_LIBOBS_DATA_PATH="${CMAKE_SOURCE_DIR}/libobs/data/" GRAPHICS_MODULE_PATH="$<TARGET_FILE:libobs-opengl>")
+  target_compile_definitions(
+    test_scene_item_transition_serialization_lifetime
+    PRIVATE TEST_LIBOBS_DATA_PATH="${CMAKE_SOURCE_DIR}/libobs/data/" GRAPHICS_MODULE_PATH="$<TARGET_FILE:libobs-opengl>"
+  )
   add_dependencies(cmocka-tests test_scene_item_transition_serialization_lifetime)
-  add_test(NAME test_scene_item_transition_serialization_lifetime COMMAND test_scene_item_transition_serialization_lifetime)
+  add_test(
+    NAME test_scene_item_transition_serialization_lifetime
+    COMMAND test_scene_item_transition_serialization_lifetime
+  )
   set_tests_properties(test_scene_item_transition_serialization_lifetime PROPERTIES TIMEOUT 30)
 endif()

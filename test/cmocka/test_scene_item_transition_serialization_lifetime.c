@@ -30,10 +30,16 @@ static void fixture_render(void *data, gs_effect_t *effect)
 	(void)data;
 	(void)effect;
 }
-static bool fixture_audio(void *data, uint64_t *ts, struct obs_source_audio_mix *audio, uint32_t mixers, size_t channels, size_t rate)
+static bool fixture_audio(void *data, uint64_t *ts, struct obs_source_audio_mix *audio, uint32_t mixers,
+			  size_t channels, size_t rate)
 {
-    (void)data; (void)ts; (void)audio; (void)mixers; (void)channels; (void)rate;
-    return false;
+	(void)data;
+	(void)ts;
+	(void)audio;
+	(void)mixers;
+	(void)channels;
+	(void)rate;
+	return false;
 }
 static int setup(void **state)
 {
@@ -45,19 +51,28 @@ static int setup(void **state)
 	obs_add_data_path(TEST_LIBOBS_DATA_PATH);
 #pragma GCC diagnostic pop
 	struct obs_video_info video = {.graphics_module = GRAPHICS_MODULE_PATH,
-				       .fps_num = 30, .fps_den = 1,
-				       .base_width = 64, .base_height = 64,
-				       .output_width = 64, .output_height = 64,
+				       .fps_num = 30,
+				       .fps_den = 1,
+				       .base_width = 64,
+				       .base_height = 64,
+				       .output_width = 64,
+				       .output_height = 64,
 				       .output_format = VIDEO_FORMAT_NV12,
-				       .colorspace = VIDEO_CS_709, .range = VIDEO_RANGE_PARTIAL,
+				       .colorspace = VIDEO_CS_709,
+				       .range = VIDEO_RANGE_PARTIAL,
 				       .scale_type = OBS_SCALE_BICUBIC};
 	if (obs_reset_video(&video) != OBS_VIDEO_SUCCESS) {
 		obs_shutdown();
 		return -1;
 	}
-	struct obs_source_info info = {.id = "serialization_fixture", .type = OBS_SOURCE_TYPE_TRANSITION,
-		.output_flags = OBS_SOURCE_VIDEO, .get_name = fixture_name, .create = fixture_create,
-		.destroy = fixture_destroy, .video_render = fixture_render, .audio_render = fixture_audio};
+	struct obs_source_info info = {.id = "serialization_fixture",
+				       .type = OBS_SOURCE_TYPE_TRANSITION,
+				       .output_flags = OBS_SOURCE_VIDEO,
+				       .get_name = fixture_name,
+				       .create = fixture_create,
+				       .destroy = fixture_destroy,
+				       .video_render = fixture_render,
+				       .audio_render = fixture_audio};
 	obs_register_source(&info);
 	return 0;
 }

@@ -80,3 +80,5 @@ mod item_blending_mode_parity;
 mod item_scale_filter;
 mod item_scale_filter_parity;
 mod item_transition_serialization;
+
+mod item_transition_serialization_parity;

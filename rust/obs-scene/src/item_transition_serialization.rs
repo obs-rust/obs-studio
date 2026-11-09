@@ -29,10 +29,37 @@ pub trait Host {
     fn set_integer(&mut self, data: Self::Data, key: &'static str, integer: i64);
 }
 /// Restore a selected slot; missing item/data leaves both slots untouched.
-pub fn load<H: Host>(_host: &mut H, _item: Option<H::Item>, _data: Option<H::Data>, _show: bool) {
-    todo!()
+pub fn load<H: Host>(host: &mut H, item: Option<H::Item>, data: Option<H::Data>, show: bool) {
+    let (Some(item), Some(data)) = (item, data) else {
+        return;
+    };
+    let id = host.text(data, "id");
+    if host.nonempty(id) {
+        let name = host.text(data, "name");
+        let settings = host.object(data, "transition");
+        let source = host.create_source(id, name, settings);
+        host.set_transition(item, show, Some(source));
+        host.release_source(source);
+        host.release_data(settings);
+    } else {
+        host.set_transition(item, show, None);
+    }
+    let duration = host.integer(data, "duration");
+    host.set_duration(item, show, duration as u32);
 }
 /// Save the selected slot, retaining the settings object in the result.
-pub fn save<H: Host>(_host: &mut H, _item: H::Item, _show: bool) -> H::Data {
-    todo!()
+pub fn save<H: Host>(host: &mut H, item: H::Item, show: bool) -> H::Data {
+    let data = host.create_data();
+    if let Some(source) = host.transition(item, show) {
+        for key in ["id", "versioned_id", "name"] {
+            let text = host.source_text(source, key);
+            host.set_text(data, key, text);
+        }
+        let settings = host.settings(source);
+        host.set_object(data, "transition", settings);
+        host.release_data(settings);
+    }
+    let duration = host.duration(item, show);
+    host.set_integer(data, "duration", i64::from(duration));
+    data
 }
