@@ -154,6 +154,7 @@ pub mod async_flag_getters;
 pub mod async_pacing;
 pub mod async_upload;
 pub mod audio_active;
+pub mod audio_active_setter;
 pub mod audio_input;
 pub mod audio_input_path;
 pub mod audio_output;
