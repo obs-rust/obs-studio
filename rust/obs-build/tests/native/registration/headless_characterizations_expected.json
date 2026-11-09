@@ -6,6 +6,7 @@
                 "test/cmocka/test_wayland_hotkeys.c",
                 "libobs/obs-hotkey-binding-press.c.h",
                 "libobs/obs-hotkey-background-query.c.h",
+                "libobs/obs-hotkey-register.c.h",
                 "libobs/obs-hotkey.c.h",
                 "libobs/obs-hotkey-save-load.c.h",
                 "libobs/obs-hotkey-bindings.c.h",
@@ -34,7 +35,41 @@
                 "OBS::libobs",
                 "OBS::caption",
                 "OBS::native-test-cmocka"
-            ]
+            ],
+            "unity_groups": {
+                "hotkey_registration": [
+                    "libobs/obs-hotkey-register.c.h",
+                    "libobs/obs-hotkey.c.h"
+                ],
+                "source_0": [
+                    "test/cmocka/test_wayland_hotkeys.c"
+                ],
+                "source_1": [
+                    "libobs/obs-hotkey-binding-press.c.h"
+                ],
+                "source_2": [
+                    "libobs/obs-hotkey-background-query.c.h"
+                ],
+                "source_5": [
+                    "libobs/obs-hotkey-save-load.c.h"
+                ],
+                "source_6": [
+                    "libobs/obs-hotkey-bindings.c.h"
+                ],
+                "source_7": [
+                    "libobs/obs-hotkey-translations.c.h"
+                ],
+                "source_8": [
+                    "libobs/obs-hotkey-press.c.h"
+                ],
+                "source_9": [
+                    "libobs/obs-hotkey-pair.c.h"
+                ],
+                "source_10": [
+                    "libobs/obs-nix-hotkey-state.c.h"
+                ]
+            },
+            "pch": "libobs/build/libobs.pch.h"
         },
         "test_service_state": {
             "sources": [
