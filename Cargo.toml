@@ -67,6 +67,11 @@ lto = "thin"
 [profile.release.package.obs-hotkey]
 codegen-units = 256
 
+# Property constructors depend on private registry lookup and settings APIs.
+# Keep them out of archive members used by standalone source-step fixtures.
+[profile.release.package.obs-source]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]

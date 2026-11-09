@@ -1,8 +1,19 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Defined in obs-source.c.h in this unity group. */
-static inline bool data_valid(const struct obs_source *source, const char *f);
-static inline obs_data_t *source_get_defaults(const struct obs_source_info *info);
+static inline bool data_valid(const struct obs_source *source, const char *f)
+{
+	return obs_source_valid(source, f) && source->context.data;
+}
+
+static inline obs_data_t *source_get_defaults(const struct obs_source_info *info)
+{
+	obs_data_t *settings = obs_data_create();
+	if (info->get_defaults2)
+		info->get_defaults2(info->type_data, settings);
+	else if (info->get_defaults)
+		info->get_defaults(settings);
+	return settings;
+}
 
 obs_properties_t *obs_get_source_properties(const char *id)
 {

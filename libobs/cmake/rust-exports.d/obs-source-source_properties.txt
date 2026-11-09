@@ -1,0 +1,2 @@
+obs_get_source_properties
+obs_source_properties

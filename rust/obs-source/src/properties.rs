@@ -11,5 +11,15 @@ pub trait Host {
 }
 
 pub fn construct<H: Host>(host: &mut H, type_query: bool) -> H::Properties {
-    todo!()
+    let modern = host.modern();
+    if !modern && !host.legacy() {
+        return H::Properties::default();
+    }
+    let defaults = type_query.then(|| host.defaults());
+    let props = host.construct(modern);
+    host.apply(&props, defaults.as_ref());
+    if let Some(settings) = defaults {
+        host.release(settings);
+    }
+    props
 }
