@@ -517,15 +517,6 @@ uint32_t obs_encoder_group_num_started(struct obs_encoder_group *group)
 	return num_started;
 }
 
-void obs_encoder_set_name(obs_encoder_t *encoder, const char *name)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_set_name"))
-		return;
-
-	if (name && *name && strcmp(name, encoder->context.name) != 0)
-		obs_context_data_setname(&encoder->context, name);
-}
-
 static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *info)
 {
 	obs_data_t *settings = obs_data_create();

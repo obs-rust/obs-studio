@@ -22,6 +22,7 @@
 #include "libobs/obs-encoder-registry-queries.c.h"
 #include "libobs/obs-encoder-roi-state-fields.c.h"
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
+#include "libobs/obs-encoder-set-name.c.h"
 #include "libobs/obs-encoder-set-preferred-format-fields.c.h"
 #include "libobs/obs-encoder-state-queries-fields.c.h"
 #include "libobs/obs-encoder.c.h"
