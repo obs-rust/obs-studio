@@ -45,3 +45,5 @@ use std::sync::Mutex;
 /// (`base_set_log_handler`) or uses the effect pass device stand-in, so two
 /// tests never interleave their save and restore.
 pub(crate) static LOG_HANDLER: Mutex<()> = Mutex::new(());
+
+mod stencil;
