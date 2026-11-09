@@ -20,10 +20,16 @@ impl Scene for Handle {
         Some(Self(self.0.clone(), Cell::new(true)))
     }
     fn lock(&self) {
-        self.0.events.borrow_mut().extend(["video lock", "audio lock"]);
+        self.0
+            .events
+            .borrow_mut()
+            .extend(["video lock", "audio lock"]);
     }
     fn unlock(&self) {
-        self.0.events.borrow_mut().extend(["audio unlock", "video unlock"]);
+        self.0
+            .events
+            .borrow_mut()
+            .extend(["audio unlock", "video unlock"]);
     }
 }
 impl Drop for Handle {
@@ -51,7 +57,10 @@ fn run_scene_case(removed: bool, release_caller: bool) {
         calls.set(calls.get() + 1);
         assert!(Rc::ptr_eq(&received.0, &scene.0));
         assert_eq!(state.refs.get(), 2);
-        assert_eq!(&*state.events.borrow(), &["acquire", "video lock", "audio lock"]);
+        assert_eq!(
+            &*state.events.borrow(),
+            &["acquire", "video lock", "audio lock"]
+        );
         state.events.borrow_mut().push("callback");
         if release_caller {
             scene.1.set(false);
@@ -60,14 +69,31 @@ fn run_scene_case(removed: bool, release_caller: bool) {
         }
     });
     assert_eq!(calls.get(), 1);
-    assert_eq!(&*state.events.borrow(), &["acquire", "video lock", "audio lock", "callback", "audio unlock", "video unlock", "release"]);
+    assert_eq!(
+        &*state.events.borrow(),
+        &[
+            "acquire",
+            "video lock",
+            "audio lock",
+            "callback",
+            "audio unlock",
+            "video unlock",
+            "release"
+        ]
+    );
     drop(scene);
     assert_eq!(state.refs.get(), 0);
     // Storage remains readable in the destroy signal, although refs are expired.
+    let destroy_calls = Cell::new(0);
+    let expired_at_destroy = Cell::new(false);
     let expired = Handle(state.clone(), Cell::new(false));
+    destroy_calls.set(destroy_calls.get() + 1);
+    expired_at_destroy.set(state.refs.get() == 0);
     update(Some(&expired), |_| calls.set(calls.get() + 1));
     assert_eq!(calls.get(), 1);
     assert_eq!(state.refs.get(), 0);
+    assert_eq!(destroy_calls.get(), 1);
+    assert!(expired_at_destroy.get());
     assert_eq!(state.events.borrow().last(), Some(&"acquire"));
     drop(expired);
     // Release the model's storage too, mirroring bnum_allocs restoration.
@@ -75,8 +101,14 @@ fn run_scene_case(removed: bool, release_caller: bool) {
 }
 
 #[test]
-fn live_scene_and_expired_scene() { run_scene_case(false, false); }
+fn live_scene_and_expired_scene() {
+    run_scene_case(false, false);
+}
 #[test]
-fn removed_scene_and_expired_scene() { run_scene_case(true, false); }
+fn removed_scene_and_expired_scene() {
+    run_scene_case(true, false);
+}
 #[test]
-fn callback_holds_last_reference() { run_scene_case(false, true); }
+fn callback_holds_last_reference() {
+    run_scene_case(false, true);
+}

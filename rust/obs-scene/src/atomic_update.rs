@@ -11,9 +11,20 @@ pub trait Scene: Sized {
     fn unlock(&self);
 }
 
+struct Locked<S: Scene>(S);
+impl<S: Scene> Drop for Locked<S> {
+    fn drop(&mut self) {
+        self.0.unlock();
+    }
+}
+
 /// Run exactly once under both locks and a temporary reference. Dropping the
 /// acquired scene releases that reference, after unlocking.
 pub fn update<S: Scene>(scene: Option<&S>, callback: impl FnOnce(&S)) {
-    let _ = (scene, callback);
-    todo!("scene atomic update")
+    let Some(scene) = scene.and_then(Scene::acquire) else {
+        return;
+    };
+    scene.lock();
+    let locked = Locked(scene);
+    callback(&locked.0);
 }

@@ -1,6 +1,7 @@
 //! obs-scene integration tests, one module per extracted C file.
 
 mod atomic_update;
+mod atomic_update_parity;
 mod audio_actions;
 mod audio_actions_parity;
 mod audio_mix;
