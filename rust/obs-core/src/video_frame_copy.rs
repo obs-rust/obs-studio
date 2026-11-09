@@ -42,6 +42,8 @@
     clippy::unreachable
 )]
 
+use obs_media_io::video_io::VideoFormat;
+
 use crate::video_copy_plan::{COPY_MAX, CopyPlan, FrameCopy, rgbx_copy_plan};
 
 /// `size_t` of a `u32`.
@@ -208,4 +210,18 @@ pub fn copy_rgbx_frame(
 ) -> bool {
     let copy = rgbx_copy_plan(width, height, src_linesize, dst_linesize);
     copy_plane(&copy, src, dst).is_some()
+}
+
+/// How many of each frame's leading line sizes [`gpu_copy_plan`] reads for
+/// `format` (`None` outside `enum video_format`): all three for I420, I444
+/// and I010, the first two for NV12, P010, P216 and P416, none for a format
+/// with no GPU conversion. The shim reads only these, as the C plan does;
+/// the rest stay 0.
+///
+/// [`gpu_copy_plan`]: crate::video_copy_plan::gpu_copy_plan
+#[must_use]
+#[allow(clippy::todo)]
+pub fn line_sizes_read(format: Option<VideoFormat>) -> usize {
+    let _ = format;
+    todo!()
 }

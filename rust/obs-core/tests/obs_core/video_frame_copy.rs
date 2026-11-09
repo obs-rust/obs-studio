@@ -23,7 +23,8 @@ use obs_core::video_copy_plan::{
     COPY_MAX, CopyPlan, FrameCopy, LineSizes, gpu_copy_plan, rgbx_copy_plan,
 };
 use obs_core::video_frame_copy::{
-    Source, Step, copy_frame, copy_plane, copy_rgbx_frame, dst_len, src_advance, src_len, steps,
+    Source, Step, copy_frame, copy_plane, copy_rgbx_frame, dst_len, line_sizes_read, src_advance,
+    src_len, steps,
 };
 use obs_media_io::video_io::VideoFormat;
 use proptest::prelude::*;
@@ -678,5 +679,70 @@ proptest! {
         let mut dst = vec![UNTOUCHED; need_dst - usize::from(!short_src)];
         prop_assert_eq!(copy_plane(&copy, &src, &mut dst), None);
         prop_assert!(dst.iter().all(|&b| b == UNTOUCHED));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// the line sizes the plan reads
+
+#[test]
+fn line_sizes_read_per_format() {
+    use VideoFormat as F;
+    for format in VideoFormat::ALL {
+        let want = match format {
+            F::I420 | F::I444 | F::I010 => 3,
+            F::Nv12 | F::P010 | F::P216 | F::P416 => 2,
+            _ => 0,
+        };
+        assert_eq!(line_sizes_read(Some(format)), want, "{format:?}");
+    }
+    assert_eq!(line_sizes_read(None), 0);
+}
+
+#[test]
+fn line_sizes_past_the_count_change_no_plan() {
+    // the entries past line_sizes_read() never change the plan, so zeroing
+    // them (the shim does not read them) gives the C's plan
+    let sizes = [(1, 1), (2, 2), (64, 32), (67, 33)];
+    for format in VideoFormat::ALL.map(Some).into_iter().chain([None]) {
+        let n = line_sizes_read(format);
+        for (w, h) in sizes {
+            for (row_in, row_out) in [(0, 0), (8, 0), (0, 12), (3, 5)] {
+                let full_in = [w * 4 + row_in, w * 2 + row_in, w + row_in];
+                let full_out = [w * 4 + row_out, w * 2 + row_out, w + row_out];
+                let mut cut_in = [0; 3];
+                let mut cut_out = [0; 3];
+                cut_in[..n].copy_from_slice(&full_in[..n]);
+                cut_out[..n].copy_from_slice(&full_out[..n]);
+                assert_eq!(
+                    gpu_copy_plan(format, w, h, &cut_in, &cut_out),
+                    gpu_copy_plan(format, w, h, &full_in, &full_out),
+                    "{format:?} {w}x{h}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn line_sizes_up_to_the_count_change_the_plan() {
+    // each entry the count covers is read: changing it changes the plan
+    for format in VideoFormat::ALL {
+        let n = line_sizes_read(Some(format));
+        for i in 0..n {
+            let base = [4096_u32; 3];
+            let mut moved = base;
+            moved[i] = 4100;
+            assert_ne!(
+                gpu_copy_plan(Some(format), 64, 32, &moved, &base),
+                gpu_copy_plan(Some(format), 64, 32, &base, &base),
+                "{format:?} input {i}"
+            );
+            assert_ne!(
+                gpu_copy_plan(Some(format), 64, 32, &base, &moved),
+                gpu_copy_plan(Some(format), 64, 32, &base, &base),
+                "{format:?} output {i}"
+            );
+        }
     }
 }
