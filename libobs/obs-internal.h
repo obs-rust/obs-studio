@@ -2452,3 +2452,10 @@ extern void source_profiler_source_render_end(obs_source_t *source, uint64_t sta
 
 /* Remove source from profiler hashmaps */
 extern void source_profiler_remove_source(obs_source_t *source);
+
+/* Borrowed callback seam for the Rust connect-time query. */
+struct obs_output_connect_time_fields {
+	void *data;
+	int (*callback)(void *data);
+};
+extern struct obs_output_connect_time_fields obs_output_connect_time_fields(const obs_output_t *output);

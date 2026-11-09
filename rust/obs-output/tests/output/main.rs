@@ -156,3 +156,7 @@ mod weak_encoder_identity_parity;
 
 mod output_total_frames;
 mod output_total_frames_parity;
+
+mod output_connect_time;
+
+mod output_connect_time_parity;
