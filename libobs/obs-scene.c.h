@@ -1867,81 +1867,6 @@ obs_scene_t *obs_group_from_source(const obs_source_t *source)
 	return source->context.data;
 }
 
-obs_sceneitem_t *obs_scene_find_source(obs_scene_t *scene, const char *name)
-{
-	struct obs_scene_item *item;
-
-	if (!scene)
-		return NULL;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (strcmp(item->source->context.name, name) == 0)
-			break;
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return item;
-}
-
-obs_sceneitem_t *obs_scene_find_source_recursive(obs_scene_t *scene, const char *name)
-{
-	struct obs_scene_item *item;
-
-	if (!scene)
-		return NULL;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (strcmp(item->source->context.name, name) == 0)
-			break;
-
-		if (item->is_group) {
-			obs_scene_t *group = item->source->context.data;
-			obs_sceneitem_t *child = obs_scene_find_source(group, name);
-			if (child) {
-				item = child;
-				break;
-			}
-		}
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return item;
-}
-
-obs_sceneitem_t *obs_scene_find_sceneitem_by_id(obs_scene_t *scene, int64_t id)
-{
-	struct obs_scene_item *item;
-
-	if (!scene)
-		return NULL;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (item->id == id)
-			break;
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return item;
-}
-
 /* Must be called with the scene locked. Only compares pointers and follows the
  * links of items that are in the scene, which the scene lock protects. An item
  * that left the scene may be changed by whoever holds its new scene's lock, so
@@ -3417,34 +3342,6 @@ obs_sceneitem_t *obs_scene_insert_group2(obs_scene_t *scene, const char *name, o
 	if (signal && item)
 		signal_refresh(scene);
 	return item;
-}
-
-obs_sceneitem_t *obs_scene_get_group(obs_scene_t *scene, const char *name)
-{
-	if (!scene || !name || !*name) {
-		return NULL;
-	}
-
-	obs_sceneitem_t *group = NULL;
-	obs_sceneitem_t *item;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (item->is_group && item->source->context.name) {
-			if (strcmp(item->source->context.name, name) == 0) {
-				group = item;
-				break;
-			}
-		}
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return group;
 }
 
 obs_scene_t *obs_sceneitem_group_get_scene(const obs_sceneitem_t *item)
