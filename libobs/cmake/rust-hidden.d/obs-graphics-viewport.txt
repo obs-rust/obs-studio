@@ -1,0 +1,1 @@
+obs_graphics_device_max_texture_size

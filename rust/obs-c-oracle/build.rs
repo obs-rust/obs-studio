@@ -617,6 +617,8 @@ fn main() {
         "effect-parser-lifecycle-adapter",
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
+        "graphics-viewport",
+        "graphics-viewport-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

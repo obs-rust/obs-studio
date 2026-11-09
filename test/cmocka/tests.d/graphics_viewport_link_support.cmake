@@ -1,0 +1,13 @@
+# Rust archive consumers need the same private adapter as hybrid libobs.
+function(_graphics_viewport_link_support)
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if("libobs_rust-static" IN_LIST _links)
+      set(_adapter "${CMAKE_CURRENT_SOURCE_DIR}/graphics-viewport-link-support.c")
+      target_sources(${_target} PRIVATE "${_adapter}")
+      target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _graphics_viewport_link_support)

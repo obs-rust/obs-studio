@@ -41,6 +41,8 @@ static inline bool gs_obj_valid(const void *obj, const char *f, const char *name
 	return true;
 }
 
+extern uint32_t obs_graphics_device_max_texture_size(graphics_t *graphics);
+
 static inline bool gs_valid(const char *f)
 {
 	if (!thread_graphics) {
@@ -231,7 +233,7 @@ int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 		goto error;
 	}
 
-	os_atomic_set_long(&max_texture_size, (long)device_max_texture_size(graphics));
+	os_atomic_set_long(&max_texture_size, (long)obs_graphics_device_max_texture_size(graphics));
 
 	*pgraphics = graphics;
 	return errcode;

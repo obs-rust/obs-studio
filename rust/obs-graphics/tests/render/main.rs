@@ -31,3 +31,4 @@ mod texture_render;
 mod texture_render_parity;
 
 mod viewport;
+mod viewport_parity;
