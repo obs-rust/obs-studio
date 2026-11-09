@@ -41,11 +41,35 @@ pub trait Model {
 }
 
 /// First exact path match, in list order.
-pub fn find_cached_effect<M: Model>(_model: &mut M, _file: M::File) -> Option<M::Effect> {
-    todo!()
+pub fn find_cached_effect<M: Model>(model: &mut M, file: M::File) -> Option<M::Effect> {
+    let mut effect = model.first();
+    while let Some(current) = effect {
+        if model.effect_path(current) == model.file_path(file) {
+            return Some(current);
+        }
+        effect = model.next(current);
+    }
+    None
 }
 
 /// `gs_effect_create_from_file`, preserving its early-return and free order.
-pub fn create_from_file<M: Model>(_model: &mut M, _file: Option<M::File>) -> Option<M::Effect> {
-    todo!()
+pub fn create_from_file<M: Model>(model: &mut M, file: Option<M::File>) -> Option<M::Effect> {
+    if !model.context_present() {
+        model.log(Diagnostic::Context, None);
+        return None;
+    }
+    let Some(file) = file else {
+        model.log(Diagnostic::File, None);
+        return None;
+    };
+    if let Some(effect) = find_cached_effect(model, file) {
+        return Some(effect);
+    }
+    let Some(text) = model.read(file) else {
+        model.log(Diagnostic::Read, Some(file));
+        return None;
+    };
+    let effect = model.create(text, file);
+    model.free(text);
+    effect
 }

@@ -1,8 +1,9 @@
 //! obs-graphics integration tests: shader (one module per former tests/*.rs file, #968).
 
 mod effect_destroy;
-mod effect_file;
 mod effect_destroy_parity;
+mod effect_file;
+mod effect_file_parity;
 mod effect_lookups;
 mod effect_lookups_layout;
 mod effect_lookups_parity;
