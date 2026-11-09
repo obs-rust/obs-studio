@@ -86,6 +86,8 @@ codegen-units = 256
 # Standalone graphics fixtures must not pull shader-file I/O and logging into
 # matrix, immediate-mode, effect-parser or GIF archive members. Keep the FFI
 # modules separate, as for the other standalone fixture consumers above.
+# Standalone graphics helpers must not pull the context-dependent blend shims
+# merely because release codegen merged their archive members (#4296).
 [profile.release.package.obs-graphics]
 codegen-units = 256
 
