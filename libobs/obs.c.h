@@ -3752,28 +3752,6 @@ bool obs_weak_object_expired(obs_weak_object_t *weak)
 	return weak ? obs_weak_ref_expired(&weak->ref) : true;
 }
 
-bool obs_is_output_protocol_registered(const char *protocol)
-{
-	if (!protocol)
-		return false;
-
-	for (size_t i = 0; i < obs->data.protocols.num; i++) {
-		if (strcmp(protocol, obs->data.protocols.array[i]) == 0)
-			return true;
-	}
-
-	return false;
-}
-
-bool obs_enum_output_protocols(size_t idx, char **protocol)
-{
-	if (!protocol || idx >= obs->data.protocols.num)
-		return false;
-
-	*protocol = obs->data.protocols.array[idx];
-	return true;
-}
-
 obs_canvas_t *obs_get_main_canvas(void)
 {
 	return obs_canvas_get_ref(obs->data.main_canvas);
