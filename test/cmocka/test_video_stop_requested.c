@@ -11,7 +11,7 @@
 static struct obs_core stop_core;
 static size_t stop_visits;
 static unsigned stop_mask;
-static int stop_outputs[4];
+static max_align_t stop_outputs[4];
 
 static bool stop_query(video_t *output)
 {
