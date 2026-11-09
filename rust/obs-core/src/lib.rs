@@ -37,13 +37,15 @@
 //! and `libobs/obs-windows-system-info.c.h` (from `obs-windows.c.h`), the
 //! Windows debug symbol search path and system info log rules; and
 //! `libobs/obs-audio.c.h` itself, the audio tick (`audio_callback()`), over
-//! the core-audio seam.
+//! the core-audio seam; and `libobs/obs-display.c.h` itself, the display
+//! (create, destroy, resize, the draw callbacks and `render_display()`),
+//! over the display seam.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
 //! [`module_paths`],
 //! [`module_names`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`module_load_rules`], [`module_register_copy`],
-//! [`audio_mix`], [`audio_callback`],
+//! [`audio_mix`], [`audio_callback`], [`display`],
 //! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_frame_copy`],
 //! [`video_output_step`],
 //! [`source_load`],
@@ -81,6 +83,8 @@
 //! the frame counts, the task queue's route and the video level checks.
 //! [`audio_callback`] runs one audio tick: the render order, the render,
 //! the buffering, the mix, the discard and the audio tasks, in the C's
+//! order and under its locks.
+//! [`display`] makes, links, renders and destroys a display, in the C's
 //! order and under its locks.
 //! The C ABI shims live in [`ffi`].
 
