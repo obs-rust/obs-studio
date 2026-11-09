@@ -12124,6 +12124,24 @@
         "libobs/data"
       ]
     },
+    "test_scene_item_group_scene": {
+      "sources": [
+        "test/cmocka/test_scene_item_group_scene.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "libobs"
+      ]
+    },
     "test_scene_item_id": {
       "sources": [
         "test/cmocka/test_scene_item_id.c"
@@ -22700,6 +22718,14 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_scene_item_group_scene": {
+      "target": "test_scene_item_group_scene",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_item_id": {
       "target": "test_scene_item_id",
