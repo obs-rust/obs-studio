@@ -7,6 +7,10 @@ pub fn set(
     retry_sec: i32,
     null_log: impl FnOnce(),
 ) {
-    let _ = (fields, retry_count, retry_sec, null_log);
-    todo!("port obs_output_set_reconnect_settings")
+    let Some((max, sec)) = fields else {
+        null_log();
+        return;
+    };
+    *max = retry_count;
+    *sec = retry_sec;
 }
