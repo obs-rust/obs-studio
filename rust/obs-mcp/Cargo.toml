@@ -27,7 +27,8 @@ libobs = ["dep:obs-sys", "dep:libc"]
 fault-injection = []
 
 [dependencies]
-schemars = { workspace = true }
+schemars = { workspace = true, features = ["derive", "std"] }
+serde_path_to_error = { workspace = true }
 obs-sys = { path = "../obs-sys", optional = true }
 serde = { workspace = true, default-features = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
