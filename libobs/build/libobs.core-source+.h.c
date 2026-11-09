@@ -50,6 +50,7 @@
 #include "libobs/obs-source-hidden-setter.c.h"
 #include "libobs/obs-source-icon-type-getter.c.h"
 #include "libobs/obs-source-identity-getter-fields.c.h"
+#include "libobs/obs-source-interaction.c.h"
 #include "libobs/obs-source-properties.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
 #include "libobs/obs-source-save-load.c.h"
