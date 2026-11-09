@@ -11,6 +11,7 @@ mod binding_press_parity;
 mod bindings;
 mod bindings_parity;
 mod cocoa_keys;
+mod enumeration;
 mod cocoa_keys_parity;
 mod hotkey_name_map;
 mod identity_getters;
