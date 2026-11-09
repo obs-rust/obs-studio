@@ -44,6 +44,7 @@ mod portal_shortcut_status;
 mod portal_shortcut_status_parity;
 mod press;
 mod press_parity;
+mod routing_controls;
 mod save_load;
 mod save_load_parity;
 mod translations;
