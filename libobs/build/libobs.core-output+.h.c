@@ -9,6 +9,7 @@
 #include "libobs/obs-encoder-dimensions-fields.c.h"
 #include "libobs/obs-encoder-frame-rate-divisor-fields.c.h"
 #include "libobs/obs-encoder-gpu-scaling-getters-fields.c.h"
+#include "libobs/obs-encoder-group-lifecycle.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
 #include "libobs/obs-encoder-preferred-format-fields.c.h"
