@@ -1,0 +1,4 @@
+audio_resampler_create
+audio_resampler_destroy
+audio_resampler_resample
+audio_resampler_set_compensation_error

@@ -638,6 +638,20 @@ fn main() {
         )
         .expect("write linear-sRGB extract");
     }
+    for stem in ["audio-resampler-ffmpeg", "audio-resampler-kernel"] {
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_pch(
+                &libobs.join("media-io").join(format!("{stem}.c.h")),
+                if stem == "audio-resampler-kernel" {
+                    "#include \"libobs/build/libobs-media-resampler-kernel.pch.h\""
+                } else {
+                    "#include \"build/libobs-media.pch.h\""
+                },
+            ),
+        )
+        .expect("write resampler extract");
+    }
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

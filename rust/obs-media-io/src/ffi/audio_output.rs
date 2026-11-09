@@ -81,8 +81,11 @@ unsafe extern "C" {
     fn profile_end(name: *const c_char);
     fn profile_reenable_thread();
     fn blog(level: c_int, format: *const c_char, ...);
+    #[cfg_attr(test, link_name = "oracle_aio_resampler_create")]
     fn audio_resampler_create(dst: *const resample_info, src: *const resample_info) -> *mut c_void;
+    #[cfg_attr(test, link_name = "oracle_aio_resampler_destroy")]
     fn audio_resampler_destroy(resampler: *mut c_void);
+    #[cfg_attr(test, link_name = "oracle_aio_resampler_resample")]
     fn audio_resampler_resample(
         resampler: *mut c_void,
         output: *mut *mut u8,
