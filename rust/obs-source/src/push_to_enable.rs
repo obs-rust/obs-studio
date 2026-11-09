@@ -28,6 +28,20 @@ pub fn enable<S: Source>(
     enabled: bool,
     null_log: impl FnOnce(&'static str),
 ) {
-    let _ = (source, kind, enabled, null_log);
-    todo!()
+    let Some(source) = source else {
+        null_log(kind.function());
+        return;
+    };
+    source.lock();
+    let changed = source.enabled(kind) != enabled;
+    // Preserve the output-flag read even when the value is unchanged.
+    let flags = source.output_flags();
+    if crate::monitoring::push_to_logs(flags, changed) {
+        source.log_change(kind, enabled);
+    }
+    source.store(kind, enabled);
+    if changed {
+        source.signal(kind, enabled);
+    }
+    source.unlock();
 }

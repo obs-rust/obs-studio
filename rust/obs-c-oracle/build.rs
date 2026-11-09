@@ -628,6 +628,32 @@ fn main() {
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
+    // The push-to port keeps the signal builder in obs-source.c.h. Compile the
+    // same real builder and forwarding seam in the oracle, not a model signal.
+    std::fs::write(
+        extract_dir.join("source-push-to-enable.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-push-to-enable.c.h")),
+    )
+    .expect("write original push-to setters");
+    let source = libobs.join("obs-source.c.h");
+    let mut push_signal = extract_c(&source, "uint32_t obs_source_get_output_flags(", "}");
+    push_signal.push_str(&extract_c(&source, "const char *obs_source_get_name(", "}"));
+    push_signal.push_str(&extract_c(
+        &source,
+        "static void source_signal_push_to_changed(",
+        "}",
+    ));
+    push_signal.push_str(&extract_c(
+        &source,
+        "void obs_source_push_to_enable_signal_changed(",
+        "}",
+    ));
+    std::fs::write(
+        extract_dir.join("source-push-to-enable-signal.inc"),
+        push_signal,
+    )
+    .expect("write push-to signal seam");
+
     for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
