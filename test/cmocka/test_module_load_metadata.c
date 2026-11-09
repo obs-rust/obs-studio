@@ -7,6 +7,9 @@
 #define obs_module_load_metadata characterized_module_load_metadata
 #include "libobs/obs-module-load-metadata.c.h"
 #undef obs_module_load_metadata
+/* Hidden dependencies are the real original implementations, never test stubs. */
+#include "libobs/obs-module-names.c.h"
+#include "libobs/obs-module-paths.c.h"
 
 static const char *fixture;
 static void check_manifest(void **state)
