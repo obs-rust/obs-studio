@@ -617,6 +617,9 @@ fn main() {
         "effect-parser-lifecycle-adapter",
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
+        "graphics-shader-params",
+        "graphics-shader-params-checks",
+        "graphics-shader-params-adapter",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

@@ -28,18 +28,24 @@ fn validation_mirrors_c_validation() {
             }
         }
     }
-    assert_eq!(WriteError::NoContext.reason(), "called while not in a graphics context");
+    assert_eq!(
+        WriteError::NoContext.reason(),
+        "called while not in a graphics context"
+    );
     assert_eq!(WriteError::NullParameter.reason(), "Null 'param' parameter");
     assert_eq!(WriteError::NullValue.reason(), "Null 'val' parameter");
 }
 
 fn forwarded<V: Copy>(value: V, check: impl FnOnce(V)) {
     let mut calls = 0;
-    assert_eq!(write(true, Some(19), Some(value), |p, v| {
-        calls += 1;
-        assert_eq!(p, 19);
-        check(v);
-    }), Ok(()));
+    assert_eq!(
+        write(true, Some(19), Some(value), |p, v| {
+            calls += 1;
+            assert_eq!(p, 19);
+            check(v);
+        }),
+        Ok(())
+    );
     assert_eq!(calls, 1);
 }
 
@@ -48,8 +54,17 @@ fn writes_mirrors_c_scalar_writes() {
     for value in [false, true] {
         forwarded(value, |seen| assert_eq!(seen, value));
     }
-    for value in [0.0_f32, -0.0, 1.25, -42.5, f32::MAX, f32::MIN_POSITIVE,
-        f32::INFINITY, f32::NEG_INFINITY, f32::NAN] {
+    for value in [
+        0.0_f32,
+        -0.0,
+        1.25,
+        -42.5,
+        f32::MAX,
+        f32::MIN_POSITIVE,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+        f32::NAN,
+    ] {
         forwarded(value, |seen| assert_eq!(seen.to_bits(), value.to_bits()));
     }
     for value in [0, 1, -1, i32::MIN, i32::MAX, 1_234_567] {

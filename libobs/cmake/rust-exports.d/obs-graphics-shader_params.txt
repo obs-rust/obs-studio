@@ -1,0 +1,8 @@
+gs_shader_set_bool
+gs_shader_set_float
+gs_shader_set_int
+gs_shader_set_matrix3
+gs_shader_set_matrix4
+gs_shader_set_vec2
+gs_shader_set_vec3
+gs_shader_set_vec4
