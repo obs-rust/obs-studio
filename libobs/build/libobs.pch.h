@@ -238,6 +238,7 @@
 #include "obs-source-audio-input-path-seam.h"
 #include "obs-source-audio-output-seam.h"
 #include "obs-source-audio-settings-seam.h"
+#include "obs-source-push-to-enable.h"
 #include "obs-source-transition-seam.h"
 #include "obs-source-transition-size.h"
 #include "obs-source-transition-start.h"
