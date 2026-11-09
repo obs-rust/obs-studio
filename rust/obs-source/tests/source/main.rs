@@ -50,6 +50,7 @@ mod media_admission_parity;
 mod monitoring;
 mod monitoring_parity;
 mod mute_monitor_hotkeys;
+mod mute_monitor_hotkeys_parity;
 mod ptm_gate;
 mod ptm_gate_parity;
 mod push_queries;

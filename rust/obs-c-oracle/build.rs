@@ -624,6 +624,11 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
+    std::fs::write(
+        extract_dir.join("obs-source-mute-monitor-hotkeys.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-mute-monitor-hotkeys.c.h")),
+    )
+    .expect("write original mute/monitor callbacks");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
