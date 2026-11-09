@@ -26,6 +26,7 @@
 #include "libobs/obs-scene-item-bounds-setters.c.h"
 #include "libobs/obs-scene-item-group-resize-defer.c.h"
 #include "libobs/obs-scene-item-group-scene-fields.c.h"
+#include "libobs/obs-scene-item-hotkeys.c.h"
 #include "libobs/obs-scene-item-locked-setter.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-scale-filter-setter.c.h"
