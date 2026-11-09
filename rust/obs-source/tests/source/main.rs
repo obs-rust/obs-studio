@@ -66,6 +66,7 @@ mod source_identity_getters_parity;
 mod state_getters;
 mod state_getters_parity;
 mod transition_access;
+mod transition_audio;
 mod transition_clock;
 mod transition_clock_parity;
 mod transition_load;

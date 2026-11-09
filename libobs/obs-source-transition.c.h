@@ -15,36 +15,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-source-transition.pch.h"
 
 #define lock_transition(transition) pthread_mutex_lock(&transition->transition_mutex);
 #define unlock_transition(transition) pthread_mutex_unlock(&transition->transition_mutex);
-
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
-	       "OBS_TRANSITION_SCALE_MAX_ONLY");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_ASPECT == OBS_TRANSITION_SCALE_ASPECT, "OBS_TRANSITION_SCALE_ASPECT");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
-	       "OBS_TRANSITION_SCALE_STRETCH");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_SRGB == GS_CS_SRGB, "GS_CS_SRGB");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_SRGB_16F == GS_CS_SRGB_16F, "GS_CS_SRGB_16F");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_709_EXTENDED == GS_CS_709_EXTENDED, "GS_CS_709_EXTENDED");
-_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_709_SCRGB == GS_CS_709_SCRGB, "GS_CS_709_SCRGB");
-_Static_assert(sizeof(enum obs_transition_mode) == sizeof(int), "enum obs_transition_mode is passed as int");
-_Static_assert(sizeof(enum obs_transition_scale_type) == sizeof(int),
-	       "enum obs_transition_scale_type is passed as int");
-_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
-_Static_assert(OBS_SOURCE_TRANSITION_RENDER_TARGET_B == OBS_TRANSITION_SOURCE_B, "OBS_TRANSITION_SOURCE_B");
-_Static_assert(OBS_SOURCE_TRANSITION_RENDER_AUDIO_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
-_Static_assert(sizeof(enum obs_transition_target) == sizeof(int), "enum obs_transition_target is passed as int");
-_Static_assert(OBS_SOURCE_TRANSITION_START_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
-_Static_assert(OBS_SOURCE_TRANSITION_LOAD_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION, "OBS_SOURCE_TYPE_TRANSITION");
-_Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
-_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
-	       "OBS_TRANSITION_SCALE_MAX_ONLY");
-_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_ASPECT == OBS_TRANSITION_SCALE_ASPECT, "OBS_TRANSITION_SCALE_ASPECT");
-_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
-	       "OBS_TRANSITION_SCALE_STRETCH");
 
 bool obs_transition_init(obs_source_t *transition)
 {

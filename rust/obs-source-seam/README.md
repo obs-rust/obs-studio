@@ -16,6 +16,7 @@ private libobs adapter and exports the C functions under their original names.
 | `libobs/obs-source-transition-slots.c.h` | `obs_source::transition_slots` | `ffi::source_transition_slots` | `libobs/obs-source-transition-seam.h`, and the libobs source calls through `Calls` |
 | `libobs/obs-source-transition-stop.c.h` | `obs_source::transition_stop` | `ffi::source_transition_stop` | `libobs/obs-source-transition-seam.h`, and the libobs source calls, the signals and the video frame time through `Calls` |
 | `libobs/obs-source-transition-switch.c.h` | `obs_source::transition_switch` | `ffi::source_transition_switch` | `libobs/obs-source-transition-seam.h`, and the libobs source calls, the signals, the clock and the size port through `Calls` |
+| `libobs/obs-source-transition.c.h` (the rest: audio render, init and free) | `obs_source::transition_audio` | `ffi::source_transition` | `libobs/obs-source-transition-seam.h` on the stop shims' `Seam`, and the libobs source, audio and graphics calls through `Calls` (which extends the stop shims') |
 
 ## Why a crate of its own
 

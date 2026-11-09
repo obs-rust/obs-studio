@@ -145,13 +145,30 @@ unsafe impl Calls for Libobs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChildSource(*mut c_void);
 
+impl ChildSource {
+    /// The source's pointer, as libobs takes it.
+    pub(crate) fn as_ptr(self) -> *mut c_void {
+        self.0
+    }
+
+    /// `None` for NULL.
+    pub(crate) fn from_ptr(ptr: *mut c_void) -> Option<Self> {
+        child(ptr)
+    }
+}
+
 /// A live `obs_source_t` a shim was handed, with the libobs calls `L` makes
 /// for it.
 pub struct Seam<L>(*mut c_void, PhantomData<L>);
 
 impl<L> Seam<L> {
-    fn new(source: *mut c_void) -> Self {
+    pub(crate) fn new(source: *mut c_void) -> Self {
         Self(source, PhantomData)
+    }
+
+    /// The transition's pointer, as the seam takes it.
+    pub(crate) fn as_ptr(&self) -> *mut c_void {
+        self.0
     }
 }
 

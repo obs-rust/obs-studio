@@ -17,6 +17,34 @@
 
 #include "libobs/build/libobs.pch.h"
 
+/* The Rust rules' constants against libobs's, checked in every build: moved
+ * from obs-source-transition.c, which only the C reference compiles now. */
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
+	       "OBS_TRANSITION_SCALE_MAX_ONLY");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_ASPECT == OBS_TRANSITION_SCALE_ASPECT, "OBS_TRANSITION_SCALE_ASPECT");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
+	       "OBS_TRANSITION_SCALE_STRETCH");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_SRGB == GS_CS_SRGB, "GS_CS_SRGB");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_SRGB_16F == GS_CS_SRGB_16F, "GS_CS_SRGB_16F");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_709_EXTENDED == GS_CS_709_EXTENDED, "GS_CS_709_EXTENDED");
+_Static_assert(OBS_SOURCE_TRANSITION_CLOCK_CS_709_SCRGB == GS_CS_709_SCRGB, "GS_CS_709_SCRGB");
+_Static_assert(sizeof(enum obs_transition_mode) == sizeof(int), "enum obs_transition_mode is passed as int");
+_Static_assert(sizeof(enum obs_transition_scale_type) == sizeof(int),
+	       "enum obs_transition_scale_type is passed as int");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
+_Static_assert(OBS_SOURCE_TRANSITION_RENDER_TARGET_B == OBS_TRANSITION_SOURCE_B, "OBS_TRANSITION_SOURCE_B");
+_Static_assert(OBS_SOURCE_TRANSITION_RENDER_AUDIO_FRAMES == AUDIO_OUTPUT_FRAMES, "AUDIO_OUTPUT_FRAMES");
+_Static_assert(sizeof(enum obs_transition_target) == sizeof(int), "enum obs_transition_target is passed as int");
+_Static_assert(OBS_SOURCE_TRANSITION_START_MODE_MANUAL == OBS_TRANSITION_MODE_MANUAL, "OBS_TRANSITION_MODE_MANUAL");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_TYPE_TRANSITION == OBS_SOURCE_TYPE_TRANSITION, "OBS_SOURCE_TYPE_TRANSITION");
+_Static_assert(sizeof(enum obs_source_type) == sizeof(int), "enum obs_source_type is passed as int");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_MAX_ONLY == OBS_TRANSITION_SCALE_MAX_ONLY,
+	       "OBS_TRANSITION_SCALE_MAX_ONLY");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_ASPECT == OBS_TRANSITION_SCALE_ASPECT, "OBS_TRANSITION_SCALE_ASPECT");
+_Static_assert(OBS_SOURCE_TRANSITION_LOAD_SCALE_STRETCH == OBS_TRANSITION_SCALE_STRETCH,
+	       "OBS_TRANSITION_SCALE_STRETCH");
+
 /* Private adapter, not a new public API (obs-source-transition-seam.h). */
 
 bool transition_valid(const obs_source_t *transition, const char *func)
