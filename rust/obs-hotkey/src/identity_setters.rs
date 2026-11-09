@@ -19,6 +19,10 @@ pub trait Registry {
 }
 
 /// Unknown IDs do not inspect the input or allocate. NULL input clears a slot.
-pub fn set<R: Registry>(_registry: &mut R, _id: usize, _field: Field, _input: R::Input) {
-    todo!()
+pub fn set<R: Registry>(registry: &mut R, id: usize, field: Field, input: R::Input) {
+    if let Some(slot) = registry.find(id, field) {
+        registry.release(&slot);
+        let value = registry.duplicate(input);
+        registry.store(slot, value);
+    }
 }
