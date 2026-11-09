@@ -6,6 +6,7 @@ mod async_flag_getters;
 mod async_flag_getters_parity;
 mod async_pacing;
 mod async_pacing_parity;
+mod async_rotation;
 mod async_upload;
 mod async_upload_parity;
 mod audio_active;
