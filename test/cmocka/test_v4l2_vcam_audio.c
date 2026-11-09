@@ -404,6 +404,9 @@ static void virtual_microphone_needs_no_pactl(void **state)
 	char *sources = loaded ? vmic_pa_list(false) : NULL;
 	char *modules = loaded ? vmic_pa_list(true) : NULL;
 	bool listed = sources && vmic_source_listed(sources, "obs_vmic_pa_test");
+	/* The test server is pipewire-pulse: libpulse's list names the driver,
+	 * so the pipe tunnel's buffer is found and held out (#4087). */
+	uint64_t lead = sources ? vmic_tunnel_lead_ns(sources, 48000) : 0;
 	bool found = false;
 	for (char *line = modules, *next; line && *line; line = next) {
 		next = strchr(line, '\n');
@@ -435,6 +438,7 @@ static void virtual_microphone_needs_no_pactl(void **state)
 	assert_true(found);
 	assert_true(unloaded);
 	assert_true(gone);
+	assert_int_equal(lead, 170666666ULL);
 }
 
 /* #3181: pactl runs on the thread that starts the Virtual Camera. A sound
