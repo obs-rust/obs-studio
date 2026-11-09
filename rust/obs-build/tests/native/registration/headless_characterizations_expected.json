@@ -6,6 +6,7 @@
                 "test/cmocka/test_wayland_hotkeys.c",
                 "libobs/obs-hotkey-binding-press.c.h",
                 "libobs/obs-hotkey-background-query.c.h",
+                "libobs/obs-hotkey-unregister.c.h",
                 "libobs/obs-hotkey.c.h",
                 "libobs/obs-hotkey-save-load.c.h",
                 "libobs/obs-hotkey-bindings.c.h",
