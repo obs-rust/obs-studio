@@ -3997,23 +3997,6 @@ obs_source_t *obs_source_get_filter_by_name(obs_source_t *source, const char *na
 	return filter;
 }
 
-void obs_source_set_enabled(obs_source_t *source, bool enabled)
-{
-	struct calldata data;
-	uint8_t stack[128];
-
-	if (!obs_source_valid(source, "obs_source_set_enabled"))
-		return;
-
-	source->enabled = enabled;
-
-	calldata_init_fixed(&data, stack, sizeof(stack));
-	calldata_set_ptr(&data, "source", source);
-	calldata_set_bool(&data, "enabled", enabled);
-
-	signal_handler_signal(source->context.signals, "enable", &data);
-}
-
 static void source_signal_push_to_changed(obs_source_t *source, const char *signal, bool enabled)
 {
 	struct calldata data;
