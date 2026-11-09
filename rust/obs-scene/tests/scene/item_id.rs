@@ -38,7 +38,17 @@ fn scene_item_save_and_add_set_id() {
 #[test]
 fn set_id_signed_edges_and_repeated_stores() {
     let mut stored = 999;
-    for id in [i64::MIN, i64::MIN + 1, -17, -1, 0, 1, 4242, i64::MAX - 1, i64::MAX] {
+    for id in [
+        i64::MIN,
+        i64::MIN + 1,
+        -17,
+        -1,
+        0,
+        1,
+        4242,
+        i64::MAX - 1,
+        i64::MAX,
+    ] {
         obs_scene::item_id::set_id(&mut stored, id);
         assert_eq!(stored, id);
         obs_scene::item_id::set_id(&mut stored, id);
