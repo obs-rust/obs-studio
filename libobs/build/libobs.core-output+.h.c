@@ -18,6 +18,7 @@
 #include "libobs/obs-output-can-pause-fields.c.h"
 #include "libobs/obs-output-connect-time-fields.c.h"
 #include "libobs/obs-output-flags-fields.c.h"
+#include "libobs/obs-output-frames-dropped.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
 #include "libobs/obs-output-identity-fields.c.h"
 #include "libobs/obs-output-mixer-getters-fields.c.h"
