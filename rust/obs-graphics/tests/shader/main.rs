@@ -30,6 +30,7 @@ mod shader_param_names;
 mod shader_param_names_parity;
 mod shader_param_values;
 mod shader_param_values_parity;
+mod shader_params;
 mod shader_parser;
 mod shader_parser_parity;
 
