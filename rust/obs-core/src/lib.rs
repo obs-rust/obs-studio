@@ -125,6 +125,7 @@ mod platform;
 pub mod source_load;
 pub mod source_profiler;
 pub mod video_copy_plan;
+pub mod video_frame_copy;
 pub mod video_frame_timing;
 pub mod video_output_step;
 pub mod video_pacing;
