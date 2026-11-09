@@ -260,6 +260,7 @@
 #include "obs-source-media-admission.h"
 #include "obs-source-monitoring.h"
 #include "obs-source-ptm-gate.h"
+#include "obs-source-push-hotkey-seam.h"
 #include "obs-source-render-route.h"
 #include "obs-source-size.h"
 #include "obs-source-video-tick.h"

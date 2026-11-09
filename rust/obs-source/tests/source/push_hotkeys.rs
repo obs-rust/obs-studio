@@ -22,7 +22,8 @@ impl Host for World {
     }
     fn append(&mut self, timestamp: u64, kind: Kind, pressed: bool) {
         assert!(self.locked);
-        self.trace.extend([3, u64::from(self.mute), u64::from(self.talk)]);
+        self.trace
+            .extend([3, u64::from(self.mute), u64::from(self.talk)]);
         self.actions.push((timestamp, kind, pressed));
     }
     fn unlock(&mut self) {
@@ -56,7 +57,11 @@ fn test_source_push_hotkeys_routed_actions() {
         let kind = if talk[i] { Kind::Talk } else { Kind::Mute };
         event(&mut world, kind, pressed[i]);
         let after = world.now;
-        if talk[i] { talk_flag = pressed[i]; } else { mute_flag = pressed[i]; }
+        if talk[i] {
+            talk_flag = pressed[i];
+        } else {
+            mute_flag = pressed[i];
+        }
         assert_eq!(world.mute, mute_flag);
         assert_eq!(world.talk, talk_flag);
         assert_eq!(world.actions.len(), i + 1);

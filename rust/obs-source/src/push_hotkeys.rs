@@ -13,6 +13,10 @@ pub trait Host {
     fn store(&mut self, kind: Kind, pressed: bool);
 }
 
-pub fn event(_host: &mut impl Host, _kind: Kind, _pressed: bool) {
-    todo!()
+pub fn event(host: &mut impl Host, kind: Kind, pressed: bool) {
+    let timestamp = host.clock();
+    host.lock();
+    host.append(timestamp, kind, pressed);
+    host.unlock();
+    host.store(kind, pressed);
 }
