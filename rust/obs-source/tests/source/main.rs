@@ -70,6 +70,7 @@ mod source_duplicate_parity;
 mod source_filter_chain;
 mod source_filter_chain_parity;
 mod source_icon_type;
+mod source_icon_type_parity;
 mod source_identity_getters;
 mod source_identity_getters_parity;
 mod state_getters;

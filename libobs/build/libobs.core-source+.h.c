@@ -56,7 +56,7 @@
 #include "libobs/obs-source-get-name.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-hidden-setter-fields.c.h"
-#include "libobs/obs-source-icon-type-getter.c.h"
+#include "libobs/obs-source-icon-type-fields.c.h"
 #include "libobs/obs-source-identity-getter-fields.c.h"
 #include "libobs/obs-source-interaction.c.h"
 #include "libobs/obs-source-properties.c.h"
