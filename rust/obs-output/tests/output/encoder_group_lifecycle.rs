@@ -44,9 +44,16 @@ impl Backend for Model {
         self.initialized = false;
         self.trace.push(7);
     }
-    fn started(&mut self, (): ()) -> u32 { self.started }
-    fn defer(&mut self, (): ()) { self.deferred = true; self.trace.push(4); }
-    fn count(&mut self, (): ()) -> usize { self.encoders.len() }
+    fn started(&mut self, (): ()) -> u32 {
+        self.started
+    }
+    fn defer(&mut self, (): ()) {
+        self.deferred = true;
+        self.trace.push(4);
+    }
+    fn count(&mut self, (): ()) -> usize {
+        self.encoders.len()
+    }
     fn clear_back_pointer(&mut self, (): (), index: usize) {
         assert!(self.locked && self.initialized && self.encoders[index]);
         self.encoders[index] = false;
@@ -65,7 +72,10 @@ impl Backend for Model {
 
 #[test]
 fn test_encoder_group_lifecycle_creation_and_failure() {
-    let mut backend = Model { fail_init: true, ..Model::default() };
+    let mut backend = Model {
+        fail_init: true,
+        ..Model::default()
+    };
     assert_eq!(core::create(&mut backend), None);
     assert!(!backend.live);
     assert_eq!(backend.trace, [1, 2, 8]);
@@ -102,7 +112,9 @@ fn test_encoder_group_lifecycle_deferred_and_ordered_teardown() {
             core::destroy(&mut backend, Some(()));
         }
         let mut expected = vec![1, 2, 3, 4, 6, 3, 4, 6, 3];
-        for i in 0..count as u32 { expected.extend([100+i, 200+i]); }
+        for i in 0..count as u32 {
+            expected.extend([100 + i, 200 + i]);
+        }
         expected.extend([5, 6, 7, 8]);
         assert_eq!(backend.trace, expected);
         assert!(!backend.live && !backend.locked && !backend.initialized);
