@@ -162,6 +162,7 @@
 #include "obs-canvas-rules.h"
 
 /* obs-display.c */
+#include "obs-display-seam.h"
 #include "obs-host/display-clear-workaround.h"
 #include "obs-host/display-srgb-clear.h"
 

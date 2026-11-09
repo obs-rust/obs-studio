@@ -14,6 +14,7 @@
   "obs-core-setup-rules.h",
   "obs-data.h",
   "obs-defs.h",
+  "obs-display-seam.h",
   "obs-encoder-audio-start-frames.h",
   "obs-encoder-audio-start.h",
   "obs-encoder-bind.h",
