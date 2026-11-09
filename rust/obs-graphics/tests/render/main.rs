@@ -11,6 +11,7 @@ mod image_file_layout;
 mod image_file_parity;
 mod image_orient;
 mod image_orient_parity;
+mod image_orientation;
 mod image_pq_scrgb;
 mod image_pq_scrgb_parity;
 mod image_rgba64;
