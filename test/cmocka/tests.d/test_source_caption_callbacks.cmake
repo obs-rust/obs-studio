@@ -1,0 +1,10 @@
+# Characterize actual libobs registration with private list inspection.
+add_executable(test_source_caption_callbacks test_source_caption_callbacks.c)
+target_include_directories(test_source_caption_callbacks PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_source_caption_callbacks PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+if(OS_WINDOWS)
+  target_link_libraries(test_source_caption_callbacks PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_source_caption_callbacks)
+add_test(NAME test_source_caption_callbacks COMMAND test_source_caption_callbacks)
+set_tests_properties(test_source_caption_callbacks PROPERTIES TIMEOUT 30)
