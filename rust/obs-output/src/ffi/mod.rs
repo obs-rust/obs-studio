@@ -53,3 +53,5 @@ pub mod service_weak_acquire;
 pub mod service_weak_release;
 
 pub mod weak_encoder_identity;
+
+pub mod output_total_frames;

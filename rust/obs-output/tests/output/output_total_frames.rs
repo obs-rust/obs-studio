@@ -15,8 +15,14 @@ fn mirrors_null_zero() {
 
 #[test]
 fn narrows_c_long_to_int() {
-    for (value, expected) in [(1, 1), (-1, -1), (i32::MAX as i64, i32::MAX),
-        (i32::MAX as i64 + 1, i32::MIN), (i64::MAX, -1), (i64::MIN, 0)] {
+    for (value, expected) in [
+        (1, 1),
+        (-1, -1),
+        (i32::MAX as i64, i32::MAX),
+        (i32::MAX as i64 + 1, i32::MIN),
+        (i64::MAX, -1),
+        (i64::MIN, 0),
+    ] {
         assert_eq!(get(Some(value), |_| panic!("unexpected log")), expected);
     }
 }
