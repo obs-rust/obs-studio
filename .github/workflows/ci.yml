@@ -520,4 +520,4 @@ jobs:
       - name: Sweep Caches 🧹
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: uvx --from git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2 ci-lint cache janitor --repo . --default-branch master
+        run: uvx --from git+https://github.com/zackees/ci.yml@24362f3e60248ebe72ffd261e5585640228cbc5d ci-lint cache janitor --repo . --default-branch master

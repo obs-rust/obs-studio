@@ -28,7 +28,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 CI_PRE = WORKFLOWS / "ci-pre.yml"
 PULL = WORKFLOWS / "ci.yml"
 PUSH = WORKFLOWS / "push.yaml"
-PIN = "a1917ce76598904ce515cd7eec83450c317ea6f2"
+PIN = "24362f3e60248ebe72ffd261e5585640228cbc5d"
 
 
 def top_level(text: str, key: str) -> str:
