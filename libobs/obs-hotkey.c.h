@@ -374,22 +374,6 @@ static inline void enum_bindings(obs_hotkey_binding_internal_enum_func func, voi
 	}
 }
 
-static inline void enum_context_hotkeys(struct obs_context_data *context, obs_hotkey_internal_enum_func func,
-					void *data)
-{
-	const size_t num = context->hotkeys.num;
-	const obs_hotkey_id *array = context->hotkeys.array;
-	obs_hotkey_t *hotkey;
-
-	for (size_t i = 0; i < num; i++) {
-		HASH_FIND_HKEY(obs->hotkeys.hotkeys, array[i], hotkey);
-		if (!hotkey)
-			continue;
-		if (!func(data, hotkey))
-			break;
-	}
-}
-
 struct binding_find_data {
 	obs_hotkey_id id;
 	size_t *idx;
@@ -487,11 +471,6 @@ void obs_hotkey_seam_signal(const char *signal, obs_hotkey_t *hotkey)
 void obs_hotkey_seam_enum_bindings(obs_hotkey_binding_internal_enum_func func, void *data)
 {
 	enum_bindings(func, data);
-}
-
-void obs_hotkey_seam_enum_context(struct obs_context_data *context, obs_hotkey_internal_enum_func func, void *data)
-{
-	enum_context_hotkeys(context, func, data);
 }
 
 size_t obs_hotkey_seam_context_count(const struct obs_context_data *context)
@@ -674,29 +653,6 @@ void obs_hotkeys_free(void)
 			obs->hotkeys.translations[i] = NULL;
 		}
 	}
-}
-
-void obs_enum_hotkeys(obs_hotkey_enum_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	obs_hotkey_t *hk, *tmp;
-	HASH_ITER (hh, obs->hotkeys.hotkeys, hk, tmp) {
-		if (!func(data, hk->id, hk))
-			break;
-	}
-
-	unlock();
-}
-
-void obs_enum_hotkey_bindings(obs_hotkey_binding_enum_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	enum_bindings(func, data);
-	unlock();
 }
 
 struct obs_hotkey_binding_fields obs_hotkey_binding_fields(obs_hotkey_binding_t *binding)
