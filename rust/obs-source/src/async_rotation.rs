@@ -2,5 +2,5 @@
 
 /// Return the equivalent angle in 0..360.
 pub fn normalize(rotation: i64) -> i64 {
-    todo!("normalize {rotation}")
+    rotation.rem_euclid(360)
 }

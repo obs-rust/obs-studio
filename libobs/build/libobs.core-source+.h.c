@@ -36,7 +36,7 @@
 #include "libobs/obs-source-async-compensation-fields.c.h"
 #include "libobs/obs-source-async-decoupled.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"
-#include "libobs/obs-source-async-rotation.c.h"
+#include "libobs/obs-source-async-rotation-fields.c.h"
 #include "libobs/obs-source-audio-active-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
