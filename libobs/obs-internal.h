@@ -1928,6 +1928,12 @@ struct obs_output_mixer_getters_fields {
 };
 extern struct obs_output_mixer_getters_fields obs_output_mixer_getters_fields(const obs_output_t *output);
 
+/* Borrowed atomic C long address; NULL output produces a NULL field. */
+struct obs_output_total_frames_fields {
+	const volatile long *frames;
+};
+extern struct obs_output_total_frames_fields obs_output_total_frames_fields(const obs_output_t *output);
+
 /* Private member addresses; callers must reject NULL before taking them. */
 struct obs_output_pause_queries_fields {
 	const volatile bool *paused;
