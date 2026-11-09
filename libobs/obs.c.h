@@ -3165,14 +3165,6 @@ bool obs_set_audio_monitoring_device(const char *name, const char *id)
 	return true;
 }
 
-void obs_get_audio_monitoring_device(const char **name, const char **id)
-{
-	if (name)
-		*name = obs->audio.monitoring_device_name;
-	if (id)
-		*id = obs->audio.monitoring_device_id;
-}
-
 void obs_add_tick_callback(void (*tick)(void *param, float seconds), void *param)
 {
 	struct tick_callback data = {tick, param};
