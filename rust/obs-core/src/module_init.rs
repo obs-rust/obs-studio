@@ -14,6 +14,25 @@ pub trait Lifecycle {
 }
 
 /// Initialize once successfully; a failed callback can be retried.
-pub fn initialize<H: Lifecycle>(_core_present: bool, _module: Option<&mut H>) -> bool {
-    todo!()
+pub fn initialize<H: Lifecycle>(core_present: bool, module: Option<&mut H>) -> bool {
+    if !core_present {
+        return false;
+    }
+    let Some(module) = module else {
+        return false;
+    };
+    if module.loaded() {
+        return true;
+    }
+    let profile = module.profile_start();
+    module.loading(true);
+    let loaded = module.load();
+    module.set_loaded(loaded);
+    module.loading(false);
+    if !module.loaded() {
+        module.warning();
+    }
+    module.profile_end(profile);
+    // Diagnostics and profiler callbacks can observe or change module state.
+    module.loaded()
 }
