@@ -28,6 +28,7 @@
 #include "libobs/obs-source-base-size-fields.c.h"
 #include "libobs/obs-source-boolean-query-fields.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
+#include "libobs/obs-source-deinterlace-texture.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-filter-count-fields.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
