@@ -18216,6 +18216,16 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
+    },
+    "test_hotkey_identity_setters": {
+      "sources": [
+        "test/cmocka/test_hotkey_identity_setters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ]
     }
   },
   "tests": {
@@ -24730,6 +24740,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_hotkey_identity_setters": {
+      "target": "test_hotkey_identity_setters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     }
   }
 }
