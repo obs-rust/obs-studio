@@ -1,0 +1,4 @@
+gs_enable_stencil_test
+gs_enable_stencil_write
+gs_stencil_function
+gs_stencil_op

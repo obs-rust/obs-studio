@@ -217,5 +217,6 @@
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
   "build/libobs.graphics-linear-srgb+.h.c",
+  "build/libobs.graphics-stencil-adapter+.h.c",
   "build/libobs.media+.h.c"
 ]

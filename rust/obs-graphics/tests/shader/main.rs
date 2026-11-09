@@ -47,3 +47,5 @@ use std::sync::Mutex;
 pub(crate) static LOG_HANDLER: Mutex<()> = Mutex::new(());
 
 mod stencil;
+
+mod stencil_parity;

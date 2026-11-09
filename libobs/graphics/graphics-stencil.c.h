@@ -15,11 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-graphics.pch.h"
+#include "libobs/build/libobs-ported-graphics.pch.h"
 
-/* Shared with graphics.c.h in this unity group; keep its context validation. */
-static THREAD_LOCAL graphics_t *thread_graphics;
-static inline bool gs_valid(const char *f);
+extern void *obs_graphics_stencil_context(const char *function);
+#define thread_graphics gs_get_context()
+#define gs_valid(function) (obs_graphics_stencil_context(function) != NULL)
 
 void gs_enable_stencil_test(bool enable)
 {
@@ -61,3 +61,6 @@ void gs_stencil_op(enum gs_stencil_side side, enum gs_stencil_op_type fail, enum
 
 	graphics->exports.device_stencil_op(graphics->device, side, fail, zfail, zpass);
 }
+
+#undef gs_valid
+#undef thread_graphics
