@@ -100,40 +100,81 @@ pub trait EffectModel {
 /// `gs_effect_destroy`: nothing for a null or cached effect, otherwise
 /// [`effect_actually_destroy`].
 pub fn effect_destroy<M: EffectModel>(effect: Option<&mut M>) {
-    let _ = effect;
-    todo!()
+    if let Some(effect) = effect
+        && !effect.cached()
+    {
+        effect_actually_destroy(effect);
+    }
 }
 
 /// `gs_effect_actually_destroy`: [`effect_free`], then the effect itself,
 /// cached or not.
 pub fn effect_actually_destroy<M: EffectModel>(effect: &mut M) {
-    let _ = effect;
-    todo!()
+    effect_free(effect);
+    effect.free(Free::Effect);
 }
 
 /// `effect_free`: each parameter, each technique, the two arrays, then the
 /// two paths, which it then clears.
 pub fn effect_free<M: EffectModel>(effect: &mut M) {
-    let _ = effect;
-    todo!()
+    let mut i = 0;
+    while i < effect.param_count() {
+        let param = effect.param(i);
+        effect_param_free(effect, param);
+        i = i.wrapping_add(1);
+    }
+    let mut i = 0;
+    while i < effect.technique_count() {
+        let technique = effect.technique(i);
+        effect_technique_free(effect, technique);
+        i = i.wrapping_add(1);
+    }
+
+    effect.free(Free::Params);
+    effect.free(Free::Techniques);
+
+    effect.free(Free::EffectPath);
+    effect.free(Free::EffectDir);
+    effect.free(Free::ClearPaths);
 }
 
 /// `effect_param_free`: the name, the current and default values, each
 /// annotation the same way, then the annotation array.
 pub fn effect_param_free<M: EffectModel>(effect: &mut M, param: M::Param) {
-    let _ = (effect, param);
-    todo!()
+    effect.free(Free::ParamName(param));
+    effect.free(Free::ParamCurVal(param));
+    effect.free(Free::ParamDefaultVal(param));
+
+    let mut i = 0;
+    while i < effect.annotation_count(param) {
+        let annotation = effect.annotation(param, i);
+        effect_param_free(effect, annotation);
+        i = i.wrapping_add(1);
+    }
+
+    effect.free(Free::ParamAnnotations(param));
 }
 
 /// `effect_technique_free`: each pass, the pass array, then the name.
 pub fn effect_technique_free<M: EffectModel>(effect: &mut M, technique: M::Technique) {
-    let _ = (effect, technique);
-    todo!()
+    let mut i = 0;
+    while i < effect.pass_count(technique) {
+        let pass = effect.pass(technique, i);
+        effect_pass_free(effect, pass);
+        i = i.wrapping_add(1);
+    }
+
+    effect.free(Free::TechniquePasses(technique));
+    effect.free(Free::TechniqueName(technique));
 }
 
 /// `effect_pass_free`: the name, the two shader parameter arrays, then the
 /// vertex and the pixel shader.
 pub fn effect_pass_free<M: EffectModel>(effect: &mut M, pass: M::Pass) {
-    let _ = (effect, pass);
-    todo!()
+    effect.free(Free::PassName(pass));
+    effect.free(Free::PassVertParams(pass));
+    effect.free(Free::PassPixelParams(pass));
+
+    effect.free(Free::PassVertShader(pass));
+    effect.free(Free::PassPixelShader(pass));
 }
