@@ -182,6 +182,7 @@ pub mod filter_count;
 pub mod filter_relationship_getters;
 pub mod frame_copy;
 pub mod handler_getters;
+pub mod hidden_setter;
 pub mod media_admission;
 pub mod monitoring;
 pub mod ptm_gate;
