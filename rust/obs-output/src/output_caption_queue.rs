@@ -31,6 +31,11 @@ impl Packets for [[u8; 3]] {
 
 /// Append every packet in order, preserving the track's existing queue.
 pub fn enqueue(tracks: &mut impl Tracks, packets: &(impl Packets + ?Sized)) {
-    let _ = (tracks, packets);
-    todo!()
+    for index in 0..tracks.slots() {
+        if let Some(mut track) = tracks.lock(index) {
+            for packet in 0..packets.count() {
+                track.append(packets.packet(packet));
+            }
+        }
+    }
 }

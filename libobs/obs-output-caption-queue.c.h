@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 void obs_output_caption(obs_output_t *output, const struct obs_source_cea_708 *captions)
 {
