@@ -49,6 +49,11 @@ struct virtualcam_data {
 	char mic_path[256];
 	char mic_lock_path[256];
 	int mic_lock;
+	/* Lifetime counters; all accesses hold sync.mutex. Never consumed by logging. */
+	uint64_t stats_video_frames, stats_video_dropped, stats_video_measured;
+	uint64_t stats_video_min_ns, stats_video_max_ns;
+	uint64_t stats_audio_frames, stats_audio_dropped, stats_audio_measured;
+	uint64_t stats_audio_min_ns, stats_audio_max_ns;
 };
 
 static void vmic_stop(struct virtualcam_data *vcam);
@@ -941,6 +946,28 @@ static void virtualcam_audio_proc(void *data, calldata_t *cd)
 	calldata_set_bool(cd, "active", vcam->mic_fifo >= 0);
 }
 
+/* Private Control API: bounds measure libobs timestamps to completed writes,
+ * not device capture or end-to-end A/V latency. Native PipeWire xruns remain
+ * absent on the FIFO backend (#4124); consumers must represent them as unknown. */
+static void virtualcam_stats_proc(void *data, calldata_t *cd)
+{
+	struct virtualcam_data *vcam = data;
+	pthread_mutex_lock(&vcam->sync.mutex);
+	calldata_set_int(cd, "vcam_frames", (long long)vcam->stats_video_frames);
+	calldata_set_int(cd, "vcam_dropped", (long long)vcam->stats_video_dropped);
+	calldata_set_int(cd, "vmic_frames", (long long)vcam->stats_audio_frames);
+	calldata_set_int(cd, "vmic_dropped", (long long)vcam->stats_audio_dropped);
+	if (vcam->stats_video_measured) {
+		calldata_set_int(cd, "vcam_min_ns", (long long)vcam->stats_video_min_ns);
+		calldata_set_int(cd, "vcam_max_ns", (long long)vcam->stats_video_max_ns);
+	}
+	if (vcam->stats_audio_measured) {
+		calldata_set_int(cd, "vmic_min_ns", (long long)vcam->stats_audio_min_ns);
+		calldata_set_int(cd, "vmic_max_ns", (long long)vcam->stats_audio_max_ns);
+	}
+	pthread_mutex_unlock(&vcam->sync.mutex);
+}
+
 static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 {
 	struct virtualcam_data *vcam = (struct virtualcam_data *)bzalloc(sizeof(*vcam));
@@ -957,6 +984,11 @@ static void *virtualcam_create(obs_data_t *settings, obs_output_t *output)
 	if (output)
 		proc_handler_add(obs_output_get_proc_handler(output), "void virtualcam_audio(out bool active)",
 				 virtualcam_audio_proc, vcam);
+	if (output)
+		proc_handler_add(
+			obs_output_get_proc_handler(output),
+			"void virtualcam_stats(out int vcam_frames, out int vcam_dropped, out int vmic_frames, out int vmic_dropped, out int vcam_min_ns, out int vcam_max_ns, out int vmic_min_ns, out int vmic_max_ns)",
+			virtualcam_stats_proc, vcam);
 	return vcam;
 }
 
@@ -1136,7 +1168,7 @@ static void virtualcam_stop(void *data, uint64_t ts)
 	UNUSED_PARAMETER(ts);
 }
 
-static void vcam_write_frame(struct virtualcam_data *vcam, const uint8_t *frame_data)
+static void vcam_write_frame(struct virtualcam_data *vcam, const uint8_t *frame_data, uint64_t timestamp)
 {
 	uint32_t frame_size = vcam->frame_size;
 	while (frame_size > 0) {
@@ -1148,6 +1180,20 @@ static void vcam_write_frame(struct virtualcam_data *vcam, const uint8_t *frame_
 		frame_data += written;
 		frame_size -= (uint32_t)written;
 	}
+	if (frame_size) {
+		vcam->stats_video_dropped++;
+	} else {
+		uint64_t now = os_gettime_ns();
+		vcam->stats_video_frames++;
+		if (now < timestamp)
+			return;
+		uint64_t latency = now - timestamp;
+		if (!vcam->stats_video_measured || latency < vcam->stats_video_min_ns)
+			vcam->stats_video_min_ns = latency;
+		if (latency > vcam->stats_video_max_ns)
+			vcam->stats_video_max_ns = latency;
+		vcam->stats_video_measured++;
+	}
 }
 
 /* Sends the waiting frames whose audio the microphone has; under sync.mutex. */
@@ -1155,7 +1201,7 @@ static void vcam_sync_flush(struct virtualcam_data *vcam)
 {
 	struct vcam_sync *sync = &vcam->sync;
 	while (sync->len > 0 && sync->ts[sync->head] + vcam->mic_lead_ns <= sync->audio_end) {
-		vcam_write_frame(vcam, sync->frame[sync->head]);
+		vcam_write_frame(vcam, sync->frame[sync->head], sync->ts[sync->head]);
 		sync->head = (sync->head + 1) % VCAM_SYNC_FRAMES;
 		sync->len--;
 	}
@@ -1170,13 +1216,13 @@ static void virtual_video(void *param, struct video_data *frame)
 	/* No running microphone (mic_rate is set only by vmic_start): nothing to wait for. */
 	if (vcam->mic_fifo < 0 || vcam->mic_rate == 0 ||
 	    (sync->len == 0 && frame->timestamp + vcam->mic_lead_ns <= sync->audio_end)) {
-		vcam_write_frame(vcam, frame->data[0]);
+		vcam_write_frame(vcam, frame->data[0], frame->timestamp);
 		pthread_mutex_unlock(&sync->mutex);
 		return;
 	}
 	if (sync->len == VCAM_SYNC_FRAMES) {
 		/* The audio stopped: the picture goes on without it. */
-		vcam_write_frame(vcam, sync->frame[sync->head]);
+		vcam_write_frame(vcam, sync->frame[sync->head], sync->ts[sync->head]);
 		sync->head = (sync->head + 1) % VCAM_SYNC_FRAMES;
 		sync->len--;
 	}
@@ -1196,11 +1242,24 @@ static void virtual_audio(void *param, struct audio_data *frames)
 		return;
 	size_t size = (size_t)frames->frames * VMIC_CHANNELS * sizeof(float);
 	/* Keep at most one packet unread, so a reader hears the newest audio. */
-	vmic_drop_stale(vcam->mic_drain, vcam->mic_fifo, size);
-	vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, &vcam->mic_tail, frames->data[0], size);
+	size_t discarded = vmic_drop_stale(vcam->mic_drain, vcam->mic_fifo, size);
+	bool accepted = vmic_write_packet(vcam->mic_fifo, vcam->mic_pipe_size, &vcam->mic_tail, frames->data[0], size);
 
 	uint64_t end = frames->timestamp + util_mul_div64(frames->frames, 1000000000ULL, vcam->mic_rate);
 	pthread_mutex_lock(&vcam->sync.mutex);
+	vcam->stats_audio_frames += frames->frames;
+	vcam->stats_audio_dropped += discarded / (VMIC_CHANNELS * sizeof(float));
+	if (!accepted)
+		vcam->stats_audio_dropped += frames->frames;
+	uint64_t now = os_gettime_ns();
+	if (accepted && !vcam->mic_tail.len && now >= frames->timestamp) {
+		uint64_t latency = now - frames->timestamp;
+		if (!vcam->stats_audio_measured || latency < vcam->stats_audio_min_ns)
+			vcam->stats_audio_min_ns = latency;
+		if (latency > vcam->stats_audio_max_ns)
+			vcam->stats_audio_max_ns = latency;
+		vcam->stats_audio_measured++;
+	}
 	if (end > vcam->sync.audio_end)
 		vcam->sync.audio_end = end;
 	vcam_sync_flush(vcam);

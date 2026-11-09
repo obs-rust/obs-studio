@@ -1,9 +1,9 @@
 //! Device, media and measured pipeline control (#4446).
-use std::rc::Rc;
+use super::EmptyInput;
+use crate::server::{ToolError, ToolRegistry};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::server::{ToolError, ToolRegistry};
-use super::EmptyInput;
+use std::rc::Rc;
 
 /// Bounded start options, extended by the wait domain.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
@@ -181,4 +181,182 @@ pub trait ControlBackend {
 }
 /// Difference from a baseline; a recreated counter begins a new generation.
 #[must_use]
-pub fn counter_delta(current: u64, baseline: u64) -> u64 { todo!("counter baseline") }
+pub fn counter_delta(current: u64, baseline: u64) -> u64 {
+    if current >= baseline {
+        current - baseline
+    } else {
+        current
+    }
+}
+
+typed_tool!(
+    VcamStart,
+    "vcam_start",
+    ControlBackend,
+    StartInput,
+    VcamStatus,
+    IDEMPOTENT,
+    "vcam start: control and inspect OBS directly.",
+    |backend, input| { backend.vcam_start(input) }
+);
+
+typed_tool!(
+    VcamStop,
+    "vcam_stop",
+    ControlBackend,
+    EmptyInput,
+    VcamStatus,
+    IDEMPOTENT,
+    "vcam stop: control and inspect OBS directly.",
+    |backend, input| { backend.vcam_stop(input) }
+);
+
+typed_tool!(
+    VcamGet,
+    "vcam_status",
+    ControlBackend,
+    EmptyInput,
+    VcamStatus,
+    READ_ONLY,
+    "vcam status: control and inspect OBS directly.",
+    |backend, input| { backend.vcam_status(input) }
+);
+
+typed_tool!(
+    VmicGet,
+    "vmic_status",
+    ControlBackend,
+    EmptyInput,
+    VmicStatus,
+    READ_ONLY,
+    "vmic status: control and inspect OBS directly.",
+    |backend, input| { backend.vmic_status(input) }
+);
+
+typed_tool!(
+    MediaRestart,
+    "media_restart",
+    ControlBackend,
+    MediaInput,
+    MediaStatus,
+    MUTATING,
+    "media restart: control and inspect OBS directly.",
+    |backend, input| { backend.media_restart(input) }
+);
+
+typed_tool!(
+    MediaGet,
+    "media_status",
+    ControlBackend,
+    MediaInput,
+    MediaStatus,
+    READ_ONLY,
+    "media status: control and inspect OBS directly.",
+    |backend, input| { backend.media_status(input) }
+);
+
+typed_tool!(
+    StatsGet,
+    "stats_get",
+    ControlBackend,
+    EmptyInput,
+    StatsSnapshot,
+    READ_ONLY,
+    "stats get: control and inspect OBS directly.",
+    |backend, input| { backend.stats_get(input) }
+);
+
+typed_tool!(
+    StatsReset,
+    "stats_reset",
+    ControlBackend,
+    EmptyInput,
+    StatsSnapshot,
+    MUTATING,
+    "stats reset: control and inspect OBS directly.",
+    |backend, input| { backend.stats_reset(input) }
+);
+
+typed_tool!(
+    PipelineGet,
+    "pipeline_dump",
+    ControlBackend,
+    EmptyInput,
+    PipelineDump,
+    READ_ONLY,
+    "pipeline dump: control and inspect OBS directly.",
+    |backend, input| { backend.pipeline_dump(input) }
+);
+
+/// Registers device, media and measurement tools.
+pub fn register(registry: &mut ToolRegistry, backend: &Rc<dyn ControlBackend>) {
+    registry.register(Box::new(VcamStart {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(VcamStop {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(VcamGet {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(VmicGet {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(MediaRestart {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(MediaGet {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(StatsGet {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(StatsReset {
+        backend: Rc::clone(backend),
+    }));
+    registry.register(Box::new(PipelineGet {
+        backend: Rc::clone(backend),
+    }));
+}
+
+/// Generated tool contracts.
+#[must_use]
+pub fn schemas() -> Vec<serde_json::Value> {
+    vec![
+        crate::server::tool_schema::<VcamStart>(),
+        crate::server::tool_schema::<VcamStop>(),
+        crate::server::tool_schema::<VcamGet>(),
+        crate::server::tool_schema::<VmicGet>(),
+        crate::server::tool_schema::<MediaRestart>(),
+        crate::server::tool_schema::<MediaGet>(),
+        crate::server::tool_schema::<StatsGet>(),
+        crate::server::tool_schema::<StatsReset>(),
+        crate::server::tool_schema::<PipelineGet>(),
+    ]
+}
+
+impl StatsSnapshot {
+    /// Subtract counter baselines while leaving latency gauges unchanged.
+    #[must_use]
+    pub fn relative_to(mut self, baseline: &Self) -> Self {
+        fn stage(now: &mut StageStats, old: &StageStats) {
+            let delta =
+                |n: Option<u64>, b: Option<u64>| n.map(|v| counter_delta(v, b.unwrap_or(0)));
+            now.frames_total = delta(now.frames_total, old.frames_total);
+            now.frames_dropped = delta(now.frames_dropped, old.frames_dropped);
+            now.xruns = delta(now.xruns, old.xruns);
+        }
+        stage(&mut self.stages.render, &baseline.stages.render);
+        stage(&mut self.stages.vcam, &baseline.stages.vcam);
+        stage(&mut self.stages.vmic, &baseline.stages.vmic);
+        self.render.render_total_frames = counter_delta(
+            self.render.render_total_frames,
+            baseline.render.render_total_frames,
+        );
+        self.render.render_skipped_frames = counter_delta(
+            self.render.render_skipped_frames,
+            baseline.render.render_skipped_frames,
+        );
+        self
+    }
+}

@@ -658,6 +658,7 @@ dependencies = [
  "base64",
  "flate2",
  "libc",
+ "obs-callback",
  "obs-sys",
  "schemars",
  "serde",
