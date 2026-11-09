@@ -2190,36 +2190,6 @@ void gs_stagesurface_destroy(gs_stagesurf_t *stagesurf)
 	graphics->exports.gs_stagesurface_destroy(stagesurf);
 }
 
-uint32_t gs_stagesurface_get_width(const gs_stagesurf_t *stagesurf)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_stagesurface_get_width", stagesurf))
-		return 0;
-
-	return graphics->exports.gs_stagesurface_get_width(stagesurf);
-}
-
-uint32_t gs_stagesurface_get_height(const gs_stagesurf_t *stagesurf)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_stagesurface_get_height", stagesurf))
-		return 0;
-
-	return graphics->exports.gs_stagesurface_get_height(stagesurf);
-}
-
-enum gs_color_format gs_stagesurface_get_color_format(const gs_stagesurf_t *stagesurf)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_stagesurface_get_color_format", stagesurf))
-		return GS_UNKNOWN;
-
-	return graphics->exports.gs_stagesurface_get_color_format(stagesurf);
-}
-
 bool gs_stagesurface_map(gs_stagesurf_t *stagesurf, uint8_t **data, uint32_t *linesize)
 {
 	graphics_t *graphics = thread_graphics;
