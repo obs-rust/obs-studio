@@ -67,3 +67,4 @@ pub mod item_transform_getters;
 pub mod item_transition_getters;
 
 pub mod item_visible;
+pub mod item_hotkeys;
