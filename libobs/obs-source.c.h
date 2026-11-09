@@ -3737,40 +3737,6 @@ void obs_source_remove_active_child(obs_source_t *parent, obs_source_t *child)
 	}
 }
 
-void obs_source_save(obs_source_t *source)
-{
-	if (!data_valid(source, "obs_source_save"))
-		return;
-
-	obs_source_dosignal(source, "source_save", "save");
-
-	if (source->info.save)
-		source->info.save(source->context.data, source->context.settings);
-}
-
-void obs_source_load(obs_source_t *source)
-{
-	if (!data_valid(source, "obs_source_load"))
-		return;
-	if (source->info.load)
-		source->info.load(source->context.data, source->context.settings);
-
-	obs_source_dosignal(source, "source_load", "load");
-}
-
-void obs_source_load2(obs_source_t *source)
-{
-	if (!data_valid(source, "obs_source_load2"))
-		return;
-
-	obs_source_load(source);
-
-	for (size_t i = source->filters.num; i > 0; i--) {
-		obs_source_t *filter = source->filters.array[i - 1];
-		obs_source_load(filter);
-	}
-}
-
 bool obs_source_active(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_active") ? os_atomic_load_long(&source->activate_refs) != 0 : false;
