@@ -398,17 +398,6 @@ static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, c
 	obs_scene_item_relative_scale(dst, v, y, item->scale_ref.y);
 }
 
-/* A bounds type outside the enum (a hand-edited or foreign scene
- * collection, undo data, a plugin) has no bounding box: OBS_BOUNDS_NONE.
- * Takes the int64 a load reads, before any cast truncates it, and an enum
- * value from a setter (an unsigned or a signed int, by compiler). */
-static inline enum obs_bounds_type valid_bounds_type(int64_t type)
-{
-	if (type < OBS_BOUNDS_NONE || type > OBS_BOUNDS_MAX_ONLY)
-		return OBS_BOUNDS_NONE;
-	return (enum obs_bounds_type)type;
-}
-
 static void calculate_bounds_data(struct obs_scene_item *item, struct vec2 *origin, struct vec2 *scale, uint32_t *cx,
 				  uint32_t *cy)
 {
@@ -2522,6 +2511,12 @@ void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
 			update_item_transform(item, false);                \
 	} while (false)
 
+/* Dependency of the extracted bounds setters; keep update dispatch here. */
+static void scene_item_bounds_update_transform(obs_sceneitem_t *item)
+{
+	do_update_transform(item);
+}
+
 void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 {
 	if (item) {
@@ -2711,50 +2706,6 @@ void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 
 	signal_reorder(item);
 	obs_scene_release(scene);
-}
-
-void obs_sceneitem_set_bounds_type(obs_sceneitem_t *item, enum obs_bounds_type type)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->bounds_type = valid_bounds_type(type);
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds_alignment(obs_sceneitem_t *item, uint32_t alignment)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->bounds_align = alignment;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds_crop(obs_sceneitem_t *item, bool crop)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->crop_to_bounds = crop;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds(obs_sceneitem_t *item, const struct vec2 *bounds)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		if (!item->absolute_coordinates)
-			size_from_absolute(&item->bounds, bounds, item);
-		else
-			vec2_copy(&item->bounds, bounds);
-		item_fields_unlock(scene);
-
-		do_update_transform(item);
-	}
 }
 
 void obs_sceneitem_get_pos(const obs_sceneitem_t *item, struct vec2 *pos)
