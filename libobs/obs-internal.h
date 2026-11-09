@@ -1947,8 +1947,8 @@ extern struct obs_output_reconnecting_fields obs_output_reconnecting_fields(cons
 
 /* Borrowed plugin callback and context; caller must reject NULL first. */
 struct obs_output_frames_dropped_fields {
-    int (*callback)(void *data);
-    void *data;
+	int (*callback)(void *data);
+	void *data;
 };
 extern struct obs_output_frames_dropped_fields obs_output_frames_dropped_fields(const obs_output_t *output);
 
