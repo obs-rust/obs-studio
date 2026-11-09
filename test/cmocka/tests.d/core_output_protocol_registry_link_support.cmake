@@ -8,6 +8,11 @@ function(_core_output_protocol_registry_link_support)
       set(_adapter "${CMAKE_CURRENT_SOURCE_DIR}/core-output-protocol-registry-link-support.c")
       if(NOT _adapter IN_LIST _sources)
         target_sources(${_target} PRIVATE "${_adapter}")
+        # Match the native graph: this adapter calls the existing core-pointer seam.
+        set(_core_seam "${CMAKE_CURRENT_SOURCE_DIR}/core-texture-activity-link-stubs.c")
+        if(NOT _core_seam IN_LIST _sources)
+          target_sources(${_target} PRIVATE "${_core_seam}")
+        endif()
         target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
         target_link_libraries(
           ${_target}
