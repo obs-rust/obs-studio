@@ -43,5 +43,6 @@ mod texture_render;
 mod texture_render_parity;
 mod timer_dispatch;
 mod timer_dispatch_parity;
+mod vertexbuffer_destroy;
 mod voltexture_metadata;
 mod voltexture_metadata_parity;
