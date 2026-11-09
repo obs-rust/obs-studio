@@ -5,12 +5,10 @@ pub fn registered<'a>(
     protocol: Option<&[u8]>,
     protocols: impl IntoIterator<Item = &'a [u8]>,
 ) -> bool {
-    let _ = (protocol, protocols);
-    todo!()
+    protocol.is_some_and(|protocol| crate::module_type_rules::protocol_listed(protocol, protocols))
 }
 
 /// Borrow the entry at `index`, without changing the registry.
 pub fn enumerate<T: Copy>(protocols: &[T], index: usize) -> Option<T> {
-    let _ = (protocols, index);
-    todo!()
+    protocols.get(index).copied()
 }

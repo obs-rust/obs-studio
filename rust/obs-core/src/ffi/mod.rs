@@ -37,6 +37,7 @@ pub mod monitoring_device_getter;
 pub mod nix_system_info;
 pub mod object_queries;
 pub mod object_validity_query;
+pub mod output_protocol_registry;
 pub mod source_load;
 pub mod source_profiler;
 pub mod video_copy_plan;
