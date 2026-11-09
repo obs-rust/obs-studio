@@ -162,3 +162,5 @@ mod output_connect_time;
 mod output_connect_time_parity;
 
 mod output_conversion_callbacks;
+
+mod output_conversion_callbacks_parity;

@@ -10,16 +10,47 @@ pub enum Rejection {
 }
 
 /// Validate a conversion without inspecting its contents.
-pub fn conversion_guard(output: bool, conversion: bool, flags: u32, media: u32) -> Result<(), Rejection> {
-    todo!()
+pub fn conversion_guard(
+    output: bool,
+    conversion: bool,
+    flags: u32,
+    media: u32,
+) -> Result<(), Rejection> {
+    if !output {
+        return Err(Rejection::Output);
+    }
+    if !conversion {
+        return Err(Rejection::Conversion);
+    }
+    if flags & 4 != 0 {
+        return Err(Rejection::Encoded);
+    }
+    if flags & media == 0 {
+        return Err(Rejection::Media);
+    }
+    Ok(())
 }
 
 /// Registration prepends, including duplicates and null tokens.
 pub fn insertion_index() -> usize {
-    todo!()
+    0
 }
 
 /// Only the first exact callback/parameter pair is erased.
 pub fn removal_index<T: PartialEq>(entries: &[T], entry: &T) -> Option<usize> {
-    todo!()
+    entries.iter().position(|value| value == entry)
+}
+
+/// Validate before reading the conversion or mutating the destination.
+pub fn store<T>(
+    output: bool,
+    present: bool,
+    flags: u32,
+    media: u32,
+    read: impl FnOnce() -> T,
+    write: impl FnOnce(T),
+) -> Result<(), Rejection> {
+    conversion_guard(output, present, flags, media)?;
+    write(read());
+    Ok(())
 }
