@@ -178,6 +178,7 @@ pub mod handler_getters;
 pub mod media_admission;
 pub mod monitoring;
 pub mod ptm_gate;
+pub mod push_hotkeys;
 pub mod push_queries;
 pub mod render_route;
 pub mod size_route;
