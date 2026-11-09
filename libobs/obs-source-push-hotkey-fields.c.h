@@ -1,10 +1,5 @@
 #include "libobs/build/libobs.pch.h"
 
-uint64_t obs_source_push_hotkey_clock(void)
-{
-	return os_gettime_ns();
-}
-
 void obs_source_push_hotkey_lock(void *data)
 {
 	struct obs_source *source = data;
