@@ -17,10 +17,11 @@
 
 #include "libobs/build/libobs-graphics.pch.h"
 
-/* Defined in graphics.c.h later in this unity group. */
-static inline bool gs_valid(const char *f);
+extern bool obs_graphics_viewport_valid(const char *function);
+#define gs_valid obs_graphics_viewport_valid
 
-static uint32_t device_max_texture_size(graphics_t *graphics)
+uint32_t obs_graphics_device_max_texture_size(graphics_t *graphics);
+uint32_t obs_graphics_device_max_texture_size(graphics_t *graphics)
 {
 	if (graphics->exports.device_get_max_texture_size)
 		return graphics->exports.device_get_max_texture_size(graphics->device);
@@ -57,3 +58,5 @@ void gs_set_2d_mode(void)
 	gs_get_size(&cx, &cy);
 	gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -1.0, -1024.0f);
 }
+
+#undef gs_valid

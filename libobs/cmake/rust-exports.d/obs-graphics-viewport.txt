@@ -1,0 +1,2 @@
+gs_reset_viewport
+gs_set_2d_mode

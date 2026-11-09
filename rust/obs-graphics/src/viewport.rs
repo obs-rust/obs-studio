@@ -7,6 +7,26 @@ pub trait Backend {
     fn maximum(&mut self) -> Option<u32>;
     fn device_type(&mut self) -> i32;
 }
-pub fn reset_viewport(_backend: &mut impl Backend) { todo!() }
-pub fn set_2d_mode(_backend: &mut impl Backend) { todo!() }
-pub fn max_texture_size(_backend: &mut impl Backend) -> u32 { todo!() }
+pub fn reset_viewport(backend: &mut impl Backend) {
+    if !backend.valid("gs_reset_viewport") {
+        return;
+    }
+    let (width, height) = backend.size();
+    backend.viewport([0, 0, width as i32, height as i32]);
+}
+pub fn set_2d_mode(backend: &mut impl Backend) {
+    if !backend.valid("gs_set_2d_mode") {
+        return;
+    }
+    let (width, height) = backend.size();
+    backend.ortho([0., width as f32, 0., height as f32, -1., -1024.]);
+}
+pub fn max_texture_size(backend: &mut impl Backend) -> u32 {
+    if let Some(maximum) = backend.maximum() {
+        return maximum;
+    }
+    match backend.device_type() {
+        2 | 3 => 16384,
+        _ => 0,
+    }
+}
