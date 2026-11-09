@@ -1543,6 +1543,18 @@ struct obs_source_type_data_fields {
 	void *const *data;
 };
 extern struct obs_source_type_data_fields obs_source_type_data_fields(const obs_source_t *source);
+/* Borrowed interaction values; caller rejects NULL before reading them. */
+struct obs_source_interaction_fields {
+	uint32_t flags;
+	void *data;
+	void (*mouse_click)(void *data, const struct obs_mouse_event *event, int32_t type, bool mouse_up,
+			    uint32_t click_count);
+	void (*mouse_move)(void *data, const struct obs_mouse_event *event, bool mouse_leave);
+	void (*mouse_wheel)(void *data, const struct obs_mouse_event *event, int x_delta, int y_delta);
+	void (*focus)(void *data, bool focus);
+	void (*key_click)(void *data, const struct obs_key_event *event, bool key_up);
+};
+extern struct obs_source_interaction_fields obs_source_interaction_fields(const obs_source_t *source);
 
 /* Borrowed identity field addresses. Caller must reject NULL before access. */
 struct obs_source_identity_getter_fields {
