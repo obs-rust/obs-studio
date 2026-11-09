@@ -7,4 +7,5 @@
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
+#include "libobs/graphics/shader-file.c.h"
 #include "libobs/graphics/shader-parser.c.h"
