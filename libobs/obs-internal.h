@@ -1475,6 +1475,10 @@ struct obs_source_boolean_query_fields {
 };
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
 
+/* Enabled setter adapters: caller rejects NULL and retains the source lifetime. */
+bool *obs_source_enabled_setter_field(obs_source_t *source);
+signal_handler_t *obs_source_enabled_setter_signals(obs_source_t *source);
+
 /* Borrowed procedure-handler address. Caller rejects NULL before access. */
 /* Read-only count address; source lifetime and synchronization stay with C. */
 struct obs_source_filter_count_fields {

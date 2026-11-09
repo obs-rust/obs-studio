@@ -36,7 +36,16 @@ fn stores_before_signal_including_repeated_values() {
         set_enabled(Some(&source), enabled, || panic!("valid source"));
         assert_eq!(source.enabled.get(), enabled);
     }
-    assert_eq!(*source.events.borrow(), [(false, false), (true, true), (true, true), (false, false), (false, false)]);
+    assert_eq!(
+        *source.events.borrow(),
+        [
+            (false, false),
+            (true, true),
+            (true, true),
+            (false, false),
+            (false, false)
+        ]
+    );
 }
 
 #[test]

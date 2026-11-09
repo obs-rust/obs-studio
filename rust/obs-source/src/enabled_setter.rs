@@ -6,6 +6,10 @@ pub trait Source {
 }
 
 pub fn set_enabled(source: Option<&impl Source>, enabled: bool, log_null: impl FnOnce()) {
-    let _ = (source, enabled, log_null);
-    todo!("port obs_source_set_enabled")
+    let Some(source) = source else {
+        log_null();
+        return;
+    };
+    source.store_enabled(enabled);
+    source.signal_enable(enabled);
 }
