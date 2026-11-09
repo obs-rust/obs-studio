@@ -969,25 +969,6 @@ void *obs_hotkey_thread(void *arg)
 	return NULL;
 }
 
-void obs_hotkey_trigger_routed_callback(obs_hotkey_id id, bool pressed)
-{
-	if (!lock())
-		return;
-
-	if (!obs->hotkeys.reroute_hotkeys)
-		goto unlock;
-
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
-	if (!hotkey)
-		goto unlock;
-
-	hotkey->func(hotkey->data, id, hotkey, pressed);
-
-unlock:
-	unlock();
-}
-
 /* The key name store (obs->hotkeys.translations[]): obs_hotkeys_set_translations_s()
  * in obs-hotkey-translations.c.h calls it for each name it sets. Declared in
  * obs-internal.h; not exported. */
