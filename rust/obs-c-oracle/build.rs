@@ -28,6 +28,10 @@ fn oracle_input_hash(roots: &[PathBuf], flags: &[&str]) -> u64 {
             .as_path(),
         &mut mix,
     );
+    hash_file(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("legacy/obs-video-render-size.inc"),
+        &mut mix,
+    );
     let mut hash_inputs: Vec<PathBuf> = Vec::new();
     for root in roots {
         collect_c_sources(root, &mut hash_inputs);
@@ -642,6 +646,12 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-module-init.c.h")),
     )
     .expect("write original module initializer");
+    println!("cargo:rerun-if-changed=legacy/obs-video-render-size.inc");
+    std::fs::write(
+        extract_dir.join("obs-video-render-size.inc"),
+        extract_after_libobs_pch(&manifest.join("legacy/obs-video-render-size.inc")),
+    )
+    .expect("write render size extract");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));

@@ -9,6 +9,9 @@ pub trait Graphics {
 }
 
 /// Preserve the C helper's unsigned-to-float and unsigned-to-int conversions.
-pub fn set_render_size(_width: u32, _height: u32, _graphics: &mut impl Graphics) {
-    todo!()
+pub fn set_render_size(width: u32, height: u32, graphics: &mut impl Graphics) {
+    graphics.depth(false);
+    graphics.cull(2); // GS_NEITHER, checked against the original C by Tier 3.
+    graphics.ortho([0.0, width as f32, 0.0, height as f32, -100.0, 100.0]);
+    graphics.viewport([0, 0, width as i32, height as i32]);
 }

@@ -1,10 +1,11 @@
+/* Private bridge: graphics calls stay bound to the caller's graphics context. */
 #include "libobs/build/libobs.pch.h"
+
+void obs_video_set_render_size(uint32_t width, uint32_t height, void (*depth)(bool), void (*cull)(enum gs_cull_mode),
+			       void (*ortho)(float, float, float, float, float, float),
+			       void (*viewport)(int, int, int, int));
 
 static inline void set_render_size(uint32_t width, uint32_t height)
 {
-	gs_enable_depth_test(false);
-	gs_set_cull_mode(GS_NEITHER);
-
-	gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f, 100.0f);
-	gs_set_viewport(0, 0, (int)width, (int)height);
+	obs_video_set_render_size(width, height, gs_enable_depth_test, gs_set_cull_mode, gs_ortho, gs_set_viewport);
 }
