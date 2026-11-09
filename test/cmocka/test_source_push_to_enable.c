@@ -25,8 +25,7 @@ static void changed(void *param, calldata_t *data)
 	assert_int_equal(enabled, seen->enabled);
 	/* The store precedes the synchronous signal, while audio_mutex is held.
 	 * Read the field here; the public getters lock that same mutex. */
-	assert_int_equal(seen->talk ? seen->source->push_to_talk_enabled : seen->source->push_to_mute_enabled,
-			 enabled);
+	assert_int_equal(seen->talk ? seen->source->push_to_talk_enabled : seen->source->push_to_mute_enabled, enabled);
 	seen->calls++;
 }
 
