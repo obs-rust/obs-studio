@@ -1,24 +1,24 @@
 /* Pin the current C pointer adapters before their Rust port. No graphics device
- * is created: opaque pointer identities are never dereferenced. */
+ * is created: opaque pointer identities are never dereferenced. This tests
+ * the C source only; it cannot exercise a Rust swap until the private symbols
+ * are reachable. Keep this baseline unchanged and cover real callers too. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <string.h>
 #include <cmocka.h>
-#include "libobs/obs-video-frame-copy.c.h"
-#include "libobs/obs-video-stop-requested.c.h"
-#include "libobs/obs-video.c.h"
+#include "libobs/obs-video-scale-effects.c.h"
 
 static void all_effect_presence_masks(void **state)
 {
 	(void)state;
-	static unsigned char identities[5];
+	static gs_effect_t identities[5];
 	for (uint32_t mask = 0; mask < 32; mask++) {
 		struct obs_core_video video = {0};
 		gs_effect_t *effects[5];
 		for (size_t i = 0; i < 5; i++)
-			effects[i] = (mask & (1u << i)) ? (gs_effect_t *)&identities[i] : NULL;
+			effects[i] = (mask & (1u << i)) ? &identities[i] : NULL;
 		video.default_effect = effects[0];
 		video.bilinear_lowres_effect = effects[1];
 		video.bicubic_effect = effects[2];

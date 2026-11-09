@@ -16836,6 +16836,21 @@
         "libobs/data"
       ]
     },
+    "test_video_scale_effect_pointers": {
+      "sources": [
+        "test/cmocka/test_video_scale_effect_pointers.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_video_scaler_direct": {
       "sources": [
         "test/cmocka/test_video_scaler_direct.c"
@@ -24296,6 +24311,12 @@
           "xvfb-run",
           "-a"
         ]
+      ]
+    },
+    "test_video_scale_effect_pointers": {
+      "target": "test_video_scale_effect_pointers",
+      "command": [
+        "${target}"
       ]
     },
     "test_video_scaler_direct": {
