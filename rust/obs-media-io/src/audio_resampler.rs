@@ -74,9 +74,37 @@ pub struct Resampler<H: Host> {
 
 impl<H: Host> Resampler<H> {
     /// Allocate and initialize, releasing a partially initialized host on error.
-    pub fn create(host: H, dst: Info, src: Info) -> Option<Self> {
-        let _ = (host, dst, src);
-        todo!("4271 RED")
+    pub fn create(mut host: H, dst: Info, src: Info) -> Option<Self> {
+        let channels = drift::output_channels(dst.speakers);
+        if !host.alloc(dst, src) {
+            host.log(Event::Allocation);
+            return None;
+        }
+        if drift::layout_mask(src.speakers) == drift::ch_layout::MONO
+            && drift::upmixes_mono(channels)
+            && let Some(row) = drift::upmix_row(channels)
+            && host.matrix(&row) < 0
+        {
+            host.log(Event::Matrix);
+        }
+        let error = host.init();
+        if error != 0 {
+            host.log(Event::Init(error));
+            return None;
+        }
+        Some(Self {
+            host,
+            compensation: Compensation::default(),
+            planes: if drift::planar_output(dst.format) {
+                channels
+            } else {
+                1
+            },
+            src,
+            dst,
+            channels,
+            capacity: 0,
+        })
     }
 
     /// Update the existing lag-lead controller's input error.
@@ -87,7 +115,60 @@ impl<H: Host> Resampler<H> {
     /// Convert a packet. Timestamp is written after compensation succeeds,
     /// even when conversion subsequently fails, matching the public C contract.
     pub fn resample(&mut self, input: H::Input, frames: u32, offset: &mut u64) -> Option<u32> {
-        let _ = (input, frames, offset);
-        todo!("4271 RED")
+        if self.compensation.enabled {
+            let action = drift::step(&mut self.compensation, self.src.rate, frames);
+            if action != drift::Action::Idle {
+                if action == drift::Action::Engage {
+                    self.host.log(Event::Engage);
+                }
+                let error = self.host.compensate(
+                    drift::delta(&self.compensation, self.src.rate),
+                    drift::DISTANCE,
+                );
+                if error < 0 {
+                    self.host.log(Event::Compensation(error));
+                    return None;
+                }
+            }
+        }
+        let delay = self.host.delay(i64::from(self.src.rate));
+        // The C casts FFmpeg's int64 estimate to int before adding padding.
+        let estimate = self.host.rescale(
+            delay.wrapping_add(i64::from(frames)),
+            i64::from(self.dst.rate),
+            i64::from(self.src.rate),
+        );
+        #[allow(clippy::as_conversions)] // original narrowing int cast
+        let estimate = drift::output_frames(estimate as i32, self.compensation.engaged);
+        *offset = self.host.delay(1_000_000_000).cast_unsigned();
+        if estimate > self.capacity {
+            self.host.resize(
+                self.channels,
+                estimate,
+                drift::sample_format(self.dst.format),
+            );
+            self.capacity = estimate;
+        }
+        let converted = self
+            .host
+            .convert(self.capacity, input, frames.cast_signed());
+        if converted < 0 {
+            self.host.log(Event::Convert(converted));
+            return None;
+        }
+        drift::count(&mut self.compensation, frames, converted);
+        Some(converted.cast_unsigned())
+    }
+}
+
+impl<H: Host> Drop for Resampler<H> {
+    fn drop(&mut self) {
+        if drift::reports_drift(&self.compensation) {
+            self.host.log(Event::Drift(
+                self.compensation.input_samples,
+                self.compensation.output_samples,
+                drift::input_rate(&self.compensation, self.dst.rate),
+            ));
+        }
     }
 }
