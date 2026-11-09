@@ -28,6 +28,15 @@ pub fn create<B: Backend>(
     count: usize,
     flags: u32,
 ) -> Option<B::Buffer> {
-    let _ = (backend, kind, input, count, flags);
-    todo!()
+    let backend = backend?;
+    let input = input.map(|input| {
+        if count != 0 && flags & DUP_BUFFER != 0 {
+            let width = if kind == UNSIGNED_SHORT { 2usize } else { 4 };
+            // Match unsigned C size_t multiplication, including wraparound.
+            backend.duplicate(input, count.wrapping_mul(width))
+        } else {
+            input
+        }
+    });
+    Some(backend.create(kind, input, count, flags))
 }

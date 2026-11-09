@@ -657,6 +657,8 @@ fn main() {
         "voltexture-metadata",
         "vertexbuffer-destroy",
         "blend-entrypoints-fields",
+        "indexbuffer-create",
+        "indexbuffer-create-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

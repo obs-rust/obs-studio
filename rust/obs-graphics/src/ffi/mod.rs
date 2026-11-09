@@ -25,6 +25,7 @@ pub mod image_rgba64;
 pub mod image_route;
 pub mod immediate;
 pub mod immediate_scalars;
+pub mod indexbuffer_create;
 pub mod linear_srgb;
 pub mod lzw;
 pub mod math_extra;
