@@ -1279,32 +1279,6 @@ uint32_t obs_output_get_height(const obs_output_t *output)
 	return obs_output_get_height2(output, 0);
 }
 
-void obs_output_set_video_conversion(obs_output_t *output, const struct video_scale_info *conversion)
-{
-	if (!obs_output_valid(output, "obs_output_set_video_conversion"))
-		return;
-	if (!obs_ptr_valid(conversion, "obs_output_set_video_conversion"))
-		return;
-	if (log_flag_encoded(output, __func__, true) || !log_flag_video(output, __func__))
-		return;
-
-	output->video_conversion = *conversion;
-	output->video_conversion_set = true;
-}
-
-void obs_output_set_audio_conversion(obs_output_t *output, const struct audio_convert_info *conversion)
-{
-	if (!obs_output_valid(output, "obs_output_set_audio_conversion"))
-		return;
-	if (!obs_ptr_valid(conversion, "obs_output_set_audio_conversion"))
-		return;
-	if (log_flag_encoded(output, __func__, true) || !log_flag_audio(output, __func__))
-		return;
-
-	output->audio_conversion = *conversion;
-	output->audio_conversion_set = true;
-}
-
 /* The flags and limits obs-output-video-checks.h copies. */
 _Static_assert(OBS_OUTPUT_VIDEO_CHECKS_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
 _Static_assert(OBS_OUTPUT_VIDEO_CHECKS_AUDIO == OBS_OUTPUT_AUDIO, "OBS_OUTPUT_AUDIO");
@@ -2642,30 +2616,6 @@ const char *obs_get_output_supported_audio_codecs(const char *id)
 {
 	const struct obs_output_info *info = find_output(id);
 	return info ? info->encoded_audio_codecs : NULL;
-}
-
-void obs_output_add_packet_callback(obs_output_t *output,
-				    void (*packet_cb)(obs_output_t *output, struct encoder_packet *pkt,
-						      struct encoder_packet_time *pkt_time, void *param),
-				    void *param)
-{
-	struct packet_callback data = {packet_cb, param};
-
-	pthread_mutex_lock(&output->pkt_callbacks_mutex);
-	da_insert(output->pkt_callbacks, 0, &data);
-	pthread_mutex_unlock(&output->pkt_callbacks_mutex);
-}
-
-void obs_output_remove_packet_callback(obs_output_t *output,
-				       void (*packet_cb)(obs_output_t *output, struct encoder_packet *pkt,
-							 struct encoder_packet_time *pkt_time, void *param),
-				       void *param)
-{
-	struct packet_callback data = {packet_cb, param};
-
-	pthread_mutex_lock(&output->pkt_callbacks_mutex);
-	da_erase_item(output->pkt_callbacks, &data);
-	pthread_mutex_unlock(&output->pkt_callbacks_mutex);
 }
 
 void obs_output_set_reconnect_callback(obs_output_t *output,
