@@ -8,12 +8,22 @@ pub fn orientation(
     matrix: impl FnOnce() -> Option<[i32; 9]>,
     convert: impl FnOnce(&[i32; 9]) -> i32,
 ) -> i32 {
-    let _ = (metadata, matrix, convert);
-    todo!()
+    if let Some(value) = metadata() {
+        return value;
+    }
+    matrix().map_or(0, |matrix| convert(&matrix))
 }
 
 /// Read exactly nine native-endian matrix elements, including unaligned data.
 pub fn matrix_bytes(bytes: &[u8]) -> Option<[i32; 9]> {
-    let _ = bytes;
-    todo!()
+    let bytes = bytes.get(..36)?;
+    Some(core::array::from_fn(|i| {
+        let start = i * 4;
+        i32::from_ne_bytes([
+            bytes[start],
+            bytes[start + 1],
+            bytes[start + 2],
+            bytes[start + 3],
+        ])
+    }))
 }

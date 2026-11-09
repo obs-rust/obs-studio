@@ -23,6 +23,7 @@
 
 /* graphics/graphics-ffmpeg-orient.c (ported; graphics-ffmpeg.c calls it) */
 #include "graphics/graphics-ffmpeg-orient.h"
+#include "graphics/graphics-ffmpeg-orientation.h"
 
 /* graphics/graphics-ffmpeg-rgba64.c (ported; graphics-ffmpeg.c calls it) */
 #include "graphics/graphics-ffmpeg-rgba64.h"

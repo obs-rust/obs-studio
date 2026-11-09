@@ -625,6 +625,28 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
+    // The original FFmpeg selector, without its production PCH or reference
+    // entry point. Both version branches compile over narrow access doubles.
+    let orientation = extract_after_pch(
+        &libobs.join("graphics/graphics-ffmpeg-orientation.c.h"),
+        "#include \"libobs/build/libobs-media.pch.h\"",
+    );
+    std::fs::write(
+        extract_dir.join("image-orientation.inc"),
+        orientation
+            .split("/* C-reference entry point")
+            .next()
+            .expect("selector precedes reference entry point"),
+    )
+    .expect("write image orientation extract");
+    std::fs::write(
+        extract_dir.join("image-orientation-fields.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/graphics-ffmpeg-orientation-fields.c.h"),
+            "#include \"libobs/build/libobs-media.pch.h\"",
+        ),
+    )
+    .expect("write orientation fields extract");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));

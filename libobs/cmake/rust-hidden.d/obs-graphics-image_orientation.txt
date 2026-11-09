@@ -1,0 +1,1 @@
+gs_ffmpeg_image_get_orientation
