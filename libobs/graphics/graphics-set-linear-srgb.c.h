@@ -17,6 +17,5 @@ bool gs_set_linear_srgb(bool linear_srgb)
 	return previous;
 }
 
-
 #undef gs_valid
 #undef thread_graphics
