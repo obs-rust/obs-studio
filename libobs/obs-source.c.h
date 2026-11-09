@@ -4088,11 +4088,6 @@ obs_source_t *obs_source_get_filter_by_name(obs_source_t *source, const char *na
 	return filter;
 }
 
-size_t obs_source_filter_count(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_filter_count") ? source->filters.num : 0;
-}
-
 void obs_source_set_enabled(obs_source_t *source, bool enabled)
 {
 	struct calldata data;
