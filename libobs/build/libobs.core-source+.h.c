@@ -28,6 +28,7 @@
 #include "libobs/obs-source-boolean-query-fields.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
+#include "libobs/obs-source-filter-count.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-identity-getter-fields.c.h"
