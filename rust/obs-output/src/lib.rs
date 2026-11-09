@@ -119,6 +119,7 @@
 
 pub mod caption_text;
 pub mod delay;
+pub mod encoder_audio_buffers;
 pub mod encoder_audio_getters;
 pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;
