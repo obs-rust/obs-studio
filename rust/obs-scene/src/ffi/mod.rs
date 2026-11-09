@@ -33,4 +33,5 @@ pub mod item_transform_getters;
 
 pub mod item_transition_getters;
 
+pub mod item_group_scene;
 pub mod item_visible;
