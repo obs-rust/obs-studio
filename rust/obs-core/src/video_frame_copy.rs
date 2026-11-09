@@ -220,8 +220,10 @@ pub fn copy_rgbx_frame(
 ///
 /// [`gpu_copy_plan`]: crate::video_copy_plan::gpu_copy_plan
 #[must_use]
-#[allow(clippy::todo)]
 pub fn line_sizes_read(format: Option<VideoFormat>) -> usize {
-    let _ = format;
-    todo!()
+    match format {
+        Some(VideoFormat::I420 | VideoFormat::I444 | VideoFormat::I010) => 3,
+        Some(VideoFormat::Nv12 | VideoFormat::P010 | VideoFormat::P216 | VideoFormat::P416) => 2,
+        _ => 0,
+    }
 }

@@ -6,8 +6,9 @@
 //! (GPU conversion or not) and unlocks the frame; these run the copy. Each
 //! reads only the fields the C reads, one at a time, where and under the
 //! condition the C reads them (the output info's format and size and the
-//! line sizes for the plan, then each copy's plane pointers in its turn;
-//! never `input->data[1]` of a packed frame), makes the plan in Rust ([`gpu_copy_plan`], [`rgbx_copy_plan`]), and runs
+//! line sizes the format's plan uses, [`line_sizes_read`], then each copy's
+//! plane pointers in its turn; never `input->data[1]` of a packed frame),
+//! makes the plan in Rust ([`gpu_copy_plan`], [`rgbx_copy_plan`]), and runs
 //! every copy of it ([`video_frame_copy`]) over slices made from the planes
 //! for exactly the bytes [`src_len`] and [`dst_len`] say that copy reads and
 //! writes, one copy at a time: no two slices of an output frame are alive at
@@ -26,6 +27,7 @@
 //! [`video_frame_copy`]: crate::video_frame_copy
 //! [`src_len`]: crate::video_frame_copy::src_len
 //! [`dst_len`]: crate::video_frame_copy::dst_len
+//! [`line_sizes_read`]: crate::video_frame_copy::line_sizes_read
 
 use core::slice;
 
@@ -103,7 +105,9 @@ unsafe fn output_plane(output: *const video_frame, i: usize) -> Option<*mut u8> 
 /// struct video_data *input, const struct video_output_info *info)`.
 ///
 /// Reads what the C reads, in its order: `info->format`, `->width` and
-/// `->height` and both frames' first three line sizes for the plan; then,
+/// `->height` and the leading line sizes of both frames the format's plan
+/// uses ([`line_sizes_read`](frame_copy::line_sizes_read): three, two or
+/// none); then,
 /// copy by copy, `input->data[i]` (not for the copy after plane 0, which
 /// continues from plane 0's pointer) and `output->data[i]`. A plan with no
 /// copies reads no plane pointer.
@@ -121,15 +125,26 @@ pub unsafe extern "C" fn obs_video_set_gpu_converted_data(
     info: *const video_output_info,
 ) {
     // SAFETY: three readable structs (caller contract); each field is read
-    // on its own, as the C reads it.
+    // on its own, as the C reads it, and only the line sizes the format's
+    // plan reads (the rest stay 0).
     let plan = unsafe {
-        gpu_copy_plan(
-            video_format_from_c((*info).format),
-            (*info).width,
-            (*info).height,
-            &(&raw const (*input).linesize).cast::<LineSizes>().read(),
-            &(&raw const (*output).linesize).cast::<LineSizes>().read(),
-        )
+        let format = video_format_from_c((*info).format);
+        let (width, height) = ((*info).width, (*info).height);
+        let n = frame_copy::line_sizes_read(format);
+        let mut in_lines: LineSizes = [0; 3];
+        let mut out_lines: LineSizes = [0; 3];
+        let in_ls = (&raw const (*input).linesize).cast::<u32>();
+        let out_ls = (&raw const (*output).linesize).cast::<u32>();
+        for (i, (a, b)) in in_lines
+            .iter_mut()
+            .zip(out_lines.iter_mut())
+            .enumerate()
+            .take(n)
+        {
+            *a = in_ls.add(i).read();
+            *b = out_ls.add(i).read();
+        }
+        gpu_copy_plan(format, width, height, &in_lines, &out_lines)
     };
     // input->data[0], as copy 0 read it: the copy after plane 0 continues
     // from it
