@@ -30,6 +30,7 @@ pub mod shader_param_values;
 pub mod shader_parser;
 pub mod shader_sampler_convert;
 pub mod sprite;
+pub mod stagesurface_getters;
 pub mod state_stacks;
 pub mod texture_render;
 pub mod vec2;
