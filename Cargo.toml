@@ -69,6 +69,11 @@ lto = "thin"
 [profile.release.package.obs-hotkey]
 codegen-units = 256
 
+# Standalone scene-rule fixtures must not pull source-lifetime calls from the
+# transition setter shims into the same optimized archive member.
+[profile.release.package.obs-scene]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]

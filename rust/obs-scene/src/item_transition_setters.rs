@@ -12,12 +12,19 @@ pub trait Item {
 
 /// Replace only the selected transition; absent items do nothing.
 pub fn set_transition<I: Item>(item: Option<&mut I>, show: bool, source: Option<I::Source>) {
-    let _ = (item, show, source);
-    todo!()
+    let Some(item) = item else {
+        return;
+    };
+    if let Some(old) = item.transition(show) {
+        item.release(old);
+    }
+    let replacement = item.get_ref(source);
+    item.store_transition(show, replacement);
 }
 
 /// Store the complete unsigned duration; absent items do nothing.
 pub fn set_duration<I: Item>(item: Option<&mut I>, show: bool, duration: u32) {
-    let _ = (item, show, duration);
-    todo!()
+    if let Some(item) = item {
+        item.store_duration(show, duration);
+    }
 }
