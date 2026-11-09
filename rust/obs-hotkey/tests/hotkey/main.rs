@@ -1,6 +1,7 @@
 //! obs-hotkey integration tests: hotkey (one module per former tests/*.rs file, #968).
 
 mod background_app_id;
+mod background_control;
 mod background_app_id_parity;
 mod background_enum;
 mod background_enum_parity;
