@@ -204,6 +204,64 @@ async def measure(args: argparse.Namespace) -> dict:
     return result
 
 
+async def video_probe(args: argparse.Namespace) -> dict:
+    """Render-to-device latency of the Virtual Camera alone: a full-canvas
+    white color source is shown and hidden at known times, so no media
+    decoding is in the path (#4119)."""
+    import av
+    import websockets
+
+    work = Path(tempfile.mkdtemp(prefix="vcam-video-probe-"))
+    capture = work / "video.mkv"
+    toggles: list[tuple[float, bool]] = []
+    async with websockets.connect(args.url, subprotocols=["obswebsocket.json"]) as ws:
+        await ws.recv()
+        await ws.send(json.dumps({"op": 1, "d": {"rpcVersion": 1}}))
+        await ws.recv()
+        video = await obs_request(ws, "GetVideoSettings")
+        scene = (await obs_request(ws, "GetCurrentProgramScene"))["currentProgramSceneName"]
+        if not (await obs_request(ws, "GetVirtualCamStatus"))["outputActive"]:
+            await obs_request(ws, "StartVirtualCam")
+            await asyncio.sleep(2)
+        created = await obs_request(ws, "CreateInput", {
+            "sceneName": scene, "inputName": SOURCE_NAME, "inputKind": "color_source_v3",
+            "inputSettings": {"color": 0xFFFFFFFF, "width": video["baseWidth"], "height": video["baseHeight"]},
+            "sceneItemEnabled": False})
+        item = created["sceneItemId"]
+        try:
+            recorder = subprocess.Popen(
+                ["ffmpeg", "-loglevel", "error", "-y", "-f", "v4l2", "-ts", "abs", "-i", args.device,
+                 "-map", "0:v", "-c:v", "ffv1", "-copyts", str(capture)])
+            await asyncio.sleep(1.5)
+            for i in range(2 * args.toggles):
+                on = i % 2 == 0
+                sent = time.time()
+                await obs_request(ws, "SetSceneItemEnabled",
+                                  {"sceneName": scene, "sceneItemId": item, "sceneItemEnabled": on})
+                toggles.append(((sent + time.time()) / 2, on))
+                await asyncio.sleep(0.7)
+            recorder.send_signal(signal.SIGINT)
+            await asyncio.to_thread(recorder.wait)
+        finally:
+            await obs_request(ws, "RemoveInput", {"inputName": SOURCE_NAME})
+    times, luma = [], []
+    with av.open(str(capture)) as container:
+        stream = container.streams.video[0]
+        for frame in container.decode(stream):
+            if frame.pts is not None:
+                times.append(float(frame.pts * stream.time_base))
+                luma.append(float(frame.to_ndarray(format="gray").mean()))
+    mid = (min(luma) + max(luma)) / 2
+    lat = []
+    for t, on in toggles:
+        edge = next((ft for ft, lv in zip(times, luma) if ft > t and (lv > mid) == on), None)
+        if edge is not None:
+            lat.append(round((edge - t) * 1000, 1))
+    fps = video["fpsNumerator"] / video["fpsDenominator"]
+    return {"fps": fps, "frame_ms": round(1000 / fps, 1), "video_latency_ms": lat,
+            "median_ms": float(np.median(lat)) if lat else None, "capture": str(capture)}
+
+
 def analyze(capture: Path, events: list[float], restarted: float | None = None) -> dict:
     flashes, beeps = read_capture(capture)
     vlag, vmatched = align(flashes, events, CLIP_SECONDS)
@@ -234,7 +292,14 @@ def main(argv: list[str]) -> int:
     a.add_argument("capture", type=Path)
     c = sub.add_parser("clip")
     c.add_argument("out", type=Path)
+    v = sub.add_parser("video-probe", help="render-to-device latency, no media source")
+    v.add_argument("--url", default="ws://127.0.0.1:4455")
+    v.add_argument("--device", default="/dev/video9")
+    v.add_argument("--toggles", type=int, default=5)
     args = parser.parse_args(argv)
+    if args.cmd == "video-probe":
+        print(json.dumps(asyncio.run(video_probe(args))))
+        return 0
     if args.cmd == "clip":
         write_clip(args.out)
         print(json.dumps({"clip": str(args.out), "events": EVENTS}))
