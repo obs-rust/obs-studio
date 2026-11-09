@@ -27,6 +27,7 @@ mod encoder_gpu_scaling_getters;
 mod encoder_gpu_scaling_getters_parity;
 mod encoder_group_reconfig;
 mod encoder_group_reconfig_parity;
+mod encoder_init;
 mod encoder_last_error;
 mod encoder_last_error_parity;
 mod encoder_lifecycle;
