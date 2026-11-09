@@ -92,6 +92,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-group-query-link-stubs.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
+                    "test/cmocka/scene-item-visible-link-support.c",
                     "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                 ])
@@ -200,6 +201,28 @@ class NativeB2Portability(unittest.TestCase):
         legacy = (ROOT / "test/cmocka/tests.d/scene_item_parent_getter_link_support.cmake").read_text()
         self.assertIn("scene-item-parent-getter-link-stub.c", legacy)
         self.assertIn("libobs_rust-static", legacy)
+
+    def test_scene_visibility_supplies_live_atomic_adapter_to_static_consumers(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-item-visible.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if name.startswith("test_scene") and "libobs_rust-static" in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        adapter = "test/cmocka/scene-item-visible-link-support.c"
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(support[name]["sources"], [adapter])
+                self.assertEqual(graph["targets"][name]["sources"].count(adapter), 1)
+                self.assertIn("libobs", graph["targets"][name]["includes"])
+        for path in [adapter, "libobs/obs-scene-item-visible-fields.c.h"]:
+            text = (ROOT / path).read_text()
+            self.assertIn("return os_atomic_load_bool(&item->user_visible);", text)
+            self.assertNotIn("abort(", text)
+        legacy = (ROOT / "test/cmocka/tests.d/scene_item_visible_link_support.cmake").read_text()
+        self.assertIn("scene-item-visible-link-support.c", legacy)
+        self.assertIn("libobs_rust-static", legacy)
+        self.assertIn("OBS::w32-pthreads", legacy)
 
     def test_scene_source_getters_supply_all_static_consumers(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

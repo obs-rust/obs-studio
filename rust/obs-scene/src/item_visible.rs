@@ -2,6 +2,5 @@
 
 /// Return false for an absent item, otherwise its atomically read user visibility.
 pub fn visible(user_visible: Option<bool>) -> bool {
-    let _ = user_visible;
-    todo!("port obs_sceneitem_visible")
+    user_visible.unwrap_or(false)
 }
