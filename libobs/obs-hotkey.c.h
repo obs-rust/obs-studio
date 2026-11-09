@@ -51,28 +51,6 @@ void obs_hotkeys_mutex_unlock(void)
 	pthread_mutex_unlock(&obs->hotkeys.mutex);
 }
 
-void obs_hotkey_set_name(obs_hotkey_id id, const char *name)
-{
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
-	if (!hotkey)
-		return;
-
-	bfree(hotkey->name);
-	hotkey->name = bstrdup(name);
-}
-
-void obs_hotkey_set_description(obs_hotkey_id id, const char *desc)
-{
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
-	if (!hotkey)
-		return;
-
-	bfree(hotkey->description);
-	hotkey->description = bstrdup(desc);
-}
-
 void obs_hotkey_pair_set_names(obs_hotkey_pair_id id, const char *name0, const char *name1)
 {
 	obs_hotkey_pair_t *pair;
