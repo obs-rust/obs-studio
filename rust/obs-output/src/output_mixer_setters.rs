@@ -14,5 +14,17 @@ pub fn decide(
     active: impl FnOnce() -> bool,
     mask: usize,
 ) -> Decision {
-    todo!()
+    if !present {
+        return Decision::Null;
+    }
+    if encoded {
+        return Decision::Encoded;
+    }
+    if index.is_some_and(|i| !crate::output_slots::mixer_in_range(i)) {
+        return Decision::InvalidIndex;
+    }
+    if active() {
+        return Decision::Active;
+    }
+    Decision::Set(index.map_or(mask, crate::output_slots::mixer_mask))
 }

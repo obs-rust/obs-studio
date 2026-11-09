@@ -1,8 +1,18 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-output-mixer-setters.pch.h"
 
-/* Defined by obs-output.c.h later in the core-output unity group. */
-static inline bool active(const struct obs_output *output);
-static inline bool log_flag_encoded(const struct obs_output *output, const char *func_name, bool inverse_log);
+static inline bool active(const struct obs_output *output)
+{
+	return os_atomic_load_bool(&output->active);
+}
+static inline bool log_flag_encoded(const struct obs_output *output, const char *func_name, bool inverse_log)
+{
+	const char *prefix = inverse_log ? "n encoded" : " raw";
+	bool ret = (output->info.flags & OBS_OUTPUT_ENCODED) != 0;
+	if ((!inverse_log && !ret) || (inverse_log && ret))
+		blog(LOG_WARNING, "Output '%s': Tried to use %s on a%s output", output->context.name, func_name,
+		     prefix);
+	return ret;
+}
 
 void obs_output_set_mixer(obs_output_t *output, size_t mixer_idx)
 {

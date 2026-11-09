@@ -39,7 +39,7 @@
 #include "libobs/obs-output-identity-fields.c.h"
 #include "libobs/obs-output-last-error-fields.c.h"
 #include "libobs/obs-output-mixer-getters-fields.c.h"
-#include "libobs/obs-output-mixer-setters.c.h"
+#include "libobs/obs-output-mixer-setters-fields.c.h"
 #include "libobs/obs-output-packet-callbacks.c.h"
 #include "libobs/obs-output-pause-queries-fields.c.h"
 #include "libobs/obs-output-properties.c.h"
