@@ -146,6 +146,20 @@ static inline void full_unlock(struct obs_scene *scene)
 	video_unlock(scene);
 }
 
+/* Private boundary for the extracted atomic update callback. */
+void obs_scene_atomic_full_lock(obs_scene_t *scene);
+void obs_scene_atomic_full_unlock(obs_scene_t *scene);
+
+void obs_scene_atomic_full_lock(obs_scene_t *scene)
+{
+	full_lock(scene);
+}
+
+void obs_scene_atomic_full_unlock(obs_scene_t *scene)
+{
+	full_unlock(scene);
+}
+
 /* The transform fields of an item: the render path reads them under the
  * parent's video lock, so a setter or getter on another thread takes it too.
  * Hold it only for the fields: no signal, and no call into a plugin (#3569). */
@@ -2929,21 +2943,6 @@ bool obs_scene_reorder_items(obs_scene_t *scene, obs_sceneitem_t *const *item_or
 	signal_reorder(scene->first_item);
 	obs_scene_release(scene);
 	return true;
-}
-
-void obs_scene_atomic_update(obs_scene_t *scene, obs_scene_atomic_update_func func, void *data)
-{
-	if (!scene)
-		return;
-
-	scene = obs_scene_get_ref(scene);
-	if (!scene)
-		return;
-
-	full_lock(scene);
-	func(data, scene);
-	full_unlock(scene);
-	obs_scene_release(scene);
 }
 
 static inline bool crop_equal(const struct obs_sceneitem_crop *crop1, const struct obs_sceneitem_crop *crop2)
