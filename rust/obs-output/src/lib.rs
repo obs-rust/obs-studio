@@ -174,6 +174,7 @@ pub mod output_pause;
 pub mod output_pause_queries;
 pub mod output_protocols;
 pub mod output_reconnect;
+pub mod output_reconnect_callback;
 pub mod output_reconnect_settings;
 pub mod output_reconnecting;
 pub mod output_service_getter;
