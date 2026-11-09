@@ -45,6 +45,7 @@ mod draw_plan_parity;
 mod enabled_setter;
 mod enabled_setter_parity;
 mod filter_count;
+mod filter_index;
 mod filter_count_parity;
 mod filter_relationship_getters;
 mod filter_relationship_getters_parity;
