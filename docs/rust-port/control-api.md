@@ -17,7 +17,8 @@ response structs, never positional multi-argument methods.
 
 Malformed requests and typed arguments are JSON-RPC errors. Domain failures
 return isError and ToolError {code, category, message, retryable}, using
-obs-websocket v5 status ranges: 5xx missing/not ready, 6xx state, 7xx processing.
+obs-websocket v5 codes: 600 ResourceNotFound, 207 NotReady, 604 InvalidResourceState
+and 702 RequestProcessingFailed. Categories are independent of numeric ranges.
 Read operations have readOnlyHint; start/stop are idempotent.
 
 ## State and measurements
