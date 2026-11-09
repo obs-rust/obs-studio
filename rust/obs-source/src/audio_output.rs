@@ -324,6 +324,18 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
         // reset_audio_timing() for the audio's own timing
         source.set_own_clock_timing_adjust(os_time.wrapping_sub(packet.timestamp));
         source.set_own_clock_timing_set(true);
+    } else if !on_video_clock
+        && packet
+            .timestamp
+            .wrapping_add(source.own_clock_timing_adjust())
+            .wrapping_sub(os_time)
+            .cast_signed()
+            > audio_timing::TS_SMOOTHING_THRESHOLD.cast_signed()
+    {
+        // A sender clock faster than the system clock places its audio later
+        // and later after its arrival, and no other path moves this timing
+        // (#4143): take the timing of this packet again.
+        source.set_own_clock_timing_adjust(os_time.wrapping_sub(packet.timestamp));
     }
     let packet_timing_adjust = if on_video_clock {
         source.timing_adjust()
