@@ -814,6 +814,12 @@ area.
 
 ### Video capture
 
+- I420 recordings and raw video output no longer have sheared chroma when
+  the output width is four pixels past a multiple of eight (for example 1364)
+  with the OpenGL renderer. *Linux, macOS*, pending merge. Issue
+  [#4126](https://github.com/obs-rust/obs-studio/issues/4126), PR
+  [#4132](https://github.com/obs-rust/obs-studio/pull/4132).
+
 - A macOS display capture no longer keeps showing the last frame after its
   display is unplugged, moved to another port or reconfigured: it notices the
   display configuration change, waits for the display it was created for, and
