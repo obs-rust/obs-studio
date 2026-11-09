@@ -17,3 +17,5 @@ obs_data_json_decref
 # __isPlatformVersionAtLeast) that Rust's compiler_builtins brings in; the C
 # build does not export them.
 __is*VersionAtLeast macos
+
+obs_canvas_signals_private

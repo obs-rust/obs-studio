@@ -654,6 +654,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-core-global-getters.c.h")),
     )
     .expect("write global getter extract");
+    std::fs::write(
+        extract_dir.join("canvas-signals.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-canvas-signals.c.h")),
+    )
+    .expect("write canvas signal extract");
     oracle.include(&extract_dir);
 
     oracle

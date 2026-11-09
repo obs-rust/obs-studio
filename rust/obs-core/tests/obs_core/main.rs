@@ -24,6 +24,7 @@ mod canvas_readonly_getters_parity;
 mod canvas_rules;
 mod canvas_rules_parity;
 mod canvas_signals;
+mod canvas_signals_parity;
 mod canvas_video_getter;
 mod canvas_video_getter_parity;
 mod canvas_video_info_getter;
