@@ -3114,11 +3114,6 @@ void obs_sceneitem_defer_group_resize_end(obs_sceneitem_t *item)
 		os_atomic_set_bool(&item->update_group_resize, true);
 }
 
-void obs_sceneitem_set_id(obs_sceneitem_t *item, int64_t id)
-{
-	item->id = id;
-}
-
 obs_data_t *obs_sceneitem_get_private_settings(obs_sceneitem_t *item)
 {
 	if (!obs_ptr_valid(item, "obs_sceneitem_get_private_settings"))
