@@ -11,6 +11,9 @@ static unsigned log_count;
 static int log_level;
 static char log_message[128];
 
+#if defined(__GNUC__)
+__attribute__((format(printf, 2, 0)))
+#endif
 static void capture_log(int level, const char *format, va_list args, void *param)
 {
 	(void)param;
