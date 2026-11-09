@@ -1929,6 +1929,8 @@ struct obs_output_service_getter_fields {
 };
 extern struct obs_output_service_getter_fields obs_output_service_getter_fields(const obs_output_t *output);
 
+extern obs_data_t *const *obs_output_settings_fields(const obs_output_t *output);
+
 /* Borrowed instance identity fields; reject NULL before taking member addresses. */
 struct obs_output_identity_fields {
 	const char *const *id;

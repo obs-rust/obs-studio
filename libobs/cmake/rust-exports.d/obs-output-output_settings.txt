@@ -1,0 +1,1 @@
+obs_output_get_settings

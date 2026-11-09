@@ -6,6 +6,14 @@ pub fn settings<T: Copy + Default>(
     addref: impl FnOnce(T),
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (output, addref, log);
-    todo!()
+    match output {
+        Some(data) => {
+            addref(data);
+            data
+        }
+        None => {
+            log(c"obs_output_get_settings");
+            T::default()
+        }
+    }
 }
