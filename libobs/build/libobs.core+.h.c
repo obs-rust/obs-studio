@@ -6,6 +6,7 @@
 #include "libobs/obs-core-frame-interval-fields.c.h"
 #include "libobs/obs-core-global-fields.c.h"
 #include "libobs/obs-core-initialized-fields.c.h"
+#include "libobs/obs-core-output-protocol-registry.c.h"
 #include "libobs/obs-core-texture-activity-fields.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
