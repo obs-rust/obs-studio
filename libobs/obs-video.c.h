@@ -597,9 +597,9 @@ static inline void output_video_data(struct obs_core_video_mix *video, struct vi
 	locked = video_output_lock_frame(video->video, &output_frame, count, input_frame->timestamp);
 	if (locked) {
 		if (video->gpu_conversion) {
-			set_gpu_converted_data(&output_frame, input_frame, info);
+			obs_video_set_gpu_converted_data(&output_frame, input_frame, info);
 		} else {
-			copy_rgbx_frame(&output_frame, input_frame, info);
+			obs_video_copy_rgbx_frame(&output_frame, input_frame, info);
 		}
 
 		video_output_unlock_frame(video->video);
