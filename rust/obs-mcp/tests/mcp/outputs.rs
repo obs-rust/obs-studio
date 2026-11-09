@@ -95,8 +95,15 @@ fn lists_six_tools_with_empty_object_schemas() {
     );
     for t in tools {
         let snapshot = obs_mcp::tools::schema_snapshot();
-        let contract = snapshot["tools"].as_array().unwrap().iter().find(|entry| entry["name"] == t["name"]).unwrap();
-        for field in ["inputSchema", "outputSchema", "annotations"] { assert_eq!(t[field], contract[field]); }
+        let contract = snapshot["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["name"] == t["name"])
+            .unwrap();
+        for field in ["inputSchema", "outputSchema", "annotations"] {
+            assert_eq!(t[field], contract[field]);
+        }
 
         assert_eq!(t["inputSchema"]["type"], "object");
         assert_eq!(t["inputSchema"]["properties"], json!({}));

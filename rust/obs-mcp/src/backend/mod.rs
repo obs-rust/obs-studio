@@ -31,8 +31,10 @@ use serde_json::{Value, json};
 use crate::ffi::{self, CpuUsage, Output, Source};
 use crate::resources::stats::{Stats, StatsBackend};
 use crate::resources::{self, ResourceRegistry};
-use crate::server::{Server, ToolRegistry};
-use crate::tools::outputs::{self, OutputBackend, OutputKind, OutputStatus};
+use crate::server::{Server, ToolError, ToolRegistry};
+use crate::tools::outputs::{
+    self, ActiveOutput, OutputBackend, OutputKind, OutputRequest, OutputStatus,
+};
 use crate::tools::scenes::{self, SceneBackend};
 use crate::tools::screenshot::{self, CaptureBackend, Frame};
 use crate::tools::sources::{self, ItemInfo, ItemRef, SourceBackend, SourceInfo, Transform};
@@ -334,6 +336,30 @@ fn narrow(value: f64) -> f32 {
 }
 
 impl OutputBackend for ObsBackend {
+    fn start_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        let output = self.output(request.kind).map_err(ToolError::not_ready)?;
+        if !output.active() {
+            if request.kind == OutputKind::Record {
+                self.prepare_recording(&output)
+                    .map_err(ToolError::processing)?;
+            }
+            output.start().map_err(ToolError::processing)?;
+        }
+        Ok(ActiveOutput {
+            active: output.active(),
+        })
+    }
+
+    fn stop_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        let output = self.output(request.kind).map_err(ToolError::not_ready)?;
+        if output.active() {
+            output.stop();
+        }
+        Ok(ActiveOutput {
+            active: output.active(),
+        })
+    }
+
     fn start(&self, kind: OutputKind) -> Result<(), String> {
         let output = self.output(kind)?;
         if output.active() {

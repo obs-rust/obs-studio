@@ -79,7 +79,7 @@ fn domain_errors_have_machine_readable_status() {
     assert_eq!(response["result"]["isError"], true);
     assert_eq!(
         response["result"]["structuredContent"],
-        json!({"code":700,"category":"processing","message":"deliberate failure","retryable":false})
+        json!({"code":702,"category":"processing","message":"deliberate failure","retryable":false})
     );
     let text: serde_json::Value =
         serde_json::from_str(response["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
@@ -91,8 +91,21 @@ fn schema_snapshot_has_not_drifted() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/rust-port/control-api.schema.json");
     if std::env::var_os("OBS_UPDATE_CONTROL_SCHEMA").is_some() {
-        std::fs::write(&path, format!("{{\n  \"toolError\": {},\n  \"tools\": [\n{}\n  ]\n}}\n",
-                actual["toolError"], actual["tools"].as_array().unwrap().iter().map(|tool| format!("    {tool}")).collect::<Vec<_>>().join(",\n"))).unwrap();
+        std::fs::write(
+            &path,
+            format!(
+                "{{\n  \"toolError\": {},\n  \"tools\": [\n{}\n  ]\n}}\n",
+                actual["toolError"],
+                actual["tools"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|tool| format!("    {tool}"))
+                    .collect::<Vec<_>>()
+                    .join(",\n")
+            ),
+        )
+        .unwrap();
     }
     let expected: serde_json::Value =
         serde_json::from_slice(&std::fs::read(path).expect("committed schema snapshot")).unwrap();
@@ -100,4 +113,18 @@ fn schema_snapshot_has_not_drifted() {
         actual, expected,
         "regenerate with OBS_UPDATE_CONTROL_SCHEMA=1 and the focused schema test"
     );
+}
+
+#[test]
+fn domain_status_codes_match_websocket_v5() {
+    use obs_mcp::server::ErrorCategory;
+    let missing = ToolError::not_found("missing");
+    assert_eq!(
+        (missing.code, missing.category, missing.retryable),
+        (600, ErrorCategory::NotReady, false)
+    );
+    let not_ready = ToolError::not_ready("initializing");
+    assert_eq!((not_ready.code, not_ready.retryable), (207, true));
+    assert_eq!(ToolError::wrong_state("state").code, 604);
+    assert_eq!(ToolError::processing("failed").code, 702);
 }

@@ -190,8 +190,15 @@ fn lists_seven_tools_with_object_schemas() {
     );
     for t in tools {
         let snapshot = obs_mcp::tools::schema_snapshot();
-        let contract = snapshot["tools"].as_array().unwrap().iter().find(|entry| entry["name"] == t["name"]).unwrap();
-        for field in ["inputSchema", "outputSchema", "annotations"] { assert_eq!(t[field], contract[field]); }
+        let contract = snapshot["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["name"] == t["name"])
+            .unwrap();
+        for field in ["inputSchema", "outputSchema", "annotations"] {
+            assert_eq!(t[field], contract[field]);
+        }
 
         assert_eq!(t["inputSchema"]["type"], "object");
         assert!(!t["description"].as_str().unwrap().is_empty());
@@ -452,7 +459,11 @@ fn bad_arguments_are_tool_errors() {
     };
     let cases = [
         ("source_create", json!({}), "kind"),
-        ("source_create", json!({"kind": "k", "name": "", "settings": {}}), "name"),
+        (
+            "source_create",
+            json!({"kind": "k", "name": "", "settings": {}}),
+            "name",
+        ),
         (
             "source_create",
             json!({"kind": "k", "name": "n"}),
