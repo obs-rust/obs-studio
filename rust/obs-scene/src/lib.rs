@@ -74,3 +74,4 @@ pub mod item_visible;
 pub mod item_blending_method;
 pub mod item_blending_mode;
 pub mod item_scale_filter;
+pub mod item_transition_serialization;
