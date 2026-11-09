@@ -177,6 +177,7 @@ pub mod frame_copy;
 pub mod handler_getters;
 pub mod media_admission;
 pub mod monitoring;
+pub mod mute_monitor_hotkeys;
 pub mod ptm_gate;
 pub mod push_queries;
 pub mod render_route;
