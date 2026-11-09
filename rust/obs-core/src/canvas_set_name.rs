@@ -22,6 +22,28 @@ pub trait Host {
 }
 
 /// Run the original setter's short circuits, update, notifications and cleanup.
-pub fn set_name(_host: &mut impl Host) {
-    todo!()
+pub fn set_name(host: &mut impl Host) {
+    if crate::canvas_rules::name_empty(host.requested().and_then(|name| name.first().copied())) {
+        return;
+    }
+    if !crate::canvas_rules::renames(host.flags()) {
+        return;
+    }
+    if host.requested() == Some(host.current()) {
+        return;
+    }
+    let previous = host.save_previous();
+    if host.private() {
+        host.rename_private();
+    } else {
+        host.rename_public();
+    }
+    let mut data = host.data(&previous);
+    host.signal_local(&mut data);
+    // Re-read after callbacks: the C setter does not snapshot private state.
+    if !host.private() {
+        host.signal_global(&mut data);
+    }
+    host.free_data(data);
+    host.free_previous(previous);
 }

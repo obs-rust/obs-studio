@@ -12,6 +12,7 @@ struct Canvas {
     taken: Vec<Vec<u8>>,
     events: Vec<(&'static str, Vec<u8>, Vec<u8>)>,
     trace: Vec<&'static str>,
+    table: std::collections::BTreeSet<Vec<u8>>,
     privatize_on_signal: bool,
 }
 impl Canvas {
@@ -19,6 +20,11 @@ impl Canvas {
         Self {
             name: name.to_vec(),
             private,
+            table: if private {
+                Default::default()
+            } else {
+                [name.to_vec()].into()
+            },
             ..Self::default()
         }
     }
@@ -52,6 +58,7 @@ impl Host for Canvas {
     }
     fn rename_public(&mut self) {
         self.trace.push("public");
+        self.table.remove(&self.name);
         let requested = self.requested.as_deref().unwrap();
         self.name = context_names::deduplicate(Some(requested), |candidate| {
             let candidate = match candidate {
@@ -61,6 +68,7 @@ impl Host for Canvas {
             self.taken.iter().any(|name| name == candidate)
         })
         .unwrap_or_else(|| requested.to_vec());
+        self.table.insert(self.name.clone());
     }
     fn data(&mut self, previous: &Vec<u8>) -> Self::Data {
         self.trace.push("data");
@@ -116,6 +124,8 @@ fn test_canvas_rules_callers_set_name_rules() {
         )
     );
     assert_eq!(public.events[1].0, "global");
+    assert!(public.table.contains(b"rules name public 2".as_slice()));
+    assert!(!public.table.contains(b"rules name public".as_slice()));
     assert_eq!(
         public.trace,
         [
@@ -132,6 +142,7 @@ fn test_canvas_rules_callers_set_name_rules() {
     assert_eq!(private.name, b"rules name private 2");
     assert_eq!(private.events.len(), 1);
     assert_eq!(private.events[0].0, "local");
+    assert!(!private.table.contains(b"rules name private 2".as_slice()));
     assert_eq!(
         private.trace,
         [
@@ -151,7 +162,35 @@ fn test_canvas_rules_callers_set_name_rules() {
 
 #[test]
 fn test_context_names_test_canvases() {
-    let mut canvas = Canvas::new(b"K 2", false);
+    // Constructor assertions from test_canvases: use the already ported
+    // context naming core for the setup outside this setter's responsibility.
+    let mut names = vec![b"Main".to_vec()];
+    let mut create = |requested: &[u8], private: bool| {
+        let name = if private {
+            requested.to_vec()
+        } else {
+            context_names::deduplicate(Some(requested), |lookup| {
+                let candidate = match lookup {
+                    context_names::Lookup::Name(name) => name.unwrap(),
+                    context_names::Lookup::Candidate(name) => name,
+                };
+                names.iter().any(|name| name == candidate)
+            })
+            .unwrap_or_else(|| requested.to_vec())
+        };
+        if !private {
+            names.push(name.clone());
+        }
+        Canvas::new(&name, private)
+    };
+    let c1 = create(b"Main", false);
+    let c2 = create(b"K", false);
+    let mut canvas = create(b"K", false);
+    let private = create(b"K", true);
+    assert_eq!(c1.name, b"Main 2");
+    assert_eq!(c2.name, b"K");
+    assert_eq!(canvas.name, b"K 2");
+    assert_eq!(private.name, b"K");
     canvas.taken = [b"Main".to_vec(), b"Main 2".to_vec(), b"K".to_vec()].to_vec();
     for name in [None, Some(b"".as_slice()), Some(b"K 2".as_slice())] {
         canvas.rename(name);
@@ -163,6 +202,7 @@ fn test_context_names_test_canvases() {
     canvas.rename(Some(b"Main"));
     assert_eq!(canvas.name, b"Main 3");
     assert_eq!(canvas.events[2].2, b"Main 3");
+    assert!(canvas.table.contains(b"Main 3".as_slice()));
 }
 
 #[test]
