@@ -180,6 +180,7 @@ pub mod source_filter_chain;
 pub mod source_identity_getters;
 pub mod state_getters;
 pub mod transition_access;
+pub mod transition_audio;
 pub mod transition_clock;
 pub mod transition_load;
 pub mod transition_render;
