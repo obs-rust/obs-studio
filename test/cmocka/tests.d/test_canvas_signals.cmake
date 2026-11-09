@@ -1,0 +1,11 @@
+# Public canvas APIs characterize both static signal helpers in the real library.
+add_executable(test_canvas_signals test_canvas_signals.c)
+target_include_directories(test_canvas_signals PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_canvas_signals PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_canvas_signals)
+if(OS_LINUX AND OBS_XVFB_RUN_REAL)
+  add_test(NAME test_canvas_signals COMMAND "${XVFB_RUN}" -a $<TARGET_FILE:test_canvas_signals>)
+else()
+  add_test(NAME test_canvas_signals COMMAND test_canvas_signals)
+endif()
+set_tests_properties(test_canvas_signals PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
