@@ -877,6 +877,9 @@ struct obs_weak_object_identity_fields {
 };
 struct obs_weak_object_identity_fields obs_weak_object_identity_fields(const obs_weak_object_t *weak);
 
+/* Borrowed atomic native-long address; caller rejects NULL first. */
+const volatile long *obs_weak_object_expired_field(const obs_weak_object_t *weak);
+
 typedef void (*obs_destroy_cb)(void *obj);
 
 #include "obs-object-query-fields.h"
