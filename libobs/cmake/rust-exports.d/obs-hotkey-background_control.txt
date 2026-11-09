@@ -1,0 +1,3 @@
+obs_hotkeys_configure_background
+obs_hotkeys_retry_background
+obs_hotkeys_set_background_probe

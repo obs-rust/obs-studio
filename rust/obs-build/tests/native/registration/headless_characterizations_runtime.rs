@@ -2,6 +2,13 @@ use super::*;
 use obs_build::validation::graph::Dependency;
 use std::process::Command;
 
+fn control_rust_archive() -> std::path::PathBuf {
+    std::path::PathBuf::from(
+        std::env::var_os("OBS_BUILD_RUST_ARCHIVE")
+            .expect("background control fixtures require the production Rust archive"),
+    )
+}
+
 fn checked(command: &mut Command) -> std::process::Output {
     let output = command
         .output()
@@ -67,6 +74,10 @@ fn canonical_headless_characterizations_run_unchanged() {
     let interfaces = [
         ("OBS::libobs".into(), core.dependency),
         (
+            "libobs_rust-static".into(),
+            Dependency::rust_static(&build.target, &control_rust_archive()).unwrap(),
+        ),
+        (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
         ),
@@ -122,6 +133,7 @@ fn canonical_headless_characterizations_run_unchanged() {
 }
 fn write_cmake(directory: &Path, root: &Path, core: &str) {
     let source = root.to_string_lossy().replace('\\', "/");
+    let control_archive = control_rust_archive().to_string_lossy().replace('\\', "/");
     fs::write(directory.join("CMakeLists.txt"), format!(r#"cmake_minimum_required(VERSION 3.28)
 project(headless-characterizations-contract C CXX)
 enable_testing()
@@ -135,6 +147,8 @@ option(ENABLE_UNIT_TESTS "Unit tests" ON)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMOCKA REQUIRED IMPORTED_TARGET cmocka)
+add_library(libobs_rust-static STATIC IMPORTED)
+set_target_properties(libobs_rust-static PROPERTIES IMPORTED_LOCATION "{control_archive}" INTERFACE_LINK_LIBRARIES "dl;pthread;m")
 add_library(OBS::native-test-cmocka ALIAS PkgConfig::CMOCKA)
 add_library(OBS::w32-pthreads INTERFACE IMPORTED)
 add_library(OBS::caption INTERFACE IMPORTED)

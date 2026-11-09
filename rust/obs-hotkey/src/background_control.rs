@@ -26,6 +26,30 @@ pub trait BackgroundControl {
     fn unlock(&mut self);
 }
 
-pub fn request<B: BackgroundControl>(_background: &mut B, _request: Request) {
-    todo!()
+/// Apply one request; repeated retry/configure requests always wake the client.
+pub fn request<B: BackgroundControl>(background: &mut B, request: Request) {
+    if !background.lock() {
+        return;
+    }
+    let mut state = background.read();
+    match request {
+        Request::Retry => state.retry = true,
+        Request::Configure => {
+            state.configure = true;
+            state.flags &= !(1 << 4);
+        }
+        Request::Probe(enable) => {
+            if state.probe == enable {
+                background.unlock();
+                return;
+            }
+            state.probe = enable;
+            if !enable {
+                state.configure = false;
+            }
+        }
+    }
+    background.write(state);
+    background.wake();
+    background.unlock();
 }

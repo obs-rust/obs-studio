@@ -55,7 +55,8 @@ static void control(void **state)
 	obs_hotkeys_configure_background();
 	obs_hotkeys_configure_background();
 	assert_true(core.hotkeys.background.configure);
-	assert_int_equal(core.hotkeys.background.flags, UINT32_MAX & ~(uint32_t)OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED);
+	assert_int_equal(core.hotkeys.background.flags,
+			 UINT32_MAX & ~(uint32_t)OBS_HOTKEYS_BACKGROUND_CONFIGURE_FAILED);
 	assert_int_equal(wakes, 4);
 	/* A repeated false probe does not cancel configure: characterized, not endorsed. */
 	obs_hotkeys_set_background_probe(false);

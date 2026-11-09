@@ -16,7 +16,7 @@
 #include "libobs/obs-get-main-canvas-fields.c.h"
 #include "libobs/obs-get-output-source-fields.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
-#include "libobs/obs-hotkey-background-control.c.h"
+#include "libobs/obs-hotkey-background-control-fields.c.h"
 #include "libobs/obs-hotkey-background-enum-fields.c.h"
 #include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-enum.c.h"

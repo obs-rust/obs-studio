@@ -1,6 +1,7 @@
 //! C ABI shims, one module per C file.
 
 pub mod background_app_id;
+pub mod background_control;
 pub mod background_enum;
 pub mod background_error;
 pub mod background_query;

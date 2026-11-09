@@ -53,7 +53,7 @@ fn mirrors_test_hotkey_background_control() {
     request(&mut c, Request::Configure);
     request(&mut c, Request::Configure);
     assert!(c.state.configure);
-    assert_eq!(c.state.flags, u32::MAX & !(1 << 4));
+    assert_eq!(c.state.flags, !(1 << 4));
     assert_eq!(c.wakes, 4);
     request(&mut c, Request::Probe(false));
     assert!(c.state.configure);
@@ -78,7 +78,24 @@ fn mirrors_test_hotkey_background_control() {
 
 #[test]
 fn preserves_unrelated_flags_and_retry_when_probe_ends() {
-    let mut c = Client { present: true, state: State { retry: true, configure: true, probe: true, flags: u32::MAX }, ..Client::default() };
+    let mut c = Client {
+        present: true,
+        state: State {
+            retry: true,
+            configure: true,
+            probe: true,
+            flags: u32::MAX,
+        },
+        ..Client::default()
+    };
     request(&mut c, Request::Probe(false));
-    assert_eq!(c.state, State { retry: true, configure: false, probe: false, flags: u32::MAX });
+    assert_eq!(
+        c.state,
+        State {
+            retry: true,
+            configure: false,
+            probe: false,
+            flags: u32::MAX
+        }
+    );
 }
