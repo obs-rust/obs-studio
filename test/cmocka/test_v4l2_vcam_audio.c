@@ -706,16 +706,37 @@ static void video_waits_for_the_tunnel(void **state)
 	sync_done(vcam, dev, mic);
 }
 
-/* #4119: the PipeWire node's reader drops audio only past the high mark, and
- * then down to one packet beyond what the cycle asks for. */
-static void pipewire_reader_skips_only_stale_audio(void **state)
+/* #4119: the PipeWire node's reader is a jitter buffer. It waits for
+ * 2048 frames beyond a cycle's request before it plays (and again after it
+ * ran dry), and drops audio only past 4096, back down to 2048. */
+static void pipewire_reader_is_a_jitter_buffer(void **state)
 {
 	(void)state;
-	assert_int_equal(vmic_pw_skip(0, 256), 0);
-	assert_int_equal(vmic_pw_skip(1024 + 256, 256), 0);
-	assert_int_equal(vmic_pw_skip(3072 + 256, 256), 0);
-	assert_int_equal(vmic_pw_skip(3073 + 256, 256), 3073 - 1024);
-	assert_int_equal(vmic_pw_skip(32768, 1024), 32768 - 1024 - 1024);
+	bool primed = false;
+	struct vmic_pw_read r = vmic_pw_plan(0, 256, &primed);
+	assert_int_equal(r.skip, 0);
+	assert_int_equal(r.take, 0);
+	r = vmic_pw_plan(256 + 2047, 256, &primed);
+	assert_int_equal(r.take, 0);
+	assert_false(primed);
+	r = vmic_pw_plan(256 + 2048, 256, &primed);
+	assert_int_equal(r.take, 256);
+	assert_true(primed);
+
+	/* Primed: a backlog up to the high mark stays. */
+	r = vmic_pw_plan(256 + 4096, 256, &primed);
+	assert_int_equal(r.skip, 0);
+	assert_int_equal(r.take, 256);
+	r = vmic_pw_plan(256 + 4097, 256, &primed);
+	assert_int_equal(r.skip, 4097 - 2048);
+	assert_int_equal(r.take, 256);
+
+	/* Running dry plays what is left, then waits for the keep level. */
+	r = vmic_pw_plan(100, 256, &primed);
+	assert_int_equal(r.take, 100);
+	assert_false(primed);
+	r = vmic_pw_plan(1024, 256, &primed);
+	assert_int_equal(r.take, 0);
 }
 
 /* A frame waits for its audio when the microphone is the PipeWire node too. */
@@ -857,7 +878,7 @@ int main(void)
 		cmocka_unit_test(stale_audio_is_dropped),
 		cmocka_unit_test(pipewire_tunnel_lead_is_8192_frames),
 		cmocka_unit_test(video_waits_for_the_tunnel),
-		cmocka_unit_test(pipewire_reader_skips_only_stale_audio),
+		cmocka_unit_test(pipewire_reader_is_a_jitter_buffer),
 		cmocka_unit_test(video_waits_for_pipewire_audio),
 		cmocka_unit_test(pipewire_node_carries_audio),
 	};

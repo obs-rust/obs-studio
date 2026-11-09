@@ -305,17 +305,22 @@ static uint64_t vmic_tunnel_lead_ns(const char *sources, uint32_t rate)
 	return 0;
 }
 
-/* The PipeWire node's reader keeps at most this much audio beyond what a
- * cycle asks for, and drops older audio only past the high mark, so libobs's
- * 1024-frame packets never trip it in steady state (#4119). Returns the
- * frames to skip. */
-#define VMIC_PW_KEEP_FRAMES 1024
-#define VMIC_PW_HIGH_FRAMES 3072
-static uint32_t vmic_pw_skip(uint32_t have, uint32_t want)
+/* The PipeWire node's reader is a jitter buffer (#4119). libobs hands over
+ * 1024-frame packets on its audio thread, not evenly enough to read the ring
+ * down to empty, so the reader starts (and, after running dry, restarts) only
+ * once VMIC_PW_KEEP_FRAMES beyond a cycle's request are waiting, and drops
+ * older audio only past VMIC_PW_HIGH_FRAMES, back down to the keep level. */
+#define VMIC_PW_KEEP_FRAMES 2048
+#define VMIC_PW_HIGH_FRAMES 4096
+struct vmic_pw_read {
+	uint32_t skip; /* frames to drop first */
+	uint32_t take; /* frames to copy; the rest of the cycle is silence */
+};
+static struct vmic_pw_read vmic_pw_plan(uint32_t have, uint32_t want, bool *primed)
 {
-	if (have <= want || have - want <= VMIC_PW_HIGH_FRAMES)
-		return 0;
-	return have - want - VMIC_PW_KEEP_FRAMES;
+	UNUSED_PARAMETER(primed);
+	struct vmic_pw_read r = {0, have < want ? have : want};
+	return r;
 }
 
 /* Frees the frames waiting for their audio; under sync.mutex. */
@@ -603,6 +608,7 @@ struct vmic_pw {
 	struct pw_stream *stream;
 	struct spa_hook listener;
 	struct spa_ringbuffer ring;
+	bool primed;
 	uint8_t data[VMIC_PW_RING];
 };
 
@@ -626,11 +632,9 @@ static void vmic_pw_process(void *arg)
 	uint32_t have = avail > 0 ? (uint32_t)avail / VMIC_PW_STRIDE : 0;
 	/* Audio nobody read (no app linked) or a backlog that grew: start
 	 * from the newest instead of staying behind. */
-	uint32_t skip = vmic_pw_skip(have, want);
-	index += skip * VMIC_PW_STRIDE;
-	have -= skip;
-
-	uint32_t n = have < want ? have : want;
+	struct vmic_pw_read plan = vmic_pw_plan(have, want, &pw->primed);
+	index += plan.skip * VMIC_PW_STRIDE;
+	uint32_t n = plan.take;
 	spa_ringbuffer_read_data(&pw->ring, pw->data, VMIC_PW_RING, index % VMIC_PW_RING, d->data, n * VMIC_PW_STRIDE);
 	spa_ringbuffer_read_update(&pw->ring, (int32_t)(index + n * VMIC_PW_STRIDE));
 	if (n < want)
