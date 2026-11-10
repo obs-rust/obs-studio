@@ -58,7 +58,9 @@
 
 use std::ffi::CStr;
 
-use crate::deinterlace_draw::Effect;
+use crate::deinterlace_draw::{self, Effect, ModeChange};
+use crate::deinterlace_pacing;
+use crate::deinterlace_select::{self, OffsetKind, State, Update};
 use crate::draw_technique::Technique;
 
 /// `MAX_AV_PLANES`: the texture slots of a source.
@@ -98,10 +100,15 @@ pub const PARAM_DIMENSIONS: &CStr = c"dimensions";
 /// `obs_source_draw_technique_name()`, a `static inline` of
 /// `obs-source-draw-technique.h`, for the techniques the deinterlace draws
 /// with.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub const fn technique_name(technique: Technique) -> &'static CStr {
-    let _ = technique;
-    todo!()
+    match technique {
+        Technique::Draw => c"Draw",
+        Technique::DrawMultiply => c"DrawMultiply",
+        Technique::DrawTonemap => c"DrawTonemap",
+        Technique::DrawMultiplyTonemap => c"DrawMultiplyTonemap",
+        Technique::DrawNonlinearAlpha => c"DrawNonlinearAlpha",
+        Technique::DrawNonlinearAlphaMultiply => c"DrawNonlinearAlphaMultiply",
+    }
 }
 
 /// The fields, locks and libobs calls of an async source that its
@@ -291,40 +298,361 @@ pub trait Source {
     fn texrender_destroy(&self, texrender: Option<Self::Texrender>);
 }
 
-#[expect(clippy::todo, reason = "RED: the port follows")]
+/// `ready_deinterlace_frames()`: the walk over a copy of the queue's
+/// timestamps, its drops (each erased, then back to the cache), the
+/// unbuffered pair and the stores; whether a frame is ready.
+fn ready_frames<S: Source>(s: &S, sys_time: u64) -> bool {
+    let num = s.frames_num();
+    let last_sys_timestamp = s.last_sys_timestamp();
+    let async_unbuffered = s.async_unbuffered();
+    let last_frame_ts = if async_unbuffered {
+        0
+    } else {
+        s.last_frame_ts()
+    };
+
+    let timestamps: Vec<u64> = (0..num).map(|i| s.frame_timestamp(s.frame(i))).collect();
+
+    let walk = deinterlace_select::walk(
+        &timestamps,
+        sys_time,
+        State {
+            last_frame_ts,
+            last_sys_timestamp,
+            async_unbuffered,
+        },
+    );
+
+    for _ in 0..walk.drop_front {
+        let dropped = s.frame(0);
+        s.erase_front();
+        s.remove_async_frame(dropped);
+    }
+
+    if walk.pairs {
+        let offset = if s.async_unbuffered() { s.offset() } else { 0 };
+        let first = timestamps.get(walk.drop_front).copied().unwrap_or_default();
+        let next = walk
+            .drop_front
+            .checked_add(1)
+            .and_then(|idx| timestamps.get(idx))
+            .copied()
+            .unwrap_or_default();
+        let pair = deinterlace_select::unbuffered_pair(first, next, offset, sys_time);
+
+        if let Some(frame_ts) = pair.frame_ts {
+            s.set_frame_ts(frame_ts);
+        }
+        s.set_frame_prev_flag(s.frame(0), pair.prev_frame);
+    }
+
+    s.set_last_frame_ts(walk.last_frame_ts);
+    if walk.offset_reset {
+        s.set_offset(0);
+    }
+    if walk.flag_front {
+        s.set_frame_prev_flag(s.frame(0), true);
+    }
+
+    walk.ready
+}
+
+/// `first_frame()`.
+fn first_frame<S: Source>(s: &S) -> bool {
+    let first = deinterlace_select::first(s.last_frame_ts(), s.frames_num());
+
+    if first.flag_front {
+        s.set_frame_prev_flag(s.frame(0), true);
+    }
+    first.first
+}
+
+/// `deinterlace_get_closest_frames()`.
+fn get_closest_frames<S: Source>(s: &S, sys_time: u64) {
+    if s.async_unbuffered()
+        && s.offset() != 0
+        && deinterlace_pacing::hold(s.frame_ts(), s.offset(), s.half_duration(), sys_time)
+    {
+        return;
+    }
+
+    if s.frames_num() == 0 {
+        return;
+    }
+
+    if first_frame(s) || ready_frames(s, sys_time) {
+        s.set_prev_frame(None);
+        let mut cur = s.frame(0);
+        s.set_cur_frame(Some(cur));
+
+        s.erase_front();
+
+        let remaining = s.frames_num();
+        let prev_flag = deinterlace_select::take_reads_flag(remaining) && s.frame_prev_flag(cur);
+
+        if deinterlace_select::take_pair(remaining, prev_flag) {
+            let prev = cur;
+            s.set_prev_frame(Some(prev));
+            cur = s.frame(0);
+            s.set_cur_frame(Some(cur));
+
+            s.erase_front();
+
+            s.set_half_duration(deinterlace_pacing::half_duration(
+                s.frame_timestamp(cur),
+                s.frame_timestamp(prev),
+                s.half_duration(),
+                s.frame_interval_ns(),
+            ));
+        } else {
+            s.set_half_duration(deinterlace_pacing::half_duration(
+                s.frame_timestamp(cur),
+                s.frame_ts(),
+                s.half_duration(),
+                s.frame_interval_ns(),
+            ));
+        }
+
+        if deinterlace_select::take_init_last(s.last_frame_ts()) {
+            s.set_last_frame_ts(s.frame_timestamp(cur));
+        }
+
+        s.set_frame_ts(s.frame_timestamp(cur));
+
+        match deinterlace_select::take_offset(s.async_unbuffered()) {
+            OffsetKind::Buffered => {
+                s.set_offset(deinterlace_pacing::buffered_offset(
+                    s.video_time(),
+                    s.last_frame_ts(),
+                ));
+                return;
+            }
+            OffsetKind::Reanchor => {}
+        }
+
+        s.set_offset(deinterlace_pacing::reanchor(
+            s.offset(),
+            s.video_time(),
+            s.frame_ts(),
+            s.half_duration(),
+            s.frame_interval_ns(),
+        ));
+    }
+}
+
 /// `deinterlace_process_last_frame()`: under `async_mutex`, held by the
 /// caller (`async_tick()`).
 pub fn process_last_frame<S: Source>(s: &S, sys_time: u64) {
-    let _ = (s, sys_time);
-    todo!()
+    if let Some(prev) = s.prev_frame() {
+        s.remove_async_frame(prev);
+        s.set_prev_frame(None);
+    }
+    if let Some(cur) = s.cur_frame() {
+        s.remove_async_frame(cur);
+        s.set_cur_frame(None);
+    }
+
+    get_closest_frames(s, sys_time);
 }
 
-#[expect(clippy::todo, reason = "RED: the port follows")]
 /// `deinterlace_update_async_video()`, on the graphics thread.
 pub fn update_async_video<S: Source>(s: &S) {
-    let _ = s;
-    todo!()
+    if s.rendered() {
+        return;
+    }
+
+    s.set_rendered(true);
+
+    s.lock();
+
+    let updated = s.cur_frame().is_some();
+    let frame = s.prev_frame();
+    s.set_prev_frame(None);
+
+    s.unlock();
+
+    match (deinterlace_select::update(frame.is_some(), updated), frame) {
+        (Update::Upload, Some(frame)) => {
+            s.frame_addref(frame);
+
+            if s.set_async_texture_size(frame) {
+                s.update_prev_textures(frame, s.prev_texrender());
+            }
+
+            s.release_frame(frame);
+        }
+        (Update::Swap, _) => {
+            for c in 0..MAX_AV_PLANES {
+                let prev_tex = s.prev_texture(c);
+                s.set_prev_texture(c, s.texture(c));
+                s.set_texture(c, prev_tex);
+            }
+
+            if s.texrender().is_some() {
+                let prev = s.prev_texrender();
+                s.set_prev_texrender(s.texrender());
+                s.set_texrender(prev);
+            }
+        }
+        _ => {}
+    }
 }
 
-#[expect(clippy::todo, reason = "RED: the port follows")]
+/// `get_effect()`: the core's effect for `mode`, loaded on first use;
+/// `None` for DISABLE and a mode outside the enum.
+fn get_effect<S: Source>(s: &S, mode: i32) -> Option<S::Effect> {
+    deinterlace_draw::effect(mode).and_then(|effect| s.load_effect(effect))
+}
+
 /// `deinterlace_render()`, in the graphics context.
 pub fn render<S: Source>(s: &S) {
-    let _ = s;
-    todo!()
+    let effect = s.effect();
+
+    let image = s.param_by_name(effect, PARAM_IMAGE);
+    let prev = s.param_by_name(effect, PARAM_PREVIOUS_IMAGE);
+    let multiplier_param = s.param_by_name(effect, PARAM_MULTIPLIER);
+    let field = s.param_by_name(effect, PARAM_FIELD_ORDER);
+    let frame2 = s.param_by_name(effect, PARAM_FRAME2);
+    let dimensions = s.param_by_name(effect, PARAM_DIMENSIONS);
+    let size = [u32_to_f32(s.async_width()), u32_to_f32(s.async_height())];
+
+    let cur_tex = match s.texrender() {
+        Some(texrender) => s.texrender_texture(texrender),
+        None => s.texture(0),
+    };
+    let prev_tex = match s.prev_texrender() {
+        Some(texrender) => s.texrender_texture(texrender),
+        None => s.prev_texture(0),
+    };
+
+    if deinterlace_draw::skip(
+        cur_tex.is_some(),
+        prev_tex.is_some(),
+        s.async_width(),
+        s.async_height(),
+    ) {
+        return;
+    }
+
+    let source_space = s.convert_video_space(s.async_format(), s.async_trc());
+
+    let gs_linear_srgb = deinterlace_draw::reads_linear_srgb(source_space) && s.linear_srgb();
+    let linear_srgb = deinterlace_draw::linear_srgb(source_space, gs_linear_srgb, s.mode());
+
+    let current_space = s.color_space();
+    let tech_name = technique_name(deinterlace_draw::technique(source_space, current_space));
+    let multiplier = if deinterlace_draw::reads_white_level(source_space, current_space) {
+        deinterlace_draw::multiplier(source_space, current_space, s.sdr_white_level())
+    } else {
+        1.0
+    };
+
+    let previous = s.framebuffer_srgb_enabled();
+    s.enable_framebuffer_srgb(linear_srgb);
+
+    if linear_srgb {
+        s.set_param_texture_srgb(image, cur_tex);
+        s.set_param_texture_srgb(prev, prev_tex);
+    } else {
+        s.set_param_texture(image, cur_tex);
+        s.set_param_texture(prev, prev_tex);
+    }
+
+    s.set_param_float(multiplier_param, multiplier);
+    s.set_param_int(field, i32::from(s.top_first()));
+    s.set_param_vec2(dimensions, size);
+
+    s.set_param_bool(
+        frame2,
+        deinterlace_draw::frame2(s.video_time(), s.frame_ts(), s.offset(), s.half_duration()),
+    );
+
+    while s.effect_loop(effect, tech_name) {
+        s.draw_sprite(
+            if s.async_flip() { FLIP_V } else { 0 },
+            s.async_width(),
+            s.async_height(),
+        );
+    }
+
+    s.enable_framebuffer_srgb(previous);
 }
 
-#[expect(clippy::todo, reason = "RED: the port follows")]
+/// `(float)value`. No `From<u32>` for `f32` exists because sizes past
+/// 2^24 round; the C rounds them the same way.
+#[allow(clippy::as_conversions)]
+fn u32_to_f32(value: u32) -> f32 {
+    value as f32
+}
+
+/// `enable_deinterlacing()`: the graphics context entered, then
+/// `async_mutex` taken for the release of the previous frame.
+fn enable<S: Source>(s: &S, mode: i32) {
+    s.enter_graphics();
+
+    if s.async_format() != VIDEO_FORMAT_NONE && s.async_width() != 0 && s.async_height() != 0 {
+        s.set_deinterlace_texture_size();
+    }
+
+    s.set_mode(mode);
+    s.set_effect(get_effect(s, mode));
+
+    s.lock();
+    if let Some(prev) = s.prev_frame() {
+        s.remove_async_frame(prev);
+        s.set_prev_frame(None);
+    }
+    s.unlock();
+
+    s.leave_graphics();
+}
+
+/// `disable_deinterlacing()`.
+fn disable<S: Source>(s: &S) {
+    s.enter_graphics();
+    for c in 0..PREV_PLANES_DESTROYED {
+        s.texture_destroy(s.prev_texture(c));
+    }
+    s.texrender_destroy(s.prev_texrender());
+    s.set_mode(deinterlace_draw::MODE_DISABLE);
+    for c in 0..PREV_PLANES_DESTROYED {
+        s.set_prev_texture(c, None);
+    }
+    s.set_prev_texrender(None);
+    s.leave_graphics();
+}
+
 /// `obs_source_set_deinterlace_mode()`. A mode outside the enum disables
-/// (#2090), as [`crate::deinterlace_draw::mode_change`] decides.
+/// (#2090), as [`deinterlace_draw::mode_change`] decides.
 pub fn set_mode<S: Source>(source: Option<&S>, mode: i32) {
-    let _ = (source, mode);
-    todo!()
+    if !S::valid(source, SET_MODE_LOG_NAME) {
+        return;
+    }
+    let Some(s) = source else {
+        return;
+    };
+    match deinterlace_draw::mode_change(s.mode(), mode) {
+        ModeChange::Same => {}
+        ModeChange::Enable => enable(s, mode),
+        ModeChange::Disable => disable(s),
+        ModeChange::Switch => {
+            s.enter_graphics();
+            s.set_mode(mode);
+            s.set_effect(get_effect(s, mode));
+            s.leave_graphics();
+        }
+    }
 }
 
-#[expect(clippy::todo, reason = "RED: the port follows")]
 /// `obs_source_set_deinterlace_field_order()`: top first only for
 /// [`FIELD_ORDER_TOP`].
 pub fn set_field_order<S: Source>(source: Option<&S>, field_order: i32) {
-    let _ = (source, field_order);
-    todo!()
+    if !S::valid(source, SET_FIELD_ORDER_LOG_NAME) {
+        return;
+    }
+    let Some(s) = source else {
+        return;
+    };
+
+    s.set_top_first(field_order == FIELD_ORDER_TOP);
 }
