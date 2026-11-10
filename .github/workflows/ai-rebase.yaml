@@ -1,0 +1,74 @@
+name: AI rebase
+
+# Rebases conflicting (DIRTY) PRs onto master and resolves conflicts with the
+# clud agent (--unattended, DeepSeek Flash via OpenRouter) following
+# ci/ai_rebase_prompt.md; ci/ai_rebase.py verifies and pushes. How many PRs a run rebases comes
+# from ci/backpressure.py's live headroom, not from a setting: when the merge
+# queue is backed up or runners are starved, this rebases nothing, since every
+# rebase restarts a PR's CI.
+#
+# Secrets:
+#   OPENROUTER_API_KEY  OpenRouter key (DeepSeek Flash by default).
+#   AI_REBASE_TOKEN     token that pushes the rebased branch (contents: write,
+#                       pull-requests: write). It must not be GITHUB_TOKEN: a
+#                       push made with GITHUB_TOKEN starts no workflows, so the
+#                       rebased PR would never get CI. A GitHub App
+#                       installation token or a fine-grained PAT scoped to
+#                       this repo both work.
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+    inputs:
+      prs:
+        description: "PR numbers (space separated); empty = every DIRTY PR within headroom"
+        required: false
+      dry_run:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-rebase
+  cancel-in-progress: false
+
+jobs:
+  rebase:
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AI_REBASE_TOKEN }}
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      # rustfmt for resolved Rust files (the agent runs `soldr cargo fmt`).
+      - uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        with:
+          build-cache: false
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+      # The conflict resolver: the clud agent, unattended, on DeepSeek Flash
+      # through OpenRouter, driven by ci/ai_rebase_prompt.md.
+      - name: Install clud
+        run: uv tool install clud
+      - name: Rebase
+        env:
+          GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          PRS: ${{ inputs.prs }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          git config user.name "obs-rust ai-rebase"
+          git config user.email "ai-rebase@users.noreply.github.com"
+          if [ -n "$PRS" ]; then
+            uv run --no-project --script ci/ai_rebase.py $PRS $DRY --comment
+          else
+            uv run --no-project --script ci/ai_rebase.py --dirty $DRY --comment
+          fi
