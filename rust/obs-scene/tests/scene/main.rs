@@ -77,3 +77,5 @@ mod item_blending_method;
 mod item_blending_method_parity;
 mod item_blending_mode;
 mod item_blending_mode_parity;
+mod item_scale_filter;
+mod item_scale_filter_parity;
