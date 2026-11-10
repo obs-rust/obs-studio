@@ -9,6 +9,7 @@ pub mod canvas_channel_getter;
 pub mod canvas_draw;
 pub mod canvas_flags_getter;
 pub mod canvas_readonly_getters;
+pub mod canvas_ref;
 pub mod canvas_rules;
 pub mod canvas_video_getter;
 pub mod canvas_video_info_getter;

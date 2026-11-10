@@ -1118,6 +1118,8 @@ struct obs_weak_canvas {
 	struct obs_canvas *canvas;
 };
 
+extern obs_weak_canvas_t *obs_canvas_ref_control(const obs_canvas_t *canvas);
+
 struct obs_canvas {
 	struct obs_context_data context;
 
