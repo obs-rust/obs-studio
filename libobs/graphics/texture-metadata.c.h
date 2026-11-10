@@ -1,8 +1,29 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
-/* Same unity group as graphics.c.h: retain its validation helpers verbatim. */
-#define ptr_valid(ptr, func) gs_obj_valid(ptr, func, #ptr)
-#define gs_valid_p(func, param1) (gs_valid(func) && ptr_valid(param1, func))
+/* Original validation helpers, retained for the standalone C reference. */
+#define thread_graphics gs_get_context()
+static inline bool texture_metadata_ref_obj_valid(const void *obj, const char *f, const char *name)
+{
+	if (!obj) {
+		blog(LOG_DEBUG, "%s: Null '%s' parameter", f, name);
+		return false;
+	}
+
+	return true;
+}
+
+static inline bool texture_metadata_ref_valid(const char *f)
+{
+	if (!thread_graphics) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", f);
+		return false;
+	}
+
+	return true;
+}
+
+#define ptr_valid(ptr, func) texture_metadata_ref_obj_valid(ptr, func, #ptr)
+#define gs_valid_p(func, param1) (texture_metadata_ref_valid(func) && ptr_valid(param1, func))
 
 uint32_t gs_texture_get_width(const gs_texture_t *tex)
 {
@@ -36,3 +57,5 @@ enum gs_color_format gs_texture_get_color_format(const gs_texture_t *tex)
 
 #undef gs_valid_p
 #undef ptr_valid
+
+#undef thread_graphics
