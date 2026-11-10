@@ -229,7 +229,11 @@ def replay(target: list[str]) -> int | str:
 # three; checking here keeps those PRs out of the queue instead of spending a
 # hosted run to find out.
 PREFLIGHT = os.environ.get("AI_REBASE_PREFLIGHT", "")
-PREFLIGHT_ERROR = re.compile(r"undefined symbol|unresolved external|error(\[E\d+\])?: |error LNK")
+PREFLIGHT_ERROR = re.compile(
+    r"undefined symbol|unresolved external|error(\[E\d+\])?: |error LNK"
+    # soldr refuses while another build (or a stale lock) holds the target dir.
+    r"|refused to modify .* while build lock"
+)
 
 
 def preflight() -> tuple[bool, str]:
