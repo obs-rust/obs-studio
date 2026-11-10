@@ -118,6 +118,7 @@ pub mod core_texture_activity;
 pub mod display;
 pub mod display_size;
 pub mod display_state;
+pub mod enum_modules;
 pub mod global_getters;
 pub mod module_failure_info;
 pub mod module_init;

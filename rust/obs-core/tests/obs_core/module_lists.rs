@@ -718,3 +718,87 @@ proptest! {
         prop_assert_eq!(model.log, expected);
     }
 }
+
+/// Tier 1 mirrors of every test_enum_modules.c case, through the safe API.
+mod enum_modules {
+    use super::*;
+    use obs_core::enum_modules::enumerate;
+
+    #[test]
+    fn test_enum_modules_absent_core_before_and_after_shutdown() {
+        for _ in 0..2 {
+            let mut model = Model::default();
+            let mut visits = Vec::new();
+            assert!(!model.core);
+            enumerate(&mut model, |_, m| visits.push(m));
+            enumerate(&mut model, |_, _| panic!("NULL callback must not be invoked"));
+            assert!(visits.is_empty());
+            assert_eq!(*model.reads.borrow(), [Read::HasCore, Read::HasCore]);
+        }
+    }
+
+    #[test]
+    fn test_enum_modules_empty_and_disabled() {
+        let mut model = Model::started();
+        for disabled in [false, true] {
+            if disabled { model.disabled_module("stub", ""); }
+            let mut visits = Vec::new();
+            enumerate(&mut model, |_, _| panic!("NULL callback must not be invoked"));
+            enumerate(&mut model, |_, m| visits.push(m));
+            assert!(visits.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_enum_modules_reverse_open_order() {
+        let mut model = Model::started();
+        let a = model.loaded_module("stub");
+        let b = model.loaded_module("stub");
+        let c = model.loaded_module("stub");
+        assert_ne!(a, b);
+        assert_ne!(b, c);
+        let mut visits = Vec::new();
+        enumerate(&mut model, |_, m| visits.push(m));
+        assert_eq!(visits, [c, b, a]);
+        let mut null_param_calls = 0;
+        enumerate(&mut model, |_, _| null_param_calls += 1);
+        assert_eq!(null_param_calls, 3);
+    }
+
+    #[test]
+    fn test_enum_modules_reentrant_enumeration() {
+        let mut model = Model::started();
+        let a = model.loaded_module("stub");
+        let b = model.loaded_module("stub");
+        let mut outer = Vec::new();
+        let mut nested = Vec::new();
+        let mut added = None;
+        enumerate(&mut model, |model, m| {
+            outer.push(m);
+            if outer.len() == 1 {
+                added = Some(model.loaded_module("stub"));
+                enumerate(model, |_, n| nested.push(n));
+            }
+        });
+        assert_eq!(outer, [b, a]);
+        assert_eq!(nested, [added.unwrap(), b, a]);
+        let mut after = Vec::new();
+        enumerate(&mut model, |_, m| after.push(m));
+        assert_eq!(after, nested);
+    }
+
+    #[test]
+    fn successor_read_after_callback() {
+        let mut model = Model::started();
+        let a = model.loaded_module("stub");
+        let b = model.loaded_module("stub");
+        let mut visits = Vec::new();
+        enumerate(&mut model, |model, m| {
+            visits.push(m);
+            // Keep every node alive, but splice the live current successor.
+            model.modules[m].next = None;
+        });
+        assert_eq!(visits, [b]);
+        assert_ne!(a, b);
+    }
+}
