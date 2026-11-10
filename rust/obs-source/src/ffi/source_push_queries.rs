@@ -16,14 +16,17 @@ unsafe extern "C" {
     fn pthread_mutex_unlock(mutex: *mut c_void) -> c_int;
     fn blog(level: c_int, format: *const c_char, ...);
 }
-struct Source(PushQueryFields);
+pub(crate) struct Source(pub(crate) PushQueryFields, pub(crate) *mut c_void);
 impl Source {
-    unsafe fn borrow(source: *mut c_void) -> Option<Self> {
+    pub(crate) unsafe fn borrow(source: *mut c_void) -> Option<Self> {
         if source.is_null() {
             None
         } else {
             // SAFETY: the caller provides a live source; NULL was checked before any field address is formed.
-            Some(Self(unsafe { obs_source_push_query_fields(source) }))
+            Some(Self(
+                unsafe { obs_source_push_query_fields(source) },
+                source,
+            ))
         }
     }
 }
@@ -53,7 +56,7 @@ impl PushFields for Source {
         unsafe { *self.0.talk_delay }
     }
 }
-fn null_log(function: &'static CStr, parameter: &'static CStr) {
+pub(crate) fn null_log(function: &'static CStr, parameter: &'static CStr) {
     // SAFETY: format and arguments are static NUL-terminated strings.
     unsafe {
         blog(

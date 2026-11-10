@@ -35,6 +35,7 @@ pub mod source_media_admission;
 pub mod source_monitoring;
 pub mod source_name;
 pub mod source_ptm_gate;
+pub mod source_push_delay;
 pub mod source_push_queries;
 pub mod source_render_route;
 pub mod source_settings_getter;
