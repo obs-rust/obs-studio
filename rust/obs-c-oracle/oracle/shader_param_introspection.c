@@ -115,45 +115,79 @@ void oracle_spi_reset(bool present, int count, bool found, int type, const char 
 	spi_text[0] = spi_order[0] = 0;
 }
 void oracle_spi_stop(void);
-void oracle_spi_stop(void) { spi_active = false; }
+void oracle_spi_stop(void)
+{
+	spi_active = false;
+}
 void *oracle_spi_token(unsigned index);
-void *oracle_spi_token(unsigned index) { return &spi_tokens[index]; }
+void *oracle_spi_token(unsigned index)
+{
+	return &spi_tokens[index];
+}
 unsigned oracle_spi_calls(unsigned index);
-unsigned oracle_spi_calls(unsigned index) { return spi_calls[index]; }
+unsigned oracle_spi_calls(unsigned index)
+{
+	return spi_calls[index];
+}
 const void *oracle_spi_seen(unsigned index);
-const void *oracle_spi_seen(unsigned index) { return spi_seen[index]; }
+const void *oracle_spi_seen(unsigned index)
+{
+	return spi_seen[index];
+}
 uint32_t oracle_spi_index(void);
-uint32_t oracle_spi_index(void) { return spi_index; }
+uint32_t oracle_spi_index(void)
+{
+	return spi_index;
+}
 unsigned oracle_spi_logs(void);
-unsigned oracle_spi_logs(void) { return spi_logs; }
+unsigned oracle_spi_logs(void)
+{
+	return spi_logs;
+}
 int oracle_spi_level(void);
-int oracle_spi_level(void) { return spi_level; }
+int oracle_spi_level(void)
+{
+	return spi_level;
+}
 const char *oracle_spi_text(void);
-const char *oracle_spi_text(void) { return spi_text; }
+const char *oracle_spi_text(void)
+{
+	return spi_text;
+}
 const char *oracle_spi_order(void);
-const char *oracle_spi_order(void) { return spi_order; }
+const char *oracle_spi_order(void)
+{
+	return spi_order;
+}
 size_t oracle_spi_layout(unsigned index);
 size_t oracle_spi_layout(unsigned index)
 {
-	const size_t values[] = {sizeof(struct gs_shader_param_info), _Alignof(struct gs_shader_param_info),
-				 offsetof(struct gs_shader_param_info, type), offsetof(struct gs_shader_param_info, name),
-				 sizeof(enum gs_shader_param_type), _Alignof(enum gs_shader_param_type)};
+	const size_t values[] = {
+		sizeof(struct gs_shader_param_info),         _Alignof(struct gs_shader_param_info),
+		offsetof(struct gs_shader_param_info, type), offsetof(struct gs_shader_param_info, name),
+		sizeof(enum gs_shader_param_type),           _Alignof(enum gs_shader_param_type)};
 	return values[index];
 }
 bool oracle_spi_adapter_layout(void);
 bool oracle_spi_adapter_layout(void)
 {
-	return obs_shader_param_introspection_count_field(&spi_graphics) == spi_graphics.exports.gs_shader_get_num_params &&
-	       obs_shader_param_introspection_index_field(&spi_graphics) == spi_graphics.exports.gs_shader_get_param_by_idx &&
-	       obs_shader_param_introspection_name_field(&spi_graphics) == spi_graphics.exports.gs_shader_get_param_by_name &&
-	       obs_shader_param_introspection_info_field(&spi_graphics) == spi_graphics.exports.gs_shader_get_param_info;
+	return obs_shader_param_introspection_count_field(&spi_graphics) ==
+		       spi_graphics.exports.gs_shader_get_num_params &&
+	       obs_shader_param_introspection_index_field(&spi_graphics) ==
+		       spi_graphics.exports.gs_shader_get_param_by_idx &&
+	       obs_shader_param_introspection_name_field(&spi_graphics) ==
+		       spi_graphics.exports.gs_shader_get_param_by_name &&
+	       obs_shader_param_introspection_info_field(&spi_graphics) ==
+		       spi_graphics.exports.gs_shader_get_param_info;
 }
 int oracle_spi_type(unsigned index);
 int oracle_spi_type(unsigned index)
 {
-	const enum gs_shader_param_type types[] = {GS_SHADER_PARAM_UNKNOWN, GS_SHADER_PARAM_BOOL, GS_SHADER_PARAM_FLOAT,
-		GS_SHADER_PARAM_INT, GS_SHADER_PARAM_STRING, GS_SHADER_PARAM_VEC2, GS_SHADER_PARAM_VEC3, GS_SHADER_PARAM_VEC4,
-		GS_SHADER_PARAM_INT2, GS_SHADER_PARAM_INT3, GS_SHADER_PARAM_INT4, GS_SHADER_PARAM_MATRIX4X4, GS_SHADER_PARAM_TEXTURE};
+	const enum gs_shader_param_type types[] = {
+		GS_SHADER_PARAM_UNKNOWN, GS_SHADER_PARAM_BOOL, GS_SHADER_PARAM_FLOAT, GS_SHADER_PARAM_INT,
+		GS_SHADER_PARAM_STRING,  GS_SHADER_PARAM_VEC2, GS_SHADER_PARAM_VEC3,  GS_SHADER_PARAM_VEC4,
+		GS_SHADER_PARAM_INT2,    GS_SHADER_PARAM_INT3, GS_SHADER_PARAM_INT4,  GS_SHADER_PARAM_MATRIX4X4,
+		GS_SHADER_PARAM_TEXTURE};
 	return (int)types[index];
 }
 #undef gs_shader_get_num_params

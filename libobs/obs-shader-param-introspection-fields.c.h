@@ -26,8 +26,10 @@ gs_sparam_t *(*obs_shader_param_introspection_name_field(graphics_t *graphics))(
 {
 	return graphics->exports.gs_shader_get_param_by_name;
 }
-void (*obs_shader_param_introspection_info_field(graphics_t *graphics))(const gs_sparam_t *, struct gs_shader_param_info *);
-void (*obs_shader_param_introspection_info_field(graphics_t *graphics))(const gs_sparam_t *, struct gs_shader_param_info *)
+void (*obs_shader_param_introspection_info_field(graphics_t *graphics))(const gs_sparam_t *,
+									struct gs_shader_param_info *);
+void (*obs_shader_param_introspection_info_field(graphics_t *graphics))(const gs_sparam_t *,
+									struct gs_shader_param_info *)
 {
 	return graphics->exports.gs_shader_get_param_info;
 }

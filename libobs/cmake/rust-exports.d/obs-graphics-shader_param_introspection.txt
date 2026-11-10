@@ -1,0 +1,4 @@
+gs_shader_get_num_params
+gs_shader_get_param_by_idx
+gs_shader_get_param_by_name
+gs_shader_get_param_info

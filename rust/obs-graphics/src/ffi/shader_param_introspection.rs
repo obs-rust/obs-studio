@@ -1,7 +1,7 @@
 //! Opaque handles and callback fields at the libobs ABI boundary.
 use super::effect_passes::gs_shader_param_info;
 use crate::shader_param_introspection::{self as core, Host};
-use std::ffi::{CString, c_char, c_void};
+use std::ffi::{c_char, c_void};
 
 type Count = unsafe extern "C" fn(*const c_void) -> i32;
 type ByIndex = unsafe extern "C" fn(*mut c_void, u32) -> *mut c_void;
@@ -31,8 +31,21 @@ impl Host for Adapter {
         !self.0.is_null()
     }
     fn debug(&mut self, function: &'static str, reason: &'static str) {
-        let function = CString::new(function).expect("static function name");
-        let reason = CString::new(reason).expect("static diagnostic");
+        let function = match function {
+            "gs_shader_get_num_params" => c"gs_shader_get_num_params",
+            "gs_shader_get_param_by_idx" => c"gs_shader_get_param_by_idx",
+            "gs_shader_get_param_by_name" => c"gs_shader_get_param_by_name",
+            "gs_shader_get_param_info" => c"gs_shader_get_param_info",
+            _ => unreachable!("static introspection function"),
+        };
+        let reason = match reason {
+            "called while not in a graphics context" => c"called while not in a graphics context",
+            "Null 'shader' parameter" => c"Null 'shader' parameter",
+            "Null 'name' parameter" => c"Null 'name' parameter",
+            "Null 'param' parameter" => c"Null 'param' parameter",
+            "Null 'info' parameter" => c"Null 'info' parameter",
+            _ => unreachable!("static diagnostic"),
+        };
         // SAFETY: both strings live through the synchronous C log call.
         unsafe { obs_shader_param_introspection_debug(function.as_ptr(), reason.as_ptr()) };
     }
