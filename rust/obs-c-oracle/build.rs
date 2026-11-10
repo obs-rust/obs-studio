@@ -640,6 +640,7 @@ fn main() {
         "texture-planar-creators",
         "texture-metadata",
         "texture-cube-access",
+        "timer-dispatch",
         "voltexture-metadata",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
