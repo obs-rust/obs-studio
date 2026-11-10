@@ -51,7 +51,10 @@ fn test_base_effect_unknown_enums_never_read_storage() {
     // Before startup, live core, and after shutdown all have the same result.
     for _ in 0..3 {
         for id in [-1, i32::MIN, 10, 11, i32::MAX] {
-            assert_eq!(get::<Option<&str>>(id, |_| panic!("unknown ID read core")), None);
+            assert_eq!(
+                get::<Option<&str>>(id, |_| panic!("unknown ID read core")),
+                None
+            );
         }
     }
 }

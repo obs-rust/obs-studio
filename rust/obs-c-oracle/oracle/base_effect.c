@@ -5,6 +5,7 @@
 #include "obs-base-effect.c.h"
 #undef obs_get_base_effect
 #undef obs
+#include "base_effect_fields.inc"
 
 static struct obs_core base_effect_state;
 static struct obs_core base_effect_before;

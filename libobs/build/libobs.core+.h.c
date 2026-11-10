@@ -2,7 +2,7 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-base-effect.c.h"
+#include "libobs/obs-base-effect-fields.c.h"
 #include "libobs/obs-core-cmdline-fields.c.h"
 #include "libobs/obs-core-frame-interval-fields.c.h"
 #include "libobs/obs-core-global-fields.c.h"
