@@ -187,6 +187,7 @@ fn path_c(path: &Path) -> Result<CString, String> {
 }
 
 fn reset_video(options: &StartOptions) -> Result<(), String> {
+    super::host_display::require_video_display()?;
     let module = c_string(&options.graphics_module, "graphics module")?;
     let mut info = sys::obs_video_info {
         graphics_module: module.as_ptr(),

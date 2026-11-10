@@ -343,21 +343,75 @@ void log_system_info(void)
 		obs_nix_x11_log_info();
 }
 
+/* A headless host has no compositor to supply keyboard events.  Keep the
+ * hotkey API usable without opening X11 or dereferencing a null wl_display. */
+static bool headless_hotkeys_init(struct obs_core_hotkeys *hotkeys)
+{
+	UNUSED_PARAMETER(hotkeys);
+	return true;
+}
+
+static void headless_hotkeys_free(struct obs_core_hotkeys *hotkeys)
+{
+	UNUSED_PARAMETER(hotkeys);
+}
+
+static bool headless_hotkeys_pressed(obs_hotkeys_platform_t *context, obs_key_t key)
+{
+	UNUSED_PARAMETER(context);
+	UNUSED_PARAMETER(key);
+	return false;
+}
+
+static void headless_hotkeys_key_to_str(obs_key_t key, struct dstr *str)
+{
+	const char *name = obs_key_to_name(key);
+	dstr_copy(str, name ? name : "");
+}
+
+static obs_key_t headless_hotkeys_from_virtual(int sym)
+{
+	UNUSED_PARAMETER(sym);
+	return OBS_KEY_NONE;
+}
+
+static int headless_hotkeys_to_virtual(obs_key_t key)
+{
+	UNUSED_PARAMETER(key);
+	return 0;
+}
+
+static const struct obs_nix_hotkeys_vtable headless_hotkeys_vtable = {
+	.init = headless_hotkeys_init,
+	.free = headless_hotkeys_free,
+	.is_pressed = headless_hotkeys_pressed,
+	.key_to_str = headless_hotkeys_key_to_str,
+	.key_from_virtual_key = headless_hotkeys_from_virtual,
+	.key_to_virtual_key = headless_hotkeys_to_virtual,
+};
+
 bool obs_hotkeys_platform_init(struct obs_core_hotkeys *hotkeys)
 {
 	/* The X11 and Wayland key tables had Volume Up and Down swapped until
 	 * #2635. */
 	hotkeys->saved_volume_keys_swapped = true;
 
+	if (obs_get_nix_platform() == OBS_NIX_PLATFORM_WAYLAND && !obs_get_nix_platform_display()) {
+		hotkeys_vtable = &headless_hotkeys_vtable;
+		return hotkeys_vtable->init(hotkeys);
+	}
+
 	switch (obs_get_nix_platform()) {
 	case OBS_NIX_PLATFORM_X11_EGL:
 		hotkeys_vtable = obs_nix_x11_get_hotkeys_vtable();
 		break;
-#ifdef ENABLE_WAYLAND
 	case OBS_NIX_PLATFORM_WAYLAND:
+#ifdef ENABLE_WAYLAND
 		hotkeys_vtable = obs_nix_wayland_get_hotkeys_vtable();
-		break;
+#else
+		hotkeys_vtable = &headless_hotkeys_vtable;
 #endif
+		break;
 	default:
 		break;
 	}

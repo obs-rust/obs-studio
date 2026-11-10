@@ -75,6 +75,12 @@ not get a line.
 
 ### Headless and automation
 
+- **MCP starts without X11.** The headless host uses an available Wayland
+  compositor or X server, and serves control requests without either display.
+  Video operations report unavailability when no display can create graphics.
+  *Linux*, 2026-11-09. Issue [#4464](https://github.com/obs-rust/obs-studio/issues/4464),
+  PR [#4466](https://github.com/obs-rust/obs-studio/pull/4466).
+
 - **Typed MCP control.** Existing OBS MCP tools publish input and output schemas,
   structured results and machine-readable domain errors. Read operations carry
   annotations, and repeated output start/stop calls succeed with current state.
