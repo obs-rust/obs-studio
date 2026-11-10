@@ -59,7 +59,7 @@ fn check(valid: bool, flags: u32, mask: u32, d: i64, t: i64, s: u32, reenter: bo
         );
     }
     assert_eq!(rust, c);
-    for chunk in rust.chunks_exact(8) {
+    for chunk in rust.as_chunks::<8>().0 {
         assert_eq!(chunk[6..], [1, 0]);
     }
 }

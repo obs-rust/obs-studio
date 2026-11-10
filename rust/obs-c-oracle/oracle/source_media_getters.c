@@ -11,23 +11,6 @@
 #define obs_source_media_get_time oracle_obs_source_media_get_time
 #define obs_source_media_get_state oracle_obs_source_media_get_state
 #include "obs-source-media-getters.c.h"
-static inline bool data_valid(const struct obs_source *source, const char *f)
-{
-	return obs_source_valid(source, f) && source->context.data;
-}
-static inline enum obs_source_media_admit media_admit(obs_source_t *source, bool valid, enum obs_source_media_call call)
-{
-	enum obs_source_media_admit admit = obs_source_media_admit(valid);
-	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_FLAGS)
-		admit = obs_source_media_admit_flags(call, source->info.output_flags);
-	return admit;
-}
-
-#undef obs_source_media_admit
-#undef obs_source_media_admit_flags
-#undef obs_source_media_admit_callback
-#undef obs_source_media_time_fallback
-#undef obs_source_media_state_fallback
 #undef obs_source_media_get_duration
 #undef obs_source_media_get_time
 #undef obs_source_media_get_state

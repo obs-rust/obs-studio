@@ -50,16 +50,19 @@ fn log(name: &'static CStr) {
 }
 /// # Safety
 /// Non-NULL source and its callback context must remain live through synchronous reentry.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_media_get_duration(source: *mut c_void) -> i64 {
     crate::media_getters::duration((!source.is_null()).then_some(Handle(source)).as_ref(), log)
 }
 /// # Safety
 /// Non-NULL source and its callback context must remain live through synchronous reentry.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_media_get_time(source: *mut c_void) -> i64 {
     crate::media_getters::time((!source.is_null()).then_some(Handle(source)).as_ref(), log)
 }
 /// # Safety
 /// Non-NULL source and its callback context must remain live through synchronous reentry.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_media_get_state(source: *mut c_void) -> u32 {
     crate::media_getters::state((!source.is_null()).then_some(Handle(source)).as_ref(), log)
 }
