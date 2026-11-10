@@ -4,7 +4,11 @@ function(_source_icon_type_link_support)
   foreach(_target IN LISTS _targets)
     get_target_property(_links ${_target} LINK_LIBRARIES)
     if(_target MATCHES "^test_(async_|deinterlace_|source_|transition_)" AND "libobs_rust-static" IN_LIST _links)
-      target_sources(${_target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source-icon-type-link-support.c")
+      get_target_property(_sources ${_target} SOURCES)
+      set(_adapter "${CMAKE_CURRENT_SOURCE_DIR}/source-icon-type-link-support.c")
+      if(NOT _adapter IN_LIST _sources)
+        target_sources(${_target} PRIVATE "${_adapter}")
+      endif()
       target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
       target_link_libraries(
         ${_target}

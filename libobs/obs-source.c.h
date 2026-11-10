@@ -31,17 +31,6 @@ static inline bool deinterlacing_enabled(const struct obs_source *source)
 	return source->deinterlace_mode != OBS_DEINTERLACE_MODE_DISABLE;
 }
 
-struct obs_source_info *get_source_info(const char *id)
-{
-	for (size_t i = 0; i < obs->source_types.num; i++) {
-		struct obs_source_info *info = &obs->source_types.array[i];
-		if (strcmp(info->id, id) == 0)
-			return info;
-	}
-
-	return NULL;
-}
-
 struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver)
 {
 	for (size_t i = 0; i < obs->source_types.num; i++) {
