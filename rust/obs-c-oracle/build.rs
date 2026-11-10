@@ -676,6 +676,16 @@ fn main() {
         )
         .expect("write still-image decode extract");
     }
+    for stem in ["graphics-ffmpeg-init", "graphics-ffmpeg-init-adapter"] {
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_pch(
+                &libobs.join("graphics").join(format!("{stem}.c.h")),
+                "#include \"build/libobs-media.pch.h\"",
+            ),
+        )
+        .expect("write image lifecycle extract");
+    }
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
