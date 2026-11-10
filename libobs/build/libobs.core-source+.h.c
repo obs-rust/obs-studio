@@ -68,4 +68,5 @@
 #include "libobs/obs-source-type-data-fields.c.h"
 #include "libobs/obs-source-type-id-getters.c.h"
 #include "libobs/obs-source.c.h"
+#include "libobs/obs-texture-metadata-fields.c.h"
 #include "libobs/obs-view.c.h"
