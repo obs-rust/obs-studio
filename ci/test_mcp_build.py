@@ -89,6 +89,11 @@ esac
         self.assertIn("build diagnostic on stdout", result.stderr)
         self.assertEqual((target / "debug/native-libobs.so.30").read_text(), "library")
 
+    def test_build_includes_graphics_and_probe_runtime(self):
+        result = self.invoke("--build")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("mcp-runtime", self.trace.read_text())
+
     def test_rebuild_preserves_a_library_already_loaded_by_a_listener(self):
         first = self.invoke("--build")
         self.assertEqual(first.returncode, 0, first.stderr)
