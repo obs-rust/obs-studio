@@ -585,6 +585,7 @@ dependencies = [
  "obs-c-oracle",
  "obs-callback",
  "obs-core",
+ "obs-encoder",
  "obs-graphics",
  "obs-hotkey",
  "obs-mcp",
@@ -601,6 +602,13 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "obs-encoder"
+version = "0.1.0"
+dependencies = [
+ "obs-util",
 ]
 
 [[package]]

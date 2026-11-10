@@ -21,6 +21,7 @@ libc = { workspace = true, default-features = true }
 cc = { workspace = true, default-features = true, features = ["parallel"] }
 
 [dev-dependencies]
+obs-encoder = { path = "../obs-encoder" }
 tempfile = { workspace = true, default-features = true }
 schemars = { workspace = true, features = ["derive", "std"] }
 serde = { workspace = true, features = ["derive"] }
