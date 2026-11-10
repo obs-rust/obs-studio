@@ -165,6 +165,9 @@ impl SocketServer {
                     .map(|n| n + 1)
                     .or_else(|| (eof && !peer.buffer.is_empty()).then_some(peer.buffer.len()))
                 {
+                    if stop.load(Ordering::Acquire) {
+                        return false;
+                    }
                     let line: Vec<_> = peer.buffer.drain(..n).collect();
                     let mut response = Vec::new();
                     if peer.server.serve(line.as_slice(), &mut response).is_err() {
