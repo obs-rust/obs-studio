@@ -1,4 +1,5 @@
 //! C ABI shims, one module per C file.
+pub mod atomic_update;
 pub mod group_queries;
 pub mod item_id;
 pub mod item_parent_getter;
