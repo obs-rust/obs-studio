@@ -161,54 +161,55 @@ def resolve_step(files: list[str], subject: str) -> str | None:
     return None
 
 
-def rebase_pr(n: int, dry_run: bool) -> str:
-    pr = gh_json("pr", "view", str(n), "--repo", REPO, "--json",
-                 "headRefName,headRefOid,isCrossRepository,autoMergeRequest,id,state,isDraft,body,"
-                 "labels,statusCheckRollup,reviewDecision")
-    if pr["state"] != "OPEN" or pr["isCrossRepository"]:
-        return "skipped: not an open same-repo PR"
-    br, old = pr["headRefName"], pr["headRefOid"]
-    run("git", "fetch", "-q", "origin", "master", f"+refs/heads/{br}:refs/ai-rebase/{br}")
-    run("git", "checkout", "-q", "--detach", f"refs/ai-rebase/{br}")
-    env_ok = run("git", "rev-parse", "HEAD").strip() == old
-    if not env_ok:
-        return "skipped: head moved while fetching"
-    stack = stacked_parent(pr)
-    if stack and stack[2] != "MERGED":
-        return f"skipped: stacked on #{stack[0]}, which is not merged yet"
-    if stack and subprocess.run(["git", "cat-file", "-e", f"{stack[1]}^{{commit}}"], capture_output=True).returncode:
+def has_commit(sha: str) -> bool:
+    return not subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"],
+                              capture_output=True).returncode
+
+
+def rebase_target(stack: tuple[int, str, str] | None) -> list[str] | str:
+    """`git rebase` arguments, or a skip/failure message."""
+    if not stack:
+        return ["origin/master"]
+    parent, base, state = stack
+    if state != "MERGED":
+        return f"skipped: stacked on #{parent}, which is not merged yet"
+    if not has_commit(base):
         # The parent's branch is usually deleted after merge; GitHub keeps its
         # head under refs/pull/<P>/head.
-        run("git", "fetch", "-q", "origin", f"+refs/pull/{stack[0]}/head:refs/ai-rebase/pr-{stack[0]}",
+        run("git", "fetch", "-q", "origin", f"+refs/pull/{parent}/head:refs/ai-rebase/pr-{parent}",
             check=False)
-        if subprocess.run(["git", "cat-file", "-e", f"{stack[1]}^{{commit}}"], capture_output=True).returncode:
-            return f"failed: parent head {stack[1][:9]} of #{stack[0]} is not fetchable"
-    onto = ["--onto", "origin/master", stack[1]] if stack else ["origin/master"]
-    p = subprocess.run(["git", "rebase", *onto], capture_output=True, text=True)
+        if not has_commit(base):
+            return f"failed: parent head {base[:9]} of #{parent} is not fetchable"
+    return ["--onto", "origin/master", base]
+
+
+def replay(target: list[str]) -> int | str:
+    """Run the rebase, resolving each stopped step; files resolved, or a message."""
+    p = subprocess.run(["git", "rebase", *target], capture_output=True, text=True)
     resolved = 0
     while p.returncode:
         files = run("git", "diff", "--name-only", "--diff-filter=U").split()
-        if not files:
-            run("git", "rebase", "--abort", check=False)
-            return f"failed: rebase stopped without conflicts: {p.stderr.strip()[:300]}"
         subject = run("git", "log", "-1", "--format=%s", "REBASE_HEAD", check=False).strip()
-        why = resolve_step(files, subject)
+        why = (resolve_step(files, subject) if files
+               else f"rebase stopped without conflicts: {p.stderr.strip()[:300]}")
+        if not why and subprocess.run(["git", "diff", "--cached", "--check"]).returncode:
+            why = "resolution fails git diff --check"
         if why:
             run("git", "rebase", "--abort", check=False)
             return f"refused: {why}"
         resolved += len(files)
-        if subprocess.run(["git", "diff", "--cached", "--check"]).returncode:
-            run("git", "rebase", "--abort", check=False)
-            return "refused: resolution fails git diff --check"
         p = subprocess.run(["git", "-c", "core.editor=true", "rebase", "--continue"],
                            capture_output=True, text=True)
-    new = run("git", "rev-parse", "HEAD").strip()
-    if dry_run:
-        return f"dry-run: {old[:9]} -> {new[:9]}, {resolved} file(s) resolved"
+    return resolved
+
+
+def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> str:
+    """Push the rebased head, settle a landed stack, then decide on the queue."""
+    br, old = pr["headRefName"], pr["headRefOid"]
     run("git", "push", "-q", f"--force-with-lease=refs/heads/{br}:{old}", "origin", f"HEAD:refs/heads/{br}")
     if stack:
-        # The parent landed, so this is now an ordinary PR: drop the stacking
-        # note (it would read as a hold) and take it out of draft.
+        # The parent landed, so this is now an ordinary PR: replace the
+        # stacking note (it would read as a hold) and take it out of draft.
         pr["body"] = STACKED.sub(f"Parent #{stack[0]} has merged; ai-rebase replayed "
                                  "only this PR's own commits onto master.", pr.get("body") or "", 1)
         run("gh", "pr", "edit", str(n), "--repo", REPO, "--body", pr["body"], check=False)
@@ -219,9 +220,32 @@ def rebase_pr(n: int, dry_run: bool) -> str:
     if go:
         run("gh", "pr", "merge", str(n), "--repo", REPO, "--auto", "--squash",
             "--match-head-commit", new, check=False)
-    verdict = "auto-merge armed" if go else f"left out of the queue: {why}"
-    return f"pushed: {old[:9]} -> {new[:9]}, {resolved} file(s) AI-resolved; {verdict}"
+    return "auto-merge armed" if go else f"left out of the queue: {why}"
 
+
+def rebase_pr(n: int, dry_run: bool) -> str:
+    pr = gh_json("pr", "view", str(n), "--repo", REPO, "--json",
+                 "headRefName,headRefOid,isCrossRepository,autoMergeRequest,id,state,isDraft,body,"
+                 "labels,statusCheckRollup,reviewDecision")
+    if pr["state"] != "OPEN" or pr["isCrossRepository"]:
+        return "skipped: not an open same-repo PR"
+    br, old = pr["headRefName"], pr["headRefOid"]
+    run("git", "fetch", "-q", "origin", "master", f"+refs/heads/{br}:refs/ai-rebase/{br}")
+    run("git", "checkout", "-q", "--detach", f"refs/ai-rebase/{br}")
+    if run("git", "rev-parse", "HEAD").strip() != old:
+        return "skipped: head moved while fetching"
+    stack = stacked_parent(pr)
+    target = rebase_target(stack)
+    if isinstance(target, str):
+        return target
+    resolved = replay(target)
+    if isinstance(resolved, str):
+        return resolved
+    new = run("git", "rev-parse", "HEAD").strip()
+    if dry_run:
+        return f"dry-run: {old[:9]} -> {new[:9]}, {resolved} file(s) resolved"
+    verdict = publish(n, pr, stack, new)
+    return f"pushed: {old[:9]} -> {new[:9]}, {resolved} file(s) AI-resolved; {verdict}"
 
 STACKED = re.compile(r"Stacked on #(\d+)[^\n]*?(?:after\s+`?([0-9a-f]{7,40})`?)?[^\n]*", re.I)
 
