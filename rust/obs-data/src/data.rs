@@ -13,6 +13,7 @@ use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak};
 
 use crate::ffi::json;
@@ -300,14 +301,25 @@ impl Name {
 pub(crate) struct ItemNode {
     name: Name,
     lock: RwLock<ItemInner>,
+    /// A hint at this item's index in its parent's `items`, so
+    /// `obs_data_item_next` finds the current item without scanning from
+    /// the start. Items are only appended or removed, so the real index is
+    /// never above the hint. It is always checked with `Arc::ptr_eq`, so a
+    /// stale hint costs time, never correctness.
+    pos: AtomicUsize,
 }
 
 impl ItemNode {
-    fn new_with_hash(bytes: &[u8], hash: u64, inner: ItemInner) -> Self {
+    fn new(name: Name, inner: ItemInner) -> Self {
         Self {
-            name: Name::with_hash(bytes, hash),
+            name,
             lock: RwLock::new(inner),
+            pos: AtomicUsize::new(0),
         }
+    }
+
+    fn new_with_hash(bytes: &[u8], hash: u64, inner: ItemInner) -> Self {
+        Self::new(Name::with_hash(bytes, hash), inner)
     }
 }
 
@@ -768,11 +780,12 @@ impl Item {
         let parent = self.inner.borrow().parent.clone();
         let parent = parent.and_then(|weak| weak.upgrade())?;
         let data = parent.borrow();
-        let idx = data
-            .items
-            .iter()
-            .position(|item| Arc::ptr_eq(item, &self.inner))?;
-        data.items.get(idx + 1).cloned()
+        let idx = data.position(&self.inner)?;
+        let next = data.items.get(idx + 1)?;
+        // The walk's next step then finds `next` on the first compare, even
+        // after erases moved it down (C follows `hh.next`, O(1)).
+        next.pos.store(idx + 1, Ordering::Relaxed);
+        Some(Arc::clone(next))
     }
 
     /// Drops the object's reference. This handle stays usable.
@@ -868,7 +881,19 @@ impl DataInner {
         }
     }
 
+    /// The index of `item` in `items`. It starts at the item's hint and
+    /// walks down, since an item only moves down when an earlier one is
+    /// removed; on a hit it is one compare.
+    fn position(&self, item: &Arc<ItemNode>) -> Option<usize> {
+        let last = self.items.len().checked_sub(1)?;
+        let hint = item.pos.load(Ordering::Relaxed).min(last);
+        self.items[..=hint]
+            .iter()
+            .rposition(|i| Arc::ptr_eq(i, item))
+    }
+
     fn push(&mut self, item: Arc<ItemNode>) {
+        item.pos.store(self.items.len(), Ordering::Relaxed);
         if let Some(index) = &mut self.index {
             index.insert(NameKey(Arc::clone(&item)));
         }
@@ -990,10 +1015,7 @@ impl Data {
                 }
             };
             let item = ItemInner::create(Slot::User, value, parent.clone());
-            inner.push(Arc::new(ItemNode {
-                name,
-                lock: RwLock::new(item),
-            }));
+            inner.push(Arc::new(ItemNode::new(name, item)));
         }
         drop(inner);
         out
