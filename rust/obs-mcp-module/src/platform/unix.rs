@@ -141,6 +141,12 @@ struct Frontend {
     release: Release,
     record: GetSource,
     stream: GetSource,
+    record_start: unsafe extern "C" fn(),
+    record_stop: unsafe extern "C" fn(),
+    record_active: unsafe extern "C" fn() -> bool,
+    stream_start: unsafe extern "C" fn(),
+    stream_stop: unsafe extern "C" fn(),
+    stream_active: unsafe extern "C" fn() -> bool,
     output_name: GetName,
     output_release: Release,
     queue: unsafe extern "C" fn(i32, unsafe extern "C" fn(*mut c_void), *mut c_void, bool),
@@ -173,6 +179,24 @@ impl Frontend {
                     .map_err(|e| e.to_string())?,
                 output_name: *lib
                     .get(b"obs_output_get_name\0")
+                    .map_err(|e| e.to_string())?,
+                record_start: *lib
+                    .get(b"obs_frontend_recording_start\0")
+                    .map_err(|e| e.to_string())?,
+                record_stop: *lib
+                    .get(b"obs_frontend_recording_stop\0")
+                    .map_err(|e| e.to_string())?,
+                record_active: *lib
+                    .get(b"obs_frontend_recording_active\0")
+                    .map_err(|e| e.to_string())?,
+                stream_start: *lib
+                    .get(b"obs_frontend_streaming_start\0")
+                    .map_err(|e| e.to_string())?,
+                stream_stop: *lib
+                    .get(b"obs_frontend_streaming_stop\0")
+                    .map_err(|e| e.to_string())?,
+                stream_active: *lib
+                    .get(b"obs_frontend_streaming_active\0")
                     .map_err(|e| e.to_string())?,
                 output_release: *lib
                     .get(b"obs_output_release\0")
@@ -216,6 +240,26 @@ unsafe extern "C" fn change_scene(data: *mut c_void) {
     }
 }
 impl obs_mcp::backend::AttachedFrontend for Frontend {
+    fn set_output(
+        &self,
+        request: obs_mcp::backend::FrontendOutputRequest,
+    ) -> Result<obs_mcp::tools::outputs::ActiveOutput, obs_mcp::server::ToolError> {
+        use obs_mcp::tools::outputs::OutputKind;
+        let (active, command) = match (request.kind, request.active) {
+            (OutputKind::Record, true) => (self.record_active, self.record_start),
+            (OutputKind::Record, false) => (self.record_active, self.record_stop),
+            (OutputKind::Stream, true) => (self.stream_active, self.stream_start),
+            (OutputKind::Stream, false) => (self.stream_active, self.stream_stop),
+        };
+        // SAFETY: frontend start/stop use queued Qt invocations from this worker;
+        // active getters read atomics. State/library outlive all worker calls.
+        unsafe {
+            if active() != request.active {
+                command();
+            }
+            Ok(obs_mcp::tools::outputs::ActiveOutput { active: active() })
+        }
+    }
     fn current_scene(&self, _: obs_mcp::tools::EmptyInput) -> obs_mcp::tools::scenes::SceneOutput {
         obs_mcp::tools::scenes::SceneOutput {
             name: self.name_of(self.current, self.name, self.release),

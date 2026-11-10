@@ -52,6 +52,21 @@ pub trait AttachedFrontend {
         request: crate::tools::scenes::NameInput,
     ) -> Result<crate::tools::scenes::SceneOutput, crate::server::ToolError>;
     fn output_name(&self, request: crate::tools::outputs::OutputRequest) -> FrontendOutputName;
+    fn set_output(
+        &self,
+        _request: FrontendOutputRequest,
+    ) -> Result<crate::tools::outputs::ActiveOutput, crate::server::ToolError> {
+        Err(crate::server::ToolError::not_ready(
+            "frontend output control is unavailable",
+        ))
+    }
+}
+/// Start or stop a frontend-managed output, preserving profile/encoder setup.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FrontendOutputRequest {
+    pub kind: crate::tools::outputs::OutputKind,
+    pub active: bool,
 }
 /// Current frontend output identity; absent while the frontend has no output.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
@@ -399,6 +414,12 @@ impl OutputBackend for ObsBackend {
         crate::tools::waiting::WaitBackend::cancelled(self)
     }
     fn start_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        if let Some(frontend) = &self.frontend {
+            return frontend.set_output(FrontendOutputRequest {
+                kind: request.kind,
+                active: true,
+            });
+        }
         let output = self.output(request.kind).map_err(ToolError::not_ready)?;
         if !output.active() {
             if request.kind == OutputKind::Record {
@@ -413,6 +434,12 @@ impl OutputBackend for ObsBackend {
     }
 
     fn stop_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        if let Some(frontend) = &self.frontend {
+            return frontend.set_output(FrontendOutputRequest {
+                kind: request.kind,
+                active: false,
+            });
+        }
         let output = self.output(request.kind).map_err(ToolError::not_ready)?;
         if output.active() {
             output.stop();
@@ -423,6 +450,12 @@ impl OutputBackend for ObsBackend {
     }
 
     fn start(&self, kind: OutputKind) -> Result<(), String> {
+        if let Some(frontend) = &self.frontend {
+            return frontend
+                .set_output(FrontendOutputRequest { kind, active: true })
+                .map(|_| ())
+                .map_err(|error| error.message);
+        }
         let output = self.output(kind)?;
         if output.active() {
             return Err("the output is already running".to_owned());
@@ -434,6 +467,15 @@ impl OutputBackend for ObsBackend {
     }
 
     fn stop(&self, kind: OutputKind) -> Result<(), String> {
+        if let Some(frontend) = &self.frontend {
+            return frontend
+                .set_output(FrontendOutputRequest {
+                    kind,
+                    active: false,
+                })
+                .map(|_| ())
+                .map_err(|error| error.message);
+        }
         let output = self.output(kind)?;
         if !output.active() {
             return Err("the output is not running".to_owned());
