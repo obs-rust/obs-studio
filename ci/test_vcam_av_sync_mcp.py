@@ -81,10 +81,11 @@ class McpProbeTransportTest(unittest.IsolatedAsyncioTestCase):
     async def test_capture_that_ignores_sigint_is_killed_and_reaped(self):
         recorder = Mock()
         recorder.poll.return_value = None
-        with patch.object(probe.asyncio, "to_thread", AsyncMock(side_effect=[TimeoutError, 0])) as wait:
+        with patch.object(probe.asyncio, "to_thread", AsyncMock(side_effect=[probe.subprocess.TimeoutExpired("ffmpeg", 10), 0])) as wait:
             await probe.stop_capture(recorder)
         recorder.send_signal.assert_called_once_with(probe.signal.SIGINT)
         recorder.kill.assert_called_once()
         self.assertEqual(wait.await_count, 2)
+        self.assertEqual([entry.kwargs for entry in wait.await_args_list], [{"timeout":10}, {"timeout":5}])
 
 if __name__ == "__main__": unittest.main()
