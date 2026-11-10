@@ -28,7 +28,6 @@
 #include "libobs/obs-scene-item-locked-setter.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
-#include "libobs/obs-scene-item-transition-serialization.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
