@@ -139,6 +139,9 @@
 /* obs-video-copy-plan.c */
 #include "obs-video-copy-plan.h"
 
+/* obs-video-frame-copy.c */
+#include "obs-video-frame-copy.h"
+
 /* obs-video-frame-timing.c */
 #include "obs-video-frame-timing.h"
 

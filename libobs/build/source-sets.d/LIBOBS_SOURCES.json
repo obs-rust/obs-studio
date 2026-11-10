@@ -117,6 +117,7 @@
   "obs-source-volume-mul.h",
   "obs-source.h",
   "obs-video-copy-plan.h",
+  "obs-video-frame-copy.h",
   "obs-video-frame-timing.h",
   "obs-video-output-step.h",
   "obs-video-pacing.h",
