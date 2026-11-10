@@ -223,6 +223,22 @@ def replay(target: list[str]) -> int | str:
     return resolved
 
 
+# Optional local check run on the rebased head before arming, e.g.
+# "uv run --no-project ci/windows_link_check.py". Branch-only work published
+# after the 2026-11-09 backlog failed the Windows COFF link about one time in
+# three; checking here keeps those PRs out of the queue instead of spending a
+# hosted run to find out.
+PREFLIGHT = os.environ.get("AI_REBASE_PREFLIGHT", "")
+
+
+def preflight() -> tuple[bool, str]:
+    p = subprocess.run(PREFLIGHT, shell=True, capture_output=True, text=True, timeout=3600)
+    if p.returncode:
+        tail = (p.stdout + p.stderr).strip().splitlines()[-3:]
+        return False, f"preflight `{PREFLIGHT}` failed: {' / '.join(tail)[:300]}"
+    return True, ""
+
+
 def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> str:
     """Push the rebased head, settle a landed stack, then decide on the queue."""
     br, old = pr["headRefName"], pr["headRefOid"]
@@ -237,6 +253,8 @@ def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> s
             run("gh", "pr", "ready", str(n), "--repo", REPO, check=False)
             pr["isDraft"] = False
     go, why = should_enqueue(pr, stack[0] if stack else None)
+    if go and PREFLIGHT:
+        go, why = preflight()
     if go:
         run("gh", "pr", "merge", str(n), "--repo", REPO, "--auto", "--squash",
             "--match-head-commit", new, check=False)
