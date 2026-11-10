@@ -1980,7 +1980,7 @@ jobs:
 
       # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
       - name: Cache ledger 📒
-        if: always()
+        if: always() && hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''
         uses: ./.github/actions/job-cache-ledger
         with:
           lane: fast-gate
@@ -2377,7 +2377,7 @@ jobs:
 
       # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
       - name: Cache ledger 📒
-        if: always()
+        if: always() && hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''
         uses: ./.github/actions/job-cache-ledger
         with:
           lane: rust-tests-macos
@@ -2544,7 +2544,7 @@ jobs:
 
       # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
       - name: Cache ledger 📒
-        if: always()
+        if: always() && hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''
         uses: ./.github/actions/job-cache-ledger
         with:
           lane: rust-tests-windows
@@ -2592,8 +2592,14 @@ jobs:
             -e 's/^Components: main universe restricted multiverse$/Components: main universe/' "$src"
           [ "$(grep -cx 'Components: main universe' "$src")" = 2 ] && grep -qx 'Components: main universe' "$src" ||
             { echo "unexpected $src layout"; cat "$src"; exit 1; }
-          apt-get update -qq
-          apt-get install -y --no-install-recommends git ca-certificates curl sudo zstd
+          # A stale index 404s a just-superseded .deb and an archive host can
+          # refuse a connection (run 42755735949): refetch the index and retry.
+          for attempt in 1 2 3; do
+            apt-get update -qq &&
+              apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "apt attempt $attempt failed; retrying in $((attempt * 10)) s"; sleep $((attempt * 10))
+          done
 
       # fetch-depth 0: versionconfig.cmake derives the OBS version from tags.
       # Treeless (#3022): git describe/log/rev-parse read only commits. No
@@ -2791,7 +2797,7 @@ jobs:
 
       # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
       - name: Cache ledger 📒
-        if: always()
+        if: always() && hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''
         uses: ./.github/actions/job-cache-ledger
         with:
           lane: tier2-linux-build
