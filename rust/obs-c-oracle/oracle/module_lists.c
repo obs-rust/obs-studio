@@ -61,6 +61,54 @@ void oracle_obs_enum_modules(obs_enum_module_callback_t callback, void *param);
 #include "libobs/obs-enum-modules.c.h"
 #undef obs_enum_modules
 
+/* Discovery traversal uses the original C with a callback-only path finder.
+ * The fixture observes forwarding without replacing the traversal or layouts. */
+typedef void (*oracle_find_modules_probe_t)(const char *, const char *, enum obs_runtime_module_type,
+                                          const char *, obs_module_add_extension_t,
+                                          obs_find_module_callback2_t, void *);
+#if defined(_MSC_VER)
+static __declspec(thread) oracle_find_modules_probe_t find_modules_probe;
+#else
+static _Thread_local oracle_find_modules_probe_t find_modules_probe;
+#endif
+void oracle_find_modules_set_probe(oracle_find_modules_probe_t probe);
+void oracle_find_modules_set_probe(oracle_find_modules_probe_t probe)
+{
+    find_modules_probe = probe;
+}
+void oracle_find_modules_find(const char *bin, const char *data, enum obs_runtime_module_type type,
+                             const char *ext, obs_module_add_extension_t hook,
+                             obs_find_module_callback2_t callback, void *param);
+void oracle_find_modules_find(const char *bin, const char *data, enum obs_runtime_module_type type,
+                             const char *ext, obs_module_add_extension_t hook,
+                             obs_find_module_callback2_t callback, void *param)
+{
+    find_modules_probe(bin, data, type, ext, hook, callback, param);
+}
+const char *oracle_find_modules_extension(void);
+const char *oracle_find_modules_extension(void)
+{
+    return ".probe";
+}
+void oracle_find_modules_hook(struct dstr *path);
+void oracle_find_modules_hook(struct dstr *path)
+{
+    (void)path;
+}
+void oracle_obs_find_modules2(obs_find_module_callback2_t callback, void *param);
+void oracle_obs_find_modules(obs_find_module_callback_t callback, void *param);
+#define obs_find_modules2 oracle_obs_find_modules2
+#define obs_find_modules oracle_obs_find_modules
+#define obs_module_paths_find oracle_find_modules_find
+#define get_module_extension oracle_find_modules_extension
+#define obs_host_add_module_extension oracle_find_modules_hook
+#include "libobs/obs-find-modules.c.h"
+#undef obs_host_add_module_extension
+#undef get_module_extension
+#undef obs_module_paths_find
+#undef obs_find_modules
+#undef obs_find_modules2
+
 #undef obs_add_disabled_module
 #undef obs_add_safe_module
 #undef obs_add_module_path
