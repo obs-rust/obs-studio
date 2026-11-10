@@ -18,6 +18,8 @@
 //! The table is built before the watchdog is armed and does not change, so
 //! the watchdog can look an address up without allocating or locking.
 
+use std::collections::{BTreeMap, HashSet};
+
 /// One loaded image: its address range `[start, end)` and its path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Image {
@@ -52,15 +54,24 @@ pub struct Entry {
 
 /// The file name of a path (`/` or `\` separated).
 pub fn file_name(path: &str) -> &str {
-    let _ = path;
-    todo!()
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
 /// The owner of each image of `images` (in load order), given the binary
 /// paths of the OBS modules. A module is matched by its file name.
 pub fn owners(images: &[Image], modules: &[String]) -> Vec<Owner> {
-    let _ = (images, modules);
-    todo!()
+    let names: HashSet<&str> = modules.iter().map(|m| file_name(m)).collect();
+    let mut owner = Owner::Obs;
+    images
+        .iter()
+        .map(|image| {
+            let name = file_name(&image.path);
+            if names.contains(name) {
+                owner = Owner::Module(name.to_string());
+            }
+            owner.clone()
+        })
+        .collect()
 }
 
 /// The images with their owners, sorted by address.
@@ -79,8 +90,27 @@ impl Table {
         at_arm: &[Image],
         modules: &[String],
     ) -> Table {
-        let _ = (after_load, after_post_load, at_arm, modules);
-        todo!()
+        let mut by_start: BTreeMap<usize, Entry> = BTreeMap::new();
+        let mut add = |image: &Image, owner: Owner| {
+            by_start.entry(image.start).or_insert_with(|| Entry {
+                start: image.start,
+                end: image.end,
+                file: file_name(&image.path).to_string(),
+                owner,
+            });
+        };
+        for (image, owner) in after_load.iter().zip(owners(after_load, modules)) {
+            add(image, owner);
+        }
+        for image in after_post_load {
+            add(image, Owner::PostLoad);
+        }
+        for image in at_arm {
+            add(image, Owner::AfterStartup);
+        }
+        Table {
+            entries: by_start.into_values().collect(),
+        }
     }
 
     /// The entries, sorted by start address.
@@ -90,8 +120,9 @@ impl Table {
 
     /// The entry whose range holds `address`. No allocation.
     pub fn find(&self, address: usize) -> Option<&Entry> {
-        let _ = address;
-        todo!()
+        let after = self.entries.partition_point(|e| e.start <= address);
+        let entry = self.entries.get(after.checked_sub(1)?)?;
+        (address < entry.end).then_some(entry)
     }
 }
 
