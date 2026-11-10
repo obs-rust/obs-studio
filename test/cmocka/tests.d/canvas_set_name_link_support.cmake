@@ -13,7 +13,10 @@ function(_canvas_set_name_link_support)
         set(_generated "${CMAKE_CURRENT_BINARY_DIR}/canvas-set-name-link-support.c")
         file(WRITE "${_generated}" "${_source}")
         add_library(canvas_set_name_link_support STATIC EXCLUDE_FROM_ALL "${_generated}")
-        target_include_directories(canvas_set_name_link_support PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+        target_include_directories(
+          canvas_set_name_link_support
+          PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_BINARY_DIR}/config"
+        )
         target_link_libraries(
           canvas_set_name_link_support
           PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
