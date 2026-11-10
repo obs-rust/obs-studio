@@ -96,7 +96,14 @@ def main() -> int:
     ap.add_argument("--repo", default=REPO)
     ap.add_argument("--check", action="store_true", help="print one line instead of JSON")
     a = ap.parse_args()
-    v = measure(a.repo)
+    try:
+        v = measure(a.repo)
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        # GitHub could not be read: an unknown queue admits nothing new, and
+        # callers get a verdict instead of a traceback.
+        err = (getattr(e, "stderr", "") or str(e)).strip().splitlines()[-1:] or [""]
+        v = {"state": "closed", "reasons": [f"GitHub state unavailable: {err[0][:200]}"],
+             "limit": 0, "in_flight": 0, "headroom": 0}
     if a.check:
         why = "; ".join(v["reasons"]) or f"headroom {v['headroom']}"
         print(f"backpressure {v['state']}: {why}")
