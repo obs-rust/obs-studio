@@ -23874,7 +23874,11 @@
       ],
       "suite": "graphics",
       "working_directory": "${runtime}",
-      "timeout_seconds": 120
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ],
+      "run_serial": true
     },
     "test_source_video_tick_steps": {
       "target": "test_source_video_tick_steps",
