@@ -7,7 +7,10 @@ function(_module_init_link_support)
     if("libobs_rust-static" IN_LIST _links)
       if(NOT TARGET module_init_link_support)
         add_library(module_init_link_support STATIC "${CMAKE_CURRENT_SOURCE_DIR}/module-init-link-support.c")
-        target_include_directories(module_init_link_support PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
+        target_include_directories(
+          module_init_link_support
+          PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_BINARY_DIR}/config"
+        )
         target_link_libraries(
           module_init_link_support
           PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
