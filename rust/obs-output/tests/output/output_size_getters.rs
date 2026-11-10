@@ -37,6 +37,17 @@ impl Access for Output {
         self.logs.borrow_mut().push((name, null));
     }
 }
+// The expected values from the C characterization, independent of the core.
+fn expected(encoded: bool, present: u32, dims: [u32; 2], output: &Output, axis: Axis) -> u32 {
+    let a = usize::from(axis == Axis::Height);
+    if encoded {
+        if present == 0 { 0 } else { dims[a] }
+    } else if output.scaled[a] != 0 {
+        output.scaled[a]
+    } else {
+        output.video[a]
+    }
+}
 #[test]
 fn test_output_size_getters_characterize() {
     for axis in [Axis::Width, Axis::Height] {
@@ -73,14 +84,7 @@ fn test_output_size_getters_characterize() {
                                     _ => [640 + idx as u32, 480 + idx as u32],
                                 };
                                 o.encoder = (present != 0).then_some((idx, dims));
-                                let a = usize::from(axis == Axis::Height);
-                                let want = if encoded {
-                                    if present == 0 { 0 } else { dims[a] }
-                                } else if o.scaled[a] != 0 {
-                                    o.scaled[a]
-                                } else {
-                                    o.video[a]
-                                };
+                                let want = expected(encoded, present, dims, &o, axis);
                                 assert_eq!(size(true, Some(idx), axis, &o), want);
                                 assert_eq!(
                                     size(true, None, axis, &o),

@@ -36,7 +36,8 @@ static inline bool log_flag_video(const struct obs_output *output, const char *f
 {
 	bool ret = (output->info.flags & OBS_OUTPUT_VIDEO) != 0;
 	if (!ret)
-		blog(LOG_WARNING, "Output '%s': Tried to use %s on a non-video output", output->context.name, func_name);
+		blog(LOG_WARNING, "Output '%s': Tried to use %s on a non-video output", output->context.name,
+		     func_name);
 	return ret;
 }
 struct output_size_fixture {
@@ -111,7 +112,7 @@ bool oracle_output_size_probe(void *handle, size_t idx, bool height, bool indexe
 	uint32_t rv = indexed ? getter(output, idx) : wrapper(output);
 	set_log(output_size_capture, &c);
 	uint32_t cv = indexed ? (height ? oracle_obs_output_get_height2(output, idx)
-				      : oracle_obs_output_get_width2(output, idx))
+					: oracle_obs_output_get_width2(output, idx))
 			      : (height ? oracle_obs_output_get_height(output) : oracle_obs_output_get_width(output));
 	set_log(old_handler, old_param);
 	return rv == cv && r.count == c.count && r.level == c.level && strcmp(r.message, c.message) == 0 &&

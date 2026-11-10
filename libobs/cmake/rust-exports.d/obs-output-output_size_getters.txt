@@ -1,0 +1,4 @@
+obs_output_get_width2
+obs_output_get_width
+obs_output_get_height2
+obs_output_get_height

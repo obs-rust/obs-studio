@@ -26,6 +26,31 @@ pub trait Access {
     fn log(&self, name: &'static CStr, null: bool);
 }
 /// `None` selects the default-index wrapper, preserving its diagnostic name.
-pub fn size(_valid: bool, _idx: Option<usize>, _axis: Axis, _output: &impl Access) -> u32 {
-    todo!("#4594 output size getters")
+pub fn size(valid: bool, idx: Option<usize>, axis: Axis, output: &impl Access) -> u32 {
+    use crate::output_slots::{SlotKind, slot_exists};
+    use crate::video_checks::{OBS_OUTPUT_ENCODED, OBS_OUTPUT_VIDEO, size_route};
+    let name = axis.name(idx.is_some());
+    if !valid {
+        output.log(name, true);
+        return 0;
+    }
+    let flags = output.flags();
+    if flags & OBS_OUTPUT_VIDEO == 0 {
+        output.log(name, false);
+        return 0;
+    }
+    let idx = idx.unwrap_or(0);
+    if !slot_exists(SlotKind::Video, idx) {
+        return 0;
+    }
+    let scaled = output.scaled(axis);
+    match size_route(
+        flags & OBS_OUTPUT_ENCODED != 0,
+        output.has_encoder(idx),
+        scaled,
+    ) {
+        SizeRoute::Zero => 0,
+        SizeRoute::Scaled => scaled,
+        source => output.read(idx, axis, source),
+    }
 }
