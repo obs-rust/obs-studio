@@ -258,3 +258,30 @@ gs_effect_t **obs_source_deinterlace_seam_get_yadif_2x_effect_slot(void)
 {
 	return &obs->video.deinterlace_yadif_2x_effect;
 }
+
+uint64_t obs_source_deinterlace_seam_get_video_time(void)
+{
+	return obs_video_stats_frame_time(&obs->video.stats);
+}
+
+/* The frame fields. */
+
+uint64_t obs_source_deinterlace_seam_get_frame_timestamp(const struct obs_source_frame *frame)
+{
+	return frame->timestamp;
+}
+
+bool obs_source_deinterlace_seam_get_frame_prev_frame(const struct obs_source_frame *frame)
+{
+	return frame->prev_frame;
+}
+
+void obs_source_deinterlace_seam_set_frame_prev_frame(struct obs_source_frame *frame, bool value)
+{
+	frame->prev_frame = value;
+}
+
+long obs_source_deinterlace_seam_frame_addref(struct obs_source_frame *frame)
+{
+	return os_atomic_inc_long(&frame->refs);
+}
