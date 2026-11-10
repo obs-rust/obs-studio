@@ -494,6 +494,12 @@ not get a line.
   ends with exit code 124, instead of staying in the background without a
   window. *Linux, macOS*, pending merge. Issue
   [#4065](https://github.com/obs-rust/obs-studio/issues/4065).
+- **The exit watchdog names the plugin.** The line names the library OBS
+  waits in and the plugin that loaded it, also a library a plugin loaded
+  itself, for example `... is blocking in libremidi.so.4 (loaded by
+  advanced-scene-switcher.so); ending the process`. *Linux, macOS*,
+  pending merge. Issue
+  [#4525](https://github.com/obs-rust/obs-studio/issues/4525).
 - Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel
