@@ -7,7 +7,9 @@ Do exactly this:
    current master; the other side is the PR commit. Most conflicts here are
    shared append points (unity-group includes in `libobs/build/*.h.c`,
    declarations in `obs-internal.h`, `test/cmocka/build/test-graph.json`,
-   `mod` lists, `rust/README.md` table rows): keep both sides' additions, and
+   `mod` lists, `rust/README.md` table rows): keep both sides' additions, keep every line the PR deleted deleted (a port
+   removes a C file's include from a core unity group when it moves the file to
+   its ported group; putting the include back compiles the C twice), and
    keep sorted lists sorted. When both sides changed the same line, combine
    their intent; master's changes stay.
 2. Remove every conflict marker, then `git add` each resolved file.
