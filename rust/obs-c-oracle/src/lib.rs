@@ -214,6 +214,7 @@ pub mod source_audio_settings;
 pub mod source_audio_timing;
 pub mod source_color_space;
 pub mod source_conversion_plan;
+pub mod source_deinterlace;
 pub mod source_deinterlace_draw;
 pub mod source_deinterlace_pacing;
 pub mod source_deinterlace_select;

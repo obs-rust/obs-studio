@@ -1,9 +1,11 @@
 /* Test-only link stand-ins for the test binaries that link the
  * obs-source-seam shims without libobs: the deinterlace seam,
  * libobs/obs-source-deinterlace-seam.c.h, compiled here under its own
- * names, and do-nothing definitions of the libobs calls the deinterlace
- * shims (rust/obs-source-seam/src/ffi/source_deinterlace.rs) name under
- * libobs's own names: the frame cache, the async texture upload, the
+ * names (the mode and field-order reads, obs_source_deinterlace_fields(),
+ * are oracle/source_deinterlace_getters.c's), and do-nothing definitions
+ * of the libobs calls the deinterlace shims
+ * (rust/obs-source-seam/src/ffi/source_deinterlace.rs) name under libobs's
+ * own names: the frame cache, the async texture upload, the
  * deinterlace texture size, the effect load, the SDR white level and the
  * framebuffer sRGB calls.
  *

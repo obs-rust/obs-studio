@@ -44,11 +44,15 @@ use obs_source::deinterlace_draw::Effect;
 /// `LOG_DEBUG`.
 const LOG_DEBUG: c_int = 400;
 
-/// `struct obs_source_deinterlace_fields` (`obs-source-deinterlace-fields.c`).
+/// `struct obs_source_deinterlace_fields` (`obs-internal.h`): the
+/// addresses of a source's `deinterlace_mode` (an `enum
+/// obs_deinterlace_mode`, the size of an `int`) and `deinterlace_top_first`.
 #[repr(C)]
-struct DeinterlaceFields {
-    mode: *const c_int,
-    top_first: *const bool,
+pub struct DeinterlaceFields {
+    /// `mode`.
+    pub mode: *const c_int,
+    /// `top_first`.
+    pub top_first: *const bool,
 }
 
 /// `struct vec2`.
