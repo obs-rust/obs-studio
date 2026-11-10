@@ -152,6 +152,16 @@ bool oracle_source_info_lookup_check(const char *const *ids, size_t num, const c
 	return same;
 }
 
+/* With nothing registered the original never reads the asked ID (strcmp is
+ * inside the loop): both sides take an unreadable pointer and find nothing. */
+bool oracle_source_info_lookup_unread_id(source_info_lookup_fn lookup);
+bool oracle_source_info_lookup_unread_id(source_info_lookup_fn lookup)
+{
+	const char *unreadable = (const char *)(uintptr_t)1;
+	oracle_source_info_lookup_use(NULL, 0);
+	return lookup(unreadable) == NULL && oracle_get_source_info(unreadable) == NULL;
+}
+
 /* The intentional differences, production side only: with a registered NULL
  * ID first, a NULL asked ID and the empty ID find nothing, and "a" finds the
  * second entry. The original is not called: it would crash in strcmp. */

@@ -23,6 +23,9 @@ unsafe extern "C" {
         rust_index: *mut isize,
         c_index: *mut isize,
     ) -> bool;
+    fn oracle_source_info_lookup_unread_id(
+        lookup: unsafe extern "C" fn(*const c_char) -> *mut c_void,
+    ) -> bool;
     fn oracle_source_info_lookup_null_ids(
         lookup: unsafe extern "C" fn(*const c_char) -> *mut c_void,
     ) -> bool;
@@ -77,6 +80,15 @@ fn characterized_cases_match_c() {
     assert_eq!(compare(&[b"\xc3\xa9"], Some(b"e\xcc\x81")), None);
     // A NULL ID with nothing registered: the C loop never runs.
     assert_eq!(compare(&[], None), None);
+}
+
+/// With nothing registered, neither side reads the asked ID: both take an
+/// unreadable pointer and find nothing.
+#[test]
+fn empty_registry_never_reads_the_id() {
+    // SAFETY: neither side dereferences the pointer with no entries; the
+    // oracle clears this thread's registry first.
+    assert!(unsafe { oracle_source_info_lookup_unread_id(get_source_info) });
 }
 
 /// Intentional differences: NULL asked and registered IDs (Rust only).

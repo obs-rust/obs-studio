@@ -27,9 +27,11 @@ pub fn find<'a, R: Registry + ?Sized>(
     registry: &mut R,
     id: Option<impl FnOnce() -> &'a [u8]>,
 ) -> Option<usize> {
-    let id = id?();
+    let mut read = Some(id?);
+    let mut asked = None;
     let mut index = 0;
     while index < registry.count() {
+        let id: &[u8] = asked.get_or_insert_with(|| read.take().map_or(&[][..], |read| read()));
         if registry.id(index) == Some(id) {
             return Some(index);
         }
