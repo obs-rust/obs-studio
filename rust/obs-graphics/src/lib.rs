@@ -1,7 +1,9 @@
 //! Rust ports of `libobs/graphics`, and of the units extracted from
 //! `libobs/graphics/graphics.c.h`: so far `graphics-sprite.c.h`, the sprite
 //! and texture upload geometry ([`sprite`]), and `graphics-immediate.c.h`,
-//! the immediate-mode vertex counts and texture units ([`immediate`]), from
+//! the immediate-mode vertex counts and texture units ([`immediate`]), and
+//! `texture-planar-creators.c.h`, the NV12 and P010 texture creators
+//! ([`texture_planar_creators`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
@@ -71,6 +73,7 @@ pub mod shader_sampler_convert;
 pub mod sprite;
 pub mod stagesurface_getters;
 pub mod state_stacks;
+pub mod texture_planar_creators;
 pub mod texture_render;
 pub mod vec2;
 pub mod vec3;

@@ -14,6 +14,5 @@
 #include "libobs/graphics/state-blend-entrypoints.c.h"
 #include "libobs/graphics/texture-creators.c.h"
 #include "libobs/graphics/texture-metadata.c.h"
-#include "libobs/graphics/texture-planar-creators.c.h"
 #include "libobs/graphics/vertexbuffer-access.c.h"
 #include "libobs/graphics/vertexbuffer-destroy.c.h"

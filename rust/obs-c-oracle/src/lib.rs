@@ -249,6 +249,7 @@ pub mod source_volume_mul;
 pub mod speaker_layout;
 pub mod task;
 pub mod text_lookup;
+pub mod texture_planar_creators;
 pub mod texture_render;
 pub mod threading;
 pub mod utf8;
