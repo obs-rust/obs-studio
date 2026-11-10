@@ -686,6 +686,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-scene-item-audio-actions.c.h")),
     )
     .expect("write original scene item audio actions extract");
+    std::fs::write(
+        extract_dir.join("vertexbuffer-access.inc"),
+        extract_after_libobs_pch(&libobs.join("graphics/vertexbuffer-access.c.h")),
+    )
+    .expect("write vertex-buffer access extract");
     for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

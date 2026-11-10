@@ -13,5 +13,5 @@
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/shader-parser.c.h"
 #include "libobs/graphics/texture-creators.c.h"
-#include "libobs/graphics/vertexbuffer-access.c.h"
+#include "libobs/obs-vertexbuffer-access-fields.c.h"
 #include "libobs/obs-vertexbuffer-destroy-fields.c.h"
