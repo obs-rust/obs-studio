@@ -23,6 +23,11 @@ static int lookup_mutex_unlock(pthread_mutex_t *mutex)
 			lookup_trace[lookup_trace_len++] = i + 17;
 	return pthread_mutex_unlock(mutex);
 }
+/* Preserve command-line pthread renames while the extracted C uses probes. */
+#pragma push_macro("pthread_mutex_lock")
+#pragma push_macro("pthread_mutex_unlock")
+#undef pthread_mutex_lock
+#undef pthread_mutex_unlock
 #define pthread_mutex_lock lookup_mutex_lock
 #define pthread_mutex_unlock lookup_mutex_unlock
 #define obs_scene_find_source oracle_obs_scene_find_source
@@ -41,6 +46,8 @@ obs_sceneitem_t *oracle_obs_scene_get_group(obs_scene_t *, const char *);
 #include "scene_lookup_fields.inc"
 #undef pthread_mutex_lock
 #undef pthread_mutex_unlock
+#pragma pop_macro("pthread_mutex_unlock")
+#pragma pop_macro("pthread_mutex_lock")
 
 typedef obs_sceneitem_t *(*name_lookup)(obs_scene_t *, const char *);
 typedef obs_sceneitem_t *(*id_lookup)(obs_scene_t *, int64_t);
