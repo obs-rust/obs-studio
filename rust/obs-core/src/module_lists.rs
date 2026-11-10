@@ -30,11 +30,13 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
-use crate::module_paths::ModuleFs;
+use crate::module_names;
+use crate::module_paths::{self, ModuleFs};
 
 /// One of a module's type lists, the one each `obs_module_add_*()` pushes
 /// to.
@@ -110,8 +112,15 @@ pub trait Lists {
 /// nothing (the intentional difference): the heading, then a line for each
 /// module from the first, in order.
 pub fn log_loaded_modules<L: Lists>(lists: &mut L) {
-    let _ = lists;
-    todo!()
+    if !lists.has_core() {
+        return;
+    }
+    lists.log(Line::Heading);
+    let mut module = lists.first_module();
+    while let Some(m) = module {
+        lists.log(Line::Module(m));
+        module = lists.next(m);
+    }
 }
 
 /// Same contract as C `obs_module_add_source` and its siblings: a copy of
@@ -122,8 +131,9 @@ pub fn add_type<L: Lists>(
     list: TypeList,
     id: Option<&[u8]>,
 ) {
-    let _ = (lists, module, list, id);
-    todo!()
+    if let Some(module) = module {
+        lists.push_type(module, list, id);
+    }
 }
 
 /// Same contract as C `obs_find_module_file`: the file under the module's
@@ -134,8 +144,8 @@ pub fn find_file<L: Lists>(
     module: Option<L::Module>,
     file: Option<&[u8]>,
 ) -> Option<Vec<u8>> {
-    let _ = (lists, fs, module, file);
-    todo!()
+    let module = module?;
+    module_paths::find_file(fs, lists.data_path(module), file)
 }
 
 /// Same contract as C `obs_module_get_config_path`: the core's module
@@ -147,20 +157,33 @@ pub fn config_path<L: Lists>(
     module: Option<L::Module>,
     file: Option<&[u8]>,
 ) -> Option<Vec<u8>> {
-    let _ = (lists, module, file);
-    todo!()
+    let module = module?;
+    Some(module_names::config_path(
+        lists.module_config_path(),
+        lists.module_name(module),
+        file,
+    ))
 }
 
 /// Same contract as C `obs_add_module_path`: a copy of both paths on the
 /// core's search paths; nothing with no core or without both.
 pub fn add_module_path<L: Lists>(lists: &mut L, bin: Option<&[u8]>, data: Option<&[u8]>) {
-    let _ = (lists, bin, data);
-    todo!()
+    if !lists.has_core() {
+        return;
+    }
+    let (Some(bin), Some(data)) = (bin, data) else {
+        return;
+    };
+    lists.push_path(bin, data);
 }
 
 /// Same contract as C `obs_add_safe_module` and `obs_add_disabled_module`:
 /// a copy of `name` on the core's `list`; nothing with no core or no name.
 pub fn add_name<L: Lists>(lists: &mut L, list: NameList, name: Option<&[u8]>) {
-    let _ = (lists, list, name);
-    todo!()
+    if !lists.has_core() {
+        return;
+    }
+    if let Some(name) = name {
+        lists.push_name(list, name);
+    }
 }
