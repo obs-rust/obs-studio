@@ -1,0 +1,4 @@
+# obs-source-deinterlace.c (obs-source-seam): the deinterlace mode and
+# field-order setters in obs.h (EXPORT).
+obs_source_set_deinterlace_field_order
+obs_source_set_deinterlace_mode

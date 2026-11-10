@@ -15,14 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
-
-/* A frame is due once the source clock is this far past its timestamp. */
-#define FRAME_TOLERANCE 2000000ULL
-_Static_assert(FRAME_TOLERANCE == OBS_SOURCE_DEINTERLACE_PACING_FRAME_TOLERANCE, "FRAME_TOLERANCE");
-
-/* obs-source-deinterlace-select.c decides with the same threshold */
-_Static_assert(OBS_SOURCE_DEINTERLACE_SELECT_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
+#include "libobs/build/libobs-ported-source-deinterlace.pch.h"
 
 /* async_mutex is held (async_tick()). obs-source-deinterlace-select.c
  * decides from a copy of the queue's timestamps (a queued frame's timestamp
@@ -212,9 +205,6 @@ void deinterlace_update_async_video(obs_source_t *source)
 	}
 }
 
-_Static_assert(sizeof(enum obs_deinterlace_mode) == sizeof(int), "enum obs_deinterlace_mode is passed as int");
-_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
-
 static inline gs_effect_t *get_effect(enum obs_deinterlace_mode mode)
 {
 	switch (obs_source_deinterlace_draw_effect((int)mode)) {
@@ -368,6 +358,3 @@ void obs_source_set_deinterlace_field_order(obs_source_t *source, enum obs_deint
 
 	source->deinterlace_top_first = field_order == OBS_DEINTERLACE_FIELD_ORDER_TOP;
 }
-
-/* File-local macros (BUILD.md): out of the next file in the unity group. */
-#undef FRAME_TOLERANCE

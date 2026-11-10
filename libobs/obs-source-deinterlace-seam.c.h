@@ -20,6 +20,22 @@
 /* Private adapter, not a new public API (obs-source-deinterlace-seam.h).
  * Each body is the line of obs-source-deinterlace.c it is copied from. */
 
+/* The checks obs-source-deinterlace.c made of the values its Rust port
+ * shares with the C, moved here so every build keeps them. */
+
+/* A frame is due once the source clock is this far past its timestamp. */
+#define FRAME_TOLERANCE 2000000ULL
+_Static_assert(FRAME_TOLERANCE == OBS_SOURCE_DEINTERLACE_PACING_FRAME_TOLERANCE, "FRAME_TOLERANCE");
+
+/* obs-source-deinterlace-select.c decides with the same threshold */
+_Static_assert(OBS_SOURCE_DEINTERLACE_SELECT_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
+
+_Static_assert(sizeof(enum obs_deinterlace_mode) == sizeof(int), "enum obs_deinterlace_mode is passed as int");
+_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
+
+/* File-local macros (BUILD.md): out of the next file in the unity group. */
+#undef FRAME_TOLERANCE
+
 /* The async queue. */
 
 size_t obs_source_deinterlace_seam_get_async_frames_num(const obs_source_t *source)
