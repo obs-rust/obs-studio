@@ -2064,38 +2064,6 @@ void *gs_texture_get_obj(gs_texture_t *tex)
 	return graphics->exports.gs_texture_get_obj(tex);
 }
 
-void gs_cubetexture_destroy(gs_texture_t *cubetex)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_cubetexture_destroy"))
-		return;
-	if (!cubetex)
-		return;
-
-	graphics->exports.gs_cubetexture_destroy(cubetex);
-}
-
-uint32_t gs_cubetexture_get_size(const gs_texture_t *cubetex)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_cubetexture_get_size", cubetex))
-		return 0;
-
-	return graphics->exports.gs_cubetexture_get_size(cubetex);
-}
-
-enum gs_color_format gs_cubetexture_get_color_format(const gs_texture_t *cubetex)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_cubetexture_get_color_format", cubetex))
-		return GS_UNKNOWN;
-
-	return graphics->exports.gs_cubetexture_get_color_format(cubetex);
-}
-
 void gs_voltexture_destroy(gs_texture_t *voltex)
 {
 	graphics_t *graphics = thread_graphics;
