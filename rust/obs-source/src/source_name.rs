@@ -6,6 +6,10 @@ pub fn name<T: Copy + Default>(
     read: impl FnOnce() -> T,
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (valid, read, log);
-    todo!("port obs_source_get_name")
+    if valid {
+        read()
+    } else {
+        log(c"obs_source_get_name");
+        T::default()
+    }
 }

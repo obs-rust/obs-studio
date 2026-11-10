@@ -71,6 +71,8 @@ mod source_filter_chain;
 mod source_filter_chain_parity;
 mod source_identity_getters;
 mod source_identity_getters_parity;
+mod source_name;
+mod source_name_parity;
 mod state_getters;
 mod state_getters_parity;
 mod transition_access;
@@ -99,5 +101,3 @@ mod volume_apply;
 mod volume_apply_parity;
 mod volume_mul;
 mod volume_mul_parity;
-
-mod source_name;
