@@ -75,6 +75,12 @@ not get a line.
 
 ### Headless and automation
 
+- **MCP starts without X11.** The headless host uses an available Wayland
+  compositor or X server, and serves control requests without either display.
+  Video operations report unavailability when no display can create graphics.
+  *Linux*, 2026-11-09. Issue [#4464](https://github.com/obs-rust/obs-studio/issues/4464),
+  PR [#4466](https://github.com/obs-rust/obs-studio/pull/4466).
+
 - **Bounded MCP waits.** Agents can wait for typed output/source/media/metric
   conditions and request automatic waits on starts, without GUI interaction or
   fixed sleeps. Timeouts return the last observation. *All*, 2026-11-09.

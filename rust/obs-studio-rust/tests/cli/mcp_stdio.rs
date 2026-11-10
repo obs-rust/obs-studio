@@ -16,7 +16,23 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 
 #[test]
 fn mcp_flag_serves_obs_over_stdio_and_exits_on_eof() {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_obs-studio-rust"))
+    exercise_mcp(false);
+}
+
+#[test]
+fn mcp_starts_without_a_reachable_x_or_wayland_display() {
+    exercise_mcp(true);
+}
+
+fn exercise_mcp(no_display: bool) {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_obs-studio-rust"));
+    if no_display {
+        command
+            .env("DISPLAY", ":54321")
+            .env("XDG_SESSION_TYPE", "wayland")
+            .env("WAYLAND_DISPLAY", "/nonexistent/obs-mcp-wayland");
+    }
+    let mut child = command
         .arg("--mcp")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
