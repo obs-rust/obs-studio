@@ -78,6 +78,8 @@ mod source_icon_type;
 mod source_icon_type_parity;
 mod source_identity_getters;
 mod source_identity_getters_parity;
+mod source_name;
+mod source_name_parity;
 mod state_getters;
 mod state_getters_parity;
 mod transition_access;

@@ -204,6 +204,7 @@ pub mod source_duplicate;
 pub mod source_filter_chain;
 pub mod source_icon_type;
 pub mod source_identity_getters;
+pub mod source_name;
 pub mod state_getters;
 pub mod transition_access;
 pub mod transition_audio;
