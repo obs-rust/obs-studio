@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-encoder-configuration.pch.h"
 
 #define encoder_active(encoder) os_atomic_load_bool(&encoder->active)
 

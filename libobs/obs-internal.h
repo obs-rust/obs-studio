@@ -2411,6 +2411,24 @@ struct obs_encoder_frame_rate_divisor_fields {
 };
 struct obs_encoder_frame_rate_divisor_fields obs_encoder_frame_rate_divisor_fields(const obs_encoder_t *encoder);
 
+/* Borrowed writable configuration fields. Caller rejects NULL first. */
+struct obs_encoder_configuration_fields {
+	const enum obs_encoder_type *kind;
+	volatile bool *active;
+	const bool *initialized;
+	uint32_t *width;
+	uint32_t *height;
+	enum obs_scale_type *gpu;
+	uint32_t *divisor;
+	void *media;
+	video_t **fps_override;
+	const char *name;
+};
+struct obs_encoder_configuration_fields obs_encoder_configuration_fields(obs_encoder_t *encoder);
+bool obs_encoder_configuration_output_size(void *media, uint32_t *width, uint32_t *height);
+void obs_encoder_configuration_free_override(void *video);
+void *obs_encoder_configuration_create_override(void *media, uint32_t divisor);
+
 /* What the encoded packet interleaver reads from an encoder, as values: the
  * time base, the frame size and the encoder group (NULL without one). Not
  * EXPORT. */
