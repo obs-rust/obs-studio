@@ -34,6 +34,13 @@ static int clear_roi_unlock(pthread_mutex_t *mutex)
 }
 void oracle_obs_encoder_clear_roi(obs_encoder_t *encoder);
 
+/* The mingw build renames every pthread function on the command line
+ * (-Dpthread_mutex_lock=oracle_pthread_mutex_lock, w32-pthreads): keep that
+ * name for the rest of the file and use the probes only here (#4191). */
+#pragma push_macro("pthread_mutex_lock")
+#pragma push_macro("pthread_mutex_unlock")
+#undef pthread_mutex_lock
+#undef pthread_mutex_unlock
 #define pthread_mutex_lock clear_roi_lock
 #define pthread_mutex_unlock clear_roi_unlock
 #define obs_encoder_clear_roi oracle_obs_encoder_clear_roi
@@ -42,6 +49,8 @@ void oracle_obs_encoder_clear_roi(obs_encoder_t *encoder);
 #include "encoder-clear-roi-fields.inc"
 #undef pthread_mutex_unlock
 #undef pthread_mutex_lock
+#pragma pop_macro("pthread_mutex_unlock")
+#pragma pop_macro("pthread_mutex_lock")
 
 void *oracle_encoder_clear_roi_new(size_t count, uint32_t increment, bool empty_on_lock);
 void *oracle_encoder_clear_roi_new(size_t count, uint32_t increment, bool empty_on_lock)
