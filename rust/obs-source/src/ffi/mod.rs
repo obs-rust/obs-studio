@@ -30,6 +30,7 @@ pub mod source_monitoring;
 pub mod source_ptm_gate;
 pub mod source_push_queries;
 pub mod source_render_route;
+pub mod source_settings_getter;
 pub mod source_size;
 pub mod source_state_getters;
 pub mod source_transition_clock;
