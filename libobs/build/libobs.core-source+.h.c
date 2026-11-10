@@ -60,6 +60,7 @@
 #include "libobs/obs-source-interaction.c.h"
 #include "libobs/obs-source-properties.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
+#include "libobs/obs-source-push-to-delay.c.h"
 #include "libobs/obs-source-push-to-enable.c.h"
 #include "libobs/obs-source-save-load.c.h"
 #include "libobs/obs-source-settings-getter-fields.c.h"
