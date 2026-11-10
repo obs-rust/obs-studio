@@ -112,7 +112,8 @@ def resolve(path: str, subject: str) -> str | None:
     return None
 
 
-PROMPT_FILE = Path(__file__).with_name("ai_rebase_prompt.md")
+# Read once at start: the PR checkout may predate this file.
+PROMPT = Path(__file__).with_name("ai_rebase_prompt.md").read_text()
 
 
 def clud_cmd() -> list[str] | None:
@@ -134,7 +135,7 @@ def resolve_step(files: list[str], subject: str) -> str | None:
     stages = {f: (stage(1, f), stage(2, f), stage(3, f)) for f in files}
     cmd = clud_cmd()
     if cmd:
-        prompt = (PROMPT_FILE.read_text() + f"\nPR commit: {subject}\nConflicted files:\n"
+        prompt = (PROMPT + f"\nPR commit: {subject}\nConflicted files:\n"
                   + "\n".join(f"- {f}" for f in files) + "\n")
         p = subprocess.run([*cmd, "-p", prompt, "--", "--dangerously-skip-permissions"],
                            capture_output=True, text=True, timeout=1200)
@@ -172,7 +173,18 @@ def rebase_pr(n: int, dry_run: bool) -> str:
     env_ok = run("git", "rev-parse", "HEAD").strip() == old
     if not env_ok:
         return "skipped: head moved while fetching"
-    p = subprocess.run(["git", "rebase", "origin/master"], capture_output=True, text=True)
+    stack = stacked_parent(pr)
+    if stack and stack[2] != "MERGED":
+        return f"skipped: stacked on #{stack[0]}, which is not merged yet"
+    if stack and subprocess.run(["git", "cat-file", "-e", f"{stack[1]}^{{commit}}"], capture_output=True).returncode:
+        # The parent's branch is usually deleted after merge; GitHub keeps its
+        # head under refs/pull/<P>/head.
+        run("git", "fetch", "-q", "origin", f"+refs/pull/{stack[0]}/head:refs/ai-rebase/pr-{stack[0]}",
+            check=False)
+        if subprocess.run(["git", "cat-file", "-e", f"{stack[1]}^{{commit}}"], capture_output=True).returncode:
+            return f"failed: parent head {stack[1][:9]} of #{stack[0]} is not fetchable"
+    onto = ["--onto", "origin/master", stack[1]] if stack else ["origin/master"]
+    p = subprocess.run(["git", "rebase", *onto], capture_output=True, text=True)
     resolved = 0
     while p.returncode:
         files = run("git", "diff", "--name-only", "--diff-filter=U").split()
@@ -194,12 +206,39 @@ def rebase_pr(n: int, dry_run: bool) -> str:
     if dry_run:
         return f"dry-run: {old[:9]} -> {new[:9]}, {resolved} file(s) resolved"
     run("git", "push", "-q", f"--force-with-lease=refs/heads/{br}:{old}", "origin", f"HEAD:refs/heads/{br}")
+    if stack:
+        # The parent landed, so this is now an ordinary PR: drop the stacking
+        # note (it would read as a hold) and take it out of draft.
+        pr["body"] = STACKED.sub(f"Was stacked on #{stack[0]} (merged); ai-rebase replayed "
+                                 "only this PR's own commits onto master.", pr.get("body") or "", 1)
+        run("gh", "pr", "edit", str(n), "--repo", REPO, "--body", pr["body"], check=False)
+        if pr.get("isDraft"):
+            run("gh", "pr", "ready", str(n), "--repo", REPO, check=False)
+            pr["isDraft"] = False
     go, why = should_enqueue(pr)
     if go:
         run("gh", "pr", "merge", str(n), "--repo", REPO, "--auto", "--squash",
             "--match-head-commit", new, check=False)
     verdict = "auto-merge armed" if go else f"left out of the queue: {why}"
     return f"pushed: {old[:9]} -> {new[:9]}, {resolved} file(s) AI-resolved; {verdict}"
+
+
+STACKED = re.compile(r"Stacked on #(\d+)[^\n]*?(?:after\s+`?([0-9a-f]{7,40})`?)?[^\n]*", re.I)
+
+
+def stacked_parent(pr: dict) -> tuple[int, str, str] | None:
+    """(parent PR, last parent commit, parent state) for a stacked PR.
+
+    Stacked drafts say "Stacked on #P: review only the commits after <sha>"
+    (im-stacked-template). Once P squash-merges, replaying from <sha> onto
+    master carries only this PR's own commits; a plain rebase would replay
+    P's commits too and conflict with their squashed copy.
+    """
+    m = STACKED.search(pr.get("body") or "")
+    if not m:
+        return None
+    parent = gh_json("pr", "view", m.group(1), "--repo", REPO, "--json", "headRefOid,state")
+    return int(m.group(1)), m.group(2) or parent["headRefOid"], parent["state"]
 
 
 HOLD = re.compile(r"do not (enqueue|merge)|don't (enqueue|merge)|\bhold\b|\bwip\b|stacked on #",
@@ -233,8 +272,11 @@ def should_enqueue(pr: dict) -> tuple[bool, str]:
 
 def dirty_prs(limit: int) -> list[int]:
     prs = gh_json("pr", "list", "--repo", REPO, "--state", "open", "--limit", "300",
-                  "--json", "number,isDraft,mergeStateStatus,createdAt")
-    dirty = sorted((p for p in prs if p["mergeStateStatus"] == "DIRTY" and not p["isDraft"]),
+                  "--json", "number,isDraft,mergeStateStatus,createdAt,body")
+    # Drafts are someone's hold, except a stacked draft, which waits only for
+    # its parent; rebase_pr skips it while the parent is unmerged.
+    dirty = sorted((p for p in prs if p["mergeStateStatus"] == "DIRTY"
+                    and (not p["isDraft"] or STACKED.search(p.get("body") or ""))),
                    key=lambda p: p["createdAt"])  # oldest first: FIFO fairness
     return [p["number"] for p in dirty[:limit]]
 
