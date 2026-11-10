@@ -106,7 +106,9 @@ def main() -> int:
         return 1
     if Path("/etc/NIXOS").exists() and env.get("OBS_MCP_NIX_SHELL") != "1":
         enter_nix_shell(soldr, env)
-    target = Path(env.get("OBS_MCP_TARGET_DIR", ROOT / "target/mcp")).resolve()
+    # Outside target/: soldr refuses to touch target/ while a lock under it exists,
+    # and .mcp.json starts this build in every session opened in the checkout.
+    target = Path(env.get("OBS_MCP_TARGET_DIR", ROOT / "target-mcp")).resolve()
     env["CARGO_TARGET_DIR"] = str(target)
     env.setdefault("CARGO_BUILD_JOBS", "4")
     env.pop("OBS_BUILD_RUST_ARCHIVE", None)
