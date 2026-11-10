@@ -8,6 +8,11 @@ status: active
 
 # An asan failure on your PR
 
+Since 2026-11-09 no PR runs asan: it runs nightly and on dispatch only. A nightly
+failure, or a dispatch of `sanitizers.yaml -f tools=asan` for your branch (on a
+separate ref, see [sanitizer-dispatch.md](sanitizer-dispatch.md)), is handled the
+same way.
+
 ## The trap
 
 The asan job fails a PR on any unit-test failure or sanitizer report (#3290). The

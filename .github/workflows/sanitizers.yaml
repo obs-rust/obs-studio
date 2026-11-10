@@ -4,10 +4,9 @@ run-name: Sanitizers (${{ inputs.tools || 'all' }}) 🧪
 # launch, via rust/tools/sanitize/. Run it from the Actions tab or with
 #   gh workflow run sanitizers.yaml -f tools=tsan -f launch_seconds=90
 # Runs nightly; PRs that change the harness dispatch it on their branch (#491).
-# Also callable: build-project.yaml runs the `asan` pass on a PR that changes a
-# target already in the conversion ratchet (#2923), so the sanitizer-only
-# diagnostic is paid for by the PR that causes it. push.yaml calls it build-only
-# to refresh the archive those PRs restore (#3501).
+# ASan runs here only: nightly and on dispatch, never on a PR or in the merge
+# queue (maintainer directive 2026-11-09). push.yaml calls it build-only to
+# refresh the asan compiler archive a branch dispatch restores (#3501).
 on:
   workflow_call:
     inputs:
@@ -135,7 +134,7 @@ jobs:
         run: uv run --no-project rust/tools/sanitize/install_ubuntu_deps.py
 
       # Only asan keeps an archive: it is the only pass a PR runs, and the
-      # others' archives pushed it out of the budget (#3501). Only master saves,
+      # Only asan keeps an archive: it is the pass a branch dispatch runs, and the
       # so PRs can restore it, and master builds fresh: restoring a stale archive
       # kept the old entries beside the new ones, 962 MB became 1.79 GB.
       - name: Restore zccache ♻️

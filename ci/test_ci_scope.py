@@ -123,14 +123,14 @@ class CiScopeTest(unittest.TestCase):
             "ci/ci_scope.py", "rust/obs-util/src/platform/windows/mod.rs",
             "rust/obs-util/src/platform/macos/mod.rs", "Cargo.lock",
         ]
-        queued = scope(files, event="merge_group", ratchet_dirs=("libobs",))
+        queued = scope(files, event="merge_group")
         for lane in ("macos", "windows", "qt", "tier2", "qt_sdk", "full",
-                     "cross_targets", "cross_lint", "asan", "windows_link"):
+                     "cross_targets", "cross_lint", "windows_link"):
             with self.subTest(lane=lane):
                 self.assertFalse(getattr(queued, lane))
         self.assertTrue(queued.core)
         self.assertFalse(queued.docs_only)
-        pr = scope(files, event="pull_request", ratchet_dirs=("libobs",))
+        pr = scope(files, event="pull_request")
         self.assertTrue(pr.tier2 and pr.qt and pr.cross_lint and pr.windows_link)
         pushed = scope(files, event="push", ref="master")
         self.assertTrue(pushed.tier2 and pushed.qt and pushed.macos and pushed.windows)
@@ -810,53 +810,14 @@ class HostNamedFilesTest(unittest.TestCase):
         for path in ("rust/obs-build/src/libobs.rs", "rust/obs-util/src/dstr.rs"):
             self.assertFalse(scope([path]).qt_sdk, path)
 
-    def test_a_ratcheted_target_selects_the_sanitizer_lane_on_a_pr(self):
-        # #2923: the conversion ratchet is only checked by the configuration that
-        # last compiled the target, so a sanitizer-only diagnostic reached master
-        # three times. A PR that changes a ratcheted target's compile input runs
-        # asan and pays for its own diagnostic.
-        ratchet = ("frontend", "plugins/obs-ffmpeg")
-        for path in (
-            "frontend/components/OBSAdvAudioCtrl.cpp.hpp",
-            "frontend/utility/platform-osx.mm.hpp",
-            "plugins/obs-ffmpeg/obs-ffmpeg-vaapi.c.h",
-        ):
-            got = scope([path], event="pull_request", ratchet_dirs=ratchet)
-            self.assertTrue(got.asan, path)
-
-    def test_the_sanitizer_lane_keeps_the_merge_queue_short(self):
-        # The queue reruns CI on the merge result (#692); a sanitizer build there
-        # would grow the critical path for every ratcheted change (#2072, #2593).
-        ratchet = ("frontend",)
-        for event in ("merge_group", "push", ""):
-            got = scope(
-                ["frontend/OBSApp.cpp"], event=event, ref="master", ratchet_dirs=ratchet
-            )
-            self.assertFalse(got.asan, event)
-
-    def test_the_sanitizer_lane_ignores_what_is_not_a_compile_input(self):
-        ratchet = ("frontend",)
-        for path in ("docs/rust-port/naming.md", "plugins/obs-x264/obs-x264.c"):
-            got = scope([path], event="pull_request", ratchet_dirs=ratchet)
-            self.assertFalse(got.asan, path)
-
-    def test_the_pr_that_turns_a_targets_ratchet_on_selects_the_sanitizer_lane(self):
-        # #2956: opt-in diffs are one CMakeLists with 9 added lines, so the
-        # source-file rule alone left that PR's sanitizer build to the night's
-        # schedule — the blind spot #2923 exists to remove.
-        got = scope(
-            ["plugins/decklink-captions/CMakeLists.txt"],
-            event="pull_request",
-            ratchet_dirs=("plugins/decklink-captions",),
-        )
-        self.assertTrue(got.asan)
-
-    def test_a_pin_only_target_selects_no_sanitizer_lane(self):
-        # Nothing in the tree is ratcheted unless its CMakeLists names a group
-        # (ci/conversion_ratchet.py): an untracked directory selects nothing.
-        got = scope(["plugins/foo/foo.c"], event="pull_request", ratchet_dirs=())
-        self.assertFalse(got.asan)
-
+    def test_no_event_selects_a_sanitizer_lane(self):
+        # Maintainer directive 2026-11-09: ASan runs nightly only
+        # (sanitizers.yaml schedule), never on a PR or in the merge queue, so
+        # the scope has no sanitizer lane at all, ratcheted target or not.
+        files = ["frontend/OBSApp.cpp", "plugins/decklink-captions/CMakeLists.txt"]
+        for event in ("pull_request", "merge_group", "push", ""):
+            got = scope(files, event=event, ref="master")
+            self.assertNotIn("asan", vars(got), event)
 
 if __name__ == "__main__":
     unittest.main()

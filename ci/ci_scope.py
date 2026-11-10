@@ -46,12 +46,6 @@ Platform and Qt lanes:
            Qt frontend build and its unit tests (#992);
 - qt_sdk:  rust/obs-build's Qt SDK resolver changed -> the macOS and
            Windows Rust lanes check it against the published Qt SDKs (#1878);
-- asan:    a compile input of a target that already names a conversion group in
-           its `target_compile_options` (the ratchet #2625/#2938, read from
-           ci/conversion_ratchet.py) changed on a PR -> that PR's Sanitizers
-           check builds `asan`. Only a `pull_request` selects it: a merge-queue
-           run keeps the path selection, so the queue pays nothing (#2072,
-           #2593), and a master push or the schedule runs the full lane anyway;
 - core:    libobs or the Rust workspace changed (informational).
 Platform is decided by path alone (#897, ci/platform_paths.py): a changed
 file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
@@ -96,7 +90,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from conversion_ratchet import hit as ratchet_hit, repo_ratcheted_dirs
 from platform_paths import (
     LINUX,
     MACOS,
@@ -167,7 +160,6 @@ class Scope:
     qt_sdk: bool = False
     docs_only: bool = False
     cross_targets: str = ""
-    asan: bool = False
     cross_lint: bool = False
     windows_link: bool = False
 
@@ -539,7 +531,6 @@ def scope(
     cmocka_paths: tuple[str, ...] = (),
     event: str = "",
     ref: str = "",
-    ratchet_dirs: tuple[str, ...] = (),
 ) -> Scope:
     """`exists(path)` says whether a file exists in the checkout, `read(path)`
     returns its text ("" when missing). `submodules` is accepted for callers
@@ -592,16 +583,6 @@ def scope(
             core, False, False, docs_only=docs_only,
             linux_targets=",".join(sorted(targets)),
         )
-    # #2923: the ratchet's blind spot is the configuration. A PR that changes a
-    # compile input of a target which already names a conversion group runs the
-    # sanitizer lane — a source below it, or the CMakeLists that names the group
-    # (#2956) — so the diagnostic that only that build reports is paid for by
-    # the PR that causes it. Pull requests only: the merge queue keeps the path
-    # selection (#2072, #2593) and a master push or the schedule runs the full
-    # lane anyway.
-    asan = event == "pull_request" and any(
-        ratchet_hit(path, ratchet_dirs) for path in files
-    )
     return Scope(
         core,
         macos and event != "merge_group",
@@ -613,7 +594,6 @@ def scope(
         qt_sdk,
         docs_only,
         cross_targets(files, read),
-        asan,
         windows_link=bool(files) and not docs_only,
         # Exercise the cross lane when its own implementation/orchestration changes.
         cross_lint=bool(set(files) & {
@@ -673,7 +653,6 @@ def main() -> int:
         cmocka_paths=repo_cmocka_source_paths(Path(".")),
         event=args.event,
         ref=args.ref,
-        ratchet_dirs=repo_ratcheted_dirs(Path(".")),
     )
     lines = [f"{k}={str(v).lower()}" for k, v in vars(result).items()]
     print("\n".join(lines))
