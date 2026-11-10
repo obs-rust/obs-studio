@@ -56,6 +56,11 @@ static _Thread_local struct obs_core *module_lists_core;
 
 #include "libobs/obs-module-lists.c.h"
 
+void oracle_obs_enum_modules(obs_enum_module_callback_t callback, void *param);
+#define obs_enum_modules oracle_obs_enum_modules
+#include "libobs/obs-enum-modules.c.h"
+#undef obs_enum_modules
+
 #undef obs_add_disabled_module
 #undef obs_add_safe_module
 #undef obs_add_module_path
@@ -327,4 +332,11 @@ void oracle_module_lists_layout(size_t *layout)
 	layout[5] = sizeof(enum obs_runtime_module_type);
 	layout[6] = (size_t)OBS_MODULE_TYPE_UNDEFINED;
 	layout[7] = (size_t)LOG_INFO;
+}
+
+/* Test-only mutation of a live node; no private layout crosses into Rust. */
+void oracle_enum_modules_set_next(obs_module_t *module, obs_module_t *next);
+void oracle_enum_modules_set_next(obs_module_t *module, obs_module_t *next)
+{
+	module->next = next;
 }

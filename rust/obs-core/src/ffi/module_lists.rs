@@ -109,6 +109,10 @@ impl Calls for Libobs {
 pub struct Module(NonNull<c_void>);
 
 impl Module {
+    pub(super) fn as_ptr(self) -> *mut c_void {
+        self.0.as_ptr()
+    }
+
     fn from_ptr(module: *mut c_void) -> Option<Self> {
         NonNull::new(module).map(Self)
     }
@@ -127,7 +131,9 @@ impl<C> Seam<C> {
     /// whenever [`Lists::has_core`] says there is one (and
     /// [`Lists::module_config_path`] whenever it is called, as the C's
     /// read), every module handed to it is a live `obs_module_t`, and
-    /// libobs changes none of the lists it reads or pushes to.
+    /// list storage stays valid during each access. Callback-time changes may
+    /// prepend nodes or change successors while all visited nodes remain alive;
+    /// no references into the lists may be held across those callbacks.
     pub unsafe fn new() -> Self {
         Self(PhantomData)
     }
