@@ -7,8 +7,8 @@
  * The stand-in's two planar device exports record each call in the
  * recording gs_* stand-in's log (texture_render_device.c), which also
  * records gs_texture_create, gs_texture_destroy and, when capturing, every
- * log line. Both sides call the same gs_texture_create and
- * gs_texture_destroy stand-ins, so one log compares them. */
+ * log line. The C baseline uses the original C texture creator; Rust uses
+ * its public shim. Both reach the same recording texture backend. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -19,6 +19,8 @@
 #include "util/base.h"
 
 void oracle_texrender_device_note(const char *text);
+gs_texture_t *oracle_gs_texture_create(uint32_t width, uint32_t height, enum gs_color_format format, uint32_t levels,
+				       const uint8_t **data, uint32_t flags);
 
 static THREAD_LOCAL struct graphics_subsystem tp_graphics;
 static THREAD_LOCAL bool tp_present;
@@ -77,7 +79,9 @@ static bool tp_native_p010(gs_device_t *device, gs_texture_t **tex_y, gs_texture
 #undef obs_stagesurface_height_field
 #undef obs_stagesurface_format_field
 
+#define gs_texture_create oracle_gs_texture_create
 #include "texture-planar-creators.inc"
+#undef gs_texture_create
 #undef gs_get_context
 
 bool oracle_gs_texture_create_nv12(gs_texture_t **tex_y, gs_texture_t **tex_uv, uint32_t width, uint32_t height,

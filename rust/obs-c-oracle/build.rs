@@ -691,7 +691,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("graphics/vertexbuffer-access.c.h")),
     )
     .expect("write vertex-buffer access extract");
-    for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
+    for stem in [
+        "graphics-linear-srgb",
+        "graphics-linear-srgb-fields",
+        "texture-creators-fields",
+    ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
             extract_dir.join(format!("{stem}.inc")),
@@ -733,6 +737,14 @@ fn main() {
         )
         .expect("write image lifecycle extract");
     }
+    std::fs::write(
+        extract_dir.join("texture-creators.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/texture-creators.c.h"),
+            "#include \"libobs/build/libobs-ported-texture-creators.pch.h\"",
+        ),
+    )
+    .expect("write texture creator extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(

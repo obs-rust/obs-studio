@@ -1,0 +1,2 @@
+gs_texture_create
+gs_cubetexture_create
