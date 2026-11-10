@@ -2313,34 +2313,6 @@ obs_service_t *obs_get_service_by_name(const char *name)
 	return get_context_by_name(&obs->data.first_service, name, &obs->data.services_mutex, obs_service_addref_safe_);
 }
 
-gs_effect_t *obs_get_base_effect(enum obs_base_effect effect)
-{
-	switch (effect) {
-	case OBS_EFFECT_DEFAULT:
-		return obs->video.default_effect;
-	case OBS_EFFECT_DEFAULT_RECT:
-		return obs->video.default_rect_effect;
-	case OBS_EFFECT_OPAQUE:
-		return obs->video.opaque_effect;
-	case OBS_EFFECT_SOLID:
-		return obs->video.solid_effect;
-	case OBS_EFFECT_REPEAT:
-		return obs->video.repeat_effect;
-	case OBS_EFFECT_BICUBIC:
-		return obs->video.bicubic_effect;
-	case OBS_EFFECT_LANCZOS:
-		return obs->video.lanczos_effect;
-	case OBS_EFFECT_AREA:
-		return obs->video.area_effect;
-	case OBS_EFFECT_BILINEAR_LOWRES:
-		return obs->video.bilinear_lowres_effect;
-	case OBS_EFFECT_PREMULTIPLIED_ALPHA:
-		return obs->video.premultiplied_alpha_effect;
-	}
-
-	return NULL;
-}
-
 static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_blend_type src_c,
 					       enum gs_blend_type dest_c, enum gs_blend_type src_a,
 					       enum gs_blend_type dest_a)
