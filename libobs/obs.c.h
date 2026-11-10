@@ -1162,6 +1162,10 @@ static bool obs_init(const char *locale, const char *module_config_path, profile
 		blog(LOG_ERROR, "obs_startup: destruction task queue creation failed");
 		return false;
 	}
+	/* Finish the worker's thread-name setup before returning from startup.
+	 * On Windows it allocates and frees a temporary name through bmem, so
+	 * letting it overlap callers makes bnum_allocs() snapshots unstable. */
+	os_task_queue_wait(obs->destruction_task_thread);
 
 	if (module_config_path)
 		obs->module_config_path = bstrdup(module_config_path);
