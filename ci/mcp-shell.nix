@@ -5,6 +5,7 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     libx11 libxcb libuuid ffmpeg-full jansson zlib simde
     libpulseaudio glib wayland libxkbcommon uthash
+    libdrm libglvnd mesa x264 v4l-utils pipewire libva pciutils
   ];
   shellHook = ''
     export OBS_MCP_NIX_SHELL=1

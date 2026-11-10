@@ -208,6 +208,10 @@ fn reset_video(options: &StartOptions) -> Result<(), String> {
     // libobs copies what it keeps.
     let code = unsafe { sys::obs_reset_video(&raw mut info) };
     if code == sys::OBS_VIDEO_SUCCESS {
+        eprintln!(
+            "obs-mcp: video started ({}x{} @ {} fps)",
+            options.size.0, options.size.1, options.fps
+        );
         return Ok(());
     }
     let why = match code {

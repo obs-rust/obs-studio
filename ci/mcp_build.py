@@ -17,7 +17,9 @@ def enter_nix_shell(soldr, env):
     env["OBS_MCP_SOLDR"] = soldr
     keep = ["OBS_MCP_SOLDR", "OBS_MCP_TARGET_DIR", "XDG_RUNTIME_DIR", "DISPLAY",
             "WAYLAND_DISPLAY", "XDG_SESSION_TYPE", "DBUS_SESSION_BUS_ADDRESS",
-            "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "NIX_LD", "NIX_LD_LIBRARY_PATH"]
+            "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "NIX_LD", "NIX_LD_LIBRARY_PATH",
+            "OBS_MCP_GRAPHICS_MODULE", "OBS_MCP_MODULE_BIN", "OBS_MCP_MODULE_DATA",
+            "OBS_MCP_DATA_PATH", "LIBGL_ALWAYS_SOFTWARE", "__EGL_VENDOR_LIBRARY_FILENAMES"]
     command = ["nix-shell", "--pure", str(ROOT / "ci/mcp-shell.nix")]
     for name in keep:
         command += ["--keep", name]
@@ -74,6 +76,25 @@ def build_native(soldr, env, target):
                 staged = Path(staging) / library.name
                 shutil.copy2(library, staged)
                 os.replace(staged, binary_dir / library.name)
+    return build_runtime(soldr, env, target, library)
+
+
+def build_runtime(soldr, env, target, library):
+    output = target / "runtime"
+    request = target / "mcp-runtime-request.json"
+    request.write_text(json.dumps({"root": str(ROOT), "core": str(library), "output": str(output)}))
+    command = [soldr, "cargo", "run", "--locked", "--manifest-path", str(ROOT / "Cargo.toml"),
+               "-p", "obs-build", "--bin", "obs-build", "--", "mcp-runtime", "--request", str(request)]
+    status, _ = run_build(command, env)
+    if status:
+        return status
+    manifest = json.loads((output / "manifest.json").read_text())
+    for field, variable in (("graphics_module", "OBS_MCP_GRAPHICS_MODULE"),
+                            ("module_bin", "OBS_MCP_MODULE_BIN"),
+                            ("module_data", "OBS_MCP_MODULE_DATA"),
+                            ("data_path", "OBS_MCP_DATA_PATH")):
+        if not env.get(variable):
+            env[variable] = manifest[field]
     return 0
 
 

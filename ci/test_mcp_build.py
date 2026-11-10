@@ -36,6 +36,7 @@ class NativeMcpBuildTest(unittest.TestCase):
         self.native_args = self.root / "native-args"
         native = self.root / "native"
         native.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" > \"$MCP_TEST_NATIVE_ARGS\"\ncat\n")
+        native.write_text(native.read_text().replace("\ncat\n", "\nprintf '%s\\n' \"${OBS_MCP_GRAPHICS_MODULE:-}\" \"${OBS_MCP_MODULE_BIN:-}\" \"${OBS_MCP_MODULE_DATA:-}\" \"${OBS_MCP_DATA_PATH:-}\" > \"$MCP_TEST_NATIVE_ARGS.env\"\ncat\n"))
         native.chmod(0o755)
         soldr = self.bin / "soldr"
         soldr.write_text(r'''#!/usr/bin/env bash
@@ -45,6 +46,12 @@ if [ "$1" = rustc ]; then printf 'host: x86_64-unknown-linux-gnu\n'; exit 0; fi
 if read -r unexpected; then echo 'build consumed protocol input' >&2; exit 9; fi
 echo 'build diagnostic on stdout'
 case "$*" in
+  *mcp-runtime*)
+    if [ "${MCP_TEST_FAIL:-}" = runtime ]; then exit 7; fi
+    mkdir -p "$CARGO_TARGET_DIR/runtime/graphics" "$CARGO_TARGET_DIR/runtime/plugins"
+    printf renderer > "$CARGO_TARGET_DIR/runtime/graphics/libobs-opengl.so.33"
+    printf '{"graphics_module":"%s/runtime/graphics/libobs-opengl.so.33","module_bin":"%s/runtime/plugins","module_data":"data/%%module%%","data_path":"data/libobs"}' "$CARGO_TARGET_DIR" "$CARGO_TARGET_DIR" > "$CARGO_TARGET_DIR/runtime/manifest.json"
+    ;;
   *libobs-rust*)
     if [ "${MCP_TEST_FAIL:-}" = archive ]; then exit 7; fi
     mkdir -p "$CARGO_TARGET_DIR/release"
@@ -93,6 +100,24 @@ esac
         result = self.invoke("--build")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("mcp-runtime", self.trace.read_text())
+
+    def test_runtime_paths_are_set_for_the_host_and_overrides_survive(self):
+        result = self.invoke("--mcp", data="protocol\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        paths = Path(str(self.native_args) + ".env").read_text().splitlines()
+        self.assertEqual(paths, [str(self.root / "native-target/runtime/graphics/libobs-opengl.so.33"),
+                                 str(self.root / "native-target/runtime/plugins"),
+                                 "data/%module%", "data/libobs"])
+        self.env["OBS_MCP_GRAPHICS_MODULE"] = "explicit-renderer"
+        result = self.invoke("--mcp")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(Path(str(self.native_args) + ".env").read_text().splitlines()[0], "explicit-renderer")
+
+    def test_failed_runtime_never_launches_a_stale_host(self):
+        self.env["MCP_TEST_FAIL"] = "runtime"
+        result = self.invoke("--mcp")
+        self.assertEqual(result.returncode, 7, result.stderr)
+        self.assertFalse(self.native_args.exists())
 
     def test_rebuild_preserves_a_library_already_loaded_by_a_listener(self):
         first = self.invoke("--build")
