@@ -1095,17 +1095,6 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 	obs_encoder_add_output(output->audio_encoders[idx], output);
 }
 
-obs_encoder_t *obs_output_get_video_encoder2(const obs_output_t *output, size_t idx)
-{
-	if (!obs_output_valid(output, "obs_output_get_video_encoder2"))
-		return NULL;
-
-	if (!obs_output_slots_video_slot(idx))
-		return NULL;
-
-	return output->video_encoders[idx];
-}
-
 obs_encoder_t *obs_output_get_video_encoder(const obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_get_video_encoder"))
