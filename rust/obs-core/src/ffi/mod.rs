@@ -46,6 +46,7 @@ pub mod object_validity_query;
 pub mod output_protocol_registry;
 pub mod source_load;
 pub mod source_profiler;
+pub mod tick_callbacks;
 pub mod video_copy_plan;
 pub mod video_frame_copy;
 pub mod video_frame_timing;
