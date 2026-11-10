@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-video-frame-copy.pch.h"
 
 /* One copy of the plan (obs-video-copy-plan.c): returns where the source
  * ended. */
@@ -35,8 +35,8 @@ static const uint8_t *set_gpu_converted_plane(const struct obs_video_copy *copy,
 	return in;
 }
 
-static void set_gpu_converted_data(struct video_frame *output, const struct video_data *input,
-				   const struct video_output_info *info)
+void obs_video_set_gpu_converted_data(struct video_frame *output, const struct video_data *input,
+				      const struct video_output_info *info)
 {
 	const struct obs_video_copy_plan plan =
 		obs_video_gpu_copy_plan(info->format, info->width, info->height, input->linesize, output->linesize);
@@ -51,8 +51,8 @@ static void set_gpu_converted_data(struct video_frame *output, const struct vide
 	}
 }
 
-static inline void copy_rgbx_frame(struct video_frame *output, const struct video_data *input,
-				   const struct video_output_info *info)
+void obs_video_copy_rgbx_frame(struct video_frame *output, const struct video_data *input,
+			       const struct video_output_info *info)
 {
 	const struct obs_video_copy copy =
 		obs_video_rgbx_copy_plan(info->width, info->height, input->linesize[0], output->linesize[0]);

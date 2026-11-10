@@ -23,6 +23,7 @@
 #include "obs-core-modules.h"
 #include "obs-defs.h"
 #include "obs-module.h"
+#include "obs-module-lists-seam.h"
 #include "obs-module-load-rules.h"
 #include "obs-module-register-copy.h"
 #include "obs-module-type-rules.h"
@@ -138,6 +139,9 @@
 
 /* obs-video-copy-plan.c */
 #include "obs-video-copy-plan.h"
+
+/* obs-video-frame-copy.c */
+#include "obs-video-frame-copy.h"
 
 /* obs-video-frame-timing.c */
 #include "obs-video-frame-timing.h"
