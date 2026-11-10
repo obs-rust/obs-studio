@@ -588,6 +588,15 @@ fn main() {
     let nvenc_dir = libobs.with_file_name("plugins").join("obs-nvenc");
     let extract_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("obs-nvenc-extract");
     std::fs::create_dir_all(&extract_dir).expect("create obs-nvenc-extract");
+    std::fs::write(
+        extract_dir.join("encoder_registry_find.inc"),
+        extract_c(
+            &libobs.join("obs-encoder.c.h"),
+            "struct obs_encoder_info *find_encoder(const char *id)",
+            "}",
+        ),
+    )
+    .expect("write original encoder registry lookup extract");
     let cuda_load = nvenc_dir.join("cuda-load.c.h");
     let nvenc_load = nvenc_dir.join("nvenc-load.c.h");
     for (name, src, start, end) in [
