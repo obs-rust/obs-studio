@@ -79,6 +79,14 @@ class AptCacheTest(unittest.TestCase):
         # The edit must fail loudly if the stock image's layout changes.
         self.assertIn("grep -qx 'Components: main universe'", install_git)
 
+    def test_install_git_retries_with_a_fresh_index(self):
+        # Run 42755735949: a stale index 404'd perl from security.ubuntu.com
+        # and one mirror connection failed; one apt attempt failed the job.
+        j = job("rust-linux-tier2-build")
+        install_git = j[j.index("Install Git"):j.index("actions/checkout@")]
+        self.assertIn("for attempt in 1 2 3", install_git)
+        self.assertIn("--fix-missing", install_git)
+
     def test_zstd_is_there_before_the_restore(self):
         # actions/cache versions an entry by its compressor: restoring before
         # zstd is installed looks for a gzip entry the zstd save never wrote,
