@@ -101,6 +101,7 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/source-handler-getter-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
+                    "libobs/build/libobs.image-decode-adapter+.h.c",
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):

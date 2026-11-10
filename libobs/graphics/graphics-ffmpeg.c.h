@@ -1,21 +1,8 @@
 #include "build/libobs-media.pch.h"
 
-struct ffmpeg_image {
-	const char *file;
-	AVFormatContext *fmt_ctx;
-	AVCodecContext *decoder_ctx;
-
-	int cx, cy;
-	enum AVPixelFormat format;
-
-	/* The texture size limit of the graphics device, 0 if unknown. */
-	uint32_t max_size;
-	bool too_large;
-};
-
 /* A picture wider or taller than the graphics device's texture size limit
  * cannot become a texture. Say so once, before anything is decoded. */
-static bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy)
+bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy)
 {
 	if (!gs_ffmpeg_image_too_large(info->max_size, cx, cy))
 		return false;
@@ -230,7 +217,7 @@ _Static_assert(GS_FFMPEG_RGBA64_ALPHA_PREMULTIPLY_SRGB == GS_IMAGE_ALPHA_PREMULT
 	       "GS_IMAGE_ALPHA_PREMULTIPLY_SRGB");
 _Static_assert(GS_FFMPEG_RGBA64_ALPHA_PREMULTIPLY == GS_IMAGE_ALPHA_PREMULTIPLY, "GS_IMAGE_ALPHA_PREMULTIPLY");
 
-static void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
+void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode)
 {
 	struct SwsContext *sws_ctx = NULL;
 	void *data = NULL;
@@ -345,57 +332,6 @@ fail:
 	return data;
 }
 
-static void *ffmpeg_image_decode(struct ffmpeg_image *info, enum gs_image_alpha_mode alpha_mode)
-{
-	AVPacket packet = {0};
-	void *data = NULL;
-	AVFrame *frame = av_frame_alloc();
-	int got_frame = 0;
-	int ret;
-
-	if (!frame) {
-		blog(LOG_WARNING, "Failed to create frame data for '%s'", info->file);
-		return NULL;
-	}
-
-	ret = av_read_frame(info->fmt_ctx, &packet);
-	if (ret < 0) {
-		blog(LOG_WARNING, "Failed to read image frame from '%s': %s", info->file, av_err2str(ret));
-		goto fail;
-	}
-
-	while (!got_frame) {
-		ret = avcodec_send_packet(info->decoder_ctx, &packet);
-		if (ret == 0)
-			ret = avcodec_receive_frame(info->decoder_ctx, frame);
-
-		got_frame = (ret == 0);
-
-		if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
-			ret = 0;
-
-		if (ret < 0) {
-			if (!info->too_large)
-				blog(LOG_WARNING, "Failed to decode frame for '%s': %s", info->file, av_err2str(ret));
-			goto fail;
-		}
-	}
-
-	if (ffmpeg_image_too_large(info, frame->width, frame->height))
-		goto fail;
-
-	info->cx = frame->width;
-	info->cy = frame->height;
-	info->format = frame->format;
-
-	data = ffmpeg_image_reformat_frame(info, frame, alpha_mode);
-
-fail:
-	av_packet_unref(&packet);
-	av_frame_free(&frame);
-	return data;
-}
-
 void gs_init_image_deps(void);
 void gs_free_image_deps(void);
 
@@ -409,7 +345,8 @@ uint8_t *gs_create_texture_file_data(const char *file, enum gs_color_format *for
 	uint8_t *data = NULL;
 
 	if (ffmpeg_image_init(&image, file)) {
-		data = ffmpeg_image_decode(&image, GS_IMAGE_ALPHA_STRAIGHT);
+		struct gs_image_decode_context decode = {&image, ffmpeg_image_too_large, ffmpeg_image_reformat_frame};
+		data = gs_ffmpeg_image_decode(&decode, (int)GS_IMAGE_ALPHA_STRAIGHT);
 		if (data) {
 			*format = (enum gs_color_format)gs_ffmpeg_image_color_format(image.format);
 			*cx_out = (uint32_t)image.cx;
@@ -437,7 +374,8 @@ uint8_t *gs_create_texture_file_data3(const char *file, enum gs_image_alpha_mode
 	uint8_t *data = NULL;
 
 	if (ffmpeg_image_init(&image, file)) {
-		data = ffmpeg_image_decode(&image, alpha_mode);
+		struct gs_image_decode_context decode = {&image, ffmpeg_image_too_large, ffmpeg_image_reformat_frame};
+		data = gs_ffmpeg_image_decode(&decode, (int)alpha_mode);
 		if (data) {
 			*format = (enum gs_color_format)gs_ffmpeg_image_color_format(image.format);
 			*cx_out = (uint32_t)image.cx;

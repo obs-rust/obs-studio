@@ -655,6 +655,27 @@ fn main() {
         )
         .expect("write linear-sRGB extract");
     }
+    for (source, output, pch) in [
+        (
+            "graphics-ffmpeg-decode",
+            "image-decode-original",
+            "libobs-ported-graphics-ffmpeg-decode",
+        ),
+        (
+            "graphics-ffmpeg-decode-adapter",
+            "image-decode-adapter",
+            "libobs-image-decode-adapter",
+        ),
+    ] {
+        std::fs::write(
+            extract_dir.join(format!("{output}.inc")),
+            extract_after_pch(
+                &libobs.join("graphics").join(format!("{source}.c.h")),
+                &format!("#include \"libobs/build/{pch}.pch.h\""),
+            ),
+        )
+        .expect("write still-image decode extract");
+    }
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
