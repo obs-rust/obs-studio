@@ -83,6 +83,12 @@ codegen-units = 256
 [profile.release.package.obs-core]
 codegen-units = 256
 
+# Standalone graphics fixtures must not pull shader-file I/O and logging into
+# matrix, immediate-mode, effect-parser or GIF archive members. Keep the FFI
+# modules separate, as for the other standalone fixture consumers above.
+[profile.release.package.obs-graphics]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]

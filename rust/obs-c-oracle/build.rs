@@ -636,6 +636,7 @@ fn main() {
         "graphics-immediate-scalars",
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
+        "shader-file",
         "stagesurface-getters",
         "texture-planar-creators",
         "texture-metadata",

@@ -17,6 +17,7 @@ obs-util = { path = "../obs-util" }
 libc = { workspace = true, default-features = true }
 
 [dev-dependencies]
+tempfile.workspace = true
 obs-c-oracle = { path = "../obs-c-oracle" }
 proptest = { workspace = true, features = ["std", "fork", "timeout", "bit-set"] }
 

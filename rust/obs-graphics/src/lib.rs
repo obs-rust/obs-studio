@@ -67,6 +67,7 @@ pub mod plane;
 mod platform;
 pub mod quat;
 mod round;
+pub mod shader_file;
 pub mod shader_param_names;
 pub mod shader_param_values;
 pub mod shader_parser;
