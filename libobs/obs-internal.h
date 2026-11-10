@@ -2283,6 +2283,16 @@ struct obs_encoder_last_error_fields {
 	char *const *message;
 };
 extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+/* Mutable ROI fields; callbacks lock the real shared ROI mutex. Not public ABI. */
+struct obs_encoder_clear_roi_fields {
+	size_t *count;
+	uint32_t *increment;
+	void *mutex;
+	void (*lock)(void *mutex);
+	void (*unlock)(void *mutex);
+};
+struct obs_encoder_clear_roi_fields obs_encoder_clear_roi_fields(obs_encoder_t *encoder);
+
 /* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
 struct obs_encoder_roi_state_fields {
 	const size_t *count;
