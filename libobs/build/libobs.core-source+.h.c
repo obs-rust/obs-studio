@@ -28,7 +28,7 @@
 #include "libobs/obs-scene-item-hotkeys.c.h"
 #include "libobs/obs-scene-item-locked-fields.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
-#include "libobs/obs-scene-item-select.c.h"
+#include "libobs/obs-scene-item-select-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
 #include "libobs/obs-scene-source-fields.c.h"

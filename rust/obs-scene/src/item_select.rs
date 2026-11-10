@@ -10,6 +10,12 @@ pub trait Item {
 
 /// Missing, unchanged and detached items do nothing. Callbacks may reenter.
 pub fn select(item: Option<&impl Item>, requested: bool) {
-    let _ = (item, requested);
-    todo!("scene item selection")
+    let Some(item) = item else {
+        return;
+    };
+    if item.selected() == requested || !item.has_parent() {
+        return;
+    }
+    item.store(requested);
+    item.signal(requested);
 }
