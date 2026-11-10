@@ -5,10 +5,7 @@
  */
 #include "obs-internal.h"
 
-const char *obs_source_get_id(const obs_source_t *source)
-{
-	return source ? source->info.id : NULL;
-}
+/* obs_source_get_id is provided by the obs-source Rust ABI shim. */
 
 obs_source_t *obs_source_create_private(const char *id, const char *name, obs_data_t *settings)
 {
