@@ -19,8 +19,9 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
 use obs_core::module_lists::{
-    HEADING, Line, Lists, MODULE_FORMAT, NameList, TypeList, add_module_path, add_name, add_type,
-    config_path, find_file, log_loaded_modules,
+    HEADING, Line, Lists, MODULE_FORMAT, NameList, TypeList, add_module_path,
+    add_module_path_deferred, add_name, add_name_deferred, add_type, add_type_deferred,
+    config_path, config_path_deferred, find_file, find_file_deferred, log_loaded_modules,
 };
 use obs_core::module_paths::{GlobEntry, ModuleFs};
 use proptest::prelude::*;
@@ -532,6 +533,125 @@ fn find_file_follows_module_paths() {
         find_file(&core, &fs, Some(m), s("")).as_deref(),
         Some(&b"module_lists_data"[..])
     );
+}
+
+/// The string arguments a call reads, in order: the C reads each only past
+/// its guard (a NULL test of the pointer reads nothing).
+#[derive(Default)]
+struct Reads(RefCell<Vec<&'static str>>);
+
+impl Reads {
+    fn of(&self, tag: &'static str, text: &'static str) -> Option<impl FnOnce() -> &'static [u8]> {
+        Some(move || {
+            self.0.borrow_mut().push(tag);
+            text.as_bytes()
+        })
+    }
+
+    fn take(&self) -> Vec<&'static str> {
+        self.0.take()
+    }
+}
+
+/// A NULL string argument: not read.
+fn null() -> Option<fn() -> &'static [u8]> {
+    None
+}
+
+/// `obs_module_add_*()` reads the id only for a module.
+#[test]
+fn type_id_read_only_with_module() {
+    let reads = Reads::default();
+    let mut core = Model::started();
+    let m = core.disabled_module("module_lists_stub", "nodata");
+
+    add_type_deferred(&mut core, None, TypeList::Sources, reads.of("id", "x"));
+    assert!(reads.take().is_empty());
+    assert_eq!(core.pushed(), 0);
+
+    add_type_deferred(&mut core, Some(m), TypeList::Outputs, reads.of("id", "x"));
+    assert_eq!(reads.take(), ["id"]);
+    add_type_deferred(&mut core, Some(m), TypeList::Outputs, null());
+    assert_eq!(
+        core.types(m, TypeList::Outputs),
+        [Some(b"x".to_vec()), None]
+    );
+}
+
+/// `obs_find_module_file()` and `obs_module_get_config_path()` read the
+/// file only for a module.
+#[test]
+fn path_file_read_only_with_module() {
+    let reads = Reads::default();
+    let mut core = Model::started();
+    let m = core.disabled_module("module_lists_stub", "module_lists_data");
+    let fs = FakeFs {
+        files: [b"module_lists_data/present.txt".to_vec()].into(),
+    };
+
+    assert_eq!(
+        find_file_deferred(&core, &fs, None, reads.of("file", "present.txt")),
+        None
+    );
+    assert_eq!(
+        config_path_deferred(&core, None, reads.of("file", "s.json")),
+        None
+    );
+    assert!(reads.take().is_empty());
+
+    assert_eq!(
+        find_file_deferred(&core, &fs, Some(m), reads.of("file", "present.txt")).as_deref(),
+        Some(&b"module_lists_data/present.txt"[..])
+    );
+    assert_eq!(
+        config_path_deferred(&core, Some(m), reads.of("file", "s.json")).as_deref(),
+        Some(&b"module-lists-config/module_lists_stub/s.json"[..])
+    );
+    assert_eq!(reads.take(), ["file", "file"]);
+    assert_eq!(
+        find_file_deferred(&core, &fs, Some(m), null()).as_deref(),
+        None
+    );
+    assert_eq!(
+        config_path_deferred(&core, Some(m), null()).as_deref(),
+        Some(&b"module-lists-config/module_lists_stub/"[..])
+    );
+}
+
+/// `obs_add_module_path()` reads neither path with no core or with either
+/// NULL, then the binary path before the data path.
+#[test]
+fn module_paths_read_only_past_the_checks() {
+    let reads = Reads::default();
+    let mut none = Model::default();
+    add_module_path_deferred(&mut none, reads.of("bin", "b"), reads.of("data", "d"));
+    assert!(reads.take().is_empty());
+
+    let mut core = Model::started();
+    add_module_path_deferred(&mut core, reads.of("bin", "b"), null());
+    add_module_path_deferred(&mut core, null(), reads.of("data", "d"));
+    assert!(reads.take().is_empty());
+    assert!(core.paths.is_empty());
+
+    add_module_path_deferred(&mut core, reads.of("bin", "b"), reads.of("data", "d"));
+    assert_eq!(reads.take(), ["bin", "data"]);
+    assert_eq!(core.paths, [(b"b".to_vec(), b"d".to_vec())]);
+}
+
+/// `obs_add_safe_module()` and `obs_add_disabled_module()` read the name
+/// only with a core.
+#[test]
+fn names_read_only_with_core() {
+    let reads = Reads::default();
+    let mut none = Model::default();
+    add_name_deferred(&mut none, NameList::Safe, reads.of("name", "n"));
+    assert!(reads.take().is_empty());
+
+    let mut core = Model::started();
+    add_name_deferred(&mut core, NameList::Disabled, reads.of("name", "n"));
+    add_name_deferred(&mut core, NameList::Disabled, null());
+    assert_eq!(reads.take(), ["name"]);
+    assert_eq!(core.names(NameList::Disabled), [b"n".to_vec()]);
 }
 
 fn bytes() -> impl Strategy<Value = Option<Vec<u8>>> {
