@@ -637,6 +637,7 @@ fn main() {
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
         "shader-file",
+        "shader-param-introspection",
         "stagesurface-getters",
         "texture-planar-creators",
         "texture-metadata",
