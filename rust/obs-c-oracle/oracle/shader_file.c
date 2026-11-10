@@ -112,6 +112,7 @@ void oracle_shader_file_run(struct shader_file_trace *trace, int pixel)
 /* A second inclusion compares the actual Rust ABI shim with original C using
  * the shared real file reader and existing recording shader constructors. */
 void *gs_get_context(void);
+void oracle_graphics_set_context_present(bool present);
 void oracle_shader_file_context(bool present);
 char *os_quick_read_utf8_file(const char *path);
 void bfree(void *data);
@@ -119,14 +120,9 @@ gs_shader_t *gs_vertexshader_create(const char *source, const char *file, char *
 gs_shader_t *gs_pixelshader_create(const char *source, const char *file, char **error);
 gs_shader_t *oracle_live_vertexshader_create_from_file(const char *file, char **error);
 gs_shader_t *oracle_live_pixelshader_create_from_file(const char *file, char **error);
-static THREAD_LOCAL bool sf_live_context;
-void *gs_get_context(void)
-{
-	return sf_live_context ? &sf_live_context : NULL;
-}
 void oracle_shader_file_context(bool present)
 {
-	sf_live_context = present;
+	oracle_graphics_set_context_present(present);
 }
 static bool sf_live_valid(const char *name)
 {

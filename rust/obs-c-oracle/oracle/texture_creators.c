@@ -11,6 +11,7 @@ gs_texture_t *oracle_texrender_texture_create(uint32_t width, uint32_t height, e
 					      uint32_t levels, const uint8_t **data, uint32_t flags);
 void oracle_texture_creators_reset(bool present, bool fail);
 void oracle_texture_creators_finish(void);
+void oracle_graphics_set_context_present(bool present);
 const char *oracle_texture_creators_log(void);
 gs_texture_t *oracle_gs_texture_create(uint32_t w, uint32_t h, enum gs_color_format f, uint32_t l, const uint8_t **d,
 				       uint32_t flags);
@@ -19,7 +20,7 @@ gs_texture_t *oracle_gs_cubetexture_create(uint32_t s, enum gs_color_format f, u
 
 static THREAD_LOCAL struct graphics_subsystem creator_context;
 static THREAD_LOCAL bool creator_override;
-static THREAD_LOCAL bool creator_present;
+static THREAD_LOCAL bool creator_present = true;
 static THREAD_LOCAL bool creator_fail;
 static THREAD_LOCAL char creator_log[2048];
 static THREAD_LOCAL char creator_token;
@@ -53,9 +54,15 @@ static gs_texture_t *creator_cube(gs_device_t *device, uint32_t s, enum gs_color
 	return creator_fail ? NULL : (gs_texture_t *)&creator_token;
 }
 
+/* One public context provider serves texture, texrender and shader-file parity. */
+void oracle_graphics_set_context_present(bool present)
+{
+	creator_present = present;
+}
+
 graphics_t *gs_get_context(void)
 {
-	if (creator_override && !creator_present)
+	if (!creator_present)
 		return NULL;
 	creator_context.exports.device_texture_create = creator_texture;
 	creator_context.exports.device_cubetexture_create = creator_cube;
@@ -94,6 +101,7 @@ void oracle_texture_creators_reset(bool present, bool fail)
 void oracle_texture_creators_finish(void)
 {
 	creator_override = false;
+	creator_present = true;
 }
 const char *oracle_texture_creators_log(void)
 {
