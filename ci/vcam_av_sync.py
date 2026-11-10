@@ -221,10 +221,10 @@ async def stop_capture(recorder) -> None:
         return
     recorder.send_signal(signal.SIGINT)
     try:
-        await asyncio.wait_for(asyncio.to_thread(recorder.wait), timeout=10)
-    except TimeoutError:
+        await asyncio.to_thread(recorder.wait, timeout=10)
+    except subprocess.TimeoutExpired:
         recorder.kill()
-        await asyncio.wait_for(asyncio.to_thread(recorder.wait), timeout=5)
+        await asyncio.to_thread(recorder.wait, timeout=5)
 
 
 async def measure_mcp(args: argparse.Namespace, clip: Path, capture: Path) -> dict:
