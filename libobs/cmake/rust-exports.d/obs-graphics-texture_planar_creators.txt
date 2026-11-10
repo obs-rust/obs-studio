@@ -1,0 +1,2 @@
+gs_texture_create_nv12
+gs_texture_create_p010

@@ -1,5 +1,21 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
+/* Its own group for the C reference (libobs.ported-texture-planar-creators):
+ * graphics.c.h's thread_graphics and gs_valid() are file-local there, so
+ * this file reads the same context through gs_get_context() and logs the
+ * same line. */
+#define thread_graphics gs_get_context()
+static inline bool texture_planar_ref_valid(const char *f)
+{
+	if (!thread_graphics) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", f);
+		return false;
+	}
+
+	return true;
+}
+#define gs_valid texture_planar_ref_valid
+
 bool gs_texture_create_nv12(gs_texture_t **tex_y, gs_texture_t **tex_uv, uint32_t width, uint32_t height,
 			    uint32_t flags)
 {
@@ -75,3 +91,6 @@ bool gs_texture_create_p010(gs_texture_t **tex_y, gs_texture_t **tex_uv, uint32_
 
 	return true;
 }
+
+#undef gs_valid
+#undef thread_graphics

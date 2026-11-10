@@ -18,7 +18,8 @@
 //! - Both planes are created before either is checked, so a failed luma
 //!   plane still tries the chroma plane.
 //! - The outputs are read back after both are written ([`Host::load`]), so
-//!   two outputs that are the same slot see the chroma plane.
+//!   two outputs that are the same slot see the chroma plane. The cleanup
+//!   reads a set output again as the destroy's argument.
 
 use crate::texture_render::ColorFormat;
 
@@ -44,25 +45,37 @@ impl Planar {
     /// The C function's name, as its context check logs it.
     #[must_use]
     pub const fn function(self) -> &'static str {
-        todo!()
+        match self {
+            Self::Nv12 => "gs_texture_create_nv12",
+            Self::P010 => "gs_texture_create_p010",
+        }
     }
 
     /// The `LOG_ERROR` line for an odd width or height.
     #[must_use]
     pub const fn odd_size_error(self) -> &'static str {
-        todo!()
+        match self {
+            Self::Nv12 => "NV12 textures must have dimensions divisible by 2.",
+            Self::P010 => "P010 textures must have dimensions divisible by 2.",
+        }
     }
 
     /// The luma plane's format.
     #[must_use]
     pub const fn luma_format(self) -> ColorFormat {
-        todo!()
+        match self {
+            Self::Nv12 => GS_R8,
+            Self::P010 => GS_R16,
+        }
     }
 
     /// The chroma plane's format.
     #[must_use]
     pub const fn chroma_format(self) -> ColorFormat {
-        todo!()
+        match self {
+            Self::Nv12 => GS_R8G8,
+            Self::P010 => GS_RG16,
+        }
     }
 }
 
@@ -129,6 +142,42 @@ pub trait Host {
 /// `gs_texture_create_nv12()` or `gs_texture_create_p010()`: whether the
 /// outputs now hold a luma and a chroma texture.
 pub fn create<H: Host>(host: &mut H, planar: Planar, width: u32, height: u32, flags: u32) -> bool {
-    let _ = (host, planar, width, height, flags);
-    todo!()
+    if !host.has_context() {
+        host.log(Line::NoContext(planar));
+        return false;
+    }
+
+    if width & 1 == 1 || height & 1 == 1 {
+        host.log(Line::OddSize(planar));
+        return false;
+    }
+
+    if host.device_create(planar, width, height, flags) == Some(true) {
+        return true;
+    }
+
+    let luma = host.texture_create(width, height, planar.luma_format(), flags);
+    host.store(Plane::Y, luma);
+    let chroma = host.texture_create(width / 2, height / 2, planar.chroma_format(), flags);
+    host.store(Plane::Uv, chroma);
+
+    if host.load(Plane::Y).is_none() || host.load(Plane::Uv).is_none() {
+        // `if (*tex_y) gs_texture_destroy(*tex_y);`: one read for the
+        // condition, another for the argument.
+        if host.load(Plane::Y).is_some()
+            && let Some(luma) = host.load(Plane::Y)
+        {
+            host.texture_destroy(luma);
+        }
+        if host.load(Plane::Uv).is_some()
+            && let Some(chroma) = host.load(Plane::Uv)
+        {
+            host.texture_destroy(chroma);
+        }
+        host.store(Plane::Y, None);
+        host.store(Plane::Uv, None);
+        return false;
+    }
+
+    true
 }

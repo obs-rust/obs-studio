@@ -59,8 +59,18 @@ static void ss_blog(int level, const char *format, ...)
 #define gs_get_context ss_context
 #define blog ss_blog
 #define obs_graphics_linear_srgb_field oracle_ss_unused_linear_srgb_field
+#define obs_texture_planar_context oracle_ss_unused_tp_context
+#define obs_texture_planar_log oracle_ss_unused_tp_log
+#define obs_texture_planar_device oracle_ss_unused_tp_device
+#define obs_texture_planar_nv12_field oracle_ss_unused_tp_nv12_field
+#define obs_texture_planar_p010_field oracle_ss_unused_tp_p010_field
 #include "graphics-linear-srgb-fields.inc"
 #undef obs_graphics_linear_srgb_field
+#undef obs_texture_planar_context
+#undef obs_texture_planar_log
+#undef obs_texture_planar_device
+#undef obs_texture_planar_nv12_field
+#undef obs_texture_planar_p010_field
 #undef blog
 #undef gs_get_context
 #define gs_get_context ss_context
