@@ -13,6 +13,7 @@ struct Calldata {
 use std::ffi::{CStr, c_char, c_int, c_void};
 
 unsafe extern "C" {
+    fn obs_source_active(source: *const sys::obs_source_t) -> bool;
     fn obs_source_get_output_flags(source: *const sys::obs_source_t) -> u32;
     fn obs_source_media_restart(source: *mut sys::obs_source_t);
     fn obs_source_media_get_state(source: *mut sys::obs_source_t) -> c_int;
@@ -74,6 +75,11 @@ impl Drop for Params {
     }
 }
 impl Source {
+    pub fn active(&self) -> bool {
+        // SAFETY: the source reference remains live during the query.
+        unsafe { obs_source_active(self.0.as_ptr()) }
+    }
+
     pub fn restart_media(&self) -> Result<(), String> {
         // SAFETY: owns a live source reference; the flag is OBS_SOURCE_CONTROLLABLE_MEDIA.
         if unsafe { obs_source_get_output_flags(self.0.as_ptr()) } & (1 << 13) == 0 {
