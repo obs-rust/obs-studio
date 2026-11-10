@@ -196,6 +196,56 @@ static void test_amf3_member_error(void **state)
 	assert_int_equal(AMF_CountProp(&obj), 0);
 }
 
+/* A value that needs more bytes than the buffer has left fails to decode.
+ * Each buffer here is longer than the size passed in, and the bytes past
+ * that size are chosen so that a decoder which reads them would report
+ * success. */
+static void test_truncated_array_headers(void **state)
+{
+	(void)state;
+	AMFObjectProperty prop;
+	/* type byte, then where a 32-bit count would be */
+	const char strict_array[5] = {AMF_STRICT_ARRAY, 0, 0, 0, 0};
+	const char ecma_array[5] = {AMF_ECMA_ARRAY, 0, 0, 0, 0};
+
+	assert_int_equal(AMFProp_Decode(&prop, strict_array, 1, FALSE), -1);
+	assert_int_equal(AMFProp_Decode(&prop, strict_array, 4, FALSE), -1);
+	assert_int_equal(AMFProp_Decode(&prop, ecma_array, 1, FALSE), -1);
+	assert_int_equal(AMFProp_Decode(&prop, ecma_array, 4, FALSE), -1);
+
+	/* with the whole count present, an empty strict array decodes */
+	assert_int_equal(AMFProp_Decode(&prop, strict_array, 5, FALSE), 5);
+	AMFProp_Reset(&prop);
+}
+
+/* An AMF3 string length is a 29-bit unsigned value. A length header with
+ * every bit set names a string far longer than the buffer, so the property
+ * fails to decode; it is not a negative length. */
+static void test_amf3_string_length_is_unsigned(void **state)
+{
+	(void)state;
+	AMFObjectProperty prop;
+	const char name_all_bits[6] = {(char)0xff, (char)0xff, (char)0xff, (char)0xff, AMF3_NULL, 0};
+
+	assert_int_equal(AMF3Prop_Decode(&prop, name_all_bits, 5, TRUE), -1);
+}
+
+/* An AMF3 integer or length header that runs past the buffer fails. */
+static void test_amf3_truncated_integer(void **state)
+{
+	(void)state;
+	AMFObjectProperty prop;
+	/* AMF3 integer whose first byte says another byte follows */
+	const char integer[3] = {AMF3_INTEGER, (char)0x81, 0x01};
+	/* AMF3 string of 4 bytes with 1 present */
+	const char string[6] = {AMF3_STRING, 0x09, 0x61, 0x61, 0x61, 0x61};
+
+	assert_int_equal(AMF3Prop_Decode(&prop, integer, 2, FALSE), -1);
+	assert_int_equal(AMF3Prop_Decode(&prop, integer, 3, FALSE), 3);
+	assert_int_equal(AMF3Prop_Decode(&prop, string, 3, FALSE), -1);
+	assert_int_equal(AMF3Prop_Decode(&prop, string, 6, FALSE), 6);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -203,6 +253,9 @@ int main(void)
 		cmocka_unit_test(test_depth_limit),
 		cmocka_unit_test(test_deep_nesting),
 		cmocka_unit_test(test_amf3_member_error),
+		cmocka_unit_test(test_truncated_array_headers),
+		cmocka_unit_test(test_amf3_string_length_is_unsigned),
+		cmocka_unit_test(test_amf3_truncated_integer),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
