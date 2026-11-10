@@ -77,3 +77,5 @@ pub mod output_frames_dropped;
 pub mod output_mixer_setters;
 
 pub mod output_settings;
+
+pub mod output_video_encoder_getter;
