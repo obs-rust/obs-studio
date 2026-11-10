@@ -14,7 +14,7 @@ function(_encoder_configuration_link_support)
         )
         target_include_directories(
           encoder_configuration_link_support
-          PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
+          PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_BINARY_DIR}/config"
         )
         target_link_libraries(
           encoder_configuration_link_support
