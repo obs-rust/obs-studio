@@ -60,11 +60,3 @@
 #if FFMPEG_HAS_EXIF_API
 #include <libavcodec/exif.h>
 #endif
-
-/* Private state and C-reference seams for the image decode unity fragments. */
-#include "libobs/graphics/graphics-ffmpeg-image-private.h"
-
-bool ffmpeg_image_too_large(struct ffmpeg_image *info, int cx, int cy);
-void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enum gs_image_alpha_mode alpha_mode);
-
-void *gs_ffmpeg_image_decode(void *info, int alpha_mode);

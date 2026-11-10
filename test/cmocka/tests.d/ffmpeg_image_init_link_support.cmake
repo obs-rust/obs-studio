@@ -15,7 +15,7 @@ function(_ffmpeg_image_init_link_support)
   # executable makes its image-size call pull unrelated Rust graphics members
   # into pure source/scene/monitor fixtures, even when they never decode images.
   add_library(ffmpeg_image_init_link_support STATIC "${_adapter}")
-  target_include_directories(ffmpeg_image_init_link_support PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+  target_include_directories(ffmpeg_image_init_link_support PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
   target_link_libraries(ffmpeg_image_init_link_support PRIVATE FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil)
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
   foreach(_target IN LISTS _targets)

@@ -21,6 +21,7 @@
 #define LOG_WARNING 300
 
 enum AVPixelFormat { IMAGE_INIT_FORMAT = 0 };
+enum gs_image_alpha_mode { GS_IMAGE_ALPHA_STRAIGHT };
 typedef struct AVFrame {
 	int unused;
 } AVFrame;

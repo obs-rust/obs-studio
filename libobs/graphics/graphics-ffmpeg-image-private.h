@@ -11,6 +11,10 @@ struct ffmpeg_image {
 	/* The texture size limit of the graphics device, 0 if unknown. */
 	uint32_t max_size;
 	bool too_large;
+
+	/* Scratch decoder lookup used only by the private lifecycle adapter. */
+	const struct AVCodec *init_decoder;
+	int (*get_buffer)(struct ffmpeg_image *, void *, int);
 };
 
 /* Only C knows these callbacks and layouts. Rust borrows this context opaquely. */
