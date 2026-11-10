@@ -1,10 +1,10 @@
 """The configured MCP entry point must build a native app without session setup."""
 from pathlib import Path
+from ci.host_platform import is_linux
 import json
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 import unittest
 
@@ -21,7 +21,7 @@ class McpConfigurationTest(unittest.TestCase):
         self.assertTrue(os.access(ENTRY, os.X_OK))
 
 
-@unittest.skipUnless(sys.platform == "linux", "Linux native-launcher subprocess fixtures")
+@unittest.skipUnless(is_linux(), "Linux native-launcher subprocess fixtures")
 class NativeMcpBuildTest(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -39,6 +39,7 @@ class NativeMcpBuildTest(unittest.TestCase):
 set -eu
 printf '%s|%s\n' "$*" "${OBS_BUILD_RUST_ARCHIVE:-unset}" >> "$MCP_TEST_TRACE"
 if [ "$1" = rustc ]; then printf 'host: x86_64-unknown-linux-gnu\n'; exit 0; fi
+if read -r unexpected; then echo 'build consumed protocol input' >&2; exit 9; fi
 echo 'build diagnostic on stdout'
 case "$*" in
   *libobs-rust*)
@@ -51,16 +52,18 @@ case "$*" in
     test -s "$OBS_BUILD_RUST_ARCHIVE"
     mkdir -p "$CARGO_TARGET_DIR/debug"
     cp "$MCP_TEST_NATIVE" "$CARGO_TARGET_DIR/debug/obs-studio-rust"
+    printf %s "${MCP_TEST_LIBRARY:-library}" > "$CARGO_TARGET_DIR/native-libobs.so.30"
+    printf '{"reason":"build-script-executed","env":[["OBS_SYS_LIBRARY","%s/native-libobs.so.30"]]}\n' "$CARGO_TARGET_DIR"
     ;;
   *) exit 9 ;;
 esac
 ''')
         soldr.chmod(0o755)
         self.env = {**os.environ, "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
-                    "OBS_MCP_NIX_SHELL": "1", "OBS_MCP_TARGET_DIR": str(self.root / "native-target"),
+                    "OBS_MCP_SOLDR": str(soldr), "OBS_MCP_NIX_SHELL": "1", "OBS_MCP_TARGET_DIR": str(self.root / "native-target"),
                     "MCP_TEST_TRACE": str(self.trace), "MCP_TEST_NATIVE": str(native),
                     "MCP_TEST_NATIVE_ARGS": str(self.native_args)}
-        for name in ("OBS_BUILD_RUST_ARCHIVE", "OBS_MCP_SOLDR", "CPATH", "PKG_CONFIG_PATH"):
+        for name in ("OBS_BUILD_RUST_ARCHIVE", "CPATH", "PKG_CONFIG_PATH"):
             self.env.pop(name, None)
 
     def invoke(self, *args, data=""):
@@ -81,6 +84,19 @@ esac
         self.assertIn("--features bundled-native", builds[1])
         self.assertTrue(builds[1].endswith("|" + str(target / "release/liblibobs_rust.a")))
         self.assertIn("build diagnostic on stdout", result.stderr)
+        self.assertEqual((target / "debug/native-libobs.so.30").read_text(), "library")
+
+    def test_rebuild_preserves_a_library_already_loaded_by_a_listener(self):
+        first = self.invoke("--build")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        library = self.root / "native-target/debug/native-libobs.so.30"
+        loaded = self.root / "loaded-library"
+        os.link(library, loaded)
+        self.env["MCP_TEST_LIBRARY"] = "rebuilt library"
+        second = self.invoke("--build")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(loaded.read_text(), "library")
+        self.assertEqual(library.read_text(), "rebuilt library")
 
     def test_launch_preserves_protocol_stdio_and_attach_arguments(self):
         request = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'
