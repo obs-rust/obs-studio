@@ -230,6 +230,7 @@
 
 #include "obs-source-deinterlace-draw.h"
 #include "obs-source-deinterlace-pacing.h"
+#include "obs-source-deinterlace-seam.h"
 #include "obs-source-deinterlace-select.h"
 
 /* obs-source-transition.c */

@@ -48,6 +48,7 @@
 #include "libobs/obs-source-boolean-query-fields.c.h"
 #include "libobs/obs-source-caption-callbacks.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
+#include "libobs/obs-source-deinterlace-seam.c.h"
 #include "libobs/obs-source-deinterlace-texture.c.h"
 #include "libobs/obs-source-deinterlace.c.h"
 #include "libobs/obs-source-enabled-setter-fields.c.h"
