@@ -143,6 +143,7 @@ pub mod encoder_registry_queries;
 pub mod encoder_roi;
 pub mod encoder_roi_state;
 pub mod encoder_scaling_enabled;
+pub mod encoder_set_name;
 pub mod encoder_set_preferred_format;
 pub mod encoder_settings;
 pub mod encoder_size;
