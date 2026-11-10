@@ -7,11 +7,20 @@
 //! one line to the log file and to stderr and ends the process with
 //! [`EXIT_CODE`].
 //!
-//! All work is done when the watchdog is armed: when it fires, `main()` has
-//! returned, the frontend's log file is closed and destructors run. Firing
-//! only writes the prepared line and ends the process without `exit()`
-//! (which would run the same destructors again) and without `abort()`
-//! (which looks like a crash). The host calls are in `platform`.
+//! The line names the library where the armed thread waits and the OBS
+//! module that brought it in (#4525): the frontend notes the modules and the
+//! image list after loading and after post-load ([`note_module`],
+//! [`note_loaded`], [`note_post_load`]); [`arm`] builds the table
+//! ([`images::Table`]) and notes the arming thread, which then runs
+//! `exit()`. When it fires, the watchdog captures that thread's stack and
+//! names the first library on it that OBS itself did not load.
+//!
+//! All other work is done when the watchdog is armed: when it fires, `main()`
+//! has returned, the frontend's log file is closed and destructors run.
+//! Firing captures the stack into a fixed buffer, writes the line from a
+//! fixed buffer and ends the process without `exit()` (which would run the
+//! same destructors again) and without `abort()` (which looks like a crash).
+//! The host calls are in `platform`.
 
 #![deny(unsafe_code)]
 
@@ -25,6 +34,9 @@ use std::time::Duration;
 pub mod ffi;
 pub mod images;
 mod platform;
+pub mod stack;
+
+use images::{Entry, Table};
 
 /// How long `exit()` may take after the frontend arms the watchdog.
 pub const TIMEOUT: Duration = Duration::from_secs(10);
@@ -35,17 +47,49 @@ pub const EXIT_CODE: i32 = 124;
 /// The start of the watchdog's line, for tools that read the log.
 pub const LINE_PREFIX: &str = "exit-watchdog: ";
 
-/// The line the watchdog writes when it fires, with its line end.
+/// The line the watchdog writes when it fires and names no library, with
+/// its line end.
 pub fn line(timeout: Duration) -> String {
-    let after = if timeout.subsec_millis() == 0 {
-        format!("{} s", timeout.as_secs())
-    } else {
-        format!("{} ms", timeout.as_millis())
-    };
-    format!(
-        "{LINE_PREFIX}exit did not finish in {after}: a static destructor or \
-         atexit handler is blocking; ending the process\n"
-    )
+    line_naming(timeout, None)
+}
+
+/// The line with the library the armed thread waits in, if one was found.
+pub fn line_naming(timeout: Duration, culprit: Option<&Entry>) -> String {
+    let mut buf = [0u8; LINE_MAX];
+    let n = write_line(&mut buf, timeout, culprit);
+    String::from_utf8_lossy(&buf[..n]).into_owned()
+}
+
+/// The longest line the watchdog writes (a longer file or module name is cut).
+pub const LINE_MAX: usize = 512;
+
+/// Writes the line into `out` without allocating; returns its length.
+fn write_line(out: &mut [u8], timeout: Duration, culprit: Option<&Entry>) -> usize {
+    let _ = (out, timeout, culprit);
+    todo!()
+}
+
+/// The first frame of `frames` (innermost first) in an image that OBS itself
+/// did not load: the library to name.
+pub fn culprit<'a>(frames: &[usize], table: &'a Table) -> Option<&'a Entry> {
+    let _ = (frames, table);
+    todo!()
+}
+
+/// The frontend: the binary path of a loaded OBS module.
+pub fn note_module(path: &str) {
+    let _ = path;
+    todo!()
+}
+
+/// The frontend: the modules are loaded (before their post-load).
+pub fn note_loaded() {
+    todo!()
+}
+
+/// The frontend: the modules' post-load is done.
+pub fn note_post_load() {
+    todo!()
 }
 
 static ARMED: AtomicBool = AtomicBool::new(false);
@@ -55,6 +99,13 @@ static ARMED: AtomicBool = AtomicBool::new(false);
 /// file opens), then ends the process with [`EXIT_CODE`]. Returns false when
 /// the watchdog was already armed or its thread did not start.
 pub fn arm(timeout: Duration, log: Option<&Path>) -> bool {
+    let _ = (timeout, log);
+    todo!()
+}
+
+/// [`arm`] with a given table (tests).
+pub fn arm_with(timeout: Duration, log: Option<&Path>, table: Table) -> bool {
+    let _ = table;
     if ARMED.swap(true, Ordering::SeqCst) {
         return false;
     }

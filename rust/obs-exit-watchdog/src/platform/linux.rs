@@ -57,3 +57,22 @@ unsafe extern "C" fn add(info: *mut libc::dl_phdr_info, _size: usize, data: *mut
     }
     0
 }
+
+pub const STACK_SUPPORTED: bool = true;
+
+/// A thread whose stack can be captured.
+pub struct Thread;
+
+pub fn current_thread() -> Thread {
+    todo!()
+}
+
+pub fn prepare_stack() {
+    todo!()
+}
+
+/// The thread's return addresses, innermost first.
+pub fn capture_stack(thread: &Thread, out: &mut [usize]) -> usize {
+    let _ = (thread, out);
+    todo!()
+}

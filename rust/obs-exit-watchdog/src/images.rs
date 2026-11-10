@@ -113,6 +113,12 @@ impl Table {
         }
     }
 
+    /// A table from entries in any order (tests, and a table built by hand).
+    pub fn from_entries(mut entries: Vec<Entry>) -> Table {
+        entries.sort_by_key(|e| e.start);
+        Table { entries }
+    }
+
     /// The entries, sorted by start address.
     pub fn entries(&self) -> &[Entry] {
         &self.entries

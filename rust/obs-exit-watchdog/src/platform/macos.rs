@@ -105,3 +105,22 @@ unsafe fn text_segment(header: *const MachHeader64) -> Option<(usize, usize)> {
         None
     }
 }
+
+pub const STACK_SUPPORTED: bool = true;
+
+/// A thread whose stack can be captured.
+pub struct Thread;
+
+pub fn current_thread() -> Thread {
+    todo!()
+}
+
+pub fn prepare_stack() {
+    todo!()
+}
+
+/// The thread's return addresses, innermost first.
+pub fn capture_stack(thread: &Thread, out: &mut [usize]) -> usize {
+    let _ = (thread, out);
+    todo!()
+}
