@@ -1,6 +1,6 @@
 /* Test-only link stand-ins: obs_source_get_color_space() and the graphics
- * calls gs_matrix_mul(), gs_clear(), gs_ortho(), gs_blend_state_push(),
- * gs_blend_state_pop() and gs_blend_function() under libobs's own names,
+ * calls gs_matrix_mul(), gs_clear(), gs_ortho() and gs_blend_function()
+ * under libobs's own names,
  * for the test binaries that link the obs-source-seam shims without
  * libobs.
  *
@@ -12,7 +12,7 @@
  * the real ones. The texrender calls, gs_matrix_push(), gs_matrix_pop(),
  * gs_get_color_space(), obs_source_video_render(), obs_source_active()
  * (oracle/audio_callback_links.c) and the reference calls already have
- * theirs.
+ * theirs. Blend-state push/pop now come from the real obs-graphics shims.
  *
  * The tests never reach these: they run the shims with Calls of their own. */
 
@@ -49,10 +49,6 @@ void gs_ortho(float left, float right, float top, float bottom, float znear, flo
 	UNUSED_PARAMETER(znear);
 	UNUSED_PARAMETER(zfar);
 }
-
-void gs_blend_state_push(void) {}
-
-void gs_blend_state_pop(void) {}
 
 void gs_blend_function(enum gs_blend_type src, enum gs_blend_type dest)
 {
