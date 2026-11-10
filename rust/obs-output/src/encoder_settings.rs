@@ -1,4 +1,4 @@
-//! Encoder settings identity and ownership, independent of private C layouts.
+//! The settings getter returns the stored value with one added reference.
 use core::ffi::CStr;
 
 pub fn get<T: Copy + Default>(
@@ -6,6 +6,14 @@ pub fn get<T: Copy + Default>(
     addref: impl FnOnce(T),
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (encoder, addref, log);
-    todo!("port obs_encoder_get_settings")
+    match encoder {
+        Some(settings) => {
+            addref(settings);
+            settings
+        }
+        None => {
+            log(c"obs_encoder_get_settings");
+            T::default()
+        }
+    }
 }

@@ -55,6 +55,7 @@ mod encoder_scaling_enabled_parity;
 mod encoder_set_preferred_format;
 mod encoder_set_preferred_format_parity;
 mod encoder_settings;
+mod encoder_settings_parity;
 mod encoder_size;
 mod encoder_size_parity;
 mod encoder_state_queries;
