@@ -45,9 +45,18 @@ const MAX_SIDE: u32 = 16_384;
 /// The libobs-backed implementation of every backend trait.
 /// Frontend capabilities supplied by an attached application.
 pub trait AttachedFrontend {
-    fn current_scene(&self) -> Option<String>;
-    fn set_scene(&self, request: &crate::tools::scenes::NameInput) -> Result<(), String>;
-    fn output_name(&self, request: &crate::tools::outputs::OutputRequest) -> Option<String>;
+    fn current_scene(&self, request: crate::tools::EmptyInput)
+    -> crate::tools::scenes::SceneOutput;
+    fn set_scene(
+        &self,
+        request: crate::tools::scenes::NameInput,
+    ) -> Result<crate::tools::scenes::SceneOutput, crate::server::ToolError>;
+    fn output_name(&self, request: crate::tools::outputs::OutputRequest) -> FrontendOutputName;
+}
+/// Current frontend output identity; absent while the frontend has no output.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub struct FrontendOutputName {
+    pub name: Option<String>,
 }
 pub struct ObsBackend {
     frontend: Option<Rc<dyn AttachedFrontend>>,
@@ -193,7 +202,9 @@ impl ObsBackend {
             OutputKind::Stream => ("stream", &self.stream),
         };
         let frontend_name = self.frontend.as_ref().and_then(|frontend| {
-            frontend.output_name(&crate::tools::outputs::OutputRequest { kind })
+            frontend
+                .output_name(crate::tools::outputs::OutputRequest { kind })
+                .name
         });
         let name = frontend_name
             .as_deref()
@@ -243,16 +254,19 @@ impl SceneBackend for ObsBackend {
     fn current(&self) -> Option<String> {
         self.frontend.as_ref().map_or_else(
             || ffi::program().filter(Source::is_scene).map(|s| s.name()),
-            |frontend| frontend.current_scene(),
+            |frontend| frontend.current_scene(crate::tools::EmptyInput {}).name,
         )
     }
 
     fn set_current(&self, name: &str) -> Result<(), String> {
         let scene = Self::scene(name)?;
         if let Some(frontend) = &self.frontend {
-            return frontend.set_scene(&crate::tools::scenes::NameInput {
-                name: name.to_owned(),
-            });
+            return frontend
+                .set_scene(crate::tools::scenes::NameInput {
+                    name: name.to_owned(),
+                })
+                .map(|_| ())
+                .map_err(|error| error.message);
         }
         ffi::set_program(Some(&scene));
         Ok(())

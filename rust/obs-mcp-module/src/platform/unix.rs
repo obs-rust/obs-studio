@@ -33,7 +33,8 @@ fn stop(state: &mut State) {
     }
 }
 unsafe extern "C" fn event(event: i32, _: *mut c_void) {
-    if event == 17
+    // obs-frontend-api.h: stop before ClearSceneData(), with EXIT as fallback.
+    if matches!(event, 36 | 17)
         && let Ok(mut state) = STATE.lock()
         && let Some(state) = state.as_mut()
     {
@@ -215,13 +216,19 @@ unsafe extern "C" fn change_scene(data: *mut c_void) {
     }
 }
 impl obs_mcp::backend::AttachedFrontend for Frontend {
-    fn current_scene(&self) -> Option<String> {
-        self.name_of(self.current, self.name, self.release)
+    fn current_scene(&self, _: obs_mcp::tools::EmptyInput) -> obs_mcp::tools::scenes::SceneOutput {
+        obs_mcp::tools::scenes::SceneOutput {
+            name: self.name_of(self.current, self.name, self.release),
+        }
     }
-    fn set_scene(&self, request: &obs_mcp::tools::scenes::NameInput) -> Result<(), String> {
+    fn set_scene(
+        &self,
+        request: obs_mcp::tools::scenes::NameInput,
+    ) -> Result<obs_mcp::tools::scenes::SceneOutput, obs_mcp::server::ToolError> {
         let mut change = SceneChange {
             frontend: *self,
-            name: std::ffi::CString::new(request.name.as_str()).map_err(|e| e.to_string())?,
+            name: std::ffi::CString::new(request.name.as_str())
+                .map_err(|e| obs_mcp::server::ToolError::wrong_state(e.to_string()))?,
         };
         // SAFETY: OBS_TASK_GRAPHICS (1) forces the frontend setter's nonblocking UI path.
         // The synchronous graphics task completes before this stack request drops. Thus
@@ -229,13 +236,20 @@ impl obs_mcp::backend::AttachedFrontend for Frontend {
         unsafe {
             (self.queue)(1, change_scene, (&raw mut change).cast(), true);
         }
-        Ok(())
+        Ok(obs_mcp::tools::scenes::SceneOutput {
+            name: Some(request.name),
+        })
     }
-    fn output_name(&self, request: &obs_mcp::tools::outputs::OutputRequest) -> Option<String> {
+    fn output_name(
+        &self,
+        request: obs_mcp::tools::outputs::OutputRequest,
+    ) -> obs_mcp::backend::FrontendOutputName {
         let get = match request.kind {
             obs_mcp::tools::outputs::OutputKind::Record => self.record,
             obs_mcp::tools::outputs::OutputKind::Stream => self.stream,
         };
-        self.name_of(get, self.output_name, self.output_release)
+        obs_mcp::backend::FrontendOutputName {
+            name: self.name_of(get, self.output_name, self.output_release),
+        }
     }
 }
