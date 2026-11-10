@@ -628,6 +628,7 @@ fn main() {
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
         "stagesurface-getters",
+        "texture-planar-creators",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
