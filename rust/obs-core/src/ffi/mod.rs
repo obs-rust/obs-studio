@@ -28,6 +28,7 @@ pub mod global_getters;
 pub mod module_failure_info;
 pub mod module_init;
 pub mod module_lists;
+pub mod module_load_locale;
 pub mod module_load_rules;
 pub mod module_locale;
 pub mod module_locale_getters;
