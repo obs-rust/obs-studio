@@ -13963,6 +13963,29 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_source_deinterlace": {
+      "sources": [
+        "test/cmocka/test_source_deinterlace.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      }
+    },
     "test_source_deinterlace_getters": {
       "sources": [
         "test/cmocka/test_source_deinterlace_getters.c"
@@ -23893,6 +23916,18 @@
           "xvfb-run",
           "-a"
         ]
+      ]
+    },
+    "test_source_deinterlace": {
+      "target": "test_source_deinterlace",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
       ]
     },
     "test_source_deinterlace_getters": {

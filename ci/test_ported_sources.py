@@ -46,7 +46,6 @@ NOT_PORTED = (
     "obs-module.c.h.o",
     "obs-scene-item-audio-actions.c.h.o",
     "obs-scene.c.h.o",
-    "obs-source-deinterlace.c.h.o",
     "obs-source.c.h.o",
 )
 

@@ -43,8 +43,13 @@
  * - obs_source_deinterlace_seam_convert_video_space(): the obs-internal.h
  *   inline convert_video_space(), passed through.
  * - The core video: obs->video.video_frame_interval_ns, get; the address of
- *   obs->video.stats; and the addresses of the eight
- *   obs->video.deinterlace_*_effect slots that obs_load_effect() fills.
+ *   obs->video.stats; the video time, obs_video_stats_frame_time() on it
+ *   (a header inline, which takes the stats mutex); and the addresses of
+ *   the eight obs->video.deinterlace_*_effect slots that obs_load_effect()
+ *   fills.
+ * - The frame fields: a queued frame's timestamp, get; its prev_frame, get
+ *   and set; and os_atomic_inc_long() of its refs (a header inline),
+ *   returning the count it made.
  *
  * None checks its arguments or takes a lock of its own: a caller takes
  * async_mutex where obs-source-deinterlace.c takes it today.
@@ -107,3 +112,9 @@ gs_effect_t **obs_source_deinterlace_seam_get_linear_effect_slot(void);
 gs_effect_t **obs_source_deinterlace_seam_get_linear_2x_effect_slot(void);
 gs_effect_t **obs_source_deinterlace_seam_get_yadif_effect_slot(void);
 gs_effect_t **obs_source_deinterlace_seam_get_yadif_2x_effect_slot(void);
+uint64_t obs_source_deinterlace_seam_get_video_time(void);
+
+uint64_t obs_source_deinterlace_seam_get_frame_timestamp(const struct obs_source_frame *frame);
+bool obs_source_deinterlace_seam_get_frame_prev_frame(const struct obs_source_frame *frame);
+void obs_source_deinterlace_seam_set_frame_prev_frame(struct obs_source_frame *frame, bool value);
+long obs_source_deinterlace_seam_frame_addref(struct obs_source_frame *frame);
