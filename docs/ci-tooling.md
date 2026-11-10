@@ -463,7 +463,13 @@ Cargo files test the workspace), on every PR. No Qt is installed there.
 | files matching `/platform[/-](windows, macos, linux, posix)[/.]` (posix = linux+macos), legacy OS names, shared build files (`cmake/common`, `cmake/finders`, `libobs/cmake`, root CMake, crate-root `build.rs`, `platform/mod.rs`, C++ cmocka tests) | macOS / Windows Rust tests, Tier 2, cross lint |
 | `build-aux/`, `.gitmodules`, submodules | compiled on Linux only; no full build from a PR |
 | `docs/`, `.github/`, `ci/` | lint and the ci/ self-tests |
-| a compile input of a target whose CMakeLists names a conversion group — a source below it, or that CMakeLists itself (`ci/conversion_ratchet.py`: `frontend/`, `libobs/`, most `plugins/<x>`, `libobs-opengl/`, some `shared/<x>`) | `Sanitize 🧪` in Build: the `asan` pass of `sanitizers.yaml`, on a pull request only (#2923). The conversion ratchet is checked by the configuration that last compiled the target, which for a plugin is a PR's Tier 2 or a platform lane and never the sanitizer build, so a diagnostic only asan reports used to reach master and be found by the night's schedule. The PR that touches a ratcheted target pays for its own check — including the PR whose only change is the CMakeLists that turns the ratchet on (#2956) — while a merge-queue run keeps the path selection, so the queue's critical path does not grow (#2072, #2593) |
+
+No path selects a sanitizer lane. ASan (and TSan, valgrind) run only in
+`sanitizers.yaml` on its nightly schedule and on `workflow_dispatch`, never on a
+pull request or in the merge queue (maintainer directive 2026-11-09; the
+ratchet-PR `Sanitize 🧪` job of #2923 is gone). A diagnostic only asan reports
+now surfaces in the nightly run; dispatch `sanitizers.yaml -f tools=asan` on a
+separate ref to check a risky PR first.
 
 The macOS, Windows and cross jobs wait for Fast Gate. Qt starts on an
 independent runner after successful scope detection; its compilation and tests
@@ -648,7 +654,7 @@ fit in `[cache].budget`. The release-asset transport (#782) can bring the
 app-build caches back outside the budget; its dispatch-only seed goes from
 the app build to the transport job as a one-day artifact.
 
-The PR `asan` lane restores only the archive master saved, so that archive has
+A branch dispatch of the `asan` pass restores only the archive master saved, so that archive has
 its own family, `zccache-sanitize-asan`. `tsan` and `valgrind` keep no archive.
 Master builds fresh and never restores: a restored archive kept the old entries
 beside the new ones and outgrew the family. The nightly saves one, and a master

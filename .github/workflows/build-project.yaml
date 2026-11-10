@@ -121,7 +121,6 @@ jobs:
       docs_only: ${{ steps.native.outputs.docs_only }}
       cross_targets: ${{ steps.native.outputs.cross_targets }}
       cross_lint: ${{ steps.native.outputs.cross_lint }}
-      asan: ${{ steps.native.outputs.asan }}
       windows_link: ${{ steps.native.outputs.windows_link }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -297,26 +296,14 @@ jobs:
             echo "qt_sdk=${qt_sdk:-false}"
             echo "docs_only=${docs_only:-false}"
             echo "cross_targets=${cross_targets:-}"
-            echo "asan=${asan:-false}"
             echo "windows_link=${windows_link:-true}"
             echo "platform_os=[$(IFS=,; echo "${os[*]}")]"
           } >> "${GITHUB_OUTPUT}"
-          echo "full=${full} core=${core} macos=${macos} windows=${windows} qt=${qt} tier2=${tier2} asan=${asan:-false}"
+          echo "full=${full} core=${core} macos=${macos} windows=${windows} qt=${qt} tier2=${tier2}"
 
-  # The sanitizer configuration a ratchet PR pays for (#2923): the conversion
-  # ratchet is only checked where the lane that compiled it last ran, so three
-  # slices reached master with a diagnostic only asan reports. ci_scope selects
-  # this for a PR that changes a ratcheted target's compile input; the merge
-  # queue and every other event keep the path selection (#2072, #2593).
-  sanitize:
-    name: Sanitize 🧪
-    needs: check-event
-    if: needs.check-event.outputs.asan == 'true'
-    uses: ./.github/workflows/sanitizers.yaml
-    with:
-      tools: asan
-    permissions:
-      contents: read
+  # ASan runs nightly only (maintainer directive 2026-11-09): sanitizers.yaml
+  # keeps its schedule and workflow_dispatch; no PR or merge-queue run builds
+  # it (the former ratchet-PR `Sanitize 🧪` job, #2923, is gone).
 
   macos-build:
     timeout-minutes: 90
