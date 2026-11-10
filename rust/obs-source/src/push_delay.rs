@@ -15,5 +15,26 @@ pub fn set_delay<S: DelayFields>(
     delay: u64,
     log: impl FnOnce(&'static CStr, &'static CStr),
 ) {
-    todo!()
+    let Some(source) = source else {
+        log(
+            if talk {
+                c"obs_source_set_push_to_talk_delay"
+            } else {
+                c"obs_source_set_push_to_mute_delay"
+            },
+            c"source",
+        );
+        return;
+    };
+    source.lock();
+    source.store_delay(talk, delay);
+    source.signal_delay(
+        if talk {
+            c"push_to_talk_delay"
+        } else {
+            c"push_to_mute_delay"
+        },
+        delay as i64,
+    );
+    source.unlock();
 }
