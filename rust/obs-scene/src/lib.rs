@@ -71,4 +71,5 @@ pub mod item_transition_setters;
 pub mod item_group_scene;
 pub mod item_visible;
 
+pub mod item_blending_method;
 pub mod item_blending_mode;

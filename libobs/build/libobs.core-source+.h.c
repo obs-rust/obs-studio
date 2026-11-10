@@ -19,7 +19,7 @@
 #include "libobs/obs-scene-color-space.c.h"
 #include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-item-audio-actions.c.h"
-#include "libobs/obs-scene-item-blending-method.c.h"
+#include "libobs/obs-scene-item-blending-method-fields.c.h"
 #include "libobs/obs-scene-item-blending-mode-fields.c.h"
 #include "libobs/obs-scene-item-bounds-setters.c.h"
 #include "libobs/obs-scene-item-group-resize-defer.c.h"

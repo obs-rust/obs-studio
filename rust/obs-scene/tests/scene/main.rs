@@ -73,5 +73,7 @@ mod item_group_scene_parity;
 mod item_visible;
 mod item_visible_parity;
 
+mod item_blending_method;
+mod item_blending_method_parity;
 mod item_blending_mode;
 mod item_blending_mode_parity;
