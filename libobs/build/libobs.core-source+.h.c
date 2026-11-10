@@ -70,3 +70,4 @@
 #include "libobs/obs-source.c.h"
 #include "libobs/obs-texture-metadata-fields.c.h"
 #include "libobs/obs-view.c.h"
+#include "libobs/obs-voltexture-metadata-fields.c.h"
