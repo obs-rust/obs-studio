@@ -634,6 +634,7 @@ fn main() {
         "stagesurface-getters",
         "texture-planar-creators",
         "texture-metadata",
+        "voltexture-metadata",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

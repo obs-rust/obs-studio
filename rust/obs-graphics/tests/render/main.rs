@@ -39,3 +39,5 @@ mod texture_planar_creators;
 mod texture_planar_creators_parity;
 mod texture_render;
 mod texture_render_parity;
+mod voltexture_metadata;
+mod voltexture_metadata_parity;
