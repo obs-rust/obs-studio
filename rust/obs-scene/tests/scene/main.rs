@@ -15,6 +15,8 @@ mod crop;
 mod crop_parity;
 mod extent;
 mod extent_parity;
+mod item_audio_actions;
+mod item_audio_actions_parity;
 mod item_id;
 mod item_id_parity;
 mod item_names;
