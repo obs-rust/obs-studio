@@ -19,10 +19,7 @@ struct ep_fixture {
 };
 /* Tests re-exec before using this private registry, just like service fixtures. */
 static struct ep_fixture *ep_active;
-struct obs_encoder_info *find_encoder(const char *id)
-{
-	return ep_active && strcmp(id, "ep") == 0 ? &ep_active->info : NULL;
-}
+struct obs_core *oracle_encoder_registry_exchange_core(struct obs_core *core);
 static void ep_event(uint64_t event)
 {
 	ep_active->trace = ep_active->trace * 131 + event;
@@ -77,12 +74,19 @@ uint64_t oracle_encoder_properties_run(ep_type_getter type_getter, ep_instance_g
 	fixture.info.get_defaults = flags & 4 ? ep_defaults : NULL;
 	fixture.info.get_defaults2 = flags & 8 ? ep_defaults2 : NULL;
 	fixture.info.type_data = &fixture;
+	fixture.info.id = "ep";
 	fixture.encoder.orig_info = fixture.info;
 	/* Deliberately distinct current info: the instance must use orig_info. */
 	fixture.encoder.info.type_data = NULL;
 	fixture.encoder.context.data = &fixture.encoder;
 	fixture.encoder.context.settings = obs_data_create();
 	obs_data_set_int(fixture.encoder.context.settings, "value", value);
+	/* Use the shared fixture's original C lookup for both Rust and C callers. */
+	struct obs_core registry = {0};
+	registry.encoder_types.array = &fixture.info;
+	registry.encoder_types.num = 1;
+	registry.encoder_types.capacity = 1;
+	struct obs_core *previous = oracle_encoder_registry_exchange_core(&registry);
 	obs_properties_t *props;
 	if (instance)
 		props = instance_getter(flags & 64 ? NULL : &fixture.encoder);
@@ -91,6 +95,7 @@ uint64_t oracle_encoder_properties_run(ep_type_getter type_getter, ep_instance_g
 	ep_event(props ? 7 : 8);
 	obs_properties_destroy(props);
 	obs_data_release(fixture.encoder.context.settings);
+	oracle_encoder_registry_exchange_core(previous);
 	ep_active = NULL;
 	return fixture.trace;
 }
