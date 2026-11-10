@@ -37,8 +37,9 @@ impl Registry for Core {
 /// readable NUL-terminated string. Unlike the C, a NULL `id` finds nothing.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn get_source_info(id: *const c_char) -> *mut c_void {
-    // SAFETY: a non-NULL `id` is a NUL-terminated string (contract above).
-    let id = (!id.is_null()).then(|| unsafe { CStr::from_ptr(id) }.to_bytes());
+    // SAFETY: a non-NULL `id` is a NUL-terminated string (contract above);
+    // the core reads it only where the C compares it.
+    let id = (!id.is_null()).then_some(move || unsafe { CStr::from_ptr(id) }.to_bytes());
     match info_lookup::find(&mut Core, id) {
         // SAFETY: `find` returned an index below the live count.
         Some(index) => unsafe { obs_source_info_lookup_entry(index) },

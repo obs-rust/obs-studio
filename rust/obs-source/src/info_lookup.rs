@@ -20,9 +20,14 @@ pub trait Registry {
 }
 
 /// The index of the first entry whose ID is `id`, or `None`. A NULL `id`
-/// (`None`) finds nothing and reads nothing.
-pub fn find<R: Registry + ?Sized>(registry: &mut R, id: Option<&[u8]>) -> Option<usize> {
-    let id = id?;
+/// (`None`) finds nothing and reads nothing. The asked ID is read (`id` is
+/// called) only where the C compares it: once, at the first entry, so with
+/// nothing registered it is never read.
+pub fn find<'a, R: Registry + ?Sized>(
+    registry: &mut R,
+    id: Option<impl FnOnce() -> &'a [u8]>,
+) -> Option<usize> {
+    let id = id?();
     let mut index = 0;
     while index < registry.count() {
         if registry.id(index) == Some(id) {

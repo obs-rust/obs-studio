@@ -38,8 +38,16 @@ impl Registry for Model {
     }
 }
 
+/// An asked ID, read when the lookup compares it.
+fn asked<'a>(id: &'a [u8]) -> Option<impl FnOnce() -> &'a [u8]> {
+    Some(move || id)
+}
+
+/// A NULL asked ID.
+const NULL: Option<fn() -> &'static [u8]> = None;
+
 fn lookup(ids: &[Option<&str>], id: &str) -> Option<usize> {
-    find(&mut Model::new(ids), Some(id.as_bytes()))
+    find(&mut Model::new(ids), asked(id.as_bytes()))
 }
 
 #[test]
@@ -85,16 +93,16 @@ fn empty_ids_and_bytes_are_compared_whole() {
         ids: vec![Some(b"\xc3\xa9".to_vec()), Some(b"\xff".to_vec())],
         reads: Vec::new(),
     };
-    assert_eq!(find(&mut model, Some(b"\xff")), Some(1));
-    assert_eq!(find(&mut model, Some("é".as_bytes())), Some(0));
-    assert_eq!(find(&mut model, Some(b"e\xcc\x81")), None);
+    assert_eq!(find(&mut model, asked(b"\xff")), Some(1));
+    assert_eq!(find(&mut model, asked("é".as_bytes())), Some(0));
+    assert_eq!(find(&mut model, asked(b"e\xcc\x81")), None);
 }
 
 #[test]
 fn reads_follow_the_c_loop() {
     // The count is read before every entry and once more at the end.
     let mut model = Model::new(&[Some("a"), Some("b")]);
-    assert_eq!(find(&mut model, Some(b"c")), None);
+    assert_eq!(find(&mut model, asked(b"c")), None);
     assert_eq!(
         model.reads,
         [
@@ -107,8 +115,25 @@ fn reads_follow_the_c_loop() {
     );
     // A match stops the walk.
     let mut model = Model::new(&[Some("a"), Some("b")]);
-    assert_eq!(find(&mut model, Some(b"a")), Some(0));
+    assert_eq!(find(&mut model, asked(b"a")), Some(0));
     assert_eq!(model.reads, [Read::Count, Read::Id(0)]);
+}
+
+/// As in the C loop, the asked ID is read once, at the first comparison: with
+/// nothing registered it is never read.
+#[test]
+fn asked_id_is_read_only_to_compare() {
+    let mut model = Model::new(&[]);
+    let unread = Some(|| -> &[u8] { panic!("the asked ID was read with nothing registered") });
+    assert_eq!(find(&mut model, unread), None);
+    let mut reads = 0;
+    let mut model = Model::new(&[Some("a"), Some("b")]);
+    let counted = Some(|| {
+        reads += 1;
+        &b"b"[..]
+    });
+    assert_eq!(find(&mut model, counted), Some(1));
+    assert_eq!(reads, 1);
 }
 
 /// Intentional difference: the C crashes in strcmp on a NULL ID once any type
@@ -117,7 +142,7 @@ fn reads_follow_the_c_loop() {
 fn null_id_finds_nothing() {
     for ids in [&[][..], &[Some("a")][..], &[None, Some("")][..]] {
         let mut model = Model::new(ids);
-        assert_eq!(find(&mut model, None), None);
+        assert_eq!(find(&mut model, NULL), None);
         assert!(model.reads.is_empty());
     }
 }
