@@ -1,6 +1,9 @@
 """The configured MCP entry point must build a native app without session setup."""
 from pathlib import Path
-from ci.host_platform import is_linux
+try:
+    from .host_platform import is_linux
+except ImportError:  # unittest discovery imports ci modules without a package.
+    from host_platform import is_linux
 import json
 import os
 import shutil
