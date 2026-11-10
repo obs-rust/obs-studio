@@ -173,6 +173,7 @@ pub mod base_size;
 pub mod boolean_queries;
 pub mod color_space;
 pub mod conversion_plan;
+pub mod deinterlace;
 pub mod deinterlace_draw;
 pub mod deinterlace_getters;
 pub mod deinterlace_pacing;
