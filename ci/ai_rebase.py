@@ -209,7 +209,7 @@ def rebase_pr(n: int, dry_run: bool) -> str:
     if stack:
         # The parent landed, so this is now an ordinary PR: drop the stacking
         # note (it would read as a hold) and take it out of draft.
-        pr["body"] = STACKED.sub(f"Was stacked on #{stack[0]} (merged); ai-rebase replayed "
+        pr["body"] = STACKED.sub(f"Parent #{stack[0]} has merged; ai-rebase replayed "
                                  "only this PR's own commits onto master.", pr.get("body") or "", 1)
         run("gh", "pr", "edit", str(n), "--repo", REPO, "--body", pr["body"], check=False)
         if pr.get("isDraft"):
