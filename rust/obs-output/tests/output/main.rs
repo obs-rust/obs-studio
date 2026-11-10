@@ -178,3 +178,5 @@ mod output_connect_time_parity;
 
 mod output_frames_dropped;
 mod output_frames_dropped_parity;
+
+mod output_video_encoder_getter;
