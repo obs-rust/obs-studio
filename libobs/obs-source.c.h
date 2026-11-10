@@ -3197,16 +3197,6 @@ void obs_source_set_name(obs_source_t *source, const char *name)
 	}
 }
 
-enum obs_source_type obs_source_get_type(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_type") ? source->info.type : OBS_SOURCE_TYPE_INPUT;
-}
-
-const char *obs_source_get_id(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_id") ? source->info.id : NULL;
-}
-
 static inline void render_filter_bypass(obs_source_t *target, gs_effect_t *effect, const char *tech_name)
 {
 	gs_technique_t *tech = gs_effect_get_technique(effect, tech_name);
