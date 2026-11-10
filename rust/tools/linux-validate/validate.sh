@@ -263,10 +263,10 @@ else
           echo 'cache-healthy=false' >>"$GITHUB_OUTPUT"
         fi
       fi
-      (
-        if [ "$daemon_unavailable" = 1 ]; then export ZCCACHE_DISABLE=1; fi
-        cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0
-      ) >"$build.build.log" 2>&1 ||
+      # Later MCP plugin builds run in a child shell too: keep the bypass
+      # in this validation process when the daemon cannot be recovered.
+      if [ "$daemon_unavailable" = 1 ]; then export ZCCACHE_DISABLE=1; fi
+      cmake --build "$build" --target "${tier2_targets[@]}" -- -k 0 >"$build.build.log" 2>&1 ||
         { uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build.log"; exit 1; }
     else
       uv run --no-project "$SRC"/rust/tools/linux-validate/build_errors.py "$build.build.log"
