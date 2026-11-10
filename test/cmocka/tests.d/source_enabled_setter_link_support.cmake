@@ -17,6 +17,21 @@ function(_source_enabled_setter_link_support)
   foreach(_target IN LISTS _targets)
     get_target_property(_links ${_target} LINK_LIBRARIES)
     if(_target MATCHES "^test_(async_|deinterlace_|source_|transition_)" AND "libobs_rust-static" IN_LIST _links)
+      if(WIN32)
+        # MSVC pulls the obs-util host/log members through calldata allocation.
+        # Keep unused services in separate archive members so fixture-owned
+        # definitions still win, without linking a second libobs implementation.
+        if(NOT TARGET source_enabled_setter_windows_link_support)
+          add_library(
+            source_enabled_setter_windows_link_support
+            STATIC
+            "${CMAKE_CURRENT_SOURCE_DIR}/source-enabled-setter-log-link-stubs.c"
+            "${CMAKE_CURRENT_SOURCE_DIR}/source-enabled-setter-video-link-stub.c"
+          )
+          target_include_directories(source_enabled_setter_windows_link_support PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+        endif()
+        target_link_libraries(${_target} PRIVATE source_enabled_setter_windows_link_support Rpcrt4 winmm)
+      endif()
       target_sources(${_target} PRIVATE "${_adapter}")
       target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
       target_link_libraries(
