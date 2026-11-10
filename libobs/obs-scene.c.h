@@ -1584,16 +1584,6 @@ static inline obs_scene_t *create_private_id(obs_canvas_t *canvas, const char *i
 	return source->context.data;
 }
 
-obs_scene_t *obs_scene_create(const char *name)
-{
-	return create_id(obs->data.main_canvas, "scene", name);
-}
-
-obs_scene_t *obs_scene_create_private(const char *name)
-{
-	return create_private_id(obs->data.main_canvas, "scene", name);
-}
-
 static obs_source_t *get_child_at_idx(obs_scene_t *scene, size_t idx)
 {
 	struct obs_scene_item *item = scene->first_item;
