@@ -16,4 +16,4 @@
 #include "libobs/graphics/texture-creators.c.h"
 #include "libobs/graphics/timer-range-dispatch.c.h"
 #include "libobs/graphics/vertexbuffer-access.c.h"
-#include "libobs/graphics/vertexbuffer-destroy.c.h"
+#include "libobs/obs-vertexbuffer-destroy-fields.c.h"

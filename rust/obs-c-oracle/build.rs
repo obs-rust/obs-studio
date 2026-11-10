@@ -642,6 +642,7 @@ fn main() {
         "texture-cube-access",
         "timer-dispatch",
         "voltexture-metadata",
+        "vertexbuffer-destroy",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
