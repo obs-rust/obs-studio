@@ -677,3 +677,6 @@ pub fn log_warning(text: &str) {
     // consumes exactly the one argument passed.
     unsafe { blog(LOG_WARNING, c"obs-mcp: %s".as_ptr(), text.as_ptr()) };
 }
+
+mod control;
+pub use control::render_stats;

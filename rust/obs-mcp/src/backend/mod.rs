@@ -55,6 +55,8 @@ pub struct ObsBackend {
     /// Why the host could not create the outputs, quoted in the errors that need them.
     output_error: Option<String>,
     cpu: Option<CpuUsage>,
+    camera: RefCell<Option<Output>>,
+    baseline: RefCell<Option<crate::tools::control::StatsBaseline>>,
 }
 
 impl Default for ObsBackend {
@@ -78,6 +80,8 @@ impl ObsBackend {
             video_error: None,
             output_error: None,
             cpu: CpuUsage::start(),
+            camera: RefCell::new(None),
+            baseline: RefCell::new(None),
         }
     }
 
@@ -131,6 +135,8 @@ impl ObsBackend {
         sources::register(&mut tools, &sources);
         outputs::register(&mut tools, &outputs);
         screenshot::register(&mut tools, &capture);
+        let control: Rc<dyn crate::tools::control::ControlBackend> = Rc::clone(backend) as _;
+        crate::tools::control::register(&mut tools, &control);
 
         let mut resources = ResourceRegistry::new();
         resources::scenes::register(&mut resources, &scenes, &sources);
@@ -472,3 +478,5 @@ impl StatsBackend for ObsBackend {
         }
     }
 }
+
+mod control;

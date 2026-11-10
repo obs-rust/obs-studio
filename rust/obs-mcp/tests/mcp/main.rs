@@ -25,3 +25,5 @@ pub(crate) fn roundtrip(input: &str) -> Vec<Value> {
 }
 
 mod typed;
+
+mod control;
