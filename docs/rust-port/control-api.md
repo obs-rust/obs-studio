@@ -57,8 +57,9 @@ mcp plus fallback. Real GUI/device validation runs only in bosn containers.
 Build `soldr cargo build -p obs-mcp-module` and install the resulting
 `libobs_mcp_module.so` in OBS's normal module search path. The module binds
 `$XDG_RUNTIME_DIR/obs-studio-rust/control.sock` with mode 0600 in a private
-directory. It shares the app's libobs and stops its worker on frontend EXIT,
-prior to libobs shutdown. It never starts a second OBS instance.
+directory. It shares the app's libobs and stops its worker on frontend scripting
+shutdown, before scene cleanup (EXIT is a fallback). It never starts a second
+OBS instance or changes the application's global coordinate mode.
 
 `obs-studio-rust --mcp-attach [socket]` relays stdio to that instance. The same
 newline JSON-RPC Server handles both transports. At most 32 clients share the
