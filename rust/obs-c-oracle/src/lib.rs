@@ -116,6 +116,7 @@ pub mod lexer;
 pub mod lzw;
 pub mod media_remux;
 pub mod missing_files;
+pub mod module_lists;
 pub mod module_load_rules;
 pub mod module_load_rules_skip;
 pub mod module_locale;
