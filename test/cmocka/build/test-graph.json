@@ -2006,6 +2006,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_deinterlace_texture_allocation": {
+      "sources": [
+        "test/cmocka/test_deinterlace_texture_allocation.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_deque": {
       "sources": [
         "test/cmocka/test_deque.c"
@@ -19315,6 +19330,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_deinterlace_texture_allocation": {
+      "target": "test_deinterlace_texture_allocation"
     },
     "test_deque": {
       "target": "test_deque"
