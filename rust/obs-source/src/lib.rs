@@ -218,3 +218,5 @@ mod platform;
 
 #[allow(unsafe_code)]
 pub mod ffi;
+
+pub mod source_name;
