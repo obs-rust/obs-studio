@@ -58,7 +58,7 @@ fn client_reuses_typed_inputs_and_structured_outputs() {
 #[test]
 fn client_preserves_domain_error_and_rejects_wrong_id() {
     let (stream, _) = connection(
-        json!({"jsonrpc":"2.0","id":2,"result":{"isError":true,"structuredContent":{"code":207,"category":"not_ready","message":"video unavailable","retryable":true}}}),
+        json!({"jsonrpc":"2.0","id":2,"result":{"isError":true,"structuredContent":{"code":207,"category":"not_ready","message":"video unavailable","retryable":true,"future_context":{"stage":"render"}}}}),
     );
     let client = Client::from_connection(stream).unwrap();
     assert!(
