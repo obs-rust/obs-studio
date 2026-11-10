@@ -175,7 +175,8 @@ fn walk(thread: &Thread, pc: usize, mut fp: usize, out: &mut [usize]) -> usize {
         }
     };
     push(pc, &mut n);
-    while n < cap && fp.is_multiple_of(8) && fp >= thread.stack_low && fp + 16 <= thread.stack_high {
+    while n < cap && fp.is_multiple_of(8) && fp >= thread.stack_low && fp + 16 <= thread.stack_high
+    {
         // SAFETY: fp is inside the suspended thread's stack, aligned, and
         // its 16-byte frame record ends inside it too.
         let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
