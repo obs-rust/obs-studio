@@ -98,7 +98,18 @@ void PluginManager::loadAllPlugins(bool usePortableMode)
 	blog(LOG_INFO, "---------------------------------");
 	obs_log_loaded_modules();
 	blog(LOG_INFO, "---------------------------------");
+#ifdef OBS_FRONTEND_RUST
+	/* The exit watchdog names the library that blocks exit and the module
+	 * that brought it in (obs-rust/obs-studio#4525). */
+	obs_enum_modules(
+		[](void *, obs_module_t *module) { obs_exit_watchdog_note_module(obs_get_module_binary_path(module)); },
+		nullptr);
+	obs_exit_watchdog_note_loaded();
+#endif
 	obs_post_load_modules();
+#ifdef OBS_FRONTEND_RUST
+	obs_exit_watchdog_note_post_load();
+#endif
 	postLoad();
 }
 

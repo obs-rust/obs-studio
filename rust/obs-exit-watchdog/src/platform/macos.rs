@@ -105,3 +105,111 @@ unsafe fn text_segment(header: *const MachHeader64) -> Option<(usize, usize)> {
         None
     }
 }
+pub const STACK_SUPPORTED: bool = true;
+
+type MachPort = u32;
+
+unsafe extern "C" {
+    fn pthread_mach_thread_np(thread: libc::pthread_t) -> MachPort;
+    fn pthread_get_stackaddr_np(thread: libc::pthread_t) -> *mut std::ffi::c_void;
+    fn pthread_get_stacksize_np(thread: libc::pthread_t) -> usize;
+    fn thread_suspend(thread: MachPort) -> i32;
+    fn thread_resume(thread: MachPort) -> i32;
+    fn thread_get_state(thread: MachPort, flavor: i32, state: *mut u32, count: *mut u32) -> i32;
+}
+
+/// A thread: its Mach port and its stack's bounds (the frame walk stays in
+/// them).
+pub struct Thread {
+    port: MachPort,
+    stack_low: usize,
+    stack_high: usize,
+}
+
+pub fn current_thread() -> Thread {
+    // SAFETY: the calling thread's own pthread handle, port and stack.
+    unsafe {
+        let me = libc::pthread_self();
+        let high = pthread_get_stackaddr_np(me) as usize;
+        Thread {
+            port: pthread_mach_thread_np(me),
+            stack_low: high.saturating_sub(pthread_get_stacksize_np(me)),
+            stack_high: high,
+        }
+    }
+}
+
+/// Nothing to load: the walk reads registers and memory only.
+pub fn prepare_stack() {}
+
+/// Return addresses carry a pointer authentication code in their high bits
+/// on arm64e code; user space addresses fit in 47 bits.
+const ADDRESS_MASK: usize = (1 << 47) - 1;
+
+/// The thread's return addresses, innermost first: it is suspended, its
+/// program counter and frame pointer read, and the chain of frame records
+/// walked (macOS code keeps frame pointers on both architectures).
+pub fn capture_stack(thread: &Thread, out: &mut [usize]) -> usize {
+    // SAFETY: the port is a live thread of this process; it is resumed after.
+    if unsafe { thread_suspend(thread.port) } != 0 {
+        return 0;
+    }
+    let n = match registers(thread.port) {
+        Some((pc, fp)) => walk(thread, pc, fp, out),
+        None => 0,
+    };
+    // SAFETY: as above.
+    unsafe { thread_resume(thread.port) };
+    n
+}
+
+/// Follows the frame records `[previous fp, return address]` from `fp`
+/// while they stay inside the thread's stack and go up.
+fn walk(thread: &Thread, pc: usize, mut fp: usize, out: &mut [usize]) -> usize {
+    let mut n = 0;
+    let cap = out.len();
+    let mut push = |a: usize, n: &mut usize| {
+        if *n < cap && a != 0 {
+            out[*n] = a & ADDRESS_MASK;
+            *n += 1;
+        }
+    };
+    push(pc, &mut n);
+    while n < cap && fp.is_multiple_of(8) && fp >= thread.stack_low && fp + 16 <= thread.stack_high
+    {
+        // SAFETY: fp is inside the suspended thread's stack, aligned, and
+        // its 16-byte frame record ends inside it too.
+        let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
+        push(ret, &mut n);
+        if next <= fp {
+            break;
+        }
+        fp = next;
+    }
+    n
+}
+
+/// The suspended thread's program counter and frame pointer.
+#[cfg(target_arch = "aarch64")]
+fn registers(port: MachPort) -> Option<(usize, usize)> {
+    /// `ARM_THREAD_STATE64`: x0-x28, fp, lr, sp, pc, cpsr, flags.
+    const FLAVOR: i32 = 6;
+    let mut state = [0u64; 34];
+    let mut count = 68u32;
+    // SAFETY: the buffer holds `count` 32-bit words.
+    let kr = unsafe { thread_get_state(port, FLAVOR, state.as_mut_ptr().cast(), &mut count) };
+    (kr == 0).then(|| (state[32] as usize, state[29] as usize))
+}
+
+/// The suspended thread's program counter and frame pointer.
+#[cfg(target_arch = "x86_64")]
+fn registers(port: MachPort) -> Option<(usize, usize)> {
+    /// `x86_THREAD_STATE64`: rax rbx rcx rdx rdi rsi rbp rsp r8-r15 rip
+    /// rflags cs fs gs.
+    const FLAVOR: i32 = 4;
+    let mut state = [0u64; 21];
+    let mut count = 42u32;
+    // SAFETY: the buffer holds `count` 32-bit words.
+    let kr = unsafe { thread_get_state(port, FLAVOR, state.as_mut_ptr().cast(), &mut count) };
+    (kr == 0).then(|| (state[16] as usize, state[6] as usize))
+}

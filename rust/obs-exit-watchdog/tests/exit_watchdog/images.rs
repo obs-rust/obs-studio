@@ -89,6 +89,37 @@ fn modules_are_matched_by_file_name() {
     );
 }
 
+/// macOS: libobs names a plugin by its bundle, the image list by the
+/// binary inside it.
+#[test]
+fn a_macos_bundle_matches_the_binary_inside_it() {
+    let images = [
+        img(0x1000, "/Applications/OBS.app/Contents/MacOS/OBS"),
+        img(
+            0x2000,
+            "/Users/u/Library/Application Support/obs-studio/plugins/exit-blocker.plugin/Contents/MacOS/exit-blocker",
+        ),
+        img(0x3000, "/usr/lib/libc++.1.dylib"),
+        img(
+            0x4000,
+            "/Applications/OBS.app/Contents/PlugIns/mac-capture.plugin/Contents/MacOS/mac-capture",
+        ),
+    ];
+    let mods = modules(&[
+        "/Users/u/Library/Application Support/obs-studio/plugins/exit-blocker.plugin",
+        "/Applications/OBS.app/Contents/PlugIns/mac-capture.plugin",
+    ]);
+    assert_eq!(
+        owners(&images, &mods),
+        vec![
+            Owner::Obs,
+            module("exit-blocker.plugin"),
+            module("exit-blocker.plugin"),
+            module("mac-capture.plugin"),
+        ]
+    );
+}
+
 #[test]
 fn no_modules_means_everything_is_obs() {
     let images = [

@@ -58,15 +58,21 @@ pub fn file_name(path: &str) -> &str {
 }
 
 /// The owner of each image of `images` (in load order), given the binary
-/// paths of the OBS modules. A module is matched by its file name.
+/// paths of the OBS modules. A module is matched by its file name, or, for a
+/// macOS bundle (`name.plugin`, whose binary is `name.plugin/Contents/MacOS/
+/// name`), by a directory of the image's path.
 pub fn owners(images: &[Image], modules: &[String]) -> Vec<Owner> {
     let names: HashSet<&str> = modules.iter().map(|m| file_name(m)).collect();
     let mut owner = Owner::Obs;
     images
         .iter()
         .map(|image| {
-            let name = file_name(&image.path);
-            if names.contains(name) {
+            if let Some(name) = image
+                .path
+                .split(['/', '\\'])
+                .rev()
+                .find(|part| names.contains(part))
+            {
                 owner = Owner::Module(name.to_string());
             }
             owner.clone()
@@ -111,6 +117,12 @@ impl Table {
         Table {
             entries: by_start.into_values().collect(),
         }
+    }
+
+    /// A table from entries in any order (tests, and a table built by hand).
+    pub fn from_entries(mut entries: Vec<Entry>) -> Table {
+        entries.sort_by_key(|e| e.start);
+        Table { entries }
     }
 
     /// The entries, sorted by start address.
