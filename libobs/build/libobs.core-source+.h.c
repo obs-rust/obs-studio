@@ -31,7 +31,6 @@
 #include "libobs/obs-scene-item-scale-filter-setter.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-transition-serialization.c.h"
-#include "libobs/obs-scene-item-transition-setters.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
