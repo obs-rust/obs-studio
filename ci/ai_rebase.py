@@ -216,7 +216,7 @@ def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> s
         if pr.get("isDraft"):
             run("gh", "pr", "ready", str(n), "--repo", REPO, check=False)
             pr["isDraft"] = False
-    go, why = should_enqueue(pr)
+    go, why = should_enqueue(pr, stack[0] if stack else None)
     if go:
         run("gh", "pr", "merge", str(n), "--repo", REPO, "--auto", "--squash",
             "--match-head-commit", new, check=False)
@@ -269,7 +269,15 @@ HOLD = re.compile(r"do not (enqueue|merge)|don't (enqueue|merge)|\bhold\b|\bwip\
                   re.I)
 
 
-def should_enqueue(pr: dict) -> tuple[bool, str]:
+def live_holds(text: str, merged_parent: int | None) -> bool:
+    """A hold line that waits on the parent ("until #P merges") ends when P has."""
+    lines = [l for l in text.splitlines() if HOLD.search(l)]
+    if merged_parent is not None:
+        lines = [l for l in lines if f"#{merged_parent}" not in l]
+    return bool(lines)
+
+
+def should_enqueue(pr: dict, merged_parent: int | None = None) -> tuple[bool, str]:
     """Put the rebased PR back in the merge queue unless something says not to.
 
     Biased towards yes (maintainer, 2026-11-09): a PR that conflicted was
@@ -281,7 +289,7 @@ def should_enqueue(pr: dict) -> tuple[bool, str]:
     if pr.get("isDraft"):
         return False, "draft"
     labels = " ".join(l["name"] for l in pr.get("labels") or [])
-    if HOLD.search(pr.get("body") or "") or HOLD.search(labels):
+    if live_holds(pr.get("body") or "", merged_parent) or HOLD.search(labels):
         return False, "hold in the PR body or labels"
     if pr.get("reviewDecision") == "CHANGES_REQUESTED":
         return False, "changes requested"
