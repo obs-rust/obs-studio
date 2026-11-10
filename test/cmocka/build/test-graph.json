@@ -2066,6 +2066,31 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_display_render": {
+      "sources": [
+        "test/cmocka/test_display_render.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "X11::X11"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    },
     "test_display_screen_change": {
       "sources": [
         "test/cmocka/test_display_screen_change.cpp",
@@ -19310,6 +19335,22 @@
     "test_display_reinit": {
       "target": "test_display_reinit",
       "requires": true
+    },
+    "test_display_render": {
+      "target": "test_display_render",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
     },
     "test_display_screen_change": {
       "target": "test_display_screen_change",

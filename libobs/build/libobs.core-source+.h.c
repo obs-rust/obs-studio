@@ -14,7 +14,6 @@
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display-seam.c.h"
 #include "libobs/obs-display-size-fields.c.h"
-#include "libobs/obs-display.c.h"
 #include "libobs/obs-object-query-fields.c.h"
 #include "libobs/obs-object-validity-fields.c.h"
 #include "libobs/obs-scene-atomic-update.c.h"
