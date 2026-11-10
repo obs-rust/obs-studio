@@ -22,19 +22,38 @@ struct World {
 impl World {
     fn new(present: bool, count: usize, disabled: usize) -> Self {
         // SAFETY: oracle owns the real-header core and copies these strings.
-        let core = if present { unsafe { oracle_module_lists_core_new(c"".as_ptr()) } } else { ptr::null_mut() };
+        let core = if present {
+            unsafe { oracle_module_lists_core_new(c"".as_ptr()) }
+        } else {
+            ptr::null_mut()
+        };
         // SAFETY: install this thread's live fixture, or no core.
         unsafe { oracle_module_lists_set_core(core) };
-        let mut world = Self { core, nodes: Vec::new() };
+        let mut world = Self {
+            core,
+            nodes: Vec::new(),
+        };
         if present {
-            for _ in 0..count { world.add(true); }
-            for _ in 0..disabled { world.add(false); }
+            for _ in 0..count {
+                world.add(true);
+            }
+            for _ in 0..disabled {
+                world.add(false);
+            }
         }
         world
     }
     fn add(&mut self, loaded: bool) -> *mut c_void {
         // SAFETY: live core; copied strings. The oracle prepends opened nodes.
-        let node = unsafe { oracle_module_lists_module_new(self.core, c"stub".as_ptr(), c"".as_ptr(), c"stub".as_ptr(), loaded) };
+        let node = unsafe {
+            oracle_module_lists_module_new(
+                self.core,
+                c"stub".as_ptr(),
+                c"".as_ptr(),
+                c"stub".as_ptr(),
+                loaded,
+            )
+        };
         self.nodes.push(node);
         node
     }
@@ -48,8 +67,12 @@ impl Drop for World {
         // and the core. The core helper does not walk or free module nodes.
         unsafe {
             oracle_module_lists_set_core(ptr::null_mut());
-            for &node in &self.nodes { oracle_module_lists_module_free(node); }
-            if !self.core.is_null() { oracle_module_lists_core_free(self.core); }
+            for &node in &self.nodes {
+                oracle_module_lists_module_free(node);
+            }
+            if !self.core.is_null() {
+                oracle_module_lists_core_free(self.core);
+            }
         }
     }
 }
@@ -108,22 +131,48 @@ struct Outcome {
     exact_param: bool,
 }
 fn run(enumerate: Enum, present: bool, count: usize, disabled: usize, mode: u8) -> Outcome {
-    let mut visits = Visits { world: World::new(present, count, disabled), enumerate, mode, outer: Vec::new(), nested: Vec::new(), expected_param: ptr::null_mut(), exact_param: true };
+    let mut visits = Visits {
+        world: World::new(present, count, disabled),
+        enumerate,
+        mode,
+        outer: Vec::new(),
+        nested: Vec::new(),
+        expected_param: ptr::null_mut(),
+        exact_param: true,
+    };
     let param = ptr::from_mut(&mut visits).cast();
     visits.expected_param = param;
     // SAFETY: live core/nodes and exact parameter remain valid for both calls.
-    unsafe { enumerate(Some(collect), param); enumerate(Some(collect_nested), param); }
+    unsafe {
+        enumerate(Some(collect), param);
+        enumerate(Some(collect_nested), param);
+    }
     let after = std::mem::take(&mut visits.nested);
     // The first nested segment (mode 1) precedes the later complete traversal.
-    let nested_len = if mode == 1 && count > 0 && present { count + 1 } else { 0 };
+    let nested_len = if mode == 1 && count > 0 && present {
+        count + 1
+    } else {
+        0
+    };
     let nested = after[..nested_len].to_vec();
     let after = after[nested_len..].to_vec();
-    let links = visits.world.nodes.iter().map(|&node| {
-        // SAFETY: every node is still live; access uses the real C seam.
-        let next = unsafe { obs_module_lists_seam_module_next(node) };
-        (!next.is_null()).then(|| visits.world.index(next))
-    }).collect();
-    Outcome { outer: std::mem::take(&mut visits.outer), nested, after, links, exact_param: visits.exact_param }
+    let links = visits
+        .world
+        .nodes
+        .iter()
+        .map(|&node| {
+            // SAFETY: every node is still live; access uses the real C seam.
+            let next = unsafe { obs_module_lists_seam_module_next(node) };
+            (!next.is_null()).then(|| visits.world.index(next))
+        })
+        .collect();
+    Outcome {
+        outer: std::mem::take(&mut visits.outer),
+        nested,
+        after,
+        links,
+        exact_param: visits.exact_param,
+    }
 }
 fn check(present: bool, count: usize, disabled: usize, mode: u8) {
     let c = run(oracle_obs_enum_modules, present, count, disabled, mode);
@@ -136,13 +185,17 @@ fn check(present: bool, count: usize, disabled: usize, mode: u8) {
 fn characterized_edges_and_post_callback_successor() {
     for present in [false, true] {
         for count in [0, 1, 2, 3, 16] {
-            for mode in 0..4 { check(present, count, 2, mode); }
+            for mode in 0..4 {
+                check(present, count, 2, mode);
+            }
         }
     }
 }
 thread_local! { static NULL_PARAM_CALLS: Cell<usize> = const { Cell::new(0) }; }
 unsafe extern "C" fn null_param(param: *mut c_void, node: *mut c_void) {
-    if param.is_null() && !node.is_null() { NULL_PARAM_CALLS.set(NULL_PARAM_CALLS.get() + 1); }
+    if param.is_null() && !node.is_null() {
+        NULL_PARAM_CALLS.set(NULL_PARAM_CALLS.get() + 1);
+    }
 }
 #[test]
 fn null_callback_on_no_core_empty_disabled_and_null_parameter() {

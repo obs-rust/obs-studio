@@ -731,7 +731,9 @@ mod enum_modules {
             let mut visits = Vec::new();
             assert!(!model.core);
             enumerate(&mut model, |_, m| visits.push(m));
-            enumerate(&mut model, |_, _| panic!("NULL callback must not be invoked"));
+            enumerate(&mut model, |_, _| {
+                panic!("NULL callback must not be invoked")
+            });
             assert!(visits.is_empty());
             assert_eq!(*model.reads.borrow(), [Read::HasCore, Read::HasCore]);
         }
@@ -741,9 +743,13 @@ mod enum_modules {
     fn test_enum_modules_empty_and_disabled() {
         let mut model = Model::started();
         for disabled in [false, true] {
-            if disabled { model.disabled_module("stub", ""); }
+            if disabled {
+                model.disabled_module("stub", "");
+            }
             let mut visits = Vec::new();
-            enumerate(&mut model, |_, _| panic!("NULL callback must not be invoked"));
+            enumerate(&mut model, |_, _| {
+                panic!("NULL callback must not be invoked")
+            });
             enumerate(&mut model, |_, m| visits.push(m));
             assert!(visits.is_empty());
         }

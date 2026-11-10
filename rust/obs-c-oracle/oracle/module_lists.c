@@ -338,5 +338,5 @@ void oracle_module_lists_layout(size_t *layout)
 void oracle_enum_modules_set_next(obs_module_t *module, obs_module_t *next);
 void oracle_enum_modules_set_next(obs_module_t *module, obs_module_t *next)
 {
-    module->next = next;
+	module->next = next;
 }

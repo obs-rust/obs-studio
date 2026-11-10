@@ -1,6 +1,6 @@
 //! Unchanged C ABI for live module enumeration; private layouts stay in C.
-use core::ffi::c_void;
 use super::module_lists::{Libobs, Seam};
+use core::ffi::c_void;
 
 /// The void C callback cannot request early termination.
 pub type Callback = Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>;
