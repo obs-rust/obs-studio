@@ -3176,11 +3176,6 @@ void obs_source_release_frame(obs_source_t *source, struct obs_source_frame *fra
 	}
 }
 
-const char *obs_source_get_name(const obs_source_t *source)
-{
-	return obs_source_valid(source, "obs_source_get_name") ? source->context.name : NULL;
-}
-
 void obs_source_set_name(obs_source_t *source, const char *name)
 {
 	if (!obs_source_valid(source, "obs_source_set_name"))
