@@ -1,12 +1,7 @@
-# C-source characterization only, before the behavior-neutral extraction.
-file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-video.c.h" _unmap_parent)
-string(REGEX MATCH "static inline void unmap_last_surface\\([^}]+\\}[^}]+\\}[^}]+\\}" _unmap_body "${_unmap_parent}")
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/unmap-original.c.h" "${_unmap_body}\n")
+# C-source characterization of the private helper, following stop_requested.
+# Recording unmap callbacks pin identity/order and per-slot resets without a GPU.
+# This does not exercise a future Rust swap: retain live-caller Tier 2 coverage.
 add_executable(test_video_unmap_last_surface test_video_unmap_last_surface.c)
-target_compile_definitions(
-  test_video_unmap_last_surface
-  PRIVATE UNMAP_SOURCE="${CMAKE_CURRENT_BINARY_DIR}/unmap-original.c.h"
-)
 target_include_directories(test_video_unmap_last_surface PRIVATE ${CMOCKA_INCLUDE_DIR})
 target_link_libraries(test_video_unmap_last_surface PRIVATE OBS::libobs ${CMOCKA_LIBRARIES} OBS::caption Uthash::Uthash)
 if(TARGET OBS::w32-pthreads)

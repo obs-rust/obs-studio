@@ -96,16 +96,6 @@ static inline void render_displays(void)
 	gs_leave_context();
 }
 
-static inline void unmap_last_surface(struct obs_core_video_mix *video)
-{
-	for (int c = 0; c < NUM_CHANNELS; ++c) {
-		if (video->mapped_surfaces[c]) {
-			gs_stagesurface_unmap(video->mapped_surfaces[c]);
-			video->mapped_surfaces[c] = NULL;
-		}
-	}
-}
-
 static inline struct obs_video_mix_reuse_key mix_reuse_key(const struct obs_core_video_mix *mix)
 {
 	struct obs_video_mix_reuse_key key = {

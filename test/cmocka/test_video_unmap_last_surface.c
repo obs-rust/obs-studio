@@ -32,7 +32,7 @@ static void unmap_record(gs_stagesurf_t *surface)
 }
 
 #define gs_stagesurface_unmap unmap_record
-#include UNMAP_SOURCE
+#include "libobs/obs-video-unmap-last-surface.c.h"
 #undef gs_stagesurface_unmap
 
 static void unmap_all_channel_masks(void **state)
