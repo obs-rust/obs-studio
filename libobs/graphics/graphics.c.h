@@ -2021,36 +2021,6 @@ void gs_texture_destroy(gs_texture_t *tex)
 	graphics->exports.gs_texture_destroy(tex);
 }
 
-uint32_t gs_texture_get_width(const gs_texture_t *tex)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_texture_get_width", tex))
-		return 0;
-
-	return graphics->exports.gs_texture_get_width(tex);
-}
-
-uint32_t gs_texture_get_height(const gs_texture_t *tex)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_texture_get_height", tex))
-		return 0;
-
-	return graphics->exports.gs_texture_get_height(tex);
-}
-
-enum gs_color_format gs_texture_get_color_format(const gs_texture_t *tex)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_texture_get_color_format", tex))
-		return GS_UNKNOWN;
-
-	return graphics->exports.gs_texture_get_color_format(tex);
-}
-
 bool gs_texture_map(gs_texture_t *tex, uint8_t **ptr, uint32_t *linesize)
 {
 	graphics_t *graphics = thread_graphics;
