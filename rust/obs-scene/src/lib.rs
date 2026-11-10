@@ -2,7 +2,8 @@
 //! per file: `libobs/obs-scene-bounds.c.h`, `libobs/obs-scene-blend.c.h`,
 //! `libobs/obs-scene-bounds-place.c.h`, `libobs/obs-scene-coords.c.h`,
 //! `libobs/obs-scene-group-transform.c.h`,
-//! `libobs/obs-scene-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
+//! `libobs/obs-scene-audio-actions.c.h` and its item side,
+//! `libobs/obs-scene-item-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
 //! `libobs/obs-scene-crop.c.h`, `libobs/obs-scene-render-plan.c.h` (the
 //! per-item render decisions of `render_item` and `render_item_texture`),
 //! `libobs/obs-scene-item-names.c.h` (the scene item save/load names and
@@ -24,7 +25,7 @@
 //! size step and whether an item is updated).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
-//! [`group_transform`], [`audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
+//! [`group_transform`], [`audio_actions`], [`item_audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
 //! [`crop`], [`render_plan`], [`item_names`], [`item_order`],
 //! [`item_transform`], and [`transform_update`]. The C ABI shims live in [`ffi`].
 
