@@ -229,15 +229,25 @@ def replay(target: list[str]) -> int | str:
 # three; checking here keeps those PRs out of the queue instead of spending a
 # hosted run to find out.
 PREFLIGHT = os.environ.get("AI_REBASE_PREFLIGHT", "")
+PREFLIGHT_ERROR = re.compile(r"undefined symbol|unresolved external|error(\[E\d+\])?: |error LNK")
 
 
 def preflight() -> tuple[bool, str]:
-    p = subprocess.run(PREFLIGHT, shell=True, capture_output=True, text=True, timeout=3600)
-    if p.returncode:
-        tail = (p.stdout + p.stderr).strip().splitlines()[-3:]
-        return False, f"preflight `{PREFLIGHT}` failed: {' / '.join(tail)[:300]}"
-    return True, ""
+    """Run PREFLIGHT, retrying once; name the failing lines, not a traceback.
 
+    A failure with no compiler or linker error line is retried once: on
+    2026-11-10 two preflights sharing one soldr cache failed 4 of 8 PRs that
+    each passed alone (#4495, #4503).
+    """
+    for _ in range(2):
+        p = subprocess.run(PREFLIGHT, shell=True, capture_output=True, text=True, timeout=3600)
+        if not p.returncode:
+            return True, ""
+        lines = (p.stdout + p.stderr).splitlines()
+        errors = sorted({l.strip()[-160:] for l in lines if PREFLIGHT_ERROR.search(l)})
+        if errors:
+            return False, f"preflight failed: {' / '.join(errors[:4])}"
+    return False, f"preflight `{PREFLIGHT}` failed twice with no compiler error line"
 
 def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> str:
     """Push the rebased head, settle a landed stack, then decide on the queue."""
