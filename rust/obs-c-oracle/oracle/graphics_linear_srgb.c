@@ -43,7 +43,18 @@ static void linear_srgb_blog(int level, const char *format, ...)
 
 #define gs_get_context linear_srgb_context
 #define blog linear_srgb_blog
+#define obs_stagesurface_context oracle_linear_srgb_unused_ss_context
+#define obs_stagesurface_debug oracle_linear_srgb_unused_ss_debug
+#define obs_stagesurface_width_field oracle_linear_srgb_unused_ss_width_field
+#define obs_stagesurface_height_field oracle_linear_srgb_unused_ss_height_field
+#define obs_stagesurface_format_field oracle_linear_srgb_unused_ss_format_field
 #include "graphics-linear-srgb-fields.inc"
+#undef obs_stagesurface_context
+#undef obs_stagesurface_debug
+#undef obs_stagesurface_width_field
+#undef obs_stagesurface_height_field
+#undef obs_stagesurface_format_field
+
 #undef blog
 #define gs_get_linear_srgb oracle_gs_get_linear_srgb
 #include "graphics-linear-srgb.inc"
