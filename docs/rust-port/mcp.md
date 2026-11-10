@@ -6,7 +6,7 @@ From the repository root, build the libobs-enabled application with:
 ./mcp --build
 ```
 
-The command prints the executable path, `target/mcp/debug/obs-studio-rust`.
+The command prints the executable path, `target-mcp/debug/obs-studio-rust`.
 It first builds the release `libobs-rust` archive, then builds the application
 with `bundled-native`, passing the archive automatically. This separate target
 directory prevents an ordinary featureless application build from overwriting
@@ -46,7 +46,7 @@ Run bootstrap regressions with:
 uv run --no-project python -m unittest ci.test_mcp_build
 ```
 
-The launcher also builds EGL/Wayland OpenGL, linux-v4l2 (including its Pulse/PipeWire virtual mic), obs-ffmpeg (media source and AAC), and obs-x264 through obs-build. It sets OBS_MCP_GRAPHICS_MODULE, OBS_MCP_MODULE_BIN, OBS_MCP_MODULE_DATA and OBS_MCP_DATA_PATH from target/mcp/runtime/manifest.json; explicit overrides are preserved. Graphics/plugins are installed atomically so rebuilding for an attach client does not overwrite a listener's mapped libraries.
+The launcher also builds EGL/Wayland OpenGL, linux-v4l2 (including its Pulse/PipeWire virtual mic), obs-ffmpeg (media source and AAC), and obs-x264 through obs-build. It sets OBS_MCP_GRAPHICS_MODULE, OBS_MCP_MODULE_BIN, OBS_MCP_MODULE_DATA and OBS_MCP_DATA_PATH from target-mcp/runtime/manifest.json; explicit overrides are preserved. Graphics/plugins are installed atomically so rebuilding for an attach client does not overwrite a listener's mapped libraries.
 
 Video requires a reachable Wayland compositor or X server. For display-free CI, run against a headless Wayland compositor (for example Weston with its headless backend); the EGL renderer is built with Wayland support. A container also needs explicit v4l2loopback device access and an isolated PipeWire server for an A/V measurement. A successful tools/list response alone does not prove video or device readiness. Record and stream tools require their corresponding output/service modules to be configured.
 Closing stdin shuts down the server cleanly. Existing Tier 4 coverage remains
