@@ -9,6 +9,13 @@ pub trait Paths {
 }
 
 /// Visit every registered path in order, including callback-time appends.
-pub fn find<P: Paths>(_paths: &mut P) {
-    todo!("module discovery Rust swap")
+pub fn find<P: Paths>(paths: &mut P) {
+    if !paths.has_core() {
+        return;
+    }
+    let mut index = 0;
+    while index < paths.count() {
+        paths.discover(index);
+        index += 1;
+    }
 }
