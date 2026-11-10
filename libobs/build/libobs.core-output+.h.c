@@ -24,6 +24,7 @@
 #include "libobs/obs-encoder-scaling-enabled-fields.c.h"
 #include "libobs/obs-encoder-set-name.c.h"
 #include "libobs/obs-encoder-set-preferred-format-fields.c.h"
+#include "libobs/obs-encoder-settings.c.h"
 #include "libobs/obs-encoder-state-queries-fields.c.h"
 #include "libobs/obs-encoder.c.h"
 #include "libobs/obs-output-active-fields.c.h"

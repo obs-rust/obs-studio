@@ -593,15 +593,6 @@ bool obs_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_da
 	return false;
 }
 
-obs_data_t *obs_encoder_get_settings(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_settings"))
-		return NULL;
-
-	obs_data_addref(encoder->context.settings);
-	return encoder->context.settings;
-}
-
 static THREAD_LOCAL bool can_reroute = false;
 
 static inline bool obs_encoder_initialize_internal(obs_encoder_t *encoder)
