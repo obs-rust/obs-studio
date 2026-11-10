@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 enum obs_icon_type obs_source_get_icon_type(const char *id)
 {

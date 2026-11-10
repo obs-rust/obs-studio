@@ -195,6 +195,7 @@ pub mod settings_getter;
 pub mod size_route;
 pub mod source_duplicate;
 pub mod source_filter_chain;
+pub mod source_icon_type;
 pub mod source_identity_getters;
 pub mod state_getters;
 pub mod transition_access;
