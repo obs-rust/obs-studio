@@ -16,8 +16,13 @@ class EncoderConfigurationLinkSupport(unittest.TestCase):
     def test_adapter_is_selected_only_when_referenced(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
+            config = source / "build/config"
+            config.mkdir(parents=True)
+            (config / "obsconfig.h").write_text("#define ADAPTER_VALUE 42\n")
             (source / "encoder-configuration-link-support.c").write_text(
-                "extern int video_host(void);\nint encoder_adapter(void) { return video_host(); }\n"
+                '#include "obsconfig.h"\n'
+                "extern int video_host(void);\n"
+                "int encoder_adapter(void) { return video_host() + ADAPTER_VALUE - 42; }\n"
             )
             (source / "unused.c").write_text("int main(void) { return 0; }\n")
             (source / "used.c").write_text(
@@ -34,6 +39,7 @@ class EncoderConfigurationLinkSupport(unittest.TestCase):
                 "foreach(name IN ITEMS unused used)\n"
                 "  add_executable(${name} ${name}.c)\n"
                 "  target_link_libraries(${name} PRIVATE libobs_rust-static)\n"
+                "  target_include_directories(${name} PRIVATE ${CMAKE_BINARY_DIR}/config)\n"
                 "endforeach()\n"
                 f'include("{fragment.as_posix()}")\n'
             )
