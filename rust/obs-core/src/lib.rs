@@ -3,7 +3,8 @@
 //! and `libobs/obs-core-setup-rules.c.h`,
 //! `libobs/obs-core-setup-rules-ms.c.h` and
 //! `libobs/obs-core-setup-rules-task.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
-//! `libobs/obs-module-names.c.h`, `libobs/obs-module-locale.c.h`,
+//! `libobs/obs-module-names.c.h`, `libobs/obs-module-lists.c.h` (over
+//! `libobs/obs-module-lists-seam.h`), `libobs/obs-module-locale.c.h`,
 //! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`,
 //! `libobs/obs-module-load-rules.c.h` with
 //! `libobs/obs-module-load-rules-skip.c.h`, and
@@ -43,7 +44,7 @@
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
 //! [`module_paths`],
-//! [`module_names`], [`module_locale`], [`module_source_rules`],
+//! [`module_names`], [`module_lists`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`module_load_rules`], [`module_register_copy`],
 //! [`audio_mix`], [`audio_callback`], [`display`],
 //! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_frame_copy`],
@@ -74,7 +75,10 @@
 //! gates the gaming features and picks each feature's line and the security
 //! product labels of the Windows startup log; [`module_load_rules`] decides which modules load, are
 //! disabled or skipped (the skip ladder `load_all_callback()` walks before it
-//! opens one), and which failures count; [`module_register_copy`]
+//! opens one), and which failures count; [`module_lists`] runs the module
+//! list calls (the loaded module log, the type, search path, safe and
+//! disabled lists, and a module's file and config paths) over the module
+//! list seam; [`module_register_copy`]
 //! decides how much of a plugin's registration structure is copied and
 //! which of its fields lie within the size it gave; [`core_setup_rules`]
 //! holds the video and audio reset gates, the audio buffering ticks and
