@@ -2,11 +2,21 @@
 use core::ffi::CStr;
 
 pub fn get_type(source: Option<u32>, log: impl FnOnce(&'static CStr)) -> u32 {
-    let _ = (source, log);
-    todo!("source type getter")
+    match source {
+        Some(kind) => kind,
+        None => {
+            log(c"obs_source_get_type");
+            0
+        }
+    }
 }
 
 pub fn get_id<T: Copy + Default>(source: Option<T>, log: impl FnOnce(&'static CStr)) -> T {
-    let _ = (source, log);
-    todo!("source ID getter")
+    match source {
+        Some(id) => id,
+        None => {
+            log(c"obs_source_get_id");
+            T::default()
+        }
+    }
 }

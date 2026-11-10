@@ -1512,6 +1512,10 @@ struct obs_source_handler_getters_fields {
 extern struct obs_source_handler_getters_fields obs_source_handler_getters_fields(const obs_source_t *source);
 
 /* Borrowed type-data member address; caller rejects NULL before access. */
+/* Private registered-identity field addresses; callers must reject NULL. */
+extern const enum obs_source_type *obs_source_type_id_type_field(const obs_source_t *source);
+extern const char *const *obs_source_type_id_id_field(const obs_source_t *source);
+
 struct obs_source_type_data_fields {
 	void *const *data;
 };

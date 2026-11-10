@@ -110,3 +110,5 @@ mod volume_mul;
 mod volume_mul_parity;
 
 mod type_id_getters;
+
+mod type_id_getters_parity;
