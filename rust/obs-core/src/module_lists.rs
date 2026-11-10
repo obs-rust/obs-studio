@@ -131,8 +131,20 @@ pub fn add_type<L: Lists>(
     list: TypeList,
     id: Option<&[u8]>,
 ) {
+    add_type_deferred(lists, module, list, id.map(|id| move || id));
+}
+
+/// [`add_type`] with `id` read only when there is a module, as the C's
+/// `bstrdup(id)` is: `None` is NULL, and `Some` reads the string when
+/// called.
+pub fn add_type_deferred<'a, L: Lists>(
+    lists: &mut L,
+    module: Option<L::Module>,
+    list: TypeList,
+    id: Option<impl FnOnce() -> &'a [u8]>,
+) {
     if let Some(module) = module {
-        lists.push_type(module, list, id);
+        lists.push_type(module, list, id.map(|read| read()));
     }
 }
 
@@ -144,8 +156,19 @@ pub fn find_file<L: Lists>(
     module: Option<L::Module>,
     file: Option<&[u8]>,
 ) -> Option<Vec<u8>> {
+    find_file_deferred(lists, fs, module, file.map(|file| move || file))
+}
+
+/// [`find_file`] with `file` read only when there is a module.
+pub fn find_file_deferred<'a, L: Lists>(
+    lists: &L,
+    fs: &impl ModuleFs,
+    module: Option<L::Module>,
+    file: Option<impl FnOnce() -> &'a [u8]>,
+) -> Option<Vec<u8>> {
     let module = module?;
-    module_paths::find_file(fs, lists.data_path(module), file)
+    let data_path = lists.data_path(module);
+    module_paths::find_file(fs, data_path, file.map(|read| read()))
 }
 
 /// Same contract as C `obs_module_get_config_path`: the core's module
@@ -157,93 +180,64 @@ pub fn config_path<L: Lists>(
     module: Option<L::Module>,
     file: Option<&[u8]>,
 ) -> Option<Vec<u8>> {
+    config_path_deferred(lists, module, file.map(|file| move || file))
+}
+
+/// [`config_path`] with `file` read only when there is a module.
+pub fn config_path_deferred<'a, L: Lists>(
+    lists: &L,
+    module: Option<L::Module>,
+    file: Option<impl FnOnce() -> &'a [u8]>,
+) -> Option<Vec<u8>> {
     let module = module?;
+    let (config, name) = (lists.module_config_path(), lists.module_name(module));
     Some(module_names::config_path(
-        lists.module_config_path(),
-        lists.module_name(module),
-        file,
+        config,
+        name,
+        file.map(|read| read()),
     ))
 }
 
 /// Same contract as C `obs_add_module_path`: a copy of both paths on the
 /// core's search paths; nothing with no core or without both.
 pub fn add_module_path<L: Lists>(lists: &mut L, bin: Option<&[u8]>, data: Option<&[u8]>) {
+    add_module_path_deferred(lists, bin.map(|b| move || b), data.map(|d| move || d));
+}
+
+/// [`add_module_path`] with `bin` and `data` read only once there is a
+/// core and neither is NULL, `bin` first, as the C's `bstrdup()`s are.
+pub fn add_module_path_deferred<'a, L: Lists>(
+    lists: &mut L,
+    bin: Option<impl FnOnce() -> &'a [u8]>,
+    data: Option<impl FnOnce() -> &'a [u8]>,
+) {
     if !lists.has_core() {
         return;
     }
     let (Some(bin), Some(data)) = (bin, data) else {
         return;
     };
+    let bin = bin();
+    let data = data();
     lists.push_path(bin, data);
 }
 
 /// Same contract as C `obs_add_safe_module` and `obs_add_disabled_module`:
 /// a copy of `name` on the core's `list`; nothing with no core or no name.
 pub fn add_name<L: Lists>(lists: &mut L, list: NameList, name: Option<&[u8]>) {
-    if !lists.has_core() {
-        return;
-    }
-    if let Some(name) = name {
-        lists.push_name(list, name);
-    }
-}
-
-/// [`add_type`] with `id` read only when there is a module, as the C's
-/// `bstrdup(id)` is: `None` is NULL, and `Some` reads the string when
-/// called.
-#[allow(clippy::todo)]
-pub fn add_type_deferred<'a, L: Lists>(
-    lists: &mut L,
-    module: Option<L::Module>,
-    list: TypeList,
-    id: Option<impl FnOnce() -> &'a [u8]>,
-) {
-    let _ = (lists, module, list, id);
-    todo!()
-}
-
-/// [`find_file`] with `file` read only when there is a module.
-#[allow(clippy::todo)]
-pub fn find_file_deferred<'a, L: Lists>(
-    lists: &L,
-    fs: &impl ModuleFs,
-    module: Option<L::Module>,
-    file: Option<impl FnOnce() -> &'a [u8]>,
-) -> Option<Vec<u8>> {
-    let _ = (lists, fs, module, file);
-    todo!()
-}
-
-/// [`config_path`] with `file` read only when there is a module.
-#[allow(clippy::todo)]
-pub fn config_path_deferred<'a, L: Lists>(
-    lists: &L,
-    module: Option<L::Module>,
-    file: Option<impl FnOnce() -> &'a [u8]>,
-) -> Option<Vec<u8>> {
-    let _ = (lists, module, file);
-    todo!()
-}
-
-/// [`add_module_path`] with `bin` and `data` read only once there is a
-/// core and neither is NULL, `bin` first, as the C's `bstrdup()`s are.
-#[allow(clippy::todo)]
-pub fn add_module_path_deferred<'a, L: Lists>(
-    lists: &mut L,
-    bin: Option<impl FnOnce() -> &'a [u8]>,
-    data: Option<impl FnOnce() -> &'a [u8]>,
-) {
-    let _ = (lists, bin, data);
-    todo!()
+    add_name_deferred(lists, list, name.map(|name| move || name));
 }
 
 /// [`add_name`] with `name` read only once there is a core.
-#[allow(clippy::todo)]
 pub fn add_name_deferred<'a, L: Lists>(
     lists: &mut L,
     list: NameList,
     name: Option<impl FnOnce() -> &'a [u8]>,
 ) {
-    let _ = (lists, list, name);
-    todo!()
+    if !lists.has_core() {
+        return;
+    }
+    if let Some(name) = name {
+        lists.push_name(list, name());
+    }
 }

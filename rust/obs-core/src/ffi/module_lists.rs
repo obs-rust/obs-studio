@@ -13,7 +13,10 @@
 //! allocation, as the C's) and each push is `darray_push_back()` with the
 //! typed list's element size (obs-util's port of `darray.h`, allocating
 //! through bmem as the C does). A NULL id pushes a NULL entry, as the C's
-//! `bstrdup(NULL)`. The paths are `bmalloc`'d too, and the caller `bfree`s
+//! `bstrdup(NULL)`. Each string argument is read only past the guard the C
+//! reads it after: a NULL test of the pointer reads nothing, and an
+//! argument a call ignores (an id with no module, a name with no core) is
+//! never read. The paths are `bmalloc`'d too, and the caller `bfree`s
 //! them. No call takes a lock, as the C takes none.
 //!
 //! The file and config paths come from the Rust cores that libobs's own
@@ -238,6 +241,20 @@ fn module(module: *mut c_void) -> Option<Module> {
     Module::from_ptr(module)
 }
 
+/// A reader of the C string at `s`, `None` for NULL: the NULL test reads
+/// nothing, and the string is read only when a call calls the reader, past
+/// the guard the C reads it after.
+///
+/// # Safety
+///
+/// `s` is null or NUL-terminated, and outlives `'a`.
+unsafe fn deferred<'a>(s: *const c_char) -> Option<impl FnOnce() -> &'a [u8]> {
+    (!s.is_null()).then_some(move || {
+        // SAFETY: the caller guarantees a NUL-terminated string.
+        unsafe { CStr::from_ptr(s) }.to_bytes()
+    })
+}
+
 fn into_c(path: Option<Vec<u8>>) -> *mut c_char {
     path.map_or(ptr::null_mut(), |p| bstrdup(&p))
 }
@@ -261,8 +278,8 @@ pub unsafe fn log_loaded_modules_with<C: Calls>() {
 /// NUL-terminated.
 unsafe fn add_type(module: *mut c_void, list: TypeList, id: *const c_char) {
     // SAFETY: the caller's contract.
-    let (mut seam, id) = unsafe { (Seam::<Libobs>::new(), bytes(id)) };
-    module_lists::add_type(&mut seam, self::module(module), list, id);
+    let (mut seam, id) = unsafe { (Seam::<Libobs>::new(), deferred(id)) };
+    module_lists::add_type_deferred(&mut seam, self::module(module), list, id);
 }
 
 /// `obs_add_safe_module()` or `obs_add_disabled_module()`.
@@ -272,8 +289,8 @@ unsafe fn add_type(module: *mut c_void, list: TypeList, id: *const c_char) {
 /// `name` is null or NUL-terminated.
 unsafe fn add_name(list: NameList, name: *const c_char) {
     // SAFETY: the caller's contract.
-    let (mut seam, name) = unsafe { (Seam::<Libobs>::new(), bytes(name)) };
-    module_lists::add_name(&mut seam, list, name);
+    let (mut seam, name) = unsafe { (Seam::<Libobs>::new(), deferred(name)) };
+    module_lists::add_name_deferred(&mut seam, list, name);
 }
 
 /// Same contract as C `obs_log_loaded_modules`, but with no core it logs
@@ -346,8 +363,8 @@ pub unsafe extern "C" fn obs_find_module_file(
     file: *const c_char,
 ) -> *mut c_char {
     // SAFETY: the caller's contract.
-    let (seam, file) = unsafe { (Seam::<Libobs>::new(), bytes(file)) };
-    into_c(module_lists::find_file(
+    let (seam, file) = unsafe { (Seam::<Libobs>::new(), deferred(file)) };
+    into_c(module_lists::find_file_deferred(
         &seam,
         &LibobsFs,
         self::module(module),
@@ -367,8 +384,12 @@ pub unsafe extern "C" fn obs_module_get_config_path(
     file: *const c_char,
 ) -> *mut c_char {
     // SAFETY: the caller's contract.
-    let (seam, file) = unsafe { (Seam::<Libobs>::new(), bytes(file)) };
-    into_c(module_lists::config_path(&seam, self::module(module), file))
+    let (seam, file) = unsafe { (Seam::<Libobs>::new(), deferred(file)) };
+    into_c(module_lists::config_path_deferred(
+        &seam,
+        self::module(module),
+        file,
+    ))
 }
 
 /// Same contract as C `obs_add_module_path`.
@@ -379,8 +400,8 @@ pub unsafe extern "C" fn obs_module_get_config_path(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_add_module_path(bin: *const c_char, data: *const c_char) {
     // SAFETY: the caller's contract.
-    let (mut seam, bin, data) = unsafe { (Seam::<Libobs>::new(), bytes(bin), bytes(data)) };
-    module_lists::add_module_path(&mut seam, bin, data);
+    let (mut seam, bin, data) = unsafe { (Seam::<Libobs>::new(), deferred(bin), deferred(data)) };
+    module_lists::add_module_path_deferred(&mut seam, bin, data);
 }
 
 /// Same contract as C `obs_add_safe_module`.

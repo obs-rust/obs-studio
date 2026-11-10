@@ -472,6 +472,83 @@ fn log_with_no_core_logs_nothing() {
     assert_eq!(take_log(), "");
 }
 
+/// Neither side reads a string argument the call ignores: an id with no
+/// module, a file with no module, a name or path with no core, a path whose
+/// partner is NULL. Each gets a non-NULL pointer that cannot be read
+/// (address 1), which faults if either side dereferences it.
+#[test]
+fn ignored_strings_are_not_read() {
+    let unreadable = core::ptr::without_provenance::<c_char>(1);
+    let calls = |side: Side, has_core: bool| {
+        // SAFETY: no module, and the thread's core is null or a live one;
+        // `unreadable` is only ever compared with NULL.
+        unsafe {
+            match side {
+                Side::C => {
+                    c::oracle_obs_module_add_source(core::ptr::null_mut(), unreadable);
+                    c::oracle_obs_module_add_service(core::ptr::null_mut(), unreadable);
+                    assert!(
+                        c::oracle_obs_find_module_file(core::ptr::null_mut(), unreadable).is_null()
+                    );
+                    assert!(
+                        c::oracle_obs_module_get_config_path(core::ptr::null_mut(), unreadable)
+                            .is_null()
+                    );
+                    c::oracle_obs_add_module_path(unreadable, core::ptr::null());
+                    c::oracle_obs_add_module_path(core::ptr::null(), unreadable);
+                    if !has_core {
+                        c::oracle_obs_add_module_path(unreadable, unreadable);
+                        c::oracle_obs_add_safe_module(unreadable);
+                        c::oracle_obs_add_disabled_module(unreadable);
+                    }
+                }
+                Side::Rust => {
+                    rs::obs_module_add_source(core::ptr::null_mut(), unreadable);
+                    rs::obs_module_add_service(core::ptr::null_mut(), unreadable);
+                    assert!(rs::obs_find_module_file(core::ptr::null_mut(), unreadable).is_null());
+                    assert!(
+                        rs::obs_module_get_config_path(core::ptr::null_mut(), unreadable).is_null()
+                    );
+                    rs::obs_add_module_path(unreadable, core::ptr::null());
+                    rs::obs_add_module_path(core::ptr::null(), unreadable);
+                    if !has_core {
+                        rs::obs_add_module_path(unreadable, unreadable);
+                        rs::obs_add_safe_module(unreadable);
+                        rs::obs_add_disabled_module(unreadable);
+                    }
+                }
+            }
+        }
+    };
+    for side in [Side::C, Side::Rust] {
+        // SAFETY: no core on this thread.
+        unsafe { c::oracle_module_lists_set_core(core::ptr::null_mut()) };
+        calls(side, false);
+
+        // SAFETY: a fresh core of the oracle's, freed after the calls.
+        unsafe {
+            let core = c::oracle_module_lists_core_new(core::ptr::null());
+            c::oracle_module_lists_set_core(core);
+            calls(side, true);
+            let mut out = vec![0u8; 4096];
+            let n = c::oracle_module_lists_state(
+                core,
+                core::ptr::null(),
+                0,
+                out.as_mut_ptr().cast(),
+                out.len(),
+            );
+            out.truncate(n);
+            assert_eq!(
+                out,
+                b"paths[0000000000000000/0000000000000000];safe[0000000000000000/0000000000000000];disabled[0000000000000000/0000000000000000];"
+            );
+            c::oracle_module_lists_set_core(core::ptr::null_mut());
+            c::oracle_module_lists_core_free(core);
+        }
+    }
+}
+
 fn bytes() -> impl Strategy<Value = Option<Vec<u8>>> {
     proptest::option::of(proptest::collection::vec(1u8..=255, 0..6))
 }
