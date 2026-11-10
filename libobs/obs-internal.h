@@ -2401,6 +2401,32 @@ struct obs_encoder_preferred_range_fields {
 };
 struct obs_encoder_preferred_range_fields obs_encoder_preferred_range_fields(const obs_encoder_t *encoder);
 
+/* Shared by the C defaults API and C-reference property constructors. */
+static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *info)
+{
+	obs_data_t *settings = obs_data_create();
+	if (info->get_defaults) {
+		info->get_defaults(settings);
+	}
+	if (info->get_defaults2) {
+		info->get_defaults2(settings, info->type_data);
+	}
+	return settings;
+}
+
+/* Callback snapshots; all handles remain borrowed from the registered type/encoder. */
+struct obs_encoder_properties_fields {
+	obs_properties_t *(*properties)(void *data);
+	obs_properties_t *(*properties2)(void *data, void *type_data);
+	void (*defaults)(obs_data_t *settings);
+	void (*defaults2)(obs_data_t *settings, void *type_data);
+	void *type_data;
+	void *data;
+	obs_data_t *settings;
+};
+struct obs_encoder_properties_fields obs_encoder_properties_type_fields(const struct obs_encoder_info *info);
+struct obs_encoder_properties_fields obs_encoder_properties_instance_fields(const obs_encoder_t *encoder);
+
 /* Borrowed scaled-axis addresses, with no ownership or value conversion. */
 struct obs_encoder_scaling_enabled_fields {
 	const uint32_t *width;

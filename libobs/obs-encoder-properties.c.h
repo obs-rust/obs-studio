@@ -1,8 +1,5 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Defined in obs-encoder.c.h in this unity group. */
-static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *info);
-
 obs_properties_t *obs_get_encoder_properties(const char *id)
 {
 	const struct obs_encoder_info *ei = find_encoder(id);

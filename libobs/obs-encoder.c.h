@@ -517,18 +517,6 @@ uint32_t obs_encoder_group_num_started(struct obs_encoder_group *group)
 	return num_started;
 }
 
-static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *info)
-{
-	obs_data_t *settings = obs_data_create();
-	if (info->get_defaults) {
-		info->get_defaults(settings);
-	}
-	if (info->get_defaults2) {
-		info->get_defaults2(settings, info->type_data);
-	}
-	return settings;
-}
-
 obs_data_t *obs_encoder_defaults(const char *id)
 {
 	const struct obs_encoder_info *info = find_encoder(id);

@@ -23,6 +23,15 @@ static _Thread_local const char *encoder_registry_last_id;
 #undef find_encoder
 #undef obs
 
+/* Share the real lookup with other encoder fixtures without defining it twice. */
+struct obs_core *oracle_encoder_registry_exchange_core(struct obs_core *core);
+struct obs_core *oracle_encoder_registry_exchange_core(struct obs_core *core)
+{
+	struct obs_core *previous = encoder_registry_core;
+	encoder_registry_core = core;
+	return previous;
+}
+
 /* Instrument, then execute the original lookup; never a placeholder stub. */
 struct obs_encoder_info *find_encoder(const char *id)
 {

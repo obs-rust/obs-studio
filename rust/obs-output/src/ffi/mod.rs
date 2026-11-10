@@ -21,6 +21,7 @@ pub mod encoder_pause;
 pub mod encoder_preferred_color_space;
 pub mod encoder_preferred_format;
 pub mod encoder_preferred_range;
+pub mod encoder_properties;
 pub mod encoder_registry_queries;
 pub mod encoder_roi;
 pub mod encoder_roi_state;
