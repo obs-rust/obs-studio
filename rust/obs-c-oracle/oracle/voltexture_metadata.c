@@ -71,23 +71,6 @@ static void vtm_blog(int level, const char *format, ...)
 #undef gs_get_context
 #define gs_get_context vtm_context
 #define blog vtm_blog
-#define thread_graphics vtm_context()
-static bool gs_obj_valid(const void *obj, const char *function, const char *name)
-{
-	if (!obj) {
-		vtm_blog(LOG_DEBUG, "%s: Null '%s' parameter", function, name);
-		return false;
-	}
-	return true;
-}
-static bool gs_valid(const char *function)
-{
-	if (!thread_graphics) {
-		vtm_blog(LOG_DEBUG, "%s: called while not in a graphics context", function);
-		return false;
-	}
-	return true;
-}
 #include "voltexture-metadata.inc"
 #undef blog
 #undef gs_get_context
@@ -182,5 +165,4 @@ bool oracle_vtm_adapter_layout(void)
 #undef gs_voltexture_get_height
 #undef gs_voltexture_get_color_format
 
-#undef thread_graphics
 #undef gs_voltexture_get_depth

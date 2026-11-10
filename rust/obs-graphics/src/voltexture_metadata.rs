@@ -1,4 +1,4 @@
-//! Texture metadata validation and backend dispatch.
+//! Volume texture metadata validation and backend dispatch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Property {
     Width,
@@ -19,9 +19,19 @@ impl Property {
 pub trait Host<S> {
     fn has_context(&self) -> bool;
     fn debug(&mut self, function: &'static str, reason: &'static str);
-    fn dispatch(&mut self, property: Property, texture: S) -> u32;
+    fn dispatch(&mut self, property: Property, voltexture: S) -> u32;
 }
-pub fn metadata<S>(host: &mut impl Host<S>, texture: Option<S>, property: Property) -> u32 {
-    let _ = (host, texture, property);
-    todo!("volume texture metadata Rust swap")
+pub fn metadata<S>(host: &mut impl Host<S>, voltexture: Option<S>, property: Property) -> u32 {
+    if !host.has_context() {
+        host.debug(
+            property.function(),
+            "called while not in a graphics context",
+        );
+        return 0;
+    }
+    let Some(voltexture) = voltexture else {
+        host.debug(property.function(), "Null 'voltex' parameter");
+        return 0;
+    };
+    host.dispatch(property, voltexture)
 }
