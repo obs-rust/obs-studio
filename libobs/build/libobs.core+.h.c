@@ -19,6 +19,7 @@
 #include "libobs/obs-hotkey-routing-controls.c.h"
 #include "libobs/obs-hotkey.c.h"
 #include "libobs/obs-module-init.c.h"
+#include "libobs/obs-module-lists-seam.c.h"
 #include "libobs/obs-module-lists.c.h"
 #include "libobs/obs-module-load-locale.c.h"
 #include "libobs/obs-module-load-metadata.c.h"

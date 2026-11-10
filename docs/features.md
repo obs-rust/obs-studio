@@ -81,6 +81,12 @@ not get a line.
   *Linux*, 2026-11-09. Issue [#4464](https://github.com/obs-rust/obs-studio/issues/4464),
   PR [#4466](https://github.com/obs-rust/obs-studio/pull/4466).
 
+- **Virtual device and media control.** MCP can start/stop Virtual Camera, inspect
+  its paired mic, restart media, inspect pipeline graphs and read/reset measured
+  stage counters. Unmeasured device/sync values stay null. *All* (device support
+  depends on the loaded plugin), 2026-11-09. Issue [#4446](https://github.com/obs-rust/obs-studio/issues/4446),
+  PR [#4452](https://github.com/obs-rust/obs-studio/pull/4452).
+
 - **Typed MCP control.** Existing OBS MCP tools publish input and output schemas,
   structured results and machine-readable domain errors. Read operations carry
   annotations, and repeated output start/stop calls succeed with current state.

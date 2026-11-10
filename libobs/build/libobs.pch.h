@@ -23,6 +23,7 @@
 #include "obs-core-modules.h"
 #include "obs-defs.h"
 #include "obs-module.h"
+#include "obs-module-lists-seam.h"
 #include "obs-module-load-rules.h"
 #include "obs-module-register-copy.h"
 #include "obs-module-type-rules.h"
