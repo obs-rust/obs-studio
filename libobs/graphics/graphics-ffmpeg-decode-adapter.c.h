@@ -24,7 +24,11 @@ void *gs_image_decode_allocate(void *opaque, int alpha_mode)
 	AVFrame *frame = av_frame_alloc();
 	if (!frame)
 		return NULL;
-	struct gs_image_decode_session *session = bzalloc(sizeof(*session));
+	struct gs_image_decode_session *session = av_mallocz(sizeof(*session));
+	if (!session) {
+		av_frame_free(&frame);
+		return NULL;
+	}
 	session->context = opaque;
 	session->frame = frame;
 	session->alpha_mode = alpha_mode;
@@ -71,7 +75,7 @@ void gs_image_decode_update(void *opaque)
 	struct gs_image_decode_session *session = opaque;
 	session->context->image->cx = session->frame->width;
 	session->context->image->cy = session->frame->height;
-	session->context->image->format = session->frame->format;
+	session->context->image->format = (enum AVPixelFormat)session->frame->format;
 }
 
 void *gs_image_decode_reformat(void *opaque)
@@ -103,5 +107,5 @@ void gs_image_decode_cleanup(void *opaque)
 	struct gs_image_decode_session *session = opaque;
 	av_packet_unref(&session->packet);
 	av_frame_free(&session->frame);
-	bfree(session);
+	av_free(session);
 }

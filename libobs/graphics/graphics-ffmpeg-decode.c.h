@@ -41,7 +41,7 @@ static void *ffmpeg_image_decode(struct ffmpeg_image *info, enum gs_image_alpha_
 
 	info->cx = frame->width;
 	info->cy = frame->height;
-	info->format = frame->format;
+	info->format = (enum AVPixelFormat)frame->format;
 
 	data = ffmpeg_image_reformat_frame(info, frame, alpha_mode);
 

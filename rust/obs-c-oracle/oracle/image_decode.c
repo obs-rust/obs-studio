@@ -102,14 +102,14 @@ static void av_frame_free(AVFrame **frame)
 	free(*frame);
 	*frame = NULL;
 }
-static void *bzalloc(size_t size)
+static void *av_mallocz(size_t size)
 {
 	void *data = calloc(1, size);
 	if (!data)
 		abort();
 	return data;
 }
-static void bfree(void *data)
+static void av_free(void *data)
 {
 	free(data);
 }

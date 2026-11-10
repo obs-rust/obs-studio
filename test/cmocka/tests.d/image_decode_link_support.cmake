@@ -12,6 +12,14 @@ function(_image_decode_link_support)
         target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
         target_link_libraries(${_target} PRIVATE FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil)
       endif()
+      if(
+        _target
+          MATCHES
+          "^test_(audio_monitor_delay|coreaudio_device_rules|coreaudio_pacing|monitor_speaker_layout|monitor_video_sync|monitor_wasapi|pulse_monitor)_steps_rust$"
+        OR _target MATCHES "^test_(coreaudio_device_rules|monitor_speaker_layout|monitor_video_sync)_rust$"
+      )
+        target_sources(${_target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source-getter-log-link-stub.c")
+      endif()
     endif()
   endforeach()
 endfunction()

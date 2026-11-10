@@ -304,7 +304,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -328,7 +329,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -419,7 +423,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -437,7 +442,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -522,7 +530,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -546,7 +555,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -673,7 +685,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -693,7 +706,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "header_libraries": [
@@ -1474,7 +1490,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -1495,7 +1512,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "definitions": [
         "COREAUDIO_DEVICE_RULES_TEST_RUST"
@@ -1562,7 +1582,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -1583,7 +1604,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "definitions": [
         "COREAUDIO_PACING_TEST_RUST"
@@ -1825,7 +1849,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -1849,7 +1874,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -1914,7 +1942,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -1932,7 +1961,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -1980,7 +2012,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -1999,7 +2032,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -2467,7 +2503,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2488,7 +2525,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined"
     },
@@ -2540,7 +2580,8 @@
         {
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
-        }
+        },
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2562,7 +2603,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "compile_options": [
         {
@@ -2614,7 +2658,8 @@
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2636,7 +2681,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "definitions": [
@@ -2702,7 +2750,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2717,7 +2766,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined"
     },
@@ -2757,7 +2809,8 @@
         {
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
-        }
+        },
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2779,7 +2832,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "compile_options": [
         {
@@ -2829,7 +2885,8 @@
         {
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
-        }
+        },
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2851,7 +2908,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "compile_options": [
         {
@@ -2905,7 +2965,8 @@
         {
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
-        }
+        },
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2927,7 +2988,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "compile_options": [
         {
@@ -4551,7 +4615,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4572,7 +4637,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "definitions": [
@@ -4625,7 +4693,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4646,7 +4715,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined"
     },
@@ -4674,7 +4746,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4695,7 +4768,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined"
     },
@@ -4761,7 +4837,8 @@
         "test/cmocka/test_graphics_immediate_steps.c",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4785,7 +4862,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined"
     },
@@ -4870,7 +4950,8 @@
         "test/cmocka/test_graphics_state_stacks.c",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4894,7 +4975,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "conditional_link_options": [
@@ -7021,7 +7105,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -7031,7 +7116,8 @@
       },
       "includes": [
         "libobs/audio-monitoring",
-        "."
+        ".",
+        "libobs"
       ],
       "libraries": [
         "libobs_rust-static",
@@ -7041,7 +7127,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "header_libraries": [
@@ -7074,7 +7163,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -7084,7 +7174,8 @@
       },
       "includes": [
         "libobs/audio-monitoring",
-        "."
+        ".",
+        "libobs"
       ],
       "libraries": [
         "libobs_rust-static",
@@ -7094,7 +7185,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "header_libraries": [
@@ -7128,7 +7222,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -7148,7 +7243,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "header_libraries": [
@@ -7453,7 +7551,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -7474,7 +7573,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "definitions": [
@@ -10665,7 +10767,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -10681,7 +10784,8 @@
       },
       "includes": [
         "libobs/audio-monitoring/pulse",
-        "."
+        ".",
+        "libobs"
       ],
       "libraries": [
         "libobs_rust-static",
@@ -10692,7 +10796,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "PulseAudio::PulseAudio",
@@ -11862,7 +11969,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -11887,7 +11995,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -11955,7 +12066,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -11969,10 +12081,14 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ]
     },
     "test_scene_bounds_type_range": {
@@ -12262,10 +12378,12 @@
         "test/cmocka/scene-item-group-scene-link-support.c",
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-support.c"
+        "test/cmocka/scene-source-getter-link-support.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "OBS::libobs",
@@ -12273,7 +12391,10 @@
         "OBS::native-test-cmocka",
         "m",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": {
         "all": [
@@ -12342,7 +12463,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12350,10 +12472,14 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ]
     },
     "test_scene_item_order_steps": {
@@ -12385,7 +12511,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12393,10 +12520,14 @@
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ]
     },
     "test_scene_item_parent_getter": {
@@ -12526,7 +12657,8 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -12540,10 +12672,14 @@
           }
         },
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ]
     },
     "test_scene_item_transition_getters": {
@@ -12654,7 +12790,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "test/cmocka/source-handler-getter-link-support.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -12676,7 +12813,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -12773,18 +12913,23 @@
         "test/cmocka/scene-item-parent-getter-link-stub.c",
         "test/cmocka/scene-item-transition-getter-link-stub.c",
         "test/cmocka/scene-item-visible-link-support.c",
-        "test/cmocka/scene-source-getter-link-stubs.c"
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "OBS::libobs",
         "libobs_rust-static",
         "OBS::native-test-cmocka",
         "OBS::caption",
-        "Uthash::Uthash"
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ]
     },
     "test_scene_transform_update_walk": {
@@ -13372,7 +13517,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13390,7 +13536,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13451,7 +13600,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -13469,7 +13619,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -13536,7 +13689,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13560,7 +13714,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13634,7 +13791,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13652,7 +13810,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13729,7 +13890,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -13748,7 +13910,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -13821,7 +13986,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -13845,7 +14011,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -13880,10 +14049,12 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "OBS::libobs",
@@ -13894,7 +14065,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "header_libraries": [
@@ -13933,10 +14107,12 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "OBS::libobs",
@@ -13947,7 +14123,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "header_libraries": [
@@ -14012,7 +14191,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14038,7 +14218,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14185,7 +14368,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -14209,7 +14393,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -14289,7 +14476,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -14313,7 +14501,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -14405,7 +14596,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14423,7 +14615,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14500,7 +14695,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -14524,7 +14720,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -14590,7 +14789,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14614,7 +14814,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -14913,7 +15116,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -14931,7 +15135,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -14982,7 +15189,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15007,7 +15215,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -15117,7 +15328,8 @@
         "test/cmocka/test_sprite_geometry_steps.c",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15138,7 +15350,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined"
     },
@@ -15651,10 +15866,12 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "OBS::libobs",
@@ -15671,7 +15888,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "header_libraries": [
@@ -15746,7 +15966,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -15764,7 +15985,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -15856,7 +16080,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15880,7 +16105,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -15926,10 +16154,12 @@
         "test/cmocka/source-filter-relationship-getter-link-stubs.c",
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
-        "test/cmocka/source-state-getter-link-stubs.c"
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "libraries": [
         "OBS::libobs",
@@ -15940,7 +16170,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "header_libraries": [
@@ -16056,7 +16289,8 @@
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
-        "test/cmocka/weak-object-identity-link-stub.c"
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         "libobs",
@@ -16074,7 +16308,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
@@ -17803,7 +18040,8 @@
     "test_window_match_steps_rust": {
       "sources": [
         "test/cmocka/test_window_match_steps.c",
-        "libobs/util/base-variadic.c.h"
+        "libobs/util/base-variadic.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         ".",
@@ -17817,7 +18055,10 @@
         {
           "name": "PkgConfig::_window_match_test_gio",
           "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": {
         "all": [
@@ -17853,7 +18094,8 @@
         "test/cmocka/windows-keys-rust-stubs.c",
         "test/cmocka/hotkey-identity-rust-stubs.c",
         "test/cmocka/module-name-lookup-link-stubs.c",
-        "test/cmocka/object-validity-query-link-stubs.c"
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "watch_inputs": [
         "Cargo.toml"
@@ -17897,7 +18139,10 @@
         {
           "name": "Rpcrt4",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "conditional_link_options": [

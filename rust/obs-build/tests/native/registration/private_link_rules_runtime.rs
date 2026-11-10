@@ -92,6 +92,18 @@ fn canonical_private_link_rules_run_unchanged() {
     let interfaces = [
         ("OBS::libobs".into(), core.dependency),
         (
+            "FFmpeg::avcodec".into(),
+            Dependency::package(&build.target, "libavcodec").unwrap(),
+        ),
+        (
+            "FFmpeg::avformat".into(),
+            Dependency::package(&build.target, "libavformat").unwrap(),
+        ),
+        (
+            "FFmpeg::avutil".into(),
+            Dependency::package(&build.target, "libavutil").unwrap(),
+        ),
+        (
             "OBS::caption".into(),
             Dependency {
                 artifacts: vec![caption.clone()],
