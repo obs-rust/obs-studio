@@ -160,6 +160,7 @@
 pub mod async_compensation;
 pub mod async_flag_getters;
 pub mod async_pacing;
+pub mod async_rotation;
 pub mod async_upload;
 pub mod audio_active;
 pub mod audio_input;

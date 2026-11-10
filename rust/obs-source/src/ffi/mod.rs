@@ -3,6 +3,7 @@
 pub mod source_async_compensation;
 pub mod source_async_flag_getters;
 pub mod source_async_pacing;
+pub mod source_async_rotation;
 pub mod source_async_upload;
 pub mod source_audio_active;
 pub mod source_audio_input;
