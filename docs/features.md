@@ -81,6 +81,12 @@ not get a line.
   *Linux*, 2026-11-09. Issue [#4464](https://github.com/obs-rust/obs-studio/issues/4464),
   PR [#4466](https://github.com/obs-rust/obs-studio/pull/4466).
 
+- **Bounded MCP waits.** Agents can wait for typed output/source/media/metric
+  conditions and request automatic waits on starts, without GUI interaction or
+  fixed sleeps. Timeouts return the last observation. *All*, 2026-11-09.
+  Issue [#4447](https://github.com/obs-rust/obs-studio/issues/4447),
+  PR [#4454](https://github.com/obs-rust/obs-studio/pull/4454).
+
 - **Virtual device and media control.** MCP can start/stop Virtual Camera, inspect
   its paired mic, restart media, inspect pipeline graphs and read/reset measured
   stage counters. Unmeasured device/sync values stay null. *All* (device support

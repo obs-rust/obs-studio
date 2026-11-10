@@ -41,6 +41,52 @@ pub struct OutputStatus {
 /// Methods take `&self`: libobs owns the state, so implementations use their
 /// own interior mutability.
 pub trait OutputBackend {
+    /// Whether the owning control host is shutting down.
+    fn control_cancelled(&self) -> bool {
+        false
+    }
+    /// Starts with optional bounded auto-wait.
+    /// # Errors
+    /// Reports start failure or an auto-wait timeout.
+    fn start_with_wait(&self, request: OutputStartRequest) -> Result<ActiveOutput, ToolError> {
+        use super::waiting::{
+            Condition, OutputName, OutputState, SystemClock, WaitInput, run_wait, validate_timeout,
+        };
+        if request.options.wait {
+            validate_timeout(request.options.timeout_ms)?;
+        }
+        if self.control_cancelled() {
+            return Err(ToolError::not_ready("OBS control is shutting down"));
+        }
+        let state = self.start_output(OutputRequest { kind: request.kind })?;
+        if !request.options.wait {
+            return Ok(state);
+        }
+        let output = match request.kind {
+            OutputKind::Record => OutputName::Record,
+            OutputKind::Stream => OutputName::Stream,
+        };
+        let result = run_wait(
+            &OutputWait {
+                backend: self,
+                kind: request.kind,
+            },
+            WaitInput {
+                condition: Condition::OutputState {
+                    output,
+                    state: OutputState::Active,
+                },
+                timeout_ms: request.options.timeout_ms,
+            },
+            &SystemClock::default(),
+        )?;
+        if result.satisfied {
+            Ok(ActiveOutput { active: true })
+        } else {
+            Err(ToolError::not_ready("output start timed out"))
+        }
+    }
+
     /// Typed idempotent start.
     /// # Errors
     /// Reports a processing failure.
@@ -94,13 +140,14 @@ typed_tool!(
     RecordStart,
     "record_start",
     OutputBackend,
-    EmptyInput,
+    OutputStartInput,
     ActiveOutput,
     IDEMPOTENT,
     "Start recording.",
-    |backend, _input| {
-        backend.start_output(OutputRequest {
+    |backend, input| {
+        backend.start_with_wait(OutputStartRequest {
             kind: OutputKind::Record,
+            options: input,
         })
     }
 );
@@ -136,13 +183,14 @@ typed_tool!(
     StreamStart,
     "stream_start",
     OutputBackend,
-    EmptyInput,
+    OutputStartInput,
     ActiveOutput,
     IDEMPOTENT,
     "Start streaming.",
-    |backend, _input| {
-        backend.start_output(OutputRequest {
+    |backend, input| {
+        backend.start_with_wait(OutputStartRequest {
             kind: OutputKind::Stream,
+            options: input,
         })
     }
 );
@@ -215,4 +263,53 @@ pub fn schemas() -> Vec<serde_json::Value> {
 pub struct OutputRequest {
     /// Output to operate on.
     pub kind: OutputKind,
+}
+
+/// Auto-wait options for recording/streaming starts.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OutputStartInput {
+    /// Wait for the output to report active.
+    #[serde(default)]
+    pub wait: bool,
+    /// Bounded wait deadline.
+    #[serde(default = "super::waiting::default_timeout_ms")]
+    pub timeout_ms: u64,
+}
+impl Default for OutputStartInput {
+    fn default() -> Self {
+        Self {
+            wait: false,
+            timeout_ms: super::waiting::DEFAULT_TIMEOUT_MS,
+        }
+    }
+}
+/// Backend start request.
+pub struct OutputStartRequest {
+    /// Output selector.
+    pub kind: OutputKind,
+    /// Auto-wait options.
+    pub options: OutputStartInput,
+}
+
+struct OutputWait<'a, B: OutputBackend + ?Sized> {
+    backend: &'a B,
+    kind: OutputKind,
+}
+impl<B: OutputBackend + ?Sized> super::waiting::WaitBackend for OutputWait<'_, B> {
+    fn cancelled(&self) -> bool {
+        self.backend.control_cancelled()
+    }
+    fn observe(
+        &self,
+        _: &super::waiting::ObserveInput,
+    ) -> Result<super::waiting::Observation, ToolError> {
+        let active = self.backend.status(self.kind).active;
+        Ok(super::waiting::Observation {
+            satisfied: active,
+            value: super::waiting::LastValue::Output {
+                active: Some(active),
+            },
+        })
+    }
 }

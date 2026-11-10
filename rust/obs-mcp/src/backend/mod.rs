@@ -56,6 +56,7 @@ pub struct ObsBackend {
     output_error: Option<String>,
     cpu: Option<CpuUsage>,
     camera: RefCell<Option<Output>>,
+    cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     baseline: RefCell<Option<crate::tools::control::StatsBaseline>>,
 }
 
@@ -81,6 +82,7 @@ impl ObsBackend {
             output_error: None,
             cpu: CpuUsage::start(),
             camera: RefCell::new(None),
+            cancellation: None,
             baseline: RefCell::new(None),
         }
     }
@@ -137,6 +139,8 @@ impl ObsBackend {
         screenshot::register(&mut tools, &capture);
         let control: Rc<dyn crate::tools::control::ControlBackend> = Rc::clone(backend) as _;
         crate::tools::control::register(&mut tools, &control);
+        let waiting: Rc<dyn crate::tools::waiting::WaitBackend> = Rc::clone(backend) as _;
+        crate::tools::waiting::register(&mut tools, &waiting);
 
         let mut resources = ResourceRegistry::new();
         resources::scenes::register(&mut resources, &scenes, &sources);
@@ -342,6 +346,9 @@ fn narrow(value: f64) -> f32 {
 }
 
 impl OutputBackend for ObsBackend {
+    fn control_cancelled(&self) -> bool {
+        crate::tools::waiting::WaitBackend::cancelled(self)
+    }
     fn start_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
         let output = self.output(request.kind).map_err(ToolError::not_ready)?;
         if !output.active() {
@@ -480,3 +487,5 @@ impl StatsBackend for ObsBackend {
 }
 
 mod control;
+
+mod waiting;

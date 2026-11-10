@@ -55,6 +55,12 @@ impl ObsBackend {
 }
 impl ControlBackend for ObsBackend {
     fn vcam_start(&self, request: StartInput) -> Result<VcamStatus, ToolError> {
+        if crate::tools::waiting::WaitBackend::cancelled(self) {
+            return Err(ToolError::not_ready("OBS control is shutting down"));
+        }
+        if request.wait {
+            crate::tools::waiting::validate_timeout(request.timeout_ms)?;
+        }
         if !crate::ffi::has_video() {
             return Err(ToolError::not_ready(
                 "Virtual Camera requires initialized video",
@@ -73,8 +79,25 @@ impl ControlBackend for ObsBackend {
             output.start().map_err(ToolError::processing)?;
         }
         let status = self.vcam_status(EmptyInput::default())?;
-        if request.wait && !status.active {
-            return Err(ToolError::not_ready("Virtual Camera has not become active"));
+        if request.wait {
+            use crate::tools::waiting::{
+                Condition, OutputName, OutputState, SystemClock, WaitInput, run_wait,
+            };
+            let result = run_wait(
+                self,
+                WaitInput {
+                    condition: Condition::OutputState {
+                        output: OutputName::Vcam,
+                        state: OutputState::Active,
+                    },
+                    timeout_ms: request.timeout_ms,
+                },
+                &SystemClock::default(),
+            )?;
+            if !result.satisfied {
+                return Err(ToolError::not_ready("Virtual Camera start timed out"));
+            }
+            return self.vcam_status(EmptyInput::default());
         }
         Ok(status)
     }
