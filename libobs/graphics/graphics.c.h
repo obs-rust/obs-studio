@@ -2188,50 +2188,6 @@ enum gs_index_type gs_indexbuffer_get_type(const gs_indexbuffer_t *indexbuffer)
 	return thread_graphics->exports.gs_indexbuffer_get_type(indexbuffer);
 }
 
-void gs_timer_range_destroy(gs_timer_range_t *range)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_timer_range_destroy"))
-		return;
-	if (!range)
-		return;
-
-	graphics->exports.gs_timer_range_destroy(range);
-}
-
-void gs_timer_range_begin(gs_timer_range_t *range)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_timer_range_begin"))
-		return;
-	if (!range)
-		return;
-
-	graphics->exports.gs_timer_range_begin(range);
-}
-
-void gs_timer_range_end(gs_timer_range_t *range)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_timer_range_end"))
-		return;
-	if (!range)
-		return;
-
-	graphics->exports.gs_timer_range_end(range);
-}
-
-bool gs_timer_range_get_data(gs_timer_range_t *range, bool *disjoint, uint64_t *frequency)
-{
-	if (!gs_valid_p2("gs_timer_range_get_data", disjoint, frequency))
-		return false;
-
-	return thread_graphics->exports.gs_timer_range_get_data(range, disjoint, frequency);
-}
-
 bool gs_nv12_available(void)
 {
 	if (!gs_valid("gs_nv12_available"))
