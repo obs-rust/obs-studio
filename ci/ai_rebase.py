@@ -89,6 +89,11 @@ def added_lines(base: str, side: str) -> set[str]:
     return {l for l in side.splitlines() if l.strip() and l not in b}
 
 
+def removed_lines(base: str, side: str) -> set[str]:
+    s = set(side.splitlines())
+    return {l for l in base.splitlines() if l.strip() and l not in s}
+
+
 def resolve(path: str, subject: str) -> str | None:
     if NEVER_AI.search(path):
         return f"{path}: not sent to the model (lock/binary)"
@@ -125,6 +130,26 @@ def clud_cmd() -> list[str] | None:
     return [*base, "--openrouter", "--model", MODEL, "--unattended"]
 
 
+def check_resolution(f: str, base: str, ours: str, theirs: str) -> str | None:
+    """Judge one resolved file against its three merge stages."""
+    if not Path(f).exists():
+        return None
+    text = Path(f).read_text(errors="replace")
+    if MARKER.search(text):
+        return f"{f}: conflict markers remain"
+    kept = set(text.splitlines())
+    # A port moves a C file out of a core unity group by deleting its
+    # include; keeping that line compiles the C twice (#4214's first
+    # rebase, and #4387's forced merge before it).
+    revived = removed_lines(base, theirs) & kept - added_lines(base, ours)
+    if revived:
+        return f"{f}: the PR deleted {sorted(revived)[0]!r} but the resolution keeps it"
+    lost = (added_lines(base, ours) | added_lines(base, theirs)) - kept
+    if len(lost) > 2:
+        return f"{f}: {len(lost)} added lines dropped, e.g. {sorted(lost)[0]!r}"
+    return None
+
+
 def resolve_step(files: list[str], subject: str) -> str | None:
     """Resolve one stopped rebase step, then check the result ourselves.
 
@@ -149,15 +174,10 @@ def resolve_step(files: list[str], subject: str) -> str | None:
                 return why
     if run("git", "diff", "--name-only", "--diff-filter=U").split():
         return "agent left files unresolved"
-    for f, (base, ours, theirs) in stages.items():
-        if not Path(f).exists():
-            continue
-        text = Path(f).read_text(errors="replace")
-        if MARKER.search(text):
-            return f"{f}: conflict markers remain"
-        lost = (added_lines(base, ours) | added_lines(base, theirs)) - set(text.splitlines())
-        if len(lost) > 2:
-            return f"{f}: {len(lost)} added lines dropped, e.g. {sorted(lost)[0]!r}"
+    for f, sides in stages.items():
+        why = check_resolution(f, *sides)
+        if why:
+            return why
     return None
 
 
