@@ -84,3 +84,5 @@ pub mod output_properties;
 pub mod output_settings;
 
 pub mod output_video_encoder_getter;
+
+pub mod output_size_getters;
