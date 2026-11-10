@@ -149,6 +149,32 @@ cmake() {
                 fields = output.read_text() if output.exists() else ''
                 self.assertEqual('cache-healthy=false' in fields, bool(daemon_status))
 
+    def test_mcp_plugin_child_inherits_uncached_recovery(self):
+        # The main retry succeeds, then validate.sh launches mcp-tests.sh.
+        # Its plugin builds must keep bypassing the daemon that just failed.
+        for daemon_status, expected in ((0, "unset"), (1, "1")):
+            with self.subTest(daemon_status=daemon_status), tempfile.TemporaryDirectory() as directory:
+                prefix = """
+cmake() {
+  if [ ! -f "$build.calls" ]; then
+    echo 1 > "$build.calls"
+    echo 'FAILED: [code=125] first.o'
+    return 1
+  fi
+  echo 2 > "$build.calls"
+  return 0
+}
+"""
+                child = "\nbash -c 'printf \"MCP cache bypass: %s\\n\" \"${ZCCACHE_DISABLE:-unset}\"'\n"
+                result = subprocess.run(
+                    ['bash', '-euo', 'pipefail', '-c', prefix + self.recovery_script() + child],
+                    env={**os.environ, 'SRC': str(ROOT), 'build': directory + '/build',
+                         **self.zccache_stub(directory, str(daemon_status))},
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn('MCP cache bypass: ' + expected, result.stdout)
+                self.assertEqual(Path(directory, 'build.calls').read_text().strip(), '2')
+
     def test_recovery_clears_the_daemon_cool_down(self):
         # zccache 1.15.5 keeps the cache root in its recovery cool-down after
         # `zccache stop`, and the launcher then refuses even with
