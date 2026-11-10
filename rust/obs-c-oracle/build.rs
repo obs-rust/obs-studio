@@ -642,6 +642,7 @@ fn main() {
         "texture-metadata",
         "texture-cube-access",
         "timer-dispatch",
+        "timer-range-dispatch",
         "voltexture-metadata",
         "vertexbuffer-destroy",
     ] {
