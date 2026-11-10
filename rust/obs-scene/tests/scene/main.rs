@@ -79,6 +79,8 @@ mod item_blending_method;
 mod item_blending_method_parity;
 mod item_blending_mode;
 mod item_blending_mode_parity;
+mod item_locked_setter;
+mod item_locked_setter_parity;
 mod item_scale_filter;
 mod item_scale_filter_parity;
 mod item_transition_serialization;
