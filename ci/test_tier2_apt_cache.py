@@ -65,6 +65,20 @@ class AptCacheTest(unittest.TestCase):
                 self.assertIn("if variant == 'stock':", helper)
                 self.assertEqual(len(updates), 0)
 
+    def test_build_index_fetch_skips_unused_suites_and_components(self):
+        # Every Tier 2 build package (and git) resolves from main/universe in
+        # resolute, -updates and -security; restricted, multiverse and
+        # backports were 8 of 17 index downloads on the critical path.
+        j = job("rust-linux-tier2-build")
+        install_git = j[j.index("Install Git"):j.index("actions/checkout@")]
+        update = install_git.index("apt-get update")
+        trim = install_git.index("/etc/apt/sources.list.d/ubuntu.sources")
+        self.assertLess(trim, update)
+        self.assertIn("Suites: resolute resolute-updates/", install_git)
+        self.assertIn("Components: main universe/", install_git)
+        # The edit must fail loudly if the stock image's layout changes.
+        self.assertIn("grep -qx 'Components: main universe'", install_git)
+
     def test_zstd_is_there_before_the_restore(self):
         # actions/cache versions an entry by its compressor: restoring before
         # zstd is installed looks for a gzip entry the zstd save never wrote,
