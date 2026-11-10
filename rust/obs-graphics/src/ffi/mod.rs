@@ -41,6 +41,7 @@ pub mod texture_metadata;
 pub mod texture_planar_creators;
 pub mod texture_render;
 pub mod timer_dispatch;
+pub mod timer_range_dispatch;
 pub mod vec2;
 pub mod vec3;
 pub mod vec4;

@@ -1,4 +1,4 @@
-/* Original timer bodies, real private backend table, per-thread fixture. */
+/* Original timer-range bodies, real private backend table, per-thread fixture. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,6 +36,7 @@ static void trd_blog(int level, const char *format, ...)
 #define gs_get_context trd_get_context
 #define blog trd_blog
 #include "timer-range-dispatch.inc"
+#include "timer-range-dispatch-fields.inc"
 #undef blog
 #undef gs_get_context
 static void trd_event(gs_timer_range_t *timer, char event)

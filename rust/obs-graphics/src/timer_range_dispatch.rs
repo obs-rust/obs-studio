@@ -23,14 +23,34 @@ pub trait Host<T> {
     fn command(&mut self, command: Command, range: T);
     fn data(&mut self, range: T, disjoint: Self::Disjoint, frequency: Self::Frequency) -> bool;
 }
-pub fn command<T>(_host: &mut impl Host<T>, _range: Option<T>, _command: Command) {
-    todo!("timer-range command port")
+pub fn command<T>(host: &mut impl Host<T>, range: Option<T>, command: Command) {
+    if !host.has_context() {
+        host.debug(command.function(), "called while not in a graphics context");
+        return;
+    }
+    if let Some(range) = range {
+        host.command(command, range);
+    }
 }
+/// Range is deliberately not validated: even NULL reaches the backend.
 pub fn get_data<T, H: Host<T>>(
-    _host: &mut H,
-    _range: T,
-    _disjoint: Option<H::Disjoint>,
-    _frequency: Option<H::Frequency>,
+    host: &mut H,
+    range: T,
+    disjoint: Option<H::Disjoint>,
+    frequency: Option<H::Frequency>,
 ) -> bool {
-    todo!("timer-range data port")
+    const FUNCTION: &str = "gs_timer_range_get_data";
+    if !host.has_context() {
+        host.debug(FUNCTION, "called while not in a graphics context");
+        return false;
+    }
+    let Some(disjoint) = disjoint else {
+        host.debug(FUNCTION, "Null 'disjoint' parameter");
+        return false;
+    };
+    let Some(frequency) = frequency else {
+        host.debug(FUNCTION, "Null 'frequency' parameter");
+        return false;
+    };
+    host.data(range, disjoint, frequency)
 }
