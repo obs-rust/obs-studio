@@ -24,9 +24,11 @@
 
 #![deny(unsafe_code)]
 
+use std::fmt::Write as _;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -36,7 +38,7 @@ pub mod images;
 mod platform;
 pub mod stack;
 
-use images::{Entry, Table};
+use images::{Entry, Image, Owner, Table};
 
 /// How long `exit()` may take after the frontend arms the watchdog.
 pub const TIMEOUT: Duration = Duration::from_secs(10);
@@ -65,31 +67,97 @@ pub const LINE_MAX: usize = 512;
 
 /// Writes the line into `out` without allocating; returns its length.
 fn write_line(out: &mut [u8], timeout: Duration, culprit: Option<&Entry>) -> usize {
-    let _ = (out, timeout, culprit);
-    todo!()
+    const END: &str = "; ending the process\n";
+    let room = out.len().saturating_sub(END.len());
+    let mut w = Cut {
+        buf: &mut out[..room],
+        len: 0,
+    };
+    let _ = write!(w, "{LINE_PREFIX}exit did not finish in ");
+    if timeout.subsec_millis() == 0 {
+        let _ = write!(w, "{} s", timeout.as_secs());
+    } else {
+        let _ = write!(w, "{} ms", timeout.as_millis());
+    }
+    let _ = write!(w, ": a static destructor or atexit handler is blocking");
+    if let Some(e) = culprit {
+        let _ = write!(w, " in {} (", e.file);
+        let _ = match &e.owner {
+            Owner::Module(m) if *m == e.file => write!(w, "an OBS module"),
+            Owner::Module(m) => write!(w, "loaded by {m}"),
+            Owner::PostLoad => write!(w, "loaded during the modules' post-load"),
+            Owner::AfterStartup => write!(w, "loaded after startup"),
+            Owner::Obs => write!(w, "OBS"),
+        };
+        let _ = write!(w, ")");
+    }
+    let len = w.len;
+    let end = (len + END.len()).min(out.len());
+    out[len..end].copy_from_slice(&END.as_bytes()[..end - len]);
+    end
+}
+
+/// A `fmt::Write` into a fixed buffer that drops what does not fit, on a
+/// UTF-8 character boundary, without allocating.
+struct Cut<'a> {
+    buf: &'a mut [u8],
+    len: usize,
+}
+
+impl std::fmt::Write for Cut<'_> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        let room = self.buf.len() - self.len;
+        let mut take = s.len().min(room);
+        while !s.is_char_boundary(take) {
+            take -= 1;
+        }
+        self.buf[self.len..self.len + take].copy_from_slice(&s.as_bytes()[..take]);
+        self.len += take;
+        Ok(())
+    }
 }
 
 /// The first frame of `frames` (innermost first) in an image that OBS itself
 /// did not load: the library to name.
 pub fn culprit<'a>(frames: &[usize], table: &'a Table) -> Option<&'a Entry> {
-    let _ = (frames, table);
-    todo!()
+    frames
+        .iter()
+        .filter_map(|&f| table.find(f))
+        .find(|e| e.owner != Owner::Obs)
+}
+
+/// What the frontend noted before arming.
+struct Notes {
+    modules: Vec<String>,
+    after_load: Option<Vec<Image>>,
+    after_post_load: Option<Vec<Image>>,
+}
+
+static NOTES: Mutex<Notes> = Mutex::new(Notes {
+    modules: Vec::new(),
+    after_load: None,
+    after_post_load: None,
+});
+
+fn notes() -> std::sync::MutexGuard<'static, Notes> {
+    NOTES
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// The frontend: the binary path of a loaded OBS module.
 pub fn note_module(path: &str) {
-    let _ = path;
-    todo!()
+    notes().modules.push(path.to_string());
 }
 
 /// The frontend: the modules are loaded (before their post-load).
 pub fn note_loaded() {
-    todo!()
+    notes().after_load = Some(images::current());
 }
 
 /// The frontend: the modules' post-load is done.
 pub fn note_post_load() {
-    todo!()
+    notes().after_post_load = Some(images::current());
 }
 
 static ARMED: AtomicBool = AtomicBool::new(false);
@@ -99,33 +167,48 @@ static ARMED: AtomicBool = AtomicBool::new(false);
 /// file opens), then ends the process with [`EXIT_CODE`]. Returns false when
 /// the watchdog was already armed or its thread did not start.
 pub fn arm(timeout: Duration, log: Option<&Path>) -> bool {
-    let _ = (timeout, log);
-    todo!()
+    let at_arm = images::current();
+    let table = {
+        let n = notes();
+        // Without notes, every image is OBS's own and the line names none.
+        let after_load = n.after_load.as_deref().unwrap_or(&at_arm);
+        let after_post_load = n.after_post_load.as_deref().unwrap_or(after_load);
+        Table::build(after_load, after_post_load, &at_arm, &n.modules)
+    };
+    arm_with(timeout, log, table)
 }
 
 /// [`arm`] with a given table (tests).
 pub fn arm_with(timeout: Duration, log: Option<&Path>, table: Table) -> bool {
-    let _ = table;
     if ARMED.swap(true, Ordering::SeqCst) {
         return false;
     }
-    let text = line(timeout);
+    let thread = stack::current();
+    stack::prepare();
     let file = log.and_then(|path| OpenOptions::new().append(true).open(path).ok());
     let started = std::thread::Builder::new()
         .name("obs-exit-watchdog".into())
         .spawn(move || {
             std::thread::sleep(timeout);
-            fire(&text, file);
+            fire(timeout, &table, &thread, file);
         });
     started.is_ok()
 }
 
-/// Writes the prepared line and ends the process. Runs while destructors
-/// run: no allocation, no lock of the frontend, no `exit()`.
-fn fire(text: &str, file: Option<File>) -> ! {
+/// The deepest stack the watchdog looks at.
+const MAX_FRAMES: usize = 64;
+
+/// Captures the armed thread's stack, writes the line and ends the process.
+/// Runs while destructors run: no allocation, no lock of the frontend, no
+/// `exit()`.
+fn fire(timeout: Duration, table: &Table, thread: &stack::Thread, file: Option<File>) -> ! {
+    let mut frames = [0usize; MAX_FRAMES];
+    let n = stack::capture(thread, &mut frames);
+    let mut text = [0u8; LINE_MAX];
+    let len = write_line(&mut text, timeout, culprit(&frames[..n], table));
     if let Some(mut file) = file {
-        let _ = file.write_all(text.as_bytes());
+        let _ = file.write_all(&text[..len]);
     }
-    let _ = std::io::stderr().write_all(text.as_bytes());
+    let _ = std::io::stderr().write_all(&text[..len]);
     platform::terminate(EXIT_CODE)
 }

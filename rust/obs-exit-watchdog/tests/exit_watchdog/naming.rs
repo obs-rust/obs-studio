@@ -158,12 +158,15 @@ fn a_blocked_process_names_the_library() {
         assert!(arm_with(Duration::from_millis(200), Some(&log), table));
         block();
     }
+    // The watchdog appends to the frontend's log, which exists by then.
     let log = log_path("named");
+    std::fs::write(&log, "").unwrap();
     let (out, _) = run_child(test, &log);
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(out.status.code(), Some(EXIT_CODE), "{stderr}");
     assert_eq!(count_lines(&stderr), 1, "{stderr}");
-    let text = std::fs::read_to_string(&log).unwrap_or_default();
+    let text = std::fs::read_to_string(&log).unwrap();
+    assert!(stderr.contains(text.as_str()), "{stderr}");
     if stack::SUPPORTED {
         assert!(
             text.contains(&format!("is blocking in {exe} (loaded by blocker.so); ")),

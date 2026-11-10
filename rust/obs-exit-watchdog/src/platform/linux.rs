@@ -57,22 +57,92 @@ unsafe extern "C" fn add(info: *mut libc::dl_phdr_info, _size: usize, data: *mut
     }
     0
 }
-
 pub const STACK_SUPPORTED: bool = true;
 
-/// A thread whose stack can be captured.
-pub struct Thread;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
+
+/// The thread to capture.
+pub struct Thread {
+    id: libc::pthread_t,
+}
 
 pub fn current_thread() -> Thread {
-    todo!()
+    // SAFETY: the calling thread's own handle.
+    Thread {
+        id: unsafe { libc::pthread_self() },
+    }
 }
 
+/// The deepest stack kept.
+const MAX_FRAMES: usize = 64;
+/// The handler's own frame and the signal trampoline come first.
+const SKIP: usize = 2;
+/// How long the capture waits for the thread to run the handler.
+const WAIT: Duration = Duration::from_millis(500);
+
+static FRAMES: [AtomicUsize; MAX_FRAMES] = [const { AtomicUsize::new(0) }; MAX_FRAMES];
+static COUNT: AtomicUsize = AtomicUsize::new(0);
+static DONE: AtomicBool = AtomicBool::new(false);
+
+unsafe extern "C" {
+    fn backtrace(buffer: *mut *mut c_void, size: c_int) -> c_int;
+}
+
+/// Loads the unwinder `backtrace(3)` uses, outside a signal: its first call
+/// may allocate.
 pub fn prepare_stack() {
-    todo!()
+    let mut frames = [std::ptr::null_mut(); 4];
+    // SAFETY: the buffer holds 4 entries.
+    unsafe { backtrace(frames.as_mut_ptr(), 4) };
 }
 
-/// The thread's return addresses, innermost first.
+/// Runs on the captured thread: its own return addresses into `FRAMES`.
+extern "C" fn on_signal(_signal: c_int) {
+    let mut frames = [std::ptr::null_mut::<c_void>(); MAX_FRAMES];
+    // SAFETY: the buffer holds MAX_FRAMES entries; the unwinder was loaded
+    // by `prepare_stack`.
+    let n = unsafe { backtrace(frames.as_mut_ptr(), MAX_FRAMES as c_int) }.max(0) as usize;
+    for (slot, frame) in FRAMES.iter().zip(&frames[..n]) {
+        slot.store(*frame as usize, Ordering::Relaxed);
+    }
+    COUNT.store(n, Ordering::Relaxed);
+    DONE.store(true, Ordering::Release);
+}
+
+/// The thread's return addresses, innermost first: a real-time signal makes
+/// the thread run `backtrace(3)` in a handler (installed now, only for the
+/// capture), and this thread waits for it.
 pub fn capture_stack(thread: &Thread, out: &mut [usize]) -> usize {
-    let _ = (thread, out);
-    todo!()
+    let signal = libc::SIGRTMIN() + 3;
+    DONE.store(false, Ordering::Release);
+    // SAFETY: a plain handler for a real-time signal OBS does not use; the
+    // target is a live thread of this process.
+    unsafe {
+        let mut action: libc::sigaction = std::mem::zeroed();
+        action.sa_sigaction = on_signal as extern "C" fn(c_int) as usize;
+        action.sa_flags = libc::SA_RESTART;
+        libc::sigemptyset(&mut action.sa_mask);
+        if libc::sigaction(signal, &action, std::ptr::null_mut()) != 0 {
+            return 0;
+        }
+        if libc::pthread_kill(thread.id, signal) != 0 {
+            return 0;
+        }
+    }
+    let start = Instant::now();
+    while !DONE.load(Ordering::Acquire) {
+        if start.elapsed() > WAIT {
+            return 0;
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let n = COUNT.load(Ordering::Relaxed);
+    let frames = FRAMES.iter().take(n).skip(SKIP);
+    let mut taken = 0;
+    for (slot, frame) in out.iter_mut().zip(frames) {
+        *slot = frame.load(Ordering::Relaxed);
+        taken += 1;
+    }
+    taken
 }

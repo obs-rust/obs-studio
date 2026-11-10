@@ -12,7 +12,7 @@ cfg_select! {
     target_os = "linux" => {
         #[allow(unsafe_code)] // _exit(2)
         mod unix;
-        #[allow(unsafe_code)] // dl_iterate_phdr(3)
+        #[allow(unsafe_code)] // dl_iterate_phdr(3), sigaction(2), pthread_kill(3), backtrace(3)
         mod linux;
         pub use unix::terminate;
         pub use linux::{
@@ -23,7 +23,7 @@ cfg_select! {
     target_os = "macos" => {
         #[allow(unsafe_code)] // _exit(2)
         mod unix;
-        #[allow(unsafe_code)] // dyld image list, Mach-O load commands
+        #[allow(unsafe_code)] // dyld image list, Mach-O load commands, thread_get_state
         mod macos;
         pub use unix::terminate;
         pub use macos::{
