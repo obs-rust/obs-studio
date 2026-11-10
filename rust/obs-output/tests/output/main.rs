@@ -195,8 +195,9 @@ mod output_connect_time_parity;
 mod output_frames_dropped;
 mod output_frames_dropped_parity;
 
-mod output_video_encoder_getter;
-mod output_video_encoder_getter_parity;
+mod output_properties;
+
+mod output_properties_parity;
 
 mod output_settings;
 
@@ -204,3 +205,6 @@ mod output_settings_parity;
 
 mod output_mixer_setters;
 mod output_mixer_setters_parity;
+
+mod output_video_encoder_getter;
+mod output_video_encoder_getter_parity;
