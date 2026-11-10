@@ -54,7 +54,7 @@
 #include "libobs/obs-output-total-frames-fields.c.h"
 #include "libobs/obs-output-video-encoder-getter-fields.c.h"
 #include "libobs/obs-output.c.h"
-#include "libobs/obs-service-context-getters.c.h"
+#include "libobs/obs-service-context-getter-fields.c.h"
 #include "libobs/obs-service-state-adapter.c.h"
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"

@@ -108,6 +108,7 @@ mod raw_audio_trim;
 mod raw_audio_trim_parity;
 mod service;
 mod service_context_getters;
+mod service_context_getters_parity;
 mod service_lifecycle;
 mod service_lifecycle_parity;
 mod service_module_lookup;
