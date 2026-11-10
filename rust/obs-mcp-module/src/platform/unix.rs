@@ -254,9 +254,9 @@ impl obs_mcp::backend::AttachedFrontend for Frontend {
         // SAFETY: frontend start/stop use queued Qt invocations from this worker;
         // active getters read atomics. State/library outlive all worker calls.
         unsafe {
-            if active() != request.active {
-                command();
-            }
+            // The frontend checks idempotency on the UI thread. Do not skip a
+            // stop based on a stale inactive sample while a start is queued.
+            command();
             Ok(obs_mcp::tools::outputs::ActiveOutput { active: active() })
         }
     }
