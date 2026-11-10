@@ -223,16 +223,22 @@ def replay(target: list[str]) -> int | str:
     return resolved
 
 
-# Optional local check run on the rebased head before arming, e.g.
-# "uv run --no-project ci/windows_link_check.py". Branch-only work published
+# Checks run on the rebased head before arming. The unity build-group check is
+# always on: it needs no toolchain, takes seconds, and catches the resolver
+# filing a merged sibling's file into the wrong group (#4588 after #4585, which
+# broke every Tier 2 job). AI_REBASE_PREFLIGHT adds a heavier local check, e.g.
+# "uv run --no-project ci/windows_link_check.py": branch-only work published
 # after the 2026-11-09 backlog failed the Windows COFF link about one time in
-# three; checking here keeps those PRs out of the queue instead of spending a
-# hosted run to find out.
-PREFLIGHT = os.environ.get("AI_REBASE_PREFLIGHT", "")
+# three, and checking here keeps those PRs out of the queue instead of spending
+# a hosted run to find out.
+PREFLIGHT = " && ".join(filter(None, ["uv run --no-project ci/test_build_groups.py",
+                                      os.environ.get("AI_REBASE_PREFLIGHT", "")]))
 PREFLIGHT_ERROR = re.compile(
     r"undefined symbol|unresolved external|error(\[E\d+\])?: |error LNK"
     # soldr refuses while another build (or a stale lock) holds the target dir.
     r"|refused to modify .* while build lock"
+    # ci/test_build_groups.py names the offending file in its assertion.
+    r"|must include exactly its group|First extra element \d+:"
 )
 
 
