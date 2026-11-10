@@ -1,5 +1,16 @@
 /* Original serialization orchestration, with isolated, reference-counted source
- * collaborators. obs_data is the real implementation used by the category. */
+ * collaborators. Keep data calls in the C oracle too: MSVC may select this
+ * archive member in obs-util's harness, which does not link Rust obs-data. */
+#define obs_data_create oracle_obs_data_create
+#define obs_data_addref oracle_obs_data_addref
+#define obs_data_release oracle_obs_data_release
+#define obs_data_set_string oracle_obs_data_set_string
+#define obs_data_set_int oracle_obs_data_set_int
+#define obs_data_set_obj oracle_obs_data_set_obj
+#define obs_data_get_string oracle_obs_data_get_string
+#define obs_data_get_int oracle_obs_data_get_int
+#define obs_data_get_obj oracle_obs_data_get_obj
+#define obs_data_has_user_value oracle_obs_data_has_user_value
 #define obs_sceneitem_transition_load oracle_obs_sceneitem_transition_load
 #define obs_sceneitem_transition_save oracle_obs_sceneitem_transition_save
 #define obs_source_create_private oracle_sits_create
@@ -145,3 +156,14 @@ void oracle_sits_run(int64_t duration, bool show, bool has_id, bool initial_show
 	obs_data_release(data);
 	obs_data_release(settings);
 }
+
+#undef obs_data_create
+#undef obs_data_addref
+#undef obs_data_release
+#undef obs_data_set_string
+#undef obs_data_set_int
+#undef obs_data_set_obj
+#undef obs_data_get_string
+#undef obs_data_get_int
+#undef obs_data_get_obj
+#undef obs_data_has_user_value
