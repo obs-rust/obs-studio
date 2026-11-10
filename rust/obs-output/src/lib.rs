@@ -172,6 +172,7 @@ pub mod protocols;
 pub mod raw_audio;
 pub mod raw_audio_trim;
 pub mod service;
+pub mod service_context_getters;
 pub mod service_module_lookup;
 pub mod service_state;
 pub mod service_weak_acquire;
