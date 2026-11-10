@@ -54,6 +54,8 @@ mod module_failure_info;
 mod module_failure_info_parity;
 mod module_init;
 mod module_init_parity;
+mod module_lists;
+mod module_lists_parity;
 mod module_load_rules;
 mod module_load_rules_parity;
 mod module_load_rules_skip;
