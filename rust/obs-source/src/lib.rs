@@ -178,6 +178,7 @@ pub mod deinterlace_pacing;
 pub mod deinterlace_select;
 pub mod draw_plan;
 pub mod draw_technique;
+pub mod enabled_setter;
 pub mod filter_count;
 pub mod filter_relationship_getters;
 pub mod frame_copy;
