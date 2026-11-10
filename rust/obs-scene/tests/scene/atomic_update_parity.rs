@@ -1,4 +1,5 @@
 //! Exact traces against the unchanged extracted C body, with no exclusions.
+use core::ffi::c_void;
 use obs_scene::atomic_update::{Scene, update};
 use proptest::prelude::*;
 use std::cell::{Cell, RefCell};
@@ -6,6 +7,17 @@ use std::rc::Rc;
 
 unsafe extern "C" {
     fn oracle_scene_atomic_trace(bits: u32, refs: u32, data: u64, out: *mut u64);
+    fn oracle_scene_atomic_trace_with(
+        bits: u32,
+        refs: u32,
+        data: u64,
+        out: *mut u64,
+        update: unsafe extern "C" fn(
+            *mut c_void,
+            Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
+            *mut c_void,
+        ),
+    );
 }
 struct State {
     refs: Cell<u64>,
@@ -62,6 +74,19 @@ fn check(bits: u32, refs: u32, data: u64) {
     let mut oracle = [0_u64; 16];
     // SAFETY: C owns its fixture and writes at most 14 values including length.
     unsafe { oracle_scene_atomic_trace(bits, refs, data, oracle.as_mut_ptr()) };
+    let mut shim = [0_u64; 16];
+    // SAFETY: the oracle owns the instrumented scene and callback for the whole
+    // call; both implementations use its matching reference/lock boundary.
+    unsafe {
+        oracle_scene_atomic_trace_with(
+            bits,
+            refs,
+            data,
+            shim.as_mut_ptr(),
+            obs_scene::ffi::atomic_update::obs_scene_atomic_update,
+        );
+    }
+    assert_eq!(shim, oracle, "ABI shim: bits={bits} refs={refs}");
     let count = usize::try_from(oracle[0]).unwrap();
     assert_eq!(
         &*state.trace.borrow(),
