@@ -30,4 +30,5 @@ mod control;
 
 mod waiting;
 
+mod client;
 mod transport;

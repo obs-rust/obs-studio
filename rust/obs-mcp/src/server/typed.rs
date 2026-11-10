@@ -51,7 +51,6 @@ pub enum ErrorCategory {
 }
 /// A domain failure, distinct from a JSON-RPC fault.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
 pub struct ToolError {
     /// obs-websocket v5 RequestStatus code.
     pub code: u16,

@@ -44,6 +44,18 @@ impl Fake {
 }
 
 impl SourceBackend for Fake {
+    fn remove_source(
+        &self,
+        request: obs_mcp::tools::sources::RemoveInput,
+    ) -> Result<obs_mcp::tools::sources::NameOutput, obs_mcp::server::ToolError> {
+        if !self.has(&request.name) {
+            return Err(obs_mcp::server::ToolError::not_found("source absent"));
+        }
+        self.sources
+            .borrow_mut()
+            .retain(|(source, _)| source.name != request.name);
+        Ok(obs_mcp::tools::sources::NameOutput { name: request.name })
+    }
     fn sources(&self) -> Vec<SourceInfo> {
         self.sources
             .borrow()
@@ -170,7 +182,7 @@ fn with_source(name: &str) -> (Rc<Fake>, Server) {
 }
 
 #[test]
-fn lists_seven_tools_with_object_schemas() {
+fn lists_source_tools_with_object_schemas() {
     let mut s = server(&Rc::new(Fake::default()));
     let r = rpc(&mut s, "tools/list", &json!({}));
     let tools = r["result"]["tools"].as_array().unwrap();
@@ -184,6 +196,7 @@ fn lists_seven_tools_with_object_schemas() {
             "scene_item_set_visible",
             "scene_items_list",
             "source_create",
+            "source_remove",
             "source_set_settings",
             "sources_list"
         ]
@@ -218,6 +231,26 @@ fn lists_seven_tools_with_object_schemas() {
         json!(["x", "y"])
     );
     assert_eq!(xf["rotation"]["type"], json!(["number", "null"]));
+}
+
+#[test]
+fn probe_source_can_be_removed_through_the_typed_wire_call() {
+    let fake = Rc::new(Fake::default());
+    let mut server = server(&fake);
+    assert!(
+        !call(
+            &mut server,
+            "source_create",
+            &json!({"name":"probe","kind":"color_source","settings":{}})
+        )
+        .0
+    );
+    assert_eq!(
+        call(&mut server, "source_remove", &json!({"name":"probe"})),
+        (false, json!({"name":"probe"}))
+    );
+    assert!(fake.sources.borrow().is_empty());
+    assert!(call(&mut server, "source_remove", &json!({"name":"probe"})).0);
 }
 
 #[test]
