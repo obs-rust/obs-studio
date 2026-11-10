@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+/* The C baseline must not depend on the Rust mip planner under test. */
+#define gs_texture_mip_plan oracle_gs_texture_mip_plan
 #include "graphics/graphics-internal.h"
 #include "graphics/graphics-sprite.h"
 #include "util/base.h"
@@ -90,6 +92,7 @@ static void creator_blog(int level, const char *format, ...)
 #undef gs_cubetexture_create
 #undef gs_texture_create
 #undef blog
+#undef gs_texture_mip_plan
 
 void oracle_texture_creators_reset(bool present, bool fail)
 {
