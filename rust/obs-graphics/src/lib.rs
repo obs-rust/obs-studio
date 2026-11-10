@@ -36,6 +36,7 @@ use obs_c_oracle as _; // links the test bmalloc/bfree (oracle/test_bmem.c)
 
 pub mod axisang;
 pub mod bounds;
+pub mod cubetexture_access;
 pub mod effect_destroy;
 pub mod effect_lookups;
 pub mod effect_param_types;

@@ -13,6 +13,7 @@
 #include "libobs/obs-canvas-video-info-fields.c.h"
 #include "libobs/obs-canvas.c.h"
 #include "libobs/obs-display-seam.c.h"
+#include "libobs/obs-cubetexture-access-fields.c.h"
 #include "libobs/obs-display-size-fields.c.h"
 #include "libobs/obs-object-query-fields.c.h"
 #include "libobs/obs-object-validity-fields.c.h"

@@ -1,5 +1,7 @@
 //! obs-graphics integration tests: rendering helpers over the graphics subsystem.
 
+mod cubetexture_access;
+mod cubetexture_access_parity;
 mod gif;
 mod gif_blocks;
 mod gif_blocks_parity;
