@@ -19,6 +19,19 @@ pub trait Host<S> {
     fn debug(&mut self, function: &'static str, reason: &'static str);
     fn dispatch(&mut self, operation: Operation, texture: S) -> u32;
 }
-pub fn access<S>(_host: &mut impl Host<S>, _texture: Option<S>, _operation: Operation) -> u32 {
-    todo!("cube texture access port")
+pub fn access<S>(host: &mut impl Host<S>, texture: Option<S>, operation: Operation) -> u32 {
+    if !host.has_context() {
+        host.debug(
+            operation.function(),
+            "called while not in a graphics context",
+        );
+        return 0;
+    }
+    let Some(texture) = texture else {
+        if operation != Operation::Destroy {
+            host.debug(operation.function(), "Null 'cubetex' parameter");
+        }
+        return 0;
+    };
+    host.dispatch(operation, texture)
 }

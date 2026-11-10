@@ -14,7 +14,6 @@
 #include "libobs/graphics/shader-parser.c.h"
 #include "libobs/graphics/state-blend-entrypoints.c.h"
 #include "libobs/graphics/texture-creators.c.h"
-#include "libobs/graphics/texture-cube-access.c.h"
 #include "libobs/graphics/timer-dispatch.c.h"
 #include "libobs/graphics/timer-range-dispatch.c.h"
 #include "libobs/graphics/vertexbuffer-access.c.h"
