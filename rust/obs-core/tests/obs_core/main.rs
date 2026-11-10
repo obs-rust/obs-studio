@@ -13,6 +13,8 @@ mod audio_mix;
 mod audio_mix_parity;
 mod audio_render;
 mod audio_render_parity;
+mod base_effect;
+mod base_effect_parity;
 mod canvas_channel_getter;
 mod canvas_channel_getter_parity;
 mod canvas_draw;
