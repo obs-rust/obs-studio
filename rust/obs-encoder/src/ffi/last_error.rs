@@ -45,7 +45,11 @@ impl LockedSlot {
         Self {
             encoder,
             slot,
-            owned: (!pointer.is_null()).then_some(Message(pointer)),
+            owned: if pointer.is_null() {
+                None
+            } else {
+                Some(Message(pointer))
+            },
         }
     }
 }

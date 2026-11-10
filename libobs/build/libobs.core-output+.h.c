@@ -10,7 +10,6 @@
 #include "libobs/obs-encoder-counter-fields.c.h"
 #include "libobs/obs-encoder-dimensions-fields.c.h"
 #include "libobs/obs-encoder-error-ownership-fields.c.h"
-#include "libobs/obs-encoder-error-ownership.c.h"
 #include "libobs/obs-encoder-frame-rate-divisor-fields.c.h"
 #include "libobs/obs-encoder-gpu-scaling-getters-fields.c.h"
 #include "libobs/obs-encoder-group-lifecycle.c.h"

@@ -6,12 +6,11 @@ pub fn replace<T>(
     message: Option<&[u8]>,
     duplicate: impl FnOnce(&[u8]) -> T,
 ) {
-    let _ = (slot, message, duplicate);
-    todo!()
+    *slot = None;
+    *slot = message.map(duplicate);
 }
 
 /// Return an independent owned copy, preserving an absent message.
 pub fn duplicate<T, U>(slot: Option<&T>, copy: impl FnOnce(&T) -> U) -> Option<U> {
-    let _ = (slot, copy);
-    todo!()
+    slot.map(copy)
 }

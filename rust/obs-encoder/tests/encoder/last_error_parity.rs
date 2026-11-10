@@ -170,14 +170,22 @@ fn test_encoder_error_ownership_locking() {
 
 #[test]
 fn owned_duplicates_survive_replacement() {
-    if !super::isolated(concat!(module_path!(), "::owned_duplicates_survive_replacement")) {
+    if !super::isolated(concat!(
+        module_path!(),
+        "::owned_duplicates_survive_replacement"
+    )) {
         return;
     }
     // SAFETY: isolated process owns allocation counters and live encoder fixtures;
     // all returned bmem allocations are released exactly once.
     unsafe {
         for (set, dup) in [
-            (oracle_obs_encoder_set_last_error as unsafe extern "C" fn(*mut c_void, *const c_char), oracle_obs_encoder_dup_last_error as unsafe extern "C" fn(*mut c_void) -> *mut c_char),
+            (
+                oracle_obs_encoder_set_last_error
+                    as unsafe extern "C" fn(*mut c_void, *const c_char),
+                oracle_obs_encoder_dup_last_error
+                    as unsafe extern "C" fn(*mut c_void) -> *mut c_char,
+            ),
             (obs_encoder_set_last_error, obs_encoder_dup_last_error),
         ] {
             let baseline = obs_util::ffi::bmem::bnum_allocs();

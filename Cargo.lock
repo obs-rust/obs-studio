@@ -435,6 +435,7 @@ dependencies = [
  "obs-codec",
  "obs-core",
  "obs-data",
+ "obs-encoder",
  "obs-graphics",
  "obs-hotkey",
  "obs-media-io",
