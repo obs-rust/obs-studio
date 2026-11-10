@@ -228,3 +228,5 @@ mod platform;
 
 #[allow(unsafe_code)]
 pub mod ffi;
+
+pub mod type_id_getters;
