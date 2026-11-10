@@ -639,6 +639,7 @@ fn main() {
         "stagesurface-getters",
         "texture-planar-creators",
         "texture-metadata",
+        "texture-cube-access",
         "voltexture-metadata",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
