@@ -4,7 +4,6 @@
 
 #include "libobs/graphics/effect-parser-lifecycle-adapter.c.h"
 #include "libobs/graphics/effect-parser.c.h"
-#include "libobs/graphics/graphics-immediate-scalars.c.h"
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics.c.h"
 #include "libobs/graphics/graphics_effect_file.c.h"
@@ -12,7 +11,6 @@
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/shader-file.c.h"
 #include "libobs/graphics/shader-parser.c.h"
-#include "libobs/graphics/stagesurface-getters.c.h"
 #include "libobs/graphics/state-blend-entrypoints.c.h"
 #include "libobs/graphics/texture-creators.c.h"
 #include "libobs/graphics/texture-planar-creators.c.h"

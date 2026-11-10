@@ -624,8 +624,10 @@ fn main() {
     for stem in [
         "effect-parser-lifecycle",
         "effect-parser-lifecycle-adapter",
+        "graphics-immediate-scalars",
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
+        "stagesurface-getters",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

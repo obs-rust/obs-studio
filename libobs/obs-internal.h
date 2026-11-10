@@ -1118,6 +1118,8 @@ struct obs_weak_canvas {
 	struct obs_canvas *canvas;
 };
 
+extern obs_weak_canvas_t *obs_canvas_ref_control(const obs_canvas_t *canvas);
+
 struct obs_canvas {
 	struct obs_context_data context;
 
@@ -1477,6 +1479,10 @@ struct obs_source_boolean_query_fields {
 	const bool *hidden;
 };
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
+
+/* Enabled setter adapters: caller rejects NULL and retains the source lifetime. */
+bool *obs_source_enabled_setter_field(obs_source_t *source);
+signal_handler_t *obs_source_enabled_setter_signals(obs_source_t *source);
 
 /* Borrowed procedure-handler address. Caller rejects NULL before access. */
 /* Read-only count address; source lifetime and synchronization stay with C. */
@@ -1950,6 +1956,9 @@ struct obs_output_congestion_fields {
 };
 extern struct obs_output_congestion_fields obs_output_congestion_fields(const obs_output_t *output);
 
+/* Private writable error slot; callers validate output before borrowing it. */
+extern char **obs_output_last_error_fields(obs_output_t *output);
+
 /* Borrowed atomic C long address; NULL output produces a NULL field. */
 struct obs_output_total_frames_fields {
 	const volatile long *frames;
@@ -2277,6 +2286,16 @@ struct obs_encoder_last_error_fields {
 	char *const *message;
 };
 extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+/* Mutable ROI fields; callbacks lock the real shared ROI mutex. Not public ABI. */
+struct obs_encoder_clear_roi_fields {
+	size_t *count;
+	uint32_t *increment;
+	void *mutex;
+	void (*lock)(void *mutex);
+	void (*unlock)(void *mutex);
+};
+struct obs_encoder_clear_roi_fields obs_encoder_clear_roi_fields(obs_encoder_t *encoder);
+
 /* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
 struct obs_encoder_roi_state_fields {
 	const size_t *count;

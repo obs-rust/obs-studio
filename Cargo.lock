@@ -753,6 +753,9 @@ dependencies = [
 [[package]]
 name = "obs-source"
 version = "0.1.0"
+dependencies = [
+ "obs-callback",
+]
 
 [[package]]
 name = "obs-source-seam"

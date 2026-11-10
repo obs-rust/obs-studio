@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 void obs_output_set_last_error(obs_output_t *output, const char *message)
 {

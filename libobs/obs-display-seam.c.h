@@ -20,6 +20,11 @@
 /* Private adapter, not a new public API (obs-display-seam.h). Each body is
  * copied from the line of obs-display.c named beside it. */
 
+/* The clear flags obs-canvas-draw.h copies. */
+_Static_assert(OBS_DISPLAY_CLEAR_COLOR == GS_CLEAR_COLOR, "GS_CLEAR_COLOR");
+_Static_assert(OBS_DISPLAY_CLEAR_DEPTH == GS_CLEAR_DEPTH, "GS_CLEAR_DEPTH");
+_Static_assert(OBS_DISPLAY_CLEAR_STENCIL == GS_CLEAR_STENCIL, "GS_CLEAR_STENCIL");
+
 /* ------------------------------------------------------------------------- */
 /* The two mutexes */
 
@@ -266,4 +271,25 @@ graphics_t *obs_display_seam_get_graphics(void)
 gs_effect_t *obs_display_seam_get_solid_effect(void)
 {
 	return obs->video.solid_effect;
+}
+
+/* ------------------------------------------------------------------------- */
+/* The allocation and the graphics data */
+
+/* obs_display_create(): bzalloc(sizeof(struct obs_display)) */
+size_t obs_display_seam_size(void)
+{
+	return sizeof(struct obs_display);
+}
+
+/* obs_display_init(): graphics_data->cx */
+uint32_t obs_display_seam_get_init_cx(const struct gs_init_data *graphics_data)
+{
+	return graphics_data->cx;
+}
+
+/* obs_display_init(): graphics_data->cy */
+uint32_t obs_display_seam_get_init_cy(const struct gs_init_data *graphics_data)
+{
+	return graphics_data->cy;
 }
