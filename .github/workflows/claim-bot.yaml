@@ -26,7 +26,36 @@ concurrency:
 jobs:
   claim:
     # Not in forks: a fork's schedule fails there and mails its owner (#1258).
-    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    # Comments: a runner is allocated before claim_bot.py reads the body, so
+    # every progress comment cost one (55% of 155 queued runs on 2026-11-09,
+    # #4460). This prefilter admits a superset of claims.handles(): every
+    # command word anywhere (contains() ignores case), the handoff verbs at the
+    # start, any body starting with whitespace, and the claim-blocked label.
+    # ci/test_pr_claim_events.py checks it against those patterns.
+    if: >-
+      (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio')
+      && (github.event_name != 'issue_comment'
+      || contains(github.event.issue.labels.*.name, 'claim-blocked')
+      || contains(github.event.comment.body, 'claiming')
+      || contains(github.event.comment.body, '/ready')
+      || contains(github.event.comment.body, '/investigate')
+      || contains(github.event.comment.body, 'releasing')
+      || contains(github.event.comment.body, 'taking over')
+      || contains(github.event.comment.body, '/reassign')
+      || contains(github.event.comment.body, 'blocked')
+      || contains(github.event.comment.body, 'decision')
+      || contains(github.event.comment.body, 'decided')
+      || contains(github.event.comment.body, 'handoff')
+      || contains(github.event.comment.body, 'yours')
+      || startsWith(github.event.comment.body, 'hand')
+      || startsWith(github.event.comment.body, 'pass')
+      || startsWith(github.event.comment.body, 'giv')
+      || startsWith(github.event.comment.body, 'transfer')
+      || startsWith(github.event.comment.body, 'mov')
+      || startsWith(github.event.comment.body, ' ')
+      || startsWith(github.event.comment.body, fromJSON('"\t"'))
+      || startsWith(github.event.comment.body, fromJSON('"\r"'))
+      || startsWith(github.event.comment.body, fromJSON('"\n"')))
     # The claim bot assigns the issue (issues: write) and reads its pull request
     # (pull-requests: read); both scopes sit on this job, the file's only
     # consumer, and are listed in ci.toml's [allow].permissions (SEC-002).
