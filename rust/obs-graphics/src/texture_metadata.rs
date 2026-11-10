@@ -20,6 +20,16 @@ pub trait Host<S> {
     fn dispatch(&mut self, property: Property, texture: S) -> u32;
 }
 pub fn metadata<S>(host: &mut impl Host<S>, texture: Option<S>, property: Property) -> u32 {
-    let _ = (host, texture, property);
-    todo!("texture metadata port #4515")
+    if !host.has_context() {
+        host.debug(
+            property.function(),
+            "called while not in a graphics context",
+        );
+        return 0;
+    }
+    let Some(texture) = texture else {
+        host.debug(property.function(), "Null 'tex' parameter");
+        return 0;
+    };
+    host.dispatch(property, texture)
 }
