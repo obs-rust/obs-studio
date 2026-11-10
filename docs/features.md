@@ -3083,3 +3083,5 @@ area.
 - **Typed control client and probe** (#4457): fluent Rust socket client and
   `ci/vcam_av_sync.py --transport mcp` with automatic fallback when the websocket
   service is absent, bounded capture shutdown, typed waits and probe cleanup.
+
+- MCP: `./mcp` builds and launches an isolated libobs-enabled control server, automatically provisioning the native SDK on NixOS (#4507).
