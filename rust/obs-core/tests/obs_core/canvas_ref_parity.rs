@@ -81,7 +81,7 @@ fn characterized_edges_and_final_free() {
 proptest! {
     #![proptest_config(ProptestConfig { cases: obs_c_oracle::parity::cases(256), failure_persistence: None, ..ProptestConfig::default() })]
     #[test]
-    fn helpers_match_c(operation in 0u32..5, strong in -2i32..1000, weak in 1i32..1000, null in any::<bool>()) {
-        check(operation, strong.into(), weak.into(), null);
+    fn helpers_match_c(operation in 0u32..5, strong in -2 as c_long..1000, weak in 1 as c_long..1000, null in any::<bool>()) {
+        check(operation, strong, weak, null);
     }
 }
