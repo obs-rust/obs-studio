@@ -77,6 +77,12 @@ codegen-units = 256
 [profile.release.package.obs-scene]
 codegen-units = 256
 
+# The standalone render-size fixture links only the private render-size bridge;
+# a shared optimized member would also pull the audio callback tree and its
+# audio-seam adapter, which needs libobs's unexported core global (#4285).
+[profile.release.package.obs-core]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]
