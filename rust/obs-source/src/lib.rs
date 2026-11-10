@@ -231,3 +231,5 @@ mod platform;
 pub mod ffi;
 
 pub mod type_id_getters;
+
+pub mod media_getters;

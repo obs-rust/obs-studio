@@ -52,3 +52,5 @@ pub mod source_volume;
 pub mod source_volume_mul;
 
 pub mod source_type_id_getters;
+
+pub mod source_media_getters;

@@ -59,7 +59,7 @@
 #include "libobs/obs-source-identity-getter-fields.c.h"
 #include "libobs/obs-source-info-lookup.c.h"
 #include "libobs/obs-source-interaction.c.h"
-#include "libobs/obs-source-media-getters.c.h"
+#include "libobs/obs-source-media-getter-fields.c.h"
 #include "libobs/obs-source-name-fields.c.h"
 #include "libobs/obs-source-properties.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
