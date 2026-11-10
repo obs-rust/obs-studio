@@ -419,19 +419,6 @@ void obs_find_modules(obs_find_module_callback_t callback, void *param)
 	obs_find_modules2((obs_find_module_callback2_t)callback, param);
 }
 
-void obs_enum_modules(obs_enum_module_callback_t callback, void *param)
-{
-	struct obs_module *module;
-	if (!obs)
-		return;
-
-	module = obs->first_module;
-	while (module) {
-		callback(param, module);
-		module = module->next;
-	}
-}
-
 void free_module(struct obs_module *mod)
 {
 	if (!mod)
