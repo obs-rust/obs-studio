@@ -3085,3 +3085,5 @@ area.
   service is absent, bounded capture shutdown, typed waits and probe cleanup.
 
 - MCP: `./mcp` builds and launches an isolated libobs-enabled control server, automatically provisioning the native SDK on NixOS (#4507).
+
+- MCP: `./mcp` builds and locates EGL graphics, Virtual Camera/virtual mic, FFmpeg media/AAC and x264 runtime modules automatically (#4521).

@@ -5486,3 +5486,6 @@ mod canonical_scene_source_getters_is_registered;
 mod canonical_scene_item_group_scene_is_registered;
 #[path = "native/registration/canonical_scene_item_visible_is_registered.rs"]
 mod canonical_scene_item_visible_is_registered;
+
+#[path = "native/mcp_runtime.rs"]
+mod mcp_runtime;

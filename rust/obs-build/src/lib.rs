@@ -13,6 +13,7 @@ pub mod frontend;
 pub mod graphics;
 mod groups;
 pub mod libobs;
+pub mod mcp_runtime;
 mod pch;
 mod platform;
 pub mod plugins;
