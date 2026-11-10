@@ -2,7 +2,8 @@
 
 /* Defined in obs-source.c.h in this unity group. */
 static inline bool data_valid(const struct obs_source *source, const char *f);
-static inline enum obs_source_media_admit media_admit(obs_source_t *source, bool valid, enum obs_source_media_call call);
+static inline enum obs_source_media_admit media_admit(obs_source_t *source, bool valid,
+						      enum obs_source_media_call call);
 
 int64_t obs_source_media_get_duration(obs_source_t *source)
 {
