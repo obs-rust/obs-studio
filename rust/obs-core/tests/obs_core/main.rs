@@ -27,6 +27,8 @@ mod canvas_rules;
 mod canvas_rules_parity;
 mod canvas_scene;
 mod canvas_scene_parity;
+mod canvas_set_name;
+mod canvas_set_name_parity;
 mod canvas_video_getter;
 mod canvas_video_getter_parity;
 mod canvas_video_info_getter;
