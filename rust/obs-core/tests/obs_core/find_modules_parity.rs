@@ -44,10 +44,12 @@ unsafe extern "C" {
     fn oracle_find_modules_hook(path: *mut dstr);
 }
 
+type ModuleRecord = (Vec<u8>, Vec<u8>, Vec<u8>, c_int);
+
 #[derive(Debug, Default, PartialEq, Eq)]
 struct Outcome {
     paths: Vec<(Vec<u8>, Vec<u8>, c_int)>,
-    modules: Vec<(Vec<u8>, Vec<u8>, Vec<u8>, c_int)>,
+    modules: Vec<ModuleRecord>,
     append: bool,
     null_callback: bool,
     legacy: bool,
