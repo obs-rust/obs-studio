@@ -168,6 +168,7 @@ pub mod output_reconnect;
 pub mod output_reconnect_settings;
 pub mod output_reconnecting;
 pub mod output_service_getter;
+pub mod output_set_media;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
