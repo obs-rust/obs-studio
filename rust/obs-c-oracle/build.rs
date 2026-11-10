@@ -667,6 +667,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-scene-lookup.c.h")),
     )
     .expect("write original scene lookup extract");
+    std::fs::write(
+        extract_dir.join("scene_item_audio_actions.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-scene-item-audio-actions.c.h")),
+    )
+    .expect("write original scene item audio actions extract");
     for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

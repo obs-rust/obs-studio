@@ -33,11 +33,12 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    clippy::todo,
     clippy::unimplemented,
     clippy::unreachable
 )]
 
-use crate::audio_actions::{Gains, ItemAction};
+use crate::audio_actions::{Gains, ItemAction, action_due};
 
 /// The fields and calls of one scene item that the item side uses, each the
 /// C's operation on the live item.
@@ -74,34 +75,50 @@ pub trait ItemAudio {
 /// `apply_scene_item_audio_actions()`: applies the item's queued actions
 /// that fall in the tick at `ts` (all of them when `ts` is 0) to its
 /// visibility and to `buf`, then drops one active reference per hide.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn apply_scene_item_audio_actions<I: ItemAudio + ?Sized>(
     item: &I,
     buf: Option<&mut Gains>,
     ts: u64,
     sample_rate: usize,
 ) {
-    let _ = (item, buf, ts, sample_rate);
-    todo!()
+    item.lock();
+    // Other threads read visible with no lock, so the core gets a copy.
+    let mut visible = item.visible();
+    let deref_count = item.apply_queue(&mut visible, ts, sample_rate, buf);
+    item.set_visible(visible);
+    item.unlock();
+
+    for _ in 0..deref_count {
+        if item.release_active_ref() {
+            item.remove_active_child();
+        }
+    }
 }
 
 /// `apply_scene_item_volume()`: when the first queued action is due in the
 /// tick at `ts`, applies the tick ([`apply_scene_item_audio_actions`]) and
 /// returns true; otherwise touches nothing and returns false.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn apply_scene_item_volume<I: ItemAudio + ?Sized>(
     item: &I,
     buf: Option<&mut Gains>,
     ts: u64,
     sample_rate: usize,
 ) -> bool {
-    let _ = (item, buf, ts, sample_rate);
-    todo!()
+    item.lock();
+    let action = item.first_action();
+    item.unlock();
+
+    if let Some(action) = action
+        && action_due(action.timestamp, ts, sample_rate as u64)
+    {
+        apply_scene_item_audio_actions(item, buf, ts, sample_rate);
+        return true;
+    }
+
+    false
 }
 
 /// `process_all_audio_actions()`: applies every queued action now.
-#[expect(clippy::todo, reason = "RED: the port follows")]
 pub fn process_all_audio_actions<I: ItemAudio + ?Sized>(item: &I, sample_rate: usize) {
-    let _ = (item, sample_rate);
-    todo!()
+    while apply_scene_item_volume(item, None, 0, sample_rate) {}
 }
