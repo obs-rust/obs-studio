@@ -2480,6 +2480,10 @@ area.
 
 ### Stability
 
+- **Loaded module log without a core.** An embedder, plugin or script that
+  calls obs_log_loaded_modules before obs_startup or after obs_shutdown no
+  longer crashes OBS; with no core it logs nothing. *All*, 2026-11-10. Issue
+  [#4465](https://github.com/obs-rust/obs-studio/issues/4465).
 - An embedder or plugin that leaves a scene alive no longer crashes shutdown
   when the scene still owns input sources or nested groups. *All*, pending
   merge. Issue [#3458](https://github.com/obs-rust/obs-studio/issues/3458), PR
