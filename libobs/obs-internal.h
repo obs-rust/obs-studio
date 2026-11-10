@@ -1956,6 +1956,9 @@ struct obs_output_congestion_fields {
 };
 extern struct obs_output_congestion_fields obs_output_congestion_fields(const obs_output_t *output);
 
+/* Private writable error slot; callers validate output before borrowing it. */
+extern char **obs_output_last_error_fields(obs_output_t *output);
+
 /* Borrowed atomic C long address; NULL output produces a NULL field. */
 struct obs_output_total_frames_fields {
 	const volatile long *frames;

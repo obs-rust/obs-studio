@@ -38,6 +38,7 @@ pub mod output_flags;
 pub mod output_handler_getters;
 pub mod output_identity;
 pub mod output_interleave;
+pub mod output_last_error;
 pub mod output_mixer_getters;
 pub mod output_pause;
 pub mod output_pause_queries;
