@@ -20,6 +20,11 @@ pub trait Host {
 }
 
 /// Return the newly created source's scene data, without acquiring another reference.
-pub fn create<H: Host>(_host: &mut H, _name: H::Name, _private: bool) -> H::Handle {
-    todo!("scene constructors Rust swap")
+pub fn create<H: Host>(host: &mut H, name: H::Name, private: bool) -> H::Handle {
+    let canvas = host.main_canvas();
+    if private {
+        host.private(canvas, b"scene\0", name)
+    } else {
+        host.public(canvas, b"scene\0", name)
+    }
 }
