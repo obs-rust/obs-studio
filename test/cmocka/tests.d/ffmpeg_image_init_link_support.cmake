@@ -11,13 +11,17 @@ function(_ffmpeg_image_init_link_support)
     WRITE "${_adapter}"
     "#include <errno.h>\n#include <inttypes.h>\n#include <string.h>\n#include \"util/base.h\"\n#include <libavcodec/avcodec.h>\n#include <libavformat/avformat.h>\n#include \"graphics/graphics.h\"\n#include \"graphics/graphics-ffmpeg-orient.h\"\n#include \"graphics/graphics-ffmpeg-init-private.h\"\n${_body}"
   )
+  # Keep this as a lazy archive member. Adding the object directly to every
+  # executable makes its image-size call pull unrelated Rust graphics members
+  # into pure source/scene/monitor fixtures, even when they never decode images.
+  add_library(ffmpeg_image_init_link_support STATIC "${_adapter}")
+  target_include_directories(ffmpeg_image_init_link_support PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
+  target_link_libraries(ffmpeg_image_init_link_support PRIVATE FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil)
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
   foreach(_target IN LISTS _targets)
     get_target_property(_links ${_target} LINK_LIBRARIES)
     if("libobs_rust-static" IN_LIST _links)
-      target_sources(${_target} PRIVATE "${_adapter}")
-      target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}/libobs")
-      target_link_libraries(${_target} PRIVATE FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil)
+      target_link_libraries(${_target} PRIVATE ffmpeg_image_init_link_support)
     endif()
   endforeach()
 endfunction()
