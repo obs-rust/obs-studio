@@ -11,6 +11,8 @@
 //! of the core and of each module: each entry (NULL against empty
 //! included), its size and its capacity, so a push that allocates
 //! differently shows too. The search paths' type is compared as well.
+//! Every comparison is byte for byte: the strings are any bytes but NUL,
+//! not text.
 //!
 //! The file lookups run on a directory of the test's own in the temporary
 //! directory, with data paths in it, past it and relative, and both sides
@@ -124,12 +126,12 @@ fn take(p: *mut c_char) -> Option<Vec<u8>> {
     Some(out)
 }
 
-fn take_log() -> String {
+fn take_log() -> Vec<u8> {
     let mut out = vec![0u8; 1 << 16];
     // SAFETY: `out` holds `out.len()` bytes.
     let n = unsafe { c::oracle_module_lists_take_log(out.as_mut_ptr().cast(), out.len()) };
     out.truncate(n);
-    String::from_utf8_lossy(&out).into_owned()
+    out
 }
 
 /// A module of the world.
@@ -171,7 +173,7 @@ enum Side {
 #[derive(Debug, PartialEq, Eq)]
 struct Outcome {
     result: Option<Vec<u8>>,
-    log: String,
+    log: Vec<u8>,
 }
 
 /// The world's modules in `core` (none with no core).
@@ -203,9 +205,9 @@ fn make_modules(world: &World, dir: &Dir, core: *mut c_void) -> Vec<*mut c_void>
 }
 
 /// Every list of `core` and `modules`, empty with no core.
-fn state(core: *mut c_void, modules: &[*mut c_void]) -> String {
+fn state(core: *mut c_void, modules: &[*mut c_void]) -> Vec<u8> {
     if core.is_null() {
-        return String::new();
+        return Vec::new();
     }
     let mut out = vec![0u8; 1 << 18];
     // SAFETY: the live core and modules; `out` holds `out.len()` bytes.
@@ -219,11 +221,11 @@ fn state(core: *mut c_void, modules: &[*mut c_void]) -> String {
         )
     };
     out.truncate(n);
-    String::from_utf8_lossy(&out).into_owned()
+    out
 }
 
 /// Runs `world` on `side`: the outcome of each call, then every list.
-fn run(world: &World, dir: &Dir, side: Side) -> (Vec<Outcome>, String) {
+fn run(world: &World, dir: &Dir, side: Side) -> (Vec<Outcome>, Vec<u8>) {
     // SAFETY: a fresh core of the oracle's, or none.
     let core = world.core.as_ref().map_or(core::ptr::null_mut(), |config| {
         let config = cstring(config);
@@ -469,7 +471,7 @@ fn log_with_no_core_logs_nothing() {
         take_log();
         rs::log_loaded_modules_with::<Oracle>();
     }
-    assert_eq!(take_log(), "");
+    assert!(take_log().is_empty());
 }
 
 /// Neither side reads a string argument the call ignores: an id with no
