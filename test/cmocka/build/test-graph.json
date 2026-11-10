@@ -2524,9 +2524,9 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2603,8 +2603,8 @@
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
         },
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2682,8 +2682,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2774,9 +2774,9 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2835,8 +2835,8 @@
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
         },
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2912,8 +2912,8 @@
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
         },
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2993,8 +2993,8 @@
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
         },
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4643,9 +4643,9 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4722,9 +4722,9 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4776,9 +4776,9 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4869,8 +4869,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -7584,9 +7584,9 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15430,8 +15430,8 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
