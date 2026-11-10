@@ -73,4 +73,6 @@ pub mod output_connect_time;
 
 pub mod output_frames_dropped;
 
+pub mod output_settings;
+
 pub mod output_video_encoder_getter;

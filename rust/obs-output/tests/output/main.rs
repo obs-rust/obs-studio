@@ -189,3 +189,7 @@ mod output_frames_dropped_parity;
 
 mod output_video_encoder_getter;
 mod output_video_encoder_getter_parity;
+
+mod output_settings;
+
+mod output_settings_parity;

@@ -49,7 +49,7 @@
 #include "libobs/obs-output-reconnecting-fields.c.h"
 #include "libobs/obs-output-service-getter-fields.c.h"
 #include "libobs/obs-output-set-media.c.h"
-#include "libobs/obs-output-settings.c.h"
+#include "libobs/obs-output-settings-fields.c.h"
 #include "libobs/obs-output-supported-codecs-fields.c.h"
 #include "libobs/obs-output-total-frames-fields.c.h"
 #include "libobs/obs-output-video-encoder-getter-fields.c.h"
