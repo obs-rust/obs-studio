@@ -4,7 +4,8 @@ use obs_output::output_video_encoder_getter::video_encoder;
 
 #[test]
 fn test_output_interleave_e2e_empty_zero_populated_one() {
-    let slots = [None, Some(17_u32), None, None, None, None];
+    let mut slots = [None; MAX_OUTPUT_VIDEO_ENCODERS];
+    slots[1] = Some(17_u32);
     assert_eq!(
         video_encoder(true, 0, |i| slots[i], |_| panic!("valid")),
         None

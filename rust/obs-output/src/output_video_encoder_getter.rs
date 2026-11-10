@@ -8,6 +8,12 @@ pub fn video_encoder<T: Default>(
     read: impl FnOnce(usize) -> T,
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (valid, idx, read, log);
-    todo!()
+    if !valid {
+        log(c"obs_output_get_video_encoder2");
+        return T::default();
+    }
+    if !slot_exists(SlotKind::Video, idx) {
+        return T::default();
+    }
+    read(idx)
 }
