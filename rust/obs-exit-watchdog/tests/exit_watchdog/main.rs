@@ -8,6 +8,9 @@ use std::time::{Duration, Instant};
 
 use obs_exit_watchdog::{EXIT_CODE, LINE_PREFIX, arm, line};
 
+#[path = "images.rs"]
+mod images;
+
 const MARKER: &str = "OBS_EXIT_WATCHDOG_CHILD";
 /// The log file the child gets, in the parent's temporary directory.
 const LOG: &str = "OBS_EXIT_WATCHDOG_LOG";

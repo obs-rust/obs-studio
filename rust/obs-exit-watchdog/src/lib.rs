@@ -23,6 +23,7 @@ use std::time::Duration;
 
 #[allow(unsafe_code)]
 pub mod ffi;
+pub mod images;
 mod platform;
 
 /// How long `exit()` may take after the frontend arms the watchdog.
