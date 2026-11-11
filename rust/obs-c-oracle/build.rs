@@ -659,6 +659,7 @@ fn main() {
         "blend-entrypoints-fields",
         "indexbuffer-create",
         "indexbuffer-create-fields",
+        "matrix-entrypoints-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
@@ -686,6 +687,14 @@ fn main() {
         ),
     )
     .expect("write original blend entry points");
+    std::fs::write(
+        extract_dir.join("state-matrix-entrypoints.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/state-matrix-entrypoints.c.h"),
+            "#include \"libobs/build/libobs-ported-matrix-entrypoints.pch.h\"",
+        ),
+    )
+    .expect("write original matrix entry points");
     std::fs::write(
         extract_dir.join("graphics_effect_file.inc"),
         extract_after_libobs_pch(&libobs.join("graphics/graphics_effect_file.c.h")),

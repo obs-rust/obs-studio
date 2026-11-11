@@ -1,19 +1,24 @@
 //! Tier 1 mirrors test/cmocka/test_matrix_entrypoints.c, with no FFI or unsafe
 //! code: the Mock supplies the context verbs straight from state_stacks.
-use obs_graphics::matrix_entrypoints::{self as entry, Context};
-use obs_graphics::state_stacks::{self, MatrixOp};
-use obs_graphics::matrix4::Matrix4;
-use obs_graphics::vec4::Vec4;
-use obs_graphics::vec3::Vec3;
-use obs_graphics::quat::Quat;
 use obs_graphics::axisang::AxisAng;
+use obs_graphics::matrix_entrypoints::{self as entry, Context};
+use obs_graphics::matrix4::Matrix4;
+use obs_graphics::quat::Quat;
+use obs_graphics::state_stacks::{self, MatrixOp};
+use obs_graphics::vec3::Vec3;
+use obs_graphics::vec4::Vec4;
 
 fn component(base: f32, i: usize) -> f32 {
     base + i as f32 * 0.25 - (i % 3) as f32
 }
 fn row(base: f32, n: usize) -> Vec4 {
     let i = n * 4;
-    Vec4::new(component(base, i), component(base, i + 1), component(base, i + 2), component(base, i + 3))
+    Vec4::new(
+        component(base, i),
+        component(base, i + 1),
+        component(base, i + 2),
+        component(base, i + 3),
+    )
 }
 fn matrix(base: f32) -> Matrix4 {
     Matrix4::new(row(base, 0), row(base, 1), row(base, 2), row(base, 3))
@@ -52,7 +57,10 @@ impl Context for Mock {
 }
 /// A graphics context starts with the identity matrix as its only stack entry.
 fn base() -> Mock {
-    let mut m = Mock { cur: 0, stack: Vec::<Matrix4>::new() };
+    let mut m = Mock {
+        cur: 0,
+        stack: Vec::<Matrix4>::new(),
+    };
     m.stack.push(state_stacks::identity());
     m
 }
@@ -72,7 +80,7 @@ fn test_matrix_entrypoints_no_context() {
     entry::translate3f::<Mock>(None, 1.0, 2.0, 3.0);
     entry::scale::<Mock>(None, Vec3::new(1.0, 1.0, 1.0));
     entry::scale3f::<Mock>(None, 1.0, 1.0, 1.0);
-    let mut m = base();
+    let m = base();
     assert_eq!(m.stack.len(), 1);
     assert_eq!(m.cur, 0);
 }

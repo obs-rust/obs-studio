@@ -31,6 +31,7 @@ pub mod lzw;
 pub mod math_extra;
 pub mod matrix3;
 pub mod matrix4;
+pub mod matrix_entrypoints;
 pub mod plane;
 pub mod quat;
 pub mod shader_file;

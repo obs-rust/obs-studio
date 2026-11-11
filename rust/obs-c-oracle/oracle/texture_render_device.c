@@ -228,17 +228,21 @@ void gs_projection_pop(void)
 	record("proj_pop");
 }
 
-void gs_matrix_push(void)
+/* The gs_matrix_* names are owned by the ported Rust entry points in
+ * obs-graphics (Refs #4575), which both this file's callers and the Rust
+ * shim link against; these recording stand-ins are kept under unique names
+ * only for reference. */
+void oracle_texrender_matrix_push(void)
 {
 	record("mat_push");
 }
 
-void gs_matrix_pop(void)
+void oracle_texrender_matrix_pop(void)
 {
 	record("mat_pop");
 }
 
-void gs_matrix_identity(void)
+void oracle_texrender_matrix_identity(void)
 {
 	record("mat_identity");
 }

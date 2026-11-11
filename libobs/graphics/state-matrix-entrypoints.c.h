@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-graphics.pch.h"
+#include "libobs/build/libobs-ported-matrix-entrypoints.pch.h"
 
 /* The matrix stack is in graphics-state-stacks.c. */
 
