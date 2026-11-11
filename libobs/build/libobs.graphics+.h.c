@@ -11,6 +11,7 @@
 #include "libobs/graphics/matrix-entrypoints.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/shader-parser.c.h"
+#include "libobs/graphics/state-depth-entrypoints.c.h"
 #include "libobs/obs-graphics-effect-file-fields.c.h"
 #include "libobs/obs-vertexbuffer-access-fields.c.h"
 #include "libobs/obs-vertexbuffer-destroy-fields.c.h"

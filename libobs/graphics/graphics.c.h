@@ -1496,16 +1496,6 @@ void gs_enable_blending(bool enable)
 	graphics->exports.device_enable_blending(graphics->device, enable);
 }
 
-void gs_enable_depth_test(bool enable)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_depth_test"))
-		return;
-
-	graphics->exports.device_enable_depth_test(graphics->device, enable);
-}
-
 void gs_enable_stencil_test(bool enable)
 {
 	graphics_t *graphics = thread_graphics;
@@ -1574,16 +1564,6 @@ void gs_blend_op(enum gs_blend_op_type op)
 
 	graphics->cur_blend_state.op = op;
 	graphics->exports.device_blend_op(graphics->device, graphics->cur_blend_state.op);
-}
-
-void gs_depth_function(enum gs_depth_test test)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_depth_function"))
-		return;
-
-	graphics->exports.device_depth_function(graphics->device, test);
 }
 
 void gs_stencil_function(enum gs_stencil_side side, enum gs_depth_test test)
