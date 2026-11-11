@@ -129,12 +129,6 @@ const struct obs_output_info *find_output(const char *id)
 	return NULL;
 }
 
-const char *obs_output_get_display_name(const char *id)
-{
-	const struct obs_output_info *info = find_output(id);
-	return (info != NULL) ? info->get_name(info->type_data) : NULL;
-}
-
 static const char *output_signals[] = {
 	"void start(ptr output)",
 	"void stop(ptr output, int code)",
@@ -652,12 +646,6 @@ void obs_output_force_stop(obs_output_t *output)
 		do_output_signal(output, "stopping");
 	}
 	obs_output_actual_stop(output, true, 0);
-}
-
-uint32_t obs_get_output_flags(const char *id)
-{
-	const struct obs_output_info *info = find_output(id);
-	return info ? info->flags : 0;
 }
 
 /* The flag and limits obs-output-pause.h copies. */
@@ -2402,18 +2390,6 @@ void obs_enum_output_types_with_protocol(const char *protocol, void *data, bool 
 				return;
 		}
 	}
-}
-
-const char *obs_get_output_supported_video_codecs(const char *id)
-{
-	const struct obs_output_info *info = find_output(id);
-	return info ? info->encoded_video_codecs : NULL;
-}
-
-const char *obs_get_output_supported_audio_codecs(const char *id)
-{
-	const struct obs_output_info *info = find_output(id);
-	return info ? info->encoded_audio_codecs : NULL;
 }
 
 /* File-local macros: keep them out of the next source of a unity build. */
