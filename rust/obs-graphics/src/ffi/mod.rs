@@ -32,6 +32,7 @@ pub mod matrix4;
 pub mod plane;
 pub mod quat;
 pub mod shader_file;
+pub mod shader_param_introspection;
 pub mod shader_param_names;
 pub mod shader_param_values;
 pub mod shader_parser;

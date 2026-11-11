@@ -30,6 +30,8 @@ mod linear_srgb;
 mod linear_srgb_parity;
 mod shader_file;
 mod shader_file_parity;
+mod shader_param_introspection;
+mod shader_param_introspection_parity;
 mod shader_param_names;
 mod shader_param_names_parity;
 mod shader_param_values;

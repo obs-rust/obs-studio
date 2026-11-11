@@ -70,7 +70,8 @@ void gs_shader_set_next_sampler(gs_sparam_t *param, gs_samplerstate_t *sampler)
 	passes_record("next_sampler %u %u", PASSES_TAG(param), PASSES_TAG(sampler));
 }
 
-void gs_shader_get_param_info(const gs_sparam_t *param, struct gs_shader_param_info *info)
+void oracle_passes_param_info(const gs_sparam_t *param, struct gs_shader_param_info *info);
+void oracle_passes_param_info(const gs_sparam_t *param, struct gs_shader_param_info *info)
 {
 	info->name = "p";
 	info->type = PASSES_TAG(param) >= 100 ? GS_SHADER_PARAM_TEXTURE : GS_SHADER_PARAM_FLOAT;
