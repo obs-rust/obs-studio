@@ -5,6 +5,7 @@ pub mod blend_entrypoints;
 pub mod bounds;
 pub mod cubetexture_access;
 pub mod effect_destroy;
+pub mod effect_file;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;

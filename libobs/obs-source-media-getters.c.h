@@ -1,9 +1,17 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Defined in obs-source.c.h in this unity group. */
-static inline bool data_valid(const struct obs_source *source, const char *f);
-static inline enum obs_source_media_admit media_admit(obs_source_t *source, bool valid,
-						      enum obs_source_media_call call);
+/* Original private helpers, retained for the standalone C reference/oracle. */
+static inline bool data_valid(const struct obs_source *source, const char *f)
+{
+	return obs_source_valid(source, f) && source->context.data;
+}
+static inline enum obs_source_media_admit media_admit(obs_source_t *source, bool valid, enum obs_source_media_call call)
+{
+	enum obs_source_media_admit admit = obs_source_media_admit(valid);
+	if (admit == OBS_SOURCE_MEDIA_ADMIT_READ_FLAGS)
+		admit = obs_source_media_admit_flags(call, source->info.output_flags);
+	return admit;
+}
 
 int64_t obs_source_media_get_duration(obs_source_t *source)
 {

@@ -114,3 +114,6 @@ mod volume_mul_parity;
 mod type_id_getters;
 
 mod type_id_getters_parity;
+
+mod media_getters;
+mod media_getters_parity;
