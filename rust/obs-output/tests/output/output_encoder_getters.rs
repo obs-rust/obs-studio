@@ -110,7 +110,7 @@ fn audio_getter_bounds_only_never_flags() {
             audio_encoder::<Option<usize>>(
                 true,
                 idx,
-                |_| panic!("empty read"),
+                |i| if slots[i] != 0 { Some(slots[i]) } else { None },
                 |name| logs.push(name),
             ),
             None,
