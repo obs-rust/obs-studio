@@ -362,3 +362,51 @@ proptest! {
         check(true, count, append, false, &suffix);
     }
 }
+
+unsafe extern "C" fn capture_host_module(param: *mut c_void, info: *const obs_module_info2) {
+    // SAFETY: the test owns the vector; discovery lends the info for this call.
+    unsafe {
+        let info = &*info;
+        (*param.cast::<Vec<ModuleRecord>>()).push((
+            bytes(info.bin_path), bytes(info.data_path), bytes(info.name), info.module_type,
+        ));
+    }
+}
+
+unsafe extern "C" fn capture_host_legacy(param: *mut c_void, info: *const obs_module_info) {
+    // SAFETY: the test owns the vector; the legacy prefix is live for this call.
+    unsafe {
+        let info = &*info;
+        (*param.cast::<Vec<(Vec<u8>, Vec<u8>)>>()).push((bytes(info.bin_path), bytes(info.data_path)));
+    }
+}
+
+#[test]
+fn exported_entrypoints_discover_files_with_host_extension() {
+    let root = tempfile::tempdir().unwrap();
+    let bin = root.path().join("bin");
+    let data = root.path().join("data");
+    std::fs::create_dir_all(bin.join("sample")).unwrap();
+    std::fs::create_dir_all(data.join("sample")).unwrap();
+    let binary = bin.join("sample/sample.probe");
+    std::fs::write(&binary, b"module fixture").unwrap();
+    let path = |path: &std::path::Path| CString::new(path.to_str().unwrap().replace('\\', "/")).unwrap();
+    let bin_pattern = path(&bin.join("%module%"));
+    let data_pattern = path(&data.join("%module%"));
+    let mut modules: Vec<ModuleRecord> = Vec::new();
+    let mut legacy: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+    // SAFETY: this thread owns the core, paths and callback vectors throughout.
+    unsafe {
+        let core = oracle_module_lists_core_new(ptr::null());
+        oracle_module_lists_set_core(core);
+        oracle_find_modules_add_path(bin_pattern.as_ptr(), data_pattern.as_ptr(), 2);
+        obs_core::ffi::find_modules::obs_find_modules2(Some(capture_host_module), (&raw mut modules).cast());
+        obs_core::ffi::find_modules::obs_find_modules(Some(capture_host_legacy), (&raw mut legacy).cast());
+        oracle_module_lists_set_core(ptr::null_mut());
+        oracle_module_lists_core_free(core);
+    }
+    let expected_bin = path(&binary).into_bytes();
+    let expected_data = path(&data.join("sample")).into_bytes();
+    assert_eq!(modules, vec![(expected_bin.clone(), expected_data.clone(), b"sample".to_vec(), 2)]);
+    assert_eq!(legacy, vec![(expected_bin, expected_data)]);
+}
