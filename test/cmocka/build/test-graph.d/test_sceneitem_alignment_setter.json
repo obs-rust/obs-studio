@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_sceneitem_alignment_setter": {
+      "sources": [
+        "test/cmocka/test_sceneitem_alignment_setter.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-item-alignment-setter.c.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_sceneitem_alignment_setter": {
+      "target": "test_sceneitem_alignment_setter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    }
+  }
+}

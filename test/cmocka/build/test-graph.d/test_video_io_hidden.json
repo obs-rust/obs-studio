@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_io_hidden": {
+      "sources": [
+        "test/cmocka/test_video_io_hidden.c",
+        "libobs/media-io/video-io.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ],
+      "header_libraries": [
+        "OBS::caption",
+        "Uthash::Uthash"
+      ]
+    }
+  },
+  "tests": {
+    "test_video_io_hidden": {
+      "target": "test_video_io_hidden",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

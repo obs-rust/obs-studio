@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ffmpeg_output_connecting": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_output_connecting.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/obs-ffmpeg"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-output.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-output.pch.h"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_ffmpeg_output_connecting": {
+      "target": "test_ffmpeg_output_connecting",
+      "timeout_seconds": 60,
+      "requires": "OS_LINUX"
+    }
+  }
+}

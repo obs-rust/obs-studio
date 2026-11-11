@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipe_no_handle_leak": {
+      "sources": [
+        "test/cmocka/test_pipe_no_handle_leak.c"
+      ],
+      "requires": "HAVE_LIBOBS",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_pipe_no_handle_leak": {
+      "target": "test_pipe_no_handle_leak",
+      "timeout_seconds": 30
+    }
+  }
+}

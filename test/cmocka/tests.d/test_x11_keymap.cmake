@@ -1,1 +1,1 @@
-# X11 keymap reply-bit cases are declared in ../build/test-graph.json.
+# X11 keymap reply-bit cases are declared in ../build/test-graph.d.

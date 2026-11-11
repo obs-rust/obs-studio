@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_context_data": {
+      "sources": [
+        "test/cmocka/test_hotkey_context_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_context_data": {
+      "target": "test_hotkey_context_data",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

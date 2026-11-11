@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_platform": {
+      "sources": [
+        "test/cmocka/test_platform.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_platform": {
+      "target": "test_platform"
+    }
+  }
+}

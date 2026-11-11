@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_failure_info": {
+      "sources": [
+        "test/cmocka/test_module_failure_info.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_module_failure_info": {
+      "target": "test_module_failure_info",
+      "timeout_seconds": 30
+    }
+  }
+}

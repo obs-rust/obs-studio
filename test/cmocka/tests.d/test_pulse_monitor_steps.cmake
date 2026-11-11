@@ -16,7 +16,7 @@
 # test_pulse_stream_restart, test_pulse_two_sources and
 # test_pulse_monitor_samples cover the callers through the real libobs against
 # a private sound server.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the twenty hidden functions and pulseaudio_monitor_stream_flags()
@@ -27,4 +27,4 @@
 if(TARGET libobs_rust-static AND (OS_LINUX OR OS_FREEBSD) AND ENABLE_PULSEAUDIO)
   find_package(PulseAudio REQUIRED)
 endif()
-# Rust-static target and test are also declared in ../build/test-graph.json.
+# Rust-static target and test are also declared in ../build/test-graph.d.

@@ -3,4 +3,4 @@
 # test compiles its file: no graphics device and no libobs core, so it runs on
 # every platform. The file's precompiled header is libobs.pch.h, which needs
 # the private libobs, libcaption, uthash and zlib headers.
-# test_scene_blend is defined in ../build/test-graph.json.
+# test_scene_blend is defined in ../build/test-graph.d.

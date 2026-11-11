@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_coreaudio_zero_channels": {
+      "sources": [
+        "test/cmocka/test_coreaudio_zero_channels.c"
+      ],
+      "requires": true,
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_coreaudio_zero_channels": {
+      "target": "test_coreaudio_zero_channels",
+      "requires": true
+    }
+  }
+}

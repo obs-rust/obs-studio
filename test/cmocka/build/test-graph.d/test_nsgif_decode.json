@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nsgif_decode": {
+      "sources": [
+        "test/cmocka/test_nsgif_decode.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "definitions": [
+        "NSGIF_DATA_DIR=\"${source}/test/cmocka/data\""
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_nsgif_decode": {
+      "target": "test_nsgif_decode"
+    }
+  }
+}

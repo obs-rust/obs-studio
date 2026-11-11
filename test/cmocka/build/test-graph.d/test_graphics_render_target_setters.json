@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_render_target_setters": {
+      "sources": [
+        "test/cmocka/test_graphics_render_target_setters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_graphics_render_target_setters": {
+      "target": "test_graphics_render_target_setters",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

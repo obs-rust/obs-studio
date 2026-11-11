@@ -7,4 +7,4 @@
 # is not a transition, and every key obs_transition_save() writes, through
 # the real libobs. Transitions need core video, so it builds on Linux only
 # and runs under xvfb-run; without a display the cases skip.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

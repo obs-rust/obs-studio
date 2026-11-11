@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_platform_time": {
+      "sources": [
+        "test/cmocka/test_platform_time.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_platform_time": {
+      "target": "test_platform_time"
+    }
+  }
+}

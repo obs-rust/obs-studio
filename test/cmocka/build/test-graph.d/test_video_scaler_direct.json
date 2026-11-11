@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_scaler_direct": {
+      "sources": [
+        "test/cmocka/test_video_scaler_direct.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_video_scaler_direct": {
+      "target": "test_video_scaler_direct",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 120
+    }
+  }
+}

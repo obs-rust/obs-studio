@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_stinger_media_duration": {
+      "sources": [
+        "test/cmocka/test_stinger_media_duration.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl",
+        "TRANSITIONS_MODULE_PATH": "obs-transitions"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "shared/media-playback",
+        "plugins/obs-transitions",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "definitions": [
+        "TRANSITIONS_DATA_PATH=\"${source}/plugins/obs-transitions/data\""
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+          "HAVE_TRANSITIONS_TEST_OWNER"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_stinger_media_duration": {
+      "target": "test_stinger_media_duration",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER",
+          "HAVE_TRANSITIONS_TEST_OWNER"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

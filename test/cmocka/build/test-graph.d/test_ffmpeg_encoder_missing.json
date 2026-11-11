@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ffmpeg_encoder_missing": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_encoder_missing.c",
+        "shared/opts-parser/opts-parser.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "shared/opts-parser"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-video-encoders.c.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-video-encoders.pch.h"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_ffmpeg_encoder_missing": {
+      "target": "test_ffmpeg_encoder_missing",
+      "timeout_seconds": 60,
+      "requires": "OS_LINUX"
+    }
+  }
+}

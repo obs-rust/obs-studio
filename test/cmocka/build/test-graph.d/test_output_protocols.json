@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_protocols": {
+      "sources": [
+        "test/cmocka/test_output_protocols.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_protocols": {
+      "target": "test_output_protocols",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

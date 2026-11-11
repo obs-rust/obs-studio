@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_push_hotkeys": {
+      "sources": [
+        "test/cmocka/test_source_push_hotkeys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_source_push_hotkeys": {
+      "target": "test_source_push_hotkeys",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

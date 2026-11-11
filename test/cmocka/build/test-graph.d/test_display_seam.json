@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_display_seam": {
+      "sources": [
+        "test/cmocka/test_display_seam.c",
+        "libobs/obs-display-seam.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-display-seam.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_display_seam": {
+      "target": "test_display_seam",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

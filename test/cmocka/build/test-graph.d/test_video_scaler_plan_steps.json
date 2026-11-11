@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_scaler_plan_steps": {
+      "sources": [
+        "test/cmocka/test_video_scaler_plan_steps.c",
+        "libobs/media-io/video-scaler-plan.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/media-io/video-scaler-plan.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_video_scaler_plan_steps": {
+      "target": "test_video_scaler_plan_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

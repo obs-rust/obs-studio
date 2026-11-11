@@ -8,4 +8,4 @@
 if(OS_LINUX)
   find_package(Qt6 QUIET COMPONENTS Widgets)
 endif()
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

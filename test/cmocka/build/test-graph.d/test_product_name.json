@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_product_name": {
+      "sources": [
+        "test/cmocka/test_product_name.c",
+        "frontend/utility/product-name.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility",
+        "frontend/build/frontend-utility-product-name.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_product_name": {
+      "target": "test_product_name"
+    }
+  }
+}

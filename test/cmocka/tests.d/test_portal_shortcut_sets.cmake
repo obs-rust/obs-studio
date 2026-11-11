@@ -7,4 +7,4 @@
 # obs-hotkey, obs-data and obs-util (jansson, libuuid, GIO, and libobs's
 # hidden hotkey seams), so it does not link on its own. The Tier 3 parity
 # tests in rust/obs-hotkey compare the shims with this C instead.
-# test_portal_shortcut_sets is defined in ../build/test-graph.json.
+# test_portal_shortcut_sets is defined in ../build/test-graph.d.

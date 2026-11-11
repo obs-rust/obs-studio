@@ -18,4 +18,4 @@
 # test_encoder_lifecycle_steps. The Tier 3 parity tests in rust/obs-output
 # compare the shims with this C instead. test_encoder_group_reconfig_walk
 # covers the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

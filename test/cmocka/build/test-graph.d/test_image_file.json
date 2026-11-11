@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_image_file": {
+      "sources": [
+        "test/cmocka/test_image_file.c"
+      ],
+      "definitions": [
+        "IMAGE_FILE_DATA_DIR=\"${source}/test/cmocka/data\""
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_image_file": {
+      "target": "test_image_file",
+      "suite": "core"
+    }
+  }
+}

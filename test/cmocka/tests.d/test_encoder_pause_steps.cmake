@@ -13,4 +13,4 @@
 # core, so it runs on every platform. The functions are hidden in libobs, so
 # this characterizes that C source; the test calls only them.
 # test_replay_buffer_pause_stop covers the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_filter_size_no_target": {
+      "sources": [
+        "test/cmocka/test_filter_size_no_target.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_filter_size_no_target": {
+      "target": "test_filter_size_no_target"
+    }
+  }
+}

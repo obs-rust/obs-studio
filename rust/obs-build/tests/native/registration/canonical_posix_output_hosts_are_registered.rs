@@ -5,7 +5,7 @@ use super::*;
 fn canonical_posix_output_hosts_are_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let names = ["test_obs_ffmpeg_net_host", "test_obs_outputs_host"];
     for name in names {
         assert_posix_output_host_registration(&root, &graph, name);

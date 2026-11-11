@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_packet_ts_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_packet_ts_steps.c",
+        "libobs/obs-encoder-packet-ts.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-encoder-packet-ts.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_encoder_packet_ts_steps": {
+      "target": "test_encoder_packet_ts_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

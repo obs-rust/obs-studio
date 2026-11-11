@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_reconnect_route": {
+      "sources": [
+        "test/cmocka/test_output_reconnect_route.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_reconnect_route": {
+      "target": "test_output_reconnect_route",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "timeout_seconds": 120
+    }
+  }
+}

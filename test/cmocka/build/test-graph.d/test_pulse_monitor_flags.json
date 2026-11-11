@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pulse_monitor_flags": {
+      "sources": [
+        "test/cmocka/test_pulse_monitor_flags.c",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "libobs/audio-monitoring/pulse"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-pulse.pch.h",
+        "libobs/audio-monitoring/pulse/pulseaudio-stream-flags.h"
+      ],
+      "libraries": [
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "ENABLE_PULSEAUDIO",
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_pulse_monitor_flags": {
+      "target": "test_pulse_monitor_flags"
+    }
+  }
+}

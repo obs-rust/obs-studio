@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_load_rules_skip_steps": {
+      "sources": [
+        "test/cmocka/test_module_load_rules_skip_steps.c",
+        "libobs/obs-module-load-rules-skip.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-load-rules.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_module_load_rules_skip_steps": {
+      "target": "test_module_load_rules_skip_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

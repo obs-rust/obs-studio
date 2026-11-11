@@ -23,4 +23,4 @@
 # test_output_interleave_e2e, test_output_input_checks,
 # test_replay_buffer_pause_stop and test_ffmpeg_output_drain cover the callers
 # through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

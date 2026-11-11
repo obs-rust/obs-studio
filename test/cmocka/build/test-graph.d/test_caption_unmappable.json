@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_caption_unmappable": {
+      "sources": [
+        "test/cmocka/test_caption_unmappable.c"
+      ],
+      "includes": [
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_caption_unmappable": {
+      "target": "test_caption_unmappable"
+    }
+  }
+}

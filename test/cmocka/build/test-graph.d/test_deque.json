@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_deque": {
+      "sources": [
+        "test/cmocka/test_deque.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_deque": {
+      "target": "test_deque"
+    }
+  }
+}

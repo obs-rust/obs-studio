@@ -12,4 +12,4 @@ set(HAVE_TRANSITIONS_TEST_OWNER FALSE)
 if(TARGET obs-transitions)
   set(HAVE_TRANSITIONS_TEST_OWNER TRUE)
 endif()
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

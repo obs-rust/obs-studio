@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_monitor_video_sync": {
+      "sources": [
+        "test/cmocka/test_monitor_video_sync.c",
+        "libobs/audio-monitoring/monitor-video-sync.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "libobs/audio-monitoring"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_monitor_video_sync": {
+      "target": "test_monitor_video_sync",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -856,15 +856,33 @@ build and both test modes on `ca331a93d`.
 Native graph parity notes live in [one file per slice](native-graph/), sorted by PR number.
 Add future slice notes there instead of appending shared prose here. Registration contracts
 live in `rust/obs-build/tests/native/registration/`, included as modules of the existing
-Application category binary; keep each slice in its own file and sort module declarations.
+Application category binary; keep each slice in its own `.rs` file. The Application build script discovers
+these entry points in name order and generates declarations in OUT_DIR. Nested
+runtime helpers live in `registration/support/`; keep host/feature gates as
+inner attributes in the owning module, so new entries need no shared list.
 
 
-The current shared inventory is `test/cmocka/build/test-graph.json`, consumed by
+The canonical inventory is `test/cmocka/build/test-graph.d/<target>.json`, consumed by
 both `validation::build_c_tests` and `test/cmocka/native-test-graph.cmake`. The
 independent Linux manifest described in the initial results below was retired
 in #1805. The graph remains a subset of the repository's native tests; target and test
 selection depends on the evaluated platform and feature requirements. Cargo
 compilation of the full selected test graph currently runs on Linux.
+
+Each fragment has `schema: 1`, one `targets` entry matching its filename stem,
+and a `tests` map containing only tests of that target (which may be empty for
+helper targets). Keep all existing target/test fields, ordered source and link
+lists, requirements and generated inputs unchanged. CMake discovers fragments
+with CONFIGURE_DEPENDS; Cargo watches the directory and reads it again on every
+build. `Graph::load` and `ci/native_test_graph.py::load_graph` assemble the same
+inventory deterministically and reject duplicate test names and wrong owners.
+Single JSON documents are supported only for isolated fixture/owner slices;
+there is no generated graph checked into the repository. The lint lane explicitly
+formats the discovered registration files because Cargo fmt cannot follow an
+OUT_DIR include. Register a new target
+and its native contract in their own files; independent additions share no
+append list. `uv run ci/test_test_graph_sorted.py --fix` sorts fragment maps.
+
 
 The scene bounds placement characterization also uses the shared core graph.
 Both consumers compile its original C test and two private C helper sources,

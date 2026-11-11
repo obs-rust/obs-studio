@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_config_set_double_format": {
+      "sources": [
+        "test/cmocka/test_config_set_double_format.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_config_set_double_format": {
+      "target": "test_config_set_double_format",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

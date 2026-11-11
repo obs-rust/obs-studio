@@ -1,1 +1,1 @@
-# Registered once in build/test-graph.json.
+# Registered once in build/test-graph.d.

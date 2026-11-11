@@ -17,7 +17,7 @@
 # test_studio_mode_swap, test_studio_mode_exit, test_saved_transition,
 # test_tbar_position, test_fade_to_color_mix, test_visibility_transition and
 # test_stinger_media_duration cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the fourteen hidden functions, and includes their header and obs.h
@@ -26,4 +26,4 @@
 # alone: its obs-source member needs nothing from libobs or the other crates.
 # Linking the archive directly avoids exporting private symbols just for a
 # test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

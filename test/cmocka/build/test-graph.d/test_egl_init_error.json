@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_egl_init_error": {
+      "sources": [
+        "test/cmocka/test_egl_init_error.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_GLAD"
+        ]
+      },
+      "includes": [
+        "libobs-opengl"
+      ],
+      "watch_inputs": [
+        "libobs-opengl/gl-egl-errors.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_egl_init_error": {
+      "target": "test_egl_init_error"
+    }
+  }
+}

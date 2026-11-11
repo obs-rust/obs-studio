@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_sceneitem_addref": {
+      "sources": [
+        "test/cmocka/test_sceneitem_addref.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_sceneitem_addref": {
+      "target": "test_sceneitem_addref"
+    }
+  }
+}

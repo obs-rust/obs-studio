@@ -14,4 +14,4 @@
 # shims with this C on every value inside int range, the Tier 1 tests mirror
 # this file's cases, and test_shader_number_defaults covers the callers
 # through the real libobs. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

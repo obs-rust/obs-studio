@@ -26,7 +26,7 @@ if(OS_LINUX AND (NOT DEFINED ENABLE_UI OR ENABLE_UI) AND (NOT DEFINED ENABLE_FRO
     target_link_libraries(test_vst_editor_close_module PRIVATE OBS::libobs Qt6::Widgets)
     set_target_properties(test_vst_editor_close_module PROPERTIES PREFIX "" AUTOMOC ON)
 
-    # Executable and CTest metadata are in build/test-graph.json.
+    # Executable and CTest metadata are in build/test-graph.d.
     unset(_vst_dir)
   endif()
 endif()

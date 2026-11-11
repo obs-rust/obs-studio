@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_recording_shutdown_inactive": {
+      "sources": [
+        "test/cmocka/test_recording_shutdown_inactive.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "includes": [
+        "frontend/widgets"
+      ],
+      "watch_inputs": [
+        "frontend/widgets/RecordingShutdown.hpp",
+        "frontend/widgets/RecordingShutdownWait.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_recording_shutdown_inactive": {
+      "target": "test_recording_shutdown_inactive",
+      "suite": "qt",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT6_CORE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 15
+    }
+  }
+}

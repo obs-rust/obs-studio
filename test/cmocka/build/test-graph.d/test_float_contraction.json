@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_float_contraction": {
+      "sources": [
+        "test/cmocka/test_float_contraction.c"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_float_contraction": {
+      "target": "test_float_contraction",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -7,7 +7,7 @@ const CASES: [&str; 2] = [
 ];
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "ffmpeg_mux_hosts_runtime.rs"]
+#[path = "support/ffmpeg_mux_hosts_runtime.rs"]
 mod runtime;
 
 fn expected_target(name: &str) -> serde_json::Value {
@@ -27,9 +27,10 @@ fn expected_target(name: &str) -> serde_json::Value {
 #[test]
 fn canonical_ffmpeg_mux_hosts_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for name in CASES {
         assert_eq!(raw["targets"][name], expected_target(name), "{name}");
         assert_eq!(
@@ -46,13 +47,13 @@ fn canonical_ffmpeg_mux_hosts_are_registered() {
             .unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
-    assert!(fragment.contains("test-graph.json"));
+    assert!(fragment.contains("test-graph.d"));
 }
 
 #[test]
 fn canonical_ffmpeg_mux_hosts_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph
         .targets
         .retain(|name, _| CASES.contains(&name.as_str()));

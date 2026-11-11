@@ -7,5 +7,5 @@ configure_file(
   COPYONLY
 )
 
-# Generated include interface used by ../build/test-graph.json.
+# Generated include interface used by ../build/test-graph.d.
 include("${CMAKE_CURRENT_LIST_DIR}/../characterization-headers.cmake")

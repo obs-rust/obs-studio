@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_v4l2_input_caps": {
+      "sources": [
+        "test/cmocka/test_v4l2_input_caps.c",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_V4L2",
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "Libv4l2::Libv4l2",
+        "FFmpeg::avutil"
+      ]
+    }
+  },
+  "tests": {
+    "test_v4l2_input_caps": {
+      "target": "test_v4l2_input_caps",
+      "requires": "HAVE_OBS_V4L2",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

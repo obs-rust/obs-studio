@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_saved_transition": {
+      "sources": [
+        "test/cmocka/test_saved_transition.c",
+        "frontend/utility/saved-transition.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_saved_transition": {
+      "target": "test_saved_transition"
+    }
+  }
+}

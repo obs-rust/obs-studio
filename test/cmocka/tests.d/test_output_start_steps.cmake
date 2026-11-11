@@ -26,4 +26,4 @@
 # test_output_delay_restart, test_output_before_video,
 # test_raw_output_video_reset, test_output_interleave_restart and
 # test_rtmp_send_thread_leak cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

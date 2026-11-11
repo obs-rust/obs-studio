@@ -1,4 +1,4 @@
-# The manifest executable is registered by ../build/test-graph.json.
+# The manifest executable is registered by ../build/test-graph.d.
 # Keep this auxiliary configure regression with its original toolchain forwarding.
 if(ENABLE_CORE_MODULES)
   add_test(

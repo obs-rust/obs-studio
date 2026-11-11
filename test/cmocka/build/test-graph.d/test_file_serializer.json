@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_file_serializer": {
+      "sources": [
+        "test/cmocka/test_file_serializer.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_file_serializer": {
+      "target": "test_file_serializer"
+    }
+  }
+}

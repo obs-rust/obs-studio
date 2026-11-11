@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_indexbuffer_create": {
+      "sources": [
+        "test/cmocka/test_indexbuffer_create.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_indexbuffer_create": {
+      "target": "test_indexbuffer_create",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

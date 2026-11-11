@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_canvas_flags": {
+      "sources": [
+        "test/cmocka/test_canvas_flags.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=pthread_mutex_init"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_canvas_flags": {
+      "target": "test_canvas_flags",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

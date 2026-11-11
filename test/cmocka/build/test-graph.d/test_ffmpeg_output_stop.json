@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ffmpeg_output_stop": {
+      "sources": [
+        "test/cmocka/test_ffmpeg_output_stop.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-output.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "link_options": [
+        "-Wl,--wrap=avcodec_send_frame",
+        "-Wl,--wrap=avcodec_free_context"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_ffmpeg_output_stop": {
+      "target": "test_ffmpeg_output_stop",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL"
+        ]
+      }
+    }
+  }
+}

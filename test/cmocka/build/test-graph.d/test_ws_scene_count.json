@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ws_scene_count": {
+      "sources": [
+        "test/cmocka/test_ws_scene_count.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_WS_SCENE_COUNT_TEST_OWNER",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "plugins/obs-websocket/src/utils",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "compile_options_if_supported": [
+        "-ftrivial-auto-var-init=pattern"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
+      ],
+      "inherit_header_definitions": true
+    }
+  },
+  "tests": {
+    "test_ws_scene_count": {
+      "target": "test_ws_scene_count",
+      "suite": "qt"
+    }
+  }
+}

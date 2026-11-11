@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_darken_transparent": {
+      "sources": [
+        "test/cmocka/test_darken_transparent.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_darken_transparent": {
+      "target": "test_darken_transparent",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

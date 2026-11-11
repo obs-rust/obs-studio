@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_source_type_queries": {
+      "sources": [
+        "test/cmocka/test_scene_source_type_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_source_type_queries": {
+      "target": "test_scene_source_type_queries",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

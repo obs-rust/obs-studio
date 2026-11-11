@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_audio_window_steps": {
+      "sources": [
+        "test/cmocka/test_scene_audio_window_steps.c",
+        "libobs/obs-scene-audio-window.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_scene_audio_window_steps": {
+      "target": "test_scene_audio_window_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -7,4 +7,4 @@ set(HAVE_QT6_CORE FALSE)
 if(TARGET Qt6::Core)
   set(HAVE_QT6_CORE TRUE)
 endif()
-# Target, timeout and Qt runtime contract: ../build/test-graph.json (canonical).
+# Target, timeout and Qt runtime contract: ../build/test-graph.d (canonical).

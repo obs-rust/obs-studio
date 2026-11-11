@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_axisang": {
+      "sources": [
+        "test/cmocka/test_axisang.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_axisang": {
+      "target": "test_axisang"
+    }
+  }
+}

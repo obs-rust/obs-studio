@@ -1,1 +1,1 @@
-# Registered by build/test-graph.json for both CMake and the native builder.
+# Registered by build/test-graph.d for both CMake and the native builder.

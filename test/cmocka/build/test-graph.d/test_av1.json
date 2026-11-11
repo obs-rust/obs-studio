@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_av1": {
+      "sources": [
+        "test/cmocka/test_av1.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_av1": {
+      "target": "test_av1"
+    }
+  }
+}

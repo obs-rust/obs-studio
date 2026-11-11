@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_bmem": {
+      "sources": [
+        "test/cmocka/test_bmem.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_bmem": {
+      "target": "test_bmem"
+    }
+  }
+}

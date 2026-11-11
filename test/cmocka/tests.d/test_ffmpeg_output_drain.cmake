@@ -3,4 +3,4 @@
 # obs-ffmpeg-output.c into the test and wraps avcodec_send_frame() with the
 # GNU linker's --wrap to count the frames encoded. Needs core video, so it
 # runs (under xvfb-run) on Linux and skips without a display.
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_plugin_manager": {
+      "sources": [
+        "test/cmocka/test_plugin_manager.cpp",
+        "frontend/components/InfoChip.cpp.hpp",
+        "frontend/plugin-manager/InstalledPluginRow.cpp.hpp",
+        "frontend/plugin-manager/PluginManager.cpp.hpp",
+        "frontend/plugin-manager/PluginManagerWindow.cpp.hpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_PLUGIN_MANAGER_TEST_OWNER"
+        ]
+      },
+      "libraries": [
+        "OBS::idian",
+        "Qt6::Widgets",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "cpp_standard": "17",
+      "includes_before": [
+        "test/cmocka/plugin-manager-stubs"
+      ],
+      "includes": [
+        "frontend",
+        "frontend/api"
+      ],
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/components/InfoChip.hpp",
+          "frontend/plugin-manager/InstalledPluginRow.hpp",
+          "frontend/plugin-manager/PluginManagerWindow.hpp"
+        ],
+        "uic": [
+          "frontend/forms/PluginManagerWindow.ui"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/plugin-manager-stubs",
+        "frontend/build/frontend-components-infochip.pch.hpp",
+        "frontend/build/frontend-plugin-manager-installedpluginrow.pch.hpp",
+        "frontend/build/frontend-plugin-manager-pluginmanager.pch.hpp",
+        "frontend/build/frontend-plugin-manager-pluginmanagerwindow.pch.hpp",
+        "frontend/plugin-manager/PluginManager.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_plugin_manager": {
+      "target": "test_plugin_manager",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_PLUGIN_MANAGER_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -6,4 +6,4 @@
 # function is hidden in libobs, so this characterizes that C source; the test
 # calls only it. No test reaches the caller through the real libobs: the
 # Tier 3 parity test in rust/obs-hotkey compares the port with this C.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

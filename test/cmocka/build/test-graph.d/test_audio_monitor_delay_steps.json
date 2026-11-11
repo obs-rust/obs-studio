@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_audio_monitor_delay_steps": {
+      "sources": [
+        "test/cmocka/test_audio_monitor_delay_steps.c",
+        "libobs/audio-monitoring/monitor-delay.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/audio-monitoring/monitor-delay.h",
+        "libobs/audio-monitoring/monitor-video-sync.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_audio_monitor_delay_steps": {
+      "target": "test_audio_monitor_delay_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

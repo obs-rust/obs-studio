@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_tbar_position": {
+      "sources": [
+        "test/cmocka/test_tbar_position.c",
+        "frontend/utility/tbar-position.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_tbar_position": {
+      "target": "test_tbar_position",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

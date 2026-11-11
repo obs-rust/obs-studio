@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_interleave": {
+      "sources": [
+        "test/cmocka/test_output_interleave.c",
+        "test/cmocka/output_interleave_fields_stub.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "ZLIB::ZLIB",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_interleave": {
+      "target": "test_output_interleave"
+    }
+  }
+}

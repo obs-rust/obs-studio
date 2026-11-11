@@ -3,4 +3,4 @@
 # "start" signal, and delayed packets reached it before it connected. Real
 # libobs with core video, so it runs under xvfb-run on Linux and skips without
 # a display.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

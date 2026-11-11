@@ -2,7 +2,7 @@ use super::*;
 use obs_build::validation::graph::Graph;
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "plugin_sdk_headless_runtime.rs"]
+#[path = "support/plugin_sdk_headless_runtime.rs"]
 mod runtime;
 
 const CASES: [&str; 2] = ["test_pipewire_frame_layout", "test_pulse_default_retry"];
@@ -19,9 +19,10 @@ fn requirement(name: &str) -> serde_json::Value {
 #[test]
 fn canonical_plugin_sdk_headless_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for name in CASES {
         assert_eq!(raw["targets"][name], expected_target(name), "{name}");
         let mut expected = serde_json::json!({"target": name, "requires": requirement(name)});
@@ -76,7 +77,7 @@ fn expected_target(name: &str) -> serde_json::Value {
 #[test]
 fn canonical_plugin_sdk_headless_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph
         .targets
         .retain(|name, _| CASES.contains(&name.as_str()));
@@ -110,9 +111,10 @@ fn canonical_plugin_sdk_headless_guards() {
 fn canonical_plugin_sdk_unavailable_hosts_configure_without_packages() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
         for name in CASES {

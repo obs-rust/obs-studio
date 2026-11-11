@@ -17,4 +17,4 @@
 # tests in rust/obs-core compare the shims with this C instead.
 # test_video_output_formats, test_scaled_mix_alpha, test_encoding_lag_rescale
 # and test_video_output_plan cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_dispatch": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_hotkey_dispatch.c"
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_dispatch": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_hotkey_dispatch"
+    }
+  }
+}

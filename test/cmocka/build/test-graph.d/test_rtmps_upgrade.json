@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_rtmps_upgrade": {
+      "sources": [
+        "test/cmocka/test_rtmps_upgrade.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "RTMP_SERVICES_MODULE_PATH": "rtmp-services"
+      },
+      "includes": [
+        "plugins/rtmp-services"
+      ],
+      "definitions": [
+        "SERVICES_DATA_DIR=\"${build}/test_rtmps_upgrade_data\""
+      ],
+      "watch_inputs": [
+        "plugins/rtmp-services/rtmp-format-ver.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_RTMP_SERVICES_MODULE"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_rtmps_upgrade": {
+      "target": "test_rtmps_upgrade",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_RTMP_SERVICES_MODULE"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_blend": {
+      "sources": [
+        "test/cmocka/test_scene_blend.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "ZLIB::ZLIB",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_blend": {
+      "target": "test_scene_blend"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_size_race": {
+      "sources": [
+        "test/cmocka/test_scene_size_race.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_size_race": {
+      "target": "test_scene_size_race",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}"
+    }
+  }
+}

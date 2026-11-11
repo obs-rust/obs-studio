@@ -11,4 +11,4 @@
 # C source; the test calls only them and obs_source_draw_technique_name().
 # test_canvas_flags, test_scene_private_canvas, test_canvas_destroy_scene_refs
 # and test_shutdown_canvas_weak_ref cover the canvases through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

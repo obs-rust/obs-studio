@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_audio_clock_drift": {
+      "sources": [
+        "test/cmocka/test_audio_clock_drift.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "m",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_audio_clock_drift": {
+      "target": "test_audio_clock_drift",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 300
+    }
+  }
+}

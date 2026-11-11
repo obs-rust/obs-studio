@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_format_conversion": {
+      "sources": [
+        "test/cmocka/test_format_conversion.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_format_conversion": {
+      "target": "test_format_conversion",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

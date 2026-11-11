@@ -12,4 +12,4 @@
 # so it does not link on its own, as for test_context_name_helpers. The Tier 3
 # parity tests in rust/obs-core compare the shims with this C instead, the
 # intentional difference (#3473) included. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

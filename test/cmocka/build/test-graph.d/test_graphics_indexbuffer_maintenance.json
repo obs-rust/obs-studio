@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_indexbuffer_maintenance": {
+      "sources": [
+        "test/cmocka/test_graphics_indexbuffer_maintenance.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_graphics_indexbuffer_maintenance": {
+      "target": "test_graphics_indexbuffer_maintenance",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

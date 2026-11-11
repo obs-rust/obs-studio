@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_lists_seam": {
+      "sources": [
+        "test/cmocka/test_module_lists_seam.c",
+        "libobs/obs-module-lists-seam.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-lists-seam.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_module_lists_seam": {
+      "target": "test_module_lists_seam",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

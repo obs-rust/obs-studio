@@ -1,7 +1,7 @@
 # Batch 2: Rust-static source steps (#1390)
 
 Based on #3832. Register eight existing C characterization executables in
-`test/cmocka/build/test-graph.json`, with a separate registration module in the
+`test/cmocka/build/test-graph.d/`, with a separate registration module in the
 existing Application category binary. The C test sources and public headers
 remain unchanged. These tests require no display, hardware or OBS startup.
 

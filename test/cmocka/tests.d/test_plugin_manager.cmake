@@ -1,4 +1,4 @@
-# Real Idian owner for the Plugin Manager fixture in build/test-graph.json.
+# Real Idian owner for the Plugin Manager fixture in build/test-graph.d.
 if(OS_LINUX AND (NOT DEFINED ENABLE_UI OR ENABLE_UI) AND (NOT DEFINED ENABLE_FRONTEND OR ENABLE_FRONTEND))
   find_package(Qt6 QUIET COMPONENTS Widgets Svg)
   find_package(nlohmann_json 3.11 QUIET)

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_signal": {
+      "sources": [
+        "test/cmocka/test_signal.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address"
+    }
+  },
+  "tests": {
+    "test_signal": {
+      "target": "test_signal",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

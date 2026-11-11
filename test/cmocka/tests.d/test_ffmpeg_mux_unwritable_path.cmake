@@ -4,4 +4,4 @@
 # output's settings twice. Builds obs-ffmpeg-mux.c and runs the real output
 # against core video, so it runs under xvfb-run on Linux and skips without a
 # display. obs_data_release() is wrapped to count the releases.
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

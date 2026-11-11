@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_menu_text": {
+      "sources": [
+        "test/cmocka/test_menu_text.c",
+        "frontend/utility/menu-text.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_menu_text": {
+      "target": "test_menu_text",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

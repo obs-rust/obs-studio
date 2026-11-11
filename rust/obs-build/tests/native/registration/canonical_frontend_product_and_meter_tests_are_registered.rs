@@ -5,7 +5,7 @@ use super::*;
 fn canonical_frontend_product_and_meter_tests_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.d"))
             .unwrap();
     for name in ["test_product_name", "test_volume_meter_snapshot"] {
         assert!(

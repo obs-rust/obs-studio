@@ -1,1 +1,1 @@
-# Actual-library characterization; canonical registration in ../build/test-graph.json.
+# Actual-library characterization; canonical registration in ../build/test-graph.d.

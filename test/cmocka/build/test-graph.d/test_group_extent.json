@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_group_extent": {
+      "sources": [
+        "test/cmocka/test_group_extent.c",
+        "libobs/obs-scene-extent.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_group_extent": {
+      "target": "test_group_extent"
+    }
+  }
+}

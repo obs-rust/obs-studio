@@ -10,4 +10,4 @@
 # runs on every platform. The functions are hidden in libobs, so this
 # characterizes that C source; the test calls only them. The Tier 3 parity
 # tests in rust/obs-scene compare the shims with this C.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

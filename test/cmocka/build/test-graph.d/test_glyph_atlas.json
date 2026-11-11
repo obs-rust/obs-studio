@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_glyph_atlas": {
+      "sources": [
+        "test/cmocka/test_glyph_atlas.c",
+        "plugins/text-freetype2/glyph-atlas.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "plugins/text-freetype2"
+      ],
+      "header_packages": [
+        "freetype2"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_glyph_atlas": {
+      "target": "test_glyph_atlas"
+    }
+  }
+}

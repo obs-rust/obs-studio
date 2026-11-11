@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_whip_host_os_name": {
+      "sources": [
+        "test/cmocka/test_whip_host_os_name.cpp"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          {
+            "not": "OS_MACOS"
+          }
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka",
+        "plugins/obs-webrtc"
+      ]
+    }
+  },
+  "tests": {
+    "test_whip_host_os_name": {
+      "target": "test_whip_host_os_name",
+      "command": [
+        "${target}"
+      ],
+      "suite": "webrtc"
+    }
+  }
+}

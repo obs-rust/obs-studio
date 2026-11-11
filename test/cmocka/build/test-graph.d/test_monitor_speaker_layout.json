@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_monitor_speaker_layout": {
+      "sources": [
+        "test/cmocka/test_monitor_speaker_layout.c",
+        "libobs/audio-monitoring/monitor-speaker-layout.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "libobs/audio-monitoring"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_monitor_speaker_layout": {
+      "target": "test_monitor_speaker_layout",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

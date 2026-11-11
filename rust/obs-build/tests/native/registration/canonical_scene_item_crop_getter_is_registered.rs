@@ -5,7 +5,7 @@ use super::*;
 fn canonical_scene_item_crop_getter_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Requirement, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let name = "test_scene_item_crop_getter";
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);

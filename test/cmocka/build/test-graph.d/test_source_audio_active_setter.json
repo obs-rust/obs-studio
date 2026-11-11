@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_audio_active_setter": {
+      "sources": [
+        "test/cmocka/test_source_audio_active_setter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_source_audio_active_setter": {
+      "target": "test_source_audio_active_setter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

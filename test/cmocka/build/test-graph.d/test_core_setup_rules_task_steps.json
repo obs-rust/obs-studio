@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_core_setup_rules_task_steps": {
+      "sources": [
+        "test/cmocka/test_core_setup_rules_task_steps.c",
+        "libobs/obs-core-setup-rules-task.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-core-setup-rules.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_core_setup_rules_task_steps": {
+      "target": "test_core_setup_rules_task_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

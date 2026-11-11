@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_item_state_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_state_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "libobs"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_item_state_getters": {
+      "target": "test_scene_item_state_getters"
+    }
+  }
+}

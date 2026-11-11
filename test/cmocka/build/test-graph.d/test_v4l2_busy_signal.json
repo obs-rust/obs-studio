@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_v4l2_busy_signal": {
+      "sources": [
+        "test/cmocka/test_v4l2_busy_signal.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h",
+        "plugins/linux-v4l2/v4l2-controls.c.h",
+        "plugins/linux-v4l2/v4l2-decoder.c.h",
+        "plugins/linux-v4l2/v4l2-frame-action.c.h",
+        "plugins/linux-v4l2/v4l2-framerate.c.h",
+        "plugins/linux-v4l2/v4l2-helpers.c.h",
+        "plugins/linux-v4l2/v4l2-input-caps.c.h",
+        "plugins/linux-v4l2/v4l2-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "includes": [
+        "plugins/linux-v4l2"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_V4L2"
+        ]
+      },
+      "header_libraries": [
+        "Libv4l2::Libv4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_v4l2_busy_signal": {
+      "target": "test_v4l2_busy_signal",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_V4L2"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_item_group_scene": {
+      "sources": [
+        "test/cmocka/test_scene_item_group_scene.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "libobs"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_item_group_scene": {
+      "target": "test_scene_item_group_scene",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    }
+  }
+}

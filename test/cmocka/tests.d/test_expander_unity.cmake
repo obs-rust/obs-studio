@@ -1,1 +1,1 @@
-# Registered in build/test-graph.json for both Cargo and CMake (#1390).
+# Registered in build/test-graph.d for both Cargo and CMake (#1390).

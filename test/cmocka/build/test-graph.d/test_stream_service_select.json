@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_stream_service_select": {
+      "sources": [
+        "test/cmocka/test_stream_service_select.c",
+        "frontend/utility/stream-service-select.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_stream_service_select": {
+      "target": "test_stream_service_select"
+    }
+  }
+}

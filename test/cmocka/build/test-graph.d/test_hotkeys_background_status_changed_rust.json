@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkeys_background_status_changed_rust": {
+      "sources": [
+        "test/cmocka/test_hotkeys_background_status_changed.c",
+        "test/cmocka/hotkeys-background-status-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "status_changed": [
+          "test/cmocka/test_hotkeys_background_status_changed.c",
+          "test/cmocka/hotkeys-background-status-record-support.c"
+        ]
+      },
+      "definitions": [
+        "HOTKEY_BACKGROUND_STATUS_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_hotkeys_background_status_changed_rust": {
+      "target": "test_hotkeys_background_status_changed_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

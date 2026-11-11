@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_data": {
+      "sources": [
+        "test/cmocka/test_obs_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_obs_data": {
+      "target": "test_obs_data",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,1 +1,1 @@
-# Defined in build/test-graph.json; shared by CMake and the Cargo-native consumer.
+# Defined in build/test-graph.d; shared by CMake and the Cargo-native consumer.

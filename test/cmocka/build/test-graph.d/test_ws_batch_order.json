@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ws_batch_order": {
+      "sources": [
+        "test/cmocka/test_ws_batch_order.cpp",
+        "plugins/obs-websocket/src/requesthandler/RequestBatchHandler.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/Request.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/RequestBatchRequest.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/RequestResult.cpp",
+        "plugins/obs-websocket/src/utils/Compat.cpp"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_WS_BATCH_ORDER_TEST_OWNER",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "plugins/obs-websocket/src/utils",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
+      ]
+    }
+  },
+  "tests": {
+    "test_ws_batch_order": {
+      "target": "test_ws_batch_order",
+      "suite": "qt",
+      "qt_runtime": "Qt6::Core"
+    }
+  }
+}

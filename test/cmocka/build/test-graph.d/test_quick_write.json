@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_quick_write": {
+      "sources": [
+        "test/cmocka/test_quick_write.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_quick_write": {
+      "target": "test_quick_write"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nvenc_override": {
+      "sources": [
+        "test/cmocka/test_nvenc_override.c",
+        "plugins/obs-nvenc/nvenc-override.c.h"
+      ],
+      "includes": [
+        "plugins/obs-nvenc"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_nvenc_override": {
+      "target": "test_nvenc_override"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_scripting_python_import_host_macos": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_import_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_MACOS",
+        "OBS_PYTHON_IMPORT_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-import-host-macos.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-import-host-macos.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_obs_scripting_python_import_host_macos": {
+      "target": "test_obs_scripting_python_import_host_macos",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  }
+}

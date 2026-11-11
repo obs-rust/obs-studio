@@ -4,4 +4,4 @@
 # column errors of a bad floatNxM type. Only values inside int range, so it
 # runs unchanged against both libobs builds; no display and no graphics
 # context, so it runs on every platform. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

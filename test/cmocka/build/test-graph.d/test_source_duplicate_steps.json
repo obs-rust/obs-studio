@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_duplicate_steps": {
+      "sources": [
+        "test/cmocka/test_source_duplicate_steps.c",
+        "libobs/obs-source-duplicate.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-duplicate.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_duplicate_steps": {
+      "target": "test_source_duplicate_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

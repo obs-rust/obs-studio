@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_cocoa_keys_steps": {
+      "sources": [
+        "test/cmocka/test_cocoa_keys_steps.c",
+        "libobs/obs-cocoa-keys.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-cocoa-keys.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_cocoa_keys_steps": {
+      "target": "test_cocoa_keys_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

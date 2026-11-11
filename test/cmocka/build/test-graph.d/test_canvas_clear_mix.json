@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_canvas_clear_mix": {
+      "sources": [
+        "test/cmocka/test_canvas_clear_mix.c",
+        {
+          "path": "test/cmocka/canvas-clear-mix-null-host-linux.c",
+          "requires": "OS_LINUX"
+        }
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "compile_options": [
+        {
+          "name": "-DCANVAS_CLEAR_MIX_NULL_PROBE",
+          "requires": "OS_LINUX"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_canvas_clear_mix": {
+      "target": "test_canvas_clear_mix",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# Registered once in ../build/test-graph.json; both native consumers use that graph.
+# Registered once in ../build/test-graph.d; both native consumers use that graph.
 if(OS_LINUX AND ENABLE_NEW_MPEGTS_OUTPUT AND TARGET OBS::ffmpeg)
   find_package(Libsrt QUIET)
 endif()

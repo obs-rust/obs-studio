@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_get_last_error": {
+      "sources": [
+        "test/cmocka/test_output_get_last_error.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_output_get_last_error": {
+      "target": "test_output_get_last_error",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

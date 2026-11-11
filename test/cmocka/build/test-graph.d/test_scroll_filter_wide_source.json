@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scroll_filter_wide_source": {
+      "sources": [
+        "test/cmocka/test_scroll_filter_wide_source.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl",
+        "FILTERS_MODULE_PATH": "obs-filters"
+      },
+      "definitions": [
+        "FILTERS_DATA_PATH=\"${source}/plugins/obs-filters/data\""
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_FILTERS"
+        ]
+      },
+      "watch_inputs": [
+        "plugins/obs-filters/scroll-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h",
+        "libobs/data/default.effect"
+      ]
+    }
+  },
+  "tests": {
+    "test_scroll_filter_wide_source": {
+      "target": "test_scroll_filter_wide_source",
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_FILTERS"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

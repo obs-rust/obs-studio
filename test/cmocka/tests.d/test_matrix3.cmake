@@ -1,2 +1,2 @@
 # matrix3 test (graphics/matrix3.c)
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

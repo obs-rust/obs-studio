@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_video_tick_steps": {
+      "sources": [
+        "test/cmocka/test_source_video_tick_steps.c",
+        "libobs/obs-source-video-tick.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-video-tick.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_video_tick_steps": {
+      "target": "test_source_video_tick_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

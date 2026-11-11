@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_private_settings": {
+      "sources": [
+        "test/cmocka/test_source_private_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_source_private_settings": {
+      "target": "test_source_private_settings",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_alsa_early_stop": {
+      "sources": [
+        "test/cmocka/test_alsa_early_stop.c",
+        "plugins/linux-alsa/alsa-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "ALSA::ALSA",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_ALSA",
+      "watch_inputs": [
+        "plugins/linux-alsa/build/linux-alsa-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio,--wrap=pthread_create,--wrap=pthread_join"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ]
+    }
+  },
+  "tests": {
+    "test_alsa_early_stop": {
+      "target": "test_alsa_early_stop",
+      "requires": "HAVE_OBS_ALSA",
+      "timeout_seconds": 60
+    }
+  }
+}

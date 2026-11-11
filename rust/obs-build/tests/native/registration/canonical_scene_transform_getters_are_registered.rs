@@ -5,7 +5,7 @@ use super::*;
 fn canonical_scene_transform_getters_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.d"))
             .unwrap();
     let name = "test_scene_item_transform_getters";
     let target = &graph.targets[name];
@@ -14,8 +14,8 @@ fn canonical_scene_transform_getters_are_registered() {
         matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path)
         if path == "test/cmocka/test_scene_item_transform_getters.c")
     );
-    let raw: serde_json::Value = serde_json::from_str(
-        &fs::read_to_string(root.join("test/cmocka/build/test-graph.json")).unwrap(),
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
     )
     .unwrap();
     let serialized = &raw["targets"][name];

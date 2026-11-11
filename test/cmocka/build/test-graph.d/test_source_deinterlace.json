@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_deinterlace": {
+      "sources": [
+        "test/cmocka/test_source_deinterlace.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_source_deinterlace": {
+      "target": "test_source_deinterlace",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ]
+    }
+  }
+}

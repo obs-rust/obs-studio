@@ -7,4 +7,4 @@
 # are hidden in libobs, so this characterizes that C source; the test calls
 # only them. test_wayland_multiseat covers the callers through the real
 # platform.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

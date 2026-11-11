@@ -5,7 +5,7 @@ use super::*;
 fn canonical_pipe_contracts_are_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let cases = [
         ("test_pipe_create2_exact_path", Some(20), true, true),
         ("test_pipe_no_handle_leak", Some(30), false, true),

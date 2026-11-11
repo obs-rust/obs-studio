@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_mp4_split_time": {
+      "sources": [
+        "test/cmocka/test_mp4_split_time.c",
+        "plugins/obs-outputs/mp4-mux.c.h",
+        "plugins/obs-outputs/rtmp-av1.c.h",
+        {
+          "path": "plugins/obs-outputs/rtmp-hevc.c.h",
+          "requires": "ENABLE_HEVC"
+        }
+      ],
+      "requires": "HAVE_OBS_OUTPUTS",
+      "includes": [
+        "plugins/obs-outputs",
+        "shared/opts-parser",
+        "shared/bpm"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::opts-parser",
+        "OBS::bpm",
+        "MbedTLS::mbedtls",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "USE_MBEDTLS",
+        "CRYPTO"
+      ]
+    }
+  },
+  "tests": {
+    "test_mp4_split_time": {
+      "target": "test_mp4_split_time",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

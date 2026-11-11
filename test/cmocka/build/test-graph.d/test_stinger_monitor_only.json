@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_stinger_monitor_only": {
+      "sources": [
+        "test/cmocka/test_stinger_monitor_only.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl",
+        "TRANSITIONS_MODULE_PATH": "obs-transitions"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-transitions"
+      ],
+      "definitions": [
+        "TRANSITIONS_DATA_PATH=\"${source}/plugins/obs-transitions/data\""
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_TRANSITIONS_TEST_OWNER"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_stinger_monitor_only": {
+      "target": "test_stinger_monitor_only",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_TRANSITIONS_TEST_OWNER"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_weak_object_expired": {
+      "sources": [
+        "test/cmocka/test_weak_object_expired.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_weak_object_expired": {
+      "target": "test_weak_object_expired",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

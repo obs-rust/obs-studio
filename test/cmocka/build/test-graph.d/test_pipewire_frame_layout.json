@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipewire_frame_layout": {
+      "sources": [
+        "test/cmocka/test_pipewire_frame_layout.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire",
+        "deps/glad/include"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PipeWire::PipeWire",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PIPEWIRE",
+          "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK"
+        ]
+      },
+      "header_packages": [
+        "libdrm",
+        "gio-2.0"
+      ]
+    }
+  },
+  "tests": {
+    "test_pipewire_frame_layout": {
+      "target": "test_pipewire_frame_layout",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PIPEWIRE",
+          "HAVE_PIPEWIRE_FRAME_LAYOUT_SDK"
+        ]
+      }
+    }
+  }
+}

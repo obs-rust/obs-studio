@@ -33,8 +33,8 @@ fn graph_fixture(names: &[&str], setup: &str) -> tempfile::TempDir {
         .unwrap()
         .to_string_lossy()
         .replace('\\', "/");
-    let graph: serde_json::Value = serde_json::from_slice(
-        &fs::read(repository.join("test/cmocka/build/test-graph.json")).unwrap(),
+    let graph: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &repository.join("test/cmocka/build/test-graph.d"),
     )
     .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
@@ -166,8 +166,8 @@ fn native_test_graph_video_io_hidden_imports_private_header_dependencies() {
             ("OS_LINUX".into(), false),
         ]);
         // Evaluate only this registration: other graph entries need SDK facts.
-        let raw: serde_json::Value = serde_json::from_str(
-            &fs::read_to_string(repository.join("test/cmocka/build/test-graph.json")).unwrap(),
+        let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+            &repository.join("test/cmocka/build/test-graph.d"),
         )
         .unwrap();
         let graph = Graph::parse(&serde_json::json!({"schema":1,"targets":{"test_video_io_hidden":raw["targets"]["test_video_io_hidden"]},"tests":{"test_video_io_hidden":raw["tests"]["test_video_io_hidden"]}}).to_string()).unwrap();
@@ -193,8 +193,8 @@ fn native_test_graph_windows_slideshow_has_one_host_and_filetime_helper() {
     use obs_build::validation::graph::Graph;
     let repository =
         dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let raw: serde_json::Value = serde_json::from_slice(
-        &fs::read(repository.join("test/cmocka/build/test-graph.json")).unwrap(),
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &repository.join("test/cmocka/build/test-graph.d"),
     )
     .unwrap();
     let graph = Graph::parse(
@@ -280,7 +280,10 @@ fn native_registration_discovery_is_sorted_and_independent() {
     let declarations = registration_modules::declarations(fixture.path()).unwrap();
     assert!(declarations.find("mod a;").unwrap() < declarations.find("mod z;").unwrap());
     assert!(!declarations.contains("ignored"));
-    assert_eq!(declarations, registration_modules::declarations(fixture.path()).unwrap());
+    assert_eq!(
+        declarations,
+        registration_modules::declarations(fixture.path()).unwrap()
+    );
     fs::write(fixture.path().join("not-a-module.rs"), "").unwrap();
     assert!(registration_modules::declarations(fixture.path()).is_err());
 }
@@ -290,12 +293,121 @@ fn native_graph_fragments_preserve_cross_target_references() {
     use obs_build::validation::graph::Graph;
     let fixture = tempfile::tempdir().unwrap();
     for name in ["z", "a"] {
-        fs::write(fixture.path().join(format!("{name}.json")), serde_json::json!({
-            "schema": 1, "targets": {name: {"sources": [format!("{name}.c")]}},
-            "tests": {name: {"target": name}}
-        }).to_string()).unwrap();
+        fs::write(
+            fixture.path().join(format!("{name}.json")),
+            serde_json::json!({
+                "schema": 1, "targets": {name: {"sources": [format!("{name}.c")]}},
+                "tests": {name: {"target": name}}
+            })
+            .to_string(),
+        )
+        .unwrap();
     }
     let graph = Graph::load(fixture.path()).unwrap();
-    assert_eq!(graph.targets.keys().map(String::as_str).collect::<Vec<_>>(), ["a", "z"]);
-    assert_eq!(graph.tests.keys().map(String::as_str).collect::<Vec<_>>(), ["a", "z"]);
+    assert_eq!(
+        graph.targets.keys().map(String::as_str).collect::<Vec<_>>(),
+        ["a", "z"]
+    );
+    assert_eq!(
+        graph.tests.keys().map(String::as_str).collect::<Vec<_>>(),
+        ["a", "z"]
+    );
+}
+
+/// The optional baseline is a migration audit input, never a checked-in second graph.
+#[test]
+fn canonical_graph_fragments_match_documents_across_hosts() {
+    use obs_build::validation::graph::Graph;
+    use std::collections::{BTreeMap, BTreeSet};
+    fn requirements(value: &serde_json::Value, names: &mut BTreeSet<String>) {
+        match value {
+            serde_json::Value::String(name) => {
+                names.insert(name.clone());
+            }
+            serde_json::Value::Array(values) => {
+                for value in values {
+                    requirements(value, names);
+                }
+            }
+            serde_json::Value::Object(values) => {
+                for value in values.values() {
+                    requirements(value, names);
+                }
+            }
+            _ => {}
+        }
+    }
+    fn facts_in(value: &serde_json::Value, names: &mut BTreeSet<String>) {
+        match value {
+            serde_json::Value::Object(values) => {
+                for (key, value) in values {
+                    if key == "requires" || key == "optional_prefixes_requires" {
+                        requirements(value, names);
+                    } else {
+                        facts_in(value, names);
+                    }
+                }
+            }
+            serde_json::Value::Array(values) => {
+                for value in values {
+                    facts_in(value, names);
+                }
+            }
+            _ => {}
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let document = if let Some(path) = std::env::var_os("OBS_GRAPH_BASELINE") {
+        fs::read_to_string(path).unwrap()
+    } else {
+        let result = std::process::Command::new("uv")
+            .args(["run", "--no-project", "python", "-c",
+                "import json; from pathlib import Path; from ci.native_test_graph import load_graph; print(json.dumps(load_graph(Path('test/cmocka/build/test-graph.d'))))"])
+            .current_dir(&root).output().unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        String::from_utf8(result.stdout).unwrap()
+    };
+    let raw: serde_json::Value = serde_json::from_str(&document).unwrap();
+    let assembled = Graph::read_value(&root.join("test/cmocka/build/test-graph.d")).unwrap();
+    assert_eq!(raw, assembled, "fragment migration changed the raw graph");
+    let before = Graph::parse(&document).unwrap();
+    let after = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
+    let mut names = BTreeSet::new();
+    facts_in(&raw, &mut names);
+    for host in [
+        "x86_64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+        "x86_64-pc-windows-gnu",
+        "x86_64-unknown-freebsd",
+        "x86_64-unknown-openbsd",
+    ] {
+        for enabled in [false, true] {
+            let mut facts: BTreeMap<String, bool> =
+                names.iter().map(|name| (name.clone(), enabled)).collect();
+            facts.extend(obs_build::validation::native_test_facts(
+                host, enabled, enabled,
+            ));
+            facts.extend([
+                ("APPLE".into(), host.contains("apple")),
+                ("WIN32".into(), host.contains("windows")),
+            ]);
+            let expected = before.select(&facts).unwrap();
+            let actual = after.select(&facts).unwrap();
+            assert_eq!(
+                format!("{actual:?}"),
+                format!("{expected:?}"),
+                "{host} optional={enabled}"
+            );
+            println!(
+                "graph equality {host} optional={enabled}: {} targets, {} tests",
+                actual.targets.len(),
+                actual.tests.len()
+            );
+        }
+    }
 }

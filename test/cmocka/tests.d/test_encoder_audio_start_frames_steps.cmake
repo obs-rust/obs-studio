@@ -12,4 +12,4 @@
 # source; the test calls only them. The Tier 3 parity tests in rust/obs-output
 # compare the shims with this C. test_encoder_audio_start_steps covers the
 # caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

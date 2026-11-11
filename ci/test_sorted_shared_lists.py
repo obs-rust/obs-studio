@@ -5,7 +5,7 @@ Two ports that both append at the end of a shared list touch the same hunk
 and the second one is ejected from the merge queue. Sorted lists put each
 new entry at its own place. Order is not meaning in any of these:
 
-- test/cmocka/build/test-graph.json `targets` and `tests`: obs-build reads
+- test/cmocka/build/test-graph.d `targets` and `tests`: obs-build reads
   them into BTreeMaps; CMake defines each target independently.
 - libobs/build/source-sets.d/`*_PORTED_SOURCES.json`: unity groups, each its
   own translation unit, with no constructors.
@@ -19,6 +19,11 @@ import json
 import re
 import unittest
 from pathlib import Path
+
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -34,9 +39,9 @@ class SortedSharedListsTest(unittest.TestCase):
         self.assertEqual(items, sorted(items), f"{name} must be sorted")
 
     def test_native_test_graph(self):
-        graph = load_json("test/cmocka/build/test-graph.json")
-        self.assert_sorted("test-graph.json targets", graph["targets"])
-        self.assert_sorted("test-graph.json tests", graph["tests"])
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
+        self.assert_sorted("test-graph.d targets", graph["targets"])
+        self.assert_sorted("test-graph.d tests", graph["tests"])
 
     def test_ported_source_sets(self):
         ported = {p.stem: json.loads(p.read_text()) for p in (ROOT / "libobs/build/source-sets.d").glob("*_PORTED_SOURCES.json")}

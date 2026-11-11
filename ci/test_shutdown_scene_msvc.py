@@ -9,8 +9,13 @@ import tempfile
 import unittest
 
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parents[1]
-GRAPH = ROOT / "test/cmocka/build/test-graph.json"
+GRAPH = ROOT / "test/cmocka/build/test-graph.d"
 CONSUMER = ROOT / "test/cmocka/native-test-graph.cmake"
 
 
@@ -22,7 +27,7 @@ class ShutdownSceneMsvcTest(unittest.TestCase):
                 source = Path(temporary)
                 # Configure the actual graph entry without compiling a fake test.
                 # Native Tier 2 compiles the unchanged fixture on each host.
-                graph = json.loads(GRAPH.read_text())
+                graph = load_graph(GRAPH)
                 name = "test_shutdown_leaked_scenes"
                 selected = {"schema": 1, "targets": {name: graph["targets"][name]},
                             "tests": {name: graph["tests"][name]}}

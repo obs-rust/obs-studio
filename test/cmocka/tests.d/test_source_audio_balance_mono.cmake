@@ -3,4 +3,4 @@
 # through an audio capture callback (centred, balance 0.25, Force Mono and
 # both). Starts libobs core audio; like the other core audio tests it runs
 # on Linux only.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

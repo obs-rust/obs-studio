@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_x11_volume_keys": {
+      "sources": [
+        "test/cmocka/test_x11_volume_keys.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "X11::X11"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-platform.h",
+        "libobs/obs-hotkey.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_x11_volume_keys": {
+      "target": "test_x11_volume_keys",
+      "timeout_seconds": 60,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

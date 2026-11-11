@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_text_lookup": {
+      "sources": [
+        "test/cmocka/test_text_lookup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_text_lookup": {
+      "target": "test_text_lookup"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_shader_param_values_steps": {
+      "sources": [
+        "libobs/graphics/shader-param-values.c.h",
+        "test/cmocka/test_shader_param_values_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/shader-param-values.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_shader_param_values_steps": {
+      "target": "test_shader_param_values_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -31,11 +31,16 @@ import time
 import unittest
 from pathlib import Path
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pipewire_context_fail.sh"
 CMAKE = ROOT / "test" / "cmocka" / "tests.d" / "test_pipewire_context_fail.cmake"
-GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.d"
 WRAPPER_TEST = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.py"
 CI_TOML = ROOT / "ci.toml"
 EXCEPTION = 'path = "test/cmocka/test_pipewire_context_fail.sh"'
@@ -288,9 +293,9 @@ class PipewireContextFailTest(unittest.TestCase):
         self.assertFalse(SHELL_SCRIPT.exists(), "test_pipewire_context_fail.sh should be gone")
         self.assertTrue(MODULE.is_file(), "test_pipewire_context_fail.py should exist")
         caller = CMAKE.read_text()
-        self.assertIn("test-graph.json", caller)
+        self.assertIn("test-graph.d", caller)
         self.assertNotIn("test_pipewire_context_fail.sh", caller)
-        graph = json.loads(GRAPH.read_text(encoding="utf-8"))
+        graph = load_graph(GRAPH)
         self.assertEqual(graph["tests"]["test_pipewire_context_fail"]["command"], [
             "uv", "run", "--script",
             "${source}/test/cmocka/test_pipewire_context_fail.py", "${target}",

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_null_output_stop_thread": {
+      "sources": [
+        "test/cmocka/test_null_output_stop_thread.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OUTPUTS"
+        ]
+      },
+      "includes": [
+        "plugins/obs-outputs",
+        "shared/opts-parser",
+        "shared/bpm"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Threads::Threads",
+        "OBS::native-test-cmocka"
+      ],
+      "definitions": [
+        "NO_CRYPTO"
+      ],
+      "compile_options": [
+        "-Wno-unused-function",
+        "-fvisibility=default"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_output_can_begin_data_capture,--wrap=obs_output_initialize_encoders,--wrap=obs_output_begin_data_capture,--wrap=obs_output_end_data_capture,--wrap=pthread_create,--wrap=pthread_join"
+      ]
+    }
+  },
+  "tests": {
+    "test_null_output_stop_thread": {
+      "target": "test_null_output_stop_thread",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_missing_source_types": {
+      "sources": [
+        "test/cmocka/test_missing_source_types.c",
+        "frontend/utility/missing-source-types.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility",
+        "test/cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_missing_source_types": {
+      "target": "test_missing_source_types",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

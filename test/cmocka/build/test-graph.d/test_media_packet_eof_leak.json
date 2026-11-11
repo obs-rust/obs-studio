@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_media_packet_eof_leak": {
+      "sources": [
+        "test/cmocka/test_media_packet_eof_leak.c",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/network-timeout.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avdevice",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_MEDIA_PACKET_TEST_SDK",
+      "includes": [
+        "shared/media-playback",
+        "shared/media-playback/media-playback"
+      ],
+      "watch_inputs": [
+        "shared/media-playback/media-playback/media.c",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/build/media-playback.pch.h",
+        "test/cmocka/data/media_packet_eof_leak.mkv"
+      ]
+    }
+  },
+  "tests": {
+    "test_media_packet_eof_leak": {
+      "target": "test_media_packet_eof_leak",
+      "requires": "HAVE_MEDIA_PACKET_TEST_SDK",
+      "working_directory": "${build}",
+      "timeout_seconds": 20,
+      "command": [
+        "${target}",
+        "${source}/test/cmocka/data/media_packet_eof_leak.mkv"
+      ]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_display_reinit": {
+      "sources": [
+        "test/cmocka/test_display_reinit.c",
+        "plugins/mac-capture/display-reinit.c.h"
+      ],
+      "requires": true,
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_display_reinit": {
+      "target": "test_display_reinit",
+      "requires": true
+    }
+  }
+}

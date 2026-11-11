@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_srt_open_close": {
+      "sources": [
+        "test/cmocka/test_srt_open_close.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "Libsrt::Libsrt",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_SRT_TEST_SDK",
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "link_options": [
+        "-Wl,--wrap=srt_startup",
+        "-Wl,--wrap=srt_cleanup"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-srt.h"
+      ],
+      "header_libraries": [
+        "OBS::ffmpeg-net-host"
+      ]
+    }
+  },
+  "tests": {
+    "test_srt_open_close": {
+      "target": "test_srt_open_close",
+      "requires": "HAVE_SRT_TEST_SDK",
+      "timeout_seconds": 60
+    }
+  }
+}

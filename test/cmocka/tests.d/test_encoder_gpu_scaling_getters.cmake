@@ -1,1 +1,1 @@
-# Actual-library characterization; canonical target and test in ../build/test-graph.json.
+# Actual-library characterization; canonical target and test in ../build/test-graph.d.
