@@ -18,3 +18,32 @@ pub unsafe extern "C" fn obs_exit_watchdog_arm(log_path: *const c_char) -> bool 
     let path = path.and_then(|p| p.to_str().ok()).map(Path::new);
     crate::arm(crate::TIMEOUT, path)
 }
+
+/// The frontend notes the binary path of a loaded OBS module (UTF-8, may
+/// be null), before [`obs_exit_watchdog_note_loaded`].
+///
+/// # Safety
+///
+/// `bin_path` is null or a valid NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_exit_watchdog_note_module(bin_path: *const c_char) {
+    if bin_path.is_null() {
+        return;
+    }
+    // SAFETY: the caller passes a valid C string.
+    if let Ok(path) = unsafe { CStr::from_ptr(bin_path) }.to_str() {
+        crate::note_module(path);
+    }
+}
+
+/// The frontend: the modules are loaded, before their post-load.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_exit_watchdog_note_loaded() {
+    crate::note_loaded();
+}
+
+/// The frontend: the modules' post-load is done.
+#[unsafe(no_mangle)]
+pub extern "C" fn obs_exit_watchdog_note_post_load() {
+    crate::note_post_load();
+}

@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-display.pch.h"
 
 bool obs_display_init(struct obs_display *display, const struct gs_init_data *graphics_data)
 {
@@ -159,11 +159,6 @@ void obs_display_remove_draw_callback(obs_display_t *display, void (*draw)(void 
 	da_erase_item(display->draw_callbacks, &data);
 	pthread_mutex_unlock(&display->draw_callbacks_mutex);
 }
-
-/* The clear flags obs-canvas-draw.h copies. */
-_Static_assert(OBS_DISPLAY_CLEAR_COLOR == GS_CLEAR_COLOR, "GS_CLEAR_COLOR");
-_Static_assert(OBS_DISPLAY_CLEAR_DEPTH == GS_CLEAR_DEPTH, "GS_CLEAR_DEPTH");
-_Static_assert(OBS_DISPLAY_CLEAR_STENCIL == GS_CLEAR_STENCIL, "GS_CLEAR_STENCIL");
 
 static inline bool render_display_begin(struct obs_display *display, uint32_t cx, uint32_t cy, bool update_color_space)
 {

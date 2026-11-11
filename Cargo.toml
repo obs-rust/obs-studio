@@ -26,6 +26,8 @@ memchr = { version = "=2.8.3", default-features = false }
 pkg-config = { version = "=0.3.34", default-features = false }
 proptest = { version = "=1.11.0", default-features = false }
 serde = { version = "=1.0.229", default-features = false }
+schemars = { version = "=1.2.3", default-features = false }
+serde_path_to_error = { version = "=0.1.20", default-features = false }
 serde_json = { version = "=1.0.151", default-features = false }
 sha2 = { version = "=0.11.0", default-features = false }
 tempfile = { version = "=3.27.0", default-features = false }
@@ -65,6 +67,28 @@ lto = "thin"
 # merging in the app-ID shim also pulls private adapters that need libobs's
 # unexported core global. Thin LTO still optimizes calls across the members.
 [profile.release.package.obs-hotkey]
+codegen-units = 256
+
+# Standalone scene-rule fixtures must not pull source-lifetime calls from the
+# transition setter shims into the same optimized archive member.
+# Standalone scene-rule consumers must not pull the atomic callback shim and
+# its full-libobs reference/lock dependencies into their archive member.
+# Keep FFI modules separate, matching the hotkey fixture policy above.
+[profile.release.package.obs-scene]
+codegen-units = 256
+
+# The standalone render-size fixture links only the private render-size bridge;
+# a shared optimized member would also pull the audio callback tree and its
+# audio-seam adapter, which needs libobs's unexported core global (#4285).
+[profile.release.package.obs-core]
+codegen-units = 256
+
+# Standalone graphics fixtures must not pull shader-file I/O and logging into
+# matrix, immediate-mode, effect-parser or GIF archive members. Keep the FFI
+# modules separate, as for the other standalone fixture consumers above.
+# Standalone graphics helpers must not pull the context-dependent blend shims
+# merely because release codegen merged their archive members (#4296).
+[profile.release.package.obs-graphics]
 codegen-units = 256
 
 # obs-media-io's video_fourcc parity test checks every u32 against the C

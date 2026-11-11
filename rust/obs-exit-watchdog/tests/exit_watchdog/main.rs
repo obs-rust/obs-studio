@@ -8,26 +8,31 @@ use std::time::{Duration, Instant};
 
 use obs_exit_watchdog::{EXIT_CODE, LINE_PREFIX, arm, line};
 
+#[path = "images.rs"]
+mod images;
+#[path = "naming.rs"]
+mod naming;
+
 const MARKER: &str = "OBS_EXIT_WATCHDOG_CHILD";
 /// The log file the child gets, in the parent's temporary directory.
-const LOG: &str = "OBS_EXIT_WATCHDOG_LOG";
+pub(crate) const LOG: &str = "OBS_EXIT_WATCHDOG_LOG";
 /// A child that the watchdog does not end is killed after this long.
 const CHILD_LIMIT: Duration = Duration::from_secs(5);
 
 /// The test's name for an exact libtest selector, from `module_path!()` so
 /// a regrouping of the modules cannot run zero child tests.
-fn selector(full: &str) -> &str {
+pub(crate) fn selector(full: &str) -> &str {
     full.split_once("::").unwrap().1
 }
 
 /// True in the child of `test`.
-fn in_child(test: &str) -> bool {
+pub(crate) fn in_child(test: &str) -> bool {
     std::env::var(MARKER).as_deref() == Ok(test)
 }
 
 /// Runs `test` alone in a child, with `log` as its log file. Kills the child
 /// and fails when it runs longer than [`CHILD_LIMIT`].
-fn run_child(test: &str, log: &Path) -> (Output, Duration) {
+pub(crate) fn run_child(test: &str, log: &Path) -> (Output, Duration) {
     let start = Instant::now();
     let mut child = Command::new(std::env::current_exe().unwrap())
         .args([test, "--exact", "--test-threads=1", "--nocapture"])
@@ -53,19 +58,19 @@ fn run_child(test: &str, log: &Path) -> (Output, Duration) {
 }
 
 /// A log path of its own for each case, in a new temporary directory.
-fn log_path(case: &str) -> PathBuf {
+pub(crate) fn log_path(case: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("obs-exit-watchdog-{}-{case}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir.join("log.txt")
 }
 
-fn count_lines(text: &str) -> usize {
+pub(crate) fn count_lines(text: &str) -> usize {
     text.lines().filter(|l| l.starts_with(LINE_PREFIX)).count()
 }
 
 /// Blocks the child's thread for longer than the parent waits.
-fn block() -> ! {
+pub(crate) fn block() -> ! {
     loop {
         std::thread::sleep(Duration::from_secs(60));
     }

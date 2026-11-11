@@ -71,42 +71,6 @@ static inline char *get_module_name(const char *file)
 	return obs_module_names_module_name(file, get_module_extension());
 }
 
-int obs_module_load_metadata(struct obs_module *mod);
-int obs_module_load_metadata(struct obs_module *mod)
-{
-	struct obs_module_metadata *md = NULL;
-
-	/* Check if the metadata file exists */
-	char *path = obs_module_names_manifest_path(mod->data_path);
-
-	if (os_file_exists(path)) {
-		/* If we find a metadata file, allocate a new metadata. */
-		md = bmalloc(sizeof(obs_module_metadata_t));
-		obs_data_t *metadata = obs_data_create_from_json_file(path);
-
-		md->display_name = bstrdup(obs_data_get_string(metadata, "display_name"));
-		md->id = bstrdup(obs_data_get_string(metadata, "id"));
-		md->version = bstrdup(obs_data_get_string(metadata, "version"));
-		md->os_arch = bstrdup(obs_data_get_string(metadata, "os_arch"));
-		md->name = bstrdup(obs_data_get_string(metadata, "name"));
-		md->description = bstrdup(obs_data_get_string(metadata, "description"));
-		md->long_description = bstrdup(obs_data_get_string(metadata, "long_description"));
-
-		obs_data_t *urls = obs_data_get_obj(metadata, "urls");
-		md->repository_url = bstrdup(obs_data_get_string(urls, "repository"));
-		md->website_url = bstrdup(obs_data_get_string(urls, "website"));
-		md->support_url = bstrdup(obs_data_get_string(urls, "support"));
-		obs_data_release(urls);
-
-		md->has_banner = obs_data_get_bool(metadata, "has_banner");
-		md->has_icon = obs_data_get_bool(metadata, "has_icon");
-		obs_data_release(metadata);
-	}
-	bfree(path);
-	mod->metadata = md;
-	return MODULE_SUCCESS;
-}
-
 int obs_open_module(obs_module_t **module, const char *path, const char *data_path)
 {
 	struct obs_module mod = {0};
@@ -435,37 +399,6 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 
 	return obs_module_names_find_core(info->path_info.binary, name, info->path_info.data, info->type,
 					  get_module_extension(), callback, data);
-}
-
-void obs_find_modules2(obs_find_module_callback2_t callback, void *param)
-{
-	if (!obs)
-		return;
-
-	for (size_t i = 0; i < obs->module_paths.num; i++) {
-		struct obs_module_path *omp = obs->module_paths.array + i;
-		obs_module_paths_find(omp->bin, omp->data, omp->type, get_module_extension(),
-				      obs_host_add_module_extension, callback, param);
-	}
-}
-
-void obs_find_modules(obs_find_module_callback_t callback, void *param)
-{
-	/* the structure is ABI compatible so we can just cast the callback */
-	obs_find_modules2((obs_find_module_callback2_t)callback, param);
-}
-
-void obs_enum_modules(obs_enum_module_callback_t callback, void *param)
-{
-	struct obs_module *module;
-	if (!obs)
-		return;
-
-	module = obs->first_module;
-	while (module) {
-		callback(param, module);
-		module = module->next;
-	}
 }
 
 void free_module(struct obs_module *mod)

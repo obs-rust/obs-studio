@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-source-icon-type-getter+.h.c"
+  ]
+}

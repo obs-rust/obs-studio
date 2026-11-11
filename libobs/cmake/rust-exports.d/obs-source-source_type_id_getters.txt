@@ -1,0 +1,2 @@
+obs_source_get_type
+obs_source_get_id

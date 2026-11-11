@@ -75,6 +75,30 @@ not get a line.
 
 ### Headless and automation
 
+- **MCP starts without X11.** The headless host uses an available Wayland
+  compositor or X server, and serves control requests without either display.
+  Video operations report unavailability when no display can create graphics.
+  *Linux*, 2026-11-09. Issue [#4464](https://github.com/obs-rust/obs-studio/issues/4464),
+  PR [#4466](https://github.com/obs-rust/obs-studio/pull/4466).
+
+- **Bounded MCP waits.** Agents can wait for typed output/source/media/metric
+  conditions and request automatic waits on starts, without GUI interaction or
+  fixed sleeps. Timeouts return the last observation. *All*, 2026-11-09.
+  Issue [#4447](https://github.com/obs-rust/obs-studio/issues/4447),
+  PR [#4454](https://github.com/obs-rust/obs-studio/pull/4454).
+
+- **Virtual device and media control.** MCP can start/stop Virtual Camera, inspect
+  its paired mic, restart media, inspect pipeline graphs and read/reset measured
+  stage counters. Unmeasured device/sync values stay null. *All* (device support
+  depends on the loaded plugin), 2026-11-09. Issue [#4446](https://github.com/obs-rust/obs-studio/issues/4446),
+  PR [#4452](https://github.com/obs-rust/obs-studio/pull/4452).
+
+- **Typed MCP control.** Existing OBS MCP tools publish input and output schemas,
+  structured results and machine-readable domain errors. Read operations carry
+  annotations, and repeated output start/stop calls succeed with current state.
+  *All*, 2026-11-09. Issue [#4445](https://github.com/obs-rust/obs-studio/issues/4445),
+  PR [#4450](https://github.com/obs-rust/obs-studio/pull/4450).
+
 - **`--disable-shutdown-check` works again.** After an unclean stop (power
   loss, OOM killer, a hard stop of the VM or container), OBS starts without
   the "Crash Detected" dialog and logs the unclean shutdown as a warning on
@@ -470,6 +494,12 @@ not get a line.
   ends with exit code 124, instead of staying in the background without a
   window. *Linux, macOS*, pending merge. Issue
   [#4065](https://github.com/obs-rust/obs-studio/issues/4065).
+- **The exit watchdog names the plugin.** The line names the library OBS
+  waits in and the plugin that loaded it, also a library a plugin loaded
+  itself, for example `... is blocking in libremidi.so.4 (loaded by
+  advanced-scene-switcher.so); ending the process`. *Linux, macOS*,
+  pending merge. Issue
+  [#4525](https://github.com/obs-rust/obs-studio/issues/4525).
 - Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel
@@ -828,6 +858,12 @@ area.
   [#2196](https://github.com/obs-rust/obs-studio/pull/2196).
 
 ### Video capture
+
+- I420 recordings and raw video output no longer have sheared chroma when
+  the output width is four pixels past a multiple of eight (for example 1364)
+  with the OpenGL renderer. *Linux, macOS*, pending merge. Issue
+  [#4126](https://github.com/obs-rust/obs-studio/issues/4126), PR
+  [#4132](https://github.com/obs-rust/obs-studio/pull/4132).
 
 - A macOS display capture no longer keeps showing the last frame after its
   display is unplugged, moved to another port or reconfigured: it notices the
@@ -2450,6 +2486,10 @@ area.
 
 ### Stability
 
+- **Loaded module log without a core.** An embedder, plugin or script that
+  calls obs_log_loaded_modules before obs_startup or after obs_shutdown no
+  longer crashes OBS; with no core it logs nothing. *All*, 2026-11-10. Issue
+  [#4465](https://github.com/obs-rust/obs-studio/issues/4465).
 - An embedder or plugin that leaves a scene alive no longer crashes shutdown
   when the scene still owns input sources or nested groups. *All*, pending
   merge. Issue [#3458](https://github.com/obs-rust/obs-studio/issues/3458), PR
@@ -3042,3 +3082,14 @@ area.
   *All platforms*, 2026-11-02. Follows
   [#3491](https://github.com/obs-rust/obs-studio/pull/3491), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+
+- **Control socket** (#4456): private Unix MCP endpoint, `--mcp-attach` stdio proxy,
+  and an in-app frontend module that controls the existing OBS instance.
+
+- **Typed control client and probe** (#4457): fluent Rust socket client and
+  `ci/vcam_av_sync.py --transport mcp` with automatic fallback when the websocket
+  service is absent, bounded capture shutdown, typed waits and probe cleanup.
+
+- MCP: `./mcp` builds and launches an isolated libobs-enabled control server, automatically provisioning the native SDK on NixOS (#4507).
+
+- MCP: `./mcp` builds and locates EGL graphics, Virtual Camera/virtual mic, FFmpeg media/AAC and x264 runtime modules automatically (#4521).

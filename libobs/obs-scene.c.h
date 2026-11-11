@@ -412,17 +412,6 @@ static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, c
 	obs_scene_item_relative_scale(dst, v, y, item->scale_ref.y);
 }
 
-/* A bounds type outside the enum (a hand-edited or foreign scene
- * collection, undo data, a plugin) has no bounding box: OBS_BOUNDS_NONE.
- * Takes the int64 a load reads, before any cast truncates it, and an enum
- * value from a setter (an unsigned or a signed int, by compiler). */
-static inline enum obs_bounds_type valid_bounds_type(int64_t type)
-{
-	if (type < OBS_BOUNDS_NONE || type > OBS_BOUNDS_MAX_ONLY)
-		return OBS_BOUNDS_NONE;
-	return (enum obs_bounds_type)type;
-}
-
 static void calculate_bounds_data(struct obs_scene_item *item, struct vec2 *origin, struct vec2 *scale, uint32_t *cx,
 				  uint32_t *cy)
 {
@@ -1542,21 +1531,6 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 }
 
 enum gs_color_space scene_video_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces);
-enum gs_color_space scene_video_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces)
-{
-	UNUSED_PARAMETER(data);
-	UNUSED_PARAMETER(count);
-	UNUSED_PARAMETER(preferred_spaces);
-
-	enum gs_color_space space = GS_CS_SRGB;
-	struct obs_video_info ovi;
-	if (obs_get_video_info(&ovi)) {
-		if (ovi.colorspace == VIDEO_CS_2100_PQ || ovi.colorspace == VIDEO_CS_2100_HLG)
-			space = GS_CS_709_EXTENDED;
-	}
-
-	return space;
-}
 
 const struct obs_source_info scene_info = {
 	.id = "scene",
@@ -1608,16 +1582,6 @@ static inline obs_scene_t *create_private_id(obs_canvas_t *canvas, const char *i
 {
 	struct obs_source *source = obs_source_create_private_with_canvas(canvas, id, name, NULL);
 	return source->context.data;
-}
-
-obs_scene_t *obs_scene_create(const char *name)
-{
-	return create_id(obs->data.main_canvas, "scene", name);
-}
-
-obs_scene_t *obs_scene_create_private(const char *name)
-{
-	return create_private_id(obs->data.main_canvas, "scene", name);
 }
 
 static obs_source_t *get_child_at_idx(obs_scene_t *scene, size_t idx)
@@ -1939,49 +1903,6 @@ void obs_scene_enum_items(obs_scene_t *scene, bool (*callback)(obs_scene_t *, ob
 	full_unlock(scene);
 }
 
-static obs_sceneitem_t *sceneitem_get_ref(obs_sceneitem_t *si)
-{
-	long owners = os_atomic_load_long(&si->ref);
-	while (owners > 0) {
-		if (os_atomic_compare_exchange_long(&si->ref, &owners, owners + 1)) {
-			return si;
-		}
-	}
-	return NULL;
-}
-
-static bool hotkey_show_sceneitem(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-
-	obs_sceneitem_t *si = sceneitem_get_ref(data);
-	if (pressed && si && !os_atomic_load_bool(&si->user_visible)) {
-		obs_sceneitem_set_visible(si, true);
-		obs_sceneitem_release(si);
-		return true;
-	}
-
-	obs_sceneitem_release(si);
-	return false;
-}
-
-static bool hotkey_hide_sceneitem(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-
-	obs_sceneitem_t *si = sceneitem_get_ref(data);
-	if (pressed && si && os_atomic_load_bool(&si->user_visible)) {
-		obs_sceneitem_set_visible(si, false);
-		obs_sceneitem_release(si);
-		return true;
-	}
-
-	obs_sceneitem_release(si);
-	return false;
-}
-
 static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *name)
 {
 	struct obs_data_array *hotkey_array;
@@ -2025,30 +1946,6 @@ static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *
 	dstr_free(&legacy);
 	dstr_free(&show_desc);
 	dstr_free(&hide_desc);
-}
-
-static void sceneitem_rename_hotkey(const obs_sceneitem_t *scene_item, const char *new_name)
-{
-	struct dstr show_desc = {0};
-	struct dstr hide_desc = {0};
-
-	dstr_copy(&show_desc, obs->hotkeys.sceneitem_show);
-	dstr_replace(&show_desc, "%1", new_name);
-	dstr_copy(&hide_desc, obs->hotkeys.sceneitem_hide);
-	dstr_replace(&hide_desc, "%1", new_name);
-
-	obs_hotkey_pair_set_descriptions(scene_item->toggle_visibility, show_desc.array, hide_desc.array);
-
-	dstr_free(&show_desc);
-	dstr_free(&hide_desc);
-}
-
-static void sceneitem_renamed(void *param, calldata_t *data)
-{
-	obs_sceneitem_t *scene_item = param;
-	const char *name = calldata_string(data, "new_name");
-
-	sceneitem_rename_hotkey(scene_item, name);
 }
 
 static inline bool source_has_audio(obs_source_t *source)
@@ -2436,23 +2333,6 @@ void obs_scene_load_transform_states(const char *data)
 	obs_data_array_release(scenes_and_groups);
 }
 
-void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
-{
-	struct calldata params;
-	uint8_t stack[128];
-	const char *command = select ? "item_select" : "item_deselect";
-
-	if (!item || item->selected == select || !item->parent)
-		return;
-
-	item->selected = select;
-
-	calldata_init_fixed(&params, stack, sizeof(stack));
-	calldata_set_ptr(&params, "item", item);
-
-	signal_parent(item->parent, command, &params);
-}
-
 #define do_update_transform(item)                                          \
 	do {                                                               \
 		if (!item->parent || item->parent->is_group)               \
@@ -2460,6 +2340,12 @@ void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
 		else                                                       \
 			update_item_transform(item, false);                \
 	} while (false)
+
+/* Dependency of the extracted bounds setters; keep update dispatch here. */
+static void scene_item_bounds_update_transform(obs_sceneitem_t *item)
+{
+	do_update_transform(item);
+}
 
 void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 {
@@ -2652,50 +2538,6 @@ void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 	obs_scene_release(scene);
 }
 
-void obs_sceneitem_set_bounds_type(obs_sceneitem_t *item, enum obs_bounds_type type)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->bounds_type = valid_bounds_type(type);
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds_alignment(obs_sceneitem_t *item, uint32_t alignment)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->bounds_align = alignment;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds_crop(obs_sceneitem_t *item, bool crop)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->crop_to_bounds = crop;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds(obs_sceneitem_t *item, const struct vec2 *bounds)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		if (!item->absolute_coordinates)
-			size_from_absolute(&item->bounds, bounds, item);
-		else
-			vec2_copy(&item->bounds, bounds);
-		item_fields_unlock(scene);
-
-		do_update_transform(item);
-	}
-}
-
 void obs_sceneitem_get_pos(const obs_sceneitem_t *item, struct vec2 *pos)
 {
 	if (!item)
@@ -2866,31 +2708,6 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 	return true;
 }
 
-bool obs_sceneitem_set_locked(obs_sceneitem_t *item, bool lock)
-{
-	struct calldata cd;
-	uint8_t stack[256];
-
-	if (!item)
-		return false;
-
-	if (item->locked == lock)
-		return false;
-
-	if (!item->parent)
-		return false;
-
-	item->locked = lock;
-
-	calldata_init_fixed(&cd, stack, sizeof(stack));
-	calldata_set_ptr(&cd, "item", item);
-	calldata_set_bool(&cd, "locked", lock);
-
-	signal_parent(item->parent, "item_locked", &cd);
-
-	return true;
-}
-
 static bool sceneitems_match(obs_scene_t *scene, obs_sceneitem_t *const *items, size_t size, bool *order_matches)
 {
 	obs_sceneitem_t *item = scene->first_item;
@@ -2972,34 +2789,6 @@ void obs_sceneitem_set_crop(obs_sceneitem_t *item, const struct obs_sceneitem_cr
 	}
 	item->crop = clamped;
 	item_fields_unlock(scene);
-
-	os_atomic_set_bool(&item->update_transform, true);
-}
-
-void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type filter)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_scale_filter"))
-		return;
-
-	item->scale_filter = filter;
-
-	os_atomic_set_bool(&item->update_transform, true);
-}
-
-void obs_sceneitem_set_blending_method(obs_sceneitem_t *item, enum obs_blending_method method)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_method"))
-		return;
-
-	item->blend_method = method;
-}
-
-void obs_sceneitem_set_blending_mode(obs_sceneitem_t *item, enum obs_blending_type type)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_mode"))
-		return;
-
-	item->blend_type = type;
 
 	os_atomic_set_bool(&item->update_transform, true);
 }
@@ -3324,11 +3113,6 @@ obs_sceneitem_t *obs_scene_insert_group2(obs_scene_t *scene, const char *name, o
 	if (signal && item)
 		signal_refresh(scene);
 	return item;
-}
-
-obs_scene_t *obs_sceneitem_group_get_scene(const obs_sceneitem_t *item)
-{
-	return (item && item->is_group) ? item->source->context.data : NULL;
 }
 
 void obs_sceneitem_group_ungroup(obs_sceneitem_t *item)
@@ -3682,27 +3466,6 @@ void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)
 
 	if (os_atomic_set_bool(&item->update_transform, false))
 		update_item_transform(item, false);
-}
-
-void obs_sceneitem_set_transition(obs_sceneitem_t *item, bool show, obs_source_t *transition)
-{
-	if (!item)
-		return;
-
-	obs_source_t **target = show ? &item->show_transition : &item->hide_transition;
-	if (*target)
-		obs_source_release(*target);
-	*target = obs_source_get_ref(transition);
-}
-
-void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uint32_t duration_ms)
-{
-	if (!item)
-		return;
-	if (show)
-		item->show_transition_duration = duration_ms;
-	else
-		item->hide_transition_duration = duration_ms;
 }
 
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);

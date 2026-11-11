@@ -86,6 +86,9 @@ rust/obs-exit-watchdog/src/platform/mod.rs # new crate's platform boundary (#406
 rust/obs-gpu-status/src/platform/mod.rs
 rust/obs-graphics/src/platform/mod.rs
 rust/obs-hotkey/build.rs
+rust/obs-mcp-module/build.rs # Control transport/platform selector; native module ABI requires cross-platform checks (#4448).
+rust/obs-mcp-module/src/platform/mod.rs # Control transport/platform selector; native module ABI requires cross-platform checks (#4448).
+rust/obs-mcp/src/platform/mod.rs # Control transport/platform selector; native module ABI requires cross-platform checks (#4448).
 rust/obs-media-io/src/platform/mod.rs
 rust/obs-nvenc/src/platform/mod.rs
 rust/obs-preflight/src/platform/mod.rs

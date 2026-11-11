@@ -791,16 +791,6 @@ enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *fla
 	return state;
 }
 
-char *obs_hotkeys_get_background_error(void)
-{
-	if (!lock())
-		return NULL;
-
-	char *error = obs->hotkeys.background.error ? bstrdup(obs->hotkeys.background.error) : NULL;
-	unlock();
-	return error;
-}
-
 char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 {
 	if (!lock())
@@ -956,44 +946,6 @@ void *obs_hotkey_thread(void *arg)
 	return NULL;
 }
 
-void obs_hotkey_trigger_routed_callback(obs_hotkey_id id, bool pressed)
-{
-	if (!lock())
-		return;
-
-	if (!obs->hotkeys.reroute_hotkeys)
-		goto unlock;
-
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
-	if (!hotkey)
-		goto unlock;
-
-	hotkey->func(hotkey->data, id, hotkey, pressed);
-
-unlock:
-	unlock();
-}
-
-void obs_hotkey_set_callback_routing_func(obs_hotkey_callback_router_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	obs->hotkeys.router_func = func;
-	obs->hotkeys.router_func_data = data;
-	unlock();
-}
-
-void obs_hotkey_enable_callback_rerouting(bool enable)
-{
-	if (!lock())
-		return;
-
-	obs->hotkeys.reroute_hotkeys = enable;
-	unlock();
-}
-
 /* The key name store (obs->hotkeys.translations[]): obs_hotkeys_set_translations_s()
  * in obs-hotkey-translations.c.h calls it for each name it sets. Declared in
  * obs-internal.h; not exported. */
@@ -1013,32 +965,6 @@ const char *obs_get_hotkey_translation(obs_key_t key, const char *def)
 	}
 
 	return obs->hotkeys.translations[key] ? obs->hotkeys.translations[key] : def;
-}
-
-void obs_hotkeys_set_audio_hotkeys_translations(const char *mute, const char *unmute, const char *push_to_mute,
-						const char *push_to_talk, const char *monitor_on,
-						const char *monitor_off)
-{
-#define SET_T(n)               \
-	bfree(obs->hotkeys.n); \
-	obs->hotkeys.n = bstrdup(n)
-	SET_T(mute);
-	SET_T(unmute);
-	SET_T(push_to_mute);
-	SET_T(push_to_talk);
-	SET_T(monitor_on);
-	SET_T(monitor_off);
-#undef SET_T
-}
-
-void obs_hotkeys_set_sceneitem_hotkeys_translations(const char *show, const char *hide)
-{
-#define SET_T(n)                           \
-	bfree(obs->hotkeys.sceneitem_##n); \
-	obs->hotkeys.sceneitem_##n = bstrdup(n)
-	SET_T(show);
-	SET_T(hide);
-#undef SET_T
 }
 
 /* This file hashes integer keys (HASH_FUNCTION above); restore util/uthash.h's

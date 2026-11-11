@@ -1,5 +1,4 @@
-/* Unity group (BUILD.md): isolated scene lookup functions and their locks. */
-
+/* Unity group (BUILD.md): real scene lookup field and lock adapters. */
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-scene-lookup.c.h"
+#include "libobs/obs-scene-lookup-fields.c.h"

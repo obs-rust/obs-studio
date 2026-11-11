@@ -134,7 +134,7 @@ ZCCACHE_RESET = (
 TIMING_TESTS_D = (
     "test_slideshow_mem_cap",
 )
-TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker")
+TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_source_deinterlace", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker", "test_source_transition_video")
 TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 
 
@@ -146,6 +146,12 @@ class TimingLockTest(unittest.TestCase):
         tests = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]
         for name in TIMING_TESTS_GRAPH:
             self.assertIn("timing", tests[name].get("resource_locks", []), name)
+
+    def test_transition_video_has_exclusive_ctest_scheduling(self):
+        # Its frame-bound callback assertions race a background texture trylock
+        # under competing native-graphics load (#4468).
+        test = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]["test_source_transition_video"]
+        self.assertTrue(test.get("run_serial"), "transition video must not compete with other CTest processes")
 
     def test_a_resource_lock_runs_alone_in_the_pool(self):
         payload = json.dumps(

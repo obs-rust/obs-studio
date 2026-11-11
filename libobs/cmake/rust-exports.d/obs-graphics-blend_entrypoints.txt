@@ -1,0 +1,3 @@
+gs_blend_state_pop
+gs_blend_state_push
+gs_reset_blend_state

@@ -2,6 +2,8 @@
 
 mod background_app_id;
 mod background_app_id_parity;
+mod background_error;
+mod background_error_parity;
 mod background_query;
 mod background_query_parity;
 mod binding_getters;
@@ -42,6 +44,10 @@ mod portal_shortcut_status;
 mod portal_shortcut_status_parity;
 mod press;
 mod press_parity;
+mod routed_callback;
+mod routed_callback_parity;
+mod routing_controls;
+mod routing_controls_parity;
 mod save_load;
 mod save_load_parity;
 mod translations;

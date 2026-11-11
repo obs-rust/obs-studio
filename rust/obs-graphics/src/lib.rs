@@ -1,7 +1,9 @@
 //! Rust ports of `libobs/graphics`, and of the units extracted from
 //! `libobs/graphics/graphics.c.h`: so far `graphics-sprite.c.h`, the sprite
 //! and texture upload geometry ([`sprite`]), and `graphics-immediate.c.h`,
-//! the immediate-mode vertex counts and texture units ([`immediate`]), from
+//! the immediate-mode vertex counts and texture units ([`immediate`]), and
+//! `texture-planar-creators.c.h`, the NV12 and P010 texture creators
+//! ([`texture_planar_creators`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
@@ -33,8 +35,11 @@
 use obs_c_oracle as _; // links the test bmalloc/bfree (oracle/test_bmem.c)
 
 pub mod axisang;
+pub mod blend_entrypoints;
 pub mod bounds;
+pub mod cubetexture_access;
 pub mod effect_destroy;
+pub mod effect_file;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;
@@ -46,12 +51,15 @@ pub mod ffi;
 pub mod gif;
 pub mod gif_blocks;
 pub mod gif_frame;
+pub mod image_decode;
 pub mod image_file;
+pub mod image_init;
 pub mod image_orient;
 pub mod image_pq_scrgb;
 pub mod image_rgba64;
 pub mod image_route;
 pub mod immediate;
+pub mod immediate_scalars;
 pub mod linear_srgb;
 pub mod lzw;
 pub mod math_extra;
@@ -61,13 +69,23 @@ pub mod plane;
 mod platform;
 pub mod quat;
 mod round;
+pub mod shader_file;
 pub mod shader_param_names;
 pub mod shader_param_values;
 pub mod shader_parser;
 pub mod shader_sampler_convert;
 pub mod sprite;
+pub mod stagesurface_getters;
 pub mod state_stacks;
+pub mod texture_creators;
+pub mod texture_metadata;
+pub mod texture_planar_creators;
 pub mod texture_render;
+pub mod timer_dispatch;
+pub mod timer_range_dispatch;
 pub mod vec2;
 pub mod vec3;
 pub mod vec4;
+pub mod vertexbuffer_access;
+pub mod vertexbuffer_destroy;
+pub mod voltexture_metadata;

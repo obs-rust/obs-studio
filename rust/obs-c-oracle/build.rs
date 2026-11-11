@@ -28,6 +28,10 @@ fn oracle_input_hash(roots: &[PathBuf], flags: &[&str]) -> u64 {
             .as_path(),
         &mut mix,
     );
+    hash_file(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("legacy/obs-video-render-size.inc"),
+        &mut mix,
+    );
     let mut hash_inputs: Vec<PathBuf> = Vec::new();
     for root in roots {
         collect_c_sources(root, &mut hash_inputs);
@@ -588,6 +592,15 @@ fn main() {
     let nvenc_dir = libobs.with_file_name("plugins").join("obs-nvenc");
     let extract_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("obs-nvenc-extract");
     std::fs::create_dir_all(&extract_dir).expect("create obs-nvenc-extract");
+    std::fs::write(
+        extract_dir.join("encoder_registry_find.inc"),
+        extract_c(
+            &libobs.join("obs-encoder.c.h"),
+            "struct obs_encoder_info *find_encoder(const char *id)",
+            "}",
+        ),
+    )
+    .expect("write original encoder registry lookup extract");
     let cuda_load = nvenc_dir.join("cuda-load.c.h");
     let nvenc_load = nvenc_dir.join("nvenc-load.c.h");
     for (name, src, start, end) in [
@@ -612,11 +625,27 @@ fn main() {
     ] {
         std::fs::write(extract_dir.join(name), extract_c(src, start, end)).expect("write extract");
     }
+    std::fs::write(
+        extract_dir.join("obs-module-load-locale.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-module-load-locale.c.h")),
+    )
+    .expect("write module load locale extract");
     for stem in [
         "effect-parser-lifecycle",
         "effect-parser-lifecycle-adapter",
+        "graphics-immediate-scalars",
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
+        "shader-file",
+        "stagesurface-getters",
+        "texture-planar-creators",
+        "texture-metadata",
+        "texture-cube-access",
+        "timer-dispatch",
+        "timer-range-dispatch",
+        "voltexture-metadata",
+        "vertexbuffer-destroy",
+        "blend-entrypoints-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
@@ -625,10 +654,53 @@ fn main() {
         )
         .expect("write lifecycle extract");
     }
+    std::fs::write(
+        extract_dir.join("module-init.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-module-init.c.h")),
+    )
+    .expect("write original module initializer");
+    println!("cargo:rerun-if-changed=legacy/obs-video-render-size.inc");
+    std::fs::write(
+        extract_dir.join("obs-video-render-size.inc"),
+        extract_after_libobs_pch(&manifest.join("legacy/obs-video-render-size.inc")),
+    )
+    .expect("write render size extract");
+    std::fs::write(
+        extract_dir.join("state-blend-entrypoints.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/state-blend-entrypoints.c.h"),
+            "#include \"libobs/build/libobs-ported-blend-entrypoints.pch.h\"",
+        ),
+    )
+    .expect("write original blend entry points");
+    std::fs::write(
+        extract_dir.join("graphics_effect_file.inc"),
+        extract_after_libobs_pch(&libobs.join("graphics/graphics_effect_file.c.h")),
+    )
+    .expect("write effect file extract");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
-    for stem in ["graphics-linear-srgb", "graphics-linear-srgb-fields"] {
+    std::fs::write(
+        extract_dir.join("scene_lookup.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-scene-lookup.c.h")),
+    )
+    .expect("write original scene lookup extract");
+    std::fs::write(
+        extract_dir.join("scene_item_audio_actions.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-scene-item-audio-actions.c.h")),
+    )
+    .expect("write original scene item audio actions extract");
+    std::fs::write(
+        extract_dir.join("vertexbuffer-access.inc"),
+        extract_after_libobs_pch(&libobs.join("graphics/vertexbuffer-access.c.h")),
+    )
+    .expect("write vertex-buffer access extract");
+    for stem in [
+        "graphics-linear-srgb",
+        "graphics-linear-srgb-fields",
+        "texture-creators-fields",
+    ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
             extract_dir.join(format!("{stem}.inc")),
@@ -639,6 +711,45 @@ fn main() {
         )
         .expect("write linear-sRGB extract");
     }
+    for (source, output, pch) in [
+        (
+            "graphics-ffmpeg-decode",
+            "image-decode-original",
+            "libobs-ported-graphics-ffmpeg-decode",
+        ),
+        (
+            "graphics-ffmpeg-decode-adapter",
+            "image-decode-adapter",
+            "libobs-image-decode-adapter",
+        ),
+    ] {
+        std::fs::write(
+            extract_dir.join(format!("{output}.inc")),
+            extract_after_pch(
+                &libobs.join("graphics").join(format!("{source}.c.h")),
+                &format!("#include \"libobs/build/{pch}.pch.h\""),
+            ),
+        )
+        .expect("write still-image decode extract");
+    }
+    for stem in ["graphics-ffmpeg-init", "graphics-ffmpeg-init-adapter"] {
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_pch(
+                &libobs.join("graphics").join(format!("{stem}.c.h")),
+                "#include \"build/libobs-media.pch.h\"",
+            ),
+        )
+        .expect("write image lifecycle extract");
+    }
+    std::fs::write(
+        extract_dir.join("texture-creators.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/texture-creators.c.h"),
+            "#include \"libobs/build/libobs-ported-texture-creators.pch.h\"",
+        ),
+    )
+    .expect("write texture creator extract");
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
@@ -654,6 +765,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-core-global-getters.c.h")),
     )
     .expect("write global getter extract");
+    std::fs::write(
+        extract_dir.join("canvas-set-name.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
+    )
+    .expect("write canvas setter extract");
     oracle.include(&extract_dir);
 
     oracle

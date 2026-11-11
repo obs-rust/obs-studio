@@ -31,8 +31,8 @@ def job(path: Path, name: str) -> str:
 
 class PoolTest(unittest.TestCase):
     def test_cheap_jobs_use_the_standard_pool(self):
-        self.assertIn("runs-on: ubuntu-latest", job(FORMAT, "checks"))
-        self.assertIn("runs-on: ubuntu-latest", job(PULL, "cancel-superseded"))
+        self.assertIn("|| 'ubuntu-latest' }}", job(FORMAT, "checks"))
+        self.assertIn("|| 'ubuntu-latest' }}", job(PULL, "cancel-superseded"))
 
 
 class SwiftGateTest(unittest.TestCase):

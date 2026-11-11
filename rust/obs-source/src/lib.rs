@@ -25,6 +25,11 @@
 //! colour space query routing of `obs_source_get_color_space()`;
 //! `libobs/obs-source-conversion-plan.c.h`, the async video GPU conversion
 //! plan (convert type, planes, technique and linear output);
+//! the rest of `libobs/obs-source-deinterlace.c.h`, the deinterlace of an
+//! async source (the frame take of `deinterlace_process_last_frame()`, the
+//! texture update, the render and the mode and field-order setters,
+//! generic over the deinterlace seam and the libobs and graphics calls;
+//! its C shims are in `obs-source-seam`);
 //! `libobs/obs-source-deinterlace-draw.c.h`, the draw decisions of
 //! deinterlacing (the effect, the early return, the linear sRGB flag, the
 //! technique and multiplier, the second field and the mode change);
@@ -142,7 +147,7 @@
 //! [`audio_input_path`],
 //! [`audio_output`], [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
-//! [`color_space`], [`conversion_plan`], [`deinterlace_draw`],
+//! [`color_space`], [`conversion_plan`], [`deinterlace`], [`deinterlace_draw`],
 //! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_access`], [`transition_audio`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
@@ -157,8 +162,10 @@
 
 #![deny(unsafe_code)]
 
+pub mod async_compensation;
 pub mod async_flag_getters;
 pub mod async_pacing;
+pub mod async_rotation;
 pub mod async_upload;
 pub mod audio_active;
 pub mod audio_input;
@@ -172,25 +179,33 @@ pub mod base_size;
 pub mod boolean_queries;
 pub mod color_space;
 pub mod conversion_plan;
+pub mod deinterlace;
 pub mod deinterlace_draw;
 pub mod deinterlace_getters;
 pub mod deinterlace_pacing;
 pub mod deinterlace_select;
 pub mod draw_plan;
 pub mod draw_technique;
+pub mod enabled_setter;
 pub mod filter_count;
+pub mod filter_index;
 pub mod filter_relationship_getters;
 pub mod frame_copy;
 pub mod handler_getters;
+pub mod hidden_setter;
 pub mod media_admission;
 pub mod monitoring;
 pub mod ptm_gate;
+pub mod push_delay;
 pub mod push_queries;
 pub mod render_route;
+pub mod settings_getter;
 pub mod size_route;
 pub mod source_duplicate;
 pub mod source_filter_chain;
+pub mod source_icon_type;
 pub mod source_identity_getters;
+pub mod source_name;
 pub mod state_getters;
 pub mod transition_access;
 pub mod transition_audio;
@@ -214,3 +229,7 @@ mod platform;
 
 #[allow(unsafe_code)]
 pub mod ffi;
+
+pub mod type_id_getters;
+
+pub mod media_getters;

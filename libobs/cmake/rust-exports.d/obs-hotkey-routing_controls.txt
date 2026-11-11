@@ -1,0 +1,2 @@
+obs_hotkey_enable_callback_rerouting
+obs_hotkey_set_callback_routing_func

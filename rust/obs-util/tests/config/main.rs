@@ -11,6 +11,7 @@ mod cf_tokenizer_parity;
 mod config_file;
 mod config_file_close;
 mod config_file_duplicates_parity;
+mod config_file_load_scaling;
 mod config_file_parity;
 mod lexer;
 mod lexer_layout;

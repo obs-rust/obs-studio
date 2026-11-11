@@ -33,7 +33,7 @@ class WorkflowTest(unittest.TestCase):
     def test_self_tests_have_their_own_standard_pool_job(self):
         fmt = (ROOT / ".github" / "workflows" / "check-format.yaml").read_text(encoding="utf-8")
         j = fmt[fmt.index("  checks:"):fmt.index("  swift-format:")]
-        self.assertIn("runs-on: ubuntu-latest", j)
+        self.assertIn("|| 'ubuntu-latest' }}", j)
         self.assertIn("local_gate.py --only self-test", j)
 
     def test_lint_step_skips_them_in_ci(self):

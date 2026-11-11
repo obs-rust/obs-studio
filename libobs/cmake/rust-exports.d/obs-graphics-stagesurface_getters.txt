@@ -1,0 +1,3 @@
+gs_stagesurface_get_color_format
+gs_stagesurface_get_height
+gs_stagesurface_get_width

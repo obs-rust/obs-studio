@@ -23,6 +23,7 @@
 #include "obs-core-modules.h"
 #include "obs-defs.h"
 #include "obs-module.h"
+#include "obs-module-lists-seam.h"
 #include "obs-module-load-rules.h"
 #include "obs-module-register-copy.h"
 #include "obs-module-type-rules.h"
@@ -139,6 +140,9 @@
 /* obs-video-copy-plan.c */
 #include "obs-video-copy-plan.h"
 
+/* obs-video-frame-copy.c */
+#include "obs-video-frame-copy.h"
+
 /* obs-video-frame-timing.c */
 #include "obs-video-frame-timing.h"
 
@@ -226,6 +230,7 @@
 
 #include "obs-source-deinterlace-draw.h"
 #include "obs-source-deinterlace-pacing.h"
+#include "obs-source-deinterlace-seam.h"
 #include "obs-source-deinterlace-select.h"
 
 /* obs-source-transition.c */
@@ -238,6 +243,7 @@
 #include "obs-source-audio-input-path-seam.h"
 #include "obs-source-audio-output-seam.h"
 #include "obs-source-audio-settings-seam.h"
+#include "obs-source-push-to-enable.h"
 #include "obs-source-transition-seam.h"
 #include "obs-source-transition-size.h"
 #include "obs-source-transition-start.h"

@@ -41,6 +41,8 @@
  *   get, set and its address, and its prev_next (the address of the link
  *   that points at it), get and set.
  * - The core video: obs->video.graphics and obs->video.solid_effect.
+ * - The allocation and the graphics data: sizeof(struct obs_display), and
+ *   the cx and cy of the struct gs_init_data obs_display_init() is given.
  *
  * Each is a single read, write, lock or container call, copied from the line
  * of obs-display.c it wraps. Each lock and unlock is one pthread_mutex_*()
@@ -101,3 +103,8 @@ void obs_display_seam_set_prev_next(obs_display_t *display, obs_display_t **valu
 /* The core video. */
 graphics_t *obs_display_seam_get_graphics(void);
 gs_effect_t *obs_display_seam_get_solid_effect(void);
+
+/* The allocation and the graphics data. */
+size_t obs_display_seam_size(void);
+uint32_t obs_display_seam_get_init_cx(const struct gs_init_data *graphics_data);
+uint32_t obs_display_seam_get_init_cy(const struct gs_init_data *graphics_data);

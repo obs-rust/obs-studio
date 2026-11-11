@@ -1,13 +1,8 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
-/* This unit follows graphics.c.h in the graphics unity group, retaining its
- * private context and validation helpers without exporting a new C API.
- * graphics.c.h retires its macros before the next unity member. */
-#define gs_valid_p(function, param) (gs_valid(function) && gs_obj_valid(param, function, #param))
-
 static inline struct gs_effect *find_cached_effect(const char *filename)
 {
-	struct gs_effect *effect = thread_graphics->first_effect;
+	struct gs_effect *effect = gs_get_context()->first_effect;
 
 	while (effect) {
 		if (strcmp(effect->effect_path, filename) == 0)
@@ -23,8 +18,14 @@ gs_effect_t *gs_effect_create_from_file(const char *file, char **error_string)
 	char *file_string;
 	gs_effect_t *effect = NULL;
 
-	if (!gs_valid_p("gs_effect_create_from_file", file))
+	if (!gs_get_context()) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", "gs_effect_create_from_file");
 		return NULL;
+	}
+	if (!file) {
+		blog(LOG_DEBUG, "%s: Null '%s' parameter", "gs_effect_create_from_file", "file");
+		return NULL;
+	}
 
 	effect = find_cached_effect(file);
 	if (effect)
@@ -41,5 +42,3 @@ gs_effect_t *gs_effect_create_from_file(const char *file, char **error_string)
 
 	return effect;
 }
-
-#undef gs_valid_p

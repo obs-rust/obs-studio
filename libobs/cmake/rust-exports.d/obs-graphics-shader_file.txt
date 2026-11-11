@@ -1,0 +1,2 @@
+gs_vertexshader_create_from_file
+gs_pixelshader_create_from_file

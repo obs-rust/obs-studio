@@ -1162,6 +1162,10 @@ static bool obs_init(const char *locale, const char *module_config_path, profile
 		blog(LOG_ERROR, "obs_startup: destruction task queue creation failed");
 		return false;
 	}
+	/* Finish the worker's thread-name setup before returning from startup.
+	 * On Windows it allocates and frees a temporary name through bmem, so
+	 * letting it overlap callers makes bnum_allocs() snapshots unstable. */
+	os_task_queue_wait(obs->destruction_task_thread);
 
 	if (module_config_path)
 		obs->module_config_path = bstrdup(module_config_path);
@@ -2313,34 +2317,6 @@ obs_service_t *obs_get_service_by_name(const char *name)
 	return get_context_by_name(&obs->data.first_service, name, &obs->data.services_mutex, obs_service_addref_safe_);
 }
 
-gs_effect_t *obs_get_base_effect(enum obs_base_effect effect)
-{
-	switch (effect) {
-	case OBS_EFFECT_DEFAULT:
-		return obs->video.default_effect;
-	case OBS_EFFECT_DEFAULT_RECT:
-		return obs->video.default_rect_effect;
-	case OBS_EFFECT_OPAQUE:
-		return obs->video.opaque_effect;
-	case OBS_EFFECT_SOLID:
-		return obs->video.solid_effect;
-	case OBS_EFFECT_REPEAT:
-		return obs->video.repeat_effect;
-	case OBS_EFFECT_BICUBIC:
-		return obs->video.bicubic_effect;
-	case OBS_EFFECT_LANCZOS:
-		return obs->video.lanczos_effect;
-	case OBS_EFFECT_AREA:
-		return obs->video.area_effect;
-	case OBS_EFFECT_BILINEAR_LOWRES:
-		return obs->video.bilinear_lowres_effect;
-	case OBS_EFFECT_PREMULTIPLIED_ALPHA:
-		return obs->video.premultiplied_alpha_effect;
-	}
-
-	return NULL;
-}
-
 static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_blend_type src_c,
 					       enum gs_blend_type dest_c, enum gs_blend_type src_a,
 					       enum gs_blend_type dest_a)
@@ -3163,32 +3139,6 @@ bool obs_set_audio_monitoring_device(const char *name, const char *id)
 	obs_enum_sources(check_all_aoc_sources, NULL);
 
 	return true;
-}
-
-void obs_get_audio_monitoring_device(const char **name, const char **id)
-{
-	if (name)
-		*name = obs->audio.monitoring_device_name;
-	if (id)
-		*id = obs->audio.monitoring_device_id;
-}
-
-void obs_add_tick_callback(void (*tick)(void *param, float seconds), void *param)
-{
-	struct tick_callback data = {tick, param};
-
-	pthread_mutex_lock(&obs->data.draw_callbacks_mutex);
-	da_insert(obs->data.tick_callbacks, 0, &data);
-	pthread_mutex_unlock(&obs->data.draw_callbacks_mutex);
-}
-
-void obs_remove_tick_callback(void (*tick)(void *param, float seconds), void *param)
-{
-	struct tick_callback data = {tick, param};
-
-	pthread_mutex_lock(&obs->data.draw_callbacks_mutex);
-	da_erase_item(obs->data.tick_callbacks, &data);
-	pthread_mutex_unlock(&obs->data.draw_callbacks_mutex);
 }
 
 void obs_add_main_render_callback(void (*draw)(void *param, uint32_t cx, uint32_t cy), void *param)

@@ -3,7 +3,8 @@
 //! and `libobs/obs-core-setup-rules.c.h`,
 //! `libobs/obs-core-setup-rules-ms.c.h` and
 //! `libobs/obs-core-setup-rules-task.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
-//! `libobs/obs-module-names.c.h`, `libobs/obs-module-locale.c.h`,
+//! `libobs/obs-module-names.c.h`, `libobs/obs-module-lists.c.h` (over
+//! `libobs/obs-module-lists-seam.h`), `libobs/obs-module-locale.c.h`,
 //! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`,
 //! `libobs/obs-module-load-rules.c.h` with
 //! `libobs/obs-module-load-rules-skip.c.h`, and
@@ -11,10 +12,11 @@
 //! `obs-audio.c.h`); and
 //! `libobs/util/source-profiler.c.h`, which reads core state (sources and the
 //! graphics context) and so belongs to the core rather than obs-util; and
-//! `libobs/obs-view-api.c.h`, the views; `libobs/obs-video-copy-plan.c.h`
-//! and `libobs/obs-video-output-step.c.h` (from `obs-video.c.h`), the output
-//! frame copy plan and scale effect choice, and the per-frame video output
-//! step decisions; and `libobs/obs-source-load.c.h` (from `obs.c.h`), the
+//! `libobs/obs-view-api.c.h`, the views; `libobs/obs-video-copy-plan.c.h`,
+//! `libobs/obs-video-frame-copy.c.h` and `libobs/obs-video-output-step.c.h`
+//! (from `obs-video.c.h`), the output frame copy plan and scale effect
+//! choice, the output frame copy, and the per-frame video output step
+//! decisions; and `libobs/obs-source-load.c.h` (from `obs.c.h`), the
 //! source load migration and value rules; and `libobs/obs-canvas-draw.c.h`
 //! (from `obs.c.h` and `obs-display.c.h`), the canvas texture draw and
 //! display clear decisions; and `libobs/obs-audio-discard.c.h` (from
@@ -36,14 +38,17 @@
 //! and `libobs/obs-windows-system-info.c.h` (from `obs-windows.c.h`), the
 //! Windows debug symbol search path and system info log rules; and
 //! `libobs/obs-audio.c.h` itself, the audio tick (`audio_callback()`), over
-//! the core-audio seam.
+//! the core-audio seam; and `libobs/obs-display.c.h` itself, the display
+//! (create, destroy, resize, the draw callbacks and `render_display()`),
+//! over the display seam.
 //!
 //! The safe cores are [`video_plan`], [`context_names`], [`core_setup_rules`],
 //! [`module_paths`],
-//! [`module_names`], [`module_locale`], [`module_source_rules`],
+//! [`module_names`], [`module_lists`], [`module_locale`], [`module_source_rules`],
 //! [`module_type_rules`], [`module_load_rules`], [`module_register_copy`],
-//! [`audio_mix`], [`audio_callback`],
-//! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_output_step`],
+//! [`audio_mix`], [`audio_callback`], [`display`],
+//! [`source_profiler`], [`view`], [`video_copy_plan`], [`video_frame_copy`],
+//! [`video_output_step`],
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
 //! [`audio_render`], [`video_pacing`], [`video_frame_timing`],
@@ -52,7 +57,8 @@
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
 //! decides, each frame, what is rendered, converted, staged, queued for the
 //! GPU encoders and downloaded; [`video_copy_plan`] plans the copies of a
-//! downloaded frame into each output frame; [`canvas_draw`] picks the
+//! downloaded frame into each output frame, and [`video_frame_copy`] runs
+//! them; [`canvas_draw`] picks the
 //! technique a canvas texture draws into a display with, and how the display
 //! is cleared; [`canvas_rules`] holds the flags a canvas is created with and
 //! the checks of its setters; [`video_pacing`] steps the frame time after the
@@ -69,7 +75,10 @@
 //! gates the gaming features and picks each feature's line and the security
 //! product labels of the Windows startup log; [`module_load_rules`] decides which modules load, are
 //! disabled or skipped (the skip ladder `load_all_callback()` walks before it
-//! opens one), and which failures count; [`module_register_copy`]
+//! opens one), and which failures count; [`module_lists`] runs the module
+//! list calls (the loaded module log, the type, search path, safe and
+//! disabled lists, and a module's file and config paths) over the module
+//! list seam; [`module_register_copy`]
 //! decides how much of a plugin's registration structure is copied and
 //! which of its fields lie within the size it gave; [`core_setup_rules`]
 //! holds the video and audio reset gates, the audio buffering ticks and
@@ -78,6 +87,8 @@
 //! the frame counts, the task queue's route and the video level checks.
 //! [`audio_callback`] runs one audio tick: the render order, the render,
 //! the buffering, the mix, the discard and the audio tasks, in the C's
+//! order and under its locks.
+//! [`display`] makes, links, renders and destroys a display, in the C's
 //! order and under its locks.
 //! The C ABI shims live in [`ffi`].
 
@@ -88,11 +99,15 @@ pub mod audio_discard;
 pub mod audio_min_ts;
 pub mod audio_mix;
 pub mod audio_render;
+pub mod base_effect;
 pub mod canvas_channel_getter;
 pub mod canvas_draw;
 pub mod canvas_flags_getter;
 pub mod canvas_readonly_getters;
+pub mod canvas_ref;
 pub mod canvas_rules;
+pub mod canvas_scene;
+pub mod canvas_set_name;
 pub mod canvas_video_getter;
 pub mod canvas_video_info_getter;
 pub mod context_names;
@@ -101,10 +116,16 @@ pub mod core_frame_interval;
 pub mod core_initialized;
 pub mod core_setup_rules;
 pub mod core_texture_activity;
+pub mod display;
 pub mod display_size;
 pub mod display_state;
+pub mod enum_modules;
 pub mod global_getters;
 pub mod module_failure_info;
+pub mod module_init;
+pub mod module_lists;
+pub mod module_load_locale;
+pub mod module_load_metadata;
 pub mod module_load_rules;
 pub mod module_locale;
 pub mod module_locale_getters;
@@ -116,18 +137,24 @@ pub mod module_register_copy;
 pub mod module_source_rules;
 pub mod module_type_queries;
 pub mod module_type_rules;
+pub mod monitoring_device_getter;
 pub mod nix_system_info;
 pub mod object_queries;
 pub mod object_validity_query;
+pub mod output_protocol_registry;
 mod platform;
 pub mod source_load;
 pub mod source_profiler;
+pub mod tick_callbacks;
 pub mod video_copy_plan;
+pub mod video_frame_copy;
 pub mod video_frame_timing;
 pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;
+pub mod video_render_size;
 pub mod view;
+pub mod weak_object_expired;
 pub mod weak_object_identity;
 pub mod win_crash_report;
 pub mod win_symbol_paths;

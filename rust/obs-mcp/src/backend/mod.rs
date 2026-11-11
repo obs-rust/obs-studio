@@ -31,8 +31,10 @@ use serde_json::{Value, json};
 use crate::ffi::{self, CpuUsage, Output, Source};
 use crate::resources::stats::{Stats, StatsBackend};
 use crate::resources::{self, ResourceRegistry};
-use crate::server::{Server, ToolRegistry};
-use crate::tools::outputs::{self, OutputBackend, OutputKind, OutputStatus};
+use crate::server::{Server, ToolError, ToolRegistry};
+use crate::tools::outputs::{
+    self, ActiveOutput, OutputBackend, OutputKind, OutputRequest, OutputStatus,
+};
 use crate::tools::scenes::{self, SceneBackend};
 use crate::tools::screenshot::{self, CaptureBackend, Frame};
 use crate::tools::sources::{self, ItemInfo, ItemRef, SourceBackend, SourceInfo, Transform};
@@ -41,7 +43,38 @@ use crate::tools::sources::{self, ItemInfo, ItemRef, SourceBackend, SourceInfo, 
 const MAX_SIDE: u32 = 16_384;
 
 /// The libobs-backed implementation of every backend trait.
+/// Frontend capabilities supplied by an attached application.
+pub trait AttachedFrontend {
+    fn current_scene(&self, request: crate::tools::EmptyInput)
+    -> crate::tools::scenes::SceneOutput;
+    fn set_scene(
+        &self,
+        request: crate::tools::scenes::NameInput,
+    ) -> Result<crate::tools::scenes::SceneOutput, crate::server::ToolError>;
+    fn output_name(&self, request: crate::tools::outputs::OutputRequest) -> FrontendOutputName;
+    fn set_output(
+        &self,
+        _request: FrontendOutputRequest,
+    ) -> Result<crate::tools::outputs::ActiveOutput, crate::server::ToolError> {
+        Err(crate::server::ToolError::not_ready(
+            "frontend output control is unavailable",
+        ))
+    }
+}
+/// Start or stop a frontend-managed output, preserving profile/encoder setup.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct FrontendOutputRequest {
+    pub kind: crate::tools::outputs::OutputKind,
+    pub active: bool,
+}
+/// Current frontend output identity; absent while the frontend has no output.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub struct FrontendOutputName {
+    pub name: Option<String>,
+}
 pub struct ObsBackend {
+    frontend: Option<Rc<dyn AttachedFrontend>>,
     /// References to the scenes and sources created here, by name.
     owned: RefCell<HashMap<String, Source>>,
     record: Option<String>,
@@ -53,6 +86,9 @@ pub struct ObsBackend {
     /// Why the host could not create the outputs, quoted in the errors that need them.
     output_error: Option<String>,
     cpu: Option<CpuUsage>,
+    camera: RefCell<Option<Output>>,
+    cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    baseline: RefCell<Option<crate::tools::control::StatsBaseline>>,
 }
 
 impl Default for ObsBackend {
@@ -68,7 +104,18 @@ impl ObsBackend {
     #[must_use]
     pub fn new() -> Self {
         crate::ffi::use_absolute_coordinates();
+        Self::unconfigured()
+    }
+    /// Attach without changing global coordinate settings or owning libobs.
+    #[must_use]
+    pub fn attached(frontend: Rc<dyn AttachedFrontend>) -> Self {
+        let mut backend = Self::unconfigured();
+        backend.frontend = Some(frontend);
+        backend
+    }
+    fn unconfigured() -> Self {
         Self {
+            frontend: None,
             owned: RefCell::new(HashMap::new()),
             record: None,
             stream: None,
@@ -76,6 +123,9 @@ impl ObsBackend {
             video_error: None,
             output_error: None,
             cpu: CpuUsage::start(),
+            camera: RefCell::new(None),
+            cancellation: None,
+            baseline: RefCell::new(None),
         }
     }
 
@@ -129,6 +179,10 @@ impl ObsBackend {
         sources::register(&mut tools, &sources);
         outputs::register(&mut tools, &outputs);
         screenshot::register(&mut tools, &capture);
+        let control: Rc<dyn crate::tools::control::ControlBackend> = Rc::clone(backend) as _;
+        crate::tools::control::register(&mut tools, &control);
+        let waiting: Rc<dyn crate::tools::waiting::WaitBackend> = Rc::clone(backend) as _;
+        crate::tools::waiting::register(&mut tools, &waiting);
 
         let mut resources = ResourceRegistry::new();
         resources::scenes::register(&mut resources, &scenes, &sources);
@@ -162,8 +216,14 @@ impl ObsBackend {
             OutputKind::Record => ("record", &self.record),
             OutputKind::Stream => ("stream", &self.stream),
         };
-        let name = name
+        let frontend_name = self.frontend.as_ref().and_then(|frontend| {
+            frontend
+                .output_name(crate::tools::outputs::OutputRequest { kind })
+                .name
+        });
+        let name = frontend_name
             .as_deref()
+            .or(name.as_deref())
             .ok_or_else(|| format!("the {label} output is not configured"))?;
         Output::by_name(name).ok_or_else(|| {
             Self::because(
@@ -207,11 +267,22 @@ impl SceneBackend for ObsBackend {
     }
 
     fn current(&self) -> Option<String> {
-        ffi::program().filter(Source::is_scene).map(|s| s.name())
+        self.frontend.as_ref().map_or_else(
+            || ffi::program().filter(Source::is_scene).map(|s| s.name()),
+            |frontend| frontend.current_scene(crate::tools::EmptyInput {}).name,
+        )
     }
 
     fn set_current(&self, name: &str) -> Result<(), String> {
         let scene = Self::scene(name)?;
+        if let Some(frontend) = &self.frontend {
+            return frontend
+                .set_scene(crate::tools::scenes::NameInput {
+                    name: name.to_owned(),
+                })
+                .map(|_| ())
+                .map_err(|error| error.message);
+        }
         ffi::set_program(Some(&scene));
         Ok(())
     }
@@ -222,7 +293,7 @@ impl SceneBackend for ObsBackend {
         // A client that makes the first scene wants to see it: with no
         // program scene the new one becomes the program scene (#3339).
         if self.current().is_none() {
-            ffi::set_program(Some(&scene));
+            self.set_current(name)?;
         }
         self.owned.borrow_mut().insert(name.to_owned(), scene);
         Ok(())
@@ -231,6 +302,11 @@ impl SceneBackend for ObsBackend {
     fn remove(&self, name: &str) -> Result<(), String> {
         let scene = Self::scene(name)?;
         if self.current().as_deref() == Some(name) {
+            if self.frontend.is_some() {
+                return Err(
+                    "switch away from the current frontend scene before removing it".to_owned(),
+                );
+            }
             ffi::set_program(None);
         }
         scene.remove();
@@ -240,6 +316,23 @@ impl SceneBackend for ObsBackend {
 }
 
 impl SourceBackend for ObsBackend {
+    fn remove_source(
+        &self,
+        request: crate::tools::sources::RemoveInput,
+    ) -> Result<crate::tools::sources::NameOutput, crate::server::ToolError> {
+        let source = Source::by_name(&request.name).ok_or_else(|| {
+            crate::server::ToolError::not_found(format!("no source named '{}'", request.name))
+        })?;
+        if source.is_scene() {
+            return Err(crate::server::ToolError::wrong_state(
+                "use scene_remove for scenes",
+            ));
+        }
+        source.remove();
+        self.owned.borrow_mut().remove(&request.name);
+        Ok(crate::tools::sources::NameOutput { name: request.name })
+    }
+
     fn sources(&self) -> Vec<SourceInfo> {
         sorted(ffi::inputs())
             .into_iter()
@@ -334,7 +427,52 @@ fn narrow(value: f64) -> f32 {
 }
 
 impl OutputBackend for ObsBackend {
+    fn control_cancelled(&self) -> bool {
+        crate::tools::waiting::WaitBackend::cancelled(self)
+    }
+    fn start_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        if let Some(frontend) = &self.frontend {
+            return frontend.set_output(FrontendOutputRequest {
+                kind: request.kind,
+                active: true,
+            });
+        }
+        let output = self.output(request.kind).map_err(ToolError::not_ready)?;
+        if !output.active() {
+            if request.kind == OutputKind::Record {
+                self.prepare_recording(&output)
+                    .map_err(ToolError::processing)?;
+            }
+            output.start().map_err(ToolError::processing)?;
+        }
+        Ok(ActiveOutput {
+            active: output.active(),
+        })
+    }
+
+    fn stop_output(&self, request: OutputRequest) -> Result<ActiveOutput, ToolError> {
+        if let Some(frontend) = &self.frontend {
+            return frontend.set_output(FrontendOutputRequest {
+                kind: request.kind,
+                active: false,
+            });
+        }
+        let output = self.output(request.kind).map_err(ToolError::not_ready)?;
+        if output.active() {
+            output.stop();
+        }
+        Ok(ActiveOutput {
+            active: output.active(),
+        })
+    }
+
     fn start(&self, kind: OutputKind) -> Result<(), String> {
+        if let Some(frontend) = &self.frontend {
+            return frontend
+                .set_output(FrontendOutputRequest { kind, active: true })
+                .map(|_| ())
+                .map_err(|error| error.message);
+        }
         let output = self.output(kind)?;
         if output.active() {
             return Err("the output is already running".to_owned());
@@ -346,6 +484,15 @@ impl OutputBackend for ObsBackend {
     }
 
     fn stop(&self, kind: OutputKind) -> Result<(), String> {
+        if let Some(frontend) = &self.frontend {
+            return frontend
+                .set_output(FrontendOutputRequest {
+                    kind,
+                    active: false,
+                })
+                .map(|_| ())
+                .map_err(|error| error.message);
+        }
         let output = self.output(kind)?;
         if !output.active() {
             return Err("the output is not running".to_owned());
@@ -446,3 +593,7 @@ impl StatsBackend for ObsBackend {
         }
     }
 }
+
+mod control;
+
+mod waiting;

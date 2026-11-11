@@ -40,3 +40,6 @@ use std::io::{self, BufRead, Write};
 pub fn serve<R: BufRead, W: Write>(reader: R, writer: W) -> io::Result<()> {
     server::Server::new().serve(reader, writer)
 }
+
+pub mod client;
+pub mod platform;

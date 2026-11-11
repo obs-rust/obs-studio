@@ -68,6 +68,16 @@
 //! a source's buffer, has its shims in [`ffi::source_audio_output`], over
 //! `libobs/obs-source-audio-output-seam.h`.
 //!
+//! The rest of `libobs/obs-source-deinterlace.c.h`, the deinterlace of an
+//! async source (the frame take, the texture update, the render and the
+//! mode and field-order setters), has its shims in
+//! [`ffi::source_deinterlace`], which implement
+//! `obs_source::deinterlace::Source` over
+//! `libobs/obs-source-deinterlace-seam.h` and
+//! `obs_source_deinterlace_fields()`, with the frame cache, the async
+//! texture upload, the effect load and the graphics calls through its
+//! `Calls`.
+//!
 //! These shims live apart from `obs-source` because they reference symbols
 //! only libobs has. The `*_steps_rust` C tests link libobs and the Rust
 //! staticlib alone and pull in the `obs-source` objects they test; a shim

@@ -27,6 +27,7 @@ gio = ["obs-util/gio"]
 tsan = ["obs-util/tsan"]
 
 [dependencies]
+obs-encoder = { path = "../obs-encoder" }
 obs-util = { path = "../obs-util" }
 obs-audio-controls = { path = "../obs-audio-controls" }
 obs-callback = { path = "../obs-callback" }

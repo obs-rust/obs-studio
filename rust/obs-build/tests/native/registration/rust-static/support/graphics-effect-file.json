@@ -1,0 +1,72 @@
+{
+  "test_effect_param_types_steps_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_effect_parser_blocks_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_effect_parser_compile_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_effect_parser_lifecycle_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_effect_parser_params_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_effect_parser_passes_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_effect_parser_shader_call_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_graphics_ffmpeg_pq_steps_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_graphics_ffmpeg_route_steps_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_graphics_ffmpeg_wic_checks_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_graphics_immediate_steps_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_graphics_state_stacks_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_nsgif_decode_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  },
+  "test_sprite_geometry_steps_rust": {
+    "sources": [
+      "libobs/obs-graphics-effect-file-fields.c.h"
+    ]
+  }
+}

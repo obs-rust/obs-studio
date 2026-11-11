@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 void obs_weak_canvas_addref(obs_weak_canvas_t *weak)
 {

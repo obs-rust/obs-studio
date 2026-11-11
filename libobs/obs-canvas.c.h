@@ -51,31 +51,6 @@ static const char *canvas_signals[] = {
 	NULL,
 };
 
-static inline void canvas_dosignal(obs_canvas_t *canvas, const char *signal_obs, const char *signal_canvas)
-{
-	struct calldata data;
-	uint8_t stack[128];
-
-	calldata_init_fixed(&data, stack, sizeof(stack));
-	calldata_set_ptr(&data, "canvas", canvas);
-	if (signal_obs && obs_canvas_rules_public(canvas->context.private))
-		signal_handler_signal(obs->signals, signal_obs, &data);
-	if (signal_canvas)
-		signal_handler_signal(canvas->context.signals, signal_canvas, &data);
-}
-
-static inline void canvas_dosignal_source(const char *signal, obs_canvas_t *canvas, obs_source_t *source)
-{
-	struct calldata data;
-	uint8_t stack[128];
-
-	calldata_init_fixed(&data, stack, sizeof(stack));
-	calldata_set_ptr(&data, "canvas", canvas);
-	calldata_set_ptr(&data, "source", source);
-
-	signal_handler_signal(canvas->context.signals, signal, &data);
-}
-
 /*** Reference Counting ***/
 
 void obs_canvas_release(obs_canvas_t *canvas)
@@ -445,47 +420,6 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 		obs_source_deactivate(prev_source, view->type);
 		obs_source_release(prev_source);
 	}
-}
-
-obs_scene_t *obs_canvas_scene_create(obs_canvas_t *canvas, const char *name)
-{
-	struct obs_source *source = obs_source_create_canvas(canvas, "scene", name, NULL, NULL);
-	return source->context.data;
-}
-
-void obs_canvas_scene_remove(obs_scene_t *scene)
-{
-	obs_canvas_remove_source(scene->source);
-}
-
-void obs_canvas_set_name(obs_canvas_t *canvas, const char *name)
-{
-	if (obs_canvas_rules_name_empty(name))
-		return;
-	if (!obs_canvas_rules_renames(canvas->flags)) /* Do not allow renaming main canvases. */
-		return;
-	if (strcmp(name, canvas->context.name) == 0)
-		return;
-
-	char *prev_name = bstrdup(canvas->context.name);
-
-	if (!obs_canvas_rules_public(canvas->context.private))
-		obs_context_data_setname(&canvas->context, name);
-	else
-		obs_context_data_setname_ht(&canvas->context, name, &obs->data.named_canvases);
-
-	struct calldata data;
-	calldata_init(&data);
-	calldata_set_ptr(&data, "canvas", canvas);
-	calldata_set_string(&data, "new_name", canvas->context.name);
-	calldata_set_string(&data, "prev_name", prev_name);
-	signal_handler_signal(canvas->context.signals, "rename", &data);
-
-	if (obs_canvas_rules_public(canvas->context.private))
-		signal_handler_signal(obs->signals, "canvas_rename", &data);
-
-	calldata_free(&data);
-	bfree(prev_name);
 }
 
 static bool enum_move_cb(obs_scene_t *scene, obs_sceneitem_t *item, void *param)

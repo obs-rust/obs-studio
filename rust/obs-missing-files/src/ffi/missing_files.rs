@@ -8,9 +8,8 @@
 //! A null list, a null file (except `release`), and a bad index are not
 //! checked, matching the C file.
 //!
-//! `obs_source_get_name` and `obs_source_replace_missing_file` stay in
-//! `obs-source.c.h`. Cargo tests supply those two symbols. libobs supplies
-//! them for the real library.
+//! `obs_source_get_name` is supplied by obs-source. The missing-file replacement
+//! callback stays in `obs-source.c.h`; Cargo tests supply that callback symbol.
 
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::ptr;

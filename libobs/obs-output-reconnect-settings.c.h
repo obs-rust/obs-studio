@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 void obs_output_set_reconnect_settings(obs_output_t *output, int retry_count, int retry_sec)
 {

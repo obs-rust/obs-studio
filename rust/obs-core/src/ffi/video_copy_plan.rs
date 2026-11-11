@@ -2,11 +2,12 @@
 //! and the scale effect choice of `obs-video.c`, declared in
 //! `libobs/obs-video-copy-plan.h` without `EXPORT`.
 //!
-//! These only compute numbers. `obs-video.c.h` (still C) runs every
-//! `memcpy()` of the plan (`set_gpu_converted_plane()`, copy `i` from input
-//! plane `i` or from plane 0's end into output plane `i`), locks and unlocks
-//! the frame, calls `video_output_get_info()`, maps [`obs_video_scale_effect`]
-//! to `obs->video`'s effect pointers and walks the mix list. The plan, the
+//! These only compute numbers. `obs-video-frame-copy.c.h` (ported as
+//! [`crate::video_frame_copy`]) runs every copy of the plan (copy `i` from
+//! input plane `i` or from plane 0's end into output plane `i`), and
+//! `obs-video.c.h` (still C) locks and unlocks the frame, calls
+//! `video_output_get_info()`, maps [`obs_video_scale_effect`] to
+//! `obs->video`'s effect pointers and walks the mix list. The plan, the
 //! scale input and the reuse keys cross as `#[repr(C)]` structs whose layout
 //! Tier 3 checks against the C. No frame, effect or mix pointer comes here:
 //! a mix's view crosses as a number and is only compared. All stay hidden

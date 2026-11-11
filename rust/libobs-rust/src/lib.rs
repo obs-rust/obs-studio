@@ -13,6 +13,7 @@ pub use obs_callback::ffi as callback_ffi;
 pub use obs_codec::ffi as codec_ffi;
 pub use obs_core::ffi as core_ffi;
 pub use obs_data::ffi as data_ffi;
+pub use obs_encoder::ffi as encoder_ffi;
 pub use obs_graphics::ffi as graphics_ffi;
 pub use obs_hotkey::ffi as hotkey_ffi;
 pub use obs_media_io::ffi as media_io_ffi;

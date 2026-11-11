@@ -1,6 +1,7 @@
 //! C ABI shims, one module per C file.
 
 pub mod background_app_id;
+pub mod background_error;
 pub mod background_query;
 pub mod binding_getters;
 pub mod binding_press;
@@ -21,6 +22,8 @@ pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod portal_shortcut_status;
 pub mod press;
+pub mod routed_callback;
+pub mod routing_controls;
 pub mod save_load;
 pub mod translations;
 pub mod update_atomic;

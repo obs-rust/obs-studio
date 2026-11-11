@@ -1,0 +1,4 @@
+obs_scene_find_sceneitem_by_id
+obs_scene_find_source
+obs_scene_find_source_recursive
+obs_scene_get_group

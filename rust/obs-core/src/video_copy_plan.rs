@@ -1,8 +1,9 @@
 //! Safe core of `libobs/obs-video-copy-plan.c.h`: the output frame copy plan
 //! and the scale effect choice of `obs-video.c`.
 //!
-//! `obs-video.c` keeps every `memcpy()` (it runs the plan), the frame lock
-//! and unlock, `video_output_get_info()`, the effect pointers (it maps
+//! [`video_frame_copy`](crate::video_frame_copy) runs the plan's copies
+//! (`obs-video-frame-copy.c`); `obs-video.c` keeps the frame lock and
+//! unlock, `video_output_get_info()`, the effect pointers (it maps
 //! [`ScaleEffect`] to `obs->video`'s) and the walk of the mix list. It reads
 //! the values, passes them here, and does what the answer says. These keep
 //! no state, take no lock and touch no frame: they only compute numbers.

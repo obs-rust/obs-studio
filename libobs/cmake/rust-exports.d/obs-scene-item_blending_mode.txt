@@ -1,0 +1,1 @@
+obs_sceneitem_set_blending_mode

@@ -13,6 +13,10 @@
 #include <qt-wrappers.hpp>
 #include <widgets/OBSBasic.hpp>
 
+#ifdef OBS_FRONTEND_RUST
+#include "frontend/utility/obs-exit-watchdog.h"
+#endif
+
 #include <QMessageBox>
 
 #include <nlohmann/json.hpp>

@@ -44,6 +44,7 @@
   "obs-interaction.h",
   "obs-internal.h",
   "obs-missing-files.h",
+  "obs-module-lists-seam.h",
   "obs-module-load-rules.h",
   "obs-module-register-copy.h",
   "obs-module-type-rules.h",
@@ -88,6 +89,7 @@
   "obs-source-conversion-plan.h",
   "obs-source-deinterlace-draw.h",
   "obs-source-deinterlace-pacing.h",
+  "obs-source-deinterlace-seam.h",
   "obs-source-deinterlace-select.h",
   "obs-source-draw-plan.h",
   "obs-source-draw-technique.h",
@@ -117,6 +119,7 @@
   "obs-source-volume-mul.h",
   "obs-source.h",
   "obs-video-copy-plan.h",
+  "obs-video-frame-copy.h",
   "obs-video-frame-timing.h",
   "obs-video-output-step.h",
   "obs-video-pacing.h",
@@ -219,5 +222,7 @@
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
   "build/libobs.graphics-linear-srgb+.h.c",
+  "build/libobs.graphics-texture-creators-fields+.h.c",
+  "build/libobs.image-decode-adapter+.h.c",
   "build/libobs.media+.h.c"
 ]

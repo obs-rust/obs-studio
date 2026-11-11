@@ -2,7 +2,8 @@
 //! per file: `libobs/obs-scene-bounds.c.h`, `libobs/obs-scene-blend.c.h`,
 //! `libobs/obs-scene-bounds-place.c.h`, `libobs/obs-scene-coords.c.h`,
 //! `libobs/obs-scene-group-transform.c.h`,
-//! `libobs/obs-scene-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
+//! `libobs/obs-scene-audio-actions.c.h` and its item side,
+//! `libobs/obs-scene-item-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
 //! `libobs/obs-scene-crop.c.h`, `libobs/obs-scene-render-plan.c.h` (the
 //! per-item render decisions of `render_item` and `render_item_texture`),
 //! `libobs/obs-scene-item-names.c.h` (the scene item save/load names and
@@ -24,12 +25,13 @@
 //! size step and whether an item is updated).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
-//! [`group_transform`], [`audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
+//! [`group_transform`], [`audio_actions`], [`item_audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
 //! [`crop`], [`render_plan`], [`item_names`], [`item_order`],
 //! [`item_transform`], and [`transform_update`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
+pub mod atomic_update;
 pub mod audio_actions;
 pub mod audio_mix;
 pub mod audio_window;
@@ -40,7 +42,9 @@ pub mod coords;
 pub mod crop;
 pub mod extent;
 pub mod group_queries;
+pub mod group_resize_defer;
 pub mod group_transform;
+pub mod item_audio_actions;
 pub mod item_id;
 pub mod item_names;
 pub mod item_order;
@@ -65,5 +69,18 @@ pub mod item_crop_getter;
 pub mod item_transform_getters;
 
 pub mod item_transition_getters;
+pub mod item_transition_setters;
 
+pub mod item_group_scene;
 pub mod item_visible;
+
+pub mod item_blending_method;
+pub mod item_blending_mode;
+pub mod item_locked_setter;
+pub mod item_scale_filter;
+pub mod item_transition_serialization;
+pub mod lookup;
+
+pub mod item_select;
+
+pub mod create;
