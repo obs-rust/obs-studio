@@ -1,0 +1,2 @@
+obs_source_get_dark_icon
+obs_source_get_light_icon

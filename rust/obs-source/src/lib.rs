@@ -207,6 +207,7 @@ pub mod source_icon_type;
 pub mod source_identity_getters;
 pub mod source_name;
 pub mod state_getters;
+pub mod theme_icon;
 pub mod transition_access;
 pub mod transition_audio;
 pub mod transition_clock;

@@ -75,7 +75,6 @@
 #include "libobs/obs-source-set-name.c.h"
 #include "libobs/obs-source-settings-getter-fields.c.h"
 #include "libobs/obs-source-state-getter-fields.c.h"
-#include "libobs/obs-source-theme-icon.c.h"
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-type-data-fields.c.h"
 #include "libobs/obs-source-type-id-fields.c.h"
