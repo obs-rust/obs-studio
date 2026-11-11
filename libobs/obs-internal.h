@@ -1935,6 +1935,16 @@ struct obs_output_flags_fields {
 };
 extern struct obs_output_flags_fields obs_output_flags_fields(const obs_output_t *output);
 
+/* Borrowed output-type metadata snapshot; reject NULL before field access. */
+struct obs_output_type_info_fields {
+	const char *(*get_name)(void *);
+	void *type_data;
+	uint32_t flags;
+	const char *video;
+	const char *audio;
+};
+extern struct obs_output_type_info_fields obs_output_type_info_fields(const struct obs_output_info *info);
+
 /* Opaque callback/context snapshot for the output properties Rust port. */
 struct obs_output_properties_fields {
 	void (*defaults)(obs_data_t *);
