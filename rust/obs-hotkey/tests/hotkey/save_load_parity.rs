@@ -151,6 +151,9 @@ pub extern "C" fn obs_hotkey_seam_find(id: usize) -> *mut obs_hotkey_t {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_hotkey_seam_find_pair(id: usize) -> *mut obs_hotkey_pair {
+    if let Some(pair) = super::pair_meta_parity::find(id) {
+        return pair;
+    }
     log(format!("find_pair {id}"));
     REGISTRY.with_borrow_mut(|r| {
         r.pairs
@@ -168,6 +171,9 @@ pub unsafe extern "C" fn obs_hotkey_seam_pair_id(
     pair: *const obs_hotkey_pair,
     half: usize,
 ) -> usize {
+    if let Some(id) = super::pair_meta_parity::half_id(pair, half) {
+        return id;
+    }
     // SAFETY: per the caller.
     unsafe { (*pair.cast::<FakePair>()).ids[half] }
 }

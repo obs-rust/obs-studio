@@ -34,6 +34,8 @@ mod nix_x11_keys_parity;
 mod object_getters;
 mod object_getters_parity;
 mod pair;
+mod pair_meta;
+mod pair_meta_parity;
 mod pair_parity;
 mod parity;
 mod portal_shortcut_ids;

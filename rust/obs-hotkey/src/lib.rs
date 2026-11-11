@@ -51,6 +51,7 @@ pub mod nix_x11_input;
 pub mod nix_x11_keys;
 pub mod object_getters;
 pub mod pair;
+pub mod pair_meta;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod portal_shortcut_status;
