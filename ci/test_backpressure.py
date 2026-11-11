@@ -65,36 +65,41 @@ class AdmissionTests(unittest.TestCase):
         if args[0] == "run":
             return copy.deepcopy(self.queued)
         if args[0] == "api":
-            if "check-suites" in args[1]:
-                return [{"total_count": len(self.suites), "check_suites": self.suites}]
-            if "created=" in args[1]:
-                return [{"total_count": len(self.global_runs) + (self.bad == "inventory"),
-                         "workflow_runs": self.global_runs}]
-            if self.bad == "runs":
-                return [{"total_count": 2, "workflow_runs": self.runs}]
-            return [{"total_count": len(self.runs), "workflow_runs": self.runs}]
+            return self.api_response(args[1])
         if args[0] == "graphql":
-            query = args[-1]
-            depth = 0
-            for char in query:
-                depth += (char == "{") - (char == "}")
-                self.assertGreaterEqual(depth, 0, query)
-            self.assertEqual(depth, 0, query)
-            if "mergeQueue" in query:
-                entries = connection([{"pullRequest": {"number": n}} for n in self.queue])
-                if self.bad == "queue":
-                    entries["pageInfo"]["hasNextPage"] = True
-                return {"data": {"repository": {"mergeQueue": {"entries": entries}}}}
-            if "statusCheckRollup" not in query:
-                return {"data": {"repository": {"pullRequest": {"headRefOid": self.final_head}}}}
-            contexts = connection(self.contexts)
-            if self.bad == "checks":
-                contexts["totalCount"] += 1
-            return {"data": {"repository": {"pullRequest": {
-                "headRefOid": self.commit, "commits": {"nodes": [{"commit": {
-                    "oid": self.commit, "statusCheckRollup": {
-                        "state": self.rollup, "contexts": contexts}}}]}}}}}
+            return self.graphql_response(args[-1])
         raise AssertionError(args)
+
+    def api_response(self, endpoint):
+        if "check-suites" in endpoint:
+            return [{"total_count": len(self.suites), "check_suites": self.suites}]
+        if "created=" in endpoint:
+            return [{"total_count": len(self.global_runs) + (self.bad == "inventory"),
+                     "workflow_runs": self.global_runs}]
+        if self.bad == "runs":
+            return [{"total_count": 2, "workflow_runs": self.runs}]
+        return [{"total_count": len(self.runs), "workflow_runs": self.runs}]
+
+    def graphql_response(self, query):
+        depth = 0
+        for char in query:
+            depth += (char == "{") - (char == "}")
+            self.assertGreaterEqual(depth, 0, query)
+        self.assertEqual(depth, 0, query)
+        if "mergeQueue" in query:
+            entries = connection([{"pullRequest": {"number": n}} for n in self.queue])
+            if self.bad == "queue":
+                entries["pageInfo"]["hasNextPage"] = True
+            return {"data": {"repository": {"mergeQueue": {"entries": entries}}}}
+        if "statusCheckRollup" not in query:
+            return {"data": {"repository": {"pullRequest": {"headRefOid": self.final_head}}}}
+        contexts = connection(self.contexts)
+        if self.bad == "checks":
+            contexts["totalCount"] += 1
+        return {"data": {"repository": {"pullRequest": {
+            "headRefOid": self.commit, "commits": {"nodes": [{"commit": {
+                "oid": self.commit, "statusCheckRollup": {
+                    "state": self.rollup, "contexts": contexts}}}]}}}}}
 
     def measure(self):
         with patch.object(bp, "gh_json", side_effect=self.github), patch.object(bp, "now", return_value=CLOCK):

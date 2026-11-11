@@ -163,6 +163,11 @@ def terminal_red(repo: str, pr: dict) -> bool:
             require(len(contexts) == expected and len({c["id"] for c in contexts}) == expected,
                     "incomplete or duplicate checks")
             break
+    return terminal_red_contexts(contexts, head)
+
+
+def terminal_red_contexts(contexts: list, head: str) -> bool:
+    """Require every context to be terminal at head, with at least one red."""
     red = False
     for context in contexts:
         kind = context.get("__typename")
