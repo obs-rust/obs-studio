@@ -689,6 +689,33 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("graphics/graphics_effect_file.c.h")),
     )
     .expect("write effect file extract");
+    std::fs::write(
+        extract_dir.join("scene-ref-source.inc"),
+        [
+            extract_c(
+                &libobs.join("obs-source.c.h"),
+                "void obs_source_release(",
+                "}",
+            ),
+            extract_c(
+                &libobs.join("obs-source.c.h"),
+                "void obs_weak_source_release(",
+                "}",
+            ),
+            extract_c(
+                &libobs.join("obs-source.c.h"),
+                "obs_source_t *obs_source_get_ref(",
+                "}",
+            ),
+            extract_c(
+                &libobs.join("obs-source.c.h"),
+                "obs_source_t *obs_weak_source_get_source(",
+                "}",
+            ),
+        ]
+        .concat(),
+    )
+    .expect("write original source lifetime helpers for scene reference parity");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));

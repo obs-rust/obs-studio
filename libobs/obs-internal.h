@@ -896,6 +896,7 @@ void obs_object_ref_destroy(obs_object_t *object);
 #include "obs-object-query-fields.h"
 #include "obs-scene-group-query-fields.h"
 #include "obs-scene-item-parent-fields.h"
+#include "obs-scene-ref-fields.h"
 #include "obs-scene-source-fields.h"
 #include "obs-scene-item-transition-fields.h"
 
