@@ -225,6 +225,11 @@ set_target_properties(OBS::libobs PROPERTIES IMPORTED_LOCATION "{lib}"
 fn graph_runtimes_never_link_an_installed_libobs() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../rust/obs-build/tests/native/registration");
+    let offenders = installed_libobs_offenders(&directory);
+    assert!(offenders.is_empty(), "installed libobs: {offenders:#?}");
+}
+
+fn installed_libobs_offenders(directory: &Path) -> Vec<String> {
     let mut offenders = Vec::new();
     for entry in fs::read_dir(&directory).unwrap() {
         let path = entry.unwrap().path();
@@ -242,7 +247,37 @@ fn graph_runtimes_never_link_an_installed_libobs() {
             }
         }
     }
-    assert!(offenders.is_empty(), "installed libobs: {offenders:#?}");
+    offenders
+}
+
+#[test]
+fn installed_libobs_guard_checks_nested_rust_helpers() {
+    let root = tempfile::tempdir().unwrap();
+    let nested = root.path().join("support/deeper");
+    fs::create_dir_all(&nested).unwrap();
+    fs::write(nested.join("clean.rs"), "fn clean_helper() {}\n").unwrap();
+    assert!(installed_libobs_offenders(root.path()).is_empty());
+
+    let patterns = [
+        r#"Dependency::package(&build.target, "libobs")"#,
+        "IMPORTED_TARGET libobs)",
+        "CORE_LIBDIR",
+    ];
+    // Create out of order: diagnostics must follow paths, not directory order.
+    for name in ["z.rs", "a.rs"] {
+        fs::write(nested.join(name), patterns.join("\n")).unwrap();
+    }
+    fs::write(nested.join("ignored.txt"), patterns.join("\n")).unwrap();
+    let expected: Vec<_> = ["a.rs", "z.rs"]
+        .into_iter()
+        .flat_map(|name| {
+            let path = nested.join(name);
+            patterns
+                .iter()
+                .map(move |pattern| format!("{}: {pattern}", path.display()))
+        })
+        .collect();
+    assert_eq!(installed_libobs_offenders(root.path()), expected);
 }
 
 #[test]
