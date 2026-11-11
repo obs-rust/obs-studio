@@ -26,6 +26,8 @@
 //! `libobs/obs-canvas-rules.c.h` (from `obs-canvas.c.h`), the canvas flag
 //! rules and setter checks; `libobs/obs-video-pacing.c.h` (from
 //! `obs-video.c.h`), the frame pacing decisions of `video_sleep()`;
+//! `libobs/obs-video-stop-requested.c.h` (from `obs-video.c.h`), the graphics
+//! thread's check that every mix's output has stopped;
 //! `libobs/obs-video-frame-timing.c.h` (from `obs-video.c.h`), the tick time
 //! and frame statistics of the graphics thread loop; and
 //! `libobs/obs-nix-system-info.c.h` (from `obs-nix.c.h`), the Linux and
@@ -51,7 +53,8 @@
 //! [`video_output_step`],
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
-//! [`audio_render`], [`video_pacing`], [`video_frame_timing`],
+//! [`audio_render`], [`video_pacing`], [`video_stop_requested`],
+//! [`video_frame_timing`],
 //! [`nix_system_info`], [`win_crash_report`], [`win_symbol_paths`] and
 //! [`win_system_info`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
@@ -62,7 +65,8 @@
 //! technique a canvas texture draws into a display with, and how the display
 //! is cleared; [`canvas_rules`] holds the flags a canvas is created with and
 //! the checks of its setters; [`video_pacing`] steps the frame time after the
-//! sleep at the end of each frame; [`video_frame_timing`] gives the sources
+//! sleep at the end of each frame; [`video_stop_requested`] tells the
+//! graphics thread when every mix's output has stopped; [`video_frame_timing`] gives the sources
 //! their tick time and sums the frame statistics; [`nix_system_info`] parses
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
 //! startup log prints, and reads the `/etc/os-release` keys and values, the
