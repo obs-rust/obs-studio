@@ -6,10 +6,10 @@ pub trait Info {
     fn codec(&self) -> Self::Text;
 }
 
-pub fn display_name<I: Info>(_info: Option<&I>) -> Option<I::Text> {
-    todo!("encoder display name")
+pub fn display_name<I: Info>(info: Option<&I>) -> Option<I::Text> {
+    info.map(Info::name)
 }
 
-pub fn codec<I: Info>(_info: Option<&I>) -> Option<I::Text> {
-    todo!("encoder codec")
+pub fn codec<I: Info>(info: Option<&I>) -> Option<I::Text> {
+    info.map(Info::codec)
 }

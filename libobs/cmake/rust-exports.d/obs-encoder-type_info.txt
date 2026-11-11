@@ -1,0 +1,2 @@
+obs_encoder_get_display_name
+obs_get_encoder_codec

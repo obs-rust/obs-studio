@@ -1,6 +1,7 @@
 //! C ABI boundary for the encoder property constructors.
 use crate::encoder_properties::{Host, construct};
 use core::ffi::{c_char, c_void};
+use obs_util::ffi::encoder_type_lookup::find_encoder;
 
 type PropertiesFn = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
 type Properties2Fn = unsafe extern "C" fn(*mut c_void, *mut c_void) -> *mut c_void;
@@ -19,7 +20,6 @@ pub struct PropertiesFields {
 }
 
 unsafe extern "C" {
-    fn find_encoder(id: *const c_char) -> *const c_void;
     fn obs_encoder_properties_type_fields(info: *const c_void) -> PropertiesFields;
     fn obs_encoder_properties_instance_fields(encoder: *const c_void) -> PropertiesFields;
     fn obs_data_create() -> *mut c_void;
