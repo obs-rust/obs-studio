@@ -19,7 +19,7 @@
 #include "libobs/obs-object-validity-fields.c.h"
 #include "libobs/obs-scene-color-space.c.h"
 #include "libobs/obs-scene-create-fields.c.h"
-#include "libobs/obs-scene-from-source.c.h"
+#include "libobs/obs-scene-from-source-fields.c.h"
 #include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-group-resize-defer-fields.c.h"
 #include "libobs/obs-scene-item-audio-actions-fields.c.h"
