@@ -1829,22 +1829,6 @@ void obs_scene_release(obs_scene_t *scene)
 		obs_source_release(scene->source);
 }
 
-obs_scene_t *obs_scene_from_source(const obs_source_t *source)
-{
-	if (!source || strcmp(source->info.id, scene_info.id) != 0)
-		return NULL;
-
-	return source->context.data;
-}
-
-obs_scene_t *obs_group_from_source(const obs_source_t *source)
-{
-	if (!source || strcmp(source->info.id, group_info.id) != 0)
-		return NULL;
-
-	return source->context.data;
-}
-
 /* Must be called with the scene locked. Only compares pointers and follows the
  * links of items that are in the scene, which the scene lock protects. An item
  * that left the scene may be changed by whoever holds its new scene's lock, so
