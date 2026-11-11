@@ -639,6 +639,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-module-load-locale.c.h")),
     )
     .expect("write module load locale extract");
+    std::fs::write(
+        extract_dir.join("source_theme_icon.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-theme-icon.c.h")),
+    )
+    .expect("write original source theme icon extract");
     for stem in [
         "effect-parser-lifecycle",
         "effect-parser-lifecycle-adapter",

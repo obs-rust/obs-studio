@@ -32,11 +32,20 @@ fn bytes(id: &[u8]) -> &[u8] {
 impl Fixture {
     fn register(&mut self, id: &[u8], icon: u32, data: Option<usize>, dark: bool, light: bool) {
         if !self.entries.iter().any(|e| e.id == bytes(id)) {
-            self.entries.push(Info { id: bytes(id).to_vec(), icon, data, dark, light });
+            self.entries.push(Info {
+                id: bytes(id).to_vec(),
+                icon,
+                data,
+                dark,
+                light,
+            });
         }
     }
     fn find(&self) -> Option<Info> {
-        self.entries.iter().find(|e| Some(e.id.as_slice()) == self.query.as_deref().map(bytes)).cloned()
+        self.entries
+            .iter()
+            .find(|e| Some(e.id.as_slice()) == self.query.as_deref().map(bytes))
+            .cloned()
     }
     fn query(&mut self, id: Option<&[u8]>, theme: Theme) -> Option<Icon> {
         self.query = id.map(<[u8]>::to_vec);
@@ -46,7 +55,13 @@ impl Fixture {
     fn missing(&mut self, id: Option<&[u8]>) {
         for theme in [Theme::Dark, Theme::Light] {
             assert!(self.query(id, theme).is_none());
-            assert!(!self.events.borrow().iter().any(|e| matches!(e, Event::Call(..))));
+            assert!(
+                !self
+                    .events
+                    .borrow()
+                    .iter()
+                    .any(|e| matches!(e, Event::Call(..)))
+            );
         }
     }
 }
@@ -74,7 +89,9 @@ impl Registry for Fixture {
         }
     }
 }
-fn icon(data: &[u8]) -> Icon { Rc::new(RefCell::new(data.to_vec())) }
+fn icon(data: &[u8]) -> Icon {
+    Rc::new(RefCell::new(data.to_vec()))
+}
 
 #[test]
 fn null_ids_during_empty_registry() {
@@ -87,7 +104,9 @@ fn unknown_ids() {
     f.missing(Some(b""));
     f.missing(Some(b"unregistered"));
     f.register(b"known", 13, None, false, false);
-    for id in [b"known".as_slice(), b"unknown", b""] { f.missing(Some(id)); }
+    for id in [b"known".as_slice(), b"unknown", b""] {
+        f.missing(Some(id));
+    }
     f.missing_second = true;
     f.missing(Some(b"known"));
     assert_eq!(*f.events.borrow(), [Event::Icon, Event::Info]);
@@ -97,7 +116,9 @@ fn unknown_ids() {
 fn noncustom_skips_callbacks() {
     let mut f = Fixture::default();
     for kind in (0..=14).chain([u32::MAX]) {
-        if kind == 13 { continue; }
+        if kind == 13 {
+            continue;
+        }
         let id = format!("noncustom-{kind}");
         f.register(id.as_bytes(), kind, Some(1), true, true);
         f.missing(Some(id.as_bytes()));
@@ -114,9 +135,15 @@ fn optional_callbacks_are_independent() {
     *f.light.borrow_mut() = Some(light.clone());
     f.register(b"dark-only", 13, Some(1), true, false);
     f.register(b"light-only", 13, Some(2), false, true);
-    for (id, theme, expected, data) in [(b"dark-only".as_slice(), Theme::Dark, dark, 1), (b"light-only", Theme::Light, light, 2)] {
+    for (id, theme, expected, data) in [
+        (b"dark-only".as_slice(), Theme::Dark, dark, 1),
+        (b"light-only", Theme::Light, light, 2),
+    ] {
         assert!(Rc::ptr_eq(&f.query(Some(id), theme).unwrap(), &expected));
-        assert_eq!(*f.events.borrow(), [Event::Icon, Event::Info, Event::Call(theme, Some(data))]);
+        assert_eq!(
+            *f.events.borrow(),
+            [Event::Icon, Event::Info, Event::Call(theme, Some(data))]
+        );
     }
     assert!(f.query(Some(b"dark-only"), Theme::Light).is_none());
     assert_eq!(*f.events.borrow(), [Event::Icon, Event::Info]);
@@ -131,21 +158,30 @@ fn exact_type_data_and_borrowed_results() {
     f.register(b"null-data", 13, None, true, true);
     let first = icon(b"../Mixed Case.svg");
     let same_text = icon(b"../Mixed Case.svg");
-    let results = [None, Some(icon(b"")), Some(first.clone()), Some(same_text.clone()), Some(icon(&[0xfe, 0x81]))];
+    let results = [
+        None,
+        Some(icon(b"")),
+        Some(first.clone()),
+        Some(same_text.clone()),
+        Some(icon(&[0xfe, 0x81])),
+    ];
     assert!(!Rc::ptr_eq(&first, &same_text));
     assert_eq!(*first.borrow(), *same_text.borrow());
     for (id, data) in [(b"with-data".as_slice(), Some(1)), (b"null-data", None)] {
         for i in 0..results.len() {
             *f.dark.borrow_mut() = results[i].clone();
-            *f.light.borrow_mut() = results[4-i].clone();
-            for (theme, expected) in [(Theme::Dark, &results[i]), (Theme::Light, &results[4-i])] {
+            *f.light.borrow_mut() = results[4 - i].clone();
+            for (theme, expected) in [(Theme::Dark, &results[i]), (Theme::Light, &results[4 - i])] {
                 let got = f.query(Some(id), theme);
                 match (got, expected) {
                     (Some(got), Some(expected)) => assert!(Rc::ptr_eq(&got, expected)),
                     (None, None) => (),
                     _ => panic!("borrowed result differs"),
                 }
-                assert_eq!(*f.events.borrow(), [Event::Icon, Event::Info, Event::Call(theme, data)]);
+                assert_eq!(
+                    *f.events.borrow(),
+                    [Event::Icon, Event::Info, Event::Call(theme, data)]
+                );
             }
         }
     }
@@ -169,12 +205,21 @@ fn first_registration_and_exact_ids() {
     let result = icon(b"first.svg");
     *f.dark.borrow_mut() = Some(result.clone());
     *f.light.borrow_mut() = Some(result.clone());
-    for (id, data) in [(b"first\0ignored".as_slice(), 1), (b"", 2), (&[0xfe, 0x81], 3)] {
+    for (id, data) in [
+        (b"first\0ignored".as_slice(), 1),
+        (b"", 2),
+        (&[0xfe, 0x81], 3),
+    ] {
         for theme in [Theme::Dark, Theme::Light] {
             assert!(Rc::ptr_eq(&f.query(Some(id), theme).unwrap(), &result));
-            assert_eq!(*f.events.borrow(), [Event::Icon, Event::Info, Event::Call(theme, Some(data))]);
+            assert_eq!(
+                *f.events.borrow(),
+                [Event::Icon, Event::Info, Event::Call(theme, Some(data))]
+            );
         }
     }
-    for id in [b"First".as_slice(), b"firs", b"first-suffix"] { f.missing(Some(id)); }
+    for id in [b"First".as_slice(), b"firs", b"first-suffix"] {
+        f.missing(Some(id));
+    }
     // The registry boundary has no name/create/destroy operation to invoke.
 }

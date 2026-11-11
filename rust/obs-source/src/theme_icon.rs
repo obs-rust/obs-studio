@@ -14,6 +14,10 @@ pub trait Registry {
     fn call(&self, info: Self::Info, theme: Theme) -> Option<Self::Icon>;
 }
 
-pub fn get<R: Registry>(_registry: &R, _theme: Theme) -> Option<R::Icon> {
-    todo!("source theme icon dispatch")
+pub fn get<R: Registry>(registry: &R, theme: Theme) -> Option<R::Icon> {
+    if registry.icon_type() != 13 {
+        return None;
+    }
+    let info = registry.source_info()?;
+    registry.call(info, theme)
 }

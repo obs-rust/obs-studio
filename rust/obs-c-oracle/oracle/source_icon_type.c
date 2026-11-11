@@ -25,8 +25,12 @@ static struct obs_source_info icon_registry[] = {
 
 /* The production shim and original C use the same deterministic registry.
  * No NULL-id guarantee is added: strcmp keeps the original precondition. */
+bool oracle_source_theme_icon_lookup(const char *id, struct obs_source_info **info);
 struct obs_source_info *get_source_info(const char *id)
 {
+	struct obs_source_info *theme_info;
+	if (oracle_source_theme_icon_lookup(id, &theme_info))
+		return theme_info;
 	for (size_t i = 0; i < sizeof(icon_registry) / sizeof(icon_registry[0]); i++) {
 		if (strcmp(icon_registry[i].id, id) == 0)
 			return &icon_registry[i];
