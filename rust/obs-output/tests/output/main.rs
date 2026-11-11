@@ -90,6 +90,8 @@ mod output_last_error;
 mod output_last_error_parity;
 mod output_mixer_getters;
 mod output_mixer_getters_parity;
+mod output_module;
+mod output_module_parity;
 mod output_pause;
 mod output_pause_parity;
 mod output_pause_queries;
