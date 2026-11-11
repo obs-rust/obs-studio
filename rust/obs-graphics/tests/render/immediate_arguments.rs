@@ -20,7 +20,11 @@ fn bits(v: Vec3) -> [u32; 4] {
 fn test_immediate_arguments_argument_forwarding_vertex3f() {
     for [x, y, z] in COMPONENTS {
         assert_eq!(
-            bits(core::vertex3f(f32::from_bits(x), f32::from_bits(y), f32::from_bits(z))),
+            bits(core::vertex3f(
+                f32::from_bits(x),
+                f32::from_bits(y),
+                f32::from_bits(z)
+            )),
             [x, y, z, 0]
         );
     }
@@ -34,8 +38,14 @@ fn test_immediate_arguments_argument_forwarding_vertex2v() {
         assert_eq!([input.x.to_bits(), input.y.to_bits()], [x, y]);
     }
     // The immediate_limits case alternates these inputs up to the existing cap.
-    assert_eq!(bits(core::vertex2v(Vec2::new(-0.0, 2.5))), [0x80000000, 0x40200000, 0, 0]);
-    assert_eq!(bits(core::vertex3f(-0.0, 2.5, -0.0)), [0x80000000, 0x40200000, 0x80000000, 0]);
+    assert_eq!(
+        bits(core::vertex2v(Vec2::new(-0.0, 2.5))),
+        [0x80000000, 0x40200000, 0, 0]
+    );
+    assert_eq!(
+        bits(core::vertex3f(-0.0, 2.5, -0.0)),
+        [0x80000000, 0x40200000, 0x80000000, 0]
+    );
 }
 
 #[test]
@@ -43,7 +53,8 @@ fn test_immediate_arguments_exact_downstream_calls_texcoord() {
     let units = [i32::MIN, -65537, -1, 0, 1, 7, 15, 16, 65537, i32::MAX];
     for [x, y, _] in COMPONENTS {
         for unit in units.into_iter().chain((0..16).rev()) {
-            let (value, forwarded_unit) = core::texcoord(f32::from_bits(x), f32::from_bits(y), unit);
+            let (value, forwarded_unit) =
+                core::texcoord(f32::from_bits(x), f32::from_bits(y), unit);
             assert_eq!([value.x.to_bits(), value.y.to_bits()], [x, y]);
             assert_eq!(forwarded_unit, unit);
         }

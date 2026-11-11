@@ -31,6 +31,7 @@ mod image_wic_checks;
 mod image_wic_checks_parity;
 mod immediate;
 mod immediate_arguments;
+mod immediate_arguments_parity;
 mod immediate_parity;
 mod immediate_scalars;
 mod immediate_scalars_parity;

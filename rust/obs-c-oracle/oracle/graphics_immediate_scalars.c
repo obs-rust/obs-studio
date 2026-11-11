@@ -1,14 +1,19 @@
-/* Original extracted scalar bodies, with recording vector-boundary callbacks. */
+/* Original extracted immediate argument/scalar bodies, recording their shared
+ * vector-boundary callbacks. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "graphics/graphics.h"
+#include "graphics/vec2.h"
 #include "graphics/vec3.h"
 #include "util/threading.h"
 
 void oracle_gs_vertex2f(float x, float y);
 void oracle_gs_normal3f(float x, float y, float z);
+void oracle_gs_vertex3f(float x, float y, float z);
+void oracle_gs_texcoord(float x, float y, int unit);
+void oracle_gs_vertex2v(const struct vec2 *value);
 void oracle_immediate_scalars_reset(void);
 size_t oracle_immediate_scalars_count(void);
 uint32_t oracle_immediate_scalars_word(size_t index);
@@ -36,6 +41,27 @@ void gs_normal3v(const struct vec3 *value)
 {
 	immediate_scalars_record(2, value);
 }
+
+void gs_texcoord2v(const struct vec2 *value, int unit)
+{
+	if (immediate_scalars_count + 5 > 64 * 5)
+		abort();
+	immediate_scalars_trace[immediate_scalars_count++] = 3;
+	memcpy(&immediate_scalars_trace[immediate_scalars_count], value->ptr, sizeof(float) * 2);
+	immediate_scalars_count += 2;
+	/* Runtime signed-to-unsigned conversion preserves all 32 bits without
+	 * MSVC C4310 from truncating constant casts. */
+	immediate_scalars_trace[immediate_scalars_count++] = (uint32_t)unit;
+	immediate_scalars_trace[immediate_scalars_count++] = 0;
+}
+
+#define gs_vertex3f oracle_gs_vertex3f
+#define gs_texcoord oracle_gs_texcoord
+#define gs_vertex2v oracle_gs_vertex2v
+#include "graphics-immediate-arguments.inc"
+#undef gs_vertex2v
+#undef gs_texcoord
+#undef gs_vertex3f
 
 #define gs_vertex2f oracle_gs_vertex2f
 #define gs_normal3f oracle_gs_normal3f
