@@ -152,6 +152,9 @@
 /* obs-video-pacing.c */
 #include "obs-video-pacing.h"
 
+/* obs-video-stop-requested.c */
+#include "obs-video-stop-requested.h"
+
 /* obs-video.c */
 #include <time.h>
 #include <stdlib.h>

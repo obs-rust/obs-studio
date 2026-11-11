@@ -17510,7 +17510,8 @@
     },
     "test_video_stop_requested": {
       "sources": [
-        "test/cmocka/test_video_stop_requested.c"
+        "test/cmocka/test_video_stop_requested.c",
+        "libobs/obs-video-stop-requested-reference.c.h"
       ],
       "includes": [
         "libobs",
@@ -17532,6 +17533,27 @@
           }
         }
       ]
+    },
+    "test_video_stop_requested_rust": {
+      "sources": [
+        "test/cmocka/test_video_stop_requested.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_view": {
       "sources": [
@@ -25085,6 +25107,13 @@
     },
     "test_video_stop_requested": {
       "target": "test_video_stop_requested",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_video_stop_requested_rust": {
+      "target": "test_video_stop_requested_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]
