@@ -26,6 +26,7 @@
 #include "libobs/obs-scene-item-blending-method-fields.c.h"
 #include "libobs/obs-scene-item-blending-mode-fields.c.h"
 #include "libobs/obs-scene-item-bounds-setters.c.h"
+#include "libobs/obs-scene-item-crop-setter.c.h"
 #include "libobs/obs-scene-item-group-scene-fields.c.h"
 #include "libobs/obs-scene-item-hotkeys.c.h"
 #include "libobs/obs-scene-item-locked-fields.c.h"
