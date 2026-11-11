@@ -231,9 +231,19 @@ fn graph_runtimes_never_link_an_installed_libobs() {
 
 fn installed_libobs_offenders(directory: &Path) -> Vec<String> {
     let mut offenders = Vec::new();
-    for entry in fs::read_dir(&directory).unwrap() {
-        let path = entry.unwrap().path();
-        if !path.is_file() {
+    let mut entries: Vec<_> = fs::read_dir(directory)
+        .unwrap()
+        .map(|entry| entry.unwrap())
+        .collect();
+    entries.sort_by_key(|entry| entry.path());
+    for entry in entries {
+        let path = entry.path();
+        let kind = entry.file_type().unwrap();
+        if kind.is_dir() {
+            offenders.extend(installed_libobs_offenders(&path));
+            continue;
+        }
+        if !kind.is_file() || path.extension().is_none_or(|extension| extension != "rs") {
             continue;
         }
         let text = fs::read_to_string(&path).unwrap();
