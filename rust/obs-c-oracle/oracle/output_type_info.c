@@ -81,7 +81,7 @@ bool oracle_output_type_info_check(const char *const *ids, const uint32_t *flags
 		char first[] = "same display name";
 		char second[] = "same display name";
 		char empty[] = "";
-		const char raw[] = {'n', (char)0xff, '\0', 'x', '\0'};
+		const char raw[] = "n\xff\0x";
 		const char *results[] = {first, second, empty, raw, NULL, first};
 		valid = valid && &first[0] != &second[0];
 		for (size_t i = 0; i < 6; ++i) {
