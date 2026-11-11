@@ -1095,29 +1095,6 @@ void obs_output_set_audio_encoder(obs_output_t *output, obs_encoder_t *encoder, 
 	obs_encoder_add_output(output->audio_encoders[idx], output);
 }
 
-obs_encoder_t *obs_output_get_video_encoder(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_video_encoder"))
-		return NULL;
-
-	size_t first_venc_idx;
-	if (get_first_video_encoder_index(output, &first_venc_idx))
-		return obs_output_get_video_encoder2(output, first_venc_idx);
-	else
-		return NULL;
-}
-
-obs_encoder_t *obs_output_get_audio_encoder(const obs_output_t *output, size_t idx)
-{
-	if (!obs_output_valid(output, "obs_output_get_audio_encoder"))
-		return NULL;
-
-	if (!obs_output_slots_audio_slot(idx))
-		return NULL;
-
-	return output->audio_encoders[idx];
-}
-
 void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 {
 	if (!obs_output_valid(output, "obs_output_set_service"))
