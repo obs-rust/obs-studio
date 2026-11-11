@@ -18,6 +18,7 @@ mod extent_parity;
 mod from_source;
 mod from_source_parity;
 mod group_enum;
+mod group_enum_parity;
 mod item_audio_actions;
 mod item_audio_actions_parity;
 mod item_id;

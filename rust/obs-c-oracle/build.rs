@@ -825,6 +825,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
     )
     .expect("write canvas setter extract");
+    std::fs::write(
+        extract_dir.join("scene_group_enum.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-scene-group-enum.c.h")),
+    )
+    .expect("write original group enumeration wrapper");
     oracle.include(&extract_dir);
 
     oracle
