@@ -676,29 +676,6 @@ void obs_hotkeys_free(void)
 	}
 }
 
-void obs_enum_hotkeys(obs_hotkey_enum_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	obs_hotkey_t *hk, *tmp;
-	HASH_ITER (hh, obs->hotkeys.hotkeys, hk, tmp) {
-		if (!func(data, hk->id, hk))
-			break;
-	}
-
-	unlock();
-}
-
-void obs_enum_hotkey_bindings(obs_hotkey_binding_enum_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	enum_bindings(func, data);
-	unlock();
-}
-
 struct obs_hotkey_binding_fields obs_hotkey_binding_fields(obs_hotkey_binding_t *binding)
 {
 	return (struct obs_hotkey_binding_fields){

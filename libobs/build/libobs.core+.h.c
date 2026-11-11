@@ -14,6 +14,7 @@
 #include "libobs/obs-find-modules.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
 #include "libobs/obs-hotkey-background-error-fields.c.h"
+#include "libobs/obs-hotkey-enum.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
 #include "libobs/obs-hotkey-object-fields.c.h"
 #include "libobs/obs-hotkey-owned-translations.c.h"

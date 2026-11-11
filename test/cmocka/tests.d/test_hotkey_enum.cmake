@@ -1,0 +1,10 @@
+# Public API characterization; the same executable runs against both libraries.
+add_executable(test_hotkey_enum test_hotkey_enum.c)
+target_link_libraries(test_hotkey_enum PRIVATE OBS::libobs OBS::native-test-cmocka)
+add_dependencies(cmocka-tests test_hotkey_enum)
+if(OS_LINUX AND OBS_XVFB_RUN_REAL)
+  add_test(NAME test_hotkey_enum COMMAND ${OBS_XVFB_RUN_REAL} -a $<TARGET_FILE:test_hotkey_enum>)
+else()
+  add_test(NAME test_hotkey_enum COMMAND test_hotkey_enum)
+endif()
+set_tests_properties(test_hotkey_enum PROPERTIES TIMEOUT 30)

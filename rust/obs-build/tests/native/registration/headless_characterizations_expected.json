@@ -7,6 +7,7 @@
                 "libobs/obs-hotkey-binding-press.c.h",
                 "libobs/obs-hotkey-background-query.c.h",
                 "libobs/obs-hotkey.c.h",
+                "libobs/obs-hotkey-enum.c.h",
                 "libobs/obs-hotkey-save-load.c.h",
                 "libobs/obs-hotkey-bindings.c.h",
                 "libobs/obs-hotkey-translations.c.h",
