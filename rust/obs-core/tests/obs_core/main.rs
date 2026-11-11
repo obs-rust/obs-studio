@@ -99,6 +99,7 @@ mod nix_system_info;
 mod nix_system_info_parity;
 mod object_queries;
 mod object_queries_parity;
+mod object_ref;
 mod object_validity_query;
 mod object_validity_query_parity;
 mod output_protocol_registry;
