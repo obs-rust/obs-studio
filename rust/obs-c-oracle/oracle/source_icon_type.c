@@ -1,6 +1,5 @@
-/* Original getter plus the real field adapter over a read-only test registry.
- * Lookup is a fixture; real registry/registration behavior is covered by the
- * unchanged test_module_register_copy_steps against hybrid and reference. */
+/* Original getter plus real field adapter; the shared original source lookup
+ * uses this read-only default registry when no fixture overrides its core. */
 #include "libobs/build/libobs-ported-service-getters.pch.h"
 #include <stddef.h>
 #include <string.h>
@@ -23,19 +22,12 @@ static struct obs_source_info icon_registry[] = {
 	{.id = "icon_14", .icon_type = OBS_ICON_TYPE_PROCESS_AUDIO_OUTPUT},
 };
 
-/* The production shim and original C use the same deterministic registry.
- * No NULL-id guarantee is added: strcmp keeps the original precondition. */
-bool oracle_source_theme_icon_lookup(const char *id, struct obs_source_info **info);
-struct obs_source_info *get_source_info(const char *id)
+const struct obs_core *oracle_source_icon_core(void);
+const struct obs_core *oracle_source_icon_core(void)
 {
-	struct obs_source_info *theme_info;
-	if (oracle_source_theme_icon_lookup(id, &theme_info))
-		return theme_info;
-	for (size_t i = 0; i < sizeof(icon_registry) / sizeof(icon_registry[0]); i++) {
-		if (strcmp(icon_registry[i].id, id) == 0)
-			return &icon_registry[i];
-	}
-	return NULL;
+	static const struct obs_core core = {
+		.source_types = {.array = icon_registry, .num = sizeof(icon_registry) / sizeof(icon_registry[0])}};
+	return &core;
 }
 
 enum obs_icon_type oracle_obs_source_get_icon_type(const char *id);

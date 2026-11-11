@@ -8,14 +8,14 @@ pub trait Info {
     fn has_properties2(&self) -> bool;
 }
 
-pub fn display_name<I: Info>(_info: Option<&I>) -> Option<I::Text> {
-    todo!()
+pub fn display_name<I: Info>(info: Option<&I>) -> Option<I::Text> {
+    info.map(Info::name)
 }
 
-pub fn output_flags<I: Info>(_info: Option<&I>) -> u32 {
-    todo!()
+pub fn output_flags<I: Info>(info: Option<&I>) -> u32 {
+    info.map_or(0, Info::flags)
 }
 
-pub fn configurable<I: Info>(_info: Option<&I>) -> bool {
-    todo!()
+pub fn configurable<I: Info>(info: Option<&I>) -> bool {
+    info.is_some_and(|info| info.has_properties() || info.has_properties2())
 }

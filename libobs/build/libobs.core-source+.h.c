@@ -79,7 +79,7 @@
 #include "libobs/obs-source-transition-seam.c.h"
 #include "libobs/obs-source-type-data-fields.c.h"
 #include "libobs/obs-source-type-id-fields.c.h"
-#include "libobs/obs-source-type-info.c.h"
+#include "libobs/obs-source-type-info-fields.c.h"
 #include "libobs/obs-source.c.h"
 #include "libobs/obs-texture-metadata-fields.c.h"
 #include "libobs/obs-timer-dispatch-fields.c.h"
