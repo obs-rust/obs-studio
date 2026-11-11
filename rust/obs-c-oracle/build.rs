@@ -684,6 +684,23 @@ fn main() {
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
     std::fs::write(
+        extract_dir.join("object-ref-weak.inc"),
+        [
+            extract_c(
+                &libobs.join("obs.c.h"),
+                "void obs_weak_object_release(",
+                "}",
+            ),
+            extract_c(
+                &libobs.join("obs.c.h"),
+                "obs_object_t *obs_weak_object_get_object(",
+                "}",
+            ),
+        ]
+        .concat(),
+    )
+    .expect("write original generic weak reference helpers");
+    std::fs::write(
         extract_dir.join("scene_lookup.inc"),
         extract_after_libobs_pch(&libobs.join("obs-scene-lookup.c.h")),
     )
