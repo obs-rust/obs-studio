@@ -6,3 +6,4 @@ mod media_getters_parity;
 pub(crate) use super::output::isolated;
 mod encoder_module;
 mod encoder_module_parity;
+mod type_info;
