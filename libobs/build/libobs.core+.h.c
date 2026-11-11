@@ -11,7 +11,6 @@
 #include "libobs/obs-core-output-protocol-registry-fields.c.h"
 #include "libobs/obs-core-texture-activity-fields.c.h"
 #include "libobs/obs-core-tick-callbacks-fields.c.h"
-#include "libobs/obs-find-modules.c.h"
 #include "libobs/obs-hotkey-background-app-id-fields.c.h"
 #include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-enum.c.h"
