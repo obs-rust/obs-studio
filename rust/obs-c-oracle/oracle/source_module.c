@@ -71,3 +71,19 @@ void oracle_source_module_layout(size_t *out)
 	for (size_t i = 0; i < 7; i++)
 		out[i + 2] = (size_t)states[i];
 }
+
+/* No strcmp is reached: even a non-string query pointer must remain unread. */
+bool oracle_source_module_unread_query(source_module_getter get);
+bool oracle_source_module_unread_query(source_module_getter get)
+{
+	struct obs_module enabled = {0};
+	struct obs_module disabled = {0};
+	const char *query = (const char *)(uintptr_t)1;
+	bool result = get(query) == NULL;
+	source_module_core.first_module = &enabled;
+	source_module_core.first_disabled_module = &disabled;
+	result = result && get(query) == NULL;
+	source_module_core.first_module = NULL;
+	source_module_core.first_disabled_module = NULL;
+	return result;
+}

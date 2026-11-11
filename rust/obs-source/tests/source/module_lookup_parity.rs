@@ -162,3 +162,25 @@ proptest! {
         check(&modules, split % (modules.len() + 1), query);
     }
 }
+
+#[test]
+fn unregistered_query_is_never_read() {
+    // Isolate the sentinel-pointer regression probe from the rest of the category.
+    if !crate::output::isolated(concat!(
+        module_path!(),
+        "::unregistered_query_is_never_read"
+    )) {
+        return;
+    }
+    unsafe extern "C" {
+        fn oracle_source_module_unread_query(get: Get) -> bool;
+    }
+    // SAFETY: C owns empty real-header lists; its deliberately invalid query is
+    // never dereferenced by the defined original C path or the matching Rust path.
+    unsafe {
+        assert!(oracle_source_module_unread_query(
+            oracle_obs_source_get_module
+        ));
+        assert!(oracle_source_module_unread_query(obs_source_get_module));
+    }
+}

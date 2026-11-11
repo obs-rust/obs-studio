@@ -1,7 +1,7 @@
 //! Private C layout and borrowed C-string boundary for source module queries.
 use crate::module_lookup;
 use core::ffi::{CStr, c_char, c_int, c_void};
-use obs_util::module_registry::Registry;
+use obs_util::module_registry::{Query, Registry};
 
 unsafe extern "C" {
     fn obs_source_module_root(disabled: bool) -> *mut c_void;
@@ -9,6 +9,17 @@ unsafe extern "C" {
     fn obs_source_module_count(module: *mut c_void) -> usize;
     fn obs_source_module_id(module: *mut c_void, index: usize) -> *const c_char;
     fn obs_source_module_state(module: *mut c_void) -> c_int;
+}
+
+// Constructed only by the unsafe getter. The original C does not read the query
+// at all when no registered ID exists, even for a non-NULL pointer.
+struct LazyId(*const c_char);
+impl Query for LazyId {
+    fn matches(&self, candidate: &[u8]) -> bool {
+        // SAFETY: the getter contract requires a live C string once a comparison
+        // is reached. No pointer access occurs for lists containing only empty nodes.
+        candidate == unsafe { CStr::from_ptr(self.0) }.to_bytes()
+    }
 }
 
 struct Modules;
@@ -50,8 +61,7 @@ unsafe fn id_bytes<'a>(id: *const c_char) -> Option<&'a [u8]> {
 /// only when no registered ID is compared by the original C.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_get_module(id: *const c_char) -> *mut c_void {
-    // SAFETY: forwarded public input contract.
-    module_lookup::get_module(&Modules, unsafe { id_bytes(id) })
+    module_lookup::get_module(&Modules, LazyId(id))
         .map_or(core::ptr::null_mut(), core::ptr::NonNull::as_ptr)
 }
 

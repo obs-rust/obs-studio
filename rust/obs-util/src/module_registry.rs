@@ -10,14 +10,26 @@ pub trait Registry {
     fn load_state(&self, module: Self::Handle) -> i32;
 }
 
+/// A query read only when a registered ID is actually compared.
+/// ABI adapters may defer C-string access until this method is called.
+pub trait Query {
+    fn matches(&self, candidate: &[u8]) -> bool;
+}
+
+impl Query for Option<&[u8]> {
+    fn matches(&self, candidate: &[u8]) -> bool {
+        *self == Some(candidate)
+    }
+}
+
 /// Search enabled modules before disabled modules, preserving list and ID order.
 /// IDs are C-string bytes before their first NUL, without UTF-8 conversion.
-pub fn find<R: Registry>(registry: &R, id: Option<&[u8]>) -> Option<R::Handle> {
+pub fn find<R: Registry>(registry: &R, id: impl Query) -> Option<R::Handle> {
     for disabled in [false, true] {
         let mut current = registry.first(disabled);
         while let Some(module) = current {
             for i in 0..registry.id_count(module) {
-                if Some(registry.id(module, i)) == id {
+                if id.matches(registry.id(module, i)) {
                     return Some(module);
                 }
             }
