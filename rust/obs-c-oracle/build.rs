@@ -647,6 +647,7 @@ fn main() {
     for stem in [
         "effect-parser-lifecycle",
         "effect-parser-lifecycle-adapter",
+        "graphics-immediate-arguments",
         "graphics-immediate-scalars",
         "obs-graphics-adapter",
         "graphics-set-linear-srgb",
