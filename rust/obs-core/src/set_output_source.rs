@@ -6,6 +6,5 @@ pub fn set_output_source<C, S>(
     source: S,
     set_channel: impl FnOnce(C, u32, S),
 ) {
-    let _ = (canvas, channel, source, set_channel);
-    todo!("obs_set_output_source Rust swap")
+    set_channel(canvas, channel, source);
 }
