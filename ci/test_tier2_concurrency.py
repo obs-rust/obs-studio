@@ -7,10 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-try:
-    from ci.native_test_graph import load_graph
-except ModuleNotFoundError:
-    from native_test_graph import load_graph
+from native_test_graph import load_graph
 
 ROOT = Path(__file__).resolve().parent.parent
 TIMEOUTS = {

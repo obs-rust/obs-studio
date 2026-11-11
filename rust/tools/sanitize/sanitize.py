@@ -22,6 +22,7 @@ Ported off the 178-line shell script in #962; sanitizers.yaml runs it through
 from __future__ import annotations
 
 import functools
+import importlib.util
 import json
 import os
 import random
@@ -37,11 +38,14 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from ci.native_test_graph import load_graph
-
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent.parent.parent
+GRAPH_READER = SRC / "ci" / "native_test_graph.py"
+_graph_spec = importlib.util.spec_from_file_location("native_test_graph", GRAPH_READER)
+assert _graph_spec is not None and _graph_spec.loader is not None, f"cannot load {GRAPH_READER}"
+_graph_reader = importlib.util.module_from_spec(_graph_spec)
+_graph_spec.loader.exec_module(_graph_reader)
+load_graph = _graph_reader.load_graph
 # One test binary gets 10 minutes, the same bound the shell's `timeout 600` set.
 TEST_TIMEOUT = 600
 # tool -> (compile flags, CMAKE_BUILD_TYPE). -ffp-contract=off: the runner's gcc
