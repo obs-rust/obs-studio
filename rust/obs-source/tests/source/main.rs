@@ -84,6 +84,7 @@ mod source_name;
 mod source_name_parity;
 mod state_getters;
 mod state_getters_parity;
+mod theme_icon;
 mod transition_access;
 mod transition_audio;
 mod transition_clock;
