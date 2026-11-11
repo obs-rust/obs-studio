@@ -74,7 +74,7 @@ fn check(modules: &[(Vec<Vec<u8>>, i32)], split: usize, query: Option<&[u8]>) {
         );
     }
     assert_eq!(rust, c);
-    for observation in rust.chunks_exact(3) {
+    for observation in rust.as_chunks::<3>().0 {
         assert_eq!(observation[2], 1);
     }
     assert_eq!(rust[0..3], rust[3..6]);
