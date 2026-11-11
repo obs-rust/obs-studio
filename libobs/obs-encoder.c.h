@@ -36,12 +36,6 @@ struct obs_encoder_info *find_encoder(const char *id)
 	return NULL;
 }
 
-const char *obs_encoder_get_display_name(const char *id)
-{
-	struct obs_encoder_info *ei = find_encoder(id);
-	return ei ? ei->get_name(ei->type_data) : NULL;
-}
-
 static struct obs_encoder *create_encoder(const char *id, enum obs_encoder_type type, const char *name,
 					  obs_data_t *settings, size_t mixer_idx, obs_data_t *hotkey_data)
 {
@@ -898,12 +892,6 @@ void obs_encoder_stop(obs_encoder_t *encoder, encoded_callback_t new_packet, voi
 	}
 
 	pthread_mutex_unlock(&encoder->init_mutex);
-}
-
-const char *obs_get_encoder_codec(const char *id)
-{
-	struct obs_encoder_info *info = find_encoder(id);
-	return info ? info->codec : NULL;
 }
 
 void obs_encoder_set_video(obs_encoder_t *encoder, video_t *video)
