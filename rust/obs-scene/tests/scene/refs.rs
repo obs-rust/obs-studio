@@ -79,7 +79,10 @@ fn exercise_refs(acquisitions: i32) {
         assert_eq!(retained, f.source);
         assert_eq!(retained.map(|_| 17), Some(17));
         assert!(!canvas_ref::release(Some(&f.strong)));
-        assert_eq!(i128::from(f.strong.load(SeqCst)), i128::from(acquisitions - i - 1));
+        assert_eq!(
+            i128::from(f.strong.load(SeqCst)),
+            i128::from(acquisitions - i - 1)
+        );
     }
     refs::release(&mut f, Some(17));
     assert_eq!(f.strong.load(SeqCst), -1);

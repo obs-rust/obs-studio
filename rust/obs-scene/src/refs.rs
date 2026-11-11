@@ -10,11 +10,16 @@ pub trait Host {
 }
 
 /// Retain the source and return the argument scene only on successful promotion.
-pub fn get_ref<H: Host>(_host: &mut H, _scene: Option<H::Scene>) -> Option<H::Scene> {
-    todo!()
+pub fn get_ref<H: Host>(host: &mut H, scene: Option<H::Scene>) -> Option<H::Scene> {
+    let scene = scene?;
+    let source = host.source(scene);
+    host.acquire(source).then_some(scene)
 }
 
 /// Delegate exactly one source release for a present scene.
-pub fn release<H: Host>(_host: &mut H, _scene: Option<H::Scene>) {
-    todo!()
+pub fn release<H: Host>(host: &mut H, scene: Option<H::Scene>) {
+    if let Some(scene) = scene {
+        let source = host.source(scene);
+        host.release(source);
+    }
 }

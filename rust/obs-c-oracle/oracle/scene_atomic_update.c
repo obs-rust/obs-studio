@@ -3,6 +3,8 @@
 #include "libobs/build/libobs.pch.h"
 
 struct atomic_fixture {
+	struct obs_scene scene;
+	struct obs_source source;
 	uint64_t refs;
 	uint64_t *out;
 	size_t count;
@@ -55,13 +57,17 @@ void oracle_obs_scene_atomic_update(obs_scene_t *, obs_scene_atomic_update_func,
 
 /* Functional lifetime/lock boundary for the Rust ABI under test. These use
  * the same instrumented scene as the original C body, rather than link stubs. */
-obs_scene_t *obs_scene_get_ref(obs_scene_t *scene)
+bool oracle_atomic_source_acquire(obs_source_t *source);
+bool oracle_atomic_source_acquire(obs_source_t *source)
 {
-	return atomic_acquire(scene);
+	struct atomic_fixture *f = source->context.data;
+	return atomic_acquire(&f->scene) != NULL;
 }
-void obs_scene_release(obs_scene_t *scene)
+void oracle_atomic_source_release(obs_source_t *source);
+void oracle_atomic_source_release(obs_source_t *source)
 {
-	atomic_release(scene);
+	struct atomic_fixture *f = source->context.data;
+	atomic_release(&f->scene);
 }
 void obs_scene_atomic_full_lock(obs_scene_t *scene);
 void obs_scene_atomic_full_unlock(obs_scene_t *scene);
@@ -97,6 +103,8 @@ void oracle_scene_atomic_trace_with(unsigned bits, unsigned refs, uint64_t data,
 		.removed = (bits & 4) != 0,
 		.data = data,
 	};
+	f.scene.source = &f.source;
+	f.source.context.data = &f;
 	update((bits & 1) ? NULL : (obs_scene_t *)&f, atomic_callback, &f.data);
 	out[0] = f.count;
 }
