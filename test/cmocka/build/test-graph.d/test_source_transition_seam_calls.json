@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_transition_seam_calls": {
+      "sources": [
+        "test/cmocka/test_source_transition_seam_calls.c",
+        "libobs/obs-source-transition-seam.c.h",
+        "libobs/obs-source-transition-load.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-transition-load.h",
+        "libobs/obs-source-transition-seam.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_transition_seam_calls": {
+      "target": "test_source_transition_seam_calls",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_media_admission_steps": {
+      "sources": [
+        "test/cmocka/test_source_media_admission_steps.c",
+        "libobs/obs-source-media-admission.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_media_admission_steps": {
+      "target": "test_source_media_admission_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

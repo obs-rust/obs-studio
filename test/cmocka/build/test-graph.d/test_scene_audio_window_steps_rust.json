@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_audio_window_steps_rust": {
+      "sources": [
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/test_scene_audio_window_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
+        "test/cmocka/output-service-getter-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-blending-mode-link-support.c",
+        "test/cmocka/scene-item-group-scene-link-support.c",
+        "test/cmocka/scene-item-parent-getter-link-stub.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-item-visible-link-support.c",
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs",
+        "."
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-audio-window.h",
+        "libobs/media-io/audio-io.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_audio_window_steps_rust": {
+      "target": "test_scene_audio_window_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -25,4 +25,4 @@
 # test_encoder_join_keyframe, test_encoder_error_stop,
 # test_encoder_group_null and test_multitrack_ladder cover the callers through
 # the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

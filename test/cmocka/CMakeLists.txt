@@ -127,23 +127,23 @@ function(obs_test_sanitize target sanitizers)
 endfunction()
 
 # Serializer test
-# test_serializer is defined in build/test-graph.json.
+# test_serializer is defined in build/test-graph.d.
 
 # darray test
-# test_darray is defined in build/test-graph.json.
+# test_darray is defined in build/test-graph.d.
 
 # bitstream test
-# test_bitstream is defined in build/test-graph.json.
+# test_bitstream is defined in build/test-graph.d.
 
 # OS path test
-# test_os_path is defined in build/test-graph.json.
+# test_os_path is defined in build/test-graph.d.
 
 # Product name shown by the frontend (frontend/utility/product-name.c), built
 # without Qt.
-# test_product_name is defined in build/test-graph.json.
+# test_product_name is defined in build/test-graph.d.
 
 # Exercise hotkey loading with an isolated core and no platform input thread.
-# test_hotkey_load is defined in build/test-graph.json.
+# test_hotkey_load is defined in build/test-graph.d.
 
 # A core module that cannot be loaded (its file is missing, or a library it
 # needs, like libcef.so for obs-browser, is not installed) must not stop OBS
@@ -201,147 +201,147 @@ endif()
 
 # /dev/full reproduces delayed disk-write errors without fault injection.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  # test_config_save is defined in build/test-graph.json.
+  # test_config_save is defined in build/test-graph.d.
 
-  # test_file_serializer_safe is defined in build/test-graph.json.
+  # test_file_serializer_safe is defined in build/test-graph.d.
 
-  # test_quick_write is defined in build/test-graph.json.
+  # test_quick_write is defined in build/test-graph.d.
 endif()
 
 # AV1 OBU helpers (obs-av1.c)
-# test_av1 is defined in build/test-graph.json.
+# test_av1 is defined in build/test-graph.d.
 
 # NAL start-code search (obs-nal.c)
-# test_nal is defined in build/test-graph.json.
+# test_nal is defined in build/test-graph.d.
 
 # AVC header test. Where the toolchain supports it, obs-avc.c is compiled into
 # the test with UBSan (no recovery) so undefined behavior fails the test
 # (obs-rust/obs-studio#11); its definitions take precedence over libobs's.
-# test_avc is defined in build/test-graph.json.
+# test_avc is defined in build/test-graph.d.
 
 # AVC helpers through libobs only, so ENABLE_RUST_LIBOBS=ON tests the port
 # (test_avc above compiles its own obs-avc.c where UBSan is available).
-# test_avc_parse is defined in build/test-graph.json.
+# test_avc_parse is defined in build/test-graph.d.
 
 # HEVC helpers (obs-hevc.c, built only with ENABLE_HEVC)
 if(ENABLE_HEVC)
-  # test_hevc is defined in build/test-graph.json.
+  # test_hevc is defined in build/test-graph.d.
 endif()
 
 # Formatted filename test (obs-rust/obs-studio#21). platform-filename.c is
 # compiled into the test so the test's obs_get_video_info and time fixtures
 # replace libobs's and libc's and no obs core has to be started; its definitions
 # take precedence over libobs's.
-# test_formatted_filename is defined in build/test-graph.json.
+# test_formatted_filename is defined in build/test-graph.d.
 
 # CRC32 test
-# test_crc32 is defined in build/test-graph.json.
+# test_crc32 is defined in build/test-graph.d.
 
 # UTF-8 test. utf8.c is not exported by libobs, so it is compiled into the test
 # (non-Windows only: the Windows implementation wraps the Win32 API).
-# test_utf8 is defined in build/test-graph.json.
+# test_utf8 is defined in build/test-graph.d.
 
 # dstr test
-# test_dstr is defined in build/test-graph.json.
+# test_dstr is defined in build/test-graph.d.
 
 # dstr regression tests (obs-rust/obs-studio#46, #47)
-# test_dstr_regressions is defined in build/test-graph.json.
+# test_dstr_regressions is defined in build/test-graph.d.
 
 # lexer test
-# test_lexer is defined in build/test-graph.json.
+# test_lexer is defined in build/test-graph.d.
 
 # cf lexer test
-# test_cf_lexer is defined in build/test-graph.json.
+# test_cf_lexer is defined in build/test-graph.d.
 
 # text lookup test
-# test_text_lookup is defined in build/test-graph.json.
+# test_text_lookup is defined in build/test-graph.d.
 
 # base (logging) test
-# test_base is defined in build/test-graph.json.
+# test_base is defined in build/test-graph.d.
 
 # bmem test
-# test_bmem is defined in build/test-graph.json.
+# test_bmem is defined in build/test-graph.d.
 
 # file serializer test (file-serializer.c, buffered-file-serializer.c)
-# test_file_serializer is defined in build/test-graph.json.
+# test_file_serializer is defined in build/test-graph.d.
 
 # config file test (config-file.c)
-# test_config_file is defined in build/test-graph.json.
+# test_config_file is defined in build/test-graph.d.
 
 # threading test (threading-posix.c, threading-windows.c)
-# test_threading is defined in build/test-graph.json.
+# test_threading is defined in build/test-graph.d.
 
 # Concurrent reads and writes of the private video-stat storage (#175).
 # The sanitizer lane compiles this test with TSan to detect data races.
-# test_video_stats_race is defined in build/test-graph.json.
+# test_video_stats_race is defined in build/test-graph.d.
 
 # Qt-free concurrency check for the frontend meter's locked snapshot (#131).
-# test_volume_meter_snapshot is defined in build/test-graph.json.
+# test_volume_meter_snapshot is defined in build/test-graph.d.
 
 # task test (task.c)
-# test_task is defined in build/test-graph.json.
+# test_task is defined in build/test-graph.d.
 
 # pipe test (pipe.c, pipe-posix.c, pipe-windows.c)
-# test_pipe is defined in build/test-graph.json.
+# test_pipe is defined in build/test-graph.d.
 
 # profiler test (profiler.c, source-profiler.c)
-# test_profiler is defined in build/test-graph.json.
+# test_profiler is defined in build/test-graph.d.
 
 # platform test (platform.c, platform-nix*.c, platform-windows.c)
-# test_platform is defined in build/test-graph.json.
+# test_platform is defined in build/test-graph.d.
 
 # os_dtostr exponent normalization (obs-rust/obs-studio#754)
-# test_dtostr_exponent is defined in build/test-graph.json.
+# test_dtostr_exponent is defined in build/test-graph.d.
 
 # quat test (graphics/quat.h inline setters)
-# test_quat is defined in build/test-graph.json.
+# test_quat is defined in build/test-graph.d.
 
 # axisang test (graphics/axisang.c)
-# test_axisang is defined in build/test-graph.json.
+# test_axisang is defined in build/test-graph.d.
 
 # vec2 test (graphics/vec2.c)
-# test_vec2 is defined in build/test-graph.json.
+# test_vec2 is defined in build/test-graph.d.
 
 # vec3 test (graphics/vec3.c)
-# test_vec3 is defined in build/test-graph.json.
+# test_vec3 is defined in build/test-graph.d.
 
 # vec4 test (graphics/vec4.c)
-# test_vec4 is defined in build/test-graph.json.
+# test_vec4 is defined in build/test-graph.d.
 
 # video fourcc test (media-io/video-fourcc.c)
-# test_video_fourcc is defined in build/test-graph.json.
+# test_video_fourcc is defined in build/test-graph.d.
 
 # video matrices test (media-io/video-matrices.c)
-# test_video_matrices is defined in build/test-graph.json.
+# test_video_matrices is defined in build/test-graph.d.
 
 # video-io.h and frame-rate.h header-inline helpers
-# test_video_io_inlines is defined in build/test-graph.json.
+# test_video_io_inlines is defined in build/test-graph.d.
 
 # util_uint64.h header-inline helper
-# test_util_uint64 is defined in build/test-graph.json.
+# test_util_uint64 is defined in build/test-graph.d.
 
 # Exercise AV1 encoder configuration against real FFmpeg options without a
 # running OBS video session, then encode a small synthetic sequence with SVT.
 find_package(FFmpeg 8.0 REQUIRED avcodec avformat avutil)
-# test_svt_av1 is defined in build/test-graph.json.
+# test_svt_av1 is defined in build/test-graph.d.
 
 # Exercise AMF decoding and RTMP server messages through the same
 # authentication-enabled sources as obs-outputs, without starting OBS or
 # connecting to a server.
-# RTMP, AMF and FLV tests are defined in build/test-graph.json.
+# RTMP, AMF and FLV tests are defined in build/test-graph.d.
 
 # Load .cube LUTs through the Color Grade filter's loader.
-# test_cube_lut defined in build/test-graph.json.
+# test_cube_lut defined in build/test-graph.d.
 
 # Linux capture reconnection after a PipeWire restart (obs-rust/obs-studio#108).
 # The decisions are compiled into the tests directly; no PipeWire daemon,
 # portal or PulseAudio server is needed.
-# test_pipewire_reconnect defined in build/test-graph.json.
+# test_pipewire_reconnect defined in build/test-graph.d.
 
-# test_pulse_reconnect and test_pulse_default_id defined in build/test-graph.json.
+# test_pulse_reconnect and test_pulse_default_id defined in build/test-graph.d.
 
 # video frame test (media-io/video-frame.c + video-frame.h inlines)
-# test_video_frame is defined in build/test-graph.json.
+# test_video_frame is defined in build/test-graph.d.
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/qt-runtime.cmake")
 
@@ -420,5 +420,5 @@ if(OS_MACOS)
     target_link_libraries(native-test-${_framework_lower} INTERFACE "$<LINK_LIBRARY:FRAMEWORK,${_framework}.framework>")
   endforeach()
 endif()
-obs_native_test_graph("${CMAKE_CURRENT_SOURCE_DIR}/build/test-graph.json" "${CMAKE_SOURCE_DIR}")
+obs_native_test_graph("${CMAKE_CURRENT_SOURCE_DIR}/build/test-graph.d" "${CMAKE_SOURCE_DIR}")
 include("${CMAKE_CURRENT_SOURCE_DIR}/parallel-environment.cmake")

@@ -3,4 +3,4 @@
 # reach: a registered audio encoder and encoded output, a real-time audio
 # thread, and one-second delays, so the cases take about 13 s in all.
 # obs_startup needs an X display on Linux.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

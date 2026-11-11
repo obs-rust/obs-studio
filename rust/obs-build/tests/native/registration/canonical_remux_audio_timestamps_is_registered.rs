@@ -7,9 +7,10 @@ const NAMES: [&str; 1] = ["test_remux_audio_timestamps"];
 fn canonical_remux_audio_timestamps_is_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let name = "test_remux_audio_timestamps";
     assert_eq!(
         raw["targets"][name],
@@ -54,9 +55,10 @@ fn canonical_remux_audio_timestamps_runs_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in NAMES {
         for section in ["targets", "tests"] {
@@ -124,9 +126,10 @@ fn canonical_remux_audio_timestamps_cmake_runs_unchanged() {
         profile: Default::default(),
     };
     let core = built_core(&build, &root);
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in NAMES {
         for section in ["targets", "tests"] {

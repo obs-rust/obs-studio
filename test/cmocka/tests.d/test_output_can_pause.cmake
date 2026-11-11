@@ -1,1 +1,1 @@
-# Registered once in build/test-graph.json (native and CMake consumers).
+# Registered once in build/test-graph.d (native and CMake consumers).

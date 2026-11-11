@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_missing_files_list": {
+      "sources": [
+        "test/cmocka/test_missing_files_list.c",
+        "frontend/utility/missing-files-list.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_missing_files_list": {
+      "target": "test_missing_files_list",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

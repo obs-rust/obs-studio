@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_core_cmdline_getter": {
+      "sources": [
+        "test/cmocka/test_core_cmdline_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_core_cmdline_getter": {
+      "target": "test_core_cmdline_getter",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

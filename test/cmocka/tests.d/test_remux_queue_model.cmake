@@ -8,4 +8,4 @@ set(HAVE_QT6_WIDGETS FALSE)
 if(TARGET Qt6::Widgets)
   set(HAVE_QT6_WIDGETS TRUE)
 endif()
-# Target and runtime contract: ../build/test-graph.json (canonical).
+# Target and runtime contract: ../build/test-graph.d (canonical).

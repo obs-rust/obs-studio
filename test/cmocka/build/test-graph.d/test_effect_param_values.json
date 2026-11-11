@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_param_values": {
+      "sources": [
+        "test/cmocka/test_effect_param_values.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_effect_param_values": {
+      "target": "test_effect_param_values",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

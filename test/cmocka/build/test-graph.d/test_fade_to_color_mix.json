@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_fade_to_color_mix": {
+      "sources": [
+        "test/cmocka/test_fade_to_color_mix.c"
+      ],
+      "requires": true,
+      "watch_inputs": [
+        "plugins/obs-transitions/fade-to-color-mix.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "includes": [
+        "plugins/obs-transitions"
+      ]
+    }
+  },
+  "tests": {
+    "test_fade_to_color_mix": {
+      "target": "test_fade_to_color_mix",
+      "requires": true
+    }
+  }
+}

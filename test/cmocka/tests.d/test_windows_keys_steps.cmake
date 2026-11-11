@@ -7,7 +7,7 @@
 # platform. The functions are hidden in libobs, so this characterizes that C
 # source; the test calls only them. The Tier 3 parity tests in
 # rust/obs-hotkey compare the shims with this C too.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # The same cases against the Rust shims, built and run on every platform with
 # the hybrid backend (OBS_LIBOBS_BACKEND=C has no Rust target).
@@ -26,7 +26,7 @@
 # symbols the shims pull in (blog, bcrash, obs_get_video_info) are public and
 # exported on every host, and the shims carry no host code, so one set of stubs
 # serves all three.
-# Both targets/tests are declared in ../build/test-graph.json. Keep the
+# Both targets/tests are declared in ../build/test-graph.d. Keep the
 # original optional imported-target checks, including on non-Linux hosts.
 set(HAVE_WINDOWS_KEYS_TEST_UUID FALSE)
 if(TARGET LibUUID::LibUUID)

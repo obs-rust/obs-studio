@@ -5,7 +5,7 @@ use super::*;
 fn canonical_plugin_configuration_helpers_are_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     for (name, include, headers) in [
         (
             "test_slideshow_size",

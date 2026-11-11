@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_crash_sentinel_dir": {
+      "sources": [
+        "test/cmocka/test_crash_sentinel_dir.cpp",
+        "frontend/utility/crash-sentinel-dir.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility",
+        "frontend/build/frontend-utility-crash-sentinel-dir.pch.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_crash_sentinel_dir": {
+      "target": "test_crash_sentinel_dir",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

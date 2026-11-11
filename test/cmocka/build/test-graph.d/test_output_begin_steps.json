@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_begin_steps": {
+      "sources": [
+        "test/cmocka/test_output_begin_steps.c",
+        "libobs/obs-output-begin.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-begin.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_output_begin_steps": {
+      "target": "test_output_begin_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

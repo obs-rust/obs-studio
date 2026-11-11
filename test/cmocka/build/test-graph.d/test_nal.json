@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nal": {
+      "sources": [
+        "test/cmocka/test_nal.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_nal": {
+      "target": "test_nal"
+    }
+  }
+}

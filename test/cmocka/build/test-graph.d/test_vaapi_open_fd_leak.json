@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vaapi_open_fd_leak": {
+      "sources": [
+        "test/cmocka/test_vaapi_open_fd_leak.c",
+        "plugins/obs-ffmpeg/vaapi-probe-policy.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_FFMPEG"
+        ]
+      },
+      "includes": [
+        "plugins/obs-ffmpeg",
+        "shared/opts-parser"
+      ],
+      "packages": [
+        "libva",
+        "libva-drm",
+        "libavutil"
+      ],
+      "header_packages": [
+        "libpci",
+        "libdrm",
+        "libavcodec",
+        "libavformat",
+        "libavfilter"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=vaGetDisplayDRM"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg"
+      ]
+    }
+  },
+  "tests": {
+    "test_vaapi_open_fd_leak": {
+      "target": "test_vaapi_open_fd_leak",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

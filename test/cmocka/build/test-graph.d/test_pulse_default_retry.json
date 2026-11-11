@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pulse_default_retry": {
+      "sources": [
+        "test/cmocka/test_pulse_default_retry.c",
+        "plugins/linux-pulseaudio/pulse-reconnect.c.h",
+        "plugins/linux-pulseaudio/pulse-timing.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pulseaudio"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pulseaudio/build/linux-pulseaudio-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PULSEAUDIO",
+          "HAVE_PULSE_DEFAULT_RETRY_SDK"
+        ]
+      },
+      "link_options": [
+        "-Wl,--wrap=obs_weak_source_addref,--wrap=obs_weak_source_release,--wrap=obs_weak_source_get_source",
+        "-Wl,--wrap=obs_obj_get_data,--wrap=obs_source_release,--wrap=obs_queue_task",
+        "-Wl,--wrap=obs_source_set_async_compensation"
+      ]
+    }
+  },
+  "tests": {
+    "test_pulse_default_retry": {
+      "target": "test_pulse_default_retry",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_PULSEAUDIO",
+          "HAVE_PULSE_DEFAULT_RETRY_SDK"
+        ]
+      },
+      "timeout_seconds": 10
+    }
+  }
+}

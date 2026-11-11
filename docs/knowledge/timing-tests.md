@@ -39,7 +39,7 @@ sleeps: synchronize on events"; a frame count is a sleep measured in frames.
    tone, a dock layout settling), add it to the `timing` resource lock:
    `set_tests_properties(<test> PROPERTIES RESOURCE_LOCK timing)` in its
    `test/cmocka/tests.d/<test>.cmake`, or `resource_locks: ["timing"]` in
-   `test/cmocka/build/test-graph.json`. The sanitizer pool then runs it alone
+   `test/cmocka/build/test-graph.d/`. The sanitizer pool then runs it alone
    after the others; in Tier 2 ctest only keeps such tests from overlapping.
    Add the name to `TIMING_TESTS_D`/`TIMING_TESTS_GRAPH` in
    `ci/test_sanitize_harness.py`.

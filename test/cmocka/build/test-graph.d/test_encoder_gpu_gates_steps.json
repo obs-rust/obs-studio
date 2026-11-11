@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_gpu_gates_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_gpu_gates_steps.c",
+        "libobs/obs-encoder-gpu-gates.c.h",
+        "libobs/obs-encoder-audio-start.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-encoder-gpu-gates.h",
+        "libobs/obs-encoder-audio-start.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_encoder_gpu_gates_steps": {
+      "target": "test_encoder_gpu_gates_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

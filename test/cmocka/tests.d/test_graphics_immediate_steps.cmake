@@ -12,7 +12,7 @@
 # platform. The functions are hidden in libobs, so this characterizes that C
 # source; the test calls only them. The rendering tests cover the callers
 # through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # The same cases against the Rust shims (GS_IMMEDIATE_TEST_RUST), with the
 # port's intentional differences in place of the C's, built and run only with
@@ -25,4 +25,4 @@
 # those but does not export them, so this executable compiles its own copies,
 # as test_sprite_geometry_steps_rust does. graphics-immediate.c is not
 # compiled in.
-# Rust-static target and test are also declared in ../build/test-graph.json.
+# Rust-static target and test are also declared in ../build/test-graph.d.

@@ -33,6 +33,11 @@ import time
 import unittest
 from pathlib import Path
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pipewire_cursor_hdr.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pipewire_cursor_hdr.sh"
@@ -281,8 +286,8 @@ class PipewireCursorHdrTest(unittest.TestCase):
         self.assertFalse(SHELL_SCRIPT.exists(), "test_pipewire_cursor_hdr.sh should be gone")
         self.assertTrue(MODULE.is_file(), "test_pipewire_cursor_hdr.py should exist")
         caller = CMAKE.read_text()
-        self.assertIn("test-graph.json", caller)
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        self.assertIn("test-graph.d", caller)
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         self.assertEqual(graph["tests"]["test_pipewire_cursor_hdr"]["command"], [
             "uv", "run", "--script",
             "${source}/test/cmocka/test_pipewire_cursor_hdr.py", "${target}",

@@ -24,4 +24,4 @@
 # test_output_interleave_e2e, test_output_caption_codec,
 # test_raw_output_video_reset and test_output_null_id cover the callers through
 # the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

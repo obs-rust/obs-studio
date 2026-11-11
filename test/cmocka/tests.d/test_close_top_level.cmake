@@ -4,4 +4,4 @@
 # frontend helper OBSBasic::close() uses (frontend/utility/close-top-level.hpp)
 # and drives a top-level widget in that state on Qt's offscreen platform:
 # needs Qt Widgets only, no display and no frontend build.
-# test_close_top_level is defined in build/test-graph.json.
+# test_close_top_level is defined in build/test-graph.d.

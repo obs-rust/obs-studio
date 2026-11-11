@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_monitor_wasapi_steps": {
+      "sources": [
+        "test/cmocka/test_monitor_wasapi_steps.c",
+        "libobs/audio-monitoring/monitor-speaker-layout.c.h",
+        "libobs/audio-monitoring/monitor-video-sync.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_monitor_wasapi_steps": {
+      "target": "test_monitor_wasapi_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

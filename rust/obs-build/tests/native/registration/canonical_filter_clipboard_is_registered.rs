@@ -4,9 +4,10 @@ use super::*;
 #[test]
 fn canonical_filter_clipboard_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let graph: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let target = graph["targets"]
         .get("test_filter_clipboard")
         .expect("canonical graph omits test_filter_clipboard");

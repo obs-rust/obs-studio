@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_frontend_tools_host": {
+      "sources": [
+        "test/cmocka/test_frontend_tools_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/frontend-tools/frontend-tools-host-posix.c.h",
+        "plugins/frontend-tools/frontend-tools-host.h",
+        "plugins/frontend-tools/build/frontend-tools-host-posix.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_frontend_tools_host": {
+      "target": "test_frontend_tools_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  }
+}

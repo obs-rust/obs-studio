@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_module_type_rules_steps": {
+      "sources": [
+        "test/cmocka/test_module_type_rules_steps.c",
+        "libobs/obs-module-type-rules.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_module_type_rules_steps": {
+      "target": "test_module_type_rules_steps",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

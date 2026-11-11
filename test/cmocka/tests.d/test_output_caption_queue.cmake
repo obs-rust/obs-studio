@@ -2,4 +2,4 @@
 # caption_mutex, and destroying a track must free queued nodes.
 # Reads the caption queue through obs-internal.h, so it needs the private
 # libobs and libcaption include dirs.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

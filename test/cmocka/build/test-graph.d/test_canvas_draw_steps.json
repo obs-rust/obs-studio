@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_canvas_draw_steps": {
+      "sources": [
+        "test/cmocka/test_canvas_draw_steps.c",
+        "libobs/obs-canvas-draw.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_canvas_draw_steps": {
+      "target": "test_canvas_draw_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

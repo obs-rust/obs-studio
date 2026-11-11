@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_windows_monitor_identity": {
+      "sources": [
+        "test/cmocka/test_windows_monitor_identity.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/win-capture/monitor-identity.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_windows_monitor_identity": {
+      "target": "test_windows_monitor_identity",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

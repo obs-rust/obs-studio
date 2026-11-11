@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_item_crop": {
+      "sources": [
+        "test/cmocka/test_scene_item_crop.c",
+        "libobs/obs-scene-crop.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_item_crop": {
+      "target": "test_scene_item_crop",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    }
+  }
+}

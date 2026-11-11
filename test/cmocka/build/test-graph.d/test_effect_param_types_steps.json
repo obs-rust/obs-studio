@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_param_types_steps": {
+      "sources": [
+        "libobs/graphics/effect-param-types.c.h",
+        "test/cmocka/test_effect_param_types_steps.c"
+      ],
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/effect-param-types.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_effect_param_types_steps": {
+      "target": "test_effect_param_types_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_crop_steps": {
+      "sources": [
+        "test/cmocka/test_scene_crop_steps.c",
+        "libobs/obs-scene-crop.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "undefined,float-cast-overflow"
+    }
+  },
+  "tests": {
+    "test_scene_crop_steps": {
+      "target": "test_scene_crop_steps"
+    }
+  }
+}

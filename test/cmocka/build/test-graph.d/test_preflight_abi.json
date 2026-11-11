@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_preflight_abi": {
+      "sources": [
+        "test/cmocka/test_preflight_abi.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_MACOS"
+            ]
+          },
+          "HAVE_PREFLIGHT_TEST_ARCHIVE"
+        ]
+      },
+      "includes": [
+        "frontend/preflight"
+      ],
+      "libraries": [
+        "OBS::preflight-test-archive",
+        "OBS::native-test-cmocka",
+        "Threads::Threads",
+        {
+          "name": "dl",
+          "requires": "OS_LINUX"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_preflight_abi": {
+      "target": "test_preflight_abi",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_MACOS"
+            ]
+          },
+          "HAVE_PREFLIGHT_TEST_ARCHIVE"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

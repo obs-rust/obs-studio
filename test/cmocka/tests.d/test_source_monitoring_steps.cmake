@@ -14,7 +14,7 @@
 # characterizes that C source; the test calls only them.
 # test_source_monitoring_type, test_source_monitor_only_load and
 # test_source_audio_balance_mono cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the thirteen hidden monitoring functions, and includes their
@@ -23,4 +23,4 @@
 # alone: its obs-source member needs nothing from libobs or the other crates.
 # libm is for nextafterf(), as the native graph links it off MSVC. Linking the
 # archive directly avoids exporting private symbols just for a test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

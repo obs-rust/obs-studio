@@ -17,4 +17,4 @@
 # compare the shims with this C instead. test_output_start_steps,
 # test_output_interleave, test_output_interleave_e2e and
 # test_output_interleave_restart cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

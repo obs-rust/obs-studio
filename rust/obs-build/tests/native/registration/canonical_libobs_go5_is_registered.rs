@@ -4,9 +4,10 @@ use obs_build::validation::graph::Graph;
 #[test]
 fn canonical_libobs_go5_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let mut raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let name = "test_image_file";
     assert_eq!(
         raw["targets"][name],
@@ -49,9 +50,10 @@ fn canonical_libobs_go5_is_registered() {
 #[test]
 fn canonical_libobs_go5_net_if_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let mut raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let name = "test_obs_outputs_net_if_host";
     assert_eq!(
         raw["targets"][name],

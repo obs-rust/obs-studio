@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_ffmpeg_rgba64_steps": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_rgba64_steps.c",
+        "libobs/graphics/graphics-ffmpeg-rgba64.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/graphics-ffmpeg-rgba64.h",
+        "libobs/graphics/srgb.h"
+      ],
+      "libraries": [
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_graphics_ffmpeg_rgba64_steps": {
+      "target": "test_graphics_ffmpeg_rgba64_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_async_upload_steps": {
+      "sources": [
+        "test/cmocka/test_async_upload_steps.c",
+        "libobs/obs-source-async-upload.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_async_upload_steps": {
+      "target": "test_async_upload_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

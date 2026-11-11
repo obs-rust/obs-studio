@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_pause_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_pause_steps.c",
+        "libobs/obs-encoder-pause.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-encoder-pause.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_encoder_pause_steps": {
+      "target": "test_encoder_pause_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

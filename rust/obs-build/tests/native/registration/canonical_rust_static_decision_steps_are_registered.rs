@@ -138,9 +138,10 @@ fn canonical_rust_static_decision_steps_run_unchanged() {
     .unwrap();
     assert!(archive.is_file());
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for base in CASES.iter() {
         for section in ["targets", "tests"] {

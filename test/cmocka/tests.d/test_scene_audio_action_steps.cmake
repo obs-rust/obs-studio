@@ -8,4 +8,4 @@
 # the port can run the item side against the Rust core in the staticlib (as
 # test_scene_bounds_place_rust does). test_scene_audio_actions covers the
 # callers through the real libobs.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

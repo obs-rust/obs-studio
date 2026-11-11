@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_transform_update_walk": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_walk.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_scene_transform_update_walk": {
+      "target": "test_scene_transform_update_walk",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

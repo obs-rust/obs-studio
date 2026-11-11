@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_deinterlace_pacing_steps": {
+      "sources": [
+        "test/cmocka/test_deinterlace_pacing_steps.c",
+        "libobs/obs-source-deinterlace-pacing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_deinterlace_pacing_steps": {
+      "target": "test_deinterlace_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

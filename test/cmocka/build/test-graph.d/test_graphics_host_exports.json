@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_host_exports": {
+      "sources": [
+        "test/cmocka/test_graphics_host_exports.c"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_graphics_host_exports": {
+      "target": "test_graphics_host_exports",
+      "requires": "OS_LINUX"
+    }
+  }
+}

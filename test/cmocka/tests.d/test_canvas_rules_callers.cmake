@@ -9,4 +9,4 @@
 # global source_rename, and a channel_change handler replacing the source.
 # Needs a display and OpenGL; public API only, so it runs against libobs, the
 # hybrid libobs and libobs-c-reference. test_canvas_rules_steps pins the rules
-# on their own. Target and test are declared in ../build/test-graph.json.
+# on their own. Target and test are declared in ../build/test-graph.d.

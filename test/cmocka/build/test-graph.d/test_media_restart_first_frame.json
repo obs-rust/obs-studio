@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_media_restart_first_frame": {
+      "sources": [
+        "test/cmocka/test_media_restart_first_frame.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h",
+        "shared/media-playback"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_media_restart_first_frame": {
+      "target": "test_media_restart_first_frame",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    }
+  }
+}

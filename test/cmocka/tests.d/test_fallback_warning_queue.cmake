@@ -1,5 +1,5 @@
 # FallbackWarning glue and dialog retain their original optional Rust owner.
-# Executable, moc, sanitizers and CTest metadata are in build/test-graph.json.
+# Executable, moc, sanitizers and CTest metadata are in build/test-graph.d.
 if(OS_LINUX AND (NOT DEFINED ENABLE_UI OR ENABLE_UI) AND (NOT DEFINED ENABLE_FRONTEND OR ENABLE_FRONTEND))
   if(NOT TARGET Qt6::Widgets OR NOT TARGET Qt6::Test)
     find_package(Qt6 QUIET COMPONENTS Widgets Test)

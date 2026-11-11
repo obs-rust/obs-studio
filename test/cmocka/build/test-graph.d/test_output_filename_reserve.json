@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_filename_reserve": {
+      "sources": [
+        "test/cmocka/test_output_filename_reserve.c",
+        "frontend/utility/output-filename-reserve.c.h",
+        {
+          "path": "plugins/obs-ffmpeg/obs-ffmpeg-mux.c.h",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "path": "plugins/obs-ffmpeg/build/obs-ffmpeg.mux-host-posix+.h.c",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        }
+      ],
+      "includes": [
+        "frontend/utility",
+        "plugins/obs-ffmpeg"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "FFmpeg::avformat",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "name": "FFmpeg::avutil",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        },
+        {
+          "name": "OBS::output-filename-mux-test",
+          "requires": {
+            "all": [
+              "OS_LINUX",
+              "HAVE_OBS_OPENGL"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_output_filename_reserve": {
+      "target": "test_output_filename_reserve",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

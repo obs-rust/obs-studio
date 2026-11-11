@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_start_log": {
+      "sources": [
+        "test/cmocka/test_output_start_log.cpp"
+      ],
+      "cpp_standard": "17",
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_start_log": {
+      "target": "test_output_start_log",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

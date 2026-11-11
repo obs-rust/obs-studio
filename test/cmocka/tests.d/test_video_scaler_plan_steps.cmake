@@ -10,4 +10,4 @@
 # on its own. The Tier 3 parity tests in rust/obs-media-io compare the shims
 # with this C instead. test_video_io and test_video_io_hidden cover the caller
 # through the real libobs. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

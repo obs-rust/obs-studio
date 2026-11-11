@@ -9,4 +9,4 @@
 # obs-hotkey, obs-data and obs-util, so it does not link on its own, as
 # test_portal_shortcut_sets. The Tier 3 parity tests in rust/obs-hotkey
 # compare the shims with this C instead.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

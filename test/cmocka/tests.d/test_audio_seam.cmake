@@ -5,4 +5,4 @@
 # against the da_*/deque_* calls they copy. The accessors are hidden in
 # libobs, so the test builds the seam into itself, over a stand-in core and
 # stand-in sources and views.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_remux_audio_timestamps": {
+      "sources": [
+        "test/cmocka/test_remux_audio_timestamps.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_remux_audio_timestamps": {
+      "target": "test_remux_audio_timestamps",
+      "timeout_seconds": 60
+    }
+  }
+}

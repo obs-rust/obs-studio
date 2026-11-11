@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_remux_queue_model": {
+      "sources": [
+        "test/cmocka/test_remux_queue_model.cpp",
+        "frontend/utility/RemuxQueueModel.cpp.hpp"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/utility/RemuxQueueModel.hpp"
+        ]
+      },
+      "cpp_standard": "17",
+      "requires": "HAVE_QT6_WIDGETS",
+      "includes_before": [
+        "test/cmocka/remux-queue-stubs"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "test/cmocka/remux-queue-stubs"
+      ]
+    }
+  },
+  "tests": {
+    "test_remux_queue_model": {
+      "target": "test_remux_queue_model",
+      "suite": "qt",
+      "timeout_seconds": 120,
+      "qt_runtime": "Qt6::Core"
+    }
+  }
+}

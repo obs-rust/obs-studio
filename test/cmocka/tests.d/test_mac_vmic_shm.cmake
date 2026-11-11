@@ -1,1 +1,1 @@
-# Registration lives in build/test-graph.json; no duplicate executable.
+# Registration lives in build/test-graph.d; no duplicate executable.

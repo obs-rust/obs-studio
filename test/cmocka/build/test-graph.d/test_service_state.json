@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_service_state": {
+      "sources": [
+        "test/cmocka/test_service_state.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "includes": [
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-state.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_service_state": {
+      "target": "test_service_state",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

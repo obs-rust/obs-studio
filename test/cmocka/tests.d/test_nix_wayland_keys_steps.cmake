@@ -15,4 +15,4 @@ if((OS_LINUX OR OS_FREEBSD) AND ENABLE_WAYLAND)
     set(HAVE_NIX_WAYLAND_KEYS_TEST_SDK TRUE)
   endif()
 endif()
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

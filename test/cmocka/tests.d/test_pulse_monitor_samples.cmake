@@ -4,4 +4,4 @@
 # with parec, against a private PipeWire sound server started by
 # test_pulse_monitor_device.py. Skipped (exit 77) when PipeWire, WirePlumber,
 # pipewire-pulse or parec are not installed.
-# Defined in build/test-graph.json and registered by the parent CMakeLists.txt.
+# Defined in build/test-graph.d and registered by the parent CMakeLists.txt.

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_shader_sampler_convert": {
+      "sources": [
+        "test/cmocka/test_shader_sampler_convert.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_shader_sampler_convert": {
+      "target": "test_shader_sampler_convert"
+    }
+  }
+}

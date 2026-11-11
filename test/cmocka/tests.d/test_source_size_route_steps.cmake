@@ -10,11 +10,11 @@
 # test_slideshow_size, test_filter_color_space, test_scene_item_crop,
 # test_scene_rotated_scale_filter and test_async_rotation_normalize cover the
 # caller through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the two hidden functions and includes only their header (no
 # SIMDe and no obsconfig.h), so it links the archive alone: its obs-source
 # member needs nothing from libobs or the other crates. Linking the archive
 # directly avoids exporting private symbols just for a test.
-# The Rust-static target and test are also declared in ../build/test-graph.json.
+# The Rust-static target and test are also declared in ../build/test-graph.d.

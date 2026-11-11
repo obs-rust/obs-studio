@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_enum_outputs_removal": {
+      "sources": [
+        "test/cmocka/test_obs_enum_outputs_removal.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_obs_enum_outputs_removal": {
+      "target": "test_obs_enum_outputs_removal",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 90
+    }
+  }
+}

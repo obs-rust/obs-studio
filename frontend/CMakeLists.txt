@@ -60,7 +60,7 @@ elseif(OS_FREEBSD OR OS_OPENBSD)
 endif()
 
 if(ENABLE_UNIT_TESTS)
-  # Virtual-camera helper tests are registered by test/cmocka/build/test-graph.json.
+  # Virtual-camera helper tests are registered by test/cmocka/build/test-graph.d.
   # Plain frontend helper tests are registered by the shared native graph.
 endif()
 

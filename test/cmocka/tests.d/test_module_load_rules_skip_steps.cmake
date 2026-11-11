@@ -10,4 +10,4 @@
 # (rust/obs-core/tests/obs_core/module_load_rules_parity.rs) compare the shim
 # with this C instead, and test_module_load_steps, test_core_module_load and
 # test_plugin_manager cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_avcapture_audio_planes": {
+      "sources": [
+        "test/cmocka/test_avcapture_audio_planes.c",
+        "plugins/mac-avcapture/avcapture-audio-planes.c.h"
+      ],
+      "requires": "HAVE_LIBOBS",
+      "includes": [
+        "plugins/mac-avcapture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-avcapture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_avcapture_audio_planes": {
+      "target": "test_avcapture_audio_planes",
+      "requires": "HAVE_LIBOBS"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_async_delay_pacing": {
+      "sources": [
+        "test/cmocka/test_async_delay_pacing.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/obs-filters/async-delay-filter.c.h",
+        "plugins/obs-filters/build/obs-filters.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_async_delay_pacing": {
+      "target": "test_async_delay_pacing"
+    }
+  }
+}

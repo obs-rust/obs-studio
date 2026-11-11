@@ -14,7 +14,7 @@ test/cmocka/CMakeLists.txt and test/cmocka/tests.d/*.cmake, unless an
 enclosing if() keeps it off Windows (OS_LINUX, UNIX, NOT WIN32, a plugin
 target that plugins/CMakeLists.txt only adds on other platforms, ...). An
 else() or a condition it cannot read counts as built on Windows. The shared
-build/test-graph.json contributes its target and conditional sources too;
+build/test-graph.d contributes its target and conditional sources too;
 unknown feature facts conservatively count as possibly enabled. Comments
 that mention fail_msg() do not count. The second test compiles the actual
 test_video_output_plan diagnostic helpers without a cm_print_error
@@ -32,6 +32,11 @@ import unittest
 from pathlib import Path
 
 from test_settings_platform_facade import function
+
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
 
 ROOT = Path(__file__).resolve().parent.parent
 CMOCKA = ROOT / "test/cmocka"
@@ -131,7 +136,7 @@ def windows_requirement(requirement: bool | str | dict) -> bool | None:
 
 def windows_graph_sources(path: Path) -> set[Path]:
     """Conservatively include each shared source that may compile on Windows."""
-    graph = json.loads(path.read_text())
+    graph = load_graph(path)
     found = set()
     for target in graph["targets"].values():
         if windows_requirement(target.get("requires", True)) is False:
@@ -193,7 +198,7 @@ class CmockaWindowsDiagnosticsTest(unittest.TestCase):
         sources = set()
         for cmake in [CMOCKA / "CMakeLists.txt", *sorted((CMOCKA / "tests.d").glob("*.cmake"))]:
             sources |= windows_sources(cmake, plugins)
-        sources |= windows_graph_sources(CMOCKA / "build/test-graph.json")
+        sources |= windows_graph_sources(CMOCKA / "build/test-graph.d")
         names = {path.name for path in sources}
         # The scan sees the tests the Windows Tier 2 log builds and links ...
         for name in ("test_base.c", "test_output_delay_e2e.c", "test_video_output_plan.c",

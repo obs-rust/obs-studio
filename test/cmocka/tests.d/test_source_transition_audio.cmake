@@ -7,4 +7,4 @@
 # and obs_transition_init()'s state, through the real libobs. Transitions
 # need core video, so it builds on Linux only and runs under xvfb-run;
 # without a display the cases skip.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

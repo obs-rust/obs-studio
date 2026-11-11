@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_deinterlace_texture_allocation": {
+      "sources": [
+        "test/cmocka/test_deinterlace_texture_allocation.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_deinterlace_texture_allocation": {
+      "target": "test_deinterlace_texture_allocation"
+    }
+  }
+}

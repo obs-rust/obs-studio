@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nix_system_info_steps": {
+      "sources": [
+        "test/cmocka/test_nix_system_info_steps.c",
+        "libobs/obs-nix-system-info.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-system-info.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_nix_system_info_steps": {
+      "target": "test_nix_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

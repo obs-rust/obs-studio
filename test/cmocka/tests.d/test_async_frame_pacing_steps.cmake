@@ -10,11 +10,11 @@
 # source; the test calls only it. test_media_restart_stale_frame,
 # test_media_restart_first_frame, test_async_delay_audio and the v4l2 tests
 # cover the caller through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shim. The test calls
 # only the hidden function and includes only its header, so it links the
 # archive alone: its obs-source member needs nothing from libobs or the other
 # crates. Linking the archive directly avoids exporting a private symbol just
 # for a test.
-# Rust-static target and availability guard are declared in ../build/test-graph.json.
+# Rust-static target and availability guard are declared in ../build/test-graph.d.

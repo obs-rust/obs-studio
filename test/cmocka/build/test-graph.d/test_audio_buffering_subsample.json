@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_audio_buffering_subsample": {
+      "sources": [
+        "test/cmocka/test_audio_buffering_subsample.c"
+      ],
+      "compile_options_if_supported": [
+        "-ftrivial-auto-var-init=pattern"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "requires": "OS_LINUX",
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "ZLIB::ZLIB",
+        "OBS::native-test-cmocka",
+        "m"
+      ]
+    }
+  },
+  "tests": {
+    "test_audio_buffering_subsample": {
+      "target": "test_audio_buffering_subsample"
+    }
+  }
+}

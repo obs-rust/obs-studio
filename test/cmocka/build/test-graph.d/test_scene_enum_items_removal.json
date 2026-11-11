@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_enum_items_removal": {
+      "sources": [
+        "test/cmocka/test_scene_enum_items_removal.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "Threads::Threads"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_enum_items_removal": {
+      "target": "test_scene_enum_items_removal",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

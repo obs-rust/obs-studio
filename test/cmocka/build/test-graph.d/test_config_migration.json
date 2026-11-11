@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_config_migration": {
+      "sources": [
+        "frontend/tests/test_config_migration.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "includes": [
+        "frontend"
+      ],
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "frontend/utility/ConfigMigration.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_config_migration_absent": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-absent",
+        "absent"
+      ]
+    },
+    "test_config_migration_custom": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-custom",
+        "custom"
+      ]
+    },
+    "test_config_migration_empty-custom": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-empty-custom",
+        "empty-custom"
+      ]
+    },
+    "test_config_migration_existing": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-existing",
+        "existing"
+      ]
+    },
+    "test_config_migration_failure": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-failure",
+        "failure"
+      ]
+    },
+    "test_config_migration_first": {
+      "target": "test_config_migration",
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}",
+        "${build}/config-migration-first",
+        "first"
+      ]
+    }
+  }
+}

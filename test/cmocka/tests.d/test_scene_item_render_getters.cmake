@@ -1,1 +1,1 @@
-# Registered in test/cmocka/build/test-graph.json.
+# Registered in test/cmocka/build/test-graph.d.

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_fallback": {
+      "sources": [
+        "test/cmocka/test_encoder_fallback.c",
+        "frontend/utility/encoder-fallback.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_fallback": {
+      "target": "test_encoder_fallback",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_transition_audio_rescale": {
+      "sources": [
+        "test/cmocka/test_transition_audio_rescale.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_transition_audio_rescale": {
+      "target": "test_transition_audio_rescale",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60
+    }
+  }
+}

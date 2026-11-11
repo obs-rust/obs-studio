@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_wayland_volume_keys": {
+      "sources": [
+        "test/cmocka/test_wayland_volume_keys.c",
+        "libobs/obs-nix-wayland.c.h",
+        "libobs/obs-nix-wayland-key-names.c.h",
+        "libobs/obs-nix-wayland-keys.c.h",
+        "libobs/obs-nix-wayland-seats.c.h",
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey_mutex_stub.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "obs=wayland_test_obs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-wayland.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Wayland::Client",
+        "xkbcommon::xkbcommon",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_wayland_volume_keys": {
+      "target": "test_wayland_volume_keys",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "ENABLE_WAYLAND",
+          "HAVE_WAYLAND_CLIENT_TEST_SDK"
+        ]
+      }
+    }
+  }
+}

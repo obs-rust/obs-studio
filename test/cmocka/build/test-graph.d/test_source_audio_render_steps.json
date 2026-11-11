@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_audio_render_steps": {
+      "sources": [
+        "test/cmocka/test_source_audio_render_steps.c",
+        "libobs/obs-source-audio-render.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_audio_render_steps": {
+      "target": "test_source_audio_render_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

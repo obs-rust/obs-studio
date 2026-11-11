@@ -1,6 +1,7 @@
 # Consumer of the native test graph shared with obs-build. Paths in the graph
 # are repository-relative; runtime substitutions are deliberately limited.
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/native-test-graph-fragments.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native-test-groups.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/qt-runtime.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/native-test-configured-headers.cmake")
@@ -455,8 +456,7 @@ function(obs_native_test_graph path root)
       set(HAVE_PORTAL_TEST_GIO TRUE)
     endif()
   endif()
-  file(READ "${path}" graph)
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${path}")
+  obs_read_test_graph(graph "${path}")
   _obs_test_graph_fields("${graph}" "" "schema;targets;tests")
   string(JSON schema GET "${graph}" schema)
   if(NOT schema EQUAL 1)

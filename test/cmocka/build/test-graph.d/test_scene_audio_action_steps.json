@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_audio_action_steps": {
+      "sources": [
+        "test/cmocka/test_scene_audio_action_steps.c",
+        "libobs/obs-scene-audio-actions.c.h",
+        "libobs/obs-scene-item-audio-actions.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_scene_audio_action_steps": {
+      "target": "test_scene_audio_action_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

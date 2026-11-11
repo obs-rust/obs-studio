@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nix_startup_log": {
+      "sources": [
+        "test/cmocka/test_nix_startup_log.c",
+        "libobs/obs-nix-log-rules.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-os-release.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_nix_startup_log": {
+      "target": "test_nix_startup_log",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    }
+  }
+}

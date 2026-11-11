@@ -3,4 +3,4 @@
 # real output through the libobs that ships, as test_output_interleave_restart
 # does, and reads the caption queue through obs-internal.h. It uses real core
 # video, so it needs an X display on Linux (xvfb-run, as in CI).
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

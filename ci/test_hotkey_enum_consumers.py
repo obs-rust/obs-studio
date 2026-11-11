@@ -3,13 +3,19 @@
 
 import json
 from pathlib import Path
+
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 import unittest
 
 
 class HotkeyEnumerationConsumersTest(unittest.TestCase):
     def test_isolated_cores_compile_the_real_enumeration_source(self):
         root = Path(__file__).resolve().parents[1]
-        graph = json.loads((root / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(root / "test/cmocka/build/test-graph.d")
         consumers = {
             name: target
             for name, target in graph["targets"].items()

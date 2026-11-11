@@ -12,4 +12,4 @@
 # parity tests in rust/obs-output compare the shims with this C.
 # test_output_raw_audio_steps, test_output_before_video and
 # test_raw_output_video_reset cover the caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

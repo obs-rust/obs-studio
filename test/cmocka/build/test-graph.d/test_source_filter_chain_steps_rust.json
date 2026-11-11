@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_filter_chain_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_filter_chain_steps.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/source-base-size-link-stubs.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-identity-getter-link-stubs.c",
+        "test/cmocka/source-push-query-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c",
+        "test/cmocka/source-icon-type-link-support.c"
+      ],
+      "includes": [
+        "libobs",
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_filter_chain_steps_rust": {
+      "target": "test_source_filter_chain_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

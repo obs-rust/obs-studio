@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_v4l2_udev_poll_error": {
+      "sources": [
+        "test/cmocka/test_v4l2_udev_poll_error.c"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix-udev.pch.h",
+        "plugins/linux-v4l2/v4l2-udev.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Libudev::Libudev",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_UDEV_SDK"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_v4l2_udev_poll_error": {
+      "target": "test_v4l2_udev_poll_error",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_UDEV_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    }
+  }
+}

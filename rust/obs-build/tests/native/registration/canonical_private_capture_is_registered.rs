@@ -10,10 +10,11 @@ const CASES: [&str; 3] = [
 #[test]
 fn canonical_private_capture_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     // GCC C-reference replay failed packed_rows twice in ten runs: the
     // unchanged fixture checks after 15 output frames, before capture is ready.
     // Keep its original CMake coverage until that timing race is addressed.
@@ -24,7 +25,7 @@ fn canonical_private_capture_is_registered() {
         fs::read_to_string(root.join(format!("test/cmocka/tests.d/{deferred}.cmake"))).unwrap();
     assert!(fragment.contains("add_executable("));
     assert!(fragment.contains("add_test("));
-    assert!(!fragment.contains("test-graph.json"));
+    assert!(!fragment.contains("test-graph.d"));
     let wanted = expected();
     for section in ["targets", "tests"] {
         for name in CASES {
@@ -39,7 +40,7 @@ fn canonical_private_capture_is_registered() {
         assert!(graph.tests.contains_key(name), "missing test {name}");
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(fragment.contains("test-graph.json"), "{name}");
+        assert!(fragment.contains("test-graph.d"), "{name}");
         assert!(!fragment.contains("add_executable("), "{name}");
         assert!(!fragment.contains("add_test("), "{name}");
     }
@@ -143,5 +144,5 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{root}")
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "private_capture_runtime.rs"]
+#[path = "support/private_capture_runtime.rs"]
 mod runtime;

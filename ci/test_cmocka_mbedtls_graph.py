@@ -17,8 +17,13 @@ import json
 import unittest
 from pathlib import Path
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
-GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.d"
 LIBRARY = "MbedTLS::mbedtls"
 
 
@@ -37,7 +42,7 @@ def missing_mbedtls(graph: dict) -> list[str]:
 
 class CmockaMbedtlsGraphTest(unittest.TestCase):
     def test_use_mbedtls_targets_link_mbedtls(self):
-        self.assertEqual(missing_mbedtls(json.loads(GRAPH.read_text())), [])
+        self.assertEqual(missing_mbedtls(load_graph(GRAPH)), [])
 
     def test_checker_sees_a_missing_library(self):
         graph = {

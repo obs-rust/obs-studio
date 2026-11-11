@@ -5,7 +5,7 @@
 # the security product labels. Builds the moved file into itself (it takes
 # no Windows type), so it runs on every platform. The functions are hidden in
 # libobs, so this characterizes that C source; the test calls only them.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # No _rust variant, as for test_win_crash_report_steps and
 # test_canvas_rules_steps: the shims' archive member (an obs_core codegen

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_texture_encoder_raw_format": {
+      "sources": [
+        "test/cmocka/test_texture_encoder_raw_format.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_texture_encoder_raw_format": {
+      "target": "test_texture_encoder_raw_format",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 180
+    }
+  }
+}

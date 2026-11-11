@@ -3,4 +3,4 @@
 # The real null-output.c is compiled in with libobs's output calls and
 # pthread_create/pthread_join wrapped (GNU ld --wrap, so Linux only), so no
 # encoder or display is needed.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

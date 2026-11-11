@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ws_remove_input": {
+      "sources": [
+        "test/cmocka/test_ws_remove_input.cpp",
+        "plugins/obs-websocket/src/requesthandler/RequestHandler_Inputs.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/Request.cpp",
+        "plugins/obs-websocket/src/requesthandler/rpc/RequestResult.cpp",
+        "plugins/obs-websocket/src/utils/Json.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ActionHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ArrayHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_SearchHelper.cpp"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_WS_REMOVE_INPUT_TEST_OWNER",
+          "OS_LINUX"
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "compile_options": [
+        "-Wno-error=deprecated-declarations"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
+      ]
+    }
+  },
+  "tests": {
+    "test_ws_remove_input": {
+      "target": "test_ws_remove_input",
+      "suite": "qt",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

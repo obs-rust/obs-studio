@@ -7,6 +7,11 @@ import subprocess
 import tempfile
 import unittest
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
 TIMEOUTS = {
     "test_async_delay_audio": 180,
@@ -76,7 +81,7 @@ add_custom_target(cmocka-tests)
 set(OBS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output")
 '''
         cmake += f'set(OBS_TEST_XVFB_RUN "{display_wrapper}")\n'
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         canonical_tests = {name: graph["tests"][name] for name in TIMEOUTS if name in graph["tests"]}
         for name in sorted({REGISTRATION.get(name, name) for name in TIMEOUTS}):
             if name not in canonical_tests:

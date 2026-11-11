@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_properties_undo_coalesce": {
+      "sources": [
+        "test/cmocka/test_properties_undo_coalesce.cpp",
+        "shared/properties-view/build/properties-view.core+.hpp.cpp",
+        "shared/qt/wrappers/build/qt-wrappers.core+.hpp.cpp",
+        "shared/qt/plain-text-edit/build/qt-plain-text-edit.core+.hpp.cpp",
+        "shared/qt/vertical-scroll-area/build/qt-vertical-scroll-area.core+.hpp.cpp",
+        "shared/qt/slider-ignorewheel/build/qt-slider-ignorewheel.core+.hpp.cpp",
+        "shared/qt/icon-label/build/qt-icon-label.core+.hpp.cpp",
+        "shared/qt/obs-spinbox/build/qt-obs-spinbox.core+.hpp.cpp",
+        "shared/qt/wrappers/build/qt-wrappers.host-posix+.hpp.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "shared/properties-view",
+        "frontend/api",
+        "shared/qt/wrappers",
+        "shared/qt/plain-text-edit",
+        "shared/qt/vertical-scroll-area",
+        "shared/qt/slider-ignorewheel",
+        "shared/qt/icon-label",
+        "shared/qt/obs-spinbox"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "shared/properties-view/double-slider.hpp",
+          "shared/properties-view/properties-view.hpp",
+          "shared/properties-view/properties-view.moc.hpp",
+          "shared/properties-view/spinbox-ignorewheel.hpp",
+          "shared/qt/wrappers/qt-wrappers.hpp",
+          "shared/qt/plain-text-edit/plain-text-edit.hpp",
+          "shared/qt/vertical-scroll-area/vertical-scroll-area.hpp",
+          "shared/qt/slider-ignorewheel/slider-ignorewheel.hpp",
+          "shared/qt/icon-label/IconLabel.hpp",
+          "shared/qt/obs-spinbox/AutoSelectLineEdit.hpp",
+          "shared/qt/obs-spinbox/DoubleSpinBox.hpp",
+          "shared/qt/obs-spinbox/SpinBox.hpp"
+        ]
+      },
+      "watch_inputs": [
+        "shared/properties-view",
+        "shared/qt/wrappers/source-sets.json",
+        "shared/qt/wrappers/build/qt-wrappers.pch.hpp",
+        "shared/qt/plain-text-edit/build/qt-plain-text-edit.pch.hpp",
+        "shared/qt/vertical-scroll-area/build/qt-vertical-scroll-area.pch.hpp",
+        "shared/qt/slider-ignorewheel/build/qt-slider-ignorewheel.pch.hpp",
+        "shared/qt/icon-label/build/qt-icon-label.pch.hpp",
+        "shared/qt/obs-spinbox/build/qt-obs-spinbox.pch.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_properties_undo_coalesce": {
+      "target": "test_properties_undo_coalesce",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

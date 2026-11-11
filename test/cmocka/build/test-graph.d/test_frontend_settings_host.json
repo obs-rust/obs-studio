@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_frontend_settings_host": {
+      "sources": [
+        "test/cmocka/test_frontend_settings_host.c"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "frontend/settings/settings-linux.hpp",
+        "frontend/settings/settings-macos.hpp",
+        "frontend/settings/settings-windows.hpp"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_frontend_settings_host": {
+      "target": "test_frontend_settings_host",
+      "requires": "OS_LINUX"
+    }
+  }
+}

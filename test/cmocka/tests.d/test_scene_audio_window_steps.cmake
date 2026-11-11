@@ -9,7 +9,7 @@
 # no libobs core, so it runs on every platform. The functions are hidden in
 # libobs, so this characterizes that C source; the test calls only them. The
 # real-libobs scene audio tests cover the caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the hidden functions and includes only their header and
@@ -17,4 +17,4 @@
 # alone: its obs-scene member needs nothing from libobs or the other crates.
 # Linking the archive directly avoids exporting private symbols just for a
 # test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

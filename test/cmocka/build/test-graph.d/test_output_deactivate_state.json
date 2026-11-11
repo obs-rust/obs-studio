@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_deactivate_state": {
+      "sources": [
+        "test/cmocka/test_output_deactivate_state.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_deactivate_state": {
+      "target": "test_output_deactivate_state",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

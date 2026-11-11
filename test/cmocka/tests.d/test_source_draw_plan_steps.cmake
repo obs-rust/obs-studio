@@ -10,7 +10,7 @@
 # hidden in libobs, so this characterizes that C source; the test calls only
 # them. test_async_rotation_normalize, test_filter_color_space and
 # test_source_color_space_steps cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the eight hidden functions and the header's
@@ -19,4 +19,4 @@
 # libobs's include directories), so it links the archive alone: its
 # obs-source member needs nothing from libobs or the other crates. Linking the
 # archive directly avoids exporting private symbols just for a test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

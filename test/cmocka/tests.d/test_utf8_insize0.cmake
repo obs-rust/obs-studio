@@ -3,4 +3,4 @@
 # pointer; at -O2 GCC folds the length checks away and the function answers 0
 # for U+0800-U+FFFF. These assertions hold the -O0 behaviour in every
 # configuration.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

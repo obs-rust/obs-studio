@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_media_source_options_lifetime": {
+      "sources": [
+        "test/cmocka/test_media_source_options_lifetime.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::media-playback",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "watch_inputs": [
+        "shared/media-playback/build/media-playback-cache.pch.h",
+        "shared/media-playback/build/media-playback.cache+.h.c",
+        "shared/media-playback/build/media-playback.core+.h.c",
+        "shared/media-playback/build/media-playback.pch.h",
+        "shared/media-playback/media-playback/cache.c.h",
+        "shared/media-playback/media-playback/cache.h",
+        "shared/media-playback/media-playback/closest-format.h",
+        "shared/media-playback/media-playback/decode.c.h",
+        "shared/media-playback/media-playback/decode.h",
+        "shared/media-playback/media-playback/media-playback.c.h",
+        "shared/media-playback/media-playback/media-playback.h",
+        "shared/media-playback/media-playback/media.c.h",
+        "shared/media-playback/media-playback/media.h",
+        "shared/media-playback/media-playback/network-timeout.c.h",
+        "shared/media-playback/media-playback/network-timeout.h",
+        "shared/media-playback/media-playback/platform-decode-ffmpeg.h",
+        "shared/media-playback/media-playback/platform-media-ffmpeg.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=av_dict_parse_string",
+        "-Wl,--wrap=bfree",
+        "-Wl,--wrap=pthread_join"
+      ],
+      "compile_options": [
+        "-fvisibility=default"
+      ]
+    }
+  },
+  "tests": {
+    "test_media_source_options_lifetime": {
+      "target": "test_media_source_options_lifetime",
+      "timeout_seconds": 30
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_studio_mode_exit": {
+      "sources": [
+        "test/cmocka/test_studio_mode_exit.c",
+        "frontend/utility/studio-mode-exit.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_studio_mode_exit": {
+      "target": "test_studio_mode_exit",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

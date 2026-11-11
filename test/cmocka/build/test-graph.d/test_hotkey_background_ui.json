@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_background_ui": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_ui.cpp",
+        "frontend/settings/OBSHotkeyBackground.cpp.hpp"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "includes": [
+        "frontend/settings"
+      ],
+      "definitions": [
+        "HOTKEY_LOCALE_EN_US=\"${source}/frontend/data/locale/en-US.ini\""
+      ],
+      "watch_inputs": [
+        "frontend/build/frontend-settings-obshotkeybackground.pch.hpp",
+        "frontend/data/locale/en-US.ini"
+      ],
+      "cpp_standard": "17"
+    }
+  },
+  "tests": {
+    "test_hotkey_background_ui": {
+      "target": "test_hotkey_background_ui",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_HOTKEY_BACKGROUND_JSON"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

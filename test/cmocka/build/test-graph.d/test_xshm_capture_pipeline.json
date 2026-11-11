@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_xshm_capture_pipeline": {
+      "sources": [
+        "test/cmocka/test_xshm_capture_pipeline.c",
+        "plugins/linux-capture/xcursor-xcb.c.h",
+        "plugins/linux-capture/xhelpers.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-capture"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      },
+      "watch_inputs": [
+        "plugins/linux-capture/build/linux-capture-nix.pch.h",
+        "plugins/linux-capture/xshm-input.c.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_xshm_capture_pipeline": {
+      "target": "test_xshm_capture_pipeline",
+      "timeout_seconds": 10
+    }
+  }
+}

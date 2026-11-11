@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_text_freetype2_face_index": {
+      "sources": [
+        "test/cmocka/test_text_freetype2_face_index.c",
+        "plugins/text-freetype2/find-font-unix.c.h",
+        "plugins/text-freetype2/text-freetype2-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Freetype::Freetype",
+        "Fontconfig::Fontconfig",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "plugins/text-freetype2"
+      ],
+      "watch_inputs": [
+        "plugins/text-freetype2/build/text-freetype2-nix.pch.h",
+        "plugins/text-freetype2/find-font.h",
+        "plugins/text-freetype2/text-freetype2.h",
+        "plugins/text-freetype2/text-freetype2-host.h",
+        "test/cmocka/data/text-collection.ttc"
+      ],
+      "definitions": [
+        "COLLECTION_FONTCONFIG=\"${build}/ft2-collection-fonts.conf\""
+      ]
+    }
+  },
+  "tests": {
+    "test_text_freetype2_face_index": {
+      "target": "test_text_freetype2_face_index",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_FONTCONFIG_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

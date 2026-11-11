@@ -13,7 +13,7 @@
 # libobs. The functions are hidden in libobs, so this characterizes that C
 # source; the test calls only them. The real-libobs scene, group and
 # clipboard tests cover the caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls the four hidden functions, and through compose() the hidden crop,
@@ -22,4 +22,4 @@
 # libobs gives matrix4_* and the archive only the hidden functions, as
 # test_scene_item_names_steps_rust does. Linking the archive directly avoids
 # exporting private symbols just for a test.
-# Rust-static target and test are also declared in ../build/test-graph.json.
+# Rust-static target and test are also declared in ../build/test-graph.d.

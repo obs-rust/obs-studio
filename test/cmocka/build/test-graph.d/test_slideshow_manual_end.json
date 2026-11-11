@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_slideshow_manual_end": {
+      "sources": [
+        "test/cmocka/test_slideshow_manual_end.c",
+        "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/slideshow-size.c.h",
+        "plugins/obs-transitions/transition-cut.c.h",
+        "plugins/image-source/build/image-source.posix+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "plugins/image-source",
+        "plugins/obs-transitions"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/obs-transitions/build/obs-transitions.pch.h",
+        "plugins/obs-transitions/fade-to-color-mix.h",
+        "plugins/obs-transitions/easings.h",
+        "plugins/obs-transitions/transition-stinger-monitoring.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/slideshow-size.h",
+        "plugins/image-source/build/image-source-posix.pch.h",
+        "plugins/image-source/image-source-host-posix.c.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_slideshow_manual_end": {
+      "target": "test_slideshow_manual_end",
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

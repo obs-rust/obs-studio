@@ -12,4 +12,4 @@
 # test_media_restart_stale_frame, test_transition_recursive_destination,
 # test_slideshow_empty and test_slideshow_manual_end cover the callers through
 # the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_parser_lifecycle": {
+      "sources": [
+        "test/cmocka/test_effect_parser_lifecycle.c",
+        "libobs/graphics/effect-parser-lifecycle.c.h"
+      ],
+      "requires": true,
+      "includes": [
+        "deps/libcaption",
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-graphics.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_effect_parser_lifecycle": {
+      "target": "test_effect_parser_lifecycle",
+      "requires": true
+    }
+  }
+}

@@ -7,4 +7,4 @@
 # each step of a signature. ep_parse() is hidden in libobs, so the test
 # compiles the original effect parser C into itself. No display and no
 # graphics context, so it runs on every platform. Target and test are declared
-# in ../build/test-graph.json.
+# in ../build/test-graph.d.

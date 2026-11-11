@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_xshm_capture_live": {
+      "sources": [
+        "test/cmocka/test_xshm_capture_live.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "includes": [
+        "plugins/linux-capture"
+      ],
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/linux-capture"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_xshm_capture_live": {
+      "target": "test_xshm_capture_live",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 30,
+      "environment": {
+        "LP_NUM_THREADS": "1"
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "--server-args=-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_LINUX_CAPTURE"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

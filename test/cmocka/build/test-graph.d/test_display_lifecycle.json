@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_display_lifecycle": {
+      "sources": [
+        "test/cmocka/test_display_lifecycle.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_display_lifecycle": {
+      "target": "test_display_lifecycle",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

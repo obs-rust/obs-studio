@@ -1,76 +1,10 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+include!(concat!(env!("OUT_DIR"), "/native-registration.rs"));
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
-#[path = "native/registration/canonical_portal_output_is_registered.rs"]
-mod canonical_portal_output_is_registered;
-#[path = "native/registration/canonical_qt_core_filename_is_registered.rs"]
-mod canonical_qt_core_filename_is_registered;
-#[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
-mod canonical_rust_static_windows_keys_are_registered;
-#[path = "native/registration/canonical_websocket_helpers_is_registered.rs"]
-mod canonical_websocket_helpers_is_registered;
 #[path = "native/graph_host_configurations.rs"]
 mod graph_host_configurations;
-#[path = "native/registration/rust_static_entries.rs"]
-mod rust_static_entries;
 
-#[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "native/registration/graphics_private_runtime.rs"]
-mod graphics_private_runtime;
-
-#[cfg(target_os = "linux")]
-#[path = "native/registration/parser_import_library.rs"]
-mod parser_import_library;
-
-#[path = "native/registration/canonical_rust_static_private_renderer_is_registered.rs"]
-mod canonical_rust_static_private_renderer_is_registered;
-
-#[path = "native/registration/canonical_display_audio_is_registered.rs"]
-mod canonical_display_audio_is_registered;
-#[path = "native/registration/canonical_display_media_is_registered.rs"]
-mod canonical_display_media_is_registered;
-#[path = "native/registration/canonical_display_outputs_is_registered.rs"]
-mod canonical_display_outputs_is_registered;
-#[path = "native/registration/canonical_display_plugins_is_registered.rs"]
-mod canonical_display_plugins_is_registered;
-#[path = "native/registration/canonical_display_render_is_registered.rs"]
-mod canonical_display_render_is_registered;
-#[path = "native/registration/canonical_display_startup_is_registered.rs"]
-mod canonical_display_startup_is_registered;
-#[path = "native/registration/canonical_freetype_file_sdk_is_registered.rs"]
-mod canonical_freetype_file_sdk_is_registered;
-#[path = "native/registration/canonical_headless_characterizations_is_registered.rs"]
-mod canonical_headless_characterizations_is_registered;
-#[path = "native/registration/canonical_headless_devices_is_registered.rs"]
-mod canonical_headless_devices_is_registered;
-#[path = "native/registration/canonical_headless_helpers_is_registered.rs"]
-mod canonical_headless_helpers_is_registered;
-#[path = "native/registration/canonical_headless_loop_is_registered.rs"]
-mod canonical_headless_loop_is_registered;
-#[path = "native/registration/canonical_headless_media_is_registered.rs"]
-mod canonical_headless_media_is_registered;
-#[path = "native/registration/canonical_headless_remaining_is_registered.rs"]
-mod canonical_headless_remaining_is_registered;
-#[path = "native/registration/canonical_headless_services_is_registered.rs"]
-mod canonical_headless_services_is_registered;
-#[path = "native/registration/canonical_media_clips_is_registered.rs"]
-mod canonical_media_clips_is_registered;
-#[path = "native/registration/canonical_opengl_video_slice_is_registered.rs"]
-mod canonical_opengl_video_slice_is_registered;
-#[path = "native/registration/canonical_plugin_getters_is_registered.rs"]
-mod canonical_plugin_getters_is_registered;
-#[path = "native/registration/canonical_private_hosts_are_registered.rs"]
-mod canonical_private_hosts_are_registered;
-#[path = "native/registration/canonical_private_link_rules_are_registered.rs"]
-mod canonical_private_link_rules_are_registered;
-#[path = "native/registration/canonical_v4l2_capture_sdk_is_registered.rs"]
-mod canonical_v4l2_capture_sdk_is_registered;
-#[path = "native/registration/canonical_v4l2_freetype_sdk_is_registered.rs"]
-mod canonical_v4l2_freetype_sdk_is_registered;
-#[path = "native/registration/canonical_wayland_sdk_is_registered.rs"]
-mod canonical_wayland_sdk_is_registered;
-#[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
-mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
 use std::{fs, path::Path};
 
@@ -89,7 +23,7 @@ fn qt_replay_facts(target: &str, qt_test: bool) -> std::collections::BTreeMap<St
 fn canonical_qsv_host_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph.retain_suite("core");
     let name = "test_qsv_host";
     let target = graph
@@ -221,243 +155,6 @@ endif()
     }
 }
 
-#[path = "native/registration/canonical_async_overflow_clock_is_registered.rs"]
-mod canonical_async_overflow_clock_is_registered;
-#[path = "native/registration/canonical_audio_filter_scalars_are_registered.rs"]
-mod canonical_audio_filter_scalars_are_registered;
-#[path = "native/registration/canonical_canvas_channel_getter_is_registered.rs"]
-mod canonical_canvas_channel_getter_is_registered;
-#[path = "native/registration/canonical_canvas_flags_getter_is_registered.rs"]
-mod canonical_canvas_flags_getter_is_registered;
-#[path = "native/registration/canonical_canvas_video_getter_is_registered.rs"]
-mod canonical_canvas_video_getter_is_registered;
-#[path = "native/registration/canonical_canvas_video_info_getter_is_registered.rs"]
-mod canonical_canvas_video_info_getter_is_registered;
-#[path = "native/registration/canonical_caption_unmappable_is_registered.rs"]
-mod canonical_caption_unmappable_is_registered;
-#[path = "native/registration/canonical_capture_helpers_are_registered.rs"]
-mod canonical_capture_helpers_are_registered;
-#[path = "native/registration/canonical_capture_planes_and_parser_lifecycle_are_registered.rs"]
-mod canonical_capture_planes_and_parser_lifecycle_are_registered;
-#[path = "native/registration/canonical_close_top_level_is_registered.rs"]
-mod canonical_close_top_level_is_registered;
-#[path = "native/registration/canonical_config_hex_float_rounding_is_registered.rs"]
-mod canonical_config_hex_float_rounding_is_registered;
-#[path = "native/registration/canonical_context_names_is_registered.rs"]
-mod canonical_context_names_is_registered;
-#[path = "native/registration/canonical_core_cmdline_getter_is_registered.rs"]
-mod canonical_core_cmdline_getter_is_registered;
-#[path = "native/registration/canonical_core_frame_interval_is_registered.rs"]
-mod canonical_core_frame_interval_is_registered;
-#[path = "native/registration/canonical_core_initialized_is_registered.rs"]
-mod canonical_core_initialized_is_registered;
-#[path = "native/registration/canonical_core_texture_activity_is_registered.rs"]
-mod canonical_core_texture_activity_is_registered;
-#[path = "native/registration/canonical_dock_proportions_is_registered.rs"]
-mod canonical_dock_proportions_is_registered;
-#[path = "native/registration/canonical_effect_lookups_is_registered.rs"]
-mod canonical_effect_lookups_is_registered;
-#[path = "native/registration/canonical_encoder_audio_getters_is_registered.rs"]
-mod canonical_encoder_audio_getters_is_registered;
-#[path = "native/registration/canonical_encoder_dimensions_is_registered.rs"]
-mod canonical_encoder_dimensions_is_registered;
-#[path = "native/registration/canonical_encoder_frame_rate_divisor_is_registered.rs"]
-mod canonical_encoder_frame_rate_divisor_is_registered;
-#[path = "native/registration/canonical_encoder_gpu_scaling_getters_is_registered.rs"]
-mod canonical_encoder_gpu_scaling_getters_is_registered;
-#[path = "native/registration/canonical_encoder_group_null_is_registered.rs"]
-mod canonical_encoder_group_null_is_registered;
-#[path = "native/registration/canonical_encoder_scaling_enabled_is_registered.rs"]
-mod canonical_encoder_scaling_enabled_is_registered;
-#[path = "native/registration/canonical_encoder_state_queries_is_registered.rs"]
-mod canonical_encoder_state_queries_is_registered;
-#[path = "native/registration/canonical_fade_and_host_tests_are_registered.rs"]
-mod canonical_fade_and_host_tests_are_registered;
-#[path = "native/registration/canonical_fake_device_graphics_is_registered.rs"]
-mod canonical_fake_device_graphics_is_registered;
-#[path = "native/registration/canonical_ffmpeg_mux_hosts_are_registered.rs"]
-mod canonical_ffmpeg_mux_hosts_are_registered;
-#[path = "native/registration/canonical_ffmpeg_packet_write_is_registered.rs"]
-mod canonical_ffmpeg_packet_write_is_registered;
-#[path = "native/registration/canonical_filter_clipboard_is_registered.rs"]
-mod canonical_filter_clipboard_is_registered;
-#[path = "native/registration/canonical_filter_color_space_is_registered.rs"]
-mod canonical_filter_color_space_is_registered;
-#[path = "native/registration/canonical_filter_size_no_target_is_registered.rs"]
-mod canonical_filter_size_no_target_is_registered;
-#[path = "native/registration/canonical_frontend_api_call_is_registered.rs"]
-mod canonical_frontend_api_call_is_registered;
-#[path = "native/registration/canonical_frontend_product_and_meter_tests_are_registered.rs"]
-mod canonical_frontend_product_and_meter_tests_are_registered;
-#[path = "native/registration/canonical_frontend_tools_hosts_are_registered.rs"]
-mod canonical_frontend_tools_hosts_are_registered;
-#[path = "native/registration/canonical_frontend_utility_tests_are_registered.rs"]
-mod canonical_frontend_utility_tests_are_registered;
-#[path = "native/registration/canonical_group_lifecycle_is_registered.rs"]
-mod canonical_group_lifecycle_is_registered;
-#[path = "native/registration/canonical_headless_abi_is_registered.rs"]
-mod canonical_headless_abi_is_registered;
-#[path = "native/registration/canonical_headless_audio_is_registered.rs"]
-mod canonical_headless_audio_is_registered;
-#[path = "native/registration/canonical_hotkey_background_app_id_is_registered.rs"]
-mod canonical_hotkey_background_app_id_is_registered;
-#[path = "native/registration/canonical_hotkey_background_query_is_registered.rs"]
-mod canonical_hotkey_background_query_is_registered;
-#[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
-mod canonical_hotkey_backtab_is_registered;
-#[path = "native/registration/canonical_hotkey_identity_getters_is_registered.rs"]
-mod canonical_hotkey_identity_getters_is_registered;
-#[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
-mod canonical_hotkey_mnemonic_is_registered;
-#[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
-mod canonical_hotkey_pair_latch_is_registered;
-#[path = "native/registration/canonical_import_ffmpeg_hosts_are_registered.rs"]
-mod canonical_import_ffmpeg_hosts_are_registered;
-#[path = "native/registration/canonical_libobs_go2_is_registered.rs"]
-mod canonical_libobs_go2_is_registered;
-#[path = "native/registration/canonical_libobs_go3_is_registered.rs"]
-mod canonical_libobs_go3_is_registered;
-#[path = "native/registration/canonical_libobs_go4_is_registered.rs"]
-mod canonical_libobs_go4_is_registered;
-#[path = "native/registration/canonical_libobs_go5_is_registered.rs"]
-mod canonical_libobs_go5_is_registered;
-#[path = "native/registration/canonical_libobs_go_is_registered.rs"]
-mod canonical_libobs_go_is_registered;
-#[path = "native/registration/canonical_missing_files_list_is_registered.rs"]
-mod canonical_missing_files_list_is_registered;
-#[path = "native/registration/canonical_module_name_lookups_is_registered.rs"]
-mod canonical_module_name_lookups_is_registered;
-#[path = "native/registration/canonical_nvenc_host_and_glyph_tests_are_registered.rs"]
-mod canonical_nvenc_host_and_glyph_tests_are_registered;
-#[path = "native/registration/canonical_object_queries_is_registered.rs"]
-mod canonical_object_queries_is_registered;
-#[path = "native/registration/canonical_object_validity_query_is_registered.rs"]
-mod canonical_object_validity_query_is_registered;
-#[path = "native/registration/canonical_output_flags_is_registered.rs"]
-mod canonical_output_flags_is_registered;
-#[path = "native/registration/canonical_output_handler_getters_is_registered.rs"]
-mod canonical_output_handler_getters_is_registered;
-#[path = "native/registration/canonical_output_identity_getters_is_registered.rs"]
-mod canonical_output_identity_getters_is_registered;
-#[path = "native/registration/canonical_output_mixer_getters_is_registered.rs"]
-mod canonical_output_mixer_getters_is_registered;
-#[path = "native/registration/canonical_output_protocol_getter_is_registered.rs"]
-mod canonical_output_protocol_getter_is_registered;
-#[path = "native/registration/canonical_output_protocol_null_is_registered.rs"]
-mod canonical_output_protocol_null_is_registered;
-#[path = "native/registration/canonical_output_protocols_is_registered.rs"]
-mod canonical_output_protocols_is_registered;
-#[path = "native/registration/canonical_output_service_getter_is_registered.rs"]
-mod canonical_output_service_getter_is_registered;
-#[path = "native/registration/canonical_output_supported_codecs_is_registered.rs"]
-mod canonical_output_supported_codecs_is_registered;
-#[path = "native/registration/canonical_pipe_contracts_are_registered.rs"]
-mod canonical_pipe_contracts_are_registered;
-#[path = "native/registration/canonical_pipe_wait_error_is_registered.rs"]
-mod canonical_pipe_wait_error_is_registered;
-#[path = "native/registration/canonical_plugin_configuration_helpers_are_registered.rs"]
-mod canonical_plugin_configuration_helpers_are_registered;
-#[path = "native/registration/canonical_plugin_sdk_headless_is_registered.rs"]
-mod canonical_plugin_sdk_headless_is_registered;
-#[path = "native/registration/canonical_posix_output_hosts_are_registered.rs"]
-mod canonical_posix_output_hosts_are_registered;
-#[path = "native/registration/canonical_pulse_monitor_decisions_are_registered.rs"]
-mod canonical_pulse_monitor_decisions_are_registered;
-#[path = "native/registration/canonical_pulse_monitor_format_is_registered.rs"]
-mod canonical_pulse_monitor_format_is_registered;
-#[path = "native/registration/canonical_recording_shutdown_waits_are_registered.rs"]
-mod canonical_recording_shutdown_waits_are_registered;
-#[path = "native/registration/canonical_remux_audio_timestamps_is_registered.rs"]
-mod canonical_remux_audio_timestamps_is_registered;
-#[path = "native/registration/canonical_replay_buffer_estimate_is_registered.rs"]
-mod canonical_replay_buffer_estimate_is_registered;
-#[path = "native/registration/canonical_rust_static_conversion_is_registered.rs"]
-mod canonical_rust_static_conversion_is_registered;
-#[path = "native/registration/canonical_rust_static_decision_steps_are_registered.rs"]
-mod canonical_rust_static_decision_steps_are_registered;
-#[path = "native/registration/canonical_rust_static_graphics_are_registered.rs"]
-mod canonical_rust_static_graphics_are_registered;
-#[path = "native/registration/canonical_rust_static_header_steps_are_registered.rs"]
-mod canonical_rust_static_header_steps_are_registered;
-#[path = "native/registration/canonical_rust_static_monitor_steps_are_registered.rs"]
-mod canonical_rust_static_monitor_steps_are_registered;
-#[path = "native/registration/canonical_rust_static_pacing_is_registered.rs"]
-mod canonical_rust_static_pacing_is_registered;
-#[path = "native/registration/canonical_rust_static_private_rules_are_registered.rs"]
-mod canonical_rust_static_private_rules_are_registered;
-#[path = "native/registration/canonical_rust_static_private_source_are_registered.rs"]
-mod canonical_rust_static_private_source_are_registered;
-#[path = "native/registration/canonical_rust_static_private_steps_are_registered.rs"]
-mod canonical_rust_static_private_steps_are_registered;
-#[path = "native/registration/canonical_rust_static_source_steps_are_registered.rs"]
-mod canonical_rust_static_source_steps_are_registered;
-#[path = "native/registration/canonical_rust_static_transition_start_are_registered.rs"]
-mod canonical_rust_static_transition_start_are_registered;
-#[path = "native/registration/canonical_scene_bounds_place_is_registered.rs"]
-mod canonical_scene_bounds_place_is_registered;
-#[path = "native/registration/canonical_scene_crop_steps_is_registered.rs"]
-mod canonical_scene_crop_steps_is_registered;
-#[path = "native/registration/canonical_scene_enum_items_removal_is_registered.rs"]
-mod canonical_scene_enum_items_removal_is_registered;
-#[path = "native/registration/canonical_scene_item_crop_getter_is_registered.rs"]
-mod canonical_scene_item_crop_getter_is_registered;
-#[path = "native/registration/canonical_scene_item_crop_load_is_registered.rs"]
-mod canonical_scene_item_crop_load_is_registered;
-#[path = "native/registration/canonical_scene_scale_getter_is_registered.rs"]
-mod canonical_scene_scale_getter_is_registered;
-#[path = "native/registration/canonical_scene_transform_getters_are_registered.rs"]
-mod canonical_scene_transform_getters_are_registered;
-#[path = "native/registration/canonical_sck_vaapi_helpers_are_registered.rs"]
-mod canonical_sck_vaapi_helpers_are_registered;
-#[path = "native/registration/canonical_scripting_hosts_are_registered.rs"]
-mod canonical_scripting_hosts_are_registered;
-#[path = "native/registration/canonical_settings_track_rows_is_registered.rs"]
-mod canonical_settings_track_rows_is_registered;
-#[path = "native/registration/canonical_shutdown_after_failed_startup_is_registered.rs"]
-mod canonical_shutdown_after_failed_startup_is_registered;
-#[path = "native/registration/canonical_source_audio_active_is_registered.rs"]
-mod canonical_source_audio_active_is_registered;
-#[path = "native/registration/canonical_source_boolean_queries_is_registered.rs"]
-mod canonical_source_boolean_queries_is_registered;
-#[path = "native/registration/canonical_source_handler_getters_is_registered.rs"]
-mod canonical_source_handler_getters_is_registered;
-#[path = "native/registration/canonical_source_identity_getters_is_registered.rs"]
-mod canonical_source_identity_getters_is_registered;
-#[path = "native/registration/canonical_source_push_queries_is_registered.rs"]
-mod canonical_source_push_queries_is_registered;
-#[path = "native/registration/canonical_source_state_getters_is_registered.rs"]
-mod canonical_source_state_getters_is_registered;
-#[path = "native/registration/canonical_texture_create_mip_data_is_registered.rs"]
-mod canonical_texture_create_mip_data_is_registered;
-#[path = "native/registration/canonical_transition_compatibility_is_registered.rs"]
-mod canonical_transition_compatibility_is_registered;
-#[path = "native/registration/canonical_transport_helpers_are_registered.rs"]
-mod canonical_transport_helpers_are_registered;
-#[path = "native/registration/canonical_undo_stack_is_registered.rs"]
-mod canonical_undo_stack_is_registered;
-#[path = "native/registration/canonical_vaapi_device_select_is_registered.rs"]
-mod canonical_vaapi_device_select_is_registered;
-#[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
-mod canonical_video_output_compatibility_is_registered;
-#[path = "native/registration/canonical_video_scaler_direct_is_registered.rs"]
-mod canonical_video_scaler_direct_is_registered;
-#[path = "native/registration/canonical_vmic_helpers_are_registered.rs"]
-mod canonical_vmic_helpers_are_registered;
-#[path = "native/registration/canonical_volume_meter_ticker_is_registered.rs"]
-mod canonical_volume_meter_ticker_is_registered;
-#[path = "native/registration/canonical_weak_encoder_identity_is_registered.rs"]
-mod canonical_weak_encoder_identity_is_registered;
-#[path = "native/registration/canonical_weak_object_identity_is_registered.rs"]
-mod canonical_weak_object_identity_is_registered;
-#[path = "native/registration/canonical_win_vmic_route_is_registered.rs"]
-mod canonical_win_vmic_route_is_registered;
-#[path = "native/registration/canonical_x11_keymap_is_registered.rs"]
-mod canonical_x11_keymap_is_registered;
-#[path = "native/registration/canonical_xcomposite_decisions_are_registered.rs"]
-mod canonical_xcomposite_decisions_are_registered;
-#[path = "native/registration/canonical_youtube_broadcast_settings_is_registered.rs"]
-mod canonical_youtube_broadcast_settings_is_registered;
-
 /// #1390: the libobs built from this checkout for real-libobs graph runtimes.
 /// `OBS_GRAPH_LIBOBS` selects the Tier 2 implementation explicitly: `hybrid`
 /// (with `OBS_BUILD_RUST_ARCHIVE`) or `c-reference`. There is no fallback.
@@ -550,7 +247,7 @@ fn graph_runtimes_never_link_an_installed_libobs() {
 
 #[test]
 fn plugin_sdk_replay_uses_tier2_build_type() {
-    let replay = include_str!("native/registration/plugin_sdk_headless_runtime.rs");
+    let replay = include_str!("native/registration/support/plugin_sdk_headless_runtime.rs");
     let configure = replay.split("fn replay_cmake(").nth(1).unwrap();
     assert!(
         configure.contains(".arg(\"-DCMAKE_BUILD_TYPE=RelWithDebInfo\")"),
@@ -805,9 +502,10 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in ["test_product_name", "test_volume_meter_snapshot"] {
         for section in ["targets", "tests"] {
@@ -1006,9 +704,10 @@ fn canonical_remux_queue_runs_unchanged() {
             "Backtab not selected: Qt Test is absent from the selected SDK; original optional guard retained"
         );
     }
-    let graph: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let graph: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     // Compare the evaluated inventory, including optional Qt Test selection.
     let facts = qt_replay_facts(&build.target, qt_test_available);
     let linux = facts["OS_LINUX"];
@@ -1294,9 +993,10 @@ fn assert_settings_track_rows_ctest_properties(tests: &[serde_json::Value]) {
 #[test]
 fn native_test_graph_preserves_remux_queue_requirements() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let graph: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let target = &graph["targets"]["test_remux_queue_model"];
     assert!(target.is_object(), "missing canonical remux queue target");
     assert_eq!(
@@ -1686,9 +1386,10 @@ fn native_test_graph_preserves_cpp_standard_without_changing_c_compilation() {
 #[test]
 fn native_test_graph_preserves_cpp_helper_build_requirements() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for (name, implementation) in [
         ("test_disk_space_monitor", Some("disk-space-monitor")),
         (
@@ -2267,7 +1968,7 @@ fn native_test_graph_checks_selection_references_and_commands() {
 fn native_test_graph_replaces_legacy_utility_definitions() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.d"))
             .unwrap();
     assert!(
         !root
@@ -2476,10 +2177,9 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
     // #1997). The partitions must instead cover the whole graph between them.
     let (mut covered_tests, mut covered_targets) = (0, 0);
     for suite in ["core", "graphics", "vlc", "webrtc", "qt"] {
-        let mut partition = obs_build::validation::graph::Graph::load(
-            &root.join("test/cmocka/build/test-graph.json"),
-        )
-        .unwrap();
+        let mut partition =
+            obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.d"))
+                .unwrap();
         partition.retain_suite(suite);
         assert!(!partition.tests.is_empty(), "{suite} has no tests");
         assert!(partition.tests.values().all(|test| test.suite == suite));
@@ -2550,9 +2250,10 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
         graph.tests["test_dstr_regressions"].timeout_seconds,
         Some(60)
     );
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     assert!(
         raw["targets"]["test_avc"]["includes"]
             .as_array()
@@ -2703,11 +2404,9 @@ fn native_test_graph_replaces_legacy_utility_definitions() {
 #[test]
 fn native_test_graph_preserves_sources_and_runtime_requirements() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let path = root.join("test/cmocka/build/test-graph.json");
-    let graph: serde_json::Value = serde_json::from_slice(
-        &fs::read(&path).expect("CMake and Cargo need a shared native test graph"),
-    )
-    .unwrap();
+    let path = root.join("test/cmocka/build/test-graph.d");
+    let graph: serde_json::Value = obs_build::validation::graph::Graph::read_value(&path)
+        .expect("CMake and Cargo need a shared native test graph");
     assert_eq!(graph["schema"], 1);
     let targets = graph["targets"].as_object().unwrap();
     let tests = graph["tests"].as_object().unwrap();
@@ -4341,9 +4040,10 @@ fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
 #[test]
 fn canonical_glyph_atlas_unavailable_hosts_configure_without_packages() {
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let graph = serde_json::json!({
         "schema": 1,
         "targets": {"test_glyph_atlas": raw["targets"]["test_glyph_atlas"]},
@@ -4433,7 +4133,7 @@ fn assert_plugin_configuration_test(
         fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
-    let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut single = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     single.targets.retain(|key, _| key == name);
     single.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
@@ -4504,7 +4204,7 @@ fn canonical_plugin_configuration_helpers_run_unchanged() {
 fn standalone_core_headers_unavailable_hosts_need_no_packages() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph.targets.retain(|name, _| name == "test_glyph_atlas");
     graph.tests.retain(|name, _| name == "test_glyph_atlas");
     for os in ["OS_MACOS", "OS_WINDOWS"] {
@@ -4616,9 +4316,10 @@ fn run_standalone_configuration_contract(names: &[&str]) {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in names {
         for section in ["targets", "tests"] {
@@ -4794,9 +4495,10 @@ fn canonical_pulse_monitor_decisions_run_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for name in ["test_pulse_monitor_backlog", "test_pulse_monitor_flags"] {
         for section in ["targets", "tests"] {
@@ -4983,9 +4685,10 @@ fn canonical_rust_static_pacing_runs_unchanged() {
     .unwrap();
     assert!(archive.is_file());
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let name = "test_async_frame_pacing_steps_rust";
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
@@ -5210,9 +4913,10 @@ fn canonical_rust_static_conversion_runs_unchanged() {
     .unwrap();
     assert!(archive.is_file());
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let name = "test_async_conversion_plan_rust";
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
@@ -5385,7 +5089,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "{source}")
 fn canonical_async_delay_pacing_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let name = "test_async_delay_pacing";
     let target = graph
         .targets
@@ -5446,46 +5150,6 @@ fn assert_delay_pacing_execution(root: &Path, graph: &obs_build::validation::gra
     assert!(!fragment.contains("add_executable("));
     assert!(!fragment.contains("add_test("));
 }
-
-#[path = "native/registration/canonical_display_live_is_registered.rs"]
-mod canonical_display_live_is_registered;
-
-#[path = "native/registration/canonical_qt_widgets_is_registered.rs"]
-mod canonical_qt_widgets_is_registered;
-
-#[path = "native/registration/canonical_qt_daemons_is_registered.rs"]
-mod canonical_qt_daemons_is_registered;
-#[path = "native/registration/canonical_scene_group_queries_is_registered.rs"]
-mod canonical_scene_group_queries_is_registered;
-#[path = "native/registration/canonical_scene_source_type_queries_is_registered.rs"]
-mod canonical_scene_source_type_queries_is_registered;
-
-#[path = "native/registration/canonical_pipewire_cameras_is_registered.rs"]
-mod canonical_pipewire_cameras_is_registered;
-
-#[path = "native/registration/canonical_private_capture_is_registered.rs"]
-mod canonical_private_capture_is_registered;
-#[path = "native/registration/canonical_scene_item_transition_getters_is_registered.rs"]
-mod canonical_scene_item_transition_getters_is_registered;
-
-#[path = "native/registration/canonical_source_base_size_is_registered.rs"]
-mod canonical_source_base_size_is_registered;
-
-#[path = "native/registration/canonical_scene_item_parent_getter_is_registered.rs"]
-mod canonical_scene_item_parent_getter_is_registered;
-
-#[path = "native/registration/canonical_output_pause_queries_is_registered.rs"]
-mod canonical_output_pause_queries_is_registered;
-
-#[path = "native/registration/camera_wrap_boundary.rs"]
-mod camera_wrap_boundary;
-#[path = "native/registration/canonical_scene_source_getters_is_registered.rs"]
-mod canonical_scene_source_getters_is_registered;
-
-#[path = "native/registration/canonical_scene_item_group_scene_is_registered.rs"]
-mod canonical_scene_item_group_scene_is_registered;
-#[path = "native/registration/canonical_scene_item_visible_is_registered.rs"]
-mod canonical_scene_item_visible_is_registered;
 
 #[path = "native/mcp_runtime.rs"]
 mod mcp_runtime;

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nvenc_caps_cache": {
+      "sources": [
+        "test/cmocka/test_nvenc_caps_cache.c",
+        "plugins/obs-nvenc/nvenc-caps-cache.c.h",
+        "plugins/obs-nvenc/nvenc-caps-cache-linux.c.h"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "plugins/obs-nvenc"
+      ],
+      "watch_inputs": [
+        "plugins/obs-nvenc/nvenc-caps-cache.h",
+        "plugins/obs-nvenc/build/obs-nvenc-caps-cache.pch.h",
+        "plugins/obs-nvenc/build/obs-nvenc-caps-cache-linux.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_nvenc_caps_cache": {
+      "target": "test_nvenc_caps_cache",
+      "requires": "OS_LINUX"
+    }
+  }
+}

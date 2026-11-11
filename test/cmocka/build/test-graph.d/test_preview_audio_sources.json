@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_preview_audio_sources": {
+      "sources": [
+        "test/cmocka/test_preview_audio_sources.cpp",
+        "frontend/utility/preview-audio-sources.cpp.hpp"
+      ],
+      "cpp_standard": "17",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Core",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_preview_audio_sources": {
+      "target": "test_preview_audio_sources",
+      "requires": "HAVE_QT_CORE_TEST_OWNER",
+      "command": [
+        "${target}"
+      ],
+      "qt_runtime": "Qt6::Core",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    }
+  }
+}

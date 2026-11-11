@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vaapi_probe_policy": {
+      "sources": [
+        "test/cmocka/test_vaapi_probe_policy.c",
+        "plugins/obs-ffmpeg/vaapi-probe-policy.c.h"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/vaapi-probe-policy.h",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-vaapi-probe-policy.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_vaapi_probe_policy": {
+      "target": "test_vaapi_probe_policy",
+      "requires": {
+        "any": [
+          "OS_LINUX",
+          "OS_FREEBSD",
+          "OS_OPENBSD"
+        ]
+      }
+    }
+  }
+}

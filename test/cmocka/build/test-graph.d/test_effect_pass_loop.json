@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_pass_loop": {
+      "sources": [
+        "test/cmocka/test_effect_pass_loop.c"
+      ],
+      "compile_options_if_supported": [
+        "-ftrivial-auto-var-init=pattern"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "requires": "OS_LINUX",
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "ZLIB::ZLIB",
+        "OBS::native-test-cmocka",
+        "m"
+      ]
+    }
+  },
+  "tests": {
+    "test_effect_pass_loop": {
+      "target": "test_effect_pass_loop",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

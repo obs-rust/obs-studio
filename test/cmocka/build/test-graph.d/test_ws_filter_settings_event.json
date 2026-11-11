@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ws_filter_settings_event": {
+      "sources": [
+        "test/cmocka/test_ws_filter_settings_event.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Canvases.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Config.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Filters.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_General.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Inputs.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_MediaInputs.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Outputs.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_SceneItems.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Scenes.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Transitions.cpp",
+        "plugins/obs-websocket/src/eventhandler/EventHandler_Ui.cpp",
+        "plugins/obs-websocket/src/utils/Json.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ArrayHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_VolumeMeter.cpp"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_WS_FILTER_SETTINGS_EVENT_TEST_OWNER",
+          {
+            "not": "OS_WINDOWS"
+          }
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "plugins/obs-websocket/src/utils",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka",
+        {
+          "name": "X11::X11",
+          "requires": "OS_LINUX"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
+      ]
+    }
+  },
+  "tests": {
+    "test_ws_filter_settings_event": {
+      "target": "test_ws_filter_settings_event",
+      "suite": "qt"
+    }
+  }
+}

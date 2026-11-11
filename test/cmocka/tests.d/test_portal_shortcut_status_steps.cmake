@@ -11,4 +11,4 @@
 # libobs's hidden hotkey seams), so it does not link on its own, as
 # test_portal_shortcut_sets. The Tier 3 parity tests in rust/obs-hotkey
 # compare the shims with this C instead, and test_portal_shortcuts covers the
-# client end to end. Target and test are declared in ../build/test-graph.json.
+# client end to end. Target and test are declared in ../build/test-graph.d.

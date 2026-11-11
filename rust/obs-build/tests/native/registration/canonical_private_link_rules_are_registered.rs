@@ -26,9 +26,10 @@ fn expected() -> serde_json::Value {
 
 fn graph() -> Graph {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let expected = expected();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
@@ -113,5 +114,5 @@ fn canonical_private_link_rules_are_registered() {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "private_link_rules_runtime.rs"]
+#[path = "support/private_link_rules_runtime.rs"]
 mod runtime;

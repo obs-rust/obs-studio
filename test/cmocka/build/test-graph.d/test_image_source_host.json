@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_image_source_host": {
+      "sources": [
+        "test/cmocka/test_image_source_host.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          {
+            "not": "OS_MACOS"
+          }
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/image-source/image-source-host-posix.c.h",
+        "plugins/image-source/build/image-source-posix.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/image-source/image-file-version.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_image_source_host": {
+      "target": "test_image_source_host",
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          {
+            "not": "OS_MACOS"
+          }
+        ]
+      }
+    }
+  }
+}

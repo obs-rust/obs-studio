@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_camera_busy_dialog": {
+      "sources": [
+        "test/cmocka/test_camera_busy_dialog.cpp",
+        "frontend/build/frontend.dialogs-obscamerabusy+.hpp.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend"
+      ],
+      "libraries": [
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/dialogs/OBSCameraBusy.hpp"
+        ]
+      },
+      "sanitizers": "address,undefined",
+      "watch_inputs": [
+        "frontend/build/frontend-dialogs-obscamerabusy.pch.hpp",
+        "frontend/dialogs/OBSCameraBusy.cpp.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_camera_busy_dialog": {
+      "target": "test_camera_busy_dialog",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
+    }
+  }
+}

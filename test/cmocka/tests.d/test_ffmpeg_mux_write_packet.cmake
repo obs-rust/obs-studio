@@ -1,1 +1,1 @@
-# Registered once in test/cmocka/build/test-graph.json for Cargo and CMake.
+# Registered once in test/cmocka/build/test-graph.d for Cargo and CMake.

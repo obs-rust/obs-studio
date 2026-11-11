@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_volume_meter_snapshot": {
+      "sources": [
+        "test/cmocka/test_volume_meter_snapshot.cpp"
+      ],
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "frontend/components/VolumeMeterSnapshot.hpp"
+      ],
+      "libraries": [
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_volume_meter_snapshot": {
+      "target": "test_volume_meter_snapshot"
+    }
+  }
+}

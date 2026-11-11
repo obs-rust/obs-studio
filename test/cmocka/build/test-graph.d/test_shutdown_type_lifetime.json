@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_shutdown_type_lifetime": {
+      "sources": [
+        "test/cmocka/test_shutdown_type_lifetime.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_shutdown_type_lifetime": {
+      "target": "test_shutdown_type_lifetime",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

@@ -32,6 +32,11 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
 SANITIZE = ROOT / "rust" / "tools" / "sanitize"
 MODULE = SANITIZE / "sanitize.py"
@@ -135,7 +140,7 @@ TIMING_TESTS_D = (
     "test_slideshow_mem_cap",
 )
 TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_source_deinterlace", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker", "test_source_transition_video")
-TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.d"
 
 
 class TimingLockTest(unittest.TestCase):
@@ -143,14 +148,14 @@ class TimingLockTest(unittest.TestCase):
         for name in TIMING_TESTS_D:
             text = (ROOT / "test" / "cmocka" / "tests.d" / f"{name}.cmake").read_text(encoding="utf-8")
             self.assertRegex(text, rf"set_tests_properties\(\s*{name}\s[^)]*RESOURCE_LOCK\s+timing", name)
-        tests = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]
+        tests = load_graph(TEST_GRAPH)["tests"]
         for name in TIMING_TESTS_GRAPH:
             self.assertIn("timing", tests[name].get("resource_locks", []), name)
 
     def test_transition_video_has_exclusive_ctest_scheduling(self):
         # Its frame-bound callback assertions race a background texture trylock
         # under competing native-graphics load (#4468).
-        test = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]["test_source_transition_video"]
+        test = load_graph(TEST_GRAPH)["tests"]["test_source_transition_video"]
         self.assertTrue(test.get("run_serial"), "transition video must not compete with other CTest processes")
 
     def test_a_resource_lock_runs_alone_in_the_pool(self):
@@ -757,7 +762,7 @@ class UnwindPolicyTest(unittest.TestCase):
     def test_ffmpeg_linked_tests_keep_the_slow_unwinder(self):
         policy = self.module.unwind_policy()
         # Declared with FFmpeg:: or OBS::media-playback in tests.d/*.cmake and
-        # build/test-graph.json: a leak inside FFmpeg must still name its OBS
+        # build/test-graph.d: a leak inside FFmpeg must still name its OBS
         # caller, which the fast unwinder cannot (#2035).
         for name in ("test_media_alpha_network", "test_media_remux", "test_svt_av1", "test_ffmpeg_mux_helper"):
             self.assertIn(name, policy.ffmpeg, name)

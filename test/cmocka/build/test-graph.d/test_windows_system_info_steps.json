@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_windows_system_info_steps": {
+      "sources": [
+        "test/cmocka/test_windows_system_info_steps.c",
+        "libobs/obs-windows-system-info.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-windows-system-info.pch.h",
+        "libobs/obs-windows-system-info.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_windows_system_info_steps": {
+      "target": "test_windows_system_info_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

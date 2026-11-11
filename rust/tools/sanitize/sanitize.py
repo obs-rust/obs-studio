@@ -37,6 +37,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from ci.native_test_graph import load_graph
+
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent.parent.parent
 # One test binary gets 10 minutes, the same bound the shell's `timeout 600` set.
@@ -67,7 +70,7 @@ SKIPPED_TESTS = re.compile(r"^(test_formatted_filename|test_utf8)$")
 # Where the build declares cmocka test targets, for the unwinder selection
 # below: the declarative graph, one CMake fragment per test (#137), and the
 # directory's own CMake files for the tests that predate the fragments.
-TEST_GRAPH = "test/cmocka/build/test-graph.json"
+TEST_GRAPH = "test/cmocka/build/test-graph.d"
 TEST_FRAGMENTS = ("test/cmocka/CMakeLists.txt", "test/cmocka/*.cmake", "test/cmocka/tests.d/*.cmake")
 # A test can reach FFmpeg when its own link libraries name one of these.
 # OBS::libobs is deliberately not one of them: libobs links FFmpeg itself
@@ -214,8 +217,8 @@ def scan_unwind_policy(src: Path) -> UnwindPolicy:
     declared: set[str] = set()
     ffmpeg: set[str] = set()
     graph = src / TEST_GRAPH
-    if graph.is_file():
-        targets = json.loads(graph.read_text(encoding="utf-8")).get("targets", {})
+    if graph.exists():
+        targets = load_graph(graph).get("targets", {})
         for name, spec in targets.items():
             declared.add(name)
             if FFMPEG_LIBRARY.search(json.dumps(spec.get("libraries", []))):

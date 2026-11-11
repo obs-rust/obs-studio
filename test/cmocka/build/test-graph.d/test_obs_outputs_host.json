@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_outputs_host": {
+      "sources": [
+        "test/cmocka/test_obs_outputs_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-outputs/build/obs-outputs-host-posix.pch.h",
+        "plugins/obs-outputs/obs-outputs-host-posix.c.h",
+        "plugins/obs-outputs/obs-outputs-host.h",
+        "plugins/obs-outputs/utils.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_obs_outputs_host": {
+      "target": "test_obs_outputs_host",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    }
+  }
+}

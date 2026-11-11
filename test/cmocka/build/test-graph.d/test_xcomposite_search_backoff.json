@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_xcomposite_search_backoff": {
+      "sources": [
+        "test/cmocka/test_xcomposite_search_backoff.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/linux-capture/xcomposite-search.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_xcomposite_search_backoff": {
+      "target": "test_xcomposite_search_backoff",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_audio_seam": {
+      "sources": [
+        "test/cmocka/test_audio_seam.c",
+        "libobs/obs-audio-seam.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-audio-seam.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_audio_seam": {
+      "target": "test_audio_seam",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

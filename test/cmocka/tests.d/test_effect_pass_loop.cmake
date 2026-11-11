@@ -5,4 +5,4 @@
 # for the device functions and gs_get_effect: no graphics context. Linux only
 # (--gc-sections), as test_audio_buffering_subsample. The render tests cover
 # the loop through the real libobs.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_visibility_transition": {
+      "sources": [
+        "test/cmocka/test_visibility_transition.c",
+        "frontend/utility/visibility-transition.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "includes": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_visibility_transition": {
+      "target": "test_visibility_transition",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}"
+    }
+  }
+}

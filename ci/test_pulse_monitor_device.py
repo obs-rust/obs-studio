@@ -34,11 +34,16 @@ import time
 import unittest
 from pathlib import Path
 
+try:
+    from ci.native_test_graph import load_graph
+except ModuleNotFoundError:
+    from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = ROOT / "test" / "cmocka" / "test_pulse_monitor_device.py"
 SHELL_SCRIPT = ROOT / "test" / "cmocka" / "test_pulse_monitor_device.sh"
 WRAPPER = ROOT / "test" / "cmocka" / "test_pipewire_wrapper.py"
-GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.d"
 CI_TOML = ROOT / "ci.toml"
 EXCEPTION = 'path = "test/cmocka/test_pulse_monitor_device.sh"'
 CMAKE_CALLERS = tuple(
@@ -373,11 +378,11 @@ class PulseMonitorDeviceTest(unittest.TestCase):
     def test_wiring_is_complete(self) -> None:
         self.assertFalse(SHELL_SCRIPT.exists(), "test_pulse_monitor_device.sh should be gone")
         self.assertTrue(MODULE.is_file(), "test_pulse_monitor_device.py should exist")
-        graph = json.loads(GRAPH.read_text(encoding="utf-8"))
+        graph = load_graph(GRAPH)
         for caller in CMAKE_CALLERS:
             text = caller.read_text(encoding="utf-8")
             if caller.stem in graph["tests"]:
-                self.assertIn("test-graph.json", text, caller.name)
+                self.assertIn("test-graph.d", text, caller.name)
                 self.assertEqual(graph["tests"][caller.stem]["command"], GRAPH_COMMAND)
             else:
                 self.assertIn("uv run --script", text, caller.name)

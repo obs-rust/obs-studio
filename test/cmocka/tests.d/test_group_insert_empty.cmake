@@ -3,4 +3,4 @@
 # Each case forks a child with its own libobs and needs no video;
 # obs_startup() needs a display on Linux, so the test runs under xvfb-run when
 # it is installed and the cases skip without a display.
-# test_group_insert_empty is defined in build/test-graph.json.
+# test_group_insert_empty is defined in build/test-graph.d.

@@ -4,4 +4,4 @@
 # it and the obs_module_add_* calls that push onto a module's lists. The
 # accessors are hidden in libobs, so the test builds the seam into itself,
 # over a stand-in core and stand-in modules.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

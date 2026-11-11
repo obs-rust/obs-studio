@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_fallback_warning_queue": {
+      "sources": [
+        "test/cmocka/test_fallback_warning_queue.cpp",
+        "frontend/build/frontend.dialogs-obsfallbackwarning+.hpp.cpp",
+        "frontend/build/frontend.fallback-warning+.hpp.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "libraries": [
+        "OBS::fallback-warning-test-frontend",
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "cpp_standard": "17",
+      "includes": [
+        "frontend"
+      ],
+      "header_libraries": [
+        "OBS::libobs"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/dialogs/OBSFallbackWarning.hpp"
+        ]
+      },
+      "sanitizers": "address,undefined",
+      "watch_inputs": [
+        "frontend/build/frontend-dialogs-obsfallbackwarning.pch.hpp",
+        "frontend/build/frontend-fallback-warning.pch.hpp",
+        "frontend/dialogs/OBSFallbackWarning.cpp.hpp",
+        "frontend/utility/FallbackWarning.cpp.hpp",
+        "frontend/utility/FallbackWarning.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_fallback_warning_queue": {
+      "target": "test_fallback_warning_queue",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_group_reconfig_steps": {
+      "sources": [
+        "test/cmocka/test_encoder_group_reconfig_steps.c",
+        "libobs/obs-encoder-group-reconfig.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-encoder-group-reconfig.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_encoder_group_reconfig_steps": {
+      "target": "test_encoder_group_reconfig_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

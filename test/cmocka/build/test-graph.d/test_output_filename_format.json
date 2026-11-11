@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_filename_format": {
+      "sources": [
+        "test/cmocka/test_output_filename_format.c",
+        "frontend/utility/output-filename-format.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_filename_format": {
+      "target": "test_output_filename_format",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

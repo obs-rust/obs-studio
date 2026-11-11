@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vst_editor_close": {
+      "sources": [
+        "test/cmocka/test_vst_editor_close.cpp"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_VST_EDITOR_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "Qt6::Widgets"
+      ],
+      "cpp_standard": "17",
+      "artifact_definitions": {
+        "VST_MODULE_PATH": "test_vst_editor_close_module",
+        "VST_TEST_PLUGIN_PATH": "test_vst_editor_close_plugin"
+      },
+      "definitions": [
+        "VST_DATA_PATH=\"${source}/plugins/obs-vst/data\""
+      ]
+    }
+  },
+  "tests": {
+    "test_vst_editor_close": {
+      "target": "test_vst_editor_close",
+      "suite": "core",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_VST_EDITOR_TEST_OWNER",
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

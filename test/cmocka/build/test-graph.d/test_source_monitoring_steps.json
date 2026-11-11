@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_monitoring_steps": {
+      "sources": [
+        "test/cmocka/test_source_monitoring_steps.c",
+        "libobs/obs-source-monitoring.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-source-monitoring.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_monitoring_steps": {
+      "target": "test_source_monitoring_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

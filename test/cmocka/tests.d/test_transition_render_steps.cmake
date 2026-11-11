@@ -16,11 +16,11 @@
 # test_saved_transition, test_fade_to_color_mix,
 # test_transition_audio_rescale and test_group_hide_transition_audio cover
 # the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the nine hidden functions and includes only their header (no
 # obs.h, so no SIMDe), so it links the archive alone: its obs-source member
 # needs nothing from libobs or the other crates. Linking the archive directly
 # avoids exporting private symbols just for a test.
-# The Rust-static target and test are also declared in ../build/test-graph.json.
+# The Rust-static target and test are also declared in ../build/test-graph.d.

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_lookups": {
+      "sources": [
+        "test/cmocka/test_effect_lookups.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_effect_lookups": {
+      "target": "test_effect_lookups",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

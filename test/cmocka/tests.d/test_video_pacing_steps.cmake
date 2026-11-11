@@ -12,4 +12,4 @@
 # test_encoder_group_null, test_encoder_lifecycle_steps,
 # test_encoder_audio_start_steps and test_media_restart_stale_frame cover the
 # caller through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ws_list_property_items": {
+      "sources": [
+        "test/cmocka/test_ws_list_property_items.cpp",
+        "plugins/obs-websocket/src/utils/Json.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ArrayHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_NumberHelper.cpp",
+        "plugins/obs-websocket/src/utils/Obs_ObjectHelper.cpp"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_WS_LIST_PROPERTY_ITEMS_TEST_OWNER",
+          "OS_LINUX"
+        ]
+      },
+      "includes": [
+        "plugins/obs-websocket/src",
+        "frontend/api"
+      ],
+      "cpp_standard": "17",
+      "configured_headers": {
+        "plugin-macros.generated.h": {
+          "input": "plugins/obs-websocket/src/plugin-macros.h.in",
+          "values": {
+            "obs-websocket_VERSION": "0.0.0",
+            "OBS_WEBSOCKET_RPC_VERSION": "1"
+          }
+        }
+      },
+      "libraries": [
+        "OBS::libobs",
+        "nlohmann_json::nlohmann_json",
+        "OBS::native-test-cmocka"
+      ],
+      "compile_options": [
+        "-Wno-error=deprecated-declarations"
+      ],
+      "watch_inputs": [
+        "plugins/obs-websocket/src/plugin-macros.h.in"
+      ]
+    }
+  },
+  "tests": {
+    "test_ws_list_property_items": {
+      "target": "test_ws_list_property_items",
+      "suite": "qt"
+    }
+  }
+}

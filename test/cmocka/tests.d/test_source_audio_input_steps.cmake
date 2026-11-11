@@ -10,11 +10,11 @@
 # libobs, so this characterizes that C source; the test calls only them.
 # test_source_audio_balance_mono, test_audio_restart_resampler_tail and
 # test_audio_clock_drift cover the caller through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the seven hidden functions and includes only their header, so it
 # links the archive alone: its obs-source member needs nothing from libobs or
 # the other crates. Linking the archive directly avoids exporting private
 # symbols just for a test.
-# The Rust-static target and test are also declared in ../build/test-graph.json.
+# The Rust-static target and test are also declared in ../build/test-graph.d.

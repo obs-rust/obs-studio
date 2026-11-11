@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_list_remove": {
+      "sources": [
+        "test/cmocka/test_scene_list_remove.c",
+        "frontend/utility/scene-list-remove.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_list_remove": {
+      "target": "test_scene_list_remove",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

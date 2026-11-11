@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "obs-x264-test": {
+      "sources": [
+        "plugins/obs-x264/build/obs-x264-test.core+.h.c"
+      ],
+      "requires": "HAVE_X264_TEST_OWNER",
+      "compile_options": [
+        {
+          "name": "-Wno-strict-prototypes",
+          "requires": "C_COMPILER_CLANG"
+        }
+      ],
+      "libraries": [
+        "OBS::opts-parser"
+      ]
+    }
+  },
+  "tests": {
+    "obs-x264-test": {
+      "target": "obs-x264-test",
+      "requires": "HAVE_X264_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

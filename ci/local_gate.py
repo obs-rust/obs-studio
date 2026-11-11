@@ -675,6 +675,14 @@ def check_feature_sets() -> None:
     print(f"+ Cargo feature sets: {len(FEATURE_SETS)} runs, every feature built on and off", flush=True)
 
 
+def native_registration_fmt(fix: bool) -> None:
+    """Cargo fmt cannot follow the OUT_DIR include used for module discovery."""
+    directory = ROOT / "rust/obs-build/tests/native/registration"
+    sources = sorted(str(path.relative_to(ROOT)) for path in directory.rglob("*.rs"))
+    run(["soldr", "rustfmt", "--edition", "2024", "--config", "skip_children=true",
+         *([] if fix else ["--check"]), *sources], env=soldr_env())
+
+
 def lane_lint(fix: bool) -> None:
     files = tracked_files()
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
@@ -691,6 +699,7 @@ def lane_lint(fix: bool) -> None:
     perf_guard_lint()
     knowledge_lint(fix)
     soldr_cargo(["fmt", "--all"] + ([] if fix else ["--check"]))
+    native_registration_fmt(fix)
     soldr_cargo(["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"])
     for args in FEATURE_SETS:
         soldr_cargo(["clippy", *args, "--all-targets", "--locked", "--", "-D", "warnings"])
@@ -888,6 +897,7 @@ def native_rust_checks() -> None:
     soldr_cargo(["test", "--workspace", "--locked"])
     soldr_cargo(["clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"])
     soldr_cargo(["fmt", "--all", "--check"])
+    native_registration_fmt(False)
 
 
 def lane_macos_native(fix: bool) -> None:

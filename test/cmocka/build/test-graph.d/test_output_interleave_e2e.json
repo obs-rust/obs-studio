@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_interleave_e2e": {
+      "sources": [
+        "test/cmocka/test_output_interleave_e2e.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_interleave_e2e": {
+      "target": "test_output_interleave_e2e",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    }
+  }
+}

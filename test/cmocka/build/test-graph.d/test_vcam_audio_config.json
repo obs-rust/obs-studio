@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vcam_audio_config": {
+      "sources": [
+        "frontend/tests/test_vcam_audio_config.cpp"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "watch_inputs": [
+        "frontend/utility/VCamAudio.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_vcam_audio_config": {
+      "target": "test_vcam_audio_config",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+    }
+  }
+}

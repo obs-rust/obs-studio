@@ -5,7 +5,7 @@ use super::*;
 fn canonical_frontend_api_call_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.d"))
             .unwrap();
     let target = graph
         .targets
@@ -22,7 +22,7 @@ fn canonical_frontend_api_call_is_registered() {
     assert_eq!(test.timeout_seconds, Some(60));
     assert_eq!(test.qt_runtime.as_deref(), Some("Qt6::Core"));
     let mut qt =
-        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.json"))
+        obs_build::validation::graph::Graph::load(&root.join("test/cmocka/build/test-graph.d"))
             .unwrap();
     qt.retain_suite("qt");
     for have_core in [false, true] {
