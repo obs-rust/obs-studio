@@ -825,6 +825,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
     )
     .expect("write canvas setter extract");
+    std::fs::write(
+        extract_dir.join("raw-audio-main-getter.inc"),
+        extract_c(&libobs.join("obs.c.h"), "audio_t *obs_get_audio(void)", "}"),
+    )
+    .expect("write existing main audio getter");
     oracle.include(&extract_dir);
 
     oracle

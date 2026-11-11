@@ -19,6 +19,6 @@ pub trait Audio {
 /// Forward the full mix index and unchanged identities exactly once, even when
 /// the initialized core has no audio output or the tuple is not registered.
 pub fn remove<A: Audio>(audio: &mut A, mix: usize, callback: A::Callback, param: A::Param) {
-    let _ = (audio, mix, callback, param);
-    todo!("obs_remove_raw_audio_callback")
+    let output = audio.main_audio();
+    audio.disconnect(output, mix, callback, param);
 }
