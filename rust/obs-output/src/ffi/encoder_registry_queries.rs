@@ -1,6 +1,7 @@
 //! Keep registry lookup in libobs and borrow fields through its real layout.
 use crate::encoder_registry_queries;
 use core::ffi::{c_char, c_int, c_void};
+use obs_util::ffi::encoder_type_lookup::find_encoder;
 
 #[repr(C)]
 pub struct RegistryQueryFields {
@@ -9,7 +10,6 @@ pub struct RegistryQueryFields {
 }
 
 unsafe extern "C" {
-    fn find_encoder(id: *const c_char) -> *const c_void;
     fn obs_encoder_registry_query_fields(info: *const c_void) -> RegistryQueryFields;
 }
 

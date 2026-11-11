@@ -2349,6 +2349,14 @@ extern struct obs_encoder_set_name_fields obs_encoder_set_name_fields(obs_encode
 
 extern struct obs_encoder_info *find_encoder(const char *id);
 
+/* Private borrowed encoder-type snapshot, measured against the real C header. */
+struct obs_encoder_type_info_fields {
+	const char *(*get_name)(void *type_data);
+	void *type_data;
+	const char *codec;
+};
+struct obs_encoder_type_info_fields obs_encoder_type_info_fields(const struct obs_encoder_info *info);
+
 /* Read-only registry metadata addresses; registered info remains C-owned. */
 struct obs_encoder_registry_query_fields {
 	const enum obs_encoder_type *kind;

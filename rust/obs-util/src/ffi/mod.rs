@@ -15,6 +15,7 @@ pub mod dbus_inhibit;
 pub mod deque;
 pub mod dstr;
 pub mod dstr_libc;
+pub mod encoder_type_lookup;
 pub mod file_serializer;
 pub mod lexer;
 #[cfg(unix)]
