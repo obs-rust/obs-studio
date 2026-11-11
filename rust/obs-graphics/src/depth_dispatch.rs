@@ -17,6 +17,10 @@ pub trait Host {
     fn debug(&mut self, function: &'static str, reason: &'static str);
     fn dispatch(&mut self, command: Command);
 }
-pub fn command(_host: &mut impl Host, _command: Command) {
-    todo!("depth-state Rust swap")
+pub fn command(host: &mut impl Host, command: Command) {
+    if !host.has_context() {
+        host.debug(command.function(), "called while not in a graphics context");
+        return;
+    }
+    host.dispatch(command);
 }

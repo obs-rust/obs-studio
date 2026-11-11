@@ -642,6 +642,7 @@ fn main() {
         "texture-planar-creators",
         "texture-metadata",
         "texture-cube-access",
+        "state-depth-entrypoints",
         "timer-dispatch",
         "timer-range-dispatch",
         "voltexture-metadata",

@@ -7,7 +7,9 @@ pub(super) struct Fixture {
     pub logs: Vec<String>,
 }
 impl Host for Fixture {
-    fn has_context(&self) -> bool { self.device.is_some() }
+    fn has_context(&self) -> bool {
+        self.device.is_some()
+    }
     fn debug(&mut self, function: &'static str, reason: &'static str) {
         self.logs.push(format!("{function}: {reason}"));
     }
@@ -19,11 +21,22 @@ impl Host for Fixture {
 fn test_depth_dispatch_missing_context() {
     let mut host = Fixture::default();
     for phase in 0..2 {
-        if phase == 1 { host.device = Some(0); host.device = None; }
-        for command in [Command::Enable(false), Command::Enable(true)].into_iter()
-            .chain((0..8).map(Command::Function)) {
+        if phase == 1 {
+            host.device = Some(0);
+            host.device = None;
+        }
+        for command in [Command::Enable(false), Command::Enable(true)]
+            .into_iter()
+            .chain((0..8).map(Command::Function))
+        {
             depth_dispatch::command(&mut host, command);
-            assert_eq!(host.logs, [format!("{}: called while not in a graphics context", command.function())]);
+            assert_eq!(
+                host.logs,
+                [format!(
+                    "{}: called while not in a graphics context",
+                    command.function()
+                )]
+            );
             assert!(host.events.is_empty());
             host.logs.clear();
         }
@@ -50,8 +63,20 @@ fn test_depth_dispatch_forwarding() {
                 function_calls += 1;
                 assert_eq!(host.events.len(), before + 1 + repeat);
                 assert_eq!(host.events.last(), Some(&(device, command)));
-                assert_eq!(host.events.iter().filter(|(_, c)| matches!(c, Command::Enable(_))).count(), enable_calls);
-                assert_eq!(host.events.iter().filter(|(_, c)| matches!(c, Command::Function(_))).count(), function_calls);
+                assert_eq!(
+                    host.events
+                        .iter()
+                        .filter(|(_, c)| matches!(c, Command::Enable(_)))
+                        .count(),
+                    enable_calls
+                );
+                assert_eq!(
+                    host.events
+                        .iter()
+                        .filter(|(_, c)| matches!(c, Command::Function(_)))
+                        .count(),
+                    function_calls
+                );
                 assert!(host.logs.is_empty());
             }
         }
