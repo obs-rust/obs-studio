@@ -2,9 +2,13 @@
 
 /// Missing and mismatched sources never read their context or acquire ownership.
 pub fn from_source<T: Default>(
-    _id: Option<&[u8]>,
-    _expected: &[u8],
-    _read_context: impl FnOnce() -> T,
+    id: Option<&[u8]>,
+    expected: &[u8],
+    read_context: impl FnOnce() -> T,
 ) -> T {
-    todo!("port the borrowed scene/source conversion")
+    if id == Some(expected) {
+        read_context()
+    } else {
+        T::default()
+    }
 }

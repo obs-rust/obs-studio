@@ -10,13 +10,14 @@ const struct obs_source_info scene_info = {.id = "scene"};
 const struct obs_source_info group_info = {.id = "group"};
 #undef scene_info
 #undef group_info
+#include "scene_from_source_fields.inc"
 
 typedef obs_scene_t *(*from_source_fn)(const obs_source_t *);
 unsigned oracle_scene_from_source_probe(const char *id, unsigned bits, from_source_fn scene_getter,
-				       from_source_fn group_getter);
+					from_source_fn group_getter);
 
 unsigned oracle_scene_from_source_probe(const char *id, unsigned bits, from_source_fn scene_getter,
-				       from_source_fn group_getter)
+					from_source_fn group_getter)
 {
 	struct obs_source source = {0};
 	struct obs_weak_source control = {0};
