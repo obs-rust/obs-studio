@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83299,
-      "libobs": 93814,
+      "libobs": 94283,
       "plugins": 148451,
       "shared": 15968
     },
-    "percent": 15.95,
-    "ported_lines": 54490,
-    "total_lines": 341532
+    "percent": 16.08,
+    "ported_lines": 54998,
+    "total_lines": 342001
   },
-  "commit": "3e4035b",
-  "date": "2026-11-10",
+  "commit": "4cbae5d",
+  "date": "2026-11-11",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 48.46,
-          "ported_lines": 30502,
-          "total_lines": 62949
+          "percent": 48.6,
+          "ported_lines": 30782,
+          "total_lines": 63335
         },
         "graphics": {
-          "percent": 66.98,
-          "ported_lines": 9427,
-          "total_lines": 14075
+          "percent": 68.19,
+          "ported_lines": 9655,
+          "total_lines": 14158
         },
         "media-io": {
           "percent": 78.57,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 627,
-      "hybrid_lines": 39324,
-      "percent": 58.08,
-      "ported_lines": 54490,
-      "total_lines": 93814
+      "files": 658,
+      "hybrid_lines": 39285,
+      "percent": 58.33,
+      "ported_lines": 54998,
+      "total_lines": 94283
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 50.29,
-            "ported_lines": 29149,
-            "total_lines": 57960
+            "percent": 50.44,
+            "ported_lines": 29429,
+            "total_lines": 58346
           },
           "graphics": {
-            "percent": 67.48,
-            "ported_lines": 9367,
-            "total_lines": 13881
+            "percent": 68.71,
+            "ported_lines": 9595,
+            "total_lines": 13964
           },
           "media-io": {
             "percent": 78.57,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 592,
-        "hybrid_lines": 35005,
-        "percent": 58.97,
+        "files": 623,
+        "hybrid_lines": 34966,
+        "percent": 59.24,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -116,6 +116,7 @@
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
           "graphics/libnsgif/gif-blocks.c.h",
           "graphics/libnsgif/gif-frame.c.h",
@@ -128,12 +129,15 @@
           "graphics/quat.c.h",
           "graphics/shader-file-validators.c.h",
           "graphics/shader-file.c.h",
+          "graphics/shader-param-introspection.c.h",
           "graphics/shader-param-names.c.h",
           "graphics/shader-param-values.c.h",
           "graphics/shader-parser-blocks.c.h",
           "graphics/shader-sampler-convert.c.h",
           "graphics/stagesurface-getters.c.h",
           "graphics/state-blend-entrypoints.c.h",
+          "graphics/state-depth-entrypoints.c.h",
+          "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
           "graphics/texture-metadata.c.h",
           "graphics/texture-planar-creators.c.h",
@@ -208,7 +212,9 @@
           "obs-encoder-group-reconfig.c.h",
           "obs-encoder-last-error.c.h",
           "obs-encoder-lifecycle.c.h",
+          "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
+          "obs-encoder-module.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
           "obs-encoder-preferred-color-space.c.h",
@@ -225,6 +231,7 @@
           "obs-encoder-size.c.h",
           "obs-encoder-state-queries.c.h",
           "obs-enum-modules.c.h",
+          "obs-find-modules.c.h",
           "obs-hevc.c.h",
           "obs-hotkey-background-app-id.c.h",
           "obs-hotkey-background-error.c.h",
@@ -291,6 +298,7 @@
           "obs-output-interleave.c.h",
           "obs-output-mixer-getters.c.h",
           "obs-output-mixer-setters.c.h",
+          "obs-output-module.c.h",
           "obs-output-pause-queries.c.h",
           "obs-output-pause.c.h",
           "obs-output-properties.c.h",
@@ -325,8 +333,11 @@
           "obs-scene-bounds-place.c.h",
           "obs-scene-bounds.c.h",
           "obs-scene-coords.c.h",
+          "obs-scene-create-reference-helpers.c.h",
+          "obs-scene-create.c.h",
           "obs-scene-crop.c.h",
           "obs-scene-extent.c.h",
+          "obs-scene-from-source.c.h",
           "obs-scene-group-queries.c.h",
           "obs-scene-group-transform.c.h",
           "obs-scene-item-audio-actions.c.h",
@@ -403,6 +414,8 @@
           "obs-source-identity-getters.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
+          "obs-source-media-getters.c.h",
+          "obs-source-module.c.h",
           "obs-source-monitoring.c.h",
           "obs-source-ptm-gate.c.h",
           "obs-source-push-queries.c.h",
@@ -478,20 +491,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 50304,
-        "total_lines": 85309
+        "ported_lines": 50812,
+        "total_lines": 85778
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 49.33,
-            "ported_lines": 25667,
-            "total_lines": 52035
+            "percent": 49.5,
+            "ported_lines": 25947,
+            "total_lines": 52421
           },
           "graphics": {
-            "percent": 67.48,
-            "ported_lines": 9367,
-            "total_lines": 13881
+            "percent": 68.71,
+            "ported_lines": 9595,
+            "total_lines": 13964
           },
           "media-io": {
             "percent": 78.57,
@@ -504,9 +517,9 @@
             "total_lines": 9978
           }
         },
-        "files": 573,
-        "hybrid_lines": 32562,
-        "percent": 58.94,
+        "files": 604,
+        "hybrid_lines": 32523,
+        "percent": 59.23,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -540,6 +553,7 @@
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
           "graphics/libnsgif/gif-blocks.c.h",
           "graphics/libnsgif/gif-frame.c.h",
@@ -552,12 +566,15 @@
           "graphics/quat.c.h",
           "graphics/shader-file-validators.c.h",
           "graphics/shader-file.c.h",
+          "graphics/shader-param-introspection.c.h",
           "graphics/shader-param-names.c.h",
           "graphics/shader-param-values.c.h",
           "graphics/shader-parser-blocks.c.h",
           "graphics/shader-sampler-convert.c.h",
           "graphics/stagesurface-getters.c.h",
           "graphics/state-blend-entrypoints.c.h",
+          "graphics/state-depth-entrypoints.c.h",
+          "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
           "graphics/texture-metadata.c.h",
           "graphics/texture-planar-creators.c.h",
@@ -633,7 +650,9 @@
           "obs-encoder-group-reconfig.c.h",
           "obs-encoder-last-error.c.h",
           "obs-encoder-lifecycle.c.h",
+          "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
+          "obs-encoder-module.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
           "obs-encoder-preferred-color-space.c.h",
@@ -650,6 +669,7 @@
           "obs-encoder-size.c.h",
           "obs-encoder-state-queries.c.h",
           "obs-enum-modules.c.h",
+          "obs-find-modules.c.h",
           "obs-hevc.c.h",
           "obs-hotkey-background-app-id.c.h",
           "obs-hotkey-background-error.c.h",
@@ -704,6 +724,7 @@
           "obs-output-interleave.c.h",
           "obs-output-mixer-getters.c.h",
           "obs-output-mixer-setters.c.h",
+          "obs-output-module.c.h",
           "obs-output-pause-queries.c.h",
           "obs-output-pause.c.h",
           "obs-output-properties.c.h",
@@ -738,8 +759,11 @@
           "obs-scene-bounds-place.c.h",
           "obs-scene-bounds.c.h",
           "obs-scene-coords.c.h",
+          "obs-scene-create-reference-helpers.c.h",
+          "obs-scene-create.c.h",
           "obs-scene-crop.c.h",
           "obs-scene-extent.c.h",
+          "obs-scene-from-source.c.h",
           "obs-scene-group-queries.c.h",
           "obs-scene-group-transform.c.h",
           "obs-scene-item-audio-actions.c.h",
@@ -816,6 +840,8 @@
           "obs-source-identity-getters.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
+          "obs-source-media-getters.c.h",
+          "obs-source-module.c.h",
           "obs-source-monitoring.c.h",
           "obs-source-ptm-gate.c.h",
           "obs-source-push-queries.c.h",
@@ -889,20 +915,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 46743,
-        "total_lines": 79305
+        "ported_lines": 47251,
+        "total_lines": 79774
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 49.58,
-            "ported_lines": 26608,
-            "total_lines": 53666
+            "percent": 49.74,
+            "ported_lines": 26888,
+            "total_lines": 54052
           },
           "graphics": {
-            "percent": 67.05,
-            "ported_lines": 9427,
-            "total_lines": 14060
+            "percent": 68.27,
+            "ported_lines": 9655,
+            "total_lines": 14143
           },
           "media-io": {
             "percent": 78.57,
@@ -915,9 +941,9 @@
             "total_lines": 10704
           }
         },
-        "files": 584,
-        "hybrid_lines": 33920,
-        "percent": 58.55,
+        "files": 615,
+        "hybrid_lines": 33881,
+        "percent": 58.84,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -954,6 +980,7 @@
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
           "graphics/libnsgif/gif-blocks.c.h",
           "graphics/libnsgif/gif-frame.c.h",
@@ -966,12 +993,15 @@
           "graphics/quat.c.h",
           "graphics/shader-file-validators.c.h",
           "graphics/shader-file.c.h",
+          "graphics/shader-param-introspection.c.h",
           "graphics/shader-param-names.c.h",
           "graphics/shader-param-values.c.h",
           "graphics/shader-parser-blocks.c.h",
           "graphics/shader-sampler-convert.c.h",
           "graphics/stagesurface-getters.c.h",
           "graphics/state-blend-entrypoints.c.h",
+          "graphics/state-depth-entrypoints.c.h",
+          "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
           "graphics/texture-metadata.c.h",
           "graphics/texture-planar-creators.c.h",
@@ -1046,7 +1076,9 @@
           "obs-encoder-group-reconfig.c.h",
           "obs-encoder-last-error.c.h",
           "obs-encoder-lifecycle.c.h",
+          "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
+          "obs-encoder-module.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
           "obs-encoder-preferred-color-space.c.h",
@@ -1063,6 +1095,7 @@
           "obs-encoder-size.c.h",
           "obs-encoder-state-queries.c.h",
           "obs-enum-modules.c.h",
+          "obs-find-modules.c.h",
           "obs-hevc.c.h",
           "obs-hotkey-background-app-id.c.h",
           "obs-hotkey-background-error.c.h",
@@ -1117,6 +1150,7 @@
           "obs-output-interleave.c.h",
           "obs-output-mixer-getters.c.h",
           "obs-output-mixer-setters.c.h",
+          "obs-output-module.c.h",
           "obs-output-pause-queries.c.h",
           "obs-output-pause.c.h",
           "obs-output-properties.c.h",
@@ -1151,8 +1185,11 @@
           "obs-scene-bounds-place.c.h",
           "obs-scene-bounds.c.h",
           "obs-scene-coords.c.h",
+          "obs-scene-create-reference-helpers.c.h",
+          "obs-scene-create.c.h",
           "obs-scene-crop.c.h",
           "obs-scene-extent.c.h",
+          "obs-scene-from-source.c.h",
           "obs-scene-group-queries.c.h",
           "obs-scene-group-transform.c.h",
           "obs-scene-item-audio-actions.c.h",
@@ -1229,6 +1266,8 @@
           "obs-source-identity-getters.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
+          "obs-source-media-getters.c.h",
+          "obs-source-module.c.h",
           "obs-source-monitoring.c.h",
           "obs-source-ptm-gate.c.h",
           "obs-source-push-queries.c.h",
@@ -1307,12 +1346,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 47921,
-        "total_lines": 81841
+        "ported_lines": 48429,
+        "total_lines": 82310
       }
     }
   },
   "rust": {
-    "lines": 206193
+    "lines": 207705
   }
 }
