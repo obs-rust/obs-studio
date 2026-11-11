@@ -1,5 +1,8 @@
 //! Tier 1: assertions from test/cmocka/test_object_ref.c over safe fixtures.
-use obs_core::{canvas_ref, object_ref::{self, Host}};
+use obs_core::{
+    canvas_ref,
+    object_ref::{self, Host},
+};
 use obs_util::platform::CLongAtomic;
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -18,9 +21,18 @@ struct Fixture {
 
 impl Fixture {
     fn new(kind: u32, refs: i32, weak: i32) -> Self {
-        Self { initialized: true, object: true, kind,
-            refs: CLongAtomic::new(refs.into()), weak: CLongAtomic::new(weak.into()),
-            stored: Some(42), warnings: 0, destroys: 0, at_destroy: None, freed: false }
+        Self {
+            initialized: true,
+            object: true,
+            kind,
+            refs: CLongAtomic::new(refs.into()),
+            weak: CLongAtomic::new(weak.into()),
+            stored: Some(42),
+            warnings: 0,
+            destroys: 0,
+            at_destroy: None,
+            freed: false,
+        }
     }
     fn acquire(&self, object: bool, control: bool) -> Option<usize> {
         object_ref::get_ref((object && control).then_some((&self.refs, self.stored))).flatten()
@@ -29,13 +41,25 @@ impl Fixture {
 
 impl Host for Fixture {
     type Control = ();
-    fn initialized(&self) -> bool { self.initialized }
-    fn warn_shutdown(&mut self) { self.warnings += 1; }
-    fn control(&self) -> Option<()> { self.object.then_some(()) }
-    fn strong(&self, (): ()) -> &CLongAtomic { &self.refs }
+    fn initialized(&self) -> bool {
+        self.initialized
+    }
+    fn warn_shutdown(&mut self) {
+        self.warnings += 1;
+    }
+    fn control(&self) -> Option<()> {
+        self.object.then_some(())
+    }
+    fn strong(&self, (): ()) -> &CLongAtomic {
+        &self.refs
+    }
     fn destroy(&mut self) {
         self.destroys += 1;
-        self.at_destroy = Some((17, i128::from(self.refs.load(SeqCst)), i128::from(self.weak.load(SeqCst))));
+        self.at_destroy = Some((
+            17,
+            i128::from(self.refs.load(SeqCst)),
+            i128::from(self.weak.load(SeqCst)),
+        ));
     }
     fn release_weak(&mut self, (): ()) {
         assert_eq!(self.destroys, 1);

@@ -47,6 +47,7 @@ pub mod module_type_rules;
 pub mod monitoring_device_getter;
 pub mod nix_system_info;
 pub mod object_queries;
+pub mod object_ref;
 pub mod object_validity_query;
 pub mod output_protocol_registry;
 pub mod source_load;

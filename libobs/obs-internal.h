@@ -889,6 +889,10 @@ const volatile long *obs_weak_object_expired_field(const obs_weak_object_t *weak
 
 typedef void (*obs_destroy_cb)(void *obj);
 
+/* Private common-context operations; callers reject NULL before access. */
+obs_weak_object_t *obs_object_ref_control(const obs_object_t *object);
+void obs_object_ref_destroy(obs_object_t *object);
+
 #include "obs-object-query-fields.h"
 #include "obs-scene-group-query-fields.h"
 #include "obs-scene-item-parent-fields.h"

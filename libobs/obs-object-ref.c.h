@@ -1,4 +1,4 @@
-#include "libobs/build/libobs.pch.h"
+#include "libobs/build/libobs-ported-service-getters.pch.h"
 
 obs_object_t *obs_object_get_ref(obs_object_t *object)
 {

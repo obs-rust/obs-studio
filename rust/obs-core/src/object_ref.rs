@@ -2,8 +2,8 @@
 use obs_util::platform::CLongAtomic;
 
 /// Upgrade a live control, returning its stored identity (which may be NULL).
-pub fn get_ref<T: Copy>(_control: Option<(&CLongAtomic, T)>) -> Option<T> {
-    todo!("object reference acquisition")
+pub fn get_ref<T: Copy>(control: Option<(&CLongAtomic, T)>) -> Option<T> {
+    crate::canvas_ref::acquire(control)
 }
 
 /// Private context access and lifetime effects supplied by the boundary.
@@ -18,6 +18,16 @@ pub trait Host {
 }
 
 /// Release the strong owner, destroying before releasing its weak owner.
-pub fn release<H: Host>(_host: &mut H) {
-    todo!("object reference release")
+pub fn release<H: Host>(host: &mut H) {
+    if !host.initialized() {
+        host.warn_shutdown();
+        return;
+    }
+    let Some(control) = host.control() else {
+        return;
+    };
+    if crate::canvas_ref::release(Some(host.strong(control))) {
+        host.destroy();
+        host.release_weak(control);
+    }
 }
