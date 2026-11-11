@@ -42,6 +42,7 @@ fn assert_cases(output: &Output, name: &str) {
         "test_source_filter_chain_steps_rust" => 12,
         "test_transition_clock_steps_rust" => 20,
         "test_transition_sample_time_steps_rust" => 9,
+        "test_video_stop_requested_rust" => 1,
         _ => panic!("unknown fixture {name}"),
     };
     assert!(
@@ -70,6 +71,7 @@ fn assert_binding(binary: &Path, core: &Path) {
                 | "test_source_duplicate_steps_rust"
                 | "test_source_filter_chain_steps_rust"
                 | "test_transition_sample_time_steps_rust"
+                | "test_video_stop_requested_rust"
         ));
         assert!(!text.contains("not found"), "{text}");
         eprintln!(
