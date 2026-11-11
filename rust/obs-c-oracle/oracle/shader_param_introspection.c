@@ -109,7 +109,7 @@ void oracle_spi_reset(bool present, int count, bool found, int type, const char 
 	spi_name = name;
 	spi_writes = writes;
 	memset(spi_calls, 0, sizeof(spi_calls));
-	memset(spi_seen, 0, sizeof(spi_seen));
+	memset((void *)spi_seen, 0, sizeof(spi_seen));
 	spi_index = spi_logs = spi_events = 0;
 	spi_level = 0;
 	spi_text[0] = spi_order[0] = 0;
