@@ -45,17 +45,12 @@ unsafe extern "C" {
 
 enum Libobs {}
 impl Calls for Libobs {
-    #[inline(always)]
     fn find() -> Find {
         obs_module_paths_find
     }
-    // Keep host-only references in the production traversal instantiation.
-    // Standalone parity consumers instantiate Search with their own Calls.
-    #[inline(always)]
     fn extension() -> Extension {
         get_module_extension
     }
-    #[inline(always)]
     fn hook() -> Hook {
         Some(obs_host_add_module_extension)
     }
