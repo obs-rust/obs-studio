@@ -10250,6 +10250,21 @@
         }
       ]
     },
+    "test_present_entrypoints": {
+      "sources": [
+        "test/cmocka/test_present_entrypoints.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_preview_audio_sources": {
       "sources": [
         "test/cmocka/test_preview_audio_sources.cpp",
@@ -22553,6 +22568,12 @@
         "${target}"
       ],
       "timeout_seconds": 60
+    },
+    "test_present_entrypoints": {
+      "target": "test_present_entrypoints",
+      "command": [
+        "${target}"
+      ]
     },
     "test_preview_audio_sources": {
       "target": "test_preview_audio_sources",
