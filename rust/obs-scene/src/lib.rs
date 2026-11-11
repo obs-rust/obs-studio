@@ -3,7 +3,10 @@
 //! `libobs/obs-scene-bounds-place.c.h`, `libobs/obs-scene-coords.c.h`,
 //! `libobs/obs-scene-group-transform.c.h`,
 //! `libobs/obs-scene-audio-actions.c.h` and its item side,
-//! `libobs/obs-scene-item-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
+//! `libobs/obs-scene-item-audio-actions.c.h`,
+//! `libobs/obs-scene-item-hotkeys.c.h` (the show and hide callbacks of a
+//! scene item's visibility hotkey pair and the rename handler that rewrites
+//! their descriptions), `libobs/obs-scene-extent.c.h`,
 //! `libobs/obs-scene-crop.c.h`, `libobs/obs-scene-render-plan.c.h` (the
 //! per-item render decisions of `render_item` and `render_item_texture`),
 //! `libobs/obs-scene-item-names.c.h` (the scene item save/load names and
@@ -28,7 +31,8 @@
 //! crop setter).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
-//! [`group_transform`], [`audio_actions`], [`item_audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
+//! [`group_transform`], [`audio_actions`], [`item_audio_actions`],
+//! [`item_hotkeys`], [`audio_window`], [`audio_mix`], [`extent`],
 //! [`crop`], [`render_plan`], [`item_names`], [`item_order`],
 //! [`item_transform`], [`transform_update`], [`color_space`] and
 //! [`item_crop_setter`]. The C ABI shims live in [`ffi`].
