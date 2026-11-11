@@ -7,7 +7,7 @@
 #include "libobs/graphics/effect-parser.c.h"
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics.c.h"
-#include "libobs/graphics/indexbuffer-create.c.h"
+#include "libobs/graphics/indexbuffer-create-fields.c.h"
 #include "libobs/graphics/matrix-entrypoints.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/shader-parser.c.h"
