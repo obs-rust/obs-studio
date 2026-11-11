@@ -48,7 +48,7 @@ fn check(modules: &[(Vec<Vec<u8>>, i32)], split: usize, query: Option<&[u8]>) {
     let mut rust = [0; 9];
     let mut c = [0; 9];
     // SAFETY: the serialized C fixture owns real module layouts and roots. All input
-    // arrays and NUL-terminated strings live through both calls; encoders have nine slots.
+    // arrays and NUL-terminated strings live through both calls; output buffers have nine slots.
     unsafe {
         oracle_encoder_module_run(
             obs_encoder_get_module,

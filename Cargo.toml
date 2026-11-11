@@ -69,6 +69,11 @@ lto = "thin"
 [profile.release.package.obs-hotkey]
 codegen-units = 256
 
+# Standalone encoder consumers must not pull module lookup's core-global
+# adapter when release codegen groups unrelated encoder FFI modules.
+[profile.release.package.obs-encoder]
+codegen-units = 256
+
 # Standalone scene-rule fixtures must not pull source-lifetime calls from the
 # transition setter shims into the same optimized archive member.
 # Standalone scene-rule consumers must not pull the atomic callback shim and
@@ -87,11 +92,6 @@ codegen-units = 256
 # adapter merely because release codegen groups unrelated source FFI modules.
 # Keep the source modules separate, matching the other standalone consumers.
 [profile.release.package.obs-source]
-codegen-units = 256
-
-# Standalone encoder consumers must not pull module lookup's core-global
-# adapter when release codegen groups unrelated encoder FFI modules.
-[profile.release.package.obs-encoder]
 codegen-units = 256
 
 # Standalone graphics fixtures must not pull shader-file I/O and logging into

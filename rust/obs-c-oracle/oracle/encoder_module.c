@@ -19,9 +19,9 @@ enum obs_module_load_state oracle_obs_encoder_load_state(const char *id);
 typedef obs_module_t *(*encoder_module_getter)(const char *);
 typedef enum obs_module_load_state (*encoder_module_state)(const char *);
 void oracle_encoder_module_run(encoder_module_getter get, encoder_module_state state, size_t count, size_t split,
-			      const size_t *counts, char **ids, const int *states, const char *query, size_t *out);
+			       const size_t *counts, char **ids, const int *states, const char *query, size_t *out);
 void oracle_encoder_module_run(encoder_module_getter get, encoder_module_state state, size_t count, size_t split,
-			      const size_t *counts, char **ids, const int *states, const char *query, size_t *out)
+			       const size_t *counts, char **ids, const int *states, const char *query, size_t *out)
 {
 	struct obs_module *modules = calloc(count ? count : 1, sizeof(*modules));
 	struct obs_module *before = calloc(count ? count : 1, sizeof(*before));
@@ -32,8 +32,8 @@ void oracle_encoder_module_run(encoder_module_getter get, encoder_module_state s
 	for (size_t i = 0; i < count; i++) {
 		modules[i].sources.array = &other_ids[0];
 		modules[i].sources.num = modules[i].sources.capacity = 1;
-		modules[i].encoders.array = &other_ids[1];
-		modules[i].encoders.num = modules[i].encoders.capacity = 1;
+		modules[i].outputs.array = &other_ids[1];
+		modules[i].outputs.num = modules[i].outputs.capacity = 1;
 		modules[i].services.array = &other_ids[2];
 		modules[i].services.num = modules[i].services.capacity = 1;
 		modules[i].encoders.array = counts[i] ? ids + offset : NULL;
