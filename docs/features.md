@@ -3090,6 +3090,11 @@ area.
   `ci/vcam_av_sync.py --transport mcp` with automatic fallback when the websocket
   service is absent, bounded capture shutdown, typed waits and probe cleanup.
 
+- **Windows control pipe** (#4455): MCP attachment on Windows reaches the server
+  over a named pipe (`\\.\pipe\obs-rust-control` by default) with the same
+  newline JSON-RPC as Unix sockets; attachment works instead of returning an
+  unsupported error, and stdio stays supported.
+
 - MCP: `./mcp` builds and launches an isolated libobs-enabled control server, automatically provisioning the native SDK on NixOS (#4507).
 
 - MCP: `./mcp` builds and locates EGL graphics, Virtual Camera/virtual mic, FFmpeg media/AAC and x264 runtime modules automatically (#4521).
