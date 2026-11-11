@@ -1960,11 +1960,6 @@ obs_source_t *obs_get_output_source(uint32_t channel)
 	return obs_canvas_get_channel(obs->data.main_canvas, channel);
 }
 
-void obs_set_output_source(uint32_t channel, obs_source_t *source)
-{
-	obs_canvas_set_channel(obs->data.main_canvas, channel, source);
-}
-
 void obs_enum_sources(bool (*enum_proc)(void *, obs_source_t *), void *param)
 {
 	obs_source_t *source;
