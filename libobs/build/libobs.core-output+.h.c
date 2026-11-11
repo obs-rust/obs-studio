@@ -34,6 +34,7 @@
 #include "libobs/obs-output-congestion-fields.c.h"
 #include "libobs/obs-output-connect-time-fields.c.h"
 #include "libobs/obs-output-conversion-setters.c.h"
+#include "libobs/obs-output-encoder-getters.c.h"
 #include "libobs/obs-output-flags-fields.c.h"
 #include "libobs/obs-output-frames-dropped-fields.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
