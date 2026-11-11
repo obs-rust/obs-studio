@@ -45,6 +45,20 @@ unsafe extern "C" {
 }
 
 type ModuleRecord = (Vec<u8>, Vec<u8>, Vec<u8>, c_int);
+type LegacyRecord = (Vec<u8>, Vec<u8>);
+
+// Standalone category binaries do not link a libobs host. Supply a working
+// synthetic host here, keeping production's platform implementation unchanged.
+#[unsafe(no_mangle)]
+unsafe extern "C" fn get_module_extension() -> *const c_char {
+    c".probe".as_ptr()
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn obs_host_add_module_extension(path: *mut dstr) {
+    // SAFETY: discovery supplies a live dstr; the fixture extension is static.
+    unsafe { obs_util::ffi::dstr::dstr_ncat(path, get_module_extension(), 6) };
+}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 struct Outcome {
@@ -368,7 +382,10 @@ unsafe extern "C" fn capture_host_module(param: *mut c_void, info: *const obs_mo
     unsafe {
         let info = &*info;
         (*param.cast::<Vec<ModuleRecord>>()).push((
-            bytes(info.bin_path), bytes(info.data_path), bytes(info.name), info.module_type,
+            bytes(info.bin_path),
+            bytes(info.data_path),
+            bytes(info.name),
+            info.module_type,
         ));
     }
 }
@@ -377,7 +394,7 @@ unsafe extern "C" fn capture_host_legacy(param: *mut c_void, info: *const obs_mo
     // SAFETY: the test owns the vector; the legacy prefix is live for this call.
     unsafe {
         let info = &*info;
-        (*param.cast::<Vec<(Vec<u8>, Vec<u8>)>>()).push((bytes(info.bin_path), bytes(info.data_path)));
+        (*param.cast::<Vec<LegacyRecord>>()).push((bytes(info.bin_path), bytes(info.data_path)));
     }
 }
 
@@ -390,23 +407,38 @@ fn exported_entrypoints_discover_files_with_host_extension() {
     std::fs::create_dir_all(data.join("sample")).unwrap();
     let binary = bin.join("sample/sample.probe");
     std::fs::write(&binary, b"module fixture").unwrap();
-    let path = |path: &std::path::Path| CString::new(path.to_str().unwrap().replace('\\', "/")).unwrap();
+    let path =
+        |path: &std::path::Path| CString::new(path.to_str().unwrap().replace('\\', "/")).unwrap();
     let bin_pattern = path(&bin.join("%module%"));
     let data_pattern = path(&data.join("%module%"));
     let mut modules: Vec<ModuleRecord> = Vec::new();
-    let mut legacy: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+    let mut legacy: Vec<LegacyRecord> = Vec::new();
     // SAFETY: this thread owns the core, paths and callback vectors throughout.
     unsafe {
         let core = oracle_module_lists_core_new(ptr::null());
         oracle_module_lists_set_core(core);
         oracle_find_modules_add_path(bin_pattern.as_ptr(), data_pattern.as_ptr(), 2);
-        obs_core::ffi::find_modules::obs_find_modules2(Some(capture_host_module), (&raw mut modules).cast());
-        obs_core::ffi::find_modules::obs_find_modules(Some(capture_host_legacy), (&raw mut legacy).cast());
+        obs_core::ffi::find_modules::obs_find_modules2(
+            Some(capture_host_module),
+            (&raw mut modules).cast(),
+        );
+        obs_core::ffi::find_modules::obs_find_modules(
+            Some(capture_host_legacy),
+            (&raw mut legacy).cast(),
+        );
         oracle_module_lists_set_core(ptr::null_mut());
         oracle_module_lists_core_free(core);
     }
     let expected_bin = path(&binary).into_bytes();
     let expected_data = path(&data.join("sample")).into_bytes();
-    assert_eq!(modules, vec![(expected_bin.clone(), expected_data.clone(), b"sample".to_vec(), 2)]);
+    assert_eq!(
+        modules,
+        vec![(
+            expected_bin.clone(),
+            expected_data.clone(),
+            b"sample".to_vec(),
+            2
+        )]
+    );
     assert_eq!(legacy, vec![(expected_bin, expected_data)]);
 }
