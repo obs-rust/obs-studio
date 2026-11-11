@@ -11,7 +11,6 @@ pub struct Fields {
     pub settings: *mut c_void,
 }
 unsafe extern "C" {
-    fn find_output(id: *const c_char) -> *const c_void;
     fn obs_output_properties_type_fields(info: *const c_void) -> Fields;
     fn obs_output_properties_instance_fields(output: *const c_void) -> Fields;
     fn obs_data_create() -> *mut c_void;
@@ -62,13 +61,10 @@ impl Host for CHost {
 }
 unsafe fn find(id: *const c_char) -> Option<Fields> {
     // SAFETY: find_output accepts null and otherwise a readable C string.
-    let info = unsafe { find_output(id) };
-    if info.is_null() {
-        None
-    } else {
+    unsafe { super::output_type_lookup::find(id) }.map(|info| {
         // SAFETY: registration remains live during this query.
-        Some(unsafe { obs_output_properties_type_fields(info) })
-    }
+        unsafe { obs_output_properties_type_fields(info.as_ptr()) }
+    })
 }
 /// # Safety
 /// `id` is null or a readable NUL-terminated output identifier.

@@ -15,10 +15,7 @@ static struct obs_output_info properties_info;
 static unsigned properties_trace[6];
 static int properties_token;
 static bool properties_null_result;
-const struct obs_output_info *find_output(const char *id)
-{
-	return id && strcmp(id, "properties") == 0 ? &properties_info : NULL;
-}
+struct obs_core *oracle_output_type_exchange_core(struct obs_core *core);
 static void properties_defaults(obs_data_t *settings)
 {
 	properties_trace[0]++;
@@ -62,9 +59,14 @@ static struct properties_result properties_run(unsigned mask, unsigned op, unsig
 	struct properties_result result = {0};
 	long before = bnum_allocs();
 	properties_info = (struct obs_output_info){0};
+	properties_info.id = "properties";
 	properties_info.get_defaults = mask & 1 ? properties_defaults : NULL;
 	properties_info.get_properties = mask & 2 ? properties_callback : NULL;
 	properties_null_result = (mask & 4) != 0;
+	struct obs_core core = {0};
+	core.output_types.array = &properties_info;
+	core.output_types.num = core.output_types.capacity = 1;
+	struct obs_core *previous = oracle_output_type_exchange_core(&core);
 	struct obs_output output = {0};
 	output.info = properties_info;
 	output.context.data = mask & 8 ? NULL : &properties_token;
@@ -86,6 +88,7 @@ static struct properties_result properties_run(unsigned mask, unsigned op, unsig
 	memcpy(result.trace, properties_trace, sizeof(properties_trace));
 	obs_data_release(output.context.settings);
 	result.leaks = bnum_allocs() - before;
+	oracle_output_type_exchange_core(previous);
 	return result;
 }
 bool oracle_output_properties_compare(unsigned mask, unsigned op, unsigned id_kind, int value,

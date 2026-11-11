@@ -8,18 +8,18 @@ pub trait Info {
     fn audio_codecs(&self) -> Self::Text;
 }
 
-pub fn display_name<I: Info>(_info: Option<&I>) -> Option<I::Text> {
-    todo!()
+pub fn display_name<I: Info>(info: Option<&I>) -> Option<I::Text> {
+    info.map(Info::name)
 }
 
-pub fn flags<I: Info>(_info: Option<&I>) -> u32 {
-    todo!()
+pub fn flags<I: Info>(info: Option<&I>) -> u32 {
+    info.map_or(0, Info::flags)
 }
 
-pub fn video_codecs<I: Info>(_info: Option<&I>) -> Option<I::Text> {
-    todo!()
+pub fn video_codecs<I: Info>(info: Option<&I>) -> Option<I::Text> {
+    info.map(Info::video_codecs)
 }
 
-pub fn audio_codecs<I: Info>(_info: Option<&I>) -> Option<I::Text> {
-    todo!()
+pub fn audio_codecs<I: Info>(info: Option<&I>) -> Option<I::Text> {
+    info.map(Info::audio_codecs)
 }

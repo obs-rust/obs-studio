@@ -1,0 +1,4 @@
+obs_output_get_display_name
+obs_get_output_flags
+obs_get_output_supported_video_codecs
+obs_get_output_supported_audio_codecs

@@ -601,6 +601,15 @@ fn main() {
         ),
     )
     .expect("write original encoder registry lookup extract");
+    std::fs::write(
+        extract_dir.join("output_type_find.inc"),
+        extract_c(
+            &libobs.join("obs-output.c.h"),
+            "const struct obs_output_info *find_output(const char *id)",
+            "}",
+        ),
+    )
+    .expect("write original output type lookup extract");
     let cuda_load = nvenc_dir.join("cuda-load.c.h");
     let nvenc_load = nvenc_dir.join("nvenc-load.c.h");
     for (name, src, start, end) in [
