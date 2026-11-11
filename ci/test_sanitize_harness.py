@@ -32,10 +32,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-try:
-    from ci.native_test_graph import load_graph
-except ModuleNotFoundError:
-    from native_test_graph import load_graph
+from native_test_graph import load_graph
 
 ROOT = Path(__file__).resolve().parent.parent
 SANITIZE = ROOT / "rust" / "tools" / "sanitize"

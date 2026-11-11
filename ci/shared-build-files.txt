@@ -94,6 +94,7 @@ rust/obs-nvenc/src/platform/mod.rs
 rust/obs-preflight/src/platform/mod.rs
 rust/obs-scene/src/platform/mod.rs
 rust/obs-source/src/platform/mod.rs
+rust/obs-studio-rust/build.rs # Fixed Application-category discovery entry point; registrations stay in independent per-unit files (#3973).
 rust/obs-sys/build.rs
 rust/obs-util/build.rs
 rust/obs-util/src/platform/mod.rs

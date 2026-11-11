@@ -5,10 +5,7 @@ import json
 from pathlib import Path
 import re
 
-try:
-    from ci.native_test_graph import load_graph
-except ModuleNotFoundError:
-    from native_test_graph import load_graph
+from native_test_graph import load_graph
 
 import unittest
 
