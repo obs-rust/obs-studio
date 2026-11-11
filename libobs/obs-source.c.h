@@ -4248,24 +4248,6 @@ void obs_source_set_audio_active(obs_source_t *source, bool active)
 	}
 }
 
-const char *obs_source_get_dark_icon(const char *id)
-{
-	if (obs_source_get_icon_type(id) != OBS_ICON_TYPE_CUSTOM)
-		return NULL;
-
-	const struct obs_source_info *info = get_source_info(id);
-	return (info && info->get_dark_icon) ? info->get_dark_icon(info->type_data) : NULL;
-}
-
-const char *obs_source_get_light_icon(const char *id)
-{
-	if (obs_source_get_icon_type(id) != OBS_ICON_TYPE_CUSTOM)
-		return NULL;
-
-	const struct obs_source_info *info = get_source_info(id);
-	return (info && info->get_light_icon) ? info->get_light_icon(info->type_data) : NULL;
-}
-
 _Static_assert(OBS_SOURCE_MEDIA_CONTROLLABLE == OBS_SOURCE_CONTROLLABLE_MEDIA, "OBS_SOURCE_CONTROLLABLE_MEDIA");
 _Static_assert(OBS_SOURCE_MEDIA_STATE_NONE == OBS_MEDIA_STATE_NONE, "OBS_MEDIA_STATE_NONE");
 _Static_assert(sizeof(enum obs_media_state) == sizeof(int), "enum obs_media_state is passed as int");
