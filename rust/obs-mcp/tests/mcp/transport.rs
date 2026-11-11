@@ -101,6 +101,66 @@ fn refuses_non_socket_and_symlink() {
     assert!(SocketServer::bind(&EndpointOptions { socket: Some(link) }).is_err());
     assert_eq!(std::fs::read(file).unwrap(), b"keep");
 }
+#[cfg(windows)]
+#[test]
+fn named_pipe_serves_a_client_and_removes_the_name() {
+    use obs_mcp::{
+        platform::{SocketServer, connect},
+        server::Server,
+    };
+    use std::{
+        io::Write,
+        path::PathBuf,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+        thread::{JoinHandle, spawn},
+    };
+    let options = EndpointOptions {
+        socket: Some(PathBuf::from(r"\\.\pipe\obs-rust-4455-client")),
+    };
+    let pipe = SocketServer::bind(&options).unwrap();
+    assert!(SocketServer::bind(&options).is_err());
+    let stop = Arc::new(AtomicBool::new(false));
+    struct Guard(Arc<AtomicBool>, Option<JoinHandle<()>>);
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Release);
+            self.1.take().unwrap().join().unwrap();
+        }
+    }
+    let flag = stop.clone();
+    let _guard = Guard(
+        stop,
+        Some(spawn(move || {
+            pipe.run(&flag, Server::new);
+        })),
+    );
+    let mut client = connect(&options).unwrap();
+    client
+        .writer
+        .write_all(b"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"ping\"}\n")
+        .unwrap();
+    let mut line = String::new();
+    client.reader.read_line(&mut line).unwrap();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&line).unwrap()["id"],
+        7
+    );
+    drop(client);
+    drop(_guard);
+    assert!(connect(&options).is_err());
+}
+#[cfg(windows)]
+#[test]
+fn named_pipe_rejects_unknown_name() {
+    use obs_mcp::platform::connect;
+    let options = EndpointOptions {
+        socket: Some(std::path::PathBuf::from(r"\\.\pipe\obs-rust-4455-absent")),
+    };
+    assert!(connect(&options).is_err());
+}
 
 #[cfg(unix)]
 #[test]
