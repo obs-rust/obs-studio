@@ -95,12 +95,6 @@ bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, co
 	return signal_handler_add_array(source->context.signals, source_signals);
 }
 
-const char *obs_source_get_display_name(const char *id)
-{
-	const struct obs_source_info *info = get_source_info(id);
-	return (info != NULL) ? info->get_name(info->type_data) : NULL;
-}
-
 static void allocate_audio_output_buffer(struct obs_source *source)
 {
 	size_t size = sizeof(float) * AUDIO_OUTPUT_FRAMES * MAX_AUDIO_CHANNELS * MAX_AUDIO_MIXES;
@@ -987,12 +981,6 @@ void obs_source_replace_missing_file(obs_missing_file_cb cb, obs_source_t *sourc
 	cb(source->context.data, new_path, data);
 }
 
-bool obs_is_source_configurable(const char *id)
-{
-	const struct obs_source_info *info = get_source_info(id);
-	return info && (info->get_properties || info->get_properties2);
-}
-
 bool obs_source_configurable(const obs_source_t *source)
 {
 	return data_valid(source, "obs_source_configurable") &&
@@ -1002,12 +990,6 @@ bool obs_source_configurable(const obs_source_t *source)
 uint32_t obs_source_get_output_flags(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_get_output_flags") ? source->info.output_flags : 0;
-}
-
-uint32_t obs_get_source_output_flags(const char *id)
-{
-	const struct obs_source_info *info = get_source_info(id);
-	return info ? info->output_flags : 0;
 }
 
 static void obs_source_deferred_update(obs_source_t *source)
