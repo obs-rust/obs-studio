@@ -45,6 +45,7 @@ mod texture_planar_creators;
 mod texture_planar_creators_parity;
 mod texture_render;
 mod texture_render_parity;
+mod depth_dispatch;
 mod timer_dispatch;
 mod timer_dispatch_parity;
 mod timer_range_dispatch;
