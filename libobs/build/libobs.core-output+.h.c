@@ -16,6 +16,7 @@
 #include "libobs/obs-encoder-init.c.h"
 #include "libobs/obs-encoder-last-error-fields.c.h"
 #include "libobs/obs-encoder-metadata-fields.c.h"
+#include "libobs/obs-encoder-packet-ownership.c.h"
 #include "libobs/obs-encoder-preferred-color-space-fields.c.h"
 #include "libobs/obs-encoder-preferred-format-fields.c.h"
 #include "libobs/obs-encoder-preferred-range-fields.c.h"
