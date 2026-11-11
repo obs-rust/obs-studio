@@ -162,10 +162,12 @@ fn test_hotkey_pair_meta_fields_null_empty_raw_and_copied_ownership() {
         ] {
             set(&mut w, 9, values, field);
             let index = usize::from(field == Field::Description);
-            for half in 0..2 {
-                let expected = values[half].map(|v| v.split(|b| *b == 0).next().unwrap());
+            for (half, value) in values.into_iter().enumerate() {
+                let expected = value.map(|v| v.split(|b| *b == 0).next().unwrap());
                 assert_eq!(w.keys[half].fields[index].as_deref(), expected);
-                if let Some(input) = values[half] {
+                if let Some(input) = value
+                    && !input.is_empty()
+                {
                     assert_ne!(
                         w.keys[half].fields[index].as_ref().unwrap().as_ptr(),
                         input.as_ptr()

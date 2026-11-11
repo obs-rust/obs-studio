@@ -18,6 +18,11 @@ pub trait Registry {
 
 /// Update half zero before half one, reading each ID immediately before its setter.
 pub fn set<R: Registry>(registry: &mut R, id: usize, values: [R::Value; 2], field: Field) {
-    let _ = (registry, id, values, field);
-    todo!("paired hotkey metadata swap")
+    let Some(pair) = registry.find(id) else {
+        return;
+    };
+    for (half, value) in values.into_iter().enumerate() {
+        let hotkey = registry.hotkey_id(&pair, half);
+        registry.set(hotkey, value, field);
+    }
 }

@@ -1,0 +1,2 @@
+obs_hotkey_pair_set_descriptions
+obs_hotkey_pair_set_names
