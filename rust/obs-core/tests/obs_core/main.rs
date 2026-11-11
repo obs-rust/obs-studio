@@ -124,6 +124,7 @@ mod video_plan_parity;
 mod video_render_size;
 mod video_render_size_parity;
 mod video_stop_requested;
+mod video_stop_requested_parity;
 mod view;
 mod view_parity;
 mod weak_object_expired;
