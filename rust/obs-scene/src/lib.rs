@@ -51,6 +51,7 @@ pub mod item_names;
 pub mod item_order;
 pub mod item_parent_getter;
 pub mod item_transform;
+pub mod kind;
 mod platform;
 pub mod render_plan;
 pub mod source_getters;
