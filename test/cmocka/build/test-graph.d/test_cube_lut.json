@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_cube_lut": {
+      "sources": [
+        "test/cmocka/test_cube_lut.c",
+        "plugins/obs-filters/cube-lut.c.h"
+      ],
+      "includes": [
+        "plugins/obs-filters"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ],
+      "requires": "HAVE_OBS_FILTERS"
+    }
+  },
+  "tests": {
+    "test_cube_lut": {
+      "target": "test_cube_lut"
+    }
+  }
+}

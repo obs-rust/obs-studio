@@ -4,7 +4,7 @@ use super::*;
 fn canonical_canvas_video_info_getter_is_registered() {
     use obs_build::validation::graph::{Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let name = "test_canvas_video_info_getter";
     assert!(
         matches!(&graph.targets[name].sources[0], Source::Path(path) if path == "test/cmocka/test_canvas_video_info_getter.c")

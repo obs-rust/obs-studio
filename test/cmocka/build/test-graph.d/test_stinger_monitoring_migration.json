@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_stinger_monitoring_migration": {
+      "sources": [
+        "test/cmocka/test_stinger_monitoring_migration.c"
+      ],
+      "includes": [
+        "plugins/obs-transitions"
+      ],
+      "watch_inputs": [
+        "plugins/obs-transitions/transition-stinger-monitoring.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_stinger_monitoring_migration": {
+      "target": "test_stinger_monitoring_migration"
+    }
+  }
+}

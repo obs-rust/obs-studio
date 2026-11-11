@@ -3,4 +3,4 @@
 # helper the frontend calls, so the test does not link the Qt frontend.
 # Transitions need graphics, so it loads the built OpenGL module and runs (under
 # xvfb-run) on Linux only; without a display the cases skip.
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

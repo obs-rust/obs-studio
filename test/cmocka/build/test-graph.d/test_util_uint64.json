@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_util_uint64": {
+      "sources": [
+        "test/cmocka/test_util_uint64.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_util_uint64": {
+      "target": "test_util_uint64"
+    }
+  }
+}

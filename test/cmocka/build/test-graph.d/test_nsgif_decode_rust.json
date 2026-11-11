@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nsgif_decode_rust": {
+      "sources": [
+        "test/cmocka/test_nsgif_decode.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "sanitizers": "address,undefined",
+      "definitions": [
+        "NSGIF_TEST_RUST",
+        "NSGIF_DATA_DIR=\"${source}/test/cmocka/data\""
+      ]
+    }
+  },
+  "tests": {
+    "test_nsgif_decode_rust": {
+      "target": "test_nsgif_decode_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

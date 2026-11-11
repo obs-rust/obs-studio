@@ -7,4 +7,4 @@
 # private libobs, libcaption, uthash and zlib headers.
 # output_interleave_fields_stub.c provides the output, caption track and
 # encoder accessors of obs-output.c and obs-encoder.c over the test's structs.
-# test_output_interleave is defined in ../build/test-graph.json.
+# test_output_interleave is defined in ../build/test-graph.d.

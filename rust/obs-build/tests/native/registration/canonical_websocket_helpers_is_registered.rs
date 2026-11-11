@@ -17,9 +17,10 @@ fn expected() -> serde_json::Value {
 #[test]
 fn canonical_websocket_helpers_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let expected = expected();
     for name in CASES {
         for section in ["targets", "tests"] {
@@ -30,7 +31,7 @@ fn canonical_websocket_helpers_is_registered() {
         }
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(fragment.contains("test-graph.json"));
+        assert!(fragment.contains("test-graph.d"));
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
         assert!(!fragment.contains("obs_native_test_graph("));
@@ -98,8 +99,8 @@ fn canonical_websocket_helpers_preserve_original_hosts() {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "websocket_helpers_runtime.rs"]
+#[path = "support/websocket_helpers_runtime.rs"]
 mod runtime;
 
-#[path = "configured_headers.rs"]
+#[path = "support/configured_headers.rs"]
 mod configured_headers;

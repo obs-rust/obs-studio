@@ -175,7 +175,7 @@ pub(super) fn cases(family: &str) -> Vec<String> {
 pub(super) fn assert_family(family: &str) -> Graph {
     let entries = load(&directory()).unwrap();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut actual = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut actual = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let names: BTreeSet<_> = entries.families[family]
         .iter()
         .map(|base| format!("{base}_rust"))
@@ -228,7 +228,7 @@ fn assert_coverage(expected: &Graph, actual: &Graph) {
 fn entries_cover_every_rust_static_target() {
     let entries = load(&directory()).unwrap();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let actual = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let actual = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     assert_coverage(&entries.graph, &actual);
 }
 
@@ -311,7 +311,7 @@ fn missing_malformed_and_unknown_support_entries_are_rejected() {
 #[test]
 fn rust_static_consumers_preserve_private_adapter_link_support() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw = read(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let raw = Graph::read_value(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let mut missing = Vec::new();
     for (name, target) in raw["targets"].as_object().unwrap() {
         if !target["libraries"]

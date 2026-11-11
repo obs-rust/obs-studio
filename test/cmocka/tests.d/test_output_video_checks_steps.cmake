@@ -17,4 +17,4 @@
 # test_texture_encoder_raw_format, test_output_start_twice,
 # test_output_failed_start_encoders, test_output_null_id and
 # test_encoding_lag_rescale cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

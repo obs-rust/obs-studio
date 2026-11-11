@@ -5,4 +5,4 @@ endif()
 if(OS_LINUX)
   find_package(X11 QUIET)
 endif()
-# Registration lives in build/test-graph.json, consumed once by CMakeLists.txt.
+# Registration lives in build/test-graph.d, consumed once by CMakeLists.txt.

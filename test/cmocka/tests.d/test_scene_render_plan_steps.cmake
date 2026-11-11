@@ -11,11 +11,11 @@
 # that C source; the test calls only them (test_scene_render_plan_steps_rust
 # runs it against the Rust shims). The real-libobs scene tests cover the
 # caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the hidden functions and includes only their header (with
 # graphics/matrix4.h), so it links the archive alone: its obs-scene member
 # needs nothing from libobs or the other crates. Linking the archive directly
 # avoids exporting private symbols just for a test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

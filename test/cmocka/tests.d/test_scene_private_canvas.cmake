@@ -2,4 +2,4 @@
 # the scene they copy (upstream obsproject/obs-studio PR #12824). Needs core
 # video for a second canvas, so it runs (under xvfb-run) on Linux only.
 # libobs finds its effect files relative to the working directory.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

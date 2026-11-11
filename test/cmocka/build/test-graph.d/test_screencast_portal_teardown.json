@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_screencast_portal_teardown": {
+      "sources": [
+        "test/cmocka/test_screencast_portal_teardown.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/pipewire.c.h",
+        "plugins/linux-pipewire/portal.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h",
+        "plugins/linux-pipewire/screencast-portal.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "PkgConfig::_portal_test_glib",
+        "X11::X11"
+      ],
+      "includes": [
+        "plugins/linux-pipewire"
+      ],
+      "header_packages": [
+        "libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_PIPEWIRE"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_screencast_portal_teardown": {
+      "target": "test_screencast_portal_teardown",
+      "timeout_seconds": 60,
+      "environment": {
+        "PORTAL_TEST_VERBOSE": "1"
+      },
+      "skip_return_code": 77,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_PIPEWIRE"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

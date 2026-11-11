@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_label_destroy": {
+      "sources": [
+        "test/cmocka/test_source_label_destroy.cpp",
+        "frontend/components/OBSSourceLabel.cpp.hpp"
+      ],
+      "qt": {
+        "moc": [
+          "frontend/components/OBSSourceLabel.hpp"
+        ]
+      },
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/components"
+      ],
+      "includes_before": [
+        "test/cmocka/source-label-stubs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_get_name",
+        "-Wl,--wrap=obs_source_get_signal_handler",
+        "-Wl,--wrap=signal_handler_connect_ref",
+        "-Wl,--wrap=signal_handler_disconnect"
+      ],
+      "watch_inputs": [
+        "test/cmocka/source-label-stubs/frontend/build/frontend-components.pch.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_source_label_destroy": {
+      "target": "test_source_label_destroy",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

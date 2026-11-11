@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipewire_reconnect": {
+      "sources": [
+        "test/cmocka/test_pipewire_reconnect.c",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "includes": [
+        "plugins/linux-pipewire",
+        "deps/glad/include"
+      ],
+      "header_packages": [
+        "libdrm",
+        "gio-unix-2.0"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PipeWire::PipeWire",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_PIPEWIRE"
+    }
+  },
+  "tests": {
+    "test_pipewire_reconnect": {
+      "target": "test_pipewire_reconnect"
+    }
+  }
+}

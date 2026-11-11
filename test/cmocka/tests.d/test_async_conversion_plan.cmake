@@ -9,7 +9,7 @@
 # characterizes that C source; the test calls only it.
 # test_media_restart_first_frame, test_deinterlace_2x_field_order and
 # test_pipewire_camera_nv12 cover the caller through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shim. The test
 # calls only the hidden obs_source_conversion_plan_fill() and includes only its
@@ -17,4 +17,4 @@
 # none of them needs SIMDe or obsconfig.h), so it links the archive alone: its
 # obs-source member needs nothing from libobs or the other crates. Linking the
 # archive directly avoids exporting private symbols just for a test.
-# Rust-static target and availability guard are declared in ../build/test-graph.json.
+# Rust-static target and availability guard are declared in ../build/test-graph.d.

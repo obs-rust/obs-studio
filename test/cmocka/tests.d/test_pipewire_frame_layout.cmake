@@ -1,4 +1,4 @@
-# Unchanged plane-layout cases live in build/test-graph.json (#1390).
+# Unchanged plane-layout cases live in build/test-graph.d (#1390).
 # The production PCH also includes DRM, GIO/GLib and GLAD headers, even though
 # these cases need no GL implementation, display, device or PipeWire daemon.
 set(HAVE_PIPEWIRE_FRAME_LAYOUT_SDK FALSE)

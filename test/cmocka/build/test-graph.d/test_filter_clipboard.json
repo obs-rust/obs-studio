@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_filter_clipboard": {
+      "sources": [
+        "test/cmocka/test_filter_clipboard.c",
+        "frontend/utility/filter-clipboard.c.h"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_filter_clipboard": {
+      "target": "test_filter_clipboard",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

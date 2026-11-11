@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_utf8": {
+      "sources": [
+        "test/cmocka/test_utf8.c",
+        "libobs/util/utf8.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined",
+      "requires": {
+        "not": "MSVC"
+      }
+    }
+  },
+  "tests": {
+    "test_utf8": {
+      "target": "test_utf8"
+    }
+  }
+}

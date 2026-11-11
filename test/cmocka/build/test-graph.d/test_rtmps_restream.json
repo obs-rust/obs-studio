@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_rtmps_restream": {
+      "sources": [
+        "test/cmocka/test_rtmps_restream.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::file-updater",
+        "jansson::jansson",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_RTMPS_TEST_SDK",
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "plugins/rtmp-services/service-specific/rtmps-upgrade.c.h",
+        "plugins/rtmp-services/build/rtmp-services.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_rtmps_restream": {
+      "target": "test_rtmps_restream",
+      "requires": "HAVE_RTMPS_TEST_SDK",
+      "timeout_seconds": 10
+    }
+  }
+}

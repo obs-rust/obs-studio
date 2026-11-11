@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_roi": {
+      "sources": [
+        "test/cmocka/test_encoder_roi.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_roi": {
+      "target": "test_encoder_roi",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

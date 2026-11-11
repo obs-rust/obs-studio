@@ -5,7 +5,7 @@ use super::*;
 fn canonical_settings_track_rows_is_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph.retain_suite("qt");
     let target = graph
         .targets

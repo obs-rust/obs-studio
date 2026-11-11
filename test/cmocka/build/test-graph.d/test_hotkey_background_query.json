@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_background_query": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_query.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_background_query": {
+      "target": "test_hotkey_background_query",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    }
+  }
+}

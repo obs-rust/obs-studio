@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_protocol_list_steps": {
+      "sources": [
+        "test/cmocka/test_output_protocol_list_steps.c",
+        "libobs/obs-output-protocols.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_output_protocol_list_steps": {
+      "target": "test_output_protocol_list_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

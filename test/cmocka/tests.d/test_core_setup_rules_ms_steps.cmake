@@ -10,4 +10,4 @@
 # (rust/obs-core/tests/obs_core/core_setup_rules_parity.rs) compare the shims
 # with this C instead, and test_core_setup_rules_steps covers the callers
 # through the real libobs. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

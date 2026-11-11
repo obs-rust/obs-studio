@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_sck_stall": {
+      "sources": [
+        "test/cmocka/test_sck_stall.c",
+        "plugins/mac-capture/mac-sck-stall.c.h"
+      ],
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture/mac-sck-stall.h",
+        "plugins/mac-capture/build/mac-capture-sck-stall.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_sck_stall": {
+      "target": "test_sck_stall"
+    }
+  }
+}

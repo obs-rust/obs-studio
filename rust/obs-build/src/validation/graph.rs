@@ -602,9 +602,71 @@ impl Dependency {
 
 impl Graph {
     pub fn load(path: &Path) -> Result<Self, String> {
-        let text = fs::read_to_string(path)
-            .map_err(|error| format!("native test graph {}: {error}", path.display()))?;
-        Self::parse(&text)
+        Self::parse(&Self::read_value(path)?.to_string())
+    }
+
+    /// Assemble the canonical directory, retaining every raw field for tooling.
+    /// A single document is accepted for isolated fixtures.
+    pub fn read_value(path: &Path) -> Result<serde_json::Value, String> {
+        if !path.is_dir() {
+            let text = fs::read_to_string(path)
+                .map_err(|error| format!("native test graph {}: {error}", path.display()))?;
+            return serde_json::from_str(&text).map_err(|error| error.to_string());
+        }
+        let mut fragments = fs::read_dir(path)
+            .map_err(|error| error.to_string())?
+            .map(|entry| entry.map(|entry| entry.path()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        fragments.retain(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "json")
+        });
+        fragments.sort();
+        if fragments.is_empty() {
+            return Err(format!(
+                "empty native test graph directory: {}",
+                path.display()
+            ));
+        }
+        let mut graph = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
+        for fragment in fragments {
+            let owner = fragment
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .ok_or("invalid native test graph fragment name")?;
+            validate_name(owner)?;
+            let text = fs::read_to_string(&fragment).map_err(|error| error.to_string())?;
+            let value: serde_json::Value =
+                serde_json::from_str(&text).map_err(|error| error.to_string())?;
+            if value.as_object().map(|object| object.len()) != Some(3)
+                || value["schema"] != 1
+                || value["targets"].as_object().map(|targets| targets.len()) != Some(1)
+                || value["targets"].get(owner).is_none()
+            {
+                return Err(format!(
+                    "invalid native test graph fragment: {}",
+                    fragment.display()
+                ));
+            }
+            for section in ["targets", "tests"] {
+                let entries = value[section]
+                    .as_object()
+                    .ok_or_else(|| format!("fragment {section} must be an object"))?;
+                for (name, entry) in entries {
+                    if section == "tests" && entry["target"].as_str() != Some(owner) {
+                        return Err(format!("test {name} must reference owning target {owner}"));
+                    }
+                    let output = graph[section]
+                        .as_object_mut()
+                        .expect("graph section is an object");
+                    if output.insert(name.clone(), entry.clone()).is_some() {
+                        return Err(format!("duplicate native test {section}: {name}"));
+                    }
+                }
+            }
+        }
+        Ok(graph)
     }
 
     pub fn parse(text: &str) -> Result<Self, String> {

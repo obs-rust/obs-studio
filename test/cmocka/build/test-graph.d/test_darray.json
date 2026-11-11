@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_darray": {
+      "sources": [
+        "test/cmocka/test_darray.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_darray": {
+      "target": "test_darray"
+    }
+  }
+}

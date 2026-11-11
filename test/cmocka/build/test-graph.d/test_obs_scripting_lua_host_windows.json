@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_scripting_lua_host_windows": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_lua_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_WINDOWS",
+        "SCRIPT_DIR=\"test-scripts\"",
+        "OBS_LUA_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-lua-host-windows.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-host-windows.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_obs_scripting_lua_host_windows": {
+      "target": "test_obs_scripting_lua_host_windows",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    }
+  }
+}

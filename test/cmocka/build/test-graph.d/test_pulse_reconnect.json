@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pulse_reconnect": {
+      "sources": [
+        "test/cmocka/test_pulse_reconnect.c",
+        "plugins/linux-pulseaudio/pulse-reconnect.c.h"
+      ],
+      "includes": [
+        "plugins/linux-pulseaudio"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "PulseAudio::PulseAudio",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_PULSEAUDIO"
+    }
+  },
+  "tests": {
+    "test_pulse_reconnect": {
+      "target": "test_pulse_reconnect"
+    }
+  }
+}

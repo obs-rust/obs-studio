@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_flv_mux": {
+      "sources": [
+        "test/cmocka/test_flv_mux.c",
+        "plugins/obs-outputs/flv-mux.c.h",
+        "plugins/obs-outputs/librtmp/amf.c",
+        "plugins/obs-outputs/librtmp/log.c"
+      ],
+      "requires": "HAVE_OBS_OUTPUTS",
+      "includes": [
+        "plugins/obs-outputs",
+        "shared/bpm",
+        "shared/opts-parser"
+      ],
+      "definitions": [
+        "NO_CRYPTO"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_flv_mux": {
+      "target": "test_flv_mux",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

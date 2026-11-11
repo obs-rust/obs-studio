@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_effect_parser_compile_rust": {
+      "sources": [
+        "test/cmocka/test_effect_parser_compile.c",
+        "libobs/graphics/effect-parser.c.h",
+        "libobs/graphics/effect-parser-funcs.c.h",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "sanitizers": "address,undefined",
+      "definitions": [
+        "gs_pixelshader_create=test_pixelshader_create",
+        "gs_shader_destroy=test_shader_destroy",
+        "gs_shader_get_param_by_name=test_shader_get_param_by_name",
+        "gs_vertexshader_create=test_vertexshader_create"
+      ]
+    }
+  },
+  "tests": {
+    "test_effect_parser_compile_rust": {
+      "target": "test_effect_parser_compile_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

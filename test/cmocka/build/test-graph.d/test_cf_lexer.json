@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_cf_lexer": {
+      "sources": [
+        "test/cmocka/test_cf_lexer.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_cf_lexer": {
+      "target": "test_cf_lexer"
+    }
+  }
+}

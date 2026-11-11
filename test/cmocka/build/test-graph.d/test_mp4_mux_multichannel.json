@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_mp4_mux_multichannel": {
+      "sources": [
+        "test/cmocka/test_mp4_mux_multichannel.c",
+        "plugins/obs-outputs/mp4-mux.c.h",
+        "plugins/obs-outputs/rtmp-av1.c.h",
+        {
+          "path": "plugins/obs-outputs/rtmp-hevc.c.h",
+          "requires": "ENABLE_HEVC"
+        }
+      ],
+      "requires": "HAVE_OBS_OUTPUTS",
+      "includes": [
+        "plugins/obs-outputs",
+        "shared/opts-parser",
+        "shared/bpm"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_mp4_mux_multichannel": {
+      "target": "test_mp4_mux_multichannel",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

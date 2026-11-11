@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_duplicate_scale_ref": {
+      "sources": [
+        "test/cmocka/test_scene_duplicate_scale_ref.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "m"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_duplicate_scale_ref": {
+      "target": "test_scene_duplicate_scale_ref",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    }
+  }
+}

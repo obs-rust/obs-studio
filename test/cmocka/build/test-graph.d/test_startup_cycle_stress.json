@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_startup_cycle_stress": {
+      "sources": [
+        "test/cmocka/test_startup_cycle_stress.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "any": [
+          {
+            "not": "OS_LINUX"
+          },
+          "HAVE_X11_DISPLAY"
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka/xvfb-run-or-display.sh.in"
+      ]
+    }
+  },
+  "tests": {
+    "test_startup_cycle_stress": {
+      "target": "test_startup_cycle_stress",
+      "suite": "graphics",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

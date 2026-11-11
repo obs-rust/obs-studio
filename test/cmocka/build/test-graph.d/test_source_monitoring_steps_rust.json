@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_monitoring_steps_rust": {
+      "sources": [
+        "test/cmocka/test_source_monitoring_steps.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
+        "test/cmocka/encoder-state-query-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
+        "test/cmocka/output-service-getter-link-stub.c",
+        "test/cmocka/source-async-flag-getter-link-stubs.c",
+        "test/cmocka/source-audio-active-link-stubs.c",
+        "test/cmocka/source-base-size-link-stubs.c",
+        "test/cmocka/source-boolean-query-link-stubs.c",
+        "test/cmocka/source-deinterlace-getter-link-stubs.c",
+        "test/cmocka/source-filter-relationship-getter-link-stubs.c",
+        "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/source-identity-getter-link-stubs.c",
+        "test/cmocka/source-push-query-link-stubs.c",
+        "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/weak-encoder-identity-link-stub.c",
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c",
+        "test/cmocka/source-icon-type-link-support.c"
+      ],
+      "includes": [
+        "libobs",
+        "."
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_source_monitoring_steps_rust": {
+      "target": "test_source_monitoring_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

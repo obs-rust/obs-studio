@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vlc_host_path": {
+      "sources": [
+        "test/cmocka/test_vlc_host_path.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          {
+            "not": "OS_WINDOWS"
+          },
+          {
+            "not": "OS_MACOS"
+          }
+        ]
+      },
+      "watch_inputs": [
+        "test/cmocka",
+        "plugins/vlc-video",
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_vlc_host_path": {
+      "target": "test_vlc_host_path",
+      "command": [
+        "${target}"
+      ],
+      "suite": "vlc"
+    }
+  }
+}

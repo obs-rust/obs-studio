@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_name_map": {
+      "sources": [
+        "test/cmocka/test_hotkey_name_map.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_hotkey_name_map": {
+      "target": "test_hotkey_name_map",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

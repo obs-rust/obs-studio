@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_oss_sndstat": {
+      "sources": [
+        "test/cmocka/test_oss_sndstat.c",
+        "plugins/oss-audio/oss-input-freebsd.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "plugins/oss-audio"
+      ]
+    }
+  },
+  "tests": {
+    "test_oss_sndstat": {
+      "target": "test_oss_sndstat",
+      "suite": "core"
+    }
+  }
+}

@@ -14,9 +14,10 @@ const HELPERS: [(&str, &str, &str); 3] = [
 fn canonical_sck_vaapi_helpers_are_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for (name, component, helper) in HELPERS {
         assert_helper_record(&raw, name, component, helper);
         let fragment =
@@ -92,9 +93,10 @@ fn canonical_sck_vaapi_helpers_run_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
     let directory = tempfile::tempdir().unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for (name, _, _) in HELPERS {
         for section in ["targets", "tests"] {

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_ffmpeg_pq_steps": {
+      "sources": [
+        "test/cmocka/test_graphics_ffmpeg_pq_steps.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/build/libobs-ported-image-pq-scrgb.pch.h",
+        "libobs/graphics/graphics-ffmpeg-host-pq.c.h",
+        "libobs/graphics/graphics-ffmpeg-host-pq.h",
+        "libobs/graphics/half.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_graphics_ffmpeg_pq_steps": {
+      "target": "test_graphics_ffmpeg_pq_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

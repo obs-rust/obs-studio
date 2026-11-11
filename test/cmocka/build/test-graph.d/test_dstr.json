@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_dstr": {
+      "sources": [
+        "test/cmocka/test_dstr.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_dstr": {
+      "target": "test_dstr"
+    }
+  }
+}

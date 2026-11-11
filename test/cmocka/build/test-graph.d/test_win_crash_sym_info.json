@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_win_crash_sym_info": {
+      "sources": [
+        "test/cmocka/test_win_crash_sym_info.c",
+        "libobs/obs-win-crash-report.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_WINDOWS"
+    }
+  },
+  "tests": {
+    "test_win_crash_sym_info": {
+      "target": "test_win_crash_sym_info",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

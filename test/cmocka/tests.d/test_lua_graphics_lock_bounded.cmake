@@ -12,5 +12,5 @@ math(EXPR _lua_bounded_length "${_lua_bounded_end} - ${_lua_bounded_start}")
 string(SUBSTRING "${_lua_bounded_text}" ${_lua_bounded_start} ${_lua_bounded_length} _lua_bounded_function)
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/lua-graphics-lock-bounded-under-test.h" "${_lua_bounded_function}")
 
-# Generated include interface used by ../build/test-graph.json.
+# Generated include interface used by ../build/test-graph.d.
 include("${CMAKE_CURRENT_LIST_DIR}/../characterization-headers.cmake")

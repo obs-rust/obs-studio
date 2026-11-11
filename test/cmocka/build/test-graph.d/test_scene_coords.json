@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_coords": {
+      "sources": [
+        "test/cmocka/test_scene_coords.c",
+        "libobs/obs-scene-coords.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_coords": {
+      "target": "test_scene_coords",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_monitor_video_sync_rust": {
+      "sources": [
+        "test/cmocka/test_monitor_video_sync.c",
+        "test/cmocka/core-output-protocol-registry-link-support.c",
+        "test/cmocka/core-texture-activity-link-stubs.c",
+        "test/cmocka/module-name-lookup-link-stubs.c",
+        "test/cmocka/object-validity-query-link-stubs.c",
+        "test/cmocka/output-handler-getter-link-stubs.c",
+        "test/cmocka/source-getter-log-link-stub.c",
+        "test/cmocka/output-pause-query-link-stubs.c",
+        "test/cmocka/output-service-getter-link-stub.c",
+        "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/weak-object-identity-link-stub.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "includes": [
+        "libobs/audio-monitoring",
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
+    }
+  },
+  "tests": {
+    "test_monitor_video_sync_rust": {
+      "target": "test_monitor_video_sync_rust",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_LIBOBS_RUST_STATIC"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

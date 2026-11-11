@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_xcomposite_presence": {
+      "sources": [
+        "test/cmocka/test_xcomposite_presence.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/linux-capture/xcomposite-presence.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_xcomposite_presence": {
+      "target": "test_xcomposite_presence",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

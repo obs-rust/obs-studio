@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_output_getters_characterization": {
+      "sources": [
+        "test/cmocka/test_encoder_output_getters_characterization.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_output_getters_characterization": {
+      "target": "test_encoder_output_getters_characterization",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

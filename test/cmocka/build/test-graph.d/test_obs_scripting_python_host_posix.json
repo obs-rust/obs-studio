@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_scripting_python_host_posix": {
+      "sources": [
+        "test/cmocka/test_obs_scripting_python_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "definitions": [
+        "TEST_HOST_POSIX",
+        "SCRIPT_DIR=\"test-python-scripts-posix\"",
+        "OBS_PYTHON_HOST_SOURCE=\"shared/obs-scripting/obs-scripting-python-host-posix.c.h\""
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-python-host-posix.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_obs_scripting_python_host_posix": {
+      "target": "test_obs_scripting_python_host_posix",
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "resource_locks": [
+        "obs-scripting-host-plugins-dir"
+      ]
+    }
+  }
+}

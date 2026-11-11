@@ -13,4 +13,4 @@
 # that C source; the test calls only them. test_image_exif_orientation,
 # test_image_size_precheck, test_image_jpeg_range and test_graphics_ffmpeg_host
 # cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

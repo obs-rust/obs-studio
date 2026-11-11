@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_audio_ranges": {
+      "sources": [
+        "test/cmocka/test_source_audio_ranges.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_source_audio_ranges": {
+      "target": "test_source_audio_ranges",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

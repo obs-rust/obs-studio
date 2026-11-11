@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_file_updater_failure": {
+      "sources": [
+        "test/cmocka/test_file_updater_failure.c",
+        "shared/file-updater/build/file-updater.core+.h.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "CURL::libcurl",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "shared/file-updater"
+      ],
+      "watch_inputs": [
+        "shared/file-updater/build/file-updater.pch.h",
+        "shared/file-updater/file-updater/file-updater.c.h",
+        "shared/file-updater/file-updater/file-updater.h",
+        "shared/file-updater/file-updater/curl-accept-encoding.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_file_updater_failure": {
+      "target": "test_file_updater_failure",
+      "requires": "OS_LINUX",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

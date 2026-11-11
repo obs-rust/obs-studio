@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_outputs_rtmp_host": {
+      "sources": [
+        "test/cmocka/test_obs_outputs_rtmp_host.c"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      },
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "MbedTLS::mbedtls",
+          "requires": "HAVE_MBEDTLS_TEST_SDK"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "-DTEST_HAVE_MBEDTLS",
+          "requires": "HAVE_MBEDTLS_TEST_SDK"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/obs-outputs/rtmp-stream-host-posix.c.h",
+        "plugins/obs-outputs/rtmp-send-result.h",
+        "plugins/obs-outputs/build/obs-outputs-rtmp-host-posix.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_obs_outputs_rtmp_host": {
+      "target": "test_obs_outputs_rtmp_host",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

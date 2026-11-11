@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_transform_update_steps_rust": {
+      "sources": [
+        "test/cmocka/test_scene_transform_update_steps.c",
+        "test/cmocka/scene-getter-log-link-stub.c",
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-blending-mode-link-support.c",
+        "test/cmocka/scene-item-group-scene-link-support.c",
+        "test/cmocka/scene-item-parent-getter-link-stub.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-item-visible-link-support.c",
+        "test/cmocka/scene-source-getter-link-stubs.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        "libobs",
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_transform_update_steps_rust": {
+      "target": "test_scene_transform_update_steps_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

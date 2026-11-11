@@ -8,4 +8,4 @@ set(HAVE_QT6_TEST FALSE)
 if(TARGET Qt6::Test)
   set(HAVE_QT6_TEST TRUE)
 endif()
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

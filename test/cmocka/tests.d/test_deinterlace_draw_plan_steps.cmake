@@ -10,7 +10,7 @@
 # are hidden in libobs, so this characterizes that C source; the test calls
 # only them. test_deinterlace_2x_field_order and test_deinterlace_mode_load
 # cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the ten hidden functions and includes their header and obs.h
@@ -19,4 +19,4 @@
 # links the archive alone: its obs-source member needs nothing from libobs or
 # the other crates. Linking the archive directly avoids exporting private
 # symbols just for a test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

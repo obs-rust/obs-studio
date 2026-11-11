@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_item_transition_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_transition_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_item_transition_getters": {
+      "target": "test_scene_item_transition_getters",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_quat": {
+      "sources": [
+        "test/cmocka/test_quat.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_quat": {
+      "target": "test_quat"
+    }
+  }
+}

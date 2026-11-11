@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_stats_race": {
+      "sources": [
+        "test/cmocka/test_video_stats_race.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_video_stats_race": {
+      "target": "test_video_stats_race"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_profile_remove": {
+      "sources": [
+        "test/cmocka/test_profile_remove.c",
+        "frontend/utility/profile-remove.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_profile_remove": {
+      "target": "test_profile_remove",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

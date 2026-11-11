@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_lua_graphics_lock_bounded": {
+      "sources": [
+        "test/cmocka/test_lua_graphics_lock_bounded.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "shared/obs-scripting/obs-scripting-lua-source.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "OS_WINDOWS"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_lua_graphics_lock_bounded": {
+      "target": "test_lua_graphics_lock_bounded",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
+    }
+  }
+}

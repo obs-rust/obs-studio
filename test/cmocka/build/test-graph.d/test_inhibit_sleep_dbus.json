@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_inhibit_sleep_dbus": {
+      "sources": [
+        "test/cmocka/test_inhibit_sleep_dbus.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "gio::gio",
+        "PkgConfig::INHIBIT_TEST_GLIB",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_inhibit_sleep_dbus": {
+      "target": "test_inhibit_sleep_dbus",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          "HAVE_PORTAL_TEST_GIO"
+        ]
+      },
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    }
+  }
+}

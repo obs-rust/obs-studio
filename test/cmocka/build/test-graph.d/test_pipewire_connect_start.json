@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipewire_connect_start": {
+      "sources": [
+        "test/cmocka/test_pipewire_connect_start.c",
+        "plugins/linux-pipewire/formats.c.h",
+        "plugins/linux-pipewire/frame-layout.c.h",
+        "plugins/linux-pipewire/frame-pacing.c.h",
+        "plugins/linux-pipewire/reconnect-policy.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::glad",
+        "PipeWire::PipeWire",
+        "gio::gio",
+        "OBS::native-test-glib",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pipewire"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PIPEWIRE_HEADLESS_SDK"
+        ]
+      },
+      "header_libraries": [
+        "Libdrm::Libdrm"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pipewire/build/linux-pipewire-nix.pch.h",
+        "plugins/linux-pipewire/pipewire.c.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=pw_thread_loop_lock",
+        "-Wl,--wrap=pw_thread_loop_unlock",
+        "-Wl,--wrap=pw_thread_loop_start",
+        "-Wl,--wrap=pw_thread_loop_stop",
+        "-Wl,--wrap=pw_thread_loop_wait",
+        "-Wl,--wrap=pw_context_connect_fd"
+      ]
+    }
+  },
+  "tests": {
+    "test_pipewire_connect_start": {
+      "target": "test_pipewire_connect_start",
+      "timeout_seconds": 15
+    }
+  }
+}

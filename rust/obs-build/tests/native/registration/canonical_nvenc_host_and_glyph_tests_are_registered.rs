@@ -5,7 +5,7 @@ use super::*;
 fn canonical_nvenc_host_and_glyph_tests_are_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let names = [
         "test_nvenc_override",
         "test_hotkey_numpad_host",

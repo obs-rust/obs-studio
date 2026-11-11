@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_plugin_getter_stinger": {
+      "sources": [
+        "test/cmocka/test_plugin_getter_races.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_PLUGIN_GETTER_OWNERS"
+        ]
+      },
+      "definitions": [
+        "GETTER_STINGER",
+        "_GNU_SOURCE"
+      ],
+      "compile_options": [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-UNDEBUG"
+      ],
+      "link_options": [
+        "-Wl,--gc-sections"
+      ],
+      "includes": [
+        ".",
+        "plugins/image-source",
+        "plugins/obs-transitions",
+        "plugins/linux-capture"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "m",
+        "OBS::glad",
+        "X11::X11",
+        "X11::XCB",
+        "XCB::XCB",
+        "XCB::XFIXES",
+        "XCB::RANDR",
+        "XCB::SHM",
+        "XCB::XINERAMA",
+        "XCB::COMPOSITE"
+      ],
+      "watch_inputs": [
+        "plugins/obs-transitions/transition-stinger.c.h",
+        "plugins/obs-transitions/build/obs-transitions.pch.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_plugin_getter_stinger": {
+      "target": "test_plugin_getter_stinger",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    }
+  }
+}

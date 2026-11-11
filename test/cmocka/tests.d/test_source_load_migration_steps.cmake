@@ -17,4 +17,4 @@
 # rust/obs-core compare the shims with this C instead. test_source_audio_ranges,
 # test_source_volume_mix and test_deinterlace_mode_load cover the caller through
 # the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

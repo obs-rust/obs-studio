@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_image_exif_orientation": {
+      "sources": [
+        "test/cmocka/test_image_exif_orientation.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "FFmpeg::avcodec",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_image_exif_orientation": {
+      "target": "test_image_exif_orientation",
+      "suite": "core",
+      "timeout_seconds": 60
+    }
+  }
+}

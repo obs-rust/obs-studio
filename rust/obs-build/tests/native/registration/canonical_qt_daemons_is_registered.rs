@@ -14,9 +14,10 @@ fn expected() -> serde_json::Value {
 #[test]
 fn canonical_qt_daemons_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let wanted = expected();
     for section in ["targets", "tests"] {
         for (name, record) in wanted[section].as_object().unwrap() {
@@ -26,7 +27,7 @@ fn canonical_qt_daemons_is_registered() {
     for name in CASES {
         let fragment =
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
-        assert!(fragment.contains("test-graph.json"));
+        assert!(fragment.contains("test-graph.d"));
         assert!(!fragment.contains("add_executable("), "{name}");
         assert!(!fragment.contains("add_test("), "{name}");
     }
@@ -164,9 +165,10 @@ fn canonical_qt_daemons_frontend_owner_crlf() {
 #[test]
 fn canonical_qt_daemons_link_interfaces() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let graph: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     // The original fixtures link these SDKs directly; transitive DSOs are
     // insufficient with --no-copy-dt-needed-entries and --as-needed.
     for name in ["test_pulse_monitor_device", "test_pulse_two_sources"] {
@@ -243,5 +245,5 @@ file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/owner.txt" CONTENT "$<TARGET_GENEX_E
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "qt_daemons_runtime.rs"]
+#[path = "support/qt_daemons_runtime.rs"]
 mod runtime;

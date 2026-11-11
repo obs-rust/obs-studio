@@ -12,4 +12,4 @@
 # test_encoder_error_stop, test_encoder_join_keyframe,
 # test_multitrack_encoder_override and test_media_packet_eof_leak cover the
 # callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

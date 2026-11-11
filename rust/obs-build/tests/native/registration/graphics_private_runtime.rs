@@ -1,3 +1,5 @@
+#![cfg(all(feature = "libobs-integration", target_os = "linux"))]
+
 use super::*;
 use obs_build::validation::graph::{Dependency, Graph};
 use std::process::{Command, Output};
@@ -259,9 +261,10 @@ pub(super) fn run(family: &str, cases: &[String]) {
             );
         }
     }
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut selected = serde_json::json!({"schema":1,"targets":{},"tests":{}});
     for section in ["targets", "tests"] {
         for base in cases.iter() {

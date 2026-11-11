@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_dock_state_restart": {
+      "sources": [
+        "test/cmocka/test_dock_state_restart.cpp"
+      ],
+      "cpp_standard": "17",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "includes": [
+        "frontend/utility"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Qt6::Widgets",
+        "Qt6::Test",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "frontend/utility/dock-proportions.hpp"
+      ]
+    }
+  },
+  "tests": {
+    "test_dock_state_restart": {
+      "target": "test_dock_state_restart",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QT_WIDGETS_TEST_OWNER",
+          "HAVE_QT_WIDGETS_TESTLIB_OWNER"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ]
+    }
+  }
+}

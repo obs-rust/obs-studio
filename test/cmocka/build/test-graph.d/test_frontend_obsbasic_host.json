@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_frontend_obsbasic_host": {
+      "sources": [
+        "test/cmocka/test_frontend_obsbasic_host.c"
+      ],
+      "requires": "OS_LINUX",
+      "watch_inputs": [
+        "frontend/widgets/obsbasic-linux.hpp",
+        "frontend/widgets/obsbasic-macos.hpp",
+        "frontend/widgets/obsbasic-windows.hpp"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_frontend_obsbasic_host": {
+      "target": "test_frontend_obsbasic_host",
+      "requires": "OS_LINUX"
+    }
+  }
+}

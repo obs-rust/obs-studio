@@ -12,7 +12,7 @@ Run inside a clean checkout of the repo. Needs OPENROUTER_API_KEY. The model
 is `$AI_REBASE_MODEL`, default `~deepseek/deepseek-flash-latest`.
 
 Most of our conflicts are shared append points (unity group includes,
-`obs-internal.h` declarations, `test-graph.json`, `mod` lists, README rows):
+`obs-internal.h` declarations, `test-graph.d`, `mod` lists, README rows):
 both sides added lines next to each other and the answer is "keep both, in
 order". The model gets one conflicted file at a time with the PR's own commit
 message, and must return the whole resolved file. A resolution is refused,

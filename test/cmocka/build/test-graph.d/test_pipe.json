@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pipe": {
+      "sources": [
+        "test/cmocka/test_pipe.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_pipe": {
+      "target": "test_pipe"
+    }
+  }
+}

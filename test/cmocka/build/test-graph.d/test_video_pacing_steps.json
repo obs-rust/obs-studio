@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_pacing_steps": {
+      "sources": [
+        "test/cmocka/test_video_pacing_steps.c",
+        "libobs/obs-video-pacing.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_video_pacing_steps": {
+      "target": "test_video_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

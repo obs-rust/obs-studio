@@ -22,6 +22,7 @@ Ported off the 178-line shell script in #962; sanitizers.yaml runs it through
 from __future__ import annotations
 
 import functools
+import importlib.util
 import json
 import os
 import random
@@ -39,6 +40,12 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent.parent.parent
+GRAPH_READER = SRC / "ci" / "native_test_graph.py"
+_graph_spec = importlib.util.spec_from_file_location("native_test_graph", GRAPH_READER)
+assert _graph_spec is not None and _graph_spec.loader is not None, f"cannot load {GRAPH_READER}"
+_graph_reader = importlib.util.module_from_spec(_graph_spec)
+_graph_spec.loader.exec_module(_graph_reader)
+load_graph = _graph_reader.load_graph
 # One test binary gets 10 minutes, the same bound the shell's `timeout 600` set.
 TEST_TIMEOUT = 600
 # tool -> (compile flags, CMAKE_BUILD_TYPE). -ffp-contract=off: the runner's gcc
@@ -67,7 +74,7 @@ SKIPPED_TESTS = re.compile(r"^(test_formatted_filename|test_utf8)$")
 # Where the build declares cmocka test targets, for the unwinder selection
 # below: the declarative graph, one CMake fragment per test (#137), and the
 # directory's own CMake files for the tests that predate the fragments.
-TEST_GRAPH = "test/cmocka/build/test-graph.json"
+TEST_GRAPH = "test/cmocka/build/test-graph.d"
 TEST_FRAGMENTS = ("test/cmocka/CMakeLists.txt", "test/cmocka/*.cmake", "test/cmocka/tests.d/*.cmake")
 # A test can reach FFmpeg when its own link libraries name one of these.
 # OBS::libobs is deliberately not one of them: libobs links FFmpeg itself
@@ -214,8 +221,8 @@ def scan_unwind_policy(src: Path) -> UnwindPolicy:
     declared: set[str] = set()
     ffmpeg: set[str] = set()
     graph = src / TEST_GRAPH
-    if graph.is_file():
-        targets = json.loads(graph.read_text(encoding="utf-8")).get("targets", {})
+    if graph.exists():
+        targets = load_graph(graph).get("targets", {})
         for name, spec in targets.items():
             declared.add(name)
             if FFMPEG_LIBRARY.search(json.dumps(spec.get("libraries", []))):

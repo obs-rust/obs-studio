@@ -5,7 +5,7 @@ use super::*;
 fn canonical_config_hex_float_rounding_is_registered() {
     use obs_build::validation::graph::{Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph.retain_suite("core");
     let name = "test_config_hex_float_rounding";
     let target = graph

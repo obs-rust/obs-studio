@@ -13,4 +13,4 @@
 # rust/obs-hotkey compare the shims with this C instead, and
 # test_x11_hotkey_layout and test_hotkey_translations cover the callers
 # through the real libobs. Target and test are declared in
-# ../build/test-graph.json.
+# ../build/test-graph.d.

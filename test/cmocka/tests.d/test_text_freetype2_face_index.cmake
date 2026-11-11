@@ -1,4 +1,4 @@
-# Generated fixtures for ../build/test-graph.json; no duplicate registration.
+# Generated fixtures for ../build/test-graph.d; no duplicate registration.
 set(HAVE_FONTCONFIG_TEST_OWNER FALSE)
 if(OS_LINUX AND TARGET OBS::text-freetype2)
   set(HAVE_FONTCONFIG_TEST_OWNER TRUE)

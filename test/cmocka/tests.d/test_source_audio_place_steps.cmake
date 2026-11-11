@@ -13,7 +13,7 @@
 # test_media_sync_offset_restart, test_audio_restart_resampler_tail,
 # test_source_volume_mix, test_source_audio_ranges and test_audio_controls
 # cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the eleven hidden functions, and includes their header and obs.h
@@ -22,4 +22,4 @@
 # alone: its obs-source member needs nothing from libobs or the other crates.
 # Linking the archive directly avoids exporting private symbols just for a
 # test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

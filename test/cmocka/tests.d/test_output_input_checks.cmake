@@ -4,4 +4,4 @@
 # and UBSan cover the test's own code and libobs's frees; leak checks are off
 # because the GL driver keeps an allocation from a module it unloads before
 # exit, as Qt and fontconfig do in test_properties_dialog_refresh.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

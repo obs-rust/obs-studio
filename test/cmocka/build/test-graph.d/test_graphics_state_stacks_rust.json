@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_graphics_state_stacks_rust": {
+      "sources": [
+        "test/cmocka/test_graphics_state_stacks.c",
+        "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
+        "libobs/graphics/obs-graphics-adapter.c.h",
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c",
+        "libobs/obs-graphics-effect-file-fields.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "definitions": [
+        "GS_STATE_STACKS_TEST_RUST"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka",
+        "libobs_rust-static",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "sanitizers": "address,undefined",
+      "conditional_link_options": [
+        {
+          "name": "/FORCE:MULTIPLE",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/INCREMENTAL:NO",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/WX:NO",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/IGNORE:4006",
+          "requires": "MSVC"
+        },
+        {
+          "name": "/IGNORE:4075",
+          "requires": "MSVC"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_graphics_state_stacks_rust": {
+      "target": "test_graphics_state_stacks_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

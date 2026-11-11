@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_ws_image_mime": {
+      "sources": [
+        "test/cmocka/test_ws_image_mime.cpp",
+        "plugins/obs-websocket/src/utils/ImageFormat.cpp"
+      ],
+      "requires": "HAVE_WS_IMAGE_MIME_TEST_OWNER",
+      "includes": [
+        "plugins/obs-websocket/src"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "cpp_standard": "17",
+      "watch_inputs": [
+        "plugins/obs-websocket/src/utils/ImageFormat.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_ws_image_mime": {
+      "target": "test_ws_image_mime",
+      "suite": "qt"
+    }
+  }
+}

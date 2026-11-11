@@ -1,4 +1,4 @@
-# Registered once in ../build/test-graph.json; both native consumers use that graph.
+# Registered once in ../build/test-graph.d; both native consumers use that graph.
 if(TARGET OBS::libobs AND TARGET FFmpeg::avformat)
   find_package(FFmpeg 8.0 REQUIRED avdevice)
 endif()

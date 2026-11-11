@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_rist_open_cleanup": {
+      "sources": [
+        "test/cmocka/test_rist_open_cleanup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "Librist::Librist",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_LIBRIST_TEST_SDK",
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "watch_inputs": [
+        "plugins/obs-ffmpeg/obs-ffmpeg-rist.h"
+      ],
+      "header_libraries": [
+        "OBS::ffmpeg-net-host"
+      ]
+    }
+  },
+  "tests": {
+    "test_rist_open_cleanup": {
+      "target": "test_rist_open_cleanup",
+      "requires": "HAVE_LIBRIST_TEST_SDK"
+    }
+  }
+}

@@ -13,8 +13,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRATION = ROOT / "test/cmocka/build/test-graph.json"
+REGISTRATION = ROOT / "test/cmocka/build/test-graph.d"
 BRIDGE = ROOT / "test/cmocka/hosts/windows/effect-parser-lookup-import.c"
 SYMBOL = "gs_effect_get_param_by_name"
 ALIAS = "obs_test_effect_get_param_by_name"
@@ -54,7 +56,7 @@ class EffectParserWindowsLinkTest(unittest.TestCase):
             # lookup. Modelling it in C keeps the reproduction SDK/toolchain free.
             compile_c("rust", header + implementation + "void ep_parse_struct(void) {}\n")
             run("llvm-lib", "/out:libobs_rust.lib", "rust.obj")
-            registrations = json.loads(REGISTRATION.read_text())["targets"]
+            registrations = load_graph(REGISTRATION)["targets"]
             bridge_source = {
                 "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
                 "requires": "MSVC",

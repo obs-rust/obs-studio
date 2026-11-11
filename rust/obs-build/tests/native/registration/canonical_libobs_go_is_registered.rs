@@ -12,9 +12,10 @@ const NAMES: [&str; 5] = [
 #[test]
 fn canonical_libobs_go_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for name in NAMES {
         let target = &raw["targets"][name];
         assert!(!target.is_null(), "canonical graph omits {name}");

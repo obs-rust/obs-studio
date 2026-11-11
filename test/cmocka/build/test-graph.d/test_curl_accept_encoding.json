@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_curl_accept_encoding": {
+      "sources": [
+        "test/cmocka/test_curl_accept_encoding.c"
+      ],
+      "libraries": [
+        "CURL::libcurl",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_CURL_TEST_SDK",
+      "includes": [
+        "."
+      ],
+      "watch_inputs": [
+        "shared/file-updater/file-updater/curl-accept-encoding.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_curl_accept_encoding": {
+      "target": "test_curl_accept_encoding",
+      "requires": "HAVE_CURL_TEST_SDK"
+    }
+  }
+}

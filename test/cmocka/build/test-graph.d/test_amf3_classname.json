@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_amf3_classname": {
+      "sources": [
+        "test/cmocka/test_amf3_classname.c",
+        "plugins/obs-outputs/librtmp/amf.c",
+        "plugins/obs-outputs/librtmp/log.c"
+      ],
+      "requires": "HAVE_OBS_OUTPUTS",
+      "includes": [
+        "plugins/obs-outputs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "ws2_32",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "definitions": [
+        "NO_CRYPTO"
+      ],
+      "sanitizers": "address"
+    }
+  },
+  "tests": {
+    "test_amf3_classname": {
+      "target": "test_amf3_classname",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

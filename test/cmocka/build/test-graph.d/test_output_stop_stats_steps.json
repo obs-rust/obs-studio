@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_stop_stats_steps": {
+      "sources": [
+        "test/cmocka/test_output_stop_stats_steps.c",
+        "libobs/obs-output-stop-stats.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-output-stop-stats.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_output_stop_stats_steps": {
+      "target": "test_output_stop_stats_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

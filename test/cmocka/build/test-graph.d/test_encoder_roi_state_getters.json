@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_roi_state_getters": {
+      "sources": [
+        "test/cmocka/test_encoder_roi_state_getters.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_roi_state_getters": {
+      "target": "test_encoder_roi_state_getters",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pthread_init_failures": {
+      "sources": [
+        "test/cmocka/test_pthread_init_failures.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=pthread_create",
+        "-Wl,--export-dynamic-symbol=pthread_cond_init",
+        "-Wl,--export-dynamic-symbol=pthread_mutex_destroy",
+        "-Wl,--export-dynamic-symbol=pthread_mutex_init"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_pthread_init_failures": {
+      "target": "test_pthread_init_failures",
+      "command": [
+        "${target}"
+      ],
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

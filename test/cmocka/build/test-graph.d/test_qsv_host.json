@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_qsv_host": {
+      "sources": [
+        "test/cmocka/test_qsv_host.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/qsv-host-linux.c.h",
+        "plugins/obs-qsv11/build/obs-qsv11-linux-c.pch.h",
+        "plugins/obs-qsv11/qsv-host.h"
+      ],
+      "requires": "OS_LINUX"
+    }
+  },
+  "tests": {
+    "test_qsv_host": {
+      "target": "test_qsv_host",
+      "command": [
+        "${target}"
+      ],
+      "requires": "OS_LINUX"
+    }
+  }
+}

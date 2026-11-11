@@ -1,4 +1,4 @@
-# Registration lives in build/test-graph.json; no duplicate executable.
+# Registration lives in build/test-graph.d; no duplicate executable.
 set(HAVE_PIPEWIRE_HEADLESS_SDK FALSE)
 set(HAVE_PIPEWIRE_LOOP_TEST_SDK FALSE)
 if(TARGET OBS::pipewire)

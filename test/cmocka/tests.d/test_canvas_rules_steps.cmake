@@ -12,7 +12,7 @@
 # calls only them. test_canvas_flags, test_scene_private_canvas,
 # test_canvas_destroy_scene_refs, test_shutdown_canvas_weak_ref and
 # test_scene_canvas_characterization cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # No _rust variant, as for test_canvas_draw_steps: linking this test against
 # libobs_rust-static fails with 401 undefined references (108 symbols), because

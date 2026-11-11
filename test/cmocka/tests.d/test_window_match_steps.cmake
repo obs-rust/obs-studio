@@ -9,7 +9,7 @@
 # functions are hidden in libobs, so this characterizes that C source; the
 # test calls only them. The Tier 3 parity tests in rust/obs-util compare the
 # shims with this C on every host.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # The same cases against the Rust shims, built and run only with the hybrid
 # backend (OBS_LIBOBS_BACKEND=C has no Rust target), on Linux. The port has no
@@ -32,4 +32,4 @@ if(TARGET libobs_rust-static AND OS_LINUX)
     set(HAVE_WINDOW_MATCH_TEST_GIO TRUE)
   endif()
 endif()
-# Both targets and tests are declared in ../build/test-graph.json.
+# Both targets and tests are declared in ../build/test-graph.d.

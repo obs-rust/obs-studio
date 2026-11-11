@@ -3,11 +3,9 @@
 
     uv run python -m unittest ci/test_test_graph_sorted.py
 
-Every port adds a cmocka test to test/cmocka/build/test-graph.json. When new
-entries go at the end of the `targets` and `tests` maps, two open PRs touch the
-same hunk and the second is ejected from the merge queue (#1997). In name order
-they land in different places. Readers do not depend on the order: obs-build
-loads both maps into a BTreeMap and CMake looks tests up by name.
+Each target owns one fragment in test/cmocka/build/test-graph.d. Both maps in
+an individual fragment stay sorted for review; the loader sorts the assembled
+maps independently. Independent registrations never edit the same file (#3973).
 
 To fix a failure, run this file with --fix.
 """
@@ -19,8 +17,10 @@ import sys
 import unittest
 from pathlib import Path
 
+from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parent.parent
-GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
+GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.d"
 MAPS = ("targets", "tests")
 
 
@@ -43,12 +43,12 @@ def render(graph: dict) -> str:
 
 class TestGraphSorted(unittest.TestCase):
     def test_maps_are_in_name_order(self) -> None:
-        graph = json.loads(GRAPH.read_text(encoding="utf-8"))
-        self.assertEqual(
-            unsorted_maps(graph),
-            [],
-            "run `uv run ci/test_test_graph_sorted.py --fix`",
-        )
+        for fragment in sorted(GRAPH.glob("*.json")):
+            with self.subTest(fragment=fragment.name):
+                graph = json.loads(fragment.read_text(encoding="utf-8"))
+                self.assertEqual(unsorted_maps(graph), [],
+                                 "run `uv run ci/test_test_graph_sorted.py --fix`")
+        self.assertEqual(unsorted_maps(load_graph(GRAPH)), [])
 
     def test_unsorted_map_is_reported(self) -> None:
         graph = {"schema": 1, "targets": {"b": {}, "a": {}}, "tests": {"a": {}}}
@@ -59,9 +59,8 @@ class TestGraphSorted(unittest.TestCase):
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--fix"]:
-        GRAPH.write_text(
-            render(sorted_graph(json.loads(GRAPH.read_text(encoding="utf-8")))),
-            encoding="utf-8",
-        )
+        for fragment in sorted(GRAPH.glob("*.json")):
+            fragment.write_text(render(sorted_graph(json.loads(fragment.read_text(encoding="utf-8")))),
+                                encoding="utf-8")
     else:
         unittest.main()

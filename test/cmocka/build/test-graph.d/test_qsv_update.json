@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_qsv_update": {
+      "sources": [
+        "test/cmocka/test_qsv_update.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "includes": [
+        "."
+      ],
+      "header_libraries": [
+        "VPL::VPL"
+      ],
+      "definitions": [
+        "OBS_QSV_HOST_DEFS=\"plugins/obs-qsv11/bits/linux_defs.h\""
+      ],
+      "watch_inputs": [
+        "plugins/obs-qsv11/QSV_Encoder.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder.h",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.cpp.hpp",
+        "plugins/obs-qsv11/QSV_Encoder_Internal.h",
+        "plugins/obs-qsv11/bits/linux_defs.h",
+        "plugins/obs-qsv11/build/obs-qsv11-c.pch.h",
+        "plugins/obs-qsv11/build/obs-qsv11.core+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.linux+.hpp.cpp",
+        "plugins/obs-qsv11/build/obs-qsv11.pch.hpp",
+        "plugins/obs-qsv11/common_directx11.cpp.hpp",
+        "plugins/obs-qsv11/common_directx11.h",
+        "plugins/obs-qsv11/common_utils.cpp.hpp",
+        "plugins/obs-qsv11/common_utils.h",
+        "plugins/obs-qsv11/obs-qsv11.c.h",
+        "plugins/obs-qsv11/qsv-host.h",
+        "plugins/obs-qsv11/qsv-probe.h"
+      ],
+      "compile_options_if_supported": [
+        "-Wno-error=switch"
+      ]
+    }
+  },
+  "tests": {
+    "test_qsv_update": {
+      "target": "test_qsv_update",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_QSV_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 60
+    }
+  }
+}

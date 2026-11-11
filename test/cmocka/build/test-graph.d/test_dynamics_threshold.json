@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_dynamics_threshold": {
+      "sources": [
+        "test/cmocka/test_dynamics_threshold.c"
+      ],
+      "requires": true,
+      "watch_inputs": [
+        "plugins/obs-filters"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "compile_options": [
+        {
+          "name": "/fp:strict",
+          "requires": "MSVC"
+        },
+        {
+          "name": "-fno-fast-math",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        {
+          "name": "-ffp-contract=off",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_dynamics_threshold": {
+      "target": "test_dynamics_threshold",
+      "requires": true
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_render_route_steps": {
+      "sources": [
+        "test/cmocka/test_source_render_route_steps.c",
+        "libobs/obs-source-render-route.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_source_render_route_steps": {
+      "target": "test_source_render_route_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

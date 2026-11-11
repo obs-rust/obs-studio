@@ -1,7 +1,7 @@
 use super::*;
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "recording_shutdown_runtime.rs"]
+#[path = "support/recording_shutdown_runtime.rs"]
 mod runtime;
 
 const CASES: [(&str, u32); 2] = [
@@ -13,10 +13,11 @@ const CASES: [(&str, u32); 2] = [
 fn canonical_recording_shutdown_waits_are_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for (name, timeout) in CASES {
         let target = graph
             .targets

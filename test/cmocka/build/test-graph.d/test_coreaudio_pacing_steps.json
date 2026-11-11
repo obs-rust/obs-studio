@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_coreaudio_pacing_steps": {
+      "sources": [
+        "test/cmocka/test_coreaudio_pacing_steps.c",
+        "libobs/audio-monitoring/osx/coreaudio-pacing.c.h"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "watch_inputs": [
+        "libobs/audio-monitoring/osx/coreaudio-pacing.h",
+        "libobs/graphics/math-defs.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_coreaudio_pacing_steps": {
+      "target": "test_coreaudio_pacing_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

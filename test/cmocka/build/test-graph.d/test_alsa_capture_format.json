@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_alsa_capture_format": {
+      "sources": [
+        "test/cmocka/test_alsa_capture_format.c",
+        "plugins/linux-alsa/alsa-input.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "ALSA::ALSA",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "HAVE_OBS_ALSA",
+      "watch_inputs": [
+        "plugins/linux-alsa/build/linux-alsa-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio,--wrap=snd_pcm_hw_params_test_format,--wrap=snd_pcm_readi"
+      ]
+    }
+  },
+  "tests": {
+    "test_alsa_capture_format": {
+      "target": "test_alsa_capture_format",
+      "requires": "HAVE_OBS_ALSA",
+      "timeout_seconds": 60
+    }
+  }
+}

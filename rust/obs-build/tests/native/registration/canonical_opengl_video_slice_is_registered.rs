@@ -14,7 +14,7 @@ const CASES: [(&str, Option<u32>); 6] = [
 fn canonical_opengl_video_slice_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let cases = CASES;
     for (name, timeout) in cases {
         let target = graph.targets.get(name).unwrap_or_else(|| {
@@ -112,5 +112,5 @@ fn expected_libraries(name: &str) -> Vec<&'static str> {
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "opengl_video_slice_runtime.rs"]
+#[path = "support/opengl_video_slice_runtime.rs"]
 mod runtime;

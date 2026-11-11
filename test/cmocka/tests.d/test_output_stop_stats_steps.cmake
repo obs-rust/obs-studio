@@ -21,4 +21,4 @@
 # test_replay_buffer_pause_stop, test_scaled_mix_alpha and
 # test_texture_encoder_raw_format stop video outputs, so they run
 # log_frame_info() through the real libobs; none checks its lines.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

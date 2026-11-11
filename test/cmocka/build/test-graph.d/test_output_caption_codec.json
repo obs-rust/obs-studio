@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_caption_codec": {
+      "sources": [
+        "test/cmocka/test_output_caption_codec.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_caption_codec": {
+      "target": "test_output_caption_codec",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 60,
+      "skip_return_code": 77
+    }
+  }
+}

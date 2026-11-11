@@ -12,4 +12,4 @@
 # own, as test_nix_x11_keys_steps. The Tier 3 parity tests in rust/obs-hotkey
 # compare the shims with this C instead, and test_x11_volume_keys and
 # test_x11_keymap cover the callers through the real libobs. Target and test
-# are declared in ../build/test-graph.json.
+# are declared in ../build/test-graph.d.

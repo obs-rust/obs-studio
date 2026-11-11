@@ -5,7 +5,7 @@ use super::*;
 fn canonical_video_output_compatibility_is_registered() {
     use obs_build::validation::graph::{ConditionalValue, Graph, Source};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     let cases = [
         ("test_video_output_formats", 180),
         ("test_video_reset_fps", 60),

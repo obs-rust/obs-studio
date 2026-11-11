@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_core_texture_activity": {
+      "sources": [
+        "test/cmocka/test_core_texture_activity.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_core_texture_activity": {
+      "target": "test_core_texture_activity",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    }
+  }
+}

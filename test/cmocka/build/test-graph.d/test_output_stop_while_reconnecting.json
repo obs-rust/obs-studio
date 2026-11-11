@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_stop_while_reconnecting": {
+      "sources": [
+        "test/cmocka/test_output_stop_while_reconnecting.c"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_output_stop_while_reconnecting": {
+      "target": "test_output_stop_while_reconnecting",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "timeout_seconds": 120,
+      "working_directory": "${runtime}",
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    }
+  }
+}

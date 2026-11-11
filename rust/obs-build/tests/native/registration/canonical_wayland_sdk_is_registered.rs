@@ -181,9 +181,10 @@ const EXPECTED: &str = r#"{
 #[test]
 fn canonical_wayland_sdk_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let expected: serde_json::Value = serde_json::from_str(EXPECTED).unwrap();
     for name in CASES {
         for section in ["targets", "tests"] {
@@ -202,7 +203,7 @@ fn canonical_wayland_sdk_is_registered() {
 #[test]
 fn canonical_wayland_sdk_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph
         .targets
         .retain(|name, _| CASES.contains(&name.as_str()));
@@ -245,7 +246,7 @@ fn assert_selection(graph: &Graph, os: &str, enabled: bool, client: bool, server
 }
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "wayland_sdk_runtime.rs"]
+#[path = "support/wayland_sdk_runtime.rs"]
 mod runtime;
 
 #[test]
@@ -269,9 +270,10 @@ fn canonical_wayland_sdk_absent_configures() {
         "test_wayland_volume_keys",
         "test_wayland_multiseat",
     ];
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let mut graph = serde_json::json!({"schema": 1, "targets": {}, "tests": {}});
     for section in ["targets", "tests"] {
         for name in names {

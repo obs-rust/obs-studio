@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_item_crop_rust": {
+      "sources": [
+        "test/cmocka/test_scene_item_crop.c",
+        "test/cmocka/scene-item-fields-link-support.c",
+        "test/cmocka/scene-group-query-link-stubs.c",
+        "test/cmocka/scene-item-transition-getter-link-stub.c",
+        "test/cmocka/scene-item-blending-mode-link-support.c",
+        "test/cmocka/scene-item-group-scene-link-support.c",
+        "test/cmocka/scene-item-parent-getter-link-stub.c",
+        "test/cmocka/scene-item-visible-link-support.c",
+        "test/cmocka/scene-source-getter-link-support.c",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
+      ],
+      "includes": [
+        "libobs",
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        "m",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_item_crop_rust": {
+      "target": "test_scene_item_crop_rust",
+      "requires": {
+        "all": [
+          "HAVE_LIBOBS_RUST_STATIC",
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120
+    }
+  }
+}

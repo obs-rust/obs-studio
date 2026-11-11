@@ -18,7 +18,7 @@ const FACTS: [&str; 5] = [
 ];
 
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "transport_helpers_runtime.rs"]
+#[path = "support/transport_helpers_runtime.rs"]
 mod runtime;
 
 fn expected() -> serde_json::Value {
@@ -29,9 +29,10 @@ fn expected() -> serde_json::Value {
 #[test]
 fn canonical_transport_helpers_are_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     let expected = expected();
     for name in CASES {
         for section in ["targets", "tests"] {
@@ -44,14 +45,14 @@ fn canonical_transport_helpers_are_registered() {
             fs::read_to_string(root.join(format!("test/cmocka/tests.d/{name}.cmake"))).unwrap();
         assert!(!fragment.contains("add_executable("));
         assert!(!fragment.contains("add_test("));
-        assert!(fragment.contains("test-graph.json"));
+        assert!(fragment.contains("test-graph.d"));
     }
 }
 
 #[test]
 fn canonical_transport_helpers_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph
         .targets
         .retain(|name, _| CASES.contains(&name.as_str()));

@@ -7,4 +7,4 @@
 # which needs the private libobs, libcaption, uthash and zlib headers.
 # output_delay_fields_stub.c provides the delay field accessors of
 # obs-output.c over the test's struct obs_output.
-# test_output_delay is defined in ../build/test-graph.json.
+# test_output_delay is defined in ../build/test-graph.d.

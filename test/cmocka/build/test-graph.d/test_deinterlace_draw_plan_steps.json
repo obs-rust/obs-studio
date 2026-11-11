@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_deinterlace_draw_plan_steps": {
+      "sources": [
+        "test/cmocka/test_deinterlace_draw_plan_steps.c",
+        "libobs/obs-source-deinterlace-draw.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_deinterlace_draw_plan_steps": {
+      "target": "test_deinterlace_draw_plan_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -20,4 +20,4 @@
 # tests in rust/obs-output compare the shims with this C instead.
 # test_encoder_error_stop, test_texture_encoder_raw_format and
 # test_encoder_join_keyframe cover the thread through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

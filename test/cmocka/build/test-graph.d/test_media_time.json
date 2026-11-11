@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_media_time": {
+      "sources": [
+        "test/cmocka/test_media_time.c",
+        "frontend/utility/media-time.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    }
+  },
+  "tests": {
+    "test_media_time": {
+      "target": "test_media_time",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

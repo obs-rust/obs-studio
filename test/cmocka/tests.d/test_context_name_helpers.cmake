@@ -8,4 +8,4 @@
 # libobs's hidden base_default_log_handler), so it does not link on its own.
 # The Tier 3 parity tests in rust/obs-core compare the shims with this C
 # instead. test_context_names covers the callers through the real libobs.
-# Defined in ../build/test-graph.json.
+# Defined in ../build/test-graph.d.

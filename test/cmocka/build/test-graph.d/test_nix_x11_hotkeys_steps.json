@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_nix_x11_hotkeys_steps": {
+      "sources": [
+        "test/cmocka/test_nix_x11_hotkeys_steps.c",
+        "libobs/obs-nix-x11-hotkeys.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "watch_inputs": [
+        "libobs/obs-nix-x11-hotkeys.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_nix_x11_hotkeys_steps": {
+      "target": "test_nix_x11_hotkeys_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

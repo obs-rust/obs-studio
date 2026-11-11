@@ -16,4 +16,4 @@
 # test_encoder_video_reset, test_encoding_lag_rescale,
 # test_multitrack_encoder_override, test_encoder_fallback and test_encoder_roi
 # cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

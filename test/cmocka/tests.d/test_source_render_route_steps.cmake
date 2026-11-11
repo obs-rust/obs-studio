@@ -12,7 +12,7 @@
 # source; the test calls only them. test_filter_color_space,
 # test_filter_skip_removed and the other filter tests cover the callers through
 # the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls only the 23 hidden functions and includes their header and obs.h (for
@@ -22,4 +22,4 @@
 # alone: its obs-source member needs nothing from libobs or the other crates.
 # Linking the archive directly avoids exporting private symbols just for a
 # test.
-# Rust-static target and test are declared in ../build/test-graph.json.
+# Rust-static target and test are declared in ../build/test-graph.d.

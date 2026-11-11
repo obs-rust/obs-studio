@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_dstr_zero_len": {
+      "sources": [
+        "test/cmocka/test_dstr_zero_len.c",
+        "libobs/util/dstr.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "MSVC"
+      },
+      "sanitizers": "undefined"
+    }
+  },
+  "tests": {
+    "test_dstr_zero_len": {
+      "target": "test_dstr_zero_len",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_failed_start_encoders": {
+      "sources": [
+        "test/cmocka/test_output_failed_start_encoders.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": {
+        "not": "OS_WINDOWS"
+      }
+    }
+  },
+  "tests": {
+    "test_output_failed_start_encoders": {
+      "target": "test_output_failed_start_encoders",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

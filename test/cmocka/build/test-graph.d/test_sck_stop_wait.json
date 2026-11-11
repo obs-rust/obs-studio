@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_sck_stop_wait": {
+      "sources": [
+        "test/cmocka/test_sck_stop_wait.c",
+        "plugins/mac-capture/mac-sck-stop.c.h"
+      ],
+      "includes": [
+        "plugins/mac-capture"
+      ],
+      "watch_inputs": [
+        "plugins/mac-capture/mac-sck-stop.h",
+        "plugins/mac-capture/build/mac-capture-sck-stop.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_sck_stop_wait": {
+      "target": "test_sck_stop_wait"
+    }
+  }
+}

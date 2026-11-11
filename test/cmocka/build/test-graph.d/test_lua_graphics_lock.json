@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_lua_graphics_lock": {
+      "sources": [
+        "test/cmocka/test_lua_graphics_lock.c"
+      ],
+      "header_libraries": [
+        "OBS::headless-characterization-headers"
+      ],
+      "watch_inputs": [
+        "test/cmocka/fixtures/lua-graphics-lock-original.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_lua_graphics_lock": {
+      "target": "test_lua_graphics_lock",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
+    }
+  }
+}

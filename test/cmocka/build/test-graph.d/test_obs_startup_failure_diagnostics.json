@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_obs_startup_failure_diagnostics": {
+      "sources": [
+        "test/cmocka/test_obs_startup_failure_diagnostics.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "X11::X11"
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=XOpenDisplay"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11"
+        ]
+      },
+      "watch_inputs": [
+        "libobs/obs-nix-platform.h"
+      ]
+    }
+  },
+  "tests": {
+    "test_obs_startup_failure_diagnostics": {
+      "target": "test_obs_startup_failure_diagnostics",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_STARTUP_X11"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

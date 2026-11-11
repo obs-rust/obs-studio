@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from native_test_graph import load_graph
+
 ROOT = Path(__file__).resolve().parents[1]
 
 # Core registrations from #1390 batch 2 (#3847); the graph has no batch markers.
@@ -148,7 +150,7 @@ int main(void) {
     def test_scene_archive_consumers_supply_getter_logging(self):
         # MSVC keeps the getters' blog reference in the scene archive member
         # pulled by these pure rule tests (#3891, Windows LNK2019).
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         stub = "test/cmocka/scene-getter-log-link-stub.c"
         for name in ("test_scene_audio_window_steps_rust", "test_scene_render_plan_steps_rust"):
             with self.subTest(name=name):
@@ -174,7 +176,7 @@ int main(void) {
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         target = graph["targets"]["test_portal_shortcuts"]
         for source in ["libobs/obs-hotkey.c.h",
                        "libobs/obs-hotkey-background-app-id.c.h",
@@ -184,7 +186,7 @@ int main(void) {
         self.assertFalse(any("app-id-link-stub" in source for source in target["sources"]))
 
     def test_core_texture_activity_supplies_standalone_field_adapters(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/core-texture-activity.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -198,7 +200,7 @@ int main(void) {
                 self.assertEqual(graph["targets"][name]["sources"].count(stub), 1)
 
     def test_output_service_getter_supplies_standalone_field_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-service-getter.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -213,7 +215,7 @@ int main(void) {
         self.assertIn("obs_output_service_getter_fields", (ROOT / stub).read_text())
 
     def test_weak_object_identity_supplies_standalone_field_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/weak-object-identity.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -227,7 +229,7 @@ int main(void) {
                 self.assertEqual(graph["targets"][name]["sources"].count(stub), 1)
 
     def test_output_handler_getters_supply_standalone_field_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-handler-getters.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -247,7 +249,7 @@ int main(void) {
         self.assertIn("obs_output_handler_getters_fields", (ROOT / stub).read_text())
 
     def test_source_handler_getter_supplies_live_standalone_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/source-handler-getters.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -302,7 +304,7 @@ int main(void) {
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_output_pause_queries_supply_all_static_consumers(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-pause-queries.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -323,7 +325,7 @@ int main(void) {
             self.assertIn(symbol, (ROOT / stub).read_text())
 
     def test_scene_parent_getter_supplies_all_static_consumers(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-item-parent-getter.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -344,7 +346,7 @@ int main(void) {
         self.assertIn("libobs_rust-static", legacy)
 
     def test_scene_visibility_supplies_live_atomic_adapter_to_static_consumers(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-item-visible.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -366,7 +368,7 @@ int main(void) {
         self.assertIn("OBS::w32-pthreads", legacy)
 
     def test_scene_source_getters_supply_all_static_consumers(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-source-getters.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -394,7 +396,7 @@ int main(void) {
         self.assertIn("scene-source-getter-link-support.c", legacy)
 
     def test_scene_group_scene_supplies_live_adapters_to_static_consumers(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-item-group-scene.json"
         support = json.loads(entry.read_text())
         names = {name for name, target in graph["targets"].items()
@@ -418,7 +420,7 @@ int main(void) {
         self.assertIn("OBS::w32-pthreads", legacy)
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-group-queries.json"
         support = json.loads(entry.read_text())
         names = {"test_scene_audio_window_steps_rust", "test_scene_render_plan_steps_rust",
@@ -442,7 +444,7 @@ int main(void) {
         self.assertIn("libobs_rust-static", legacy)
 
     def test_all_scene_static_consumers_have_blog_provider(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         consumers = set()
         stub = "test/cmocka/scene-getter-log-link-stub.c"
         for name, target in graph["targets"].items():
@@ -474,7 +476,7 @@ int main(void) {
                         self.assertIn("OBS::libobs", libraries)
         self.assertIn("test_scene_item_names_steps_rust", legacy | consumers)
     def test_source_boolean_queries_supply_standalone_field_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
         self.assertEqual(len(consumers), 27)
@@ -493,7 +495,7 @@ int main(void) {
         self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
 
     def test_source_state_getters_supply_standalone_field_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
         self.assertEqual(len(consumers), 27)
@@ -512,7 +514,7 @@ int main(void) {
         self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
 
     def test_source_push_queries_supply_standalone_field_adapter(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         consumers = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
         support = json.loads((ROOT / "rust/obs-build/tests/native/registration/rust-static/support/source-push-queries.json").read_text())
@@ -529,7 +531,7 @@ int main(void) {
         self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
 
     def test_deinterlace_link_support_imports_windows_pthreads(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-deinterlace-getter-link-stubs.c" in target["sources"]]
@@ -541,7 +543,7 @@ int main(void) {
         self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
 
     def test_async_flag_link_support_imports_windows_pthreads(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-async-flag-getter-link-stubs.c" in target["sources"]]
@@ -553,7 +555,7 @@ int main(void) {
         self.assertIn("$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>", legacy)
 
     def test_filter_relationship_link_support_imports_windows_pthreads(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         supported = [name for name, target in graph["targets"].items()
                      if "test/cmocka/source-filter-relationship-getter-link-stubs.c" in target["sources"]]
@@ -567,7 +569,7 @@ int main(void) {
     def test_scene_static_consumers_supply_private_mutex_adapters(self):
         # Hidden libobs adapters cannot resolve from its shared library. These
         # pure-rule consumers must never call them; the abort-only stub proves it.
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         stub = "test/cmocka/scene-getter-log-link-stub.c"
         text = (ROOT / stub).read_text()
         for symbol in ("obs_sceneitem_fields_lock", "obs_sceneitem_fields_unlock"):
@@ -607,18 +609,18 @@ int main(void) {
         self.assertEqual(legacy, set())
 
     def test_filter_pch_imports_windows_pthreads(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         dependency = {"name": "OBS::w32-pthreads", "requires": "OS_WINDOWS"}
         for name in ("test_async_delay_pacing", "test_dynamics_threshold", "test_expander_unity"):
             with self.subTest(name=name):
                 self.assertIn(dependency, graph["targets"][name]["libraries"])
 
     def test_evaluated_linux_core_inventory(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         self.assert_linux_core_inventory(graph)
 
     def test_core_inventory_allows_additional_test(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         graph["targets"]["test_synthetic_core"] = {}
         graph["tests"]["test_synthetic_core"] = {"target": "test_synthetic_core"}
         self.assert_linux_core_inventory(graph)
@@ -686,7 +688,7 @@ int main(void) {
         self.assertIn('("HAVE_OBS_OPENGL".into(), false)', consumer)
 
     def test_standalone_fixture_uses_header_only_simde_finder(self):
-        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        graph = load_graph(ROOT / "test/cmocka/build/test-graph.d")
         for name, target in graph["targets"].items():
             self.assertNotIn("simde", target.get("header_packages", []), name)
             self.assertNotIn("simde", target.get("packages", []), name)

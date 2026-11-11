@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_jack_input": {
+      "sources": [
+        "test/cmocka/test_jack_input.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "requires": "OS_LINUX",
+      "includes": [
+        "test/cmocka/jack-stubs",
+        ".",
+        "plugins/linux-jack"
+      ],
+      "compile_options": [
+        {
+          "name": "-Wno-error=sign-compare",
+          "requires": "C_COMPILER_CLANG"
+        }
+      ],
+      "watch_inputs": [
+        "plugins/linux-jack/jack-input.c.h",
+        "plugins/linux-jack/jack-wrapper.c.h",
+        "plugins/linux-jack/build/linux-jack-nix.pch.h"
+      ],
+      "link_options": [
+        "-Wl,--wrap=obs_source_get_name,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio"
+      ]
+    }
+  },
+  "tests": {
+    "test_jack_input": {
+      "target": "test_jack_input",
+      "requires": "OS_LINUX",
+      "timeout_seconds": 60
+    }
+  }
+}

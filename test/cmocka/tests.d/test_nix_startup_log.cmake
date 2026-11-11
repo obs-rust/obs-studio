@@ -6,4 +6,4 @@
 # read_distribution_info() over the same /etc/os-release; that header calls
 # the hidden rules of obs-nix-log-rules.c, so the test builds that C file
 # into itself as the expectation.
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

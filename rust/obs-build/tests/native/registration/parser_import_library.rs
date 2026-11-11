@@ -1,3 +1,5 @@
+#![cfg(target_os = "linux")]
+
 //! Exercise CMake's actual generated-library edge without a Windows SDK.
 use super::*;
 use obs_build::validation::graph::Graph;

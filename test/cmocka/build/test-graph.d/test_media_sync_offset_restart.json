@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_media_sync_offset_restart": {
+      "sources": [
+        "test/cmocka/test_media_sync_offset_restart.c",
+        "plugins/obs-ffmpeg/obs-ffmpeg-source.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::media-playback",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample",
+        "m"
+      ],
+      "includes": [
+        "plugins/obs-ffmpeg"
+      ],
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data",
+        "shared/media-playback",
+        "plugins/obs-ffmpeg/build/obs-ffmpeg-source.pch.h"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_media_sync_offset_restart": {
+      "target": "test_media_sync_offset_restart",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "resource_locks": [
+        "timing"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_X11_DISPLAY",
+          "HAVE_OBS_OPENGL",
+          "HAVE_MEDIA_PLAYBACK_TEST_OWNER"
+        ]
+      },
+      "suite": "graphics"
+    }
+  }
+}

@@ -3,4 +3,4 @@
 # obs-ffmpeg-output.c into the test, so the obs-ffmpeg module and its
 # hardware encoder probes are not loaded. Needs core video, so it runs
 # (under xvfb-run) on Linux and skips without a display.
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

@@ -9,7 +9,7 @@
 # libobs core, so it runs on every platform. The functions are hidden in
 # libobs, so this characterizes that C source; the test calls only them. The
 # real-libobs scene tests cover the caller.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.
 
 # Exercise the unchanged characterization against the Rust shims. The test
 # calls the hidden functions and gives the loaders libobs's exported
@@ -18,4 +18,4 @@
 # member needs nothing else), as test_transition_clock_steps_rust does.
 # Linking the archive directly avoids exporting private symbols just for a
 # test.
-# Rust-static target and test are also declared in ../build/test-graph.json.
+# Rust-static target and test are also declared in ../build/test-graph.d.

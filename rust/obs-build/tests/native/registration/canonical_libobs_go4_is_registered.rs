@@ -6,9 +6,10 @@ const NAMES: [&str; 2] = ["test_image_exif_orientation", "test_media_remux"];
 #[test]
 fn canonical_libobs_go4_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let mut raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for name in NAMES {
         let mut libraries = vec!["OBS::libobs", "FFmpeg::avcodec"];
         if name == "test_media_remux" {

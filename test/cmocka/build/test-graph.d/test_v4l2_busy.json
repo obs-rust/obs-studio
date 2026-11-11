@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_v4l2_busy": {
+      "sources": [
+        "test/cmocka/test_v4l2_busy.c",
+        "plugins/linux-v4l2/v4l2-busy.c.h"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-v4l2"
+      ],
+      "watch_inputs": [
+        "plugins/linux-v4l2/build/linux-v4l2-nix.pch.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "header_packages": [
+        "libv4l2",
+        "libavcodec",
+        "libavformat",
+        "libavutil"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_BUSY_SDK"
+        ]
+      }
+    }
+  },
+  "tests": {
+    "test_v4l2_busy": {
+      "target": "test_v4l2_busy",
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_V4L2",
+          "HAVE_V4L2_BUSY_SDK"
+        ]
+      },
+      "timeout_seconds": 60
+    }
+  }
+}

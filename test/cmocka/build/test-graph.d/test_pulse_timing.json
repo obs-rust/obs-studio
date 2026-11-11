@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_pulse_timing": {
+      "sources": [
+        "test/cmocka/test_pulse_timing.c",
+        "plugins/linux-pulseaudio/pulse-timing.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        ".",
+        "plugins/linux-pulseaudio"
+      ],
+      "watch_inputs": [
+        "plugins/linux-pulseaudio/build/linux-pulseaudio-nix.pch.h"
+      ],
+      "requires": "HAVE_OBS_PULSEAUDIO"
+    }
+  },
+  "tests": {
+    "test_pulse_timing": {
+      "target": "test_pulse_timing",
+      "requires": "HAVE_OBS_PULSEAUDIO"
+    }
+  }
+}

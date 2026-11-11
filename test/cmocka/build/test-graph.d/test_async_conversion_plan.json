@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_async_conversion_plan": {
+      "sources": [
+        "test/cmocka/test_async_conversion_plan.c",
+        "libobs/obs-source-conversion-plan.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_async_conversion_plan": {
+      "target": "test_async_conversion_plan",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

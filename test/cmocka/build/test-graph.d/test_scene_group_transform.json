@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scene_group_transform": {
+      "sources": [
+        "test/cmocka/test_scene_group_transform.c",
+        "libobs/obs-scene-group-transform.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_scene_group_transform": {
+      "target": "test_scene_group_transform"
+    }
+  }
+}

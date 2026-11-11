@@ -10,4 +10,4 @@ if(TARGET OBS::pipewire)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(_portal_test_glib REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0)
 endif()
-# Registered once in build/test-graph.json, consumed by CMake and Cargo.
+# Registered once in build/test-graph.d, consumed by CMake and Cargo.

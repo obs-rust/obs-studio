@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_scripting_obs_defs": {
+      "sources": [
+        "test/cmocka/test_scripting_obs_defs.c"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_SCRIPTING_DEFS_TEST_SDK"
+        ]
+      },
+      "libraries": [
+        "OBS::scripting-defs-test",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_scripting_obs_defs": {
+      "target": "test_scripting_obs_defs",
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD",
+              "OS_OPENBSD"
+            ]
+          },
+          "HAVE_SCRIPTING_DEFS_TEST_SDK"
+        ]
+      },
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

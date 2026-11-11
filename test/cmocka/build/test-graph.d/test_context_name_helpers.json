@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_context_name_helpers": {
+      "sources": [
+        "test/cmocka/test_context_name_helpers.c",
+        "libobs/obs-context-names.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "sanitizers": "address,undefined",
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_context_name_helpers": {
+      "target": "test_context_name_helpers"
+    }
+  }
+}

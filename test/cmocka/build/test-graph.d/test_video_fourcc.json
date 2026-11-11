@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_fourcc": {
+      "sources": [
+        "test/cmocka/test_video_fourcc.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_video_fourcc": {
+      "target": "test_video_fourcc"
+    }
+  }
+}

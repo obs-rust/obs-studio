@@ -13,4 +13,4 @@
 # test_video_output_formats, test_raw_output_video_reset,
 # test_encoding_lag_rescale, test_scaled_mix_alpha, test_video_output_plan and
 # the texture encoder tests cover the callers through the real libobs.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

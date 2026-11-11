@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_vec4": {
+      "sources": [
+        "test/cmocka/test_vec4.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_vec4": {
+      "target": "test_vec4"
+    }
+  }
+}

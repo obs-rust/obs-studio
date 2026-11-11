@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_shader_number_defaults": {
+      "sources": [
+        "test/cmocka/test_shader_number_defaults.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    }
+  },
+  "tests": {
+    "test_shader_number_defaults": {
+      "target": "test_shader_number_defaults",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

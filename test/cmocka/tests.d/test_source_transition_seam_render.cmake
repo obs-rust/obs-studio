@@ -6,4 +6,4 @@
 # are hidden in libobs, so the test builds the seam (and the load checks
 # transition_valid() asks) into itself, over a stand-in core and stand-in
 # sources.
-# Target and test are declared in ../build/test-graph.json.
+# Target and test are declared in ../build/test-graph.d.

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_transition_render_steps": {
+      "sources": [
+        "test/cmocka/test_transition_render_steps.c",
+        "libobs/obs-source-transition-render.c.h"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        },
+        "OBS::native-test-cmocka"
+      ],
+      "sanitizers": "address,undefined"
+    }
+  },
+  "tests": {
+    "test_transition_render_steps": {
+      "target": "test_transition_render_steps",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

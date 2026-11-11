@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_source_async_flag_getters": {
+      "sources": [
+        "test/cmocka/test_source_async_flag_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_source_async_flag_getters": {
+      "target": "test_source_async_flag_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    }
+  }
+}

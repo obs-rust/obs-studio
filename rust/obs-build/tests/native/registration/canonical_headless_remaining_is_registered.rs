@@ -9,7 +9,7 @@ const CASES: [&str; 6] = [
     "test_scripting_obs_defs",
 ];
 #[cfg(all(feature = "libobs-integration", target_os = "linux"))]
-#[path = "headless_remaining_runtime.rs"]
+#[path = "support/headless_remaining_runtime.rs"]
 mod runtime;
 fn expected() -> serde_json::Value {
     serde_json::from_str(include_str!("headless_remaining_expected.json")).unwrap()
@@ -17,9 +17,10 @@ fn expected() -> serde_json::Value {
 #[test]
 fn canonical_headless_remaining_is_registered() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let raw: serde_json::Value =
-        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
-            .unwrap();
+    let raw: serde_json::Value = obs_build::validation::graph::Graph::read_value(
+        &root.join("test/cmocka/build/test-graph.d"),
+    )
+    .unwrap();
     for section in ["targets", "tests"] {
         for (name, value) in expected()[section].as_object().unwrap() {
             assert_eq!(&raw[section][name], value, "{section}/{name}");
@@ -29,7 +30,7 @@ fn canonical_headless_remaining_is_registered() {
 #[test]
 fn canonical_headless_remaining_guards() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.d")).unwrap();
     graph.targets.retain(|n, _| CASES.contains(&n.as_str()));
     graph
         .tests
