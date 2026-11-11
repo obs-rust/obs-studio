@@ -38,8 +38,14 @@ fn empty_group_and_real_non_group() {
 }
 
 fn check(stop_at: usize, param: Option<&i32>) {
-    let group = Scene { id: 7, items: &[11, 23, 47] };
-    let parent = Scene { id: 8, items: &[101, 7, 103] };
+    let group = Scene {
+        id: 7,
+        items: &[11, 23, 47],
+    };
+    let parent = Scene {
+        id: 8,
+        items: &[101, 7, 103],
+    };
     let mut calls = 0;
     let mut visited = Vec::new();
     // A NULL callback remains the scene enumerator's responsibility.
@@ -55,10 +61,15 @@ fn check(stop_at: usize, param: Option<&i32>) {
             assert_eq!(scene.id, group.id);
             assert_eq!(param.copied(), param.map(|_| 42));
             visited.push(item);
-            if visited.len() == stop_at { break; }
+            if visited.len() == stop_at {
+                break;
+            }
         }
     });
-    assert_eq!(visited, group.items[..if stop_at == 0 { 3 } else { stop_at }]);
+    assert_eq!(
+        visited,
+        group.items[..if stop_at == 0 { 3 } else { stop_at }]
+    );
     assert_eq!(param.copied(), param.map(|_| 42));
     visited.clear();
     enum_group_items(Some(group), |scene| {
