@@ -30,6 +30,7 @@ mod item_parent_getter_parity;
 mod item_transform;
 mod item_transform_parity;
 mod kind;
+mod kind_parity;
 mod render_plan;
 mod render_plan_parity;
 mod source_getters;
