@@ -11,6 +11,11 @@ pub trait PostLoad: Lists {
 
 /// Run the host hook before reading the enabled list, then dispatch in list order.
 /// Loaded/state flags do not filter members. Nodes remain live across callbacks.
-pub fn post_load<L: PostLoad>(_lists: &mut L) {
-    todo!("Rust obs_post_load_modules swap (#4674)");
+pub fn post_load<L: PostLoad>(lists: &mut L) {
+    lists.host();
+    crate::enum_modules::enumerate(lists, |lists, module| {
+        if let Some(callback) = lists.callback(module) {
+            lists.call(callback);
+        }
+    });
 }

@@ -15,6 +15,8 @@ impl PostLoad for Model {
         self.modules[module].post_load
     }
     fn call(&mut self, callback: u8) {
+        assert!(self.post_load_visits.len() < 16);
+        self.post_load_visits.push(callback);
         match callback {
             1 => self.modules[0].loaded = false,
             2 => assert!(!self.modules[0].loaded),
@@ -24,7 +26,6 @@ impl PostLoad for Model {
             6 => self.modules[1].post_load = Some(3),
             _ => unreachable!(),
         }
-        self.post_load_visits.push(callback);
     }
 }
 
