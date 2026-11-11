@@ -151,6 +151,7 @@ pub mod object_ref;
 pub mod object_validity_query;
 pub mod output_protocol_registry;
 mod platform;
+pub mod set_output_source;
 pub mod source_load;
 pub mod source_profiler;
 pub mod tick_callbacks;
