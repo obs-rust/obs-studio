@@ -1,0 +1,22 @@
+/* Generated from the real adapter bodies by test_immediate_arguments.cmake. */
+#include "graphics/vec2.h"
+#include "graphics/vec3.h"
+
+#define gs_vertex3f immediate_probe_vertex3f
+#define gs_texcoord immediate_probe_texcoord
+#define gs_vertex2v immediate_probe_vertex2v
+#define gs_vertex3v immediate_record_vertex
+#define gs_texcoord2v immediate_record_texcoord
+
+void gs_vertex3f(float x, float y, float z);
+void gs_texcoord(float x, float y, int unit);
+void gs_vertex2v(const struct vec2 *v);
+void gs_vertex3v(const struct vec3 *v);
+void gs_texcoord2v(const struct vec2 *v, int unit);
+
+@_immediate_argument_bodies@
+#undef gs_vertex3f
+#undef gs_texcoord
+#undef gs_vertex2v
+#undef gs_vertex3v
+#undef gs_texcoord2v
