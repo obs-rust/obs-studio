@@ -212,4 +212,6 @@ pub mod output_mixer_setters;
 
 pub mod output_video_encoder_getter;
 
+pub mod output_encoder_getters;
+
 pub mod output_size_getters;
