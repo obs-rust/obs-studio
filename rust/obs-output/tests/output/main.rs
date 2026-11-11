@@ -116,6 +116,7 @@ mod output_stop;
 mod output_stop_parity;
 mod output_supported_codecs;
 mod output_supported_codecs_parity;
+mod output_type_info;
 mod protocols;
 mod protocols_parity;
 mod raw_audio;

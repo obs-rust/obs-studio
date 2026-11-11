@@ -175,6 +175,7 @@ pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
 pub mod output_supported_codecs;
+pub mod output_type_info;
 pub mod protocols;
 pub mod raw_audio;
 pub mod raw_audio_trim;
