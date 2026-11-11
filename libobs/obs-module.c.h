@@ -375,14 +375,6 @@ void obs_load_plugins(struct obs_runtime_module_info *info, struct obs_module_fa
 	dstr_free(&failure.fail_modules);
 }
 
-void obs_post_load_modules(void)
-{
-	obs_host_post_load_modules();
-	for (obs_module_t *mod = obs->first_module; !!mod; mod = mod->next)
-		if (mod->post_load)
-			mod->post_load();
-}
-
 /* Function to find a specifically defined module. Used for loading core modules by name.
  * info->path_info.binary should be path to the module binary, without its file extension.
  * info->path_info.data should be path to the module data directory including the module name.
