@@ -134,6 +134,7 @@ pub mod module_metadata;
 pub mod module_name_lookups;
 pub mod module_names;
 pub mod module_paths;
+pub mod module_post_load;
 pub mod module_register_copy;
 pub mod module_source_rules;
 pub mod module_type_queries;

@@ -44,12 +44,15 @@ enum Read {
     ModuleName(usize),
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct ModelModule {
     data_path: Option<Vec<u8>>,
     name: Option<Vec<u8>>,
     next: Option<usize>,
     types: BTreeMap<TypeList, Vec<Option<Vec<u8>>>>,
+    post_load: Option<u8>,
+    loaded: bool,
+    load_state: i32,
 }
 
 /// A core and its modules. `modules[i]` is module `i`; the loaded ones are
@@ -64,7 +67,12 @@ struct Model {
     names: BTreeMap<NameList, Vec<Vec<u8>>>,
     log: Vec<Line<usize>>,
     reads: RefCell<Vec<Read>>,
+    post_load_visits: Vec<u8>,
+    host_calls: usize,
+    first_disabled: Option<usize>,
 }
+
+mod module_post_load;
 
 impl Model {
     /// A core as `obs_startup("en-US", "module-lists-config", NULL)` makes
