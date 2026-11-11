@@ -214,7 +214,10 @@ class FastGateUvSetupTest(unittest.TestCase):
         self.assertEqual(len(setups), 1, "Fast Gate must install uv exactly once")
         setup = setups[0]
         self.assertRegex(setup.group(1), r"^[0-9a-f]{40}$")
-        commands = list(re.finditer(r"^(?!\s*#).*\b(?:uv\s+(?:run|tool)|uvx\s+)", body, re.MULTILINE))
+        commands = list(re.finditer(
+            r"^(?!\s*(?:#|- name:|uses:)).*\b(?:uv\s+(?:run|tool)|uvx\s+|command -v uv\b)",
+            body, re.MULTILINE,
+        ))
         self.assertTrue(commands, "Fast Gate must contain a uv command")
         self.assertLess(setup.start(), commands[0].start())
         setup_block = body[setup.start():].split("\n      - ", 1)[0]
