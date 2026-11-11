@@ -1,0 +1,2 @@
+gs_depth_function
+gs_enable_depth_test

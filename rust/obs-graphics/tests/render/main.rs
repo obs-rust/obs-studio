@@ -4,6 +4,8 @@ mod blend_entrypoints;
 mod blend_entrypoints_parity;
 mod cubetexture_access;
 mod cubetexture_access_parity;
+mod depth_dispatch;
+mod depth_dispatch_parity;
 mod gif;
 mod gif_blocks;
 mod gif_blocks_parity;

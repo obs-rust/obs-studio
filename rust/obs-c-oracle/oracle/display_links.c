@@ -1,8 +1,8 @@
 /* Test-only link stand-ins: the graphics calls gs_swapchain_create(),
  * gs_swapchain_destroy(), gs_load_swapchain(), gs_resize(),
  * gs_update_color_space(), gs_is_present_ready(), gs_begin_scene(),
- * gs_enable_depth_test(), gs_set_cull_mode(), gs_draw_sprite(),
- * gs_end_scene() and gs_present(), and the host's
+ * gs_set_cull_mode(), gs_draw_sprite(), gs_end_scene() and gs_present(),
+ * and the host's
  * obs_host_display_clear_workaround() and
  * obs_host_display_clear_color_always_srgb(), under libobs's own names, for
  * the test binaries that link the obs-core shims without libobs.
@@ -11,9 +11,10 @@
  * Libobs calls. The MSVC, MinGW and macOS linkers want every symbol an
  * object names resolved, used or not, so obs-tests-core needs a definition;
  * libobs has the real ones. gs_enter_context(), gs_leave_context(),
- * gs_get_color_space(), gs_clear(), gs_ortho(), gs_set_viewport(), the
- * effect calls, obs_enter_graphics(), obs_leave_graphics() and blog()
- * already have theirs.
+ * gs_enable_depth_test(), gs_get_color_space(), gs_clear(), gs_ortho(),
+ * gs_set_viewport(), the effect calls, obs_enter_graphics(), obs_leave_graphics()
+ * and blog() already have theirs. The Rust depth dispatch now owns
+ * gs_enable_depth_test(); its namespaced C oracle supplies the private adapter.
  *
  * The tests never reach these: they run the shims with Calls of their own. */
 
@@ -52,11 +53,6 @@ bool gs_is_present_ready(void)
 }
 
 void gs_begin_scene(void) {}
-
-void gs_enable_depth_test(bool enable)
-{
-	UNUSED_PARAMETER(enable);
-}
 
 void gs_set_cull_mode(enum gs_cull_mode mode)
 {
