@@ -460,8 +460,3 @@ void obs_canvas_remove(obs_canvas_t *canvas)
 		obs_canvas_release(c);
 	}
 }
-
-void obs_canvas_render(obs_canvas_t *canvas)
-{
-	obs_view_render(&canvas->view);
-}
