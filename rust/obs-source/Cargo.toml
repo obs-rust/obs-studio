@@ -16,3 +16,4 @@ test = false
 
 [dependencies]
 obs-callback = { path = "../obs-callback" }
+obs-util = { path = "../obs-util" }

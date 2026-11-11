@@ -117,3 +117,6 @@ mod type_id_getters_parity;
 
 mod media_getters;
 mod media_getters_parity;
+
+mod module_lookup;
+mod module_lookup_parity;
