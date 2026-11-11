@@ -106,6 +106,7 @@ mod transition_switch;
 mod transition_video;
 mod type_data;
 mod type_data_parity;
+mod type_info;
 mod video_tick;
 mod video_tick_parity;
 mod volume_apply;
