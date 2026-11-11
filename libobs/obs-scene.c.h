@@ -3386,17 +3386,6 @@ bool obs_source_is_scene(const obs_source_t *source)
 	return source && strcmp(source->info.id, scene_info.id) == 0;
 }
 
-void obs_sceneitem_group_enum_items(obs_sceneitem_t *group, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),
-				    void *param)
-{
-	if (!group || !group->is_group)
-		return;
-
-	obs_scene_t *scene = group->source->context.data;
-	if (scene)
-		obs_scene_enum_items(scene, callback, param);
-}
-
 void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)
 {
 	if (!item)
