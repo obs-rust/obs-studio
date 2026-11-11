@@ -11,6 +11,14 @@ fn unavailable() -> io::Error {
         "local control transport unavailable; Windows named pipe: https://github.com/obs-rust/obs-studio/issues/4455",
     )
 }
+pub fn endpoint(options: &EndpointOptions) -> io::Result<std.path::PathBuf> {
+    options.socket.clone().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "no local control transport on this platform; provide a socket path",
+        )
+    })
+}
 pub fn connect(_: &EndpointOptions) -> io::Result<Connection> {
     Err(unavailable())
 }

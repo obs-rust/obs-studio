@@ -3,7 +3,7 @@
     unsafe_code,
     reason = "Unix owner checks and stdin polling require libc"
 )]
-use super::{EndpointOptions, endpoint};
+use super::EndpointOptions;
 use crate::server::Server;
 use std::{
     fs,
@@ -21,6 +21,24 @@ use std::{
     time::Duration,
 };
 const MAX_FRAME: usize = 16 * 1024 * 1024;
+/// Resolve an explicit endpoint or the per-user runtime endpoint.
+/// # Errors
+/// Fails if no runtime directory is configured.
+pub fn endpoint(options: &EndpointOptions) -> io::Result<PathBuf> {
+    options.socket.clone().map_or_else(
+        || {
+            std::env::var_os("XDG_RUNTIME_DIR")
+                .map(|p| PathBuf::from(p).join("obs-studio-rust/control.sock"))
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::NotFound,
+                        "XDG_RUNTIME_DIR is unset; provide a socket path",
+                    )
+                })
+        },
+        Ok,
+    )
+}
 pub struct Connection {
     pub reader: Box<dyn BufRead + Send>,
     pub writer: Box<dyn Write + Send>,
