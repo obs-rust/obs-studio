@@ -266,3 +266,36 @@ cmake_language(DEFER CALL check_slideshow_sources)
         compiled.contains(&repository.join("plugins/image-source/image-file-version-win32.c.h"))
     );
 }
+
+#[path = "../../registration_modules.rs"]
+mod registration_modules;
+
+#[test]
+fn native_registration_discovery_is_sorted_and_independent() {
+    let fixture = tempfile::tempdir().unwrap();
+    fs::write(fixture.path().join("z.rs"), "").unwrap();
+    fs::write(fixture.path().join("a.rs"), "").unwrap();
+    fs::write(fixture.path().join("ignored.json"), "{}").unwrap();
+    fs::create_dir(fixture.path().join("nested")).unwrap();
+    let declarations = registration_modules::declarations(fixture.path()).unwrap();
+    assert!(declarations.find("mod a;").unwrap() < declarations.find("mod z;").unwrap());
+    assert!(!declarations.contains("ignored"));
+    assert_eq!(declarations, registration_modules::declarations(fixture.path()).unwrap());
+    fs::write(fixture.path().join("not-a-module.rs"), "").unwrap();
+    assert!(registration_modules::declarations(fixture.path()).is_err());
+}
+
+#[test]
+fn native_graph_fragments_preserve_cross_target_references() {
+    use obs_build::validation::graph::Graph;
+    let fixture = tempfile::tempdir().unwrap();
+    for name in ["z", "a"] {
+        fs::write(fixture.path().join(format!("{name}.json")), serde_json::json!({
+            "schema": 1, "targets": {name: {"sources": [format!("{name}.c")]}},
+            "tests": {name: {"target": name}}
+        }).to_string()).unwrap();
+    }
+    let graph = Graph::load(fixture.path()).unwrap();
+    assert_eq!(graph.targets.keys().map(String::as_str).collect::<Vec<_>>(), ["a", "z"]);
+    assert_eq!(graph.tests.keys().map(String::as_str).collect::<Vec<_>>(), ["a", "z"]);
+}
