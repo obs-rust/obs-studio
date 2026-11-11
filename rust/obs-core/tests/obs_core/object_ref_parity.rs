@@ -108,7 +108,9 @@ fn characterized_edges_and_random_sequences_match_c() {
         // and checks the callback and allocation balance without reading freed data.
         assert!(unsafe { oracle_object_ref_final_free(kind, obs_object_release) });
     }
-    let strategy = (0u32..3, 0u32..32, 0u32..6, -3i32..4096, 1i32..16);
+    let strong_counts: std::ops::Range<c_long> = -3..4096;
+    let weak_counts: std::ops::Range<c_long> = 1..16;
+    let strategy = (0u32..3, 0u32..32, 0u32..6, strong_counts, weak_counts);
     TestRunner::new(Config {
         cases: obs_c_oracle::parity::cases(256),
         failure_persistence: None,
@@ -123,7 +125,7 @@ fn characterized_edges_and_random_sequences_match_c() {
             flags &= 20;
             refs = refs.max(0);
         }
-        check(operation, flags, kind, refs.into(), weak.into());
+        check(operation, flags, kind, refs, weak);
         Ok(())
     })
     .unwrap();

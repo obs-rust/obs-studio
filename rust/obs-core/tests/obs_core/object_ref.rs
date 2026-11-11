@@ -3,7 +3,7 @@ use obs_core::{
     canvas_ref,
     object_ref::{self, Host},
 };
-use obs_util::platform::CLongAtomic;
+use obs_util::platform::{CLong, CLongAtomic};
 use std::sync::atomic::Ordering::SeqCst;
 
 struct Fixture {
@@ -20,13 +20,13 @@ struct Fixture {
 }
 
 impl Fixture {
-    fn new(kind: u32, refs: i32, weak: i32) -> Self {
+    fn new(kind: u32, refs: CLong, weak: CLong) -> Self {
         Self {
             initialized: true,
             object: true,
             kind,
-            refs: CLongAtomic::new(refs.into()),
-            weak: CLongAtomic::new(weak.into()),
+            refs: CLongAtomic::new(refs),
+            weak: CLongAtomic::new(weak),
             stored: Some(42),
             warnings: 0,
             destroys: 0,
@@ -117,11 +117,11 @@ fn strong_counts_and_stored_identity() {
             let mut f = Fixture::new(kind, count, 4);
             assert_eq!(f.acquire(true, true), Some(42));
             assert_eq!(f.acquire(true, true), Some(42));
-            assert_eq!(f.refs.load(SeqCst), (count + 2) as core::ffi::c_long);
+            assert_eq!(f.refs.load(SeqCst), count + 2);
             object_ref::release(&mut f);
-            assert_eq!(f.refs.load(SeqCst), (count + 1) as core::ffi::c_long);
+            assert_eq!(f.refs.load(SeqCst), count + 1);
             object_ref::release(&mut f);
-            assert_eq!(f.refs.load(SeqCst), count as core::ffi::c_long);
+            assert_eq!(f.refs.load(SeqCst), count);
             assert_eq!(f.weak.load(SeqCst), 4);
             assert_eq!(f.destroys, 0);
             assert_eq!(f.stored, Some(42));
@@ -145,7 +145,7 @@ fn last_release_and_weak_ownership() {
             assert_eq!(f.destroys, 1);
             assert_eq!(f.at_destroy, Some((17, -1, weak.into())));
             assert_eq!(f.refs.load(SeqCst), -1);
-            assert_eq!(f.weak.load(SeqCst), (weak - 1) as core::ffi::c_long);
+            assert_eq!(f.weak.load(SeqCst), weak - 1);
             assert_eq!(f.freed, weak == 0);
             assert_eq!(f.stored, Some(42));
             if weak == 1 {
