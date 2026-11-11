@@ -88,6 +88,7 @@ mod output_identity;
 mod output_identity_parity;
 mod output_last_error;
 mod output_last_error_parity;
+mod output_module;
 mod output_mixer_getters;
 mod output_mixer_getters_parity;
 mod output_pause;
