@@ -1,6 +1,6 @@
 //! Read the real private layout only after rejecting a NULL encoder.
-use core::ffi::{c_char, c_int, c_void};
 use crate::media_getters::{Getter, Media, get};
+use core::ffi::{c_char, c_int, c_void};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -31,7 +31,13 @@ unsafe fn select(encoder: *const c_void, getter: Getter) -> *mut c_void {
     get(media, getter, |level, format| {
         // SAFETY: static format has at most one %s, matching the borrowed name.
         // NULL diagnostics have no substitutions and do not inspect the name.
-        unsafe { blog(level, format.as_ptr(), fields.map_or(core::ptr::null(), |f| f.name)) }
+        unsafe {
+            blog(
+                level,
+                format.as_ptr(),
+                fields.map_or(core::ptr::null(), |f| f.name),
+            )
+        }
     })
     .unwrap_or(core::ptr::null_mut())
 }

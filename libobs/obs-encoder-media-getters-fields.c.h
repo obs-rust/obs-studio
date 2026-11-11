@@ -11,5 +11,5 @@ struct obs_encoder_media_getters_fields obs_encoder_media_getters_fields(const o
 struct obs_encoder_media_getters_fields obs_encoder_media_getters_fields(const obs_encoder_t *encoder)
 {
 	return (struct obs_encoder_media_getters_fields){(int)encoder->info.type, encoder->media, encoder->fps_override,
-						       encoder->context.name};
+							 encoder->context.name};
 }

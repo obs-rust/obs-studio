@@ -5,21 +5,39 @@ use std::ffi::CStr;
 #[test]
 fn test_encoder_media_getters_null_encoders() {
     for (getter, message) in [
-        (Getter::Video, c"obs_encoder_video: Null 'encoder' parameter"),
-        (Getter::ParentVideo, c"obs_encoder_parent_video: Null 'encoder' parameter"),
-        (Getter::Audio, c"obs_encoder_audio: Null 'encoder' parameter"),
+        (
+            Getter::Video,
+            c"obs_encoder_video: Null 'encoder' parameter",
+        ),
+        (
+            Getter::ParentVideo,
+            c"obs_encoder_parent_video: Null 'encoder' parameter",
+        ),
+        (
+            Getter::Audio,
+            c"obs_encoder_audio: Null 'encoder' parameter",
+        ),
     ] {
         let mut logs = Vec::new();
-        assert_eq!(get::<usize>(None, getter, |level, text| logs.push((level, text))), None);
+        assert_eq!(
+            get::<usize>(None, getter, |level, text| logs.push((level, text))),
+            None
+        );
         assert_eq!(logs, [(400, message)]);
     }
 }
 
 fn check(getter: Getter, encoder_type: i32, parent: Option<usize>, fps_override: Option<usize>) {
-    let encoder = Media { encoder_type, parent, fps_override };
+    let encoder = Media {
+        encoder_type,
+        parent,
+        fps_override,
+    };
     let before = encoder;
     let mut logs = Vec::new();
-    let result = get(Some(encoder), getter, |level, text| logs.push((level, text)));
+    let result = get(Some(encoder), getter, |level, text| {
+        logs.push((level, text))
+    });
     let expected_type = if getter == Getter::Audio { 0 } else { 1 };
     let expected = if encoder_type != expected_type {
         None

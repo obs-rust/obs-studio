@@ -94,10 +94,10 @@ static void encoder_media_capture(int level, const char *format, va_list args, v
 }
 
 typedef void *(*encoder_media_getter)(const obs_encoder_t *);
-bool oracle_encoder_media_probe(const obs_encoder_t *encoder, encoder_media_getter video,
-			       encoder_media_getter parent, encoder_media_getter audio);
-bool oracle_encoder_media_probe(const obs_encoder_t *encoder, encoder_media_getter video,
-			       encoder_media_getter parent, encoder_media_getter audio)
+bool oracle_encoder_media_probe(const obs_encoder_t *encoder, encoder_media_getter video, encoder_media_getter parent,
+				encoder_media_getter audio);
+bool oracle_encoder_media_probe(const obs_encoder_t *encoder, encoder_media_getter video, encoder_media_getter parent,
+				encoder_media_getter audio)
 {
 	log_handler_t saved_handler;
 	void *saved_param;
@@ -109,9 +109,9 @@ bool oracle_encoder_media_probe(const obs_encoder_t *encoder, encoder_media_gett
 		base_set_log_handler(encoder_media_capture, &r);
 		void *actual = rust[i](encoder);
 		base_set_log_handler(encoder_media_capture, &c);
-		void *expected = i == 0 ? (void *)oracle_obs_encoder_video(encoder)
-				       : i == 1 ? (void *)oracle_obs_encoder_parent_video(encoder)
-						: (void *)oracle_obs_encoder_audio(encoder);
+		void *expected = i == 0   ? (void *)oracle_obs_encoder_video(encoder)
+				 : i == 1 ? (void *)oracle_obs_encoder_parent_video(encoder)
+					  : (void *)oracle_obs_encoder_audio(encoder);
 		equal = equal && actual == expected && r.count == c.count && r.level == c.level &&
 			strcmp(r.message, c.message) == 0;
 	}
