@@ -3,3 +3,4 @@
 #[allow(unsafe_code)]
 pub mod ffi;
 pub mod last_error;
+pub mod media_getters;
