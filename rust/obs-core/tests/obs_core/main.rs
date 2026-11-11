@@ -106,6 +106,7 @@ mod object_validity_query;
 mod object_validity_query_parity;
 mod output_protocol_registry;
 mod output_protocol_registry_parity;
+mod raw_audio_remove;
 mod source_load;
 mod source_load_parity;
 mod source_profiler;
