@@ -92,7 +92,7 @@ fn test_output_module_disabled_states() {
     for s in 0..7 {
         modules.check(Some(&[b'0' + s]), Some((true, s as usize)), i32::from(s));
     }
-    
+
     modules.check(Some(b"not-in-any-module"), None, 2);
 }
 #[test]
@@ -134,7 +134,15 @@ fn test_output_module_exact_ids_and_registration_order() {
     for id in [b"scene".as_slice(), b"group"] {
         modules.check(Some(id), Some((true, 0)), 4);
     }
-    assert_eq!(modules.disabled[0].ids, [b"".to_vec(), b"x\xff".to_vec(), b"scene".to_vec(), b"group".to_vec()]);
+    assert_eq!(
+        modules.disabled[0].ids,
+        [
+            b"".to_vec(),
+            b"x\xff".to_vec(),
+            b"scene".to_vec(),
+            b"group".to_vec()
+        ]
+    );
     for id in [b"source-only".as_slice(), b"encoder-only", b"service-only"] {
         modules.check(Some(id), None, 2);
     }
@@ -149,9 +157,13 @@ fn empty_lists_do_not_compare_query() {
             panic!("empty output lists must never inspect the query");
         }
     }
-    for modules in [Modules::default(), Modules {
-        enabled: vec![module(&[], 1)], disabled: vec![module(&[], 3)],
-    }] {
+    for modules in [
+        Modules::default(),
+        Modules {
+            enabled: vec![module(&[], 1)],
+            disabled: vec![module(&[], 3)],
+        },
+    ] {
         assert_eq!(get_module(&modules, Unread), None);
         assert_eq!(load_state(&modules, Unread), 2);
     }
