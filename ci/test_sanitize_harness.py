@@ -144,6 +144,13 @@ TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.d"
 
 
 class TimingLockTest(unittest.TestCase):
+    def test_graph_reader_load_preserves_import_path(self):
+        before = list(sys.path)
+        module = load_module()
+        self.assertEqual(sys.path, before)
+        graph = ROOT / "test/cmocka/build/test-graph.d"
+        self.assertEqual(module.load_graph(graph), load_graph(graph))
+
     def test_timing_tests_hold_the_timing_lock(self):
         for name in TIMING_TESTS_D:
             text = (ROOT / "test" / "cmocka" / "tests.d" / f"{name}.cmake").read_text(encoding="utf-8")
