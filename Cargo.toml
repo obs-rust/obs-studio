@@ -83,6 +83,12 @@ codegen-units = 256
 [profile.release.package.obs-core]
 codegen-units = 256
 
+# Standalone source-step fixtures must not pull module lookup's core-global
+# adapter merely because release codegen groups unrelated source FFI modules.
+# Keep the source modules separate, matching the other standalone consumers.
+[profile.release.package.obs-source]
+codegen-units = 256
+
 # Standalone graphics fixtures must not pull shader-file I/O and logging into
 # matrix, immediate-mode, effect-parser or GIF archive members. Keep the FFI
 # modules separate, as for the other standalone fixture consumers above.

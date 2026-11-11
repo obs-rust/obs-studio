@@ -57,8 +57,8 @@ unsafe fn id_bytes<'a>(id: *const c_char) -> Option<&'a [u8]> {
 }
 
 /// # Safety
-/// The core is live and synchronized; id is a live C string. NULL is characterized
-/// only when no registered ID is compared by the original C.
+/// The core is live and synchronized. Once a registered ID is compared, id must
+/// be a live non-NULL C string. Empty ID lists leave the query pointer unread.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_get_module(id: *const c_char) -> *mut c_void {
     module_lookup::get_module(&Modules, LazyId(id))
