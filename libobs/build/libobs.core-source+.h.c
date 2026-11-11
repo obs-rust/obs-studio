@@ -35,6 +35,7 @@
 #include "libobs/obs-scene-item-select-fields.c.h"
 #include "libobs/obs-scene-item-transition-fields.c.h"
 #include "libobs/obs-scene-item-visible-fields.c.h"
+#include "libobs/obs-scene-ref.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-shader-param-introspection-fields.c.h"
