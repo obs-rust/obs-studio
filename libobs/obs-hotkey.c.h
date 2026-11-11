@@ -73,30 +73,6 @@ void obs_hotkey_set_description(obs_hotkey_id id, const char *desc)
 	hotkey->description = bstrdup(desc);
 }
 
-void obs_hotkey_pair_set_names(obs_hotkey_pair_id id, const char *name0, const char *name1)
-{
-	obs_hotkey_pair_t *pair;
-
-	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
-	if (!pair)
-		return;
-
-	obs_hotkey_set_name(pair->id[0], name0);
-	obs_hotkey_set_name(pair->id[1], name1);
-}
-
-void obs_hotkey_pair_set_descriptions(obs_hotkey_pair_id id, const char *desc0, const char *desc1)
-{
-	obs_hotkey_pair_t *pair;
-
-	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
-	if (!pair)
-		return;
-
-	obs_hotkey_set_description(pair->id[0], desc0);
-	obs_hotkey_set_description(pair->id[1], desc1);
-}
-
 static void hotkey_signal(const char *signal, obs_hotkey_t *hotkey)
 {
 	calldata_t data;
