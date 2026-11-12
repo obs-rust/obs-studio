@@ -7,12 +7,18 @@ unsafe extern "C" {
     fn obs_scene_from_source_context(source: *const c_void) -> *mut c_void;
 }
 
-unsafe fn convert(source: *const c_void, expected: &[u8]) -> *mut c_void {
-    let id = NonNull::new(source.cast_mut()).map(|source| {
+// The caller keeps a non-NULL source and its identifier live for the borrow.
+pub(super) unsafe fn identifier<'a>(source: *const c_void) -> Option<&'a [u8]> {
+    NonNull::new(source.cast_mut()).map(|source| {
         // SAFETY: callers supply a live source with its valid NUL-terminated
         // registered identifier. The private adapter is reached only after NULL validation.
         unsafe { CStr::from_ptr(obs_scene_from_source_identifier(source.as_ptr())) }.to_bytes()
-    });
+    })
+}
+
+unsafe fn convert(source: *const c_void, expected: &[u8]) -> *mut c_void {
+    // SAFETY: convert's caller keeps the source live for this call.
+    let id = unsafe { identifier(source) };
     crate::from_source::from_source(id, expected, || {
         // SAFETY: the core reads context only for a present source with the
         // matching ID. Its context remains live under the original C contract.

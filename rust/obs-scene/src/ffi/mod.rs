@@ -6,6 +6,7 @@ pub mod group_resize_defer;
 pub mod item_audio_actions;
 pub mod item_id;
 pub mod item_parent_getter;
+pub mod kind;
 
 pub mod scene_audio_actions;
 pub mod scene_audio_mix;
