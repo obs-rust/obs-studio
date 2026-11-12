@@ -5,6 +5,18 @@
 # it lists is attested and the head passes [gate.trust]. C/C++ gates are
 # cpp/<platform>/<check> (zackees/ci.yml docs/policy-cpp.md, #393).
 version: 1
+# prooft policy schema v1; legacy Local-Gate consumers continue using their
+# existing lanes. Only explicit per-target Ci-Attestation records earn credit
+# in the new base-owned verifier. No workflow routing changes in this rollout.
+lanes:
+  lint: {max-age-hours: 24}
+  dylint: {max-age-hours: 24}
+  rust-test: {max-age-hours: 24}
+  tier2-linux: {max-age-hours: 24}
+  cross: {max-age-hours: 24}
+  cross-release: {max-age-hours: 24}
+  macos-native: {max-age-hours: 24}
+  windows-native: {max-age-hours: 24}
 gates:
   rust/all/fmt: {lane: lint}
   rust/x86_64-unknown-linux-gnu/clippy: {lane: lint}
@@ -16,6 +28,13 @@ gates:
   rust/x86_64-pc-windows-msvc/dylint: {lane: cross}
   rust/aarch64-apple-darwin/clippy: {lane: cross}
   rust/aarch64-apple-darwin/dylint: {lane: cross}
+  # Remaining supported targets; evidence is never inferred from host identity.
+  rust/aarch64-pc-windows-msvc/clippy: {lane: cross-release}
+  rust/aarch64-pc-windows-msvc/dylint: {lane: cross-release}
+  rust/x86_64-apple-darwin/clippy: {lane: cross-release}
+  rust/x86_64-apple-darwin/dylint: {lane: cross-release}
+  rust/aarch64-unknown-linux-gnu/clippy: {lane: cross-release}
+  rust/aarch64-unknown-linux-gnu/dylint: {lane: cross-release}
   # Attested on the host itself (#443): the native lanes run only on the
   # platform whose jobs they cover and exit 75 elsewhere, so a Linux gate
   # reports them not applicable and never attests them.
@@ -26,7 +45,7 @@ gates:
 jobs:
   build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/dylint, rust/x86_64-unknown-linux-gnu/test]
   build-project.yaml:rust-linux-tier2: [cpp/linux-x64/tier2]
-  build-project.yaml:rust-cross-lint: [rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/dylint, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/dylint]
+  build-project.yaml:rust-cross-lint: [rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/dylint, rust/aarch64-unknown-linux-gnu/clippy, rust/aarch64-unknown-linux-gnu/dylint, rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/dylint, rust/aarch64-pc-windows-msvc/clippy, rust/aarch64-pc-windows-msvc/dylint, rust/x86_64-apple-darwin/clippy, rust/x86_64-apple-darwin/dylint, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/dylint]
   # The formatting and clippy gates these two run are the Linux lanes' (#427,
   # #472): only the test half needs the host.
   build-project.yaml:rust-tests-macos: [rust/all/fmt, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/test]
