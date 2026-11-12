@@ -30,6 +30,12 @@ pub trait Queue {
 
 /// Run every queued task, oldest first, including tasks queued meanwhile.
 pub fn execute(queue: &mut impl Queue) {
-    let _ = queue;
-    todo!("execute_graphics_tasks")
+    queue.lock();
+    while queue.pending() {
+        let task = queue.pop();
+        queue.unlock();
+        queue.run(task);
+        queue.lock();
+    }
+    queue.unlock();
 }
