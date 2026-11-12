@@ -7,6 +7,7 @@
 #define obs_output_set_audio_conversion oracle_obs_output_set_audio_conversion
 #define obs_output_add_packet_callback oracle_obs_output_add_packet_callback
 #define obs_output_remove_packet_callback oracle_obs_output_remove_packet_callback
+#include "obs-output-conversion-setters-support.c.h"
 #include "obs-output-conversion-setters.c.h"
 #include "obs-output-packet-callbacks.c.h"
 #undef obs_output_set_video_conversion

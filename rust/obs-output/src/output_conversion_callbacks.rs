@@ -1,4 +1,18 @@
-//! Output conversion guard ordering and packet registration decisions.
+//! Output conversion guard ordering and packet registration decisions, from
+//! `libobs/obs-output-conversion-setters.c.h` and
+//! `libobs/obs-output-packet-callbacks.c.h`.
+//!
+//! The checks run in the C order: the output pointer, the conversion
+//! pointer, the encoded flag, then the media flag, and only the first
+//! failing one is reported. A conversion is read and stored only after all
+//! of them pass, the struct before its `_set` flag.
+
+/// `OBS_OUTPUT_VIDEO`, the `media` of the video conversion setter.
+pub const VIDEO: u32 = 1 << 0;
+/// `OBS_OUTPUT_AUDIO`, the `media` of the audio conversion setter.
+pub const AUDIO: u32 = 1 << 1;
+/// `OBS_OUTPUT_ENCODED`: an encoded output takes no conversion.
+pub const ENCODED: u32 = 1 << 2;
 
 /// The first rejected precondition, in C evaluation order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -9,7 +23,8 @@ pub enum Rejection {
     Media,
 }
 
-/// Validate a conversion without inspecting its contents.
+/// Validate a conversion without inspecting its contents. `media` is
+/// [`VIDEO`] or [`AUDIO`].
 pub fn conversion_guard(
     output: bool,
     conversion: bool,
@@ -22,7 +37,7 @@ pub fn conversion_guard(
     if !conversion {
         return Err(Rejection::Conversion);
     }
-    if flags & 4 != 0 {
+    if flags & ENCODED != 0 {
         return Err(Rejection::Encoded);
     }
     if flags & media == 0 {
