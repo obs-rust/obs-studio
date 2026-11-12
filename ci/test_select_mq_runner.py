@@ -144,9 +144,7 @@ class SelectMqRunnerTest(unittest.TestCase):
                         None,
                         None,
                     )
-                    result, http, output = self.select(
-                        repo_runners, org_error=error
-                    )
+                    result, http, output = self.select(repo_runners, org_error=error)
                     self.assertEqual(result, LABELS if repo_runners else "")
                     self.assertEqual(http.call_count, 2)
                     self.assertIn("::warning::", output)
@@ -253,6 +251,23 @@ class SelectMqRunnerTest(unittest.TestCase):
             "https://api.github.com/orgs/owner/actions/runners?per_page=100&page=2",
         )
 
+    def test_org_pagination_is_bounded(self):
+        def respond(request, **kwargs):
+            entries = [runner("offline")] * 100 if "/orgs/" in request.full_url else []
+            return io.BytesIO(
+                json.dumps({"total_count": 601, "runners": entries}).encode()
+            )
+
+        with patch.object(selector, "urlopen", side_effect=respond) as http:
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(
+                    selector.select_labels("merge_group", LABELS, "token", "owner/repo"),
+                    "",
+                )
+        self.assertEqual(http.call_count, 6)
+        self.assertTrue(http.call_args.args[0].full_url.endswith("page=5"))
+        self.assertIn("::warning::", output.getvalue())
+
     def test_main_writes_empty_output_for_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output"
@@ -286,7 +301,7 @@ class SelectMqRunnerTest(unittest.TestCase):
                 clear=True,
             ):
                 with patch.object(
-                    selector, "urlopen", return_value=io.BytesIO(payload)
+                    selector, "urlopen", side_effect=lambda *a, **kw: io.BytesIO(payload)
                 ):
                     self.assertEqual(selector.main(), 0)
             self.assertEqual(output.read_text(), f"labels={LABELS}\n")

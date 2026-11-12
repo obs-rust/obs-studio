@@ -6,14 +6,41 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 MAX_PAGES = 5
 API_TIMEOUT = 3
 
 
-def warning(reason: str) -> None:
-    print(f"::warning::Merge-queue runner: {reason}; using hosted runners.")
+def warning(reason: str, *, hosted: bool = True) -> None:
+    fallback = "; using hosted runners" if hosted else ""
+    print(f"::warning::Merge-queue runner: {reason}{fallback}.")
+
+
+def online_match(path: str, wanted: set[str], token: str, api_url: str) -> bool:
+    """Check one runner list, with the same request and page limits for each scope."""
+    for page in range(1, MAX_PAGES + 1):
+        request = Request(
+            f"{api_url.rstrip('/')}/{path}/actions/runners?per_page=100&page={page}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        with urlopen(request, timeout=API_TIMEOUT) as response:
+            data = json.load(response)
+        runners = data["runners"]
+        if any(
+            runner["status"] == "online"
+            and wanted.issubset(label["name"].casefold() for label in runner["labels"])
+            for runner in runners
+        ):
+            return True
+        if len(runners) < 100 or page * 100 >= data["total_count"]:
+            break
+    return False
 
 
 def select_labels(
@@ -44,25 +71,25 @@ def select_labels(
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
             return ""
         wanted = {label.casefold() for label in requested}
-        for page in range(1, MAX_PAGES + 1):
-            request = Request(
-                f"{api_url.rstrip('/')}/repos/{repo}/actions/runners?per_page=100&page={page}",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github+json",
-                    "X-GitHub-Api-Version": "2022-11-28",
-                },
-            )
-            with urlopen(request, timeout=API_TIMEOUT) as response:
-                data = json.load(response)
-            runners = data["runners"]
-            for runner in runners:
-                if runner["status"] == "online" and wanted.issubset(
-                    label["name"].casefold() for label in runner["labels"]
-                ):
-                    return json.dumps(requested, separators=(",", ":"))
-            if len(runners) < 100 or page * 100 >= data["total_count"]:
-                break
+        matched = False
+        owner = repo.split("/", 1)[0]
+        for scope, path in (
+            ("repository", f"repos/{repo}"),
+            ("organization", f"orgs/{owner}"),
+        ):
+            try:
+                if online_match(path, wanted, token, api_url):
+                    matched = True
+            except Exception as error:
+                # An unavailable scope must not discard a match from the other.
+                # Log only the error class/status, never server text or credentials.
+                status = f" {error.code}" if isinstance(error, HTTPError) else ""
+                warning(
+                    f"{scope} availability probe failed ({type(error).__name__}{status})",
+                    hosted=False,
+                )
+        if matched:
+            return json.dumps(requested, separators=(",", ":"))
         warning("no online runner matches all labels within the probe limit")
     except Exception as error:
         # Exception messages can contain credentials or server-controlled text.
