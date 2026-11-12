@@ -12,6 +12,15 @@ pub trait Host: Sized {
 }
 
 /// Remove and insert the scene before enumerating its current items.
-pub fn move_scene<H: Host>(_host: &mut H, _scene: H::Handle, _dst: H::Handle) {
-    todo!("canvas scene migration")
+pub fn move_scene<H: Host>(host: &mut H, scene: H::Handle, dst: H::Handle) {
+    let source = host.scene_source(scene);
+    host.remove_source(source);
+    host.insert_source(dst, source);
+    host.enumerate_items(scene, |host, item| {
+        let source = host.item_source(item);
+        if host.is_group(source) {
+            host.remove_source(source);
+            host.insert_source(dst, source);
+        }
+    });
 }

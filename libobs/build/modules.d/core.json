@@ -2,7 +2,7 @@
   "description": "The libobs core: objects, outputs, sources, the null audio device, and the CoreFoundation-style utilities every host builds (util-cf).",
   "groups": [
     "core",
-    "core-canvas-move",
+    "core-canvas-move-fields",
     "core-output",
     "core-scene-lookup",
     "core-source",

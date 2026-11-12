@@ -41,8 +41,11 @@ obs_source_t *obs_source_create_canvas(obs_canvas_t *canvas, const char *id, con
 	return &f->source;
 }
 
+bool oracle_canvas_move_remove(obs_source_t *source);
 void obs_canvas_remove_source(obs_source_t *source)
 {
+	if (oracle_canvas_move_remove(source))
+		return;
 	struct canvas_scene_fixture *f = canvas_scene_current;
 	f->removes++;
 	f->arguments_match = f->arguments_match && source == f->scene.source;
