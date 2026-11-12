@@ -13,7 +13,27 @@ struct texture_capture {
 	bool fail_render;
 	unsigned count;
 	unsigned char handles[MAX_AV_PLANES], render_handle;
+	/* When set, the channel count each allocation leaves behind (0 to
+	 * MAX_AV_PLANES), indexed by allocation: the render first, then each
+	 * plane. */
+	const int *counts;
+	unsigned events;
 };
+
+/* A caller whose allocation changes the source: the count and the next
+ * plane change after each allocation, so a read made before it shows. */
+static void texture_mutate(struct texture_capture *s, unsigned next)
+{
+	if (!s->counts)
+		return;
+	s->source->async_channel_count = s->counts[s->events++];
+	if (next < MAX_AV_PLANES) {
+		s->source->async_convert_width[next] ^= 0x5555u;
+		s->source->async_convert_height[next] += 3;
+		s->source->async_texture_formats[next] =
+			(enum gs_color_format)((int)s->source->async_texture_formats[next] + 1);
+	}
+}
 #if defined(_MSC_VER)
 static __declspec(thread) struct texture_capture *texture_current;
 #else
@@ -27,6 +47,7 @@ static gs_texrender_t *texture_record_render(enum gs_color_format format, enum g
 	s->out[1] = (uint32_t)format;
 	s->out[2] = (uint32_t)zs;
 	s->out[3] = s->count;
+	texture_mutate(s, 0);
 	return s->fail_render ? NULL : (gs_texrender_t *)&s->render_handle;
 }
 static gs_texture_t *texture_record_create(uint32_t width, uint32_t height, enum gs_color_format format,
@@ -49,6 +70,7 @@ static gs_texture_t *texture_record_create(uint32_t width, uint32_t height, enum
 	if (s->source->async_gpu_conversion)
 		out[7] = out[7] && s->source->async_prev_texrender ==
 					   (s->fail_render ? NULL : (gs_texrender_t *)&s->render_handle);
+	texture_mutate(s, c + 1);
 	return (int)c == s->fail_plane ? NULL : (gs_texture_t *)&s->handles[c];
 }
 void oracle_set_deinterlace_texture_size(obs_source_t *source);
@@ -62,13 +84,13 @@ void oracle_set_deinterlace_texture_size(obs_source_t *source);
 #undef gs_texrender_create
 #undef gs_texture_create
 
-void oracle_deinterlace_texture_run(const uint32_t *values, int fail_plane, bool fail_render,
+void oracle_deinterlace_texture_run(const uint32_t *values, const int *counts, int fail_plane, bool fail_render,
 				    void (*run)(obs_source_t *,
 						gs_texture_t *(*)(uint32_t, uint32_t, enum gs_color_format, uint32_t,
 								  const uint8_t **, uint32_t),
 						gs_texrender_t *(*)(enum gs_color_format, enum gs_zstencil_format)),
 				    uint64_t *out);
-void oracle_deinterlace_texture_run(const uint32_t *values, int fail_plane, bool fail_render,
+void oracle_deinterlace_texture_run(const uint32_t *values, const int *counts, int fail_plane, bool fail_render,
 				    void (*run)(obs_source_t *,
 						gs_texture_t *(*)(uint32_t, uint32_t, enum gs_color_format, uint32_t,
 								  const uint8_t **, uint32_t),
@@ -95,7 +117,8 @@ void oracle_deinterlace_texture_run(const uint32_t *values, int fail_plane, bool
 	struct texture_capture capture = {.out = out,
 					  .source = &source,
 					  .fail_plane = fail_plane,
-					  .fail_render = fail_render};
+					  .fail_render = fail_render,
+					  .counts = counts};
 	texture_current = &capture;
 	if (run)
 		run(&source, texture_record_create, texture_record_render);

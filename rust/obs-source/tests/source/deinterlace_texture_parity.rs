@@ -12,6 +12,7 @@ use proptest::prelude::*;
 unsafe extern "C" {
     fn oracle_deinterlace_texture_run(
         values: *const u32,
+        counts: *const i32,
         fail: i32,
         fail_render: bool,
         run: Option<unsafe extern "C" fn(*mut c_void, Create, Texrender)>,
@@ -19,20 +20,40 @@ unsafe extern "C" {
     );
     fn oracle_deinterlace_texture_layout(out: *mut usize);
 }
-fn check(values: [u32; 30], fail: i32, fail_render: bool) {
+/// Run the C and the Rust on the same source, with `counts` (the channel
+/// count each allocation leaves behind) or a source nothing changes.
+fn run(
+    values: [u32; 30],
+    counts: Option<&[i32; 9]>,
+    fail: i32,
+    fail_render: bool,
+) -> [[u64; 79]; 2] {
     let mut c = [0; 79];
     let mut rust = [0; 79];
+    let counts = counts.map_or(core::ptr::null(), |counts| counts.as_ptr());
     // SAFETY: bounded arrays stay live, and valid channel counts fit the real C arrays.
     unsafe {
-        oracle_deinterlace_texture_run(values.as_ptr(), fail, fail_render, None, c.as_mut_ptr());
         oracle_deinterlace_texture_run(
             values.as_ptr(),
+            counts,
+            fail,
+            fail_render,
+            None,
+            c.as_mut_ptr(),
+        );
+        oracle_deinterlace_texture_run(
+            values.as_ptr(),
+            counts,
             fail,
             fail_render,
             Some(allocate_with),
             rust.as_mut_ptr(),
         );
     }
+    [c, rust]
+}
+fn check(values: [u32; 30], fail: i32, fail_render: bool) {
+    let [c, rust] = run(values, None, fail, fail_render);
     assert_eq!(c, rust, "input={values:?}, failure={fail}/{fail_render}");
     assert_eq!(
         rust[78], 1,
@@ -115,5 +136,48 @@ proptest! {
         values[2]=u32::from(gpu);
         // C enum fields accept all 32-bit representations, trc narrows to u8.
         check(values,fail,fail_render);
+    }
+}
+
+// Each read is made where the C makes it (#2153): the channel count before
+// every plane, and each plane's size and format just before its texture,
+// after the allocations before it. A source the allocations change shows a
+// read made early.
+#[test]
+fn reads_after_each_allocation_match_c() {
+    let mut values = [0; 30];
+    values[..6].copy_from_slice(&[0, 0, 1, 3, 1920, 1080]);
+    for c in 0..8 {
+        let plane = u32::try_from(c).unwrap();
+        values[6 + c] = 641 - plane * 61;
+        values[14 + c] = 479 - plane * 41;
+        values[22 + c] = 2;
+    }
+    for counts in [
+        [3; 9],
+        [5; 9],
+        [1; 9],
+        [0; 9],
+        [8; 9],
+        [3, 4, 2, 6, 6, 1, 8, 8, 8],
+        [8, 7, 6, 5, 4, 3, 2, 1, 0],
+    ] {
+        for channels in [0, 1, 3, 8] {
+            let mut values = values;
+            values[3] = channels;
+            let [c, rust] = run(values, Some(&counts), -1, false);
+            assert_eq!(c, rust, "channels={channels}, counts={counts:?}");
+        }
+    }
+}
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(256)))]
+    #[test]
+    fn random_reads_after_each_allocation(values in prop::array::uniform30(any::<u32>()), channels in 0u32..=8, counts in prop::array::uniform9(0i32..=8), fail in -1i32..8, fail_render in any::<bool>()) {
+        let mut values = values;
+        values[2] = 1;
+        values[3] = channels;
+        let [c, rust] = run(values, Some(&counts), fail, fail_render);
+        prop_assert_eq!(c, rust);
     }
 }
