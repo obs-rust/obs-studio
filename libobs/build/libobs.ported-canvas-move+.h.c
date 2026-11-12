@@ -1,4 +1,4 @@
-/* Unity group (BUILD.md): canvas scene migration. */
+/* Unity group (BUILD.md): original canvas migration, C reference only. */
 
 #include "libobs/build/libobs.pch.h"
 
