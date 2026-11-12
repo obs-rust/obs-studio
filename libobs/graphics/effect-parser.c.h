@@ -17,6 +17,8 @@
 
 #include "libobs/build/libobs-graphics.pch.h"
 
+extern const char *gs_preprocessor_name(void);
+
 #if defined(_DEBUG) && defined(_DEBUG_SHADERS)
 static void debug_get_default_value(struct gs_effect_param *param, char *buffer, unsigned long long buf_size)
 {
