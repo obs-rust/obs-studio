@@ -1,0 +1,2 @@
+obs_hotkeys_set_audio_hotkeys_translations
+obs_hotkeys_set_sceneitem_hotkeys_translations

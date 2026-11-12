@@ -11,6 +11,10 @@
 //! xkbcommon call. It keeps no state, takes no lock, allocates nothing and
 //! logs nothing.
 //!
+//! Intentional difference from C: a value outside
+//! `0 .. OBS_KEY_LAST_VALUE - 1` is [`Route::None`], as on X11 (C routed it
+//! to the keymap, and the caller indexed its per-key keycode table with it).
+//!
 //! Characterized and kept: F1 to F35 never look up a translation, unlike
 //! every other named key.
 
@@ -29,6 +33,7 @@
 use std::ffi::CStr;
 
 use crate::key_route::{self, Named};
+use crate::name_map::OBS_KEY_LAST_VALUE;
 
 /// How `obs_key_to_str()` names a key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,12 +49,17 @@ pub enum Route {
     /// The UTF-8 of the key's level-0 keysym in the keymap, else its key
     /// name.
     Keysym,
+    /// Nothing: the name is left as it is (a value outside the key table).
+    None,
 }
 
 /// How to name `key` (`obs_key_t`): the tests of
 /// `obs_nix_wayland_key_to_str()`, in its order (mouse buttons, numpad
 /// digits, fixed keys, function keys, then the keysym).
 pub fn route(key: i32) -> Route {
+    if !usize::try_from(key).is_ok_and(|key| key < OBS_KEY_LAST_VALUE) {
+        return Route::None;
+    }
     match key_route::named(key) {
         Named::Mouse(n) => Route::Mouse(n),
         Named::Numpad(n) => Route::Numpad(n),

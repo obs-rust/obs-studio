@@ -33,6 +33,8 @@ mod nix_x11_keys;
 mod nix_x11_keys_parity;
 mod object_getters;
 mod object_getters_parity;
+mod owned_translations;
+mod owned_translations_parity;
 mod pair;
 mod pair_meta;
 mod pair_meta_parity;

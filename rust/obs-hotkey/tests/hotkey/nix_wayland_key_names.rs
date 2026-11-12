@@ -120,6 +120,16 @@ fn route_keysym() {
     }
 }
 
+/// A value outside the key table has no route, as on X11
+/// (`nix_x11_hotkeys::route`): the C caller then leaves the name as it is,
+/// instead of looking the value up in its per-key keycode table.
+#[test]
+fn route_outside() {
+    for key in [i32::MIN, -2, -1, LAST, LAST + 1, i32::MAX] {
+        assert_eq!(wk::route(key), Route::None, "key {key}");
+    }
+}
+
 /// Every key of the table: the route of each, by the ranges and the fixed
 /// list, and how many take each.
 #[test]
@@ -134,24 +144,26 @@ fn route_every_key() {
             Route::Fixed(_) => fixed += 1,
             Route::Function(_) => function += 1,
             Route::Keysym => keysym += 1,
+            Route::None => panic!("no route for key {key}"),
         }
     }
     assert_eq!((mouse, numpad, fixed, function), (29, 10, 30, 35));
     assert_eq!(keysym, LAST - 29 - 10 - 30 - 35);
 }
 
-/// The X11 platform names every key of the table the same way, with its
-/// keycodes where Wayland uses the keysym.
+/// The X11 platform names every key the same way, with its keycodes where
+/// Wayland uses the keysym, and gives a value just outside the table no
+/// route either.
 #[test]
 fn route_matches_x11() {
-    for key in 0..LAST {
+    for key in -2..LAST + 2 {
         let x11 = match xh::route(key) {
             X11Route::Mouse(n) => Route::Mouse(n),
             X11Route::Numpad(n) => Route::Numpad(n),
             X11Route::Fixed(name) => Route::Fixed(name),
             X11Route::Function(n) => Route::Function(n),
             X11Route::Keycodes => Route::Keysym,
-            X11Route::None => panic!("no X11 route for key {key}"),
+            X11Route::None => Route::None,
         };
         assert_eq!(wk::route(key), x11, "key {key}");
     }
