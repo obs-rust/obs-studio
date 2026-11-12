@@ -199,6 +199,7 @@ pub mod deinterlace_texture;
 pub mod draw_plan;
 pub mod draw_technique;
 pub mod enabled_setter;
+pub mod filter_backup;
 pub mod filter_count;
 pub mod filter_index;
 pub mod filter_relationship_getters;
