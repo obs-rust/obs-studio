@@ -5,6 +5,7 @@
     "core-canvas-move",
     "core-output",
     "core-scene-lookup",
+    "core-scene-transform-states",
     "core-source",
     "null-audio",
     "util-cf"
