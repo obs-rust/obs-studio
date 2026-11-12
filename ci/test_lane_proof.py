@@ -89,7 +89,7 @@ class Publication(unittest.TestCase):
         self.assertNotIn("success()", self.condition)
 
     def test_publisher_requires_gate_build_output_and_trusted_event(self):
-        self.assertIn("needs: [build-project, ci-gate]", self.publisher)
+        self.assertIn("needs: [select-mq-runner, build-project, ci-gate]", self.publisher)
         for guard in (
             "needs.ci-gate.result == 'success'",
             "needs.build-project.result == 'success'",

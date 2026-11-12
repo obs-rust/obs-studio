@@ -896,14 +896,31 @@ failures are investigated through nightly reports rather than blocking the queue
 
 Set the repository Actions variable `MQ_RUNNER_LABELS` to a JSON array such as
 `["self-hosted","linux","x64","obs-mq"]` to route Linux jobs on `merge_group`
-to runners matching **all** those labels. An unset or empty variable keeps each
-job's original hosted label. Pull requests, master pushes, manual/release runs,
+to online runners matching **all** those labels. Set the repository Actions secret
+`MQ_RUNNER_STATUS_TOKEN` to a fine-grained PAT scoped to this repository with
+**Administration: read** permission (listing repository self-hosted runners).
+The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` before
+selecting labels and passes the result to the existing Build and Format workflows.
+Missing tokens, API errors, invalid label JSON, or no matching online runner emit
+a warning and automatically keep each job's original hosted label. Busy online
+runners still qualify; this checks availability, not spare capacity. The probe
+checks at most five pages of 100 runners, with a three-second timeout per request;
+no match within that limit also falls back. An unset or empty variable skips the
+probe steps. Outside `merge_group` the selection is empty and no API call runs.
+Pull requests, master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
 The existing Format workflow's Linux Checks job uses the same selection so it
 does not hold the gate waiting for hosted capacity.
 
-On a Linux x64 host chosen by the maintainer, open repository **Settings →
+The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
+Run the runner and its job processes inside its Ubuntu container image / FHS
+environment with Ubuntu apt available: the existing jobs expect Ubuntu package
+and toolchain prerequisites, not native NixOS commands. An offline PowerEdge
+automatically falls back to hosted CI at selection time. This is a snapshot,
+not a reservation: a host going offline after selection can still delay jobs.
+
+On the Linux x64 host chosen by the maintainer, open repository **Settings →
 Actions → Runners → New self-hosted runner**, select Linux/x64, and follow the
 shown download and verification commands. Use the temporary registration token
 shown there to register the runner:
@@ -914,8 +931,8 @@ shown there to register the runner:
 
 The runner adds the `self-hosted`, `linux`, and `x64` default labels. Install/start it as a service
 using the runner's documented service commands, then set `MQ_RUNNER_LABELS`
-only after it is online. Use an Ubuntu host compatible with the job's existing
-apt/toolchain prerequisites. Container jobs require Docker installed and usable
+only after it is online and the status-token secret is configured. Container
+jobs require Docker installed and usable
 by the runner account; the Tier 2 build and Flatpak jobs use `container:`, though
 they are not selected on the trimmed queue path. This change neither registers
 nor configures a runner. Clear the variable to return to hosted Linux runners.
