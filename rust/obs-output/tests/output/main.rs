@@ -221,6 +221,7 @@ mod output_size_getters_parity;
 mod output_preferred_size;
 mod output_preferred_size_parity;
 
+mod output_callback_null;
 mod output_conversion_callbacks;
 
 mod output_conversion_callbacks_parity;
