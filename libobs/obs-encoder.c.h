@@ -1575,22 +1575,6 @@ void obs_encoder_remove_output(struct obs_encoder *encoder, struct obs_output *o
 	pthread_mutex_unlock(&encoder->outputs_mutex);
 }
 
-void obs_encoder_set_preferred_color_space(obs_encoder_t *encoder, enum video_colorspace colorspace)
-{
-	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
-		return;
-
-	encoder->preferred_space = colorspace;
-}
-
-void obs_encoder_set_preferred_range(obs_encoder_t *encoder, enum video_range_type range)
-{
-	if (!encoder || encoder->info.type != OBS_ENCODER_VIDEO)
-		return;
-
-	encoder->preferred_range = range;
-}
-
 void obs_encoder_release(obs_encoder_t *encoder)
 {
 	if (!encoder)
