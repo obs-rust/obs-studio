@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-output",
+    "core-output-weak-lifetime",
     "core-scene-lookup",
     "core-source",
     "null-audio",

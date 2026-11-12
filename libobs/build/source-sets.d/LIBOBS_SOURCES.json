@@ -216,6 +216,7 @@
   "graphics/vec4.h",
   "build/libobs.core+.h.c",
   "build/libobs.core-output+.h.c",
+  "build/libobs.core-output-weak-lifetime+.h.c",
   "build/libobs.core-scene-lookup+.h.c",
   "build/libobs.core-source+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
