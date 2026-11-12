@@ -71,7 +71,7 @@
 #include "libobs/obs-source-name-fields.c.h"
 #include "libobs/obs-source-properties.c.h"
 #include "libobs/obs-source-push-query-fields.c.h"
-#include "libobs/obs-source-push-to-enable.c.h"
+#include "libobs/obs-source-push-to-enable-fields.c.h"
 #include "libobs/obs-source-save-load.c.h"
 #include "libobs/obs-source-set-name.c.h"
 #include "libobs/obs-source-settings-getter-fields.c.h"

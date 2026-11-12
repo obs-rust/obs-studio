@@ -28,6 +28,21 @@ pub fn enable<S: Source>(
     enabled: bool,
     null_log: impl FnOnce(&'static str),
 ) {
-    let _ = (source, kind, enabled, null_log);
-    todo!()
+    let Some(source) = source else {
+        null_log(kind.function());
+        return;
+    };
+    source.lock();
+    // The C's obs_source_monitoring_changes(), on the bools widened to u32.
+    let changed = crate::monitoring::changes(u32::from(source.enabled(kind)), u32::from(enabled));
+    // Preserve the output-flag read even when the value is unchanged.
+    let flags = source.output_flags();
+    if crate::monitoring::push_to_logs(flags, changed) {
+        source.log_change(kind, enabled);
+    }
+    source.store(kind, enabled);
+    if changed {
+        source.signal(kind, enabled);
+    }
+    source.unlock();
 }

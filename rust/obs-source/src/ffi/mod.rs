@@ -38,6 +38,7 @@ pub mod source_name;
 pub mod source_ptm_gate;
 pub mod source_push_delay;
 pub mod source_push_queries;
+pub mod source_push_to_enable;
 pub mod source_render_route;
 pub mod source_settings_getter;
 pub mod source_size;
