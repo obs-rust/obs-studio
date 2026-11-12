@@ -126,6 +126,7 @@ pub mod display_size;
 pub mod display_state;
 pub mod enum_modules;
 pub mod find_modules;
+pub mod get_output_source;
 pub mod global_getters;
 pub mod module_failure_info;
 pub mod module_init;

@@ -59,6 +59,7 @@ mod display_state_parity;
 mod enum_modules_parity;
 mod find_modules;
 mod find_modules_parity;
+mod get_output_source;
 mod global_getters;
 mod global_getters_parity;
 mod module_failure_info;
