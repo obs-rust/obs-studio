@@ -2,6 +2,10 @@ name: Build Project
 on:
   workflow_call:
     inputs:
+      mq-runner-labels:
+        description: Online merge-queue runner labels selected by the caller; empty uses hosted runners
+        type: string
+        default: ''
       native-cache-measurement-only:
         description: Measure only native cache protocols and lightweight gates on trusted manual master runs
         type: boolean
@@ -97,7 +101,7 @@ jobs:
   check-event:
     timeout-minutes: 10
     name: Event Data 🔎
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     defaults:
       run:
         shell: bash
@@ -590,7 +594,7 @@ jobs:
         # One production application: hybrid libobs, with OBS-Studio-Rust identity.
         # C reference coverage remains in the explicit Tier 2 jobs.
         rust: ['ON']
-    runs-on: ${{ (github.event_name == 'merge_group' && startsWith(matrix.os, 'ubuntu-') && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || matrix.os }}
+    runs-on: ${{ (startsWith(matrix.os, 'ubuntu-') && inputs.mq-runner-labels != '') && fromJSON(inputs.mq-runner-labels) || matrix.os }}
     needs: check-event
     # The full OBS app build is release-gating, not dev-cycle CI: it runs in
     # the release gate (release-rust.yaml), tags, schedule, dispatch and
@@ -1571,7 +1575,7 @@ jobs:
   # result, not the stamped head (#692).
   ci-mode:
     name: CI Mode 🛂
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     timeout-minutes: 5
     outputs:
       trusted: ${{ steps.gate.outputs.trusted }}
@@ -1672,7 +1676,7 @@ jobs:
     # letting it hold the queue for an hour (#2593 A).
     timeout-minutes: 20
     name: Fast Gate ⚡
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     # A docs-only PR or queue run changes no Rust, C or CMake: skipped, and
     # passing CI Gate; the Format job still runs the ci/ self-tests (#2079).
@@ -1973,7 +1977,7 @@ jobs:
   cross-compile:
     timeout-minutes: 45
     name: Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: check-event
     if: ${{ !inputs.flatpak-measurement-only && needs.check-event.outputs.cross_targets != '' }}
     defaults:
@@ -2048,7 +2052,7 @@ jobs:
       fail-fast: false
       matrix:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode, rust-tests-linux]
     if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
     defaults:
@@ -2094,7 +2098,7 @@ jobs:
   # A proof represents BOTH targets. Never publish it from a single matrix leg.
   rust-cross-proof:
     name: Rust Cross Lane Proof 🧾
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     timeout-minutes: 5
     needs: [ci-mode, rust-cross-lint]
     if: ${{ success() && needs.rust-cross-lint.result == 'success' && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true' }}
@@ -2121,7 +2125,7 @@ jobs:
   rust-windows-link:
     timeout-minutes: 30
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: check-event
     # Every non-docs PR runs the link check without proof/attestation skips.
     # The merge queue reuses that coverage and runs only the Linux Fast Gate.
@@ -2539,7 +2543,7 @@ jobs:
   # lane proof.
   rust-linux-tier2-build:
     name: Rust Tier 2 Linux 🐧 (build)
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     # A stock image, no Dockerfile or image build (#966): run directly on the
     # runner, two group tests failed while passing in a container with the
     # same libraries, compiler, flags and CPU (#982). Packages install below.
@@ -2787,7 +2791,7 @@ jobs:
 
   rust-linux-tier2:
     name: Rust Tier 2 Linux 🐧 (tests ${{ matrix.mode }}${{ matrix.part != 'suite' && format(', {0}', matrix.part) || '' }})
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     # Load a verified prepared runtime, or install the exact closure in the
     # same pinned stock base. The helper retains original artifact paths.
     timeout-minutes: 30
@@ -2943,7 +2947,7 @@ jobs:
   # otherwise.
   linux-qt-frontend:
     name: Qt Frontend Linux 🐧
-    runs-on: ${{ (github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     # Independent runner: overlap frontend compilation/tests with Fast Gate.
     # The reusable workflow still fails if either selected job fails; this
     # can spend extra Qt runner time when Fast Gate fails (#1581).

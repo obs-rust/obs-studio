@@ -167,6 +167,8 @@ class CiScopeTest(unittest.TestCase):
                     if name == "ci.yml":
                         self.assertRegex(blocks[job], r"needs: .*select-mq-runner")
             self.assertNotIn("fromJSON(vars.MQ_RUNNER_LABELS)", text)
+            self.assertEqual(text.count(f"fromJSON({selection})"),
+                             len(jobs) + (name == "build-project.yaml"))
             for runner in re.findall(r"^    runs-on: (.+)$", text, re.MULTILINE):
                 if runner.startswith(("macos-", "windows-")):
                     self.assertNotIn("MQ_RUNNER_LABELS", runner)
@@ -187,11 +189,18 @@ class CiScopeTest(unittest.TestCase):
         ))
         probe = blocks["select-mq-runner"]
         self.assertIn("runs-on: ubuntu-latest", probe)
-        self.assertNotRegex(probe, r"^    if:")  # Never skip dependants on PRs.
+        self.assertNotRegex(probe, r"(?m)^    if:")  # Never skip dependants on PRs.
         self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)
         self.assertIn("MQ_RUNNER_STATUS_TOKEN: ${{ secrets.MQ_RUNNER_STATUS_TOKEN }}", probe)
         self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
         self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
+        self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
+        self.assertEqual(probe.count("continue-on-error: true"), 3)
+        for step in ("checkout", "uv"):
+            self.assertIn(f"steps.{step}.outcome == 'success'", probe)
+            self.assertIn(f"steps.{step}.outcome == 'failure'", probe)
+        self.assertIn("steps.select.outcome == 'failure'", probe)
+        self.assertIn("::warning::", probe)
         for job in ("check-format", "build-project"):
             self.assertIn("needs: select-mq-runner", blocks[job])
             self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
