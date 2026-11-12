@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83299,
-      "libobs": 94446,
+      "libobs": 94457,
       "plugins": 148451,
       "shared": 15968
     },
-    "percent": 16.14,
-    "ported_lines": 55225,
-    "total_lines": 342164
+    "percent": 16.15,
+    "ported_lines": 55252,
+    "total_lines": 342175
   },
-  "commit": "4598d17",
-  "date": "2026-11-11",
+  "commit": "cb2a73d",
+  "date": "2026-11-12",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 48.78,
-          "ported_lines": 30963,
-          "total_lines": 63469
+          "percent": 48.82,
+          "ported_lines": 30990,
+          "total_lines": 63480
         },
         "graphics": {
           "percent": 68.38,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 678,
-      "hybrid_lines": 39221,
-      "percent": 58.47,
-      "ported_lines": 55225,
-      "total_lines": 94446
+      "files": 679,
+      "hybrid_lines": 39205,
+      "percent": 58.49,
+      "ported_lines": 55252,
+      "total_lines": 94457
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 50.63,
-            "ported_lines": 29610,
-            "total_lines": 58480
+            "percent": 50.67,
+            "ported_lines": 29637,
+            "total_lines": 58491
           },
           "graphics": {
             "percent": 68.9,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 643,
-        "hybrid_lines": 34902,
-        "percent": 59.39,
+        "files": 644,
+        "hybrid_lines": 34886,
+        "percent": 59.41,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -246,6 +246,7 @@
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
+          "obs-hotkey-owned-translations.c.h",
           "obs-hotkey-pair-meta.c.h",
           "obs-hotkey-pair.c.h",
           "obs-hotkey-press.c.h",
@@ -502,15 +503,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 51039,
-        "total_lines": 85941
+        "ported_lines": 51066,
+        "total_lines": 85952
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 49.72,
-            "ported_lines": 26128,
-            "total_lines": 52555
+            "percent": 49.76,
+            "ported_lines": 26155,
+            "total_lines": 52566
           },
           "graphics": {
             "percent": 68.9,
@@ -528,9 +529,9 @@
             "total_lines": 9978
           }
         },
-        "files": 624,
-        "hybrid_lines": 32459,
-        "percent": 59.39,
+        "files": 625,
+        "hybrid_lines": 32443,
+        "percent": 59.42,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -695,6 +696,7 @@
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
+          "obs-hotkey-owned-translations.c.h",
           "obs-hotkey-pair-meta.c.h",
           "obs-hotkey-pair.c.h",
           "obs-hotkey-press.c.h",
@@ -937,15 +939,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 47478,
-        "total_lines": 79937
+        "ported_lines": 47505,
+        "total_lines": 79948
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 49.96,
-            "ported_lines": 27069,
-            "total_lines": 54186
+            "percent": 50.0,
+            "ported_lines": 27096,
+            "total_lines": 54197
           },
           "graphics": {
             "percent": 68.45,
@@ -963,9 +965,9 @@
             "total_lines": 10704
           }
         },
-        "files": 635,
-        "hybrid_lines": 33817,
-        "percent": 59.0,
+        "files": 636,
+        "hybrid_lines": 33801,
+        "percent": 59.02,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1132,6 +1134,7 @@
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
+          "obs-hotkey-owned-translations.c.h",
           "obs-hotkey-pair-meta.c.h",
           "obs-hotkey-pair.c.h",
           "obs-hotkey-press.c.h",
@@ -1379,12 +1382,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 48656,
-        "total_lines": 82473
+        "ported_lines": 48683,
+        "total_lines": 82484
       }
     }
   },
   "rust": {
-    "lines": 208748
+    "lines": 208874
   }
 }
