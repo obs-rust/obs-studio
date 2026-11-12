@@ -144,7 +144,8 @@ class SelectMqRunnerTest(unittest.TestCase):
                         None,
                         None,
                     )
-                    result, http, output = self.select(repo_runners, org_error=error)
+                    with error:
+                        result, http, output = self.select(repo_runners, org_error=error)
                     self.assertEqual(result, LABELS if repo_runners else "")
                     self.assertEqual(http.call_count, 2)
                     self.assertIn("::warning::", output)
