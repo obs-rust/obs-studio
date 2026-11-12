@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib.util
+import contextlib
 import io
 import os
 import subprocess
@@ -225,6 +226,78 @@ class CrossTargetsTest(unittest.TestCase):
             ("aarch64-pc-windows-msvc", "x86_64-apple-darwin", "aarch64-unknown-linux-gnu"),
         )
         self.assertIn("cross-release", local_gate.LANES)
+
+
+class ClientLanesTest(unittest.TestCase):
+    TARGETS = (
+        "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
+        "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+        "x86_64-apple-darwin", "aarch64-apple-darwin",
+    )
+
+    def test_all_six_targets_lint_once_without_test_linking(self):
+        for host in self.TARGETS:
+            calls = []
+            def capture(cmd, **kw):
+                calls.append(cmd)
+            with self.subTest(host=host), contextlib.ExitStack() as stack:
+                for name in ("tracked_files", "changed_since_master"):
+                    stack.enter_context(mock.patch.object(local_gate, name, return_value=[]))
+                for name in ("clang_format", "gersemi", "ruff_ratchet", "self_test",
+                             "check_test_binary_inventory", "check_feature_sets", "platform_ifdef_ratchet",
+                             "perf_guard_lint", "knowledge_lint", "add_target"):
+                    stack.enter_context(mock.patch.object(local_gate, name))
+                stack.enter_context(mock.patch.object(local_gate, "host_target", return_value=host, create=True))
+                stack.enter_context(mock.patch.object(local_gate, "run", side_effect=capture))
+                local_gate.LANES["client-lint"](False)
+            for target in self.TARGETS:
+                clippy = [c for c in calls if c[:3] == ["soldr", "cargo", "clippy"]
+                          and (c[c.index("--target") + 1] if "--target" in c else host) == target]
+                dylint = [c for c in calls if c[:2] == ["soldr", "dylint"]
+                          and (c[c.index("--target") + 1] if "--target" in c else host) == target]
+                self.assertEqual(len(clippy), 1 + (len(local_gate.FEATURE_SETS) if target == host else 0))
+                self.assertEqual(len(dylint), 1)
+                for command in clippy + dylint:
+                    if target != host:
+                        self.assertIn("obs-c-oracle", command)
+            self.assertFalse(any(c[:3] == ["soldr", "cargo", "test"] for c in calls))
+
+    def test_host_features_and_dedicated_dylint_are_preserved(self):
+        with mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0], create=True), \
+                mock.patch.object(local_gate, "lane_lint") as lint, \
+                mock.patch.object(local_gate, "lane_dylint") as dylint, \
+                mock.patch.object(local_gate, "cross_lint") as cross:
+            local_gate.LANES["client-lint"](False)
+        lint.assert_called_once_with(False)
+        dylint.assert_called_once_with(False)
+        cross.assert_called_once_with(self.TARGETS[1:], link=False)
+
+    def test_failed_target_fails_client_lane(self):
+        with mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0], create=True), \
+                mock.patch.object(local_gate, "lane_lint"), mock.patch.object(local_gate, "lane_dylint"), \
+                mock.patch.object(local_gate, "add_target"), \
+                mock.patch.object(local_gate, "soldr_cargo", side_effect=subprocess.CalledProcessError(1, "clippy")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                local_gate.LANES["client-lint"](False)
+
+    def test_unsupported_host_does_not_prove_any_lane(self):
+        with mock.patch.object(local_gate, "host_target", return_value="riscv64-unknown-linux-gnu", create=True), \
+                mock.patch.object(local_gate, "lane_lint") as lint:
+            with self.assertRaises(local_gate.NotApplicable):
+                local_gate.LANES["client-lint"](False)
+        lint.assert_not_called()
+
+    def test_client_test_preserves_workspace_features_and_linux_gnu_link(self):
+        for host in self.TARGETS:
+            with self.subTest(host=host), \
+                    mock.patch.object(local_gate, "host_target", return_value=host, create=True), \
+                    mock.patch.object(local_gate, "run"), \
+                    mock.patch.object(local_gate, "rust_tests") as tests, \
+                    mock.patch.object(local_gate, "windows_gnu_no_run") as gnu:
+                local_gate.LANES["client-test"](False)
+            self.assertEqual(tests.call_args_list, [mock.call(["--workspace"])] +
+                             [mock.call(list(args)) for args in local_gate.FEATURE_TEST_SETS])
+            self.assertEqual(gnu.call_count, int(host.endswith("linux-gnu")))
 
 
 if __name__ == "__main__":
