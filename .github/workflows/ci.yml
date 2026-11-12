@@ -98,13 +98,22 @@ jobs:
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           enable-cache: false
+      - name: Create Runner Probe App Token
+        id: mq-probe-app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        continue-on-error: true
+        if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '' && vars.MQ_PROBE_APP_ID != ''
+        with:
+          app-id: ${{ vars.MQ_PROBE_APP_ID }}
+          private-key: ${{ secrets.MQ_PROBE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - name: Check Runner Availability
         id: select
         continue-on-error: true
         if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '' && steps.checkout.outcome == 'success' && steps.uv.outcome == 'success'
         env:
           MQ_RUNNER_LABELS: ${{ vars.MQ_RUNNER_LABELS }}
-          MQ_RUNNER_STATUS_TOKEN: ${{ secrets.MQ_RUNNER_STATUS_TOKEN }}
+          MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token || secrets.MQ_RUNNER_STATUS_TOKEN }}
         run: uv run --no-project ci/select_mq_runner.py
       - name: Report Probe Setup Failure
         if: ${{ !cancelled() && (steps.checkout.outcome == 'failure' || steps.uv.outcome == 'failure' || steps.select.outcome == 'failure') }}
