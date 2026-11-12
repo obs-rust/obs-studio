@@ -1,23 +1,66 @@
 //! Borrow private C fields; graphics allocation and destination stores are callbacks.
-use crate::deinterlace_texture::{self, Allocator, Input, Plane};
+use crate::deinterlace_texture::{self, Allocator, PLANES, Plane};
 use core::ffi::c_void;
 
 pub type Create = unsafe extern "C" fn(u32, u32, i32, u32, *const *const u8, u32) -> *mut c_void;
 pub type Texrender = unsafe extern "C" fn(i32, i32) -> *mut c_void;
 
+/// `struct obs_source_deinterlace_texture_fields`: the borrowed addresses of
+/// the source's fields. The arrays hold `PLANES` (`MAX_AV_PLANES`) entries.
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct Fields {
-    pub format: i32,
-    pub trc: u8,
-    pub gpu: bool,
-    pub channels: i32,
-    pub width: u32,
-    pub height: u32,
-    pub widths: [u32; 8],
-    pub heights: [u32; 8],
-    pub formats: [i32; 8],
+    pub format: *const i32,
+    pub trc: *const u8,
+    pub gpu: *const bool,
+    pub channels: *const i32,
+    pub width: *const u32,
+    pub height: *const u32,
+    pub widths: *const u32,
+    pub heights: *const u32,
+    pub formats: *const i32,
     pub textures: *mut *mut c_void,
     pub render: *mut *mut c_void,
+}
+
+/// Each read goes to the live field when the core asks for it.
+struct Source(Fields);
+impl deinterlace_texture::Fields for Source {
+    fn format(&self) -> i32 {
+        // SAFETY: the adapter's address of the live source's field.
+        unsafe { self.0.format.read() }
+    }
+    fn trc(&self) -> u8 {
+        // SAFETY: as above.
+        unsafe { self.0.trc.read() }
+    }
+    fn gpu(&self) -> bool {
+        // SAFETY: as above.
+        unsafe { self.0.gpu.read() }
+    }
+    fn channels(&self) -> i32 {
+        // SAFETY: as above.
+        unsafe { self.0.channels.read() }
+    }
+    fn plane(&self, index: usize) -> Plane {
+        assert!(index < PLANES, "plane {index} past MAX_AV_PLANES");
+        // SAFETY: the three arrays hold MAX_AV_PLANES entries, checked above.
+        unsafe {
+            Plane {
+                width: self.0.widths.add(index).read(),
+                height: self.0.heights.add(index).read(),
+                format: self.0.formats.add(index).read(),
+            }
+        }
+    }
+    fn width(&self) -> u32 {
+        // SAFETY: as above.
+        unsafe { self.0.width.read() }
+    }
+    fn height(&self) -> u32 {
+        // SAFETY: as above.
+        unsafe { self.0.height.read() }
+    }
 }
 unsafe extern "C" {
     fn obs_source_deinterlace_texture_fields(source: *mut c_void) -> Fields;
@@ -77,18 +120,5 @@ pub unsafe extern "C" fn allocate_with(source: *mut c_void, create: Create, rend
     }
     // SAFETY: NULL was checked before even forming addresses in the adapter.
     let fields = unsafe { obs_source_deinterlace_texture_fields(source) };
-    let input = Input {
-        format: fields.format,
-        trc: fields.trc,
-        gpu: fields.gpu,
-        channels: fields.channels,
-        width: fields.width,
-        height: fields.height,
-        planes: core::array::from_fn(|c| Plane {
-            width: fields.widths[c],
-            height: fields.heights[c],
-            format: fields.formats[c],
-        }),
-    };
-    deinterlace_texture::allocate(input, &mut Graphics(fields, create, render));
+    deinterlace_texture::allocate(Source(fields), &mut Graphics(fields, create, render));
 }
