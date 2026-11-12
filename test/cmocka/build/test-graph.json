@@ -9040,6 +9040,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_weak_lifetime": {
+      "sources": [
+        "test/cmocka/test_output_weak_lifetime.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_pipe": {
       "sources": [
         "test/cmocka/test_pipe.c"
@@ -22197,6 +22212,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_weak_lifetime": {
+      "target": "test_output_weak_lifetime",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_pipe": {
       "target": "test_pipe"
