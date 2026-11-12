@@ -21,6 +21,7 @@ mod canvas_draw;
 mod canvas_draw_parity;
 mod canvas_flags_getter;
 mod canvas_flags_getter_parity;
+mod canvas_move;
 mod canvas_readonly_getters;
 mod canvas_readonly_getters_parity;
 mod canvas_ref;
