@@ -114,6 +114,7 @@ mod source_load;
 mod source_load_parity;
 mod source_profiler;
 mod source_profiler_parity;
+mod source_type_enum;
 mod tick_callbacks;
 mod tick_callbacks_parity;
 mod video_copy_plan;
