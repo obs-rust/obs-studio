@@ -34,6 +34,14 @@ pub fn conversion_guard(
     conversion_guard_reading(output, conversion, || flags, media)
 }
 
+/// Packet callback registration needs a live output. A NULL output is
+/// refused as `obs_output_valid` refuses it, where the C locked the NULL
+/// output's mutex (#4754, the one intentional difference).
+pub fn packet_guard(output: bool) -> Result<(), Rejection> {
+    let _ = output;
+    todo!()
+}
+
 /// Registration prepends, including duplicates and null tokens.
 pub fn insertion_index() -> usize {
     0

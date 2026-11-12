@@ -1,5 +1,5 @@
 //! Tier 1 mirrors every assertion in test_output_reconnect_callback.c.
-use obs_output::output_reconnect_callback::select;
+use obs_output::output_reconnect_callback::{accepts_output, select};
 
 fn first(data: usize, output: usize, code: i32) -> bool {
     data == output && code == -5
@@ -46,4 +46,10 @@ fn null_callback_discards_the_supplied_data() {
 fn clearing_an_empty_callback_keeps_both_fields_empty() {
     let (callback, data) = select(None::<Callback>, 7);
     check(callback, data, None, 0);
+}
+
+#[test]
+fn null_output_reconnect_setter_is_refused() {
+    assert!(!accepts_output(false));
+    assert!(accepts_output(true));
 }
