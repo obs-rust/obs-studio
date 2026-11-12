@@ -36,6 +36,15 @@ class ClientChecksTest(unittest.TestCase):
         self.write("frontend/forms/XML-Schema-Qt5.15.xsd", '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="ui"/></xs:schema>')
         self.write("frontend/forms/a space.ui", '<ui/>')
         self.write("ci/test_fixture.py", 'import unittest\nclass Test(unittest.TestCase):\n def test_ok(self): self.assertTrue(True)\n')
+        # Only the external xmllint installation is substituted. The real
+        # shared wrapper still invokes a schema-capable XML engine and returns
+        # its actual status. No orchestration/validator calls are mocked.
+        self.bin = self.root / ".git-tools"
+        self.bin.mkdir()
+        xml = self.bin / "xmllint"
+        xml.write_text("#!/usr/bin/env -S uv run --no-project --with lxml --script\nimport sys\nfrom lxml import etree\nif '--version' in sys.argv:\n print('libxml2 via lxml ' + '.'.join(map(str, etree.LIBXML_VERSION)))\nelse:\n schema = etree.XMLSchema(etree.parse(sys.argv[sys.argv.index('--schema') + 1]))\n for name in sys.argv[sys.argv.index('--noout') + 1:]:\n  schema.assertValid(etree.parse(name))\n")
+        xml.chmod(0o755)
+        self.write(".gitignore", ".git-tools/\n__pycache__/\nvalidation_errors.json\n")
         self.git("init", "-q")
         self.git("config", "user.name", "Client checks fixture")
         self.git("config", "user.email", "fixture@example.invalid")
@@ -59,7 +68,7 @@ class ClientChecksTest(unittest.TestCase):
         args = ["uv", "run", "--no-project", "ci/client_checks.py", "--base", base or self.base]
         if swift:
             args.append("--swift")
-        return subprocess.run(args, cwd=self.root, env={**os.environ, **(env or {})}, text=True, capture_output=True)
+        return subprocess.run(args, cwd=self.root, env={**os.environ, "PATH": str(self.bin) + os.pathsep + os.environ["PATH"], **(env or {})}, text=True, capture_output=True)
 
     def test_real_validators_reject_bad_inputs_before_stamping(self):
         for name, content in (("plugins/win-capture/data/compatibility.json", '{"$schema":"schema.json","value":"bad"}'),
@@ -104,6 +113,36 @@ class ClientChecksTest(unittest.TestCase):
         result = self.checks(env={"OBS_GATE_SKIP_SELF_TEST": "1"})
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("client failure", result.stdout + result.stderr)
+
+    def test_receipt_invalidates_schema_script_config_and_tool_changes(self):
+        result = self.checks()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        receipt = self.root / ".git/client-checks/checks.json"
+        initial = json.loads(receipt.read_text())
+        self.assertEqual(initial["base"], self.base)
+        self.assertIn("schema-dependencies", initial["tools"])
+        for name in ("plugins/win-capture/data/schema.json", "ci/compatibility_validate.py", ".swift-format"):
+            with self.subTest(name=name):
+                path = self.root / name
+                before = path.read_text() if path.exists() else "{}"
+                self.write(name, before + "\n")
+                self.commit()
+                result = self.checks()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                current = json.loads(receipt.read_text())
+                self.assertNotEqual(current["tracked-digest"], initial["tracked-digest"])
+                self.assertNotEqual(current["tree"], initial["tree"])
+                self.assertIn(name, current["diff"])
+
+    def test_inputs_changed_by_validator_command_are_rejected(self):
+        # A real self-test that mutates another tracked input simulates a tool
+        # rewriting a config after it was checked. This must never earn proof.
+        self.write("ci/test_fixture.py", 'import unittest\nfrom pathlib import Path\nclass Test(unittest.TestCase):\n def test_edit(self): Path(".swift-format").write_text("changed")\n')
+        self.write(".swift-format", "original")
+        self.commit()
+        result = self.checks()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / ".git/client-checks/checks.json").exists())
 
     def test_unavailable_swift_emits_no_proof(self):
         self.write("frontend/a.swift", "let value = 1\n")

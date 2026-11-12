@@ -40,7 +40,7 @@ class Rungs(unittest.TestCase):
             output = "{}"
             if "emit" in args:
                 gates = (["rust/all/fmt", f"rust/{self.HOST}/clippy"] if partial
-                         else sorted(push.client_gates(self.HOST) | push.CLIENT_CHECK_GATES))
+                         else sorted(push.client_gates(self.HOST) | push.CLIENT_CHECK_GATES | ({"swift/all/fmt"} if fail != "client-swift" else set())))
                 output = json.dumps({"v": 1, "attestations": [{"gate": g} for g in gates]})
             return subprocess.CompletedProcess(args, 1 if fail and fail in args else 0, output, "")
         def git(*args, **kw):
@@ -181,7 +181,10 @@ class ProoftIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             def command(*args, check=True):
-                return subprocess.run(args, cwd=root, text=True, capture_output=True, check=check)
+                result = subprocess.run(args, cwd=root, text=True, capture_output=True)
+                if check and result.returncode:
+                    self.fail(f"{args}: {result.stdout}\n{result.stderr}")
+                return result
             command("git", "init", "-q")
             command("git", "config", "user.name", "Client proof fixture")
             command("git", "config", "user.email", "fixture@example.invalid")

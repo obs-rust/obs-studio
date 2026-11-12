@@ -40,7 +40,17 @@ lanes:
   client-test-aarch64-apple-darwin:
     inputs: ["**"]
     max-age-hours: 24
+  # No input-key reuse across histories: bind these full-file passes to the
+  # exact tree and parents. ./push also signs the base/diff/tool receipt.
+  client-checks: {max-age-hours: 24}
+  client-swift: {max-age-hours: 24}
 gates:
+  python/all/self-test: {lane: client-checks}
+  data/all/flatpak-manifest: {lane: client-checks}
+  data/all/qt-xml: {lane: client-checks}
+  data/all/compatibility: {lane: client-checks}
+  data/all/services-schema: {lane: client-checks}
+  swift/all/fmt: {lane: client-swift}
   rust/all/fmt: {lane: lint}
   rust/x86_64-unknown-linux-gnu/clippy: {lane: lint}
   rust/x86_64-unknown-linux-gnu/test: {lane: rust-test}

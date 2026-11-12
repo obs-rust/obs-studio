@@ -675,7 +675,7 @@ def check_feature_sets() -> None:
     print(f"+ Cargo feature sets: {len(FEATURE_SETS)} runs, every feature built on and off", flush=True)
 
 
-def lane_lint(fix: bool) -> None:
+def lane_lint(fix: bool, *, self_tests: bool = True) -> None:
     files = tracked_files()
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
     fmt_files = format_scope(files, None if in_ci else changed_since_master(), in_ci)
@@ -684,7 +684,8 @@ def lane_lint(fix: bool) -> None:
     clang_format(fmt_files, fix)
     gersemi(fmt_files, fix)
     ruff_ratchet(files)
-    self_test()
+    if self_tests:
+        self_test()
     check_test_binary_inventory()
     check_feature_sets()
     platform_ifdef_ratchet()
@@ -742,7 +743,7 @@ def client_gates(host: str) -> set[str]:
 
 def lane_client_lint(fix: bool) -> None:
     host = client_host()
-    lane_lint(fix)  # Includes every host feature-set clippy check.
+    lane_lint(fix, self_tests=False)  # client-checks owns the identical full self-test command.
     print(f"== client {host}: clippy passed", flush=True)
     lane_dylint(fix)  # Keep the host's dedicated warm target-dylint root.
     print(f"== client {host}: dylint passed", flush=True)
@@ -961,9 +962,26 @@ def lane_windows_native(fix: bool) -> None:
          "-CMockaPrefix", prefix])
 
 
+def client_checks_base() -> str:
+    base = os.environ.get("OBS_CLIENT_BASE", "origin/master")
+    return subprocess.run(["git", "rev-parse", "--verify", f"{base}^{{commit}}"],
+                          cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
+
+
+def lane_client_checks(fix: bool) -> None:
+    run(["uv", "run", "--no-project", "ci/client_checks.py", "--base", client_checks_base()])
+
+
+def lane_client_swift(fix: bool) -> None:
+    result = subprocess.run(["uv", "run", "--no-project", "ci/client_checks.py", "--base", client_checks_base(), "--swift"], cwd=ROOT)
+    if result.returncode:
+        raise NotApplicable("Swift formatting unavailable or failed; remote fallback required")
+
+
 LANES = {"lint": lane_lint, "dylint": lane_dylint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release,
          "tier2-linux": lane_tier2_linux, "macos-native": lane_macos_native, "windows-native": lane_windows_native,
-         "client-lint": lane_client_lint, "client-test": lane_client_test}
+         "client-lint": lane_client_lint, "client-test": lane_client_test,
+          "client-checks": lane_client_checks, "client-swift": lane_client_swift}
 
 # The lint lane's formatter checks on their own, for CI's format jobs: the
 # same pinned tools and files as `./lint`, so the two cannot disagree (#427).
@@ -1015,7 +1033,7 @@ def main() -> int:
         return 0
     # cross-release runs only in the release gate (#955).
     ran = 0
-    for name in args.lane or [n for n in LANES if n not in ("cross-release", "client-lint", "client-test")]:
+    for name in args.lane or [n for n in LANES if n not in ("cross-release", "client-lint", "client-test", "client-checks", "client-swift")]:
         start = time.monotonic()
         print(f"== lane {name}", flush=True)
         try:

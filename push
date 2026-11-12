@@ -31,6 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "ci"))
 from local_gate import CLIENT_TARGETS, client_gates, host_target
+from client_checks import CLIENT_CHECK_GATES, receipt_path
 
 REQUIRE = os.environ.get("PUSH_REQUIRE_ATTESTATION") == "1"
 
@@ -155,8 +156,11 @@ def complete_prooft(prooft: str, tree: str) -> bool:
     if host not in CLIENT_TARGETS:
         print(f"./push: unsupported native target {host}; no client evidence", file=sys.stderr)
         return False
+    # Resolve once: proof commands must never compare against a moving ref.
+    base = git("rev-parse", "--verify", "origin/master^{commit}", capture=True).stdout.strip()
     commands = (
         [prooft, "run", "client-lint", "--", "uv", "run", "ci/local_gate.py", "--lane", "client-lint"],
+        [prooft, "run", "client-checks", "--", "uv", "run", "--no-project", "ci/client_checks.py", "--base", base],
         [prooft, "run", f"client-test-{host}", "--", "uv", "run", "ci/local_gate.py",
          "--lane", "client-test", "--client-target", host],
     )
@@ -166,13 +170,47 @@ def complete_prooft(prooft: str, tree: str) -> bool:
             return False
         if not unchanged(tree):
             return False
-    missing = client_gates(host) - emitted_gates(prooft)
+    swift = run([prooft, "run", "client-swift", "--", "uv", "run", "--no-project",
+                 "ci/client_checks.py", "--base", base, "--swift"], check=False).returncode == 0
+    if not unchanged(tree):
+        return False
+    required = client_gates(host) | CLIENT_CHECK_GATES
+    if swift:
+        required.add("swift/all/fmt")
+    missing = required - emitted_gates(prooft)
     if missing:
         print(f"./push: incomplete client evidence; missing: {', '.join(sorted(missing))}", file=sys.stderr)
         return False
+    if not record_client_context(base, tree, swift):
+        return False
     if not sign_final() or not unchanged(tree):
         return False
-    return not (client_gates(host) - emitted_gates(prooft))
+    return not (required - emitted_gates(prooft))
+
+
+def record_client_context(base: str, tree: str, swift: bool) -> bool:
+    """Keep tool versions and exact selection in the final signed message.
+
+    prooft v1 binds tree/parents but has no tool-version metadata field. This
+    additive receipt preserves those inputs without replacing its gate format.
+    Full-file coverage makes the checks independent of a scoped selector.
+    """
+    records = {}
+    for name, optional in (("checks", False), ("swift", True)):
+        if optional and not swift:
+            continue
+        record = json.loads(receipt_path(ROOT, optional).read_text())
+        if record.get("base") != base or record.get("tree") != tree:
+            print("./push: client check receipt does not match inputs", file=sys.stderr)
+            return False
+        records[name] = record
+    message = git("log", "-1", "--format=%B", capture=True).stdout
+    message = "\n".join(line for line in message.splitlines() if not line.startswith("Client-Checks: "))
+    message += "\n\nClient-Checks: " + json.dumps(records, sort_keys=True, separators=(",", ":")) + "\n"
+    path = receipt_path(ROOT, False).parent / "message.txt"
+    path.write_text(message)
+    git("commit", "--amend", "--no-gpg-sign", "--file", str(path))
+    return True
 
 
 def unchanged(tree: str) -> bool:
