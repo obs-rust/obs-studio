@@ -114,6 +114,50 @@ run = ["uv", "run", "ci/local_gate.py", "--lane", "windows-native"]
 tools = ["soldr"]
 optional = true
 
+# Complete client evidence (#4745), independent of legacy remote lane mappings.
+# With no exclusions these keys include ALL tracked linted sources, configs,
+# target cfg/toolchain, Dylints, manifests, lockfiles, and runner scripts.
+[gate.lanes.client-lint]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-lint"]
+tools = ["uvx", "soldr"]
+
+# Dynamic host entry point; only the target-qualified aliases below may stamp
+# a native runtime gate. GNU-oracle linking runs only where soldr supports it.
+[gate.lanes.client-test]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-x86_64-unknown-linux-gnu]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "x86_64-unknown-linux-gnu"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-aarch64-unknown-linux-gnu]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "aarch64-unknown-linux-gnu"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-x86_64-pc-windows-msvc]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "x86_64-pc-windows-msvc"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-aarch64-pc-windows-msvc]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "aarch64-pc-windows-msvc"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-x86_64-apple-darwin]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "x86_64-apple-darwin"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-aarch64-apple-darwin]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "aarch64-apple-darwin"]
+tools = ["soldr"]
+optional = true
+
 # GATE-008: decided from THIS file as committed on the PR's base. Fails
 # closed: fork or non-writer author, `ci-full` label, head not attested for
 # its exact tree, a missing lane, a changed surface, or the 1-in-10 audit
