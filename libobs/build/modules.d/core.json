@@ -7,6 +7,7 @@
     "core-scene-lookup",
     "core-scene-transform-states",
     "core-source",
+    "core-source-filter-backup",
     "null-audio",
     "util-cf"
   ],
