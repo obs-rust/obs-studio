@@ -1,5 +1,20 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
+/* In its own group for the C reference: graphics.c.h's thread_graphics,
+ * read through gs_get_context(), and its static gs_valid(), verbatim. */
+#define thread_graphics gs_get_context()
+
+static inline bool present_ref_valid(const char *f)
+{
+	if (!thread_graphics) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", f);
+		return false;
+	}
+
+	return true;
+}
+#define gs_valid present_ref_valid
+
 void gs_begin_frame(void)
 {
 	graphics_t *graphics = thread_graphics;
@@ -89,3 +104,6 @@ void gs_flush(void)
 
 	graphics->exports.device_flush(graphics->device);
 }
+
+#undef gs_valid
+#undef thread_graphics

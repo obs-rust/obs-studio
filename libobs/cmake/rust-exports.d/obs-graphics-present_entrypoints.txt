@@ -1,0 +1,9 @@
+gs_begin_frame
+gs_begin_scene
+gs_clear
+gs_draw
+gs_end_scene
+gs_flush
+gs_is_present_ready
+gs_load_swapchain
+gs_present

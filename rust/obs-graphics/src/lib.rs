@@ -4,7 +4,8 @@
 //! the immediate-mode vertex counts and texture units ([`immediate`]), and
 //! `texture-planar-creators.c.h`, the NV12 and P010 texture creators
 //! ([`texture_planar_creators`]), and `indexbuffer-create.c.h`, the index
-//! buffer create ([`indexbuffer_create`]), from
+//! buffer create ([`indexbuffer_create`]), and `present-entrypoints.c.h`,
+//! the frame and present calls ([`present_entrypoints`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
@@ -71,6 +72,7 @@ pub mod matrix3;
 pub mod matrix4;
 pub mod plane;
 mod platform;
+pub mod present_entrypoints;
 pub mod quat;
 mod round;
 pub mod shader_file;
