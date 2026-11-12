@@ -260,6 +260,7 @@ pub mod video_fourcc;
 pub mod video_frame;
 pub mod video_frame_copy;
 pub mod video_frame_timing;
+pub mod video_graphics_tasks;
 pub mod video_io;
 pub mod video_io_inlines;
 pub mod video_matrices;
