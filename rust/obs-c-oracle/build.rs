@@ -662,6 +662,8 @@ fn main() {
         "timer-range-dispatch",
         "voltexture-metadata",
         "vertexbuffer-destroy",
+        "vertexbuffer-create",
+        "vertexbuffer-create-fields",
         "blend-entrypoints-fields",
         "indexbuffer-create",
         "indexbuffer-create-fields",

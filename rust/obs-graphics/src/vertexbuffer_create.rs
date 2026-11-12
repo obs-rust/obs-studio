@@ -36,6 +36,22 @@ pub fn create<B: Backend>(
     data: Option<B::Data>,
     flags: u32,
 ) -> Option<B::Buffer> {
-    let _ = (backend, data, flags);
-    todo!("gs_vertexbuffer_create ownership policy")
+    let backend = backend?;
+    let data = data.map(|input| {
+        if flags & DUP_BUFFER == 0 || backend.count(input) == 0 {
+            return input;
+        }
+        let mut copy = backend.read(input);
+        // vec3 occupies 16 bytes, including its padding; colors occupy four.
+        // Match the original C size_t products, including wrapping arithmetic.
+        for (array, width) in copy.arrays.iter_mut().zip([16usize, 16, 16, 4]) {
+            *array = array.map(|src| backend.duplicate(src, width.wrapping_mul(copy.num)));
+        }
+        for texture in &mut copy.textures {
+            let bytes = texture.width.wrapping_mul(4).wrapping_mul(copy.num);
+            texture.array = backend.duplicate(texture.array, bytes);
+        }
+        backend.build(copy)
+    });
+    Some(backend.dispatch(data, flags))
 }
