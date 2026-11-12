@@ -191,11 +191,32 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("runs-on: ubuntu-latest", probe)
         self.assertNotRegex(probe, r"(?m)^    if:")  # Never skip dependants on PRs.
         self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)
-        self.assertIn("MQ_RUNNER_STATUS_TOKEN: ${{ secrets.MQ_RUNNER_STATUS_TOKEN }}", probe)
+        steps = dict(re.findall(
+            r"^      - name: ([^\n]+)\n(.*?)(?=^      - |\Z)", probe, re.MULTILINE | re.DOTALL
+        ))
+        app = steps["Create Runner Probe App Token"]
+        self.assertRegex(app, r"uses: actions/create-github-app-token@[0-9a-f]{40} # v[23]\.")
+        self.assertIn("id: mq-probe-app", app)
+        self.assertIn("continue-on-error: true", app)
+        self.assertIn(
+            "if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''"
+            " && vars.MQ_PROBE_APP_ID != ''\n", app,
+        )
+        for setting in (
+            "app-id: ${{ vars.MQ_PROBE_APP_ID }}",
+            "private-key: ${{ secrets.MQ_PROBE_APP_PRIVATE_KEY }}",
+            "owner: ${{ github.repository_owner }}",
+        ):
+            self.assertIn(setting, app)
+        self.assertLess(probe.index("id: mq-probe-app"), probe.index("id: select"))
+        self.assertIn(
+            "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
+            " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
+        )
         self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
         self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
-        self.assertEqual(probe.count("continue-on-error: true"), 3)
+        self.assertEqual(probe.count("continue-on-error: true"), 4)
         for step in ("checkout", "uv"):
             self.assertIn(f"steps.{step}.outcome == 'success'", probe)
             self.assertIn(f"steps.{step}.outcome == 'failure'", probe)
