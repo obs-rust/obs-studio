@@ -215,3 +215,7 @@ mod output_video_encoder_getter_parity;
 
 mod output_size_getters;
 mod output_size_getters_parity;
+
+mod output_conversion_callbacks;
+
+mod output_conversion_callbacks_parity;
