@@ -1078,50 +1078,6 @@ gs_shader_t *gs_pixelshader_create(const char *shader, const char *file, char **
 	return graphics->exports.device_pixelshader_create(graphics->device, shader, file, error_string);
 }
 
-gs_vertbuffer_t *gs_vertexbuffer_create(struct gs_vb_data *data, uint32_t flags)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_vertexbuffer_create"))
-		return NULL;
-
-	if (data && data->num && (flags & GS_DUP_BUFFER) != 0) {
-		struct gs_vb_data *new_data = gs_vbdata_create();
-
-		new_data->num = data->num;
-
-#define DUP_VAL(val)                                                                        \
-	do {                                                                                \
-		if (data->val)                                                              \
-			new_data->val = bmemdup(data->val, sizeof(*data->val) * data->num); \
-	} while (false)
-
-		DUP_VAL(points);
-		DUP_VAL(normals);
-		DUP_VAL(tangents);
-		DUP_VAL(colors);
-#undef DUP_VAL
-
-		if (data->tvarray && data->num_tex) {
-			new_data->num_tex = data->num_tex;
-			new_data->tvarray = bzalloc(sizeof(struct gs_tvertarray) * data->num_tex);
-
-			for (size_t i = 0; i < data->num_tex; i++) {
-				struct gs_tvertarray *tv = &data->tvarray[i];
-				struct gs_tvertarray *new_tv = &new_data->tvarray[i];
-				size_t size = tv->width * sizeof(float);
-
-				new_tv->width = tv->width;
-				new_tv->array = bmemdup(tv->array, size * data->num);
-			}
-		}
-
-		data = new_data;
-	}
-
-	return graphics->exports.device_vertexbuffer_create(graphics->device, data, flags);
-}
-
 gs_timer_t *gs_timer_create(void)
 {
 	graphics_t *graphics = thread_graphics;
