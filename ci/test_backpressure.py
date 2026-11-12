@@ -57,6 +57,7 @@ class AdmissionTests(unittest.TestCase):
         self.global_runs = []
         self.suites = []
         self.final_head = HEAD
+        self.jobs = {}
 
     def github(self, *args):
         self.calls.append(args)
@@ -71,6 +72,9 @@ class AdmissionTests(unittest.TestCase):
         raise AssertionError(args)
 
     def api_response(self, endpoint):
+        if "/jobs?" in endpoint:
+            jobs = self.jobs[int(endpoint.split("/runs/")[1].split("/")[0])]
+            return [{"total_count": len(jobs), "jobs": jobs}]
         if "check-suites" in endpoint:
             return [{"total_count": len(self.suites), "check_suites": self.suites}]
         if "created=" in endpoint:
@@ -156,9 +160,79 @@ class AdmissionTests(unittest.TestCase):
 
     def test_starvation_independent_of_parked_red(self):
         self.queued = [{"databaseId": 7, "createdAt": "2026-11-11T11:40:00Z", "event": "push"}]
+        self.jobs[7] = [{"id": 70, "status": "queued", "created_at": "2026-11-11T11:40:00Z"}]
         v = self.measure()
         self.assertEqual((v["state"], v["headroom"]), ("closed", 0))
         self.assertTrue(any("runner" in r for r in v["reasons"]))
+
+    def test_old_jobless_queued_run_does_not_close_admission(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z"}]
+        self.jobs[7] = []
+        v = self.measure()
+        self.assertEqual((v["state"], v["headroom"], v["oldest_queued_min"]), ("open", 1, 0))
+        self.assertEqual(v["ignored_queued_run_ids"], [7])
+
+    def test_fresh_rerun_attempt_is_not_starved_or_fetched(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z",
+                        "startedAt": "2026-11-11T11:55:00Z"}]
+        v = self.measure()
+        self.assertEqual((v["state"], v["oldest_queued_min"]), ("open", 5))
+        self.assertFalse(any("/jobs?" in call[1] for call in self.calls if call[0] == "api"))
+        run_call = next(call for call in self.calls if call[0] == "run")
+        self.assertIn("startedAt", run_call[-1].split(","))
+
+    def test_starvation_uses_oldest_queued_job_in_current_attempt(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z",
+                        "startedAt": "2026-11-11T11:00:00Z"}]
+        self.jobs[7] = [{"id": 70, "status": "completed", "created_at": "2026-11-11T11:00:00Z"},
+                        {"id": 71, "status": "queued", "created_at": "2026-11-11T11:50:00Z"}]
+        self.assertEqual((self.measure()["state"], self.measure()["oldest_queued_min"]), ("open", 10))
+        self.jobs[7].append({"id": 72, "status": "queued", "created_at": "2026-11-11T11:35:00Z"})
+        v = self.measure()
+        self.assertEqual((v["state"], v["oldest_queued_min"]), ("closed", 25))
+
+    def test_rerun_attempt_bounds_an_older_job_timestamp(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z",
+                        "startedAt": "2026-11-11T11:35:00Z"}]
+        self.jobs[7] = [{"id": 70, "status": "queued", "created_at": "2026-11-10T10:00:00Z"}]
+        v = self.measure()
+        self.assertEqual((v["state"], v["oldest_queued_min"]), ("closed", 25))
+
+    def test_jobless_run_does_not_hide_genuine_starvation(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z"},
+                       {"databaseId": 8, "createdAt": "2026-11-11T11:35:00Z"}]
+        self.jobs = {7: [], 8: [{"id": 80, "status": "queued", "created_at": "2026-11-11T11:35:00Z"}]}
+        v = self.measure()
+        self.assertEqual((v["state"], v["oldest_queued_min"]), ("closed", 25))
+        self.assertEqual(v["ignored_queued_run_ids"], [7])
+
+    def test_young_run_does_not_fetch_jobs(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-11T11:55:00Z"}]
+        self.assertEqual(self.measure()["state"], "open")
+        self.assertFalse(any("/jobs?" in call[1] for call in self.calls if call[0] == "api"))
+
+    def test_incomplete_job_read_closes_main(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z"}]
+        original = self.github
+        def github(*args):
+            if args[0] == "api" and "/jobs?" in args[1]:
+                return [{"total_count": 1, "jobs": []}]
+            return original(*args)
+        with patch.object(bp, "gh_json", side_effect=github), patch.object(bp, "now", return_value=CLOCK), \
+                patch("sys.argv", ["backpressure"]), contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(bp.main(), bp.EXIT_CLOSED)
+        self.assertIn("GitHub state unavailable", json.loads(out.getvalue())["reasons"][0])
+
+    def test_verbose_check_logs_ignored_run_ids(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z"}]
+        self.jobs[7] = []
+        with patch.object(bp, "gh_json", side_effect=self.github), patch.object(bp, "now", return_value=CLOCK), \
+                patch("sys.argv", ["backpressure", "--check", "--verbose"]), \
+                contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(bp.main(), 0)
+        self.assertIn("backpressure open", out.getvalue())
+        self.assertIn("7", err.getvalue())
+        self.assertIn("zero jobs", err.getvalue())
 
     def test_throughput_limit_unchanged(self):
         self.merged = [{"number": n} for n in range(1, 5)]

@@ -26,8 +26,9 @@ or incomplete pagination closes admission; this is not permission to retry,
 requeue or bypass any caller's holds, reviews, drafts or admission leases.
 
 The gate is OPEN when in_flight < limit and runners are being picked up, and
-CLOSED otherwise. The starvation signal is the oldest `queued` workflow run:
-if nothing has started for 20 minutes, adding work only deepens the hole.
+CLOSED otherwise. The starvation signal is the oldest queued job in the
+current run attempt: after 20 minutes, adding work only deepens the hole.
+Queued runs with no jobs cannot consume runners and do not signal starvation.
 With no merges at all, the limit is 1: one PR probes the queue, so the system
 recovers by itself when throughput returns (additive increase), and drops
 back the moment throughput stalls (multiplicative decrease, since the window
@@ -259,6 +260,35 @@ def inactive_runs(repo: str, pr: dict) -> bool:
     return all(r.get("status") == "completed" for r in runs)
 
 
+def queued_job_start(jobs: list, attempt_start: dt.datetime) -> dt.datetime | None:
+    """A rerun's original job timestamps cannot predate its current attempt."""
+    require(all(isinstance(j.get("status"), str) for j in jobs), "malformed job status")
+    return min((max(parse(j["created_at"]), attempt_start) for j in jobs if j["status"] == "queued"),
+               default=None)
+
+
+def queued_starvation(repo: str, runs: list) -> tuple[int, list[int]]:
+    """Only inspect jobs when the attempt is old enough to starve a runner."""
+    clock = now()
+    starts = []
+    ignored = []
+    for run in runs:
+        run_id = run["databaseId"]
+        require(type(run_id) is int and run_id > 0, "malformed queued run identity")
+        attempt_start = parse(run.get("startedAt") or run["createdAt"])
+        if clock - attempt_start < dt.timedelta(minutes=STARVED_MIN):
+            starts.append(attempt_start)  # An upper bound below the threshold; no REST call needed.
+            continue
+        jobs = rest_items(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100", "jobs")
+        if not jobs:
+            ignored.append(run_id)
+        start = queued_job_start(jobs, attempt_start)
+        if start is not None:
+            starts.append(start)
+    oldest = min(starts, default=clock)
+    return max(0, int((clock - oldest).total_seconds() // 60)), ignored
+
+
 def measure(repo: str = REPO) -> dict:
     since = (now() - dt.timedelta(hours=WINDOW_H)).strftime("%Y-%m-%dT%H:%M:%SZ")
     merged = gh_json("pr", "list", "--repo", repo, "--state", "merged", "--search",
@@ -266,7 +296,7 @@ def measure(repo: str = REPO) -> dict:
     open_prs = gh_json("pr", "list", "--repo", repo, "--state", "open", "--limit", "300",
                        "--json", "number,isDraft,autoMergeRequest,mergeStateStatus,headRefOid,headRefName,createdAt")
     queued_runs = gh_json("run", "list", "--repo", repo, "--status", "queued", "--limit", "200",
-                          "--json", "databaseId,createdAt,event")
+                          "--json", "databaseId,createdAt,startedAt,event")
     merged = bounded_list(merged, 200)
     open_prs = bounded_list(open_prs, 300)
     queued_runs = bounded_list(queued_runs, 200)
@@ -289,8 +319,7 @@ def measure(repo: str = REPO) -> dict:
     queued |= queue_entries(repo)
     parked -= queued
     counted = queued | (armed - parked)
-    oldest = min((parse(r["createdAt"]) for r in queued_runs), default=None)
-    starved_min = round((now() - oldest).total_seconds() / 60) if oldest else 0
+    starved_min, ignored = queued_starvation(repo, queued_runs)
     capacity = len(merged)
     limit = max(1, capacity)
     in_flight = len(counted)
@@ -299,7 +328,7 @@ def measure(repo: str = REPO) -> dict:
     if in_flight >= limit:
         reasons.append(f"{in_flight} PRs in flight >= {limit} merged in the last {WINDOW_H} h")
     if starved:
-        reasons.append(f"oldest queued run has waited {starved_min} min for a runner")
+        reasons.append(f"oldest queued job has waited {starved_min} min for a runner")
     return {
         "state": "closed" if reasons else "open",
         "reasons": reasons,
@@ -311,6 +340,7 @@ def measure(repo: str = REPO) -> dict:
         "merged_window": capacity,
         "queued_runs": len(queued_runs),
         "oldest_queued_min": starved_min,
+        "ignored_queued_run_ids": ignored,
         "open_prs": len(open_prs),
     }
 
@@ -319,6 +349,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--repo", default=REPO)
     ap.add_argument("--check", action="store_true", help="print one line instead of JSON")
+    ap.add_argument("--verbose", "-v", action="store_true", help="log ignored job-less queued runs")
     a = ap.parse_args()
     try:
         v = measure(a.repo)
@@ -328,6 +359,8 @@ def main() -> int:
         err = (getattr(e, "stderr", "") or str(e)).strip().splitlines()[-1:] or [""]
         v = {"state": "closed", "reasons": [f"GitHub state unavailable: {err[0][:200]}"],
              "limit": 0, "in_flight": 0, "headroom": 0}
+    if a.verbose and v.get("ignored_queued_run_ids"):
+        print(f"ignored queued runs with zero jobs: {v['ignored_queued_run_ids']}", file=sys.stderr)
     if a.check:
         why = "; ".join(v["reasons"]) or f"headroom {v['headroom']}"
         counts = (f"counted={v['counted']} parked_red={v['parked_red']}"
