@@ -59,7 +59,7 @@ class VcamAudioHardwareEventsTest(unittest.TestCase):
         dispatch = self.on.split("  workflow_dispatch:\n", 1)[1].split("\n  schedule:", 1)[0]
         self.assertRegex(dispatch, r"(?m)^      build_run:\n")
         self.assertIn("        type: string\n", dispatch)
-        self.assertIn("        default: ''\n", dispatch)
+        self.assertRegex(dispatch, r"(?m)^        default: ''$")
         self.assertNotIn("required: true", dispatch)
         self.assertIn("  BUILD_RUN: ${{ inputs.build_run }}\n", self.text)
         for build_run in ("43309616180", ""):

@@ -892,6 +892,19 @@ required-check settings and runner use before enabling it. Do not add a security
 scan to `CI Gate`, merge rules or queue cancellation dependencies. Nightly
 failures are investigated through nightly reports rather than blocking the queue.
 
+Packaged virtual-camera audio hardware qualification lives in the existing
+`vcam-audio-hardware.yaml`: daily at `17 10 * * *` (10:17 UTC) and by manual
+`workflow_dispatch`, with scheduled jobs restricted to `obs-rust/obs-studio`.
+It never runs for PRs (including hardware harness/workflow edits) or
+`merge_group`, and has no dependency on `CI Gate` or attestation shortcut.
+Both Windows VB-Cable and macOS OBS Virtual Microphone jobs select the newest
+successful scheduled master package, or the optional manual `build_run`.
+Each summary records the package name and build run ID; this qualifies that
+package, not the PR or merge-group tree. Package, driver and audio validation
+failures remain visible, with bounded job timeouts and failure artifacts.
+`ci/test_vcam_audio_hw_events.py` checks this routing and retained recording
+checks without claiming an executed hardware pass.
+
 ### Opt-in merge-queue runner
 
 Set the repository Actions variable `MQ_RUNNER_LABELS` to a JSON array such as
