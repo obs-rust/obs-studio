@@ -1,4 +1,6 @@
-//! Reconnect callback and data are replaced together; clearing discards data.
+//! The reconnect callback setter, from
+//! `libobs/obs-output-reconnect-callback.c.h`: the callback and its data are
+//! replaced together, and clearing the callback discards the data.
 
 /// Select the stored callback and data without invoking the callback.
 pub fn select<C, D: Default>(callback: Option<C>, data: D) -> (Option<C>, D) {
