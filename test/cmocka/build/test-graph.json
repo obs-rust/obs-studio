@@ -15194,6 +15194,15 @@
         "libobs/data"
       ]
     },
+    "test_source_type_enum": {
+      "sources": [
+        "test/cmocka/test_source_type_enum.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_source_video_tick_steps": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
@@ -24344,6 +24353,20 @@
         "timing"
       ],
       "run_serial": true
+    },
+    "test_source_type_enum": {
+      "target": "test_source_type_enum",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_source_video_tick_steps": {
       "target": "test_source_video_tick_steps",
