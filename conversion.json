@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83299,
-      "libobs": 94457,
+      "libobs": 94549,
       "plugins": 148451,
       "shared": 15968
     },
-    "percent": 16.15,
-    "ported_lines": 55252,
-    "total_lines": 342175
+    "percent": 16.17,
+    "ported_lines": 55361,
+    "total_lines": 342267
   },
-  "commit": "cb2a73d",
+  "commit": "1273c7e",
   "date": "2026-11-12",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -34,9 +34,9 @@
           "total_lines": 63480
         },
         "graphics": {
-          "percent": 68.38,
-          "ported_lines": 9701,
-          "total_lines": 14187
+          "percent": 68.7,
+          "ported_lines": 9810,
+          "total_lines": 14279
         },
         "media-io": {
           "percent": 78.57,
@@ -49,11 +49,11 @@
           "total_lines": 13379
         }
       },
-      "files": 679,
-      "hybrid_lines": 39205,
-      "percent": 58.49,
-      "ported_lines": 55252,
-      "total_lines": 94457
+      "files": 680,
+      "hybrid_lines": 39188,
+      "percent": 58.55,
+      "ported_lines": 55361,
+      "total_lines": 94549
     },
     "hosts": {
       "linux": {
@@ -64,9 +64,9 @@
             "total_lines": 58491
           },
           "graphics": {
-            "percent": 68.9,
-            "ported_lines": 9641,
-            "total_lines": 13993
+            "percent": 69.22,
+            "ported_lines": 9750,
+            "total_lines": 14085
           },
           "media-io": {
             "percent": 78.57,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 644,
-        "hybrid_lines": 34886,
-        "percent": 59.41,
+        "files": 645,
+        "hybrid_lines": 34869,
+        "percent": 59.48,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -128,6 +128,7 @@
           "graphics/matrix3.c.h",
           "graphics/matrix4.c.h",
           "graphics/plane.c.h",
+          "graphics/present-entrypoints.c.h",
           "graphics/quat.c.h",
           "graphics/shader-file-validators.c.h",
           "graphics/shader-file.c.h",
@@ -503,8 +504,8 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 51066,
-        "total_lines": 85952
+        "ported_lines": 51175,
+        "total_lines": 86044
       },
       "macos": {
         "areas": {
@@ -514,9 +515,9 @@
             "total_lines": 52566
           },
           "graphics": {
-            "percent": 68.9,
-            "ported_lines": 9641,
-            "total_lines": 13993
+            "percent": 69.22,
+            "ported_lines": 9750,
+            "total_lines": 14085
           },
           "media-io": {
             "percent": 78.57,
@@ -529,9 +530,9 @@
             "total_lines": 9978
           }
         },
-        "files": 625,
-        "hybrid_lines": 32443,
-        "percent": 59.42,
+        "files": 626,
+        "hybrid_lines": 32426,
+        "percent": 59.49,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -577,6 +578,7 @@
           "graphics/matrix3.c.h",
           "graphics/matrix4.c.h",
           "graphics/plane.c.h",
+          "graphics/present-entrypoints.c.h",
           "graphics/quat.c.h",
           "graphics/shader-file-validators.c.h",
           "graphics/shader-file.c.h",
@@ -939,8 +941,8 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 47505,
-        "total_lines": 79948
+        "ported_lines": 47614,
+        "total_lines": 80040
       },
       "windows": {
         "areas": {
@@ -950,9 +952,9 @@
             "total_lines": 54197
           },
           "graphics": {
-            "percent": 68.45,
-            "ported_lines": 9701,
-            "total_lines": 14172
+            "percent": 68.77,
+            "ported_lines": 9810,
+            "total_lines": 14264
           },
           "media-io": {
             "percent": 78.57,
@@ -965,9 +967,9 @@
             "total_lines": 10704
           }
         },
-        "files": 636,
-        "hybrid_lines": 33801,
-        "percent": 59.02,
+        "files": 637,
+        "hybrid_lines": 33784,
+        "percent": 59.09,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1016,6 +1018,7 @@
           "graphics/matrix3.c.h",
           "graphics/matrix4.c.h",
           "graphics/plane.c.h",
+          "graphics/present-entrypoints.c.h",
           "graphics/quat.c.h",
           "graphics/shader-file-validators.c.h",
           "graphics/shader-file.c.h",
@@ -1382,12 +1385,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 48683,
-        "total_lines": 82484
+        "ported_lines": 48792,
+        "total_lines": 82576
       }
     }
   },
   "rust": {
-    "lines": 208874
+    "lines": 209184
   }
 }
