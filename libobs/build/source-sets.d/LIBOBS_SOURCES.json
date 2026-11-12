@@ -217,7 +217,6 @@
   "graphics/vec4.h",
   "build/libobs.core+.h.c",
   "build/libobs.core-canvas-move-fields+.h.c",
-  "build/libobs.core-encoder-preferred-color-setters+.h.c",
   "build/libobs.core-encoder-priming-samples+.h.c",
   "build/libobs.core-hotkey-pair-register+.h.c",
   "build/libobs.core-output+.h.c",

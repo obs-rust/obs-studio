@@ -14,7 +14,13 @@ struct Encoder {
 }
 
 fn video() -> Encoder {
-    Encoder { kind: 1, original_kind: 0, format: 2, space: 0, range: 0 }
+    Encoder {
+        kind: 1,
+        original_kind: 0,
+        format: 2,
+        space: 0,
+        range: 0,
+    }
 }
 
 #[test]
@@ -26,7 +32,13 @@ fn mirrors_test_null() {
 
 #[test]
 fn mirrors_test_audio_unchanged() {
-    let mut encoder = Encoder { kind: 0, original_kind: 1, space: 5, range: 2, ..video() };
+    let mut encoder = Encoder {
+        kind: 0,
+        original_kind: 1,
+        space: 5,
+        range: 2,
+        ..video()
+    };
     let before = encoder;
     for value in SPACES {
         set(Some((encoder.kind, &mut encoder.space)), value);

@@ -3,7 +3,6 @@
   "groups": [
     "core",
     "core-canvas-move-fields",
-    "core-encoder-preferred-color-setters",
     "core-encoder-priming-samples",
     "core-hotkey-pair-register",
     "core-output",
