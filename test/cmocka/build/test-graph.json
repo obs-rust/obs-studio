@@ -14244,6 +14244,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_filter_backup": {
+      "sources": [
+        "test/cmocka/test_source_filter_backup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_filter_chain_steps": {
       "sources": [
         "test/cmocka/test_source_filter_chain_steps.c",
@@ -24135,6 +24150,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_filter_backup": {
+      "target": "test_source_filter_backup",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_source_filter_chain_steps": {
       "target": "test_source_filter_chain_steps",
