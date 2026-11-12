@@ -59,6 +59,7 @@ mod timer_range_dispatch;
 mod timer_range_dispatch_parity;
 mod vertexbuffer_access;
 mod vertexbuffer_access_parity;
+mod vertexbuffer_create;
 mod vertexbuffer_destroy;
 mod vertexbuffer_destroy_parity;
 mod voltexture_metadata;
