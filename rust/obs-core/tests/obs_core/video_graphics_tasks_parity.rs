@@ -44,7 +44,7 @@ unsafe extern "C" fn task(param: *mut c_void) {
     // No RefCell borrow is held across the pushes.
     for child in children {
         // SAFETY: the run's live core; child is the next task's id.
-        let pushed = unsafe { oracle_graphics_tasks_push(core, task, child as *mut c_void) };
+        let pushed = unsafe { oracle_graphics_tasks_push(core, Some(task), child as *mut c_void) };
         if !pushed {
             RUN.with_borrow_mut(|run| run.as_mut().expect("active").pushes_failed += 1);
         }
@@ -94,7 +94,7 @@ fn run(roots: usize, children: &[Vec<usize>], original: bool) -> (Vec<Ran>, usiz
     assert!(!core.is_null());
     for id in 0..roots {
         // SAFETY: the live core, unlocked.
-        assert!(unsafe { oracle_graphics_tasks_push(core, task, id as *mut c_void) });
+        assert!(unsafe { oracle_graphics_tasks_push(core, Some(task), id as *mut c_void) });
     }
     RUN.with_borrow_mut(|run| {
         *run = Some(Run {
@@ -191,5 +191,55 @@ proptest! {
         parents in proptest::collection::vec(0usize..1024, 0..48),
     ) {
         check(roots, &parents);
+    }
+}
+
+/// A NULL task, which `obs_queue_task()` queues without a check and the C
+/// calls and crashes on, is skipped: the tasks queued around it run, in
+/// order, the queue is left empty and the mutex released. Rust only (the C
+/// would crash).
+#[test]
+fn null_task_is_skipped() {
+    // SAFETY: freed below; a NULL core fails the assert first.
+    let core = unsafe { oracle_graphics_tasks_new() };
+    assert!(!core.is_null());
+    // SAFETY: the live core, unlocked; ids 0 and 1 around a NULL task.
+    unsafe {
+        let [first, second] = [0usize, 1];
+        assert!(oracle_graphics_tasks_push(
+            core,
+            Some(task),
+            first as *mut c_void
+        ));
+        assert!(oracle_graphics_tasks_push(
+            core,
+            None,
+            core::ptr::null_mut()
+        ));
+        assert!(oracle_graphics_tasks_push(
+            core,
+            Some(task),
+            second as *mut c_void
+        ));
+    }
+    RUN.with_borrow_mut(|run| {
+        *run = Some(Run {
+            core,
+            children: vec![Vec::new(); 2],
+            ran: Vec::new(),
+            pushes_failed: 0,
+        })
+    });
+    // SAFETY: a live core, the bridge's accessors, non-unwinding tasks.
+    unsafe { obs_video_graphics_tasks_execute(core, lock, unlock, pending, pop) };
+    let done = RUN.with_borrow_mut(|run| run.take().expect("still active"));
+    let ids: Vec<usize> = done.ran.iter().map(|ran| ran.id).collect();
+    assert_eq!(ids, [0, 1]);
+    assert!(done.ran.iter().all(|ran| !ran.locked));
+    // SAFETY: the same live core.
+    unsafe {
+        assert_eq!(oracle_graphics_tasks_size(core), 0, "queue drained");
+        assert!(!oracle_graphics_tasks_locked(core), "task_mutex released");
+        oracle_graphics_tasks_free(core);
     }
 }

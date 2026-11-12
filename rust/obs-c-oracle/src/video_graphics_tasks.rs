@@ -11,8 +11,13 @@ unsafe extern "C" {
     pub fn oracle_graphics_tasks_new() -> *mut c_void;
     pub fn oracle_graphics_tasks_free(core: *mut c_void);
     /// Append a task the way another producer does (take task_mutex, push,
-    /// release); false, with nothing pushed, while task_mutex is held.
-    pub fn oracle_graphics_tasks_push(core: *mut c_void, task: Task, param: *mut c_void) -> bool;
+    /// release); false, with nothing pushed, while task_mutex is held. A
+    /// `None` task is a NULL `obs_task_t`, which `obs_queue_task()` accepts.
+    pub fn oracle_graphics_tasks_push(
+        core: *mut c_void,
+        task: Option<Task>,
+        param: *mut c_void,
+    ) -> bool;
     /// The number of queued tasks.
     pub fn oracle_graphics_tasks_size(core: *mut c_void) -> usize;
     /// Whether the core's task_mutex is held.
