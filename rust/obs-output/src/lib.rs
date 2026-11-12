@@ -26,13 +26,15 @@
 //! `libobs/obs-encoder-pause.c.h`, the encoder pause checks,
 //! `libobs/obs-output-caption.c.h`, the output caption plan,
 //! `libobs/obs-output-raw-audio-trim.c.h`, the raw output audio trim's
-//! sample-rate conversions, and
+//! sample-rate conversions,
 //! `libobs/obs-encoder-audio-start-frames.c.h`, the encoder audio start's
-//! sample-rate conversions.
+//! sample-rate conversions, and `libobs/obs-output-conversion-setters.c.h`
+//! with `libobs/obs-output-packet-callbacks.c.h`, the output conversion
+//! setters and packet callback registration.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`] and [`encoder_audio_start_frames`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`] and [`output_conversion_callbacks`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -112,6 +114,11 @@
 //! packet is dropped) and turns the cut from its front into frames;
 //! [`encoder_audio_start_frames`] gives an encoder's audio packet length and
 //! its offset from the video's start in frames, at the sample rate.
+//! [`output_conversion_callbacks`] decides which check rejects an output
+//! conversion (no output, no conversion, an encoded output, an output
+//! without that media) before the conversion is read or stored, where a
+//! packet callback is registered (at the front) and which one a removal
+//! takes (the first exact callback and parameter pair).
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
