@@ -1,9 +1,9 @@
 //! Registry lookup and borrowed field conversion; private C layout stays in C.
+use super::source_type_lookup::get_source_info;
 use crate::source_icon_type;
 use core::ffi::{c_char, c_uint, c_void};
 
 unsafe extern "C" {
-    fn get_source_info(id: *const c_char) -> *const c_void;
     fn obs_source_icon_type_fields(info: *const c_void) -> *const c_uint;
 }
 

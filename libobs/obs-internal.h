@@ -1587,6 +1587,15 @@ uint32_t obs_source_base_width(const obs_source_t *source);
 uint32_t obs_source_base_height(const obs_source_t *source);
 
 extern struct obs_source_info *get_source_info(const char *id);
+/* Private borrowed source-type snapshot, measured against the real header. */
+struct obs_source_type_info_fields {
+	const char *(*get_name)(void *type_data);
+	void *type_data;
+	uint32_t output_flags;
+	bool has_properties;
+	bool has_properties2;
+};
+struct obs_source_type_info_fields obs_source_type_info_fields(const struct obs_source_info *info);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
 				    obs_data_t *hotkey_data, bool private);
