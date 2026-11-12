@@ -117,10 +117,11 @@ fn omitted_input_outputs_do_not_read_fields() {
 #[test]
 fn test_source_type_enum_populated_registries() {
     // Registration (retained in C) owns every versioned copy, including v0.
+    let input_id = "enum_input";
     let originals = [
-        "enum_input",
+        input_id,
         "enum_filter",
-        "enum_input",
+        input_id,
         "enum_transition",
         "enum_scene",
     ];
