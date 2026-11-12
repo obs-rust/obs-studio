@@ -153,22 +153,48 @@ class CiScopeTest(unittest.TestCase):
         }
         for name, jobs in expected.items():
             text = (ROOT / ".github/workflows" / name).read_text()
+            selection = ("needs.select-mq-runner.outputs.labels" if name == "ci.yml"
+                         else "inputs.mq-runner-labels")
             blocks = dict(re.findall(
                 r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
             ))
             for job, fallback in jobs.items():
                 with self.subTest(workflow=name, job=job):
                     self.assertIn(
-                        "runs-on: ${{ (github.event_name == 'merge_group' && "
-                        "vars.MQ_RUNNER_LABELS != '') && fromJSON(vars.MQ_RUNNER_LABELS)"
+                        f"runs-on: ${{{{ {selection} != '' && fromJSON({selection})"
                         f" || '{fallback}' }}}}", blocks[job],
                     )
+                    if name == "ci.yml":
+                        self.assertRegex(blocks[job], r"needs: .*select-mq-runner")
+            self.assertNotIn("fromJSON(vars.MQ_RUNNER_LABELS)", text)
             for runner in re.findall(r"^    runs-on: (.+)$", text, re.MULTILINE):
                 if runner.startswith(("macos-", "windows-")):
                     self.assertNotIn("MQ_RUNNER_LABELS", runner)
             if name == "build-project.yaml":
                 self.assertIn("startsWith(matrix.os, 'ubuntu-')", blocks["ubuntu-build"])
+                self.assertIn(f"fromJSON({selection})", blocks["ubuntu-build"])
                 self.assertIn(" || matrix.os }}", blocks["ubuntu-build"])
+            if name != "ci.yml":
+                self.assertIn("mq-runner-labels:", text)
+                self.assertIn("default: ''", text)
+
+    def test_queue_runner_probe_and_reusable_inputs(self):
+        import re
+
+        text = (ROOT / ".github/workflows/ci.yml").read_text()
+        blocks = dict(re.findall(
+            r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
+        ))
+        probe = blocks["select-mq-runner"]
+        self.assertIn("runs-on: ubuntu-latest", probe)
+        self.assertNotRegex(probe, r"^    if:")  # Never skip dependants on PRs.
+        self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)
+        self.assertIn("MQ_RUNNER_STATUS_TOKEN: ${{ secrets.MQ_RUNNER_STATUS_TOKEN }}", probe)
+        self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
+        self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
+        for job in ("check-format", "build-project"):
+            self.assertIn("needs: select-mq-runner", blocks[job])
+            self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
 
     def test_queue_runs_merge_result_tests_and_skips_windows_link(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
