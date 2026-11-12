@@ -1,4 +1,6 @@
 //! Tier 3 against the original extracted C; no exclusions or behavior differences.
+//! The conversions take random sizes, sample rates and enum fields, values
+//! outside the enums included, so the copy is checked field by field.
 use core::ffi::c_void;
 use core::mem::{align_of, offset_of, size_of};
 use obs_output::ffi::output_conversion_callbacks::{
@@ -23,6 +25,7 @@ unsafe extern "C" {
         set: SetLog,
         flags: u32,
         value: u32,
+        enums: u32,
         operations: u32,
     ) -> bool;
     fn oracle_output_conversion_callbacks_layout(layout: *mut usize);
@@ -57,7 +60,7 @@ fn real_header_layout() {
         ]
     );
 }
-fn check(flags: u32, value: u32, operations: u32) {
+fn check(flags: u32, value: u32, enums: u32, operations: u32) {
     // SAFETY: C probe owns two real outputs, mutexes, list allocations and
     // conversion structs, and restores logging. Its test runs in isolation.
     unsafe {
@@ -70,6 +73,7 @@ fn check(flags: u32, value: u32, operations: u32) {
             base_set_log_handler,
             flags,
             value,
+            enums,
             operations
         ));
     }
@@ -82,7 +86,10 @@ fn differential() {
     for flags in [0, 1, 2, 3, 4, 7, u32::MAX] {
         for value in [0, 1, 44100, u32::MAX] {
             for ops in [0, 0xffffffff, 0xf1f0a9a8, 0x33332222] {
-                check(flags, value, ops);
+                // valid enum values, 0, and values outside every enum
+                for enums in [0, 1, 0x7fff_ffff, 0x8000_0000, u32::MAX] {
+                    check(flags, value, enums, ops);
+                }
             }
         }
     }
@@ -93,9 +100,9 @@ fn differential() {
     };
     proptest::test_runner::TestRunner::new(config)
         .run(
-            &(any::<u32>(), any::<u32>(), any::<u32>()),
-            |(flags, value, operations)| {
-                check(flags, value, operations);
+            &(any::<u32>(), any::<u32>(), any::<u32>(), any::<u32>()),
+            |(flags, value, enums, operations)| {
+                check(flags, value, enums, operations);
                 Ok(())
             },
         )

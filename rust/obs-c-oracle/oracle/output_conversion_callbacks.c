@@ -62,11 +62,11 @@ typedef void (*conversion_set_log_fn)(log_handler_t, void *);
 bool oracle_output_conversion_callbacks_check(conversion_video_fn video, conversion_audio_fn audio,
 					      conversion_packet_fn add, conversion_packet_fn remove,
 					      conversion_get_log_fn get_log, conversion_set_log_fn set_log,
-					      uint32_t flags, uint32_t value, uint32_t operations);
+					      uint32_t flags, uint32_t value, uint32_t enums, uint32_t operations);
 bool oracle_output_conversion_callbacks_check(conversion_video_fn video, conversion_audio_fn audio,
 					      conversion_packet_fn add, conversion_packet_fn remove,
 					      conversion_get_log_fn get_log, conversion_set_log_fn set_log,
-					      uint32_t flags, uint32_t value, uint32_t operations)
+					      uint32_t flags, uint32_t value, uint32_t enums, uint32_t operations)
 {
 	struct obs_output r = {0}, c = {0};
 	r.info.flags = c.info.flags = flags;
@@ -78,14 +78,14 @@ bool oracle_output_conversion_callbacks_check(conversion_video_fn video, convers
 	get_log(&old, &old_param);
 	bool equal = true;
 	for (unsigned pass = 0; pass < 6; pass++) {
-		struct video_scale_info v = {.format = VIDEO_FORMAT_NV12,
+		struct video_scale_info v = {.format = (enum video_format)(int)enums,
 					     .width = value,
 					     .height = value ^ 0xabc,
-					     .range = VIDEO_RANGE_FULL,
-					     .colorspace = VIDEO_CS_709};
+					     .range = (enum video_range_type)(int)(enums * 2654435761u),
+					     .colorspace = (enum video_colorspace)(int)(enums ^ value)};
 		struct audio_convert_info a = {.samples_per_sec = value,
-					       .format = AUDIO_FORMAT_FLOAT_PLANAR,
-					       .speakers = SPEAKERS_5POINT1,
+					       .format = (enum audio_format)(int)(enums >> 3),
+					       .speakers = (enum speaker_layout)(int)(enums + value),
 					       .allow_clipping = (value & 1) != 0};
 		if (pass == 5) {
 			memset(&v, 0, sizeof(v));
