@@ -215,6 +215,7 @@
   "graphics/vec3.h",
   "graphics/vec4.h",
   "build/libobs.core+.h.c",
+  "build/libobs.core-encoder-preferred-color-setters+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-scene-lookup+.h.c",
   "build/libobs.core-source+.h.c",
