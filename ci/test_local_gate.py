@@ -268,8 +268,8 @@ class ClientLanesTest(unittest.TestCase):
                 mock.patch.object(local_gate, "lane_dylint") as dylint, \
                 mock.patch.object(local_gate, "cross_lint") as cross:
             local_gate.LANES["client-lint"](False)
-        lint.assert_called_once_with(False)
-        dylint.assert_called_once_with(False)
+        lint.assert_called_once_with(False, self_tests=False)
+        dylint.assert_called_once_with(False, self_tests=False)
         cross.assert_called_once_with(self.TARGETS[1:], link=False)
 
     def test_failed_target_fails_client_lane(self):

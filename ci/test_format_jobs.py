@@ -71,5 +71,18 @@ class GateOnlyTest(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
 
+class ClientProofPolicyTest(unittest.TestCase):
+    def test_distinct_full_file_and_optional_swift_gates(self):
+        import tomllib
+        lanes = tomllib.loads((ROOT / "local-gate.toml").read_text())["gate"]["lanes"]
+        self.assertIn("client-checks", lanes)
+        self.assertTrue(lanes["client-swift"]["optional"])
+        text = (ROOT / "ci-attestations.yml").read_text()
+        for gate in ("python/all/self-test", "data/all/flatpak-manifest", "data/all/qt-xml",
+                     "data/all/compatibility", "data/all/services-schema"):
+            self.assertIn(f"{gate}: {{lane: client-checks}}", text)
+        self.assertIn("swift/all/fmt: {lane: client-swift}", text)
+
+
 if __name__ == "__main__":
     unittest.main()

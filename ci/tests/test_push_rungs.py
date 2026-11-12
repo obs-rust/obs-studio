@@ -40,12 +40,12 @@ class Rungs(unittest.TestCase):
             output = "{}"
             if "emit" in args:
                 gates = (["rust/all/fmt", f"rust/{self.HOST}/clippy"] if partial
-                         else sorted(push.client_gates(self.HOST)))
+                         else sorted(push.client_gates(self.HOST) | push.CLIENT_CHECK_GATES))
                 output = json.dumps({"v": 1, "attestations": [{"gate": g} for g in gates]})
             return subprocess.CompletedProcess(args, 1 if fail and fail in args else 0, output, "")
         def git(*args, **kw):
             calls.append(["git", *args])
-            return subprocess.CompletedProcess(args, 0, "tree" if args == ("rev-parse", "HEAD^{tree}") else "", "")
+            return subprocess.CompletedProcess(args, 0, "tree" if args == ("rev-parse", "HEAD^{tree}") else "a" * 40, "")
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out), \
                 mock.patch.object(push.shutil, "which", side_effect=lambda n: (tools or {"prooft": "prooft"}).get(n)), \
@@ -56,6 +56,7 @@ class Rungs(unittest.TestCase):
                 mock.patch.object(push, "dirty", return_value=dirty), \
                 mock.patch.object(push, "sign_final", side_effect=lambda: calls.append(["sign-final"]) or signed, create=True), \
                 mock.patch.object(push, "supports", return_value=True), \
+                mock.patch.object(push, "record_client_context", return_value=True, create=True), \
                 mock.patch.object(push, "evidence_path", return_value=Path(tempfile.gettempdir()) / "push-rungs-evidence.json"):
             result = push.attest()
         return result, out.getvalue(), calls
@@ -64,7 +65,7 @@ class Rungs(unittest.TestCase):
         result, text, calls = self.attest()
         self.assertTrue(result, text)
         self.assertEqual([c[2] for c in calls if c[:2] == ["prooft", "run"]],
-                         ["client-lint", f"client-test-{self.HOST}"])
+                         ["client-lint", "client-checks", f"client-test-{self.HOST}", "client-swift"])
         self.assertLess(max(i for i, c in enumerate(calls) if c[:2] == ["prooft", "run"]),
                         calls.index(["sign-final"]))
         self.assertNotIn(["prooft", "soldr"], calls)
@@ -75,7 +76,7 @@ class Rungs(unittest.TestCase):
         self.assertNotIn(["sign-final"], calls)
 
     def test_failed_or_not_applicable_command_cannot_prove_success(self):
-        for lane in ("client-lint", f"client-test-{self.HOST}"):
+        for lane in ("client-lint", "client-checks", f"client-test-{self.HOST}"):
             with self.subTest(lane=lane):
                 result, text, calls = self.attest(fail=lane)
                 self.assertFalse(result, text)
