@@ -12,7 +12,10 @@ struct Fixture {
 
 impl Fixture {
     fn live() -> Self {
-        Self { target: Cell::new(Some(1)), ..Self::default() }
+        Self {
+            target: Cell::new(Some(1)),
+            ..Self::default()
+        }
     }
 
     // Strong release is outside this port. Model its destruction and implicit weak release.
@@ -27,18 +30,39 @@ impl Fixture {
 impl Host for Fixture {
     type Weak = u8;
     type Output = u8;
-    fn control(&self, output: u8) -> Option<u8> { assert_eq!(output, 1); Some(0) }
-    fn addref(&self, weak: u8) { assert_eq!(weak, 0); assert!(!self.freed.get()); self.weak.set(self.weak.get() + 1); }
-    fn release(&self, weak: u8) -> bool { assert_eq!(weak, 0); assert!(!self.freed.get()); self.weak.set(self.weak.get() - 1); self.weak.get() == -1 }
-    fn free(&self, weak: u8) { assert_eq!(weak, 0); assert!(!self.freed.replace(true)); }
+    fn control(&self, output: u8) -> Option<u8> {
+        assert_eq!(output, 1);
+        Some(0)
+    }
+    fn addref(&self, weak: u8) {
+        assert_eq!(weak, 0);
+        assert!(!self.freed.get());
+        self.weak.set(self.weak.get() + 1);
+    }
+    fn release(&self, weak: u8) -> bool {
+        assert_eq!(weak, 0);
+        assert!(!self.freed.get());
+        self.weak.set(self.weak.get() - 1);
+        self.weak.get() == -1
+    }
+    fn free(&self, weak: u8) {
+        assert_eq!(weak, 0);
+        assert!(!self.freed.replace(true));
+    }
     fn promote(&self, weak: u8) -> bool {
         assert_eq!(weak, 0);
         assert!(!self.freed.get());
-        if self.refs.get() < 0 { return false; }
+        if self.refs.get() < 0 {
+            return false;
+        }
         self.refs.set(self.refs.get() + 1);
         true
     }
-    fn target(&self, weak: u8) -> Option<u8> { assert_eq!(weak, 0); assert!(!self.freed.get()); self.target.get() }
+    fn target(&self, weak: u8) -> Option<u8> {
+        assert_eq!(weak, 0);
+        assert!(!self.freed.get());
+        self.target.get()
+    }
 }
 
 #[test]
@@ -65,7 +89,10 @@ fn test_output_weak_lifetime_weak_ownership() {
     assert_eq!(f.weak.get(), 2);
     api::release(&f, Some(0));
     api::release(&f, Some(0));
-    assert_eq!((f.weak.get(), f.refs.get(), f.target.get()), (0, 0, Some(1)));
+    assert_eq!(
+        (f.weak.get(), f.refs.get(), f.target.get()),
+        (0, 0, Some(1))
+    );
     assert!(!f.freed.get());
     f.refs.set(-1);
     api::release(&f, Some(0));
@@ -82,7 +109,9 @@ fn test_output_weak_lifetime_promotion_and_identity() {
         assert_eq!(result, (count >= 0).then_some(1));
         assert_eq!(f.refs.get(), count + i64::from(count >= 0));
         assert_eq!(f.weak.get(), 3);
-        if count >= 0 { f.strong_release(); }
+        if count >= 0 {
+            f.strong_release();
+        }
         assert_eq!(f.refs.get(), count);
         assert!(api::references(&f, Some(0), Some(1)));
         assert!(!api::references(&f, Some(0), Some(2)));

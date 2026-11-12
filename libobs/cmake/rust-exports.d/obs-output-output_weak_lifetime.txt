@@ -1,0 +1,5 @@
+obs_weak_output_addref
+obs_weak_output_release
+obs_output_get_weak_output
+obs_weak_output_get_output
+obs_weak_output_references_output

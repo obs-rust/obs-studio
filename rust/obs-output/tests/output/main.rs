@@ -224,3 +224,4 @@ mod output_conversion_callbacks;
 mod output_conversion_callbacks_parity;
 
 mod output_weak_lifetime;
+mod output_weak_lifetime_parity;
