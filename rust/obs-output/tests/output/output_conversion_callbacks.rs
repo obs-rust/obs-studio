@@ -1,6 +1,7 @@
 //! Mirrors test_output_conversion_callbacks.c without FFI types.
 use obs_output::output_conversion_callbacks::{
-    Rejection, conversion_guard, insertion_index, removal_index, store,
+    AUDIO, ENCODED, Rejection, VIDEO, conversion_guard, conversion_guard_reading, insertion_index,
+    removal_index, store, store_reading,
 };
 
 #[test]
@@ -94,4 +95,53 @@ fn packet_callbacks() {
     assert_eq!(entries, [(0, 0)]);
     entries.remove(removal_index(&entries, &(0, 0)).unwrap());
     assert!(entries.is_empty());
+}
+
+/// The C reads `info.flags` in each flag helper: never after a NULL
+/// pointer, once when the output is encoded, twice otherwise.
+#[test]
+fn flag_reads() {
+    for media in [VIDEO, AUDIO] {
+        for (output, conversion) in [(false, false), (false, true), (true, false)] {
+            let mut reads = 0;
+            let flags = || {
+                reads += 1;
+                media
+            };
+            assert!(conversion_guard_reading(output, conversion, flags, media).is_err());
+            assert_eq!(reads, 0);
+        }
+        for flags in [0, 1, 2, 3, 4, 7, u32::MAX] {
+            let expected_reads = if flags & ENCODED != 0 { 1 } else { 2 };
+            let mut reads = 0;
+            let result = conversion_guard_reading(
+                true,
+                true,
+                || {
+                    reads += 1;
+                    flags
+                },
+                media,
+            );
+            assert_eq!(result, conversion_guard(true, true, flags, media));
+            assert_eq!(reads, expected_reads, "flags {flags:#x}");
+
+            let mut reads = 0;
+            let mut stored = None;
+            let result = store_reading(
+                true,
+                true,
+                || {
+                    reads += 1;
+                    flags
+                },
+                media,
+                || flags,
+                |value| stored = Some(value),
+            );
+            assert_eq!(result, conversion_guard(true, true, flags, media));
+            assert_eq!(reads, expected_reads, "flags {flags:#x}");
+            assert_eq!(stored, result.ok().map(|()| flags));
+        }
+    }
 }

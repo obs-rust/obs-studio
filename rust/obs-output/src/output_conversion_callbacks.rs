@@ -69,3 +69,30 @@ pub fn store<T>(
     write(read());
     Ok(())
 }
+
+/// [`conversion_guard`] reading the output's flags where the C does: once
+/// for the encoded check (`log_flag_encoded`) and once more for the media
+/// check (`log_flag_video` or `log_flag_audio`) only when the first passes,
+/// and not at all when a pointer check fails.
+pub fn conversion_guard_reading(
+    output: bool,
+    conversion: bool,
+    flags: impl FnMut() -> u32,
+    media: u32,
+) -> Result<(), Rejection> {
+    let _ = (output, conversion, flags, media);
+    todo!()
+}
+
+/// [`store`] with the flags read as [`conversion_guard_reading`] reads them.
+pub fn store_reading<T>(
+    output: bool,
+    present: bool,
+    flags: impl FnMut() -> u32,
+    media: u32,
+    read: impl FnOnce() -> T,
+    write: impl FnOnce(T),
+) -> Result<(), Rejection> {
+    let _ = (output, present, flags, media, read, write);
+    todo!()
+}
