@@ -909,18 +909,26 @@ checks without claiming an executed hardware pass.
 
 Set the repository Actions variable `MQ_RUNNER_LABELS` to a JSON array such as
 `["self-hosted","linux","x64","obs-mq"]` to route Linux jobs on `merge_group`
-to online runners matching **all** those labels. Set the repository Actions secret
-`MQ_RUNNER_STATUS_TOKEN` to a fine-grained PAT scoped to this repository with
-repository **Administration: read** and organization **Self-hosted runners: read**
-permissions. Both repository-level and organization-level runners are supported.
+to online runners matching **all** those labels. The supported credential is the
+GitHub App `obs-rust-mq-runner-probe`, installed on the `obs-rust` organization
+with access to this repository. Give the App repository **Administration: read**
+and organization **Self-hosted runners: read** permissions. Set the repository
+Actions variable `MQ_PROBE_APP_ID` to its App ID (`5736334`) and the repository
+Actions secret `MQ_PROBE_APP_PRIVATE_KEY` to its private key. The hosted selection
+job creates a short-lived installation token only for `merge_group` when both
+`MQ_RUNNER_LABELS` and `MQ_PROBE_APP_ID` are nonempty. Token creation is allowed
+to fail; an absent App token falls back to the optional legacy
+`MQ_RUNNER_STATUS_TOKEN` secret (a PAT with the same read permissions).
+Both repository-level and organization-level runners are supported.
 The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
 selecting labels; a match in either list qualifies. It passes the result to the
 existing Build and Format workflows. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
-Missing tokens, invalid label JSON, or no matching online runner in either
-available list emit a warning and keep each job's original hosted label. Busy online
+If App token creation fails and no legacy token is available, selection falls
+back to hosted runners. Missing tokens, invalid label JSON, or no matching online
+runner in either available list emit a warning and keep each job's original hosted label. Busy online
 runners still qualify; this checks availability, not spare capacity. The probe
 checks at most five pages of 100 runners per list, with a three-second timeout per
 request; no match within that limit also falls back. An unset or empty variable skips the
@@ -949,7 +957,7 @@ shown there to register the runner:
 
 The runner adds the `self-hosted`, `linux`, and `x64` default labels. Install/start it as a service
 using the runner's documented service commands, then set `MQ_RUNNER_LABELS`
-only after it is online and the status-token secret is configured. Container
+only after it is online and the App credential is configured. Container
 jobs require Docker installed and usable
 by the runner account; the Tier 2 build and Flatpak jobs use `container:`, though
 they are not selected on the trimmed queue path. This change neither registers
