@@ -1955,11 +1955,6 @@ video_t *obs_get_video(void)
 	return canvas && canvas->mix ? canvas->mix->video : NULL;
 }
 
-obs_source_t *obs_get_output_source(uint32_t channel)
-{
-	return obs_canvas_get_channel(obs->data.main_canvas, channel);
-}
-
 void obs_enum_sources(bool (*enum_proc)(void *, obs_source_t *), void *param)
 {
 	obs_source_t *source;
