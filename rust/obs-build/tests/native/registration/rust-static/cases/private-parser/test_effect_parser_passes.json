@@ -4,6 +4,7 @@
     "test_effect_parser_passes_rust": {
       "sources": [
         "test/cmocka/test_effect_parser_passes.c",
+        "libobs/graphics/effect-parser-entry.c.h",
         "libobs/graphics/effect-parser.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
