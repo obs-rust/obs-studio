@@ -86,47 +86,64 @@ pub trait Host {
     fn flush(&mut self);
 }
 
+/// The context check: without a context, the debug line and no device call.
+fn valid(host: &mut impl Host, entry: Entry) -> bool {
+    if host.has_context() {
+        return true;
+    }
+    host.debug(entry);
+    false
+}
+
 pub fn begin_frame(host: &mut impl Host) {
-    let _ = host;
-    todo!("gs_begin_frame")
+    if valid(host, Entry::BeginFrame) {
+        host.begin_frame();
+    }
 }
 
 pub fn begin_scene(host: &mut impl Host) {
-    let _ = host;
-    todo!("gs_begin_scene")
+    if valid(host, Entry::BeginScene) {
+        host.begin_scene();
+    }
 }
 
 pub fn draw(host: &mut impl Host, mode: i32, start_vert: u32, num_verts: u32) {
-    let _ = (host, mode, start_vert, num_verts);
-    todo!("gs_draw")
+    if valid(host, Entry::Draw) {
+        host.draw(mode, start_vert, num_verts);
+    }
 }
 
 pub fn end_scene(host: &mut impl Host) {
-    let _ = host;
-    todo!("gs_end_scene")
+    if valid(host, Entry::EndScene) {
+        host.end_scene();
+    }
 }
 
 pub fn load_swapchain<H: Host>(host: &mut H, swapchain: H::Swapchain) {
-    let _ = (host, swapchain);
-    todo!("gs_load_swapchain")
+    if valid(host, Entry::LoadSwapchain) {
+        host.load_swapchain(swapchain);
+    }
 }
 
 pub fn clear<H: Host>(host: &mut H, flags: u32, color: H::Color, depth: f32, stencil: u8) {
-    let _ = (host, flags, color, depth, stencil);
-    todo!("gs_clear")
+    if valid(host, Entry::Clear) {
+        host.clear(flags, color, depth, stencil);
+    }
 }
 
+/// `false` without a context; otherwise the device's answer.
 pub fn is_present_ready(host: &mut impl Host) -> bool {
-    let _ = host;
-    todo!("gs_is_present_ready")
+    valid(host, Entry::IsPresentReady) && host.is_present_ready()
 }
 
 pub fn present(host: &mut impl Host) {
-    let _ = host;
-    todo!("gs_present")
+    if valid(host, Entry::Present) {
+        host.present();
+    }
 }
 
 pub fn flush(host: &mut impl Host) {
-    let _ = host;
-    todo!("gs_flush")
+    if valid(host, Entry::Flush) {
+        host.flush();
+    }
 }

@@ -665,6 +665,8 @@ fn main() {
         "blend-entrypoints-fields",
         "indexbuffer-create",
         "indexbuffer-create-fields",
+        "present-entrypoints",
+        "present-entrypoints-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(

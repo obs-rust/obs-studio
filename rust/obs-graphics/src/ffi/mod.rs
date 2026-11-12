@@ -33,6 +33,7 @@ pub mod math_extra;
 pub mod matrix3;
 pub mod matrix4;
 pub mod plane;
+pub mod present_entrypoints;
 pub mod quat;
 pub mod shader_file;
 pub mod shader_param_introspection;
