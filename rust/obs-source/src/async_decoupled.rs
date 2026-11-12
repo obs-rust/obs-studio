@@ -11,6 +11,15 @@ pub trait Source {
 
 /// Set the flag unconditionally; every enable invalidates and resets audio.
 pub fn set<S: Source>(source: Option<&mut S>, decouple: bool, null_log: impl FnOnce()) {
-    let _ = (source, decouple, null_log);
-    todo!()
+    let Some(source) = source else {
+        null_log();
+        return;
+    };
+    source.set_decoupled(decouple);
+    if decouple {
+        source.lock_audio();
+        source.invalidate_timing();
+        source.reset_audio(0);
+        source.unlock_audio();
+    }
 }

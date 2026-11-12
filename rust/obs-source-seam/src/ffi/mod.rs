@@ -1,5 +1,6 @@
 //! C ABI shims, one module per C file.
 
+pub mod source_async_decoupled;
 pub mod source_audio_input_path;
 pub mod source_audio_output;
 pub mod source_audio_settings;

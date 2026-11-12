@@ -41,7 +41,7 @@
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-shader-param-introspection-fields.c.h"
 #include "libobs/obs-source-async-compensation-fields.c.h"
-#include "libobs/obs-source-async-decoupled.c.h"
+#include "libobs/obs-source-async-decoupled-fields.c.h"
 #include "libobs/obs-source-async-flag-fields.c.h"
 #include "libobs/obs-source-async-rotation-fields.c.h"
 #include "libobs/obs-source-audio-active-fields.c.h"
