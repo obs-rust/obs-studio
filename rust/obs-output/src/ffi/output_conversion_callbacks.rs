@@ -134,9 +134,20 @@ pub unsafe extern "C" fn obs_output_set_audio_conversion(
         )
     }
 }
-unsafe fn packet(output: *mut c_void, callback: Callback, param: *mut c_void, add: bool) {
+unsafe fn packet(
+    output: *mut c_void,
+    callback: Callback,
+    param: *mut c_void,
+    add: bool,
+    name: &CStr,
+) {
+    if engine::packet_guard(!output.is_null()).is_err() {
+        // SAFETY: static printf string matching its one string argument.
+        unsafe { blog(400, c"%s: Null 'output' parameter".as_ptr(), name.as_ptr()) };
+        return;
+    }
     let entry = PacketCallback { callback, param };
-    // SAFETY: C requires a live output (no null guard), and the lock keeps
+    // SAFETY: the output is non-NULL and, as C requires, live; the lock keeps
     // its darray stable. darray helpers use libobs bmem, as the C owner requires.
     unsafe {
         let array = obs_output_packet_callbacks_lock(output);
@@ -161,7 +172,8 @@ unsafe fn packet(output: *mut c_void, callback: Callback, param: *mut c_void, ad
     }
 }
 /// # Safety
-/// Output is live with an initialized callback mutex/list, as required by C.
+/// A non-NULL output is live with an initialized callback mutex/list, as
+/// required by C. A NULL output logs and returns (#4754).
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_output_add_packet_callback(
     output: *mut c_void,
@@ -169,10 +181,19 @@ pub unsafe extern "C" fn obs_output_add_packet_callback(
     param: *mut c_void,
 ) {
     // SAFETY: caller supplies the original registration contract.
-    unsafe { packet(output, callback, param, true) }
+    unsafe {
+        packet(
+            output,
+            callback,
+            param,
+            true,
+            c"obs_output_add_packet_callback",
+        )
+    }
 }
 /// # Safety
-/// Output is live with an initialized callback mutex/list, as required by C.
+/// A non-NULL output is live with an initialized callback mutex/list, as
+/// required by C. A NULL output logs and returns (#4754).
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_output_remove_packet_callback(
     output: *mut c_void,
@@ -180,5 +201,13 @@ pub unsafe extern "C" fn obs_output_remove_packet_callback(
     param: *mut c_void,
 ) {
     // SAFETY: caller supplies the original registration contract.
-    unsafe { packet(output, callback, param, false) }
+    unsafe {
+        packet(
+            output,
+            callback,
+            param,
+            false,
+            c"obs_output_remove_packet_callback",
+        )
+    }
 }

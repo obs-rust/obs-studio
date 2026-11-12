@@ -118,7 +118,10 @@
 //! conversion (no output, no conversion, an encoded output, an output
 //! without that media) before the conversion is read or stored, where a
 //! packet callback is registered (at the front) and which one a removal
-//! takes (the first exact callback and parameter pair).
+//! takes (the first exact callback and parameter pair), and refuses a NULL
+//! output to either packet callback setter.
+//! [`output_reconnect_callback`] picks the reconnect callback and data an
+//! output stores (no data without a callback) and refuses a NULL output.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 

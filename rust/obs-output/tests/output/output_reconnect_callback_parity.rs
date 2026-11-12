@@ -1,5 +1,7 @@
-//! Exact Tier 3 sequences and real-header layout. No behavior exclusions.
-//! NULL output is excluded: the original setter requires a live output.
+//! Exact Tier 3 sequences and real-header layout, on a live output.
+//! Intentional difference (#4754): a NULL output logs `obs_output_valid`'s
+//! debug line and returns, where the C writes through it, so NULL is left
+//! out here and checked in `output_callback_null`.
 use core::ffi::{c_int, c_void};
 use core::mem::{align_of, offset_of, size_of};
 use obs_output::ffi::output_reconnect_callback::{
