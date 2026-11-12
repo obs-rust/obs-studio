@@ -40,6 +40,7 @@ mod indexbuffer_create_parity;
 mod lzw;
 mod lzw_parity;
 mod present_entrypoints;
+mod present_entrypoints_parity;
 mod sprite;
 mod sprite_parity;
 mod state_stacks;
