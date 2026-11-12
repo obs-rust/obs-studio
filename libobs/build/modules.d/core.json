@@ -5,6 +5,7 @@
     "core-output",
     "core-scene-lookup",
     "core-source",
+    "core-source-type-enum",
     "null-audio",
     "util-cf"
   ],
