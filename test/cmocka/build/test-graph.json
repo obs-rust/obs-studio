@@ -1047,6 +1047,15 @@
         }
       ]
     },
+    "test_canvas_move_scene": {
+      "sources": [
+        "test/cmocka/test_canvas_move_scene.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_canvas_readonly_getters": {
       "sources": [
         "test/cmocka/test_canvas_readonly_getters.c"
@@ -19305,6 +19314,21 @@
       "target": "test_canvas_flags_getter",
       "command": [
         "${target}"
+      ]
+    },
+    "test_canvas_move_scene": {
+      "target": "test_canvas_move_scene",
+      "command": [
+        "${target}"
+      ],
+      "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_canvas_readonly_getters": {
