@@ -911,14 +911,19 @@ Set the repository Actions variable `MQ_RUNNER_LABELS` to a JSON array such as
 `["self-hosted","linux","x64","obs-mq"]` to route Linux jobs on `merge_group`
 to online runners matching **all** those labels. Set the repository Actions secret
 `MQ_RUNNER_STATUS_TOKEN` to a fine-grained PAT scoped to this repository with
-**Administration: read** permission (listing repository self-hosted runners).
-The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` before
-selecting labels and passes the result to the existing Build and Format workflows.
-Missing tokens, API errors, invalid label JSON, or no matching online runner emit
-a warning and automatically keep each job's original hosted label. Busy online
+repository **Administration: read** and organization **Self-hosted runners: read**
+permissions. Both repository-level and organization-level runners are supported.
+The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
+`GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
+selecting labels; a match in either list qualifies. It passes the result to the
+existing Build and Format workflows. An organization API 403/404 (for example,
+when the token lacks organization scope) emits a warning and keeps the repository
+result. API failures in either scope warn without discarding a match in the other.
+Missing tokens, invalid label JSON, or no matching online runner in either
+available list emit a warning and keep each job's original hosted label. Busy online
 runners still qualify; this checks availability, not spare capacity. The probe
-checks at most five pages of 100 runners, with a three-second timeout per request;
-no match within that limit also falls back. An unset or empty variable skips the
+checks at most five pages of 100 runners per list, with a three-second timeout per
+request; no match within that limit also falls back. An unset or empty variable skips the
 probe steps. Outside `merge_group` the selection is empty and no API call runs.
 Pull requests, master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
