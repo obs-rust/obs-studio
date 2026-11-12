@@ -11,8 +11,11 @@
 //! static string) for the fixed one. `obs_key_t` is a C enum, passed as
 //! `int`.
 //!
-//! Intentional difference from C, only where C has undefined behavior: a
-//! null out-parameter is not written (C dereferences it).
+//! Intentional differences from C, only where C has undefined behavior: a
+//! null out-parameter is not written (C dereferences it); a value outside
+//! `0 .. OBS_KEY_LAST_VALUE - 1` gets `NONE`, which the C caller returns on
+//! (C gave it the keysym route, and the caller indexed its keycode table
+//! with it).
 
 use std::ffi::{c_char, c_int};
 
