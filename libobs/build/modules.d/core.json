@@ -4,6 +4,7 @@
     "core",
     "core-canvas-move",
     "core-output",
+    "core-output-weak-lifetime",
     "core-scene-lookup",
     "core-scene-transform-states",
     "core-source",
