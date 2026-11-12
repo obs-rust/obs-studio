@@ -51,12 +51,14 @@ impl Queue for Bridge {
         info
     }
     fn run(&mut self, info: obs_task_info) {
-        // As the C, which calls info.task unchecked: a NULL task crashes the
-        // C, and the panic here aborts across the C ABI.
-        let task = info.task.expect("a queued graphics task");
-        // SAFETY: a task obs_queue_task queued with its own parameter; the
-        // drain released task_mutex before this call.
-        unsafe { task(info.param) }
+        // The C calls info.task unchecked and crashes on a NULL one, which
+        // obs_queue_task() does not refuse; like the audio task drain
+        // (audio_callback), a NULL task is skipped.
+        if let Some(task) = info.task {
+            // SAFETY: a task obs_queue_task queued with its own parameter; the
+            // drain released task_mutex before this call.
+            unsafe { task(info.param) }
+        }
     }
 }
 

@@ -7,7 +7,11 @@
 //! (taking task_mutex), by its parent while the parent runs. The tasks that
 //! ran, in order, whether task_mutex was held for each, whether every push
 //! got the mutex, the queue left empty and the mutex released match exactly.
-//! No intentional differences.
+//!
+//! One intentional difference, which the C can't be compared on (it
+//! crashes): a NULL task, which `obs_queue_task()` queues without a check
+//! and the C calls, is skipped by the Rust, as the audio task drain does
+//! (`null_task_is_skipped`).
 use super::video_graphics_tasks::{Model, expected_calls};
 use core::ffi::c_void;
 use obs_c_oracle::video_graphics_tasks::*;
