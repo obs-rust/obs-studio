@@ -54,7 +54,7 @@
 #include "libobs/obs-source-caption-callbacks.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace-seam.c.h"
-#include "libobs/obs-source-deinterlace-texture.c.h"
+#include "libobs/obs-source-deinterlace-texture-fields.c.h"
 #include "libobs/obs-source-enabled-setter-fields.c.h"
 #include "libobs/obs-source-filter-count-fields.c.h"
 #include "libobs/obs-source-filter-index-fields.c.h"

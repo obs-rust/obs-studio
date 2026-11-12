@@ -730,6 +730,11 @@ fn main() {
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
     std::fs::write(
+        extract_dir.join("obs-source-deinterlace-texture.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-deinterlace-texture.c.h")),
+    )
+    .expect("write original deinterlace texture allocation");
+    std::fs::write(
         extract_dir.join("object-ref-weak.inc"),
         [
             extract_c(
