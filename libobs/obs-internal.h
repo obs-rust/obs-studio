@@ -2443,6 +2443,14 @@ struct obs_encoder_preferred_format_fields {
 };
 struct obs_encoder_preferred_format_fields obs_encoder_preferred_format_fields(const obs_encoder_t *encoder);
 
+/* Writable color fields borrowed for a setter call; encoder must be non-NULL. */
+struct obs_encoder_preferred_color_setters_fields {
+	const enum obs_encoder_type *kind;
+	enum video_colorspace *space;
+	enum video_range_type *range;
+};
+struct obs_encoder_preferred_color_setters_fields obs_encoder_preferred_color_setters_fields(obs_encoder_t *encoder);
+
 /* Borrowed addresses only; the encoder remains owned by C. */
 struct obs_encoder_preferred_color_space_fields {
 	const enum obs_encoder_type *kind;
