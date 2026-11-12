@@ -1,4 +1,7 @@
-//! Tier 3 against the original extracted C; no exclusions or behavior differences.
+//! Tier 3 against the original extracted C; no behavior differences on a live
+//! output. Intentional difference (#4754): a NULL output to the packet callback
+//! setters logs `obs_output_valid`'s debug line and returns, where the C locks
+//! through it, so NULL is left out here and checked in `output_callback_null`.
 //! The conversions take random sizes, sample rates and enum fields, values
 //! outside the enums included, so the copy is checked field by field.
 use core::ffi::c_void;

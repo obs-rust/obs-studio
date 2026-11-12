@@ -38,8 +38,11 @@ pub fn conversion_guard(
 /// refused as `obs_output_valid` refuses it, where the C locked the NULL
 /// output's mutex (#4754, the one intentional difference).
 pub fn packet_guard(output: bool) -> Result<(), Rejection> {
-    let _ = output;
-    todo!()
+    if output {
+        Ok(())
+    } else {
+        Err(Rejection::Output)
+    }
 }
 
 /// Registration prepends, including duplicates and null tokens.
