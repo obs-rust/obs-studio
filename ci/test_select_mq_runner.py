@@ -9,7 +9,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 import select_mq_runner as selector
 
@@ -36,13 +36,22 @@ class SelectMqRunnerTest(unittest.TestCase):
         labels=LABELS,
         token="fake-token",
         error=None,
+        org_runners=(),
+        org_error=None,
     ):
-        payload = json.dumps(
-            {"total_count": len(runners), "runners": list(runners)}
-        ).encode()
-        with patch.object(
-            selector, "urlopen", side_effect=error, return_value=io.BytesIO(payload)
-        ) as http:
+        def respond(request, **kwargs):
+            is_org = "/orgs/" in request.full_url
+            failure = org_error if is_org else error
+            if failure is not None:
+                raise failure
+            entries = org_runners if is_org else runners
+            return io.BytesIO(
+                json.dumps(
+                    {"total_count": len(entries), "runners": list(entries)}
+                ).encode()
+            )
+
+        with patch.object(selector, "urlopen", side_effect=respond) as http:
             with redirect_stdout(io.StringIO()) as output:
                 result = selector.select_labels(
                     event, labels, token, "obs-rust/obs-studio"
@@ -52,7 +61,7 @@ class SelectMqRunnerTest(unittest.TestCase):
     def test_online_all_labels(self):
         result, http, _ = self.select([runner(labels=[*json.loads(LABELS), "extra"])])
         self.assertEqual(json.loads(result), json.loads(LABELS))
-        request = http.call_args.args[0]
+        request = http.call_args_list[0].args[0]
         self.assertEqual(
             request.full_url,
             "https://api.github.com/repos/obs-rust/obs-studio/actions/runners?per_page=100&page=1",
@@ -111,6 +120,54 @@ class SelectMqRunnerTest(unittest.TestCase):
     def test_empty_response(self):
         self.assertEqual(self.select()[0], "")
 
+    def test_org_only_online_runner(self):
+        result, http, output = self.select(org_runners=[runner()])
+        self.assertEqual(result, LABELS)
+        self.assertEqual(http.call_count, 2)
+        request = http.call_args.args[0]
+        self.assertEqual(
+            request.full_url,
+            "https://api.github.com/orgs/obs-rust/actions/runners?per_page=100&page=1",
+        )
+        self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
+        self.assertLessEqual(http.call_args.kwargs["timeout"], 5)
+        self.assertEqual(output, "")
+
+    def test_org_forbidden_or_missing_preserves_repo_result(self):
+        for status in (403, 404):
+            for repo_runners in ([], [runner()]):
+                with self.subTest(status=status, repo_match=bool(repo_runners)):
+                    error = HTTPError(
+                        "https://api.github.com/orgs/obs-rust/actions/runners",
+                        status,
+                        "fake-token must not be logged",
+                        None,
+                        None,
+                    )
+                    result, http, output = self.select(
+                        repo_runners, org_error=error
+                    )
+                    self.assertEqual(result, LABELS if repo_runners else "")
+                    self.assertEqual(http.call_count, 2)
+                    self.assertIn("::warning::", output)
+                    self.assertIn("org", output.lower())
+                    self.assertIn(str(status), output)
+                    self.assertNotIn("fake-token", output)
+
+    def test_both_lists_empty_use_hosted(self):
+        result, http, output = self.select()
+        self.assertEqual(result, "")
+        self.assertEqual(http.call_count, 2)
+        self.assertIn("::warning::", output)
+
+    def test_repo_error_does_not_hide_org_match(self):
+        result, _, output = self.select(
+            error=URLError("fake-token must not be logged"), org_runners=[runner()]
+        )
+        self.assertEqual(result, LABELS)
+        self.assertIn("::warning::", output)
+        self.assertNotIn("fake-token", output)
+
     def test_no_api_outside_opt_in_merge_group(self):
         for event in (
             "pull_request",
@@ -161,6 +218,7 @@ class SelectMqRunnerTest(unittest.TestCase):
             io.BytesIO(
                 json.dumps({"total_count": 101, "runners": [runner()]}).encode()
             ),
+            io.BytesIO(b'{"total_count":0,"runners":[]}'),
         ]
         with patch.object(selector, "urlopen", side_effect=pages) as http:
             self.assertEqual(
@@ -169,8 +227,31 @@ class SelectMqRunnerTest(unittest.TestCase):
                 ),
                 json.loads(LABELS),
             )
-        self.assertEqual(http.call_count, 2)
-        self.assertTrue(http.call_args.args[0].full_url.endswith("page=2"))
+        self.assertEqual(http.call_count, 3)
+        self.assertTrue(http.call_args_list[1].args[0].full_url.endswith("page=2"))
+
+    def test_org_pagination(self):
+        pages = [
+            io.BytesIO(b'{"total_count":0,"runners":[]}'),
+            io.BytesIO(
+                json.dumps(
+                    {"total_count": 101, "runners": [runner("offline")] * 100}
+                ).encode()
+            ),
+            io.BytesIO(
+                json.dumps({"total_count": 101, "runners": [runner()]}).encode()
+            ),
+        ]
+        with patch.object(selector, "urlopen", side_effect=pages) as http:
+            self.assertEqual(
+                selector.select_labels("merge_group", LABELS, "token", "owner/repo"),
+                LABELS,
+            )
+        self.assertEqual(http.call_count, 3)
+        self.assertEqual(
+            http.call_args.args[0].full_url,
+            "https://api.github.com/orgs/owner/actions/runners?per_page=100&page=2",
+        )
 
     def test_main_writes_empty_output_for_fallback(self):
         with tempfile.TemporaryDirectory() as directory:
