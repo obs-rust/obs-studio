@@ -291,6 +291,7 @@ class ClientLanesTest(unittest.TestCase):
         for host in self.TARGETS:
             with self.subTest(host=host), \
                     mock.patch.object(local_gate, "host_target", return_value=host, create=True), \
+                    mock.patch.object(local_gate.host_platform, "is_linux", return_value=host.endswith("linux-gnu")), \
                     mock.patch.object(local_gate, "run"), \
                     mock.patch.object(local_gate, "rust_tests") as tests, \
                     mock.patch.object(local_gate, "windows_gnu_no_run") as gnu:
@@ -299,9 +300,13 @@ class ClientLanesTest(unittest.TestCase):
                              [mock.call(list(args)) for args in local_gate.FEATURE_TEST_SETS])
             self.assertEqual(gnu.call_count, int(host.endswith("linux-gnu")))
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_off_host_client_test_exits_not_applicable_without_running_tests(self):
+        with mock.patch.object(sys, "argv", ["local_gate.py", "--lane", "client-test",
+                                           "--client-target", "aarch64-apple-darwin"]), \
+                mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0]), \
+                mock.patch.object(local_gate, "lane_rust_test") as tests:
+            self.assertEqual(local_gate.main(), 75)
+        tests.assert_not_called()
 
 
 class ClangFormatScopeTest(unittest.TestCase):
@@ -466,3 +471,7 @@ class LaneGroupTest(unittest.TestCase):
 
     def test_the_new_group_stays_a_heavy_lane(self):
         self.assertEqual(self.lanes()["tier2-linux"].get("weight", "heavy"), "heavy")
+
+
+if __name__ == "__main__":
+    unittest.main()

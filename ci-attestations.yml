@@ -17,6 +17,29 @@ lanes:
   cross-release: {max-age-hours: 24}
   macos-native: {max-age-hours: 24}
   windows-native: {max-age-hours: 24}
+# prooft client lanes use broad, safe input keys. Source-only edits invalidate
+# lint/test evidence, including edits outside the Dylint libraries themselves.
+  client-lint:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-x86_64-unknown-linux-gnu:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-aarch64-unknown-linux-gnu:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-x86_64-pc-windows-msvc:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-aarch64-pc-windows-msvc:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-x86_64-apple-darwin:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-aarch64-apple-darwin:
+    inputs: ["**"]
+    max-age-hours: 24
 gates:
   rust/all/fmt: {lane: lint}
   rust/x86_64-unknown-linux-gnu/clippy: {lane: lint}
@@ -42,6 +65,27 @@ gates:
   rust/x86_64-pc-windows-msvc/test: {lane: windows-native}
   cpp/macos-arm64/tier2: {lane: macos-native}
   cpp/windows-x64/tier2: {lane: windows-native}
+  # Additive client checks preserve all legacy mappings during the rollout.
+  # Lint gates prove compile-time analysis, never native runtime or test links.
+  general/all/client-lint: {lane: client-lint}
+  rust/x86_64-unknown-linux-gnu/client-clippy: {lane: client-lint}
+  rust/x86_64-unknown-linux-gnu/client-dylint: {lane: client-lint}
+  rust/x86_64-unknown-linux-gnu/client-test: {lane: client-test-x86_64-unknown-linux-gnu}
+  rust/aarch64-unknown-linux-gnu/client-clippy: {lane: client-lint}
+  rust/aarch64-unknown-linux-gnu/client-dylint: {lane: client-lint}
+  rust/aarch64-unknown-linux-gnu/client-test: {lane: client-test-aarch64-unknown-linux-gnu}
+  rust/x86_64-pc-windows-msvc/client-clippy: {lane: client-lint}
+  rust/x86_64-pc-windows-msvc/client-dylint: {lane: client-lint}
+  rust/x86_64-pc-windows-msvc/client-test: {lane: client-test-x86_64-pc-windows-msvc}
+  rust/aarch64-pc-windows-msvc/client-clippy: {lane: client-lint}
+  rust/aarch64-pc-windows-msvc/client-dylint: {lane: client-lint}
+  rust/aarch64-pc-windows-msvc/client-test: {lane: client-test-aarch64-pc-windows-msvc}
+  rust/x86_64-apple-darwin/client-clippy: {lane: client-lint}
+  rust/x86_64-apple-darwin/client-dylint: {lane: client-lint}
+  rust/x86_64-apple-darwin/client-test: {lane: client-test-x86_64-apple-darwin}
+  rust/aarch64-apple-darwin/client-clippy: {lane: client-lint}
+  rust/aarch64-apple-darwin/client-dylint: {lane: client-lint}
+  rust/aarch64-apple-darwin/client-test: {lane: client-test-aarch64-apple-darwin}
 jobs:
   build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/dylint, rust/x86_64-unknown-linux-gnu/test]
   build-project.yaml:rust-linux-tier2: [cpp/linux-x64/tier2]

@@ -5,20 +5,15 @@
 # ///
 """Push a branch the way CI expects: attest, stamp, push, then open the PR.
 
-This is the single entry point agents should use. It composes three tools that
-each do one thing -- `soldr` proves the client-side work, `ghd` writes the
-evidence into the commit message, `gh`/`ghd` open the PR -- and refuses to push
-a branch whose evidence does not exist yet.
+This is the single entry point agents should use:
 
-The chain it implements:
+    ./push -> prooft run client-lint / client-test-HOST -> final sign/verify -> push -> PR
 
-    ./push -> soldr lint rust --attest -> ghd attest stamp -> git push -> PR
-
-Two of those tools are newer than this script. When a local toolchain cannot do
-its step, `./push` says so plainly and falls back to the pre-existing path (push
-the branch and let the local gate stamp it), instead of pretending the evidence
-was produced. Set PUSH_REQUIRE_ATTESTATION=1 to make a missing toolchain an
-error -- that is the switch for the enforce phase.
+The repository lanes run formatting, ratchets and self-tests, clippy + Dylint
+for all six shipping targets, and native workspace Tiers 1-3. prooft writes
+only successful gate evidence. The deprecated soldr+ghd fallback proves partial
+host checks only. Missing evidence or signing defaults to ordinary PR CI;
+PUSH_REQUIRE_ATTESTATION=1 refuses incomplete evidence before any push.
 
 Exit codes: 0 pushed, 1 a step failed, 2 usage, 3 refused (dirty tree or missing
 evidence under PUSH_REQUIRE_ATTESTATION).
@@ -27,12 +22,16 @@ evidence under PUSH_REQUIRE_ATTESTATION).
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "ci"))
+from local_gate import CLIENT_TARGETS, client_gates, host_target
+
 REQUIRE = os.environ.get("PUSH_REQUIRE_ATTESTATION") == "1"
 
 
@@ -118,31 +117,73 @@ def prune_evidence(directory: Path) -> None:
             path.unlink(missing_ok=True)
 
 
-def attest() -> bool:
-    """Stamp this commit's evidence. Returns whether a trailer was written.
+def sign_final() -> bool:
+    """Sign after every trailer amendment, using the user's Git signing config.
 
-    prooft owns the trailer format and the lane rules, so it goes first; the
-    hand-rolled soldr+ghd path stays only as a deprecated fallback for
-    machines that predate it. A missing writer never invents evidence: it says
-    so and lets the push continue unless the caller demanded attestation.
+    No configured key/signing means ordinary PR CI. A signature on the original
+    commit is insufficient: prooft's message amendments replace that object.
     """
+    key = run(["git", "config", "--get", "user.signingkey"], capture=True, check=False)
+    enabled = run(["git", "config", "--get", "commit.gpgsign"], capture=True, check=False)
+    if not key.stdout.strip() and enabled.stdout.strip().lower() != "true":
+        print("./push: no signing configured; final client stamp is ineligible for the fast path")
+        return False
+    signed = run(["git", "commit", "--amend", "--no-edit", "-S"], check=False)
+    if signed.returncode != 0:
+        print("./push: final signing failed; using ordinary PR CI", file=sys.stderr)
+        return False
+    return run(["git", "verify-commit", "HEAD"], check=False).returncode == 0
 
-    prooft = shutil.which("prooft")
-    if prooft:
-        version = _prooft_version(prooft)
-        if version is None or version < PROOFT_MIN_VERSION:
-            print(f"./push: prooft {version or 'unknown'} is older than {PROOFT_MIN_VERSION}; skipping it")
-        else:
-            # prooft runs soldr lint's porcelain and stamps the Rust gates it
-            # proved, so the evidence and the trailer come from one component.
-            stamped = run([prooft, "soldr"], check=False)
-            if stamped.returncode == 0:
-                return True
-            print("./push: prooft soldr failed; see its output above", file=sys.stderr)
+
+def emitted_gates(prooft: str) -> set[str]:
+    """Read prooft's validated bundle, never guess coverage from exit zero."""
+    proc = run([prooft, "emit"], capture=True, check=False)
+    if proc.returncode:
+        return set()
+    try:
+        bundle = json.loads(proc.stdout)
+        if bundle.get("v") != 1 or not isinstance(bundle.get("attestations"), list):
+            return set()
+        return {a["gate"] for a in bundle["attestations"] if isinstance(a, dict) and isinstance(a.get("gate"), str)}
+    except (ValueError, TypeError, AttributeError):
+        return set()
+
+
+def complete_prooft(prooft: str, tree: str) -> bool:
+    """Run real repository lanes; require their complete validated inventory."""
+    host = host_target()
+    if host not in CLIENT_TARGETS:
+        print(f"./push: unsupported native target {host}; no client evidence", file=sys.stderr)
+        return False
+    commands = (
+        [prooft, "run", "client-lint", "--", "uv", "run", "ci/local_gate.py", "--lane", "client-lint"],
+        [prooft, "run", f"client-test-{host}", "--", "uv", "run", "ci/local_gate.py",
+         "--lane", "client-test", "--client-target", host],
+    )
+    for command in commands:
+        if run(command, check=False).returncode != 0:
+            print("./push: client proof failed or unavailable; partial evidence only, ordinary PR CI", file=sys.stderr)
             return False
-    else:
-        print("./push: prooft is not installed (uv tool install 'prooft>=0.1'); trying the deprecated path")
+        if not unchanged(tree):
+            return False
+    missing = client_gates(host) - emitted_gates(prooft)
+    if missing:
+        print(f"./push: incomplete client evidence; missing: {', '.join(sorted(missing))}", file=sys.stderr)
+        return False
+    if not sign_final() or not unchanged(tree):
+        return False
+    return not (client_gates(host) - emitted_gates(prooft))
 
+
+def unchanged(tree: str) -> bool:
+    if dirty() or git("rev-parse", "HEAD^{tree}", capture=True).stdout.strip() != tree:
+        print("./push: tracked inputs changed; client evidence invalid", file=sys.stderr)
+        return False
+    return True
+
+
+def legacy_attest(tree: str) -> bool:
+    """Deprecated writer: it can stamp host checks, never full client coverage."""
     soldr = shutil.which("soldr")
     if soldr and supports([soldr, "lint", "--help"], "--attest"):
         evidence = evidence_path()
@@ -150,15 +191,40 @@ def attest() -> bool:
         if proc.returncode != 0:
             print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
             return False
+        if not unchanged(tree):
+            return False
         evidence.write_text(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "{}")
         ghd = shutil.which("ghd")
         if ghd and supports([ghd, "attest", "stamp", "--help"], "--evidence"):
-            print("./push: deprecated path: stamping with ghd instead of prooft")
-            return run([ghd, "attest", "stamp", "--evidence", str(evidence)], check=False).returncode == 0
-        print("./push: ghd has no `attest stamp`; the commit carries no Ci-Attestation trailer")
+            print("./push: deprecated path: ghd stamps partial host coverage only; no complete client fast path")
+            run([ghd, "attest", "stamp", "--evidence", str(evidence)], check=False)
+        else:
+            print("./push: ghd has no `attest stamp`; no trailer written")
     else:
         print("./push: this soldr has no `lint rust --attest`; no client evidence is produced")
     return False
+
+
+def attest() -> bool:
+    """Return complete, locally verified and signed client coverage only.
+
+    prooft run owns the evidence format and enforces clean, unchanged command
+    inputs. Each successful lane stamps its actual checks; a failed/optional
+    lane cannot be inferred from a successful older prooft soldr invocation.
+    The final stamp is signed only after ALL proof commands have finished.
+    """
+    if dirty():
+        return False
+    tree = git("rev-parse", "HEAD^{tree}", capture=True).stdout.strip()
+    prooft = shutil.which("prooft")
+    if prooft:
+        version = _prooft_version(prooft)
+        if version is not None and version >= PROOFT_MIN_VERSION:
+            return complete_prooft(prooft, tree)
+        print(f"./push: prooft {version or 'unknown'} is older than {PROOFT_MIN_VERSION}; skipping it")
+    else:
+        print("./push: prooft is not installed (uv tool install 'prooft>=0.1'); trying the deprecated path")
+    return legacy_attest(tree)
 
 
 def main(argv: list[str]) -> int:
@@ -170,12 +236,19 @@ def main(argv: list[str]) -> int:
         print("./push: working tree is dirty; commit or stash before pushing", file=sys.stderr)
         return 3
 
-    attested = attest()
-
+    try:
+        attested = attest()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print(f"./push: client evidence unavailable: {exc}; using ordinary PR CI", file=sys.stderr)
+        attested = False
+    # A command that dirties the checkout must never publish unproved changes.
+    if dirty():
+        print("./push: proof commands changed the working tree; refusing to push", file=sys.stderr)
+        return 3
 
     if not attested and REQUIRE:
         print(
-            "./push: PUSH_REQUIRE_ATTESTATION=1 but no attestation was produced; refusing",
+            "./push: PUSH_REQUIRE_ATTESTATION=1 but complete signed client evidence is missing; refusing",
             file=sys.stderr,
         )
         return 3
@@ -208,8 +281,7 @@ def main(argv: list[str]) -> int:
 
     if not attested:
         print(
-            "./push: pushed without client attestation. The local gate still stamps the "
-            "commit (`ci-lint local-gate run`); run it and push again if CI asks for it."
+            "./push: pushed without complete signed client evidence; ordinary PR CI remains required."
         )
     return 0
 
