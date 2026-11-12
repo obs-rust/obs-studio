@@ -870,6 +870,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
     )
     .expect("write canvas setter extract");
+    std::fs::write(
+        extract_dir.join("scene_transform_states.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-scene-transform-states.c.h")),
+    )
+    .expect("write original scene transform snapshot/restore extract");
     oracle.include(&extract_dir);
 
     oracle

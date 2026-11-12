@@ -217,7 +217,6 @@
   "build/libobs.core+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-scene-lookup+.h.c",
-  "build/libobs.core-scene-transform-states+.h.c",
   "build/libobs.core-source+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",

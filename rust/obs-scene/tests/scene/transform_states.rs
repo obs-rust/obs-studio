@@ -119,6 +119,17 @@ impl Model {
         engine::load(self, "snapshot".into());
         self.input = None;
     }
+    fn weak_expired(&self, source: usize) -> bool {
+        self.sources[source].refs == 0
+    }
+    fn weak_get_source(&mut self, source: usize) -> Option<usize> {
+        if self.sources[source].refs == 0 {
+            None
+        } else {
+            self.sources[source].refs += 1;
+            Some(source)
+        }
+    }
     pub fn live_objects(&self) -> usize {
         self.objects.iter().filter(|o| o.is_some()).count()
     }
@@ -439,10 +450,13 @@ fn c_nested_groups_and_parent_resolution() {
     m.items[6].info = Info::default();
     m.restore(&d);
     expect_transform(&m.items[6]);
+    // Drop the fixture owners, then mirror both weak-expiry and failed-upgrade assertions.
     for source in &mut m.sources[1..4] {
         source.refs -= 1;
-        assert_eq!(source.refs, 0);
-        assert!(source.refs == 0);
+    }
+    for source in 1..4 {
+        assert!(m.weak_expired(source));
+        assert_eq!(m.weak_get_source(source), None);
     }
     assert_eq!(m.live_objects(), 0);
 }
@@ -474,4 +488,26 @@ fn c_bounds_and_missing_records() {
     engine::load(&mut m, "invalid json".into());
     expect_transform(&m.items[1]);
     assert_eq!(m.live_objects(), 0);
+}
+
+#[test]
+fn null_scene_and_malformed_records_are_empty() {
+    let mut m = Model::new(false);
+    let h = engine::save(&mut m, 0, true);
+    let d = m.data(h);
+    m.release_data(h);
+    let r = record(&d, 0);
+    assert_eq!(r.get_string("scene_name"), "");
+    assert_eq!(r.get_string("scene_uuid"), "");
+    assert_eq!(items(&r).count(), 0);
+    for json in [
+        "{}",
+        "invalid json",
+        r#"{"scenes_and_groups":[{}, {"is_group":true}]}"#,
+        r#"{"scenes_and_groups":12}"#,
+    ] {
+        engine::load(&mut m, json.into());
+    }
+    assert_eq!(m.live_objects(), 0);
+    assert!(m.sources.iter().all(|s| s.refs == 1));
 }
