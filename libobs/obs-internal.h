@@ -1788,6 +1788,11 @@ struct obs_weak_output {
 	struct obs_output *output;
 };
 
+extern obs_weak_output_t *obs_output_weak_lifetime_control(obs_output_t *output);
+extern void obs_output_weak_lifetime_addref(obs_weak_output_t *weak);
+extern bool obs_output_weak_lifetime_release(obs_weak_output_t *weak);
+extern bool obs_output_weak_lifetime_promote(obs_weak_output_t *weak);
+
 #define CAPTION_LINE_CHARS (32)
 #define CAPTION_PAGE_ROWS (15)
 #define CAPTION_LINE_BYTES (4 * CAPTION_LINE_CHARS)
