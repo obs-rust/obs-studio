@@ -1,9 +1,28 @@
-//! Real C fields and unchanged C setter bodies; no intentional differences.
-use core::ffi::c_char;
+//! Tier 3 parity: the shims against the original
+//! `libobs/obs-hotkey-owned-translations.c.h`
+//! (oracle/hotkey_owned_translations.c), both over the real fields adapter
+//! and a test-owned `struct obs_core`.
+//!
+//! - The layout of the fields and of the adapter's slot and pointer types.
+//! - Every slot set from a string, the empty string and NULL, alone and
+//!   together, in both groups; a proptest over sequences of up to 23 calls
+//!   of either setter with random bytes (embedded NULs too) or NULL. After
+//!   each call, the eight strings, and that no field keeps the caller's
+//!   pointer.
+//! - The live bmem allocations after each call (`bnum_allocs`, in a child
+//!   process of its own, as it counts process-wide), so an old copy left
+//!   unfreed or freed twice shows.
+//!
+//! No intentional difference: nothing is excluded.
+//!
+//! Reminder: the mutation check (break the core, see this file fail) is done
+//! once per port, not on every change.
+use core::ffi::{c_char, c_long};
 use obs_hotkey::ffi::owned_translations::{
     obs_hotkeys_set_audio_hotkeys_translations as audio,
     obs_hotkeys_set_sceneitem_hotkeys_translations as scene,
 };
+use obs_util::ffi::bmem::bnum_allocs;
 use proptest::prelude::*;
 use std::ffi::CStr;
 
@@ -50,9 +69,14 @@ impl Drop for World {
     }
 }
 
-fn run(steps: &[Step], rust: bool) -> Vec<[Option<Vec<u8>>; 8]> {
+type Snapshot = [Option<Vec<u8>>; 8];
+
+fn run(steps: &[Step], rust: bool) -> (Vec<Snapshot>, Vec<c_long>) {
     let _world = World;
     let mut snapshots = Vec::new();
+    let mut live = Vec::new();
+    // SAFETY: a counter read; it allocates nothing.
+    let base = unsafe { bnum_allocs() };
     for (is_audio, values) in steps {
         let mut buffers = values.clone().map(|v| {
             v.map(|mut bytes| {
@@ -86,17 +110,32 @@ fn run(steps: &[Step], rust: bool) -> Vec<[Option<Vec<u8>>; 8]> {
                 assert!(!pointers.contains(&ptr.cast_const()) || ptr.is_null());
                 (!ptr.is_null()).then(|| CStr::from_ptr(ptr).to_bytes().to_vec())
             }));
+            live.push(bnum_allocs() - base);
         }
     }
-    snapshots
+    (snapshots, live)
 }
 
 fn compare(steps: &[Step]) {
+    assert_eq!(run(steps, true).0, run(steps, false).0);
+}
+
+/// Strings and live allocations; only meaningful in an isolated process.
+fn compare_allocations(steps: &[Step]) {
     assert_eq!(run(steps, true), run(steps, false));
 }
 
-#[test]
-fn all_slots_null_empty_replacement_and_groups_match_c() {
+fn steps() -> impl Strategy<Value = Vec<Step>> {
+    prop::collection::vec(
+        (
+            any::<bool>(),
+            prop::array::uniform6(prop::option::of(prop::collection::vec(any::<u8>(), 0..64))),
+        ),
+        1..24,
+    )
+}
+
+fn fixed_steps() -> Vec<Step> {
     let filled = std::array::from_fn(|i| Some(vec![b'A' + i as u8, 0xff, b'%', b'1']));
     let empty = std::array::from_fn(|_| Some(vec![]));
     let nulls = std::array::from_fn(|_| None);
@@ -107,13 +146,57 @@ fn all_slots_null_empty_replacement_and_groups_match_c() {
         steps.push((true, mixed));
     }
     steps.extend([(false, nulls.clone()), (true, nulls), (true, empty)]);
-    compare(&steps);
+    steps
+}
+
+#[test]
+fn all_slots_null_empty_replacement_and_groups_match_c() {
+    compare(&fixed_steps());
+}
+
+#[test]
+fn allocations_match_c() {
+    // bnum_allocs is process-wide. Re-exec exactly this test so unrelated
+    // category tests cannot change the count between two calls.
+    let full = concat!(module_path!(), "::allocations_match_c");
+    let test = full.split_once("::").unwrap().1;
+    const MARKER: &str = "OBS_HOTKEY_OWNED_TRANSLATIONS_ISOLATED";
+    if std::env::var(MARKER).as_deref() != Ok(test) {
+        let out = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([test, "--exact", "--test-threads=1", "--nocapture"])
+            .env(MARKER, test)
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            out.status.success(),
+            "{stdout}\n{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(
+            stdout.contains("1 passed"),
+            "child did not run exactly one test: {stdout}"
+        );
+        return;
+    }
+    compare_allocations(&fixed_steps());
+    let config = proptest::test_runner::Config {
+        cases: obs_c_oracle::parity::cases(128),
+        failure_persistence: None,
+        ..Default::default()
+    };
+    proptest::test_runner::TestRunner::new(config)
+        .run(&steps(), |steps| {
+            compare_allocations(&steps);
+            Ok(())
+        })
+        .unwrap();
 }
 
 proptest! {
     #![proptest_config(ProptestConfig { cases: obs_c_oracle::parity::cases(128), failure_persistence: None, ..ProptestConfig::default() })]
     #[test]
-    fn differential(steps in prop::collection::vec((any::<bool>(), prop::array::uniform6(prop::option::of(prop::collection::vec(any::<u8>(), 0..64)))), 1..24)) {
+    fn differential(steps in steps()) {
         compare(&steps);
     }
 }
