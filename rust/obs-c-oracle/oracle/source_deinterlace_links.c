@@ -5,9 +5,10 @@
  * are oracle/source_deinterlace_getters.c's), and do-nothing definitions
  * of the libobs calls the deinterlace shims
  * (rust/obs-source-seam/src/ffi/source_deinterlace.rs) name under libobs's
- * own names: the frame cache, the async texture upload, the
- * deinterlace texture size, the effect load, the SDR white level and the
- * framebuffer sRGB calls.
+ * own names: the frame cache, the async texture upload, the effect load,
+ * the SDR white level and the framebuffer sRGB calls. The deinterlace
+ * texture size is obs-source's own Rust export
+ * (rust/obs-source/src/ffi/source_deinterlace_texture.rs).
  *
  * The seam stays C in libobs.core-source, so the shims call it in the test
  * binary as they do in the hybrid libobs. Its core reads go to
@@ -58,11 +59,6 @@ void obs_source_release_frame(obs_source_t *source, struct obs_source_frame *fra
 {
 	UNUSED_PARAMETER(source);
 	UNUSED_PARAMETER(frame);
-}
-
-void set_deinterlace_texture_size(obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
 }
 
 gs_effect_t *obs_load_effect(gs_effect_t **effect, const char *file)

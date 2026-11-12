@@ -2,6 +2,9 @@
 //! `libobs/obs-source-deinterlace.c` and `libobs/obs-source-transition.c`
 //! (one of them with decisions of `libobs/obs-scene.c`),
 //! one module per file: so far
+//! `libobs/obs-source-async-decoupled.c.h`, the async decoupled setter
+//! `obs_source_set_async_decoupled()` (generic over the source; its C shim
+//! is in `obs-source-seam`);
 //! `libobs/obs-source-async-pacing.c.h`, the async video frame pacing of
 //! `get_closest_frame()`; `libobs/obs-source-async-upload.c.h`, the async
 //! video upload decisions of `set_async_texture_size()`,
@@ -37,6 +40,9 @@
 //! double-rate deinterlacing; `libobs/obs-source-deinterlace-select.c.h`,
 //! the frame selection of deinterlacing (which queued frames a deinterlaced
 //! source drops and takes, and the texture update);
+//! `libobs/obs-source-deinterlace-texture.c.h`, the previous-frame textures
+//! of `set_deinterlace_texture_size()` (the format, the texrender and the
+//! plane textures, generic over the graphics calls);
 //! `libobs/obs-source-draw-plan.c.h`, the source
 //! draw decisions of `rotate_async_video()`,
 //! `obs_source_render_async_video()` and `source_render()` (the rotation
@@ -71,6 +77,10 @@
 //! `obs_source_set_audio_active()`;
 //! `libobs/obs-source-ptm-gate.c.h`, the
 //! push-to-mute and push-to-talk gate of `source_muted()`;
+//! `libobs/obs-source-push-to-enable.c.h`, the push-to-mute and push-to-talk
+//! enable setters (`obs_source_enable_push_to_mute()` and
+//! `obs_source_enable_push_to_talk()`, generic over the source, under its
+//! `audio_mutex`);
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
 //! routing (which draw a source or a filter takes, the filter bypass, the
 //! default effect and the linear sRGB flags);
@@ -163,6 +173,7 @@
 #![deny(unsafe_code)]
 
 pub mod async_compensation;
+pub mod async_decoupled;
 pub mod async_flag_getters;
 pub mod async_pacing;
 pub mod async_rotation;
@@ -184,6 +195,7 @@ pub mod deinterlace_draw;
 pub mod deinterlace_getters;
 pub mod deinterlace_pacing;
 pub mod deinterlace_select;
+pub mod deinterlace_texture;
 pub mod draw_plan;
 pub mod draw_technique;
 pub mod enabled_setter;
@@ -198,6 +210,7 @@ pub mod monitoring;
 pub mod ptm_gate;
 pub mod push_delay;
 pub mod push_queries;
+pub mod push_to_enable;
 pub mod render_route;
 pub mod settings_getter;
 pub mod size_route;

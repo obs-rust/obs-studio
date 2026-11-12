@@ -78,6 +78,12 @@
 //! texture upload, the effect load and the graphics calls through its
 //! `Calls`.
 //!
+//! `libobs/obs-source-async-decoupled.c.h`, the async decoupled setter, has
+//! its shim in [`ffi::source_async_decoupled`], which implements
+//! `obs_source::async_decoupled::Source` over
+//! `libobs/obs-source-async-decoupled-fields.c.h` and calls the Rust
+//! `reset_audio_data()` of [`ffi::source_audio_output`] directly.
+//!
 //! These shims live apart from `obs-source` because they reference symbols
 //! only libobs has. The `*_steps_rust` C tests link libobs and the Rust
 //! staticlib alone and pull in the `obs-source` objects they test; a shim

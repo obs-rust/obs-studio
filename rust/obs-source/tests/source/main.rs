@@ -2,6 +2,8 @@
 
 mod async_compensation;
 mod async_compensation_parity;
+mod async_decoupled;
+mod async_decoupled_parity;
 mod async_flag_getters;
 mod async_flag_getters_parity;
 mod async_pacing;
@@ -40,6 +42,8 @@ mod deinterlace_pacing;
 mod deinterlace_pacing_parity;
 mod deinterlace_select;
 mod deinterlace_select_parity;
+mod deinterlace_texture;
+mod deinterlace_texture_parity;
 mod draw_plan;
 mod draw_plan_parity;
 mod enabled_setter;
@@ -66,6 +70,8 @@ mod push_delay;
 mod push_delay_parity;
 mod push_queries;
 mod push_queries_parity;
+mod push_to_enable;
+mod push_to_enable_parity;
 mod render_route;
 mod render_route_parity;
 mod settings_getter;
