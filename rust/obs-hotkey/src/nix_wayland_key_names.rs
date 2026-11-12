@@ -44,6 +44,8 @@ pub enum Route {
     /// The UTF-8 of the key's level-0 keysym in the keymap, else its key
     /// name.
     Keysym,
+    /// Nothing: the name is left as it is (a value outside the key table).
+    None,
 }
 
 /// How to name `key` (`obs_key_t`): the tests of
