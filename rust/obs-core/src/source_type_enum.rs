@@ -12,18 +12,29 @@ pub fn source<T>(
     read: impl FnOnce(usize) -> T,
     write: impl FnOnce(T),
 ) -> bool {
-    let _ = (count, index, read, write);
-    todo!()
+    if index >= count {
+        return false;
+    }
+    write(read(index));
+    true
 }
 
 pub fn input<T>(
     count: usize,
     index: usize,
-    read: impl FnOnce(usize) -> (T, T),
+    mut read: impl FnMut(usize, Output) -> T,
     versioned: bool,
     unversioned: bool,
-    write: impl FnMut(Output, T),
+    mut write: impl FnMut(Output, T),
 ) -> bool {
-    let _ = (count, index, read, versioned, unversioned, write);
-    todo!()
+    if index >= count {
+        return false;
+    }
+    if versioned {
+        write(Output::Versioned, read(index, Output::Versioned));
+    }
+    if unversioned {
+        write(Output::Unversioned, read(index, Output::Unversioned));
+    }
+    true
 }

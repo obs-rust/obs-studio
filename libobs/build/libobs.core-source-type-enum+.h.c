@@ -2,4 +2,4 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-source-type-enum.c.h"
+#include "libobs/obs-source-type-enum-fields.c.h"
