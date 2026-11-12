@@ -51,18 +51,12 @@ unsafe fn set<T: Copy>(
     name: &CStr,
     target: unsafe extern "C" fn(*mut c_void) -> *mut T,
 ) {
-    // SAFETY: reject null before any private member access. Flags are needed
-    // only after both pointer checks, exactly as in C.
-    let flags = if !output.is_null() && !conversion.is_null() {
-        // SAFETY: both pointers were checked before private member access.
-        unsafe { obs_output_conversion_flags(output) }
-    } else {
-        0
-    };
-    if let Err(reason) = engine::store(
+    if let Err(reason) = engine::store_reading(
         !output.is_null(),
         !conversion.is_null(),
-        flags,
+        // SAFETY: store_reading calls this only after both pointer checks,
+        // once per flag check, as the C flag helpers read `info.flags`.
+        || unsafe { obs_output_conversion_flags(output) },
         media,
         // SAFETY: store invokes these only after both guards and flag checks.
         || unsafe { *conversion },

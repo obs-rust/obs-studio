@@ -31,19 +31,7 @@ pub fn conversion_guard(
     flags: u32,
     media: u32,
 ) -> Result<(), Rejection> {
-    if !output {
-        return Err(Rejection::Output);
-    }
-    if !conversion {
-        return Err(Rejection::Conversion);
-    }
-    if flags & ENCODED != 0 {
-        return Err(Rejection::Encoded);
-    }
-    if flags & media == 0 {
-        return Err(Rejection::Media);
-    }
-    Ok(())
+    conversion_guard_reading(output, conversion, || flags, media)
 }
 
 /// Registration prepends, including duplicates and null tokens.
@@ -65,9 +53,7 @@ pub fn store<T>(
     read: impl FnOnce() -> T,
     write: impl FnOnce(T),
 ) -> Result<(), Rejection> {
-    conversion_guard(output, present, flags, media)?;
-    write(read());
-    Ok(())
+    store_reading(output, present, || flags, media, read, write)
 }
 
 /// [`conversion_guard`] reading the output's flags where the C does: once
@@ -77,11 +63,22 @@ pub fn store<T>(
 pub fn conversion_guard_reading(
     output: bool,
     conversion: bool,
-    flags: impl FnMut() -> u32,
+    mut flags: impl FnMut() -> u32,
     media: u32,
 ) -> Result<(), Rejection> {
-    let _ = (output, conversion, flags, media);
-    todo!()
+    if !output {
+        return Err(Rejection::Output);
+    }
+    if !conversion {
+        return Err(Rejection::Conversion);
+    }
+    if flags() & ENCODED != 0 {
+        return Err(Rejection::Encoded);
+    }
+    if flags() & media == 0 {
+        return Err(Rejection::Media);
+    }
+    Ok(())
 }
 
 /// [`store`] with the flags read as [`conversion_guard_reading`] reads them.
@@ -93,6 +90,7 @@ pub fn store_reading<T>(
     read: impl FnOnce() -> T,
     write: impl FnOnce(T),
 ) -> Result<(), Rejection> {
-    let _ = (output, present, flags, media, read, write);
-    todo!()
+    conversion_guard_reading(output, present, flags, media)?;
+    write(read());
+    Ok(())
 }
