@@ -12947,6 +12947,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_scene_transform_states": {
+      "sources": [
+        "test/cmocka/test_scene_transform_states.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_scene_transform_update_steps": {
       "sources": [
         "test/cmocka/test_scene_transform_update_steps.c",
@@ -23548,6 +23557,21 @@
       "target": "test_scene_source_type_queries",
       "command": [
         "${target}"
+      ]
+    },
+    "test_scene_transform_states": {
+      "target": "test_scene_transform_states",
+      "command": [
+        "${target}"
+      ],
+      "run_serial": true,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_scene_transform_update_steps": {
