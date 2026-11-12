@@ -3,7 +3,9 @@ name: Virtual Camera Audio Hardware
 # GitHub runners: x64 Windows with VB-Cable, arm64 macOS with the OBS Virtual
 # Microphone HAL driver. Nothing is built here; each job tests the OBS package
 # a scheduled master build already made, so a run costs minutes, not an app
-# build. It runs on demand and on PRs that change it, never in the merge gate.
+# build. It runs daily and on demand, never on PRs or in the merge gate. This
+# qualifies the selected scheduled package, not a PR or merge-group tree;
+# hardware behavior has no attestation shortcut. Scheduled jobs skip forks.
 on:
   workflow_dispatch:
     inputs:
@@ -11,10 +13,8 @@ on:
         description: Run ID whose OBS packages to test (default the newest successful scheduled master run)
         type: string
         default: ''
-  pull_request:
-    paths:
-      - .github/workflows/vcam-audio-hardware.yaml
-      - ci/vcam_audio_hw.py
+  schedule:
+    - cron: '17 10 * * *'
 permissions:
   actions: read
   contents: read
@@ -26,6 +26,7 @@ env:
   BUILD_RUN: ${{ inputs.build_run }}
 jobs:
   windows:
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     name: Windows x64 🪟 VB-Cable
     runs-on: windows-2025-vs2026
     timeout-minutes: 30
@@ -109,6 +110,7 @@ jobs:
           if-no-files-found: warn
 
   macos:
+    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
     name: macOS arm64 🍏 OBS Virtual Microphone
     runs-on: macos-26
     timeout-minutes: 30
