@@ -65,23 +65,150 @@ pub struct Pass<H> {
     pub scenes_and_groups: H,
     pub all_items: bool,
 }
+/// Append one item and recursively save group records, even for unselected groups.
 pub fn save_item<H: Host>(
-    _host: &mut H,
-    _scene: H::Handle,
-    _item: H::Handle,
-    _pass: &mut Pass<H::Handle>,
+    host: &mut H,
+    scene: H::Handle,
+    item: H::Handle,
+    pass: &mut Pass<H::Handle>,
 ) {
-    todo!("scene transform snapshot")
+    if host.selected(item) || pass.all_items {
+        let data = host.create_data();
+        let info = host.info(item);
+        let crop = host.crop(item);
+        let id = host.id(item);
+        host.set_int(data, "id", id);
+        host.set_vec2(data, "pos", info.pos);
+        host.set_vec2(data, "scale", info.scale);
+        host.set_double(data, "rot", f64::from(info.rot));
+        host.set_int(data, "alignment", i64::from(info.alignment));
+        host.set_int(data, "bounds_type", i64::from(info.bounds_type));
+        host.set_vec2(data, "bounds", info.bounds);
+        host.set_int(data, "bounds_alignment", i64::from(info.bounds_alignment));
+        host.set_bool(data, "crop_to_bounds", info.crop_to_bounds);
+        for (key, value) in [
+            ("top", crop[1]),
+            ("bottom", crop[3]),
+            ("left", crop[0]),
+            ("right", crop[2]),
+        ] {
+            host.set_int(data, key, i64::from(value));
+        }
+        host.push(pass.ids, data);
+        host.release_data(data);
+    }
+    let source = host.item_source(item);
+    if host.is_group(source) {
+        let data = host.create_data();
+        let ids = host.create_array();
+        let name = host.name(source);
+        host.set_text(data, "scene_name", name);
+        let uuid = host.uuid(source);
+        host.set_text(data, "scene_uuid", uuid);
+        host.set_bool(data, "is_group", true);
+        let parent = host.source(scene);
+        let parent_uuid = host.uuid(parent);
+        host.set_text(data, "group_parent", parent_uuid);
+        let mut nested = Pass {
+            ids,
+            scenes_and_groups: pass.scenes_and_groups,
+            all_items: pass.all_items,
+        };
+        host.enum_group(item, &mut nested);
+        host.set_array(data, "items", ids);
+        host.push(pass.scenes_and_groups, data);
+        host.release_data(data);
+        host.release_array(ids);
+    }
 }
-pub fn save<H: Host>(_host: &mut H, _scene: H::Handle, _all_items: bool) -> H::Handle {
-    todo!("scene transform snapshot")
+/// Return an owned wrapper with depth-first group records followed by the root.
+pub fn save<H: Host>(host: &mut H, scene: H::Handle, all_items: bool) -> H::Handle {
+    let wrapper = host.create_data();
+    let groups = host.create_array();
+    let ids = host.create_array();
+    let mut pass = Pass {
+        ids,
+        scenes_and_groups: groups,
+        all_items,
+    };
+    let data = host.create_data();
+    let source = host.source(scene);
+    let name = host.name(source);
+    host.set_text(data, "scene_name", name);
+    let source = host.source(scene);
+    let uuid = host.uuid(source);
+    host.set_text(data, "scene_uuid", uuid);
+    host.set_bool(data, "is_group", false);
+    host.enum_scene(scene, &mut pass);
+    host.set_array(data, "items", ids);
+    host.push(groups, data);
+    host.set_array(wrapper, "scenes_and_groups", groups);
+    host.release_array(ids);
+    host.release_array(groups);
+    host.release_data(data);
+    wrapper
 }
-pub fn load_item<H: Host>(_host: &mut H, _data: H::Handle, _scene: H::Handle) {
-    todo!("scene transform restore")
+/// Restore one item in a deferred update, normalizing bounds before narrowing.
+pub fn load_item<H: Host>(host: &mut H, data: H::Handle, scene: H::Handle) {
+    let id = host.int(data, "id");
+    let item = host.find(scene, id);
+    let pos = host.vec2(data, "pos");
+    let scale = host.vec2(data, "scale");
+    let rot = host.double(data, "rot") as f32;
+    let alignment = host.int(data, "alignment") as u32;
+    let bounds = host.int(data, "bounds_type");
+    let bounds_type = if (0..=6).contains(&bounds) {
+        bounds as u32
+    } else {
+        0
+    };
+    let bounds_alignment = host.int(data, "bounds_alignment") as u32;
+    let bounds = host.vec2(data, "bounds");
+    let crop_to_bounds = host.boolean(data, "crop_to_bounds");
+    let info = Info {
+        pos,
+        scale,
+        rot,
+        alignment,
+        bounds_type,
+        bounds_alignment,
+        bounds,
+        crop_to_bounds,
+    };
+    let top = host.int(data, "top") as i32;
+    let bottom = host.int(data, "bottom") as i32;
+    let left = host.int(data, "left") as i32;
+    let right = host.int(data, "right") as i32;
+    host.defer_begin(item);
+    host.set_info(item, info);
+    host.set_crop(item, [left, top, right, bottom]);
+    host.defer_end(item);
 }
-pub fn load_record<H: Host>(_host: &mut H, _data: H::Handle) {
-    todo!("scene transform restore")
+/// Resolve groups by parent scene UUID and group name. As in C, a group source
+/// cannot act as the parent scene, so nested group children are not restored.
+pub fn load_record<H: Host>(host: &mut H, data: H::Handle) {
+    let items = host.array(data, "items");
+    let uuid = host.text(data, "scene_uuid");
+    let source = host.lookup(uuid);
+    let mut scene = host.scene(source);
+    if host.boolean(data, "is_group") {
+        let parent_uuid = host.text(data, "group_parent");
+        let parent_source = host.lookup(parent_uuid);
+        let parent = host.scene(parent_source);
+        let name = host.text(data, "scene_name");
+        let group = host.group(parent, name);
+        scene = host.group_scene(group);
+        host.release_source(parent_source);
+    }
+    host.enum_data(items, scene, false);
+    host.release_array(items);
+    host.release_source(source);
 }
-pub fn load<H: Host>(_host: &mut H, _json: H::Text) {
-    todo!("scene transform restore")
+/// Parse and restore all records; missing arrays and malformed JSON enumerate nothing.
+pub fn load<H: Host>(host: &mut H, json: H::Text) {
+    let data = host.parse(json);
+    let groups = host.array(data, "scenes_and_groups");
+    host.enum_data(groups, host.null(), true);
+    host.release_data(data);
+    host.release_array(groups);
 }
