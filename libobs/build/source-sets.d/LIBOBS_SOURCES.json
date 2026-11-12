@@ -223,6 +223,7 @@
   "build/libobs.core-scene-transform-states+.h.c",
   "build/libobs.core-source+.h.c",
   "build/libobs.core-source-filter-backup+.h.c",
+  "build/libobs.core-source-type-enum+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
