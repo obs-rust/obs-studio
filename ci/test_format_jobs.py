@@ -71,6 +71,19 @@ class GateOnlyTest(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
 
+class AdmissionAllocationTest(unittest.TestCase):
+    def test_checks_and_swift_can_skip_before_runner_allocation(self):
+        checks = job("checks")
+        swift = job("swift-format")
+        self.assertIn("inputs.skip-checks", checks)
+        self.assertIn("inputs.skip-swift", swift)
+        self.assertIn("inputs.swift", swift)
+        self.assertNotIn("needs: checks", swift)
+        pull = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("skip-checks: ${{ needs.build-project.outputs.skip_checks == 'true' }}", pull)
+        self.assertIn("skip_validate-data", pull)
+
+
 class ClientProofPolicyTest(unittest.TestCase):
     def test_distinct_full_file_and_optional_swift_gates(self):
         import tomllib

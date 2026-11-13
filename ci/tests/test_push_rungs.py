@@ -62,6 +62,15 @@ class Rungs(unittest.TestCase):
             result = push.attest()
         return result, out.getvalue(), calls
 
+    def test_admission_contract_requires_client_checks_and_six_targets(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        import pr_attestation
+        self.assertIn("python/all/self-test", pr_attestation.CLIENT_GATES)
+        self.assertIn("general/all/client-lint", pr_attestation.CLIENT_GATES)
+        self.assertEqual(len(pr_attestation.TARGETS), 6)
+        self.assertTrue(all(f"rust/{t}/client-dylint" in pr_attestation.CLIENT_GATES
+                            for t in pr_attestation.TARGETS))
+
     def test_prooft_runs_repo_lanes_before_final_sign(self):
         result, text, calls = self.attest()
         self.assertTrue(result, text)

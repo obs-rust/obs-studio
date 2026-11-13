@@ -49,6 +49,36 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
+    def test_pr_fallback_manifest_rejects_missing_skipped_and_runnerless_work(self):
+        from ci_scope import scope
+        files = ["libobs/obs.c.h", "plugins/rtmp-services/data/services.json"]
+        selected = scope(files, event="pull_request")
+        expected = gate_jobs.pr_expected_jobs(selected, files, {})
+        self.assertIn("Build 🧱 / CI Mode 🛂", expected)
+        self.assertIn("Build 🧱 / Rust Cross Lint 🦀 (release targets)", expected)
+        self.assertIn("Validate Data 🕵️", expected)
+        for name in expected:
+            healthy = [job(n, "success") for n in expected if n != name]
+            self.assertEqual(blocking(healthy, expected=expected), [name])
+            healthy.append(job(name, "skipped"))
+            self.assertEqual(blocking(healthy, expected=expected), [name])
+
+    def test_complete_pr_requires_proven_gates_and_active_queue_policy(self):
+        import pr_attestation
+        from ci_scope import scope
+        files = ["libobs/obs.c.h"]
+        selected = scope(files, event="pull_request")
+        result = {"trusted": True, "reasons": [],
+                  "gates": dict.fromkeys(pr_attestation.CLIENT_GATES, "valid")}
+        plan = pr_attestation.admission(result, files, event="pull_request")
+        self.assertEqual(gate_jobs.pr_expected_jobs(selected, files, plan),
+                         {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂"})
+        for field in ("queue_policy", "gates", "admission_version"):
+            invalid = dict(plan)
+            invalid.pop(field)
+            self.assertIn("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
+                          gate_jobs.pr_expected_jobs(selected, files, invalid))
+
     def test_queue_manifest_requires_each_selected_leg_despite_proofs(self):
         from ci_scope import scope
         selected = scope(["libobs/obs.c.h", ".github/workflows/build-project.yaml"], event="merge_group")

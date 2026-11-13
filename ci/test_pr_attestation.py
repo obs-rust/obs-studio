@@ -267,6 +267,100 @@ class TrustContract(unittest.TestCase):
         if reason:
             self.assertIn(reason, json.dumps(result))
 
+    def complete_client(self, missing=()):
+        records = [RecordFixture(gate, self.tree, (self.base,), "lint", at=NOW - 30).sealed()
+                   for gate in subject.CLIENT_GATES if gate not in missing]
+        return self.commit(records)
+
+    def planned(self, files=("rust/obs-util/src/value.rs",), **kwargs):
+        result = self.evaluate(**kwargs)
+        return subject.admission(result, files, event=kwargs.get("event", "pull_request"))
+
+    def test_complete_verified_member_allocates_only_admission_jobs(self):
+        plan = self.planned(head=self.complete_client())
+        self.assertTrue(plan["fast_path"], plan)
+        self.assertEqual(plan["queue_policy"], "heavy-v1")
+        self.assertTrue(all(job["skip"] for job in plan["jobs"].values()), plan)
+        self.assertTrue(plan["jobs"]["build-project.yaml:rust-windows-link"]["deferred"])
+
+    def test_each_missing_client_gate_runs_real_affected_work_and_all_heavy_work(self):
+        for gate in subject.CLIENT_GATES:
+            with self.subTest(gate=gate):
+                plan = self.planned(head=self.complete_client(missing={gate}))
+                self.assertFalse(plan["fast_path"])
+                for name in subject.DEFERRED_JOBS:
+                    self.assertFalse(plan["jobs"][name]["skip"], (gate, plan))
+                self.assertTrue(any(not j["skip"] and not j.get("deferred")
+                                    for n, j in plan["jobs"].items() if n not in subject.DEFERRED_JOBS))
+
+    def test_event_to_execution_outsider_and_error_matrix(self):
+        head = self.complete_client()
+        self.evaluate(head=head)
+        original = deepcopy(self.facts)
+        cases = ("fork", "nonmember", "private-denied", "unsigned", "api-error")
+        for case in cases:
+            with self.subTest(case=case):
+                self.facts = deepcopy(original)
+                self.memberships = {}
+                repo = self.facts["data"]["repository"]
+                if case == "fork":
+                    repo["pullRequest"]["headRepository"]["nameWithOwner"] = "outsider/obs-studio"
+                elif case == "nonmember":
+                    self.memberships["private-member"] = {"state": "pending"}
+                elif case == "private-denied":
+                    self.memberships["private-member"] = RuntimeError("403")
+                elif case == "unsigned":
+                    repo["object"]["signature"] = None
+                else:
+                    self.facts = {"errors": [{"message": "denied"}]}
+                plan = self.planned()
+                self.assertFalse(plan["fast_path"], plan)
+                for name, state in plan["jobs"].items():
+                    if name not in ("check-format.yaml:swift-format", "ci.yml:validate-data"):
+                        self.assertFalse(state["skip"], (case, name, plan))
+
+    def test_selected_swift_data_and_docs_require_relevant_client_gates(self):
+        self.evaluate(head=self.complete_client())
+        for path, gate in (("plugins/mac/foo.swift", "swift/all/fmt"),
+                           ("plugins/rtmp-services/data/services.json", "data/all/services-schema"),
+                           ("plugins/win-capture/data/compatibility.json", "data/all/compatibility")):
+            with self.subTest(path=path):
+                plan = self.planned(files=(path,))
+                self.assertFalse(plan["fast_path"], plan)
+                self.assertFalse(plan["jobs"]["check-format.yaml:swift-format" if path.endswith(".swift")
+                                               else "ci.yml:validate-data"]["skip"])
+                result = self.evaluate()
+                result["gates"][gate] = "valid"
+                self.assertTrue(subject.admission(result, (path,), event="pull_request")["fast_path"])
+        self.assertTrue(self.planned(files=("docs/guide.md",))["fast_path"])
+
+    def test_queue_and_malformed_scope_never_take_fast_path(self):
+        self.evaluate(head=self.complete_client())
+        for event in ("merge_group", "push", "workflow_dispatch"):
+            plan = self.planned(event=event)
+            self.assertFalse(plan["fast_path"])
+            self.assertFalse(any(j["skip"] for j in plan["jobs"].values()))
+        plan = subject.admission(self.evaluate(), None, event="pull_request")
+        self.assertFalse(any(j["skip"] for j in plan["jobs"].values()))
+
+    def test_legacy_local_gate_is_diagnostic_only(self):
+        plan = self.planned(head=self.commit([self.att(FMT), self.att(LINUX)],
+                                            extra="Local-Gate: legacy-tree-stamp"))
+        self.assertFalse(plan["fast_path"])
+        self.assertFalse(plan["jobs"]["build-project.yaml:rust-tests-linux"]["skip"])
+
+    def test_workflow_consumes_only_base_owned_unified_decision(self):
+        root = Path(__file__).resolve().parents[1]
+        build = (root / ".github/workflows/build-project.yaml").read_text()
+        mode = build.split("  ci-mode:\n", 1)[1].split("  rust-tests-linux:", 1)[0]
+        self.assertIn('git show "$BASE:ci/pr_attestation.py"', mode)
+        self.assertIn('uv run --no-project', mode)
+        self.assertNotIn("ATTEST_MODE", mode)
+        self.assertNotIn("local-gate verify", mode)
+        self.assertNotIn("ci/lane_proof.py check", mode)
+        self.assertIn("steps.admission.outputs.skip_rust-tests-linux", mode)
+        self.assertIn("swift: ${{ steps.swift.outputs.swift }}", build)
+
     def test_verified_private_member_partial_evidence_and_distinct_signer(self):
         result = self.evaluate()
         self.assertTrue(result["trusted"], result)

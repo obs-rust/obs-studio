@@ -42,6 +42,21 @@ def top_level_jobs(text: str) -> list[str]:
 
 
 class MergeQueue(unittest.TestCase):
+    def test_pr_fallback_executes_six_targets_and_deferred_jobs_use_fast_path(self):
+        for name in ("rust-cross-lint", "rust-cross-lint-release"):
+            header = job_block(BUILD, name).split("    steps:", 1)[0]
+            self.assertIn("github.event_name == 'pull_request'", header)
+            self.assertIn("skip_rust-cross-lint", header)
+            self.assertNotIn("cross_hit", header)
+        for name in ("cross-compile", "rust-windows-link", "linux-qt-frontend",
+                     "rust-tests-windows", "rust-tests-macos", "rust-tier2-windows",
+                     "rust-tier2-macos", "rust-linux-tier2-build"):
+            header = job_block(BUILD, name).split("    steps:", 1)[0]
+            self.assertIn("needs: ", header)
+            self.assertIn("ci-mode", header)
+            self.assertIn("fast_path", header)
+            self.assertIn("github.event_name", header)
+
     def test_pull_runs_in_merge_queue(self):
         self.assertRegex(on_block(PULL), r"(?m)^  merge_group:")
 
