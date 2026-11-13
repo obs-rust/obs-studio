@@ -1310,37 +1310,6 @@ void gs_stage_texture(gs_stagesurf_t *dst, gs_texture_t *src)
 	graphics->exports.device_stage_texture(graphics->device, dst, src);
 }
 
-void gs_set_cull_mode(enum gs_cull_mode mode)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_cull_mode"))
-		return;
-
-	graphics->exports.device_set_cull_mode(graphics->device, mode);
-}
-
-enum gs_cull_mode gs_get_cull_mode(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_cull_mode"))
-		return GS_NEITHER;
-
-	return graphics->exports.device_get_cull_mode(graphics->device);
-}
-
-void gs_enable_blending(bool enable)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_blending"))
-		return;
-
-	graphics->cur_blend_state.enabled = enable;
-	graphics->exports.device_enable_blending(graphics->device, enable);
-}
-
 void gs_enable_stencil_test(bool enable)
 {
 	graphics_t *graphics = thread_graphics;
@@ -1359,56 +1328,6 @@ void gs_enable_stencil_write(bool enable)
 		return;
 
 	graphics->exports.device_enable_stencil_write(graphics->device, enable);
-}
-
-void gs_enable_color(bool red, bool green, bool blue, bool alpha)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_color"))
-		return;
-
-	graphics->exports.device_enable_color(graphics->device, red, green, blue, alpha);
-}
-
-void gs_blend_function(enum gs_blend_type src, enum gs_blend_type dest)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_blend_function"))
-		return;
-
-	graphics->cur_blend_state.src_c = src;
-	graphics->cur_blend_state.dest_c = dest;
-	graphics->cur_blend_state.src_a = src;
-	graphics->cur_blend_state.dest_a = dest;
-	graphics->exports.device_blend_function(graphics->device, src, dest);
-}
-
-void gs_blend_function_separate(enum gs_blend_type src_c, enum gs_blend_type dest_c, enum gs_blend_type src_a,
-				enum gs_blend_type dest_a)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_blend_function_separate"))
-		return;
-
-	graphics->cur_blend_state.src_c = src_c;
-	graphics->cur_blend_state.dest_c = dest_c;
-	graphics->cur_blend_state.src_a = src_a;
-	graphics->cur_blend_state.dest_a = dest_a;
-	graphics->exports.device_blend_function_separate(graphics->device, src_c, dest_c, src_a, dest_a);
-}
-
-void gs_blend_op(enum gs_blend_op_type op)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_blend_op"))
-		return;
-
-	graphics->cur_blend_state.op = op;
-	graphics->exports.device_blend_op(graphics->device, graphics->cur_blend_state.op);
 }
 
 void gs_stencil_function(enum gs_stencil_side side, enum gs_depth_test test)
