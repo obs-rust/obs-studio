@@ -42,6 +42,13 @@ def top_level_jobs(text: str) -> list[str]:
 
 
 class MergeQueue(unittest.TestCase):
+    def test_pr_does_not_allocate_queue_runner_probe(self):
+        probe = job_block(PULL, "select-mq-runner").split("    steps:", 1)[0]
+        self.assertIn("if: github.event_name != 'pull_request'", probe)
+        # A skipped queue-only dependency must not suppress the real PR jobs.
+        self.assertIn("!cancelled()", job_block(PULL, "build-project").split("    uses:", 1)[0])
+        self.assertIn("always()", job_block(PULL, "check-format").split("    uses:", 1)[0])
+
     def test_pr_fallback_executes_six_targets_and_deferred_jobs_use_fast_path(self):
         for name in ("rust-cross-lint", "rust-cross-lint-release"):
             header = job_block(BUILD, name).split("    steps:", 1)[0]
