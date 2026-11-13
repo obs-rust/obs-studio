@@ -3665,6 +3665,21 @@
         "OBS_UNIT_TEST"
       ]
     },
+    "test_encoder_priming_samples": {
+      "sources": [
+        "test/cmocka/test_encoder_priming_samples.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_roi": {
       "sources": [
         "test/cmocka/test_encoder_roi.c"
@@ -20268,6 +20283,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_encoder_priming_samples": {
+      "target": "test_encoder_priming_samples",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
     },
     "test_encoder_roi": {
       "target": "test_encoder_roi",
