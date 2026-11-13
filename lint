@@ -6,6 +6,10 @@
 Kept as an entry point because AGENTS.md and the worker skill document it; the
 lane itself is `ci/local_gate.py --lane lint`. A Python (not `sh`) launcher, so
 GEN-005 has no shell shebang to flag.
+
+This entry point runs the host lint lane. For complete six-target client
+evidence and a signed PR admission stamp, use `./push`; a successful `./lint`
+alone does not satisfy that contract.
 """
 
 from __future__ import annotations
