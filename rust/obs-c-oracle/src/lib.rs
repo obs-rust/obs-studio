@@ -202,6 +202,7 @@ pub mod shader_param_names;
 pub mod shader_param_values;
 pub mod shader_parser_blocks;
 pub mod shader_sampler_convert;
+pub mod shutdown_detach;
 pub mod signal;
 pub mod source_async_pacing;
 pub mod source_async_upload;
