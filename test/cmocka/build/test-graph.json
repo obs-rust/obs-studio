@@ -5232,6 +5232,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_gs_perspective": {
+      "sources": [
+        "test/cmocka/test_gs_perspective.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_happy_eyeballs": {
       "sources": [
         "test/cmocka/test_happy_eyeballs.c"
@@ -20852,6 +20873,14 @@
         ]
       ],
       "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_gs_perspective": {
+      "target": "test_gs_perspective",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_happy_eyeballs": {
       "target": "test_happy_eyeballs",
