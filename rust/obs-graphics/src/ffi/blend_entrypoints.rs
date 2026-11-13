@@ -11,6 +11,7 @@ unsafe extern "C" {
     fn obs_graphics_blend_current(context: *mut c_void) -> *mut BlendState;
     fn obs_graphics_blend_stack(context: *mut c_void) -> *mut darray;
     fn gs_enable_blending(value: bool);
+    fn gs_blend_function(src: u32, dest: u32);
     fn gs_blend_function_separate(sc: u32, dc: u32, sa: u32, da: u32);
     fn gs_blend_op(value: u32);
 }
@@ -31,6 +32,11 @@ impl Context for Native {
         // SAFETY: the adapter returns the current context's valid blend state.
         unsafe { *obs_graphics_blend_current(self.0.as_ptr()) }
     }
+    fn current_mut(&mut self) -> &mut BlendState {
+        // SAFETY: the adapter returns the current context's valid blend state,
+        // which only this thread's graphics calls touch while it is current.
+        unsafe { &mut *obs_graphics_blend_current(self.0.as_ptr()) }
+    }
     fn push(&mut self, state: BlendState) {
         state_stacks::state_push(&mut self.stack(), state);
     }
@@ -41,9 +47,13 @@ impl Context for Native {
         // SAFETY: the thread's context is valid, as required by the C entry point.
         unsafe { gs_enable_blending(value) };
     }
-    fn factors(&mut self, state: BlendState) {
+    fn function(&mut self, src: u32, dest: u32) {
         // SAFETY: the validated context is current; values retain the C enums.
-        unsafe { gs_blend_function_separate(state.src_c, state.dest_c, state.src_a, state.dest_a) };
+        unsafe { gs_blend_function(src, dest) };
+    }
+    fn factors(&mut self, src_c: u32, dest_c: u32, src_a: u32, dest_a: u32) {
+        // SAFETY: the validated context is current; values retain the C enums.
+        unsafe { gs_blend_function_separate(src_c, dest_c, src_a, dest_a) };
     }
     fn operation(&mut self, value: u32) {
         // SAFETY: the validated context is current; value retains the C enum.

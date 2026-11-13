@@ -91,6 +91,7 @@ fn compare(sequence: &[(bool, u8, BlendState)]) {
                     Call::Enable(_) => 1,
                     Call::Factors(_) => 2,
                     Call::Operation(_) => 3,
+                    Call::Function(_) => 4,
                 })
                 .collect::<Vec<_>>(),
             expected.calls
@@ -147,7 +148,9 @@ fn deterministic_edges() {
     compare(&sequence);
 }
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(obs_c_oracle::parity::cases(100)))]
+    #![proptest_config(ProptestConfig {
+        cases: obs_c_oracle::parity::cases(100), failure_persistence: None, ..ProptestConfig::default()
+    })]
     #[test]
     fn callback_and_state_sequences(sequence in prop::collection::vec((any::<bool>(), 0u8..3, state()), 0..60)) {
         compare(&sequence);
