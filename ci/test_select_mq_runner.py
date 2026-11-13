@@ -69,7 +69,9 @@ class SelectMqRunnerTest(unittest.TestCase):
         return result, http, output.getvalue()
 
     def test_online_all_labels(self):
-        result, http, _ = self.select([runner(labels=[*json.loads(LABELS), "extra"])])
+        result, http, _ = self.select(
+            [runner(labels=[*json.loads(LABELS), "extra"]), runner()]
+        )
         self.assertEqual(json.loads(result), json.loads(LABELS))
         request = http.call_args_list[0].args[0]
         self.assertEqual(
@@ -90,7 +92,12 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(self.select([runner(), runner()])[0], LABELS)
 
     def test_busy_offline_and_nonmatching_do_not_supply_idle_capacity(self):
-        entries = [runner(), runner(busy=True), runner("offline"), runner(labels=["x64"])]
+        entries = [
+            runner(),
+            runner(busy=True),
+            runner("offline"),
+            runner(labels=["x64"]),
+        ]
         self.assertEqual(self.select(entries)[0], "")
         self.assertEqual(self.select([*entries, runner()])[0], LABELS)
 
@@ -107,11 +114,15 @@ class SelectMqRunnerTest(unittest.TestCase):
         for option in ("min_idle", "demand"):
             for value in ("0", "-1", "oops", "1.5"):
                 with self.subTest(option=option, value=value):
-                    result, http, output = self.select([runner(), runner()], **{option: value})
+                    result, http, output = self.select(
+                        [runner(), runner()], **{option: value}
+                    )
                     self.assertEqual(result, "")
                     http.assert_not_called()
                     self.assertIn("::warning::", output)
-        self.assertEqual(self.select([runner(), runner()], min_idle="", demand="")[0], LABELS)
+        self.assertEqual(
+            self.select([runner(), runner()], min_idle="", demand="")[0], LABELS
+        )
 
     def test_same_runner_in_both_scopes_counts_once(self):
         same = runner()
@@ -137,7 +148,10 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(
             json.loads(
                 self.select(
-                    [runner(labels=[label.upper() for label in json.loads(LABELS)])]
+                    [
+                        runner(labels=[label.upper() for label in json.loads(LABELS)]),
+                        runner(),
+                    ]
                 )[0]
             ),
             json.loads(LABELS),
@@ -180,7 +194,7 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(self.select()[0], "")
 
     def test_org_only_online_runner(self):
-        result, http, output = self.select(org_runners=[runner()])
+        result, http, output = self.select(org_runners=[runner(), runner()])
         self.assertEqual(result, LABELS)
         self.assertEqual(http.call_count, 2)
         request = http.call_args.args[0]
@@ -194,7 +208,7 @@ class SelectMqRunnerTest(unittest.TestCase):
 
     def test_org_forbidden_or_missing_preserves_repo_result(self):
         for status in (403, 404):
-            for repo_runners in ([], [runner()]):
+            for repo_runners in ([], [runner(), runner()]):
                 with self.subTest(status=status, repo_match=bool(repo_runners)):
                     error = HTTPError(
                         "https://api.github.com/orgs/obs-rust/actions/runners",
@@ -204,7 +218,9 @@ class SelectMqRunnerTest(unittest.TestCase):
                         None,
                     )
                     with error:
-                        result, http, output = self.select(repo_runners, org_error=error)
+                        result, http, output = self.select(
+                            repo_runners, org_error=error
+                        )
                     self.assertEqual(result, LABELS if repo_runners else "")
                     self.assertEqual(http.call_count, 2)
                     self.assertIn("::warning::", output)
@@ -220,7 +236,8 @@ class SelectMqRunnerTest(unittest.TestCase):
 
     def test_repo_error_does_not_hide_org_match(self):
         result, _, output = self.select(
-            error=URLError("fake-token must not be logged"), org_runners=[runner()]
+            error=URLError("fake-token must not be logged"),
+            org_runners=[runner(), runner()],
         )
         self.assertEqual(result, LABELS)
         self.assertIn("::warning::", output)
@@ -270,11 +287,13 @@ class SelectMqRunnerTest(unittest.TestCase):
         pages = [
             io.BytesIO(
                 json.dumps(
-                    {"total_count": 101, "runners": [runner("offline")] * 100}
+                    {"total_count": 102, "runners": [runner("offline")] * 100}
                 ).encode()
             ),
             io.BytesIO(
-                json.dumps({"total_count": 101, "runners": [runner()]}).encode()
+                json.dumps(
+                    {"total_count": 102, "runners": [runner(), runner()]}
+                ).encode()
             ),
             io.BytesIO(b'{"total_count":0,"runners":[]}'),
         ]
@@ -293,11 +312,13 @@ class SelectMqRunnerTest(unittest.TestCase):
             io.BytesIO(b'{"total_count":0,"runners":[]}'),
             io.BytesIO(
                 json.dumps(
-                    {"total_count": 101, "runners": [runner("offline")] * 100}
+                    {"total_count": 102, "runners": [runner("offline")] * 100}
                 ).encode()
             ),
             io.BytesIO(
-                json.dumps({"total_count": 101, "runners": [runner()]}).encode()
+                json.dumps(
+                    {"total_count": 102, "runners": [runner(), runner()]}
+                ).encode()
             ),
         ]
         with patch.object(selector, "urlopen", side_effect=pages) as http:
@@ -321,7 +342,9 @@ class SelectMqRunnerTest(unittest.TestCase):
         with patch.object(selector, "urlopen", side_effect=respond) as http:
             with redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(
-                    selector.select_labels("merge_group", LABELS, "token", "owner/repo"),
+                    selector.select_labels(
+                        "merge_group", LABELS, "token", "owner/repo"
+                    ),
                     "",
                 )
         self.assertEqual(http.call_count, 6)
@@ -348,7 +371,9 @@ class SelectMqRunnerTest(unittest.TestCase):
     def test_main_writes_single_line_label_json(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output"
-            payload = json.dumps({"total_count": 1, "runners": [runner()]}).encode()
+            payload = json.dumps(
+                {"total_count": 2, "runners": [runner(), runner()]}
+            ).encode()
             with patch.dict(
                 os.environ,
                 {
@@ -361,10 +386,106 @@ class SelectMqRunnerTest(unittest.TestCase):
                 clear=True,
             ):
                 with patch.object(
-                    selector, "urlopen", side_effect=lambda *a, **kw: io.BytesIO(payload)
+                    selector,
+                    "urlopen",
+                    side_effect=lambda *a, **kw: io.BytesIO(payload),
                 ):
                     self.assertEqual(selector.main(), 0)
             self.assertEqual(output.read_text(), f"labels={LABELS}\n")
+
+    def test_capacity_accumulates_across_scopes(self):
+        self.assertEqual(self.select([runner()], org_runners=[runner()])[0], LABELS)
+
+    def test_idle_capacity_on_later_page_is_counted(self):
+        pages = [
+            io.BytesIO(
+                json.dumps(
+                    {
+                        "total_count": 101,
+                        "runners": [runner(), *[runner(busy=True) for _ in range(99)]],
+                    }
+                ).encode()
+            ),
+            io.BytesIO(
+                json.dumps({"total_count": 101, "runners": [runner()]}).encode()
+            ),
+            io.BytesIO(b'{"total_count":0,"runners":[]}'),
+        ]
+        with patch.object(selector, "urlopen", side_effect=pages) as http:
+            self.assertEqual(
+                selector.select_labels("merge_group", LABELS, "token", "owner/repo"),
+                LABELS,
+            )
+        self.assertEqual(http.call_count, 3)
+
+    def test_main_summary_and_environment_thresholds(self):
+        cases = [
+            (
+                [runner(busy=True) for _ in range(6)],
+                {},
+                "",
+                "busy=6, idle=0, required=2",
+                None,
+            ),
+            ([runner(), runner()], {}, LABELS, "busy=0, idle=2, required=2", None),
+            ([runner("offline"), runner("offline")], {}, "", "online=0", None),
+            ([runner(), runner()], {"MQ_RUNNER_MIN_IDLE": "3"}, "", "required=3", None),
+            ([runner(), runner()], {"MQ_RUNNER_DEMAND": "11"}, "", "required=11", None),
+            ([runner()], {"MQ_RUNNER_MIN_IDLE": "1"}, LABELS, "required=1", None),
+            (
+                [],
+                {},
+                "",
+                "unavailable scopes: repository, organization",
+                URLError("fake-token"),
+            ),
+            ([], {"MQ_RUNNER_STATUS_TOKEN": ""}, "", "token is missing", None),
+            ([], {"MQ_RUNNER_MIN_IDLE": "bad"}, "", "ValueError", None),
+            ([], {"MQ_RUNNER_LABELS": ""}, "", "disabled", None),
+        ]
+        for entries, config, expected, reason, error in cases:
+            with (
+                self.subTest(config=config, reason=reason),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                output = Path(directory) / "output"
+                summary = Path(directory) / "summary"
+                environment = {
+                    "GITHUB_EVENT_NAME": "merge_group",
+                    "MQ_RUNNER_LABELS": LABELS,
+                    "MQ_RUNNER_STATUS_TOKEN": "fake-token",
+                    "GITHUB_REPOSITORY": "owner/repo",
+                    "GITHUB_OUTPUT": str(output),
+                    "GITHUB_STEP_SUMMARY": str(summary),
+                    **config,
+                }
+                payload = json.dumps(
+                    {"total_count": len(entries), "runners": entries}
+                ).encode()
+                with (
+                    patch.dict(os.environ, environment, clear=True),
+                    patch.object(
+                        selector,
+                        "urlopen",
+                        side_effect=error or (lambda *a, **kw: io.BytesIO(payload)),
+                    ),
+                    redirect_stdout(io.StringIO()),
+                ):
+                    self.assertEqual(selector.main(), 0)
+                self.assertEqual(output.read_text(), f"labels={expected}\n")
+                report = summary.read_text()
+                self.assertIn("**self-hosted**" if expected else "**hosted**", report)
+                self.assertIn(reason, report)
+                self.assertNotIn("fake-token", report)
+
+    def test_summary_error_does_not_change_selection(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": directory}),
+        ):
+            result, _, output = self.select([runner(), runner()])
+        self.assertEqual(result, LABELS)
+        self.assertIn("could not publish summary", output)
 
     def test_main_output_error_does_not_fail(self):
         with patch.dict(os.environ, {}, clear=True):

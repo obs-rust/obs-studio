@@ -271,6 +271,8 @@ class CiScopeTest(unittest.TestCase):
             "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
             " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
         )
+        for variable in ("MQ_RUNNER_MIN_IDLE", "MQ_RUNNER_DEMAND"):
+            self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
         self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
         self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
