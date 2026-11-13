@@ -326,11 +326,11 @@ static void layout_survives_a_session_at_a_smaller_size(void **)
 		first.show(); // full size
 		first.restore(state);
 		settle(first.window);
-		first.window.resize(1100, 700); // out of full screen, into a tile
+		first.window.resize(1450, 800); // out of full screen, into a slightly smaller tile
 		settle(first.window);
-		print_message("in the session, at 1100x700:\n");
+		print_message("in the session, at 1450x800:\n");
 		for (QSize size : first.sizes()) {
-			print_message("  %dx%d\n", size.width(), size.height());
+			print_message("dock in session %dx%d\n", size.width(), size.height());
 		}
 		state = persist(first.proportions.StateToSave());
 	}
