@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-canvas-move",
+    "core-canvas-release",
     "core-output",
     "core-scene-lookup",
     "core-scene-transform-states",
