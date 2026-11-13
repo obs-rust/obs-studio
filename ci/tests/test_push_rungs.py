@@ -33,8 +33,9 @@ from pr_attestation import PROOFT_SOURCE
 
 class Rungs(unittest.TestCase):
     HOST = "x86_64-unknown-linux-gnu"
+    PROOFT = ["uv", "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"]
 
-    def attest(self, tools=None, version=(0, 1, 0), partial=False, fail=None, dirty=False, signed=True):
+    def attest(self, tools=None, partial=False, fail=None, dirty=False, signed=True):
         calls = []
         def run(args, **kw):
             calls.append(args)
@@ -49,8 +50,7 @@ class Rungs(unittest.TestCase):
             return subprocess.CompletedProcess(args, 0, "tree" if args == ("rev-parse", "HEAD^{tree}") else "a" * 40, "")
         out = io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out), \
-                mock.patch.object(push.shutil, "which", side_effect=lambda n: (tools or {"prooft": "prooft"}).get(n)), \
-                mock.patch.object(push, "_prooft_version", return_value=version), \
+                mock.patch.object(push.shutil, "which", side_effect=lambda n: (tools or {"uv": "uv"}).get(n)), \
                 mock.patch.object(push, "host_target", return_value=self.HOST, create=True), \
                 mock.patch.object(push, "run", side_effect=run), \
                 mock.patch.object(push, "git", side_effect=git), \
@@ -73,11 +73,18 @@ class Rungs(unittest.TestCase):
     def test_prooft_runs_repo_lanes_before_final_sign(self):
         result, text, calls = self.attest()
         self.assertTrue(result, text)
-        self.assertEqual([c[2] for c in calls if c[:2] == ["prooft", "run"]],
+        prefix = self.PROOFT + ["run"]
+        self.assertEqual([c[len(prefix)] for c in calls if c[:len(prefix)] == prefix],
                          ["client-lint", "client-checks", f"client-test-{self.HOST}", "client-swift"])
-        self.assertLess(max(i for i, c in enumerate(calls) if c[:2] == ["prooft", "run"]),
+        self.assertLess(max(i for i, c in enumerate(calls) if c[:len(prefix)] == prefix),
                         calls.index(["sign-final"]))
-        self.assertNotIn(["prooft", "soldr"], calls)
+        self.assertNotIn(self.PROOFT + ["soldr"], calls)
+
+    def test_installed_prooft_does_not_override_verifier_pin(self):
+        result, text, calls = self.attest(tools={"uv": "uv", "prooft": "obsolete-prooft"})
+        self.assertTrue(result, text)
+        self.assertIn(self.PROOFT + ["emit"], calls)
+        self.assertFalse(any("obsolete-prooft" in c for c in calls))
 
     def test_successful_partial_prooft_is_not_complete(self):
         result, text, calls = self.attest(partial=True)
@@ -96,9 +103,9 @@ class Rungs(unittest.TestCase):
         self.assertFalse(result, text)
         self.assertNotIn(["sign-final"], calls)
 
-    def test_old_prooft_keeps_deprecated_partial_path(self):
+    def test_missing_uv_keeps_deprecated_partial_path(self):
         result, text, calls = self.attest(
-            tools={"prooft": "prooft", "soldr": "soldr", "ghd": "ghd"}, version=(0, 0, 9))
+            tools={"soldr": "soldr", "ghd": "ghd"})
         self.assertFalse(result, text)
         self.assertIn("partial", text.lower())
         self.assertTrue(any(c[:3] == ["ghd", "attest", "stamp"] for c in calls))
@@ -178,10 +185,15 @@ class ProoftIntegration(unittest.TestCase):
 
     The command-capture tests prove the expensive lane's Rust commands. This
     fixture tests the policy/writer contract without building those targets.
-    It uses the verifier's exact source pin, independent of host installations.
+    It exercises the writer selected by ./push against the repository policy.
     """
     def test_emitted_inventory_and_source_only_invalidation(self):
-        tool = ["uv", "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"]
+        with mock.patch.object(push, "dirty", return_value=False), \
+                mock.patch.object(push, "git", return_value=subprocess.CompletedProcess([], 0, "tree")), \
+                mock.patch.object(push, "complete_prooft", return_value=True) as writer:
+            self.assertTrue(push.attest())
+        selected = writer.call_args.args[0]
+        tool = [selected] if isinstance(selected, str) else selected
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             def command(*args, check=True):
@@ -206,8 +218,12 @@ class ProoftIntegration(unittest.TestCase):
                 command("git", "commit", "--amend", "-qm", "Fixture input")
                 command(*tool, "run", "client-lint", "--", sys.executable, "-c", "pass")
                 command(*tool, "run", f"client-test-{host}", "--", sys.executable, "-c", "pass")
+                command(*tool, "run", "client-checks", "--", sys.executable, "-c", "pass")
+                command(*tool, "run", "client-swift", "--", sys.executable, "-c", "pass")
                 bundle = json.loads(command(*tool, "emit").stdout)
-                self.assertEqual({a["gate"] for a in bundle["attestations"]}, push.client_gates(host))
+                self.assertEqual({a["gate"] for a in bundle["attestations"]},
+                                 push.client_gates(host) | push.CLIENT_CHECK_GATES | {"swift/all/fmt"})
+                self.assertIn("Ci-Attestation:", command("git", "log", "-1", "--format=%B").stdout)
             # Exit 75 is not success, even if a caller marks its lane optional.
             command("git", "commit", "--amend", "-qm", "Fixture input")
             result = command(*tool, "run", "client-test-x86_64-unknown-linux-gnu", "--",

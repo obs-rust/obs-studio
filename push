@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "ci"))
 from local_gate import CLIENT_TARGETS, client_gates, host_target
 from client_checks import CLIENT_CHECK_GATES, receipt_path
+from pr_attestation import PROOFT_SOURCE
 
 REQUIRE = os.environ.get("PUSH_REQUIRE_ATTESTATION") == "1"
 
@@ -62,26 +63,6 @@ def supports(args: list[str], needle: str) -> bool:
 
 def dirty() -> bool:
     return bool(git("status", "--porcelain", capture=True).stdout.strip())
-
-
-PROOFT_MIN_VERSION = (0, 1, 0)
-
-
-def _prooft_version(tool: str) -> tuple[int, int, int] | None:
-    """(major, minor, patch) from `prooft --version`, or None when unknown."""
-
-    proc = subprocess.run([tool, "--version"], text=True, capture_output=True)
-    if proc.returncode != 0:
-        return None
-    digits = [part for part in (proc.stdout + proc.stderr).replace("v", " ").split() if part[:1].isdigit()]
-    if not digits:
-        return None
-    parts = digits[0].split(".")
-    try:
-        numbers = tuple(int(p) for p in parts[:3])
-    except ValueError:
-        return None
-    return (numbers + (0, 0, 0))[:3]
 
 
 ATTEST_KEEP = 20
@@ -136,9 +117,9 @@ def sign_final() -> bool:
     return run(["git", "verify-commit", "HEAD"], check=False).returncode == 0
 
 
-def emitted_gates(prooft: str) -> set[str]:
+def emitted_gates(prooft: list[str]) -> set[str]:
     """Read prooft's validated bundle, never guess coverage from exit zero."""
-    proc = run([prooft, "emit"], capture=True, check=False)
+    proc = run([*prooft, "emit"], capture=True, check=False)
     if proc.returncode:
         return set()
     try:
@@ -150,7 +131,7 @@ def emitted_gates(prooft: str) -> set[str]:
         return set()
 
 
-def complete_prooft(prooft: str, tree: str) -> bool:
+def complete_prooft(prooft: list[str], tree: str) -> bool:
     """Run real repository lanes; require their complete validated inventory."""
     host = host_target()
     if host not in CLIENT_TARGETS:
@@ -159,9 +140,9 @@ def complete_prooft(prooft: str, tree: str) -> bool:
     # Resolve once: proof commands must never compare against a moving ref.
     base = git("rev-parse", "--verify", "origin/master^{commit}", capture=True).stdout.strip()
     commands = (
-        [prooft, "run", "client-lint", "--", "uv", "run", "ci/local_gate.py", "--lane", "client-lint"],
-        [prooft, "run", "client-checks", "--", "uv", "run", "--no-project", "ci/client_checks.py", "--base", base],
-        [prooft, "run", f"client-test-{host}", "--", "uv", "run", "ci/local_gate.py",
+        [*prooft, "run", "client-lint", "--", "uv", "run", "ci/local_gate.py", "--lane", "client-lint"],
+        [*prooft, "run", "client-checks", "--", "uv", "run", "--no-project", "ci/client_checks.py", "--base", base],
+        [*prooft, "run", f"client-test-{host}", "--", "uv", "run", "ci/local_gate.py",
          "--lane", "client-test", "--client-target", host],
     )
     for command in commands:
@@ -170,7 +151,7 @@ def complete_prooft(prooft: str, tree: str) -> bool:
             return False
         if not unchanged(tree):
             return False
-    swift = run([prooft, "run", "client-swift", "--", "uv", "run", "--no-project",
+    swift = run([*prooft, "run", "client-swift", "--", "uv", "run", "--no-project",
                  "ci/client_checks.py", "--base", base, "--swift"], check=False).returncode == 0
     if not unchanged(tree):
         return False
@@ -254,14 +235,13 @@ def attest() -> bool:
     if dirty():
         return False
     tree = git("rev-parse", "HEAD^{tree}", capture=True).stdout.strip()
-    prooft = shutil.which("prooft")
-    if prooft:
-        version = _prooft_version(prooft)
-        if version is not None and version >= PROOFT_MIN_VERSION:
-            return complete_prooft(prooft, tree)
-        print(f"./push: prooft {version or 'unknown'} is older than {PROOFT_MIN_VERSION}; skipping it")
-    else:
-        print("./push: prooft is not installed (uv tool install 'prooft>=0.1'); trying the deprecated path")
+    # Use the verifier's immutable pin: older installed releases reject this
+    # repository's data/swift gates before any proof command can run. uv caches
+    # this environment and does not change the user's installed prooft.
+    uv = shutil.which("uv")
+    if uv:
+        return complete_prooft([uv, "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"], tree)
+    print("./push: uv is not installed; trying the deprecated path")
     return legacy_attest(tree)
 
 
