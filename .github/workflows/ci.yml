@@ -76,9 +76,10 @@ jobs:
       actions: write
       contents: read
 
-  # Always finish successfully with an empty output outside the opt-in queue path.
+  # PRs use hosted runners directly; a queue probe must not allocate on admission.
   select-mq-runner:
     name: Select Merge Queue Runner
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
