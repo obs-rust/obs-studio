@@ -40,3 +40,15 @@ pub fn store(stored: &mut [i32; 4], input: [i32; 4], clamped: [i32; 4]) -> bool 
     *stored = clamped;
     true
 }
+
+/// `crop_equal`'s side order, as indexes into `[left, top, right, bottom]`:
+/// left, right, top, bottom.
+pub const COMPARE_ORDER: [usize; 4] = [0, 2, 1, 3];
+
+/// `crop_equal(input, stored)`: `sides(i)` reads side `i` of the input, then
+/// of the stored crop, and is called in [`COMPARE_ORDER`] until the first
+/// difference, as C's `&&` chain reads them.
+pub fn equal(sides: impl FnMut(usize) -> (i32, i32)) -> bool {
+    let _ = sides;
+    todo!()
+}

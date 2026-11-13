@@ -68,3 +68,24 @@ fn store_compares_raw_input_not_clamped() {
     assert!(!store(&mut stored, [7, 7, 7, 7], [0, 0, 0, 0]));
     assert_eq!(stored, [7, 7, 7, 7]);
 }
+
+#[test]
+fn equal_reads_sides_in_c_order_until_the_first_difference() {
+    let input = [1, 2, 3, 4];
+    let read = |stored: [i32; 4]| {
+        let mut order = Vec::new();
+        let result = obs_scene::item_crop_setter::equal(|i| {
+            order.push(i);
+            (input[i], stored[i])
+        });
+        (result, order)
+    };
+    assert_eq!(read(input), (true, vec![0, 2, 1, 3]));
+    // left differs: nothing else is read.
+    assert_eq!(read([9, 2, 3, 4]), (false, vec![0]));
+    // right differs: top and bottom are not read.
+    assert_eq!(read([1, 2, 9, 4]), (false, vec![0, 2]));
+    // top differs: bottom is not read.
+    assert_eq!(read([1, 9, 3, 4]), (false, vec![0, 2, 1]));
+    assert_eq!(read([1, 2, 3, 9]), (false, vec![0, 2, 1, 3]));
+}
