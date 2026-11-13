@@ -2,6 +2,7 @@
 //! test_raster_state_entrypoints.c, with no FFI or unsafe code.
 use obs_graphics::blend_entrypoints::{self as entry, Context};
 use obs_graphics::state_stacks::{self, BlendState};
+use std::ffi::CStr;
 
 pub const DEFAULT: BlendState = BlendState {
     enabled: true,
@@ -34,6 +35,11 @@ pub struct Mock {
     pub stack: Vec<BlendState>,
     pub calls: Vec<Call>,
     pub seen: Vec<BlendState>,
+    /// After this many device calls the context is gone, as when a device
+    /// callback leaves it; `None` keeps it.
+    pub leave_after: Option<usize>,
+    /// The names a nested setter found no context under (its debug lines).
+    pub lost: Vec<&'static CStr>,
 }
 impl Mock {
     fn record(&mut self, call: Call) {
@@ -65,6 +71,13 @@ impl Context for Mock {
     }
     fn operation(&mut self, value: u32) {
         self.record(Call::Operation(value));
+    }
+    fn revalidate(&mut self, function: &'static CStr) -> bool {
+        let present = self.leave_after.is_none_or(|n| self.calls.len() < n);
+        if !present {
+            self.lost.push(function);
+        }
+        present
     }
 }
 fn restoration(state: BlendState) -> Vec<Call> {
@@ -256,4 +269,58 @@ fn test_raster_state_entrypoints_push_pop_sees_setters() {
     m.calls.clear();
     entry::pop(Some(&mut m));
     assert_eq!(m.calls[1], Call::Factors([2, 3, 2, 3]));
+}
+
+#[test]
+fn test_graphics_blend_entrypoints_setters_recheck_the_context() {
+    // Pop and reset reach the public setters, each of which reads the
+    // thread's context again: once a device call leaves it, the later
+    // setters write their debug line and neither store nor call.
+    for leave_after in 1..4 {
+        let mut m = Mock {
+            current: SAVED,
+            ..Default::default()
+        };
+        entry::push(Some(&mut m));
+        m.current = DEFAULT;
+        m.leave_after = Some(leave_after);
+        entry::pop(Some(&mut m));
+        let full = restoration(SAVED);
+        let kept = leave_after.min(full.len());
+        assert_eq!(m.calls, full[..kept]);
+        let names = [
+            c"gs_enable_blending",
+            c"gs_blend_function_separate",
+            c"gs_blend_op",
+        ];
+        assert_eq!(m.lost, names[kept..]);
+        let mut expected = DEFAULT;
+        if kept > 0 {
+            expected.enabled = SAVED.enabled;
+        }
+        if kept > 1 {
+            expected.src_c = SAVED.src_c;
+            expected.dest_c = SAVED.dest_c;
+            expected.src_a = SAVED.src_a;
+            expected.dest_a = SAVED.dest_a;
+        }
+        if kept > 2 {
+            expected.op = SAVED.op;
+        }
+        assert_eq!(m.current, expected);
+    }
+    // Reset: the steps are decided once, from the first context's state.
+    let mut m = Mock {
+        current: BlendState {
+            enabled: false,
+            src_c: 0,
+            op: 1,
+            ..DEFAULT
+        },
+        leave_after: Some(1),
+        ..Default::default()
+    };
+    entry::reset(Some(&mut m));
+    assert_eq!(m.calls, [Call::Enable(true)]);
+    assert_eq!(m.lost, [c"gs_blend_function_separate", c"gs_blend_op"]);
 }

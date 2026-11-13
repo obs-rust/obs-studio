@@ -7,7 +7,9 @@
 //! device calls (with their device, arguments and the state the device saw)
 //! and the log lines. Inputs: random setter arguments (blend types and
 //! operations outside the enums too), random push, pop and reset sequences
-//! over random or carried-over states, both devices, and no context.
+//! over random or carried-over states, both devices, no context, and a
+//! device call that leaves the context before pop's or reset's later
+//! setters read it again.
 //! No intentional differences. C and Rust each own independent stack storage.
 use super::blend_entrypoints::{Call, DEFAULT, Mock};
 use obs_graphics::blend_entrypoints as core;
@@ -38,6 +40,7 @@ unsafe extern "C" {
     fn oracle_blend_begin(present: bool, state: *const BlendState);
     fn oracle_blend_set(present: bool, state: *const BlendState);
     fn oracle_blend_device(device: *mut c_void);
+    fn oracle_blend_leave_after(count: u32);
     fn oracle_blend_clear_calls();
     fn oracle_blend_end();
     fn oracle_blend_count() -> u32;
@@ -82,12 +85,14 @@ impl Op {
 }
 
 /// One call: the context's presence, the device, the state to put in place
-/// first (`None` keeps what earlier calls left), and the call.
+/// first (`None` keeps what earlier calls left), the device call after which
+/// the context is gone (0: never), and the call.
 #[derive(Clone, Copy, Debug)]
 struct Step {
     present: bool,
     device: usize,
     state: Option<BlendState>,
+    leave_after: u32,
     op: Op,
 }
 
@@ -112,6 +117,7 @@ fn native(rust: bool, sequence: &[Step]) -> Vec<Snapshot> {
             let state = step.state.unwrap_or_else(|| oracle_blend_current());
             oracle_blend_set(step.present, &state);
             oracle_blend_device(device(step.device));
+            oracle_blend_leave_after(step.leave_after);
             oracle_blend_clear_calls();
             match (rust, step.op) {
                 (true, Op::Push) => ffi::gs_blend_state_push(),
@@ -167,8 +173,10 @@ fn compare(sequence: &[Step]) {
     for ((step, actual), expected) in sequence.iter().zip(&actual).zip(&expected) {
         assert_eq!(actual, expected, "{step:?}");
         // And what the C does, so a fault common to both sides shows too.
-        if step.present {
+        if step.present && step.leave_after == 0 {
             assert_eq!(actual.logs, 0);
+        }
+        if step.present {
             for event in &actual.events {
                 assert_eq!(event.device, device(step.device).cast_const());
             }
@@ -190,6 +198,8 @@ fn compare(sequence: &[Step]) {
         }
         m.calls.clear();
         m.seen.clear();
+        m.lost.clear();
+        m.leave_after = (step.leave_after > 0).then_some(step.leave_after as usize);
         let context = step.present.then_some(&mut m);
         match step.op {
             Op::Push => core::push(context),
@@ -214,6 +224,9 @@ fn compare(sequence: &[Step]) {
             .map(|e| ((e.call, e.args), e.seen))
             .collect();
         assert_eq!(model, native, "{step:?}");
+        if step.present {
+            assert_eq!(m.lost.len(), expected.logs as usize, "{step:?}");
+        }
     }
 }
 
@@ -258,6 +271,7 @@ fn step(present: bool, state: BlendState, op: Op) -> Step {
         present,
         device: 0,
         state: Some(state),
+        leave_after: 0,
         op,
     }
 }
@@ -316,6 +330,28 @@ fn deterministic_edges() {
                 present: true,
                 device,
                 state: None,
+                leave_after: 0,
+                op,
+            });
+        }
+    }
+    // A device call leaves the context: pop's and reset's later setters
+    // find none, write their line and store nothing.
+    for leave_after in 1..4 {
+        let mut changed = DEFAULT;
+        changed.enabled = false;
+        changed.src_c = 0;
+        changed.op = 1;
+        for (state, op) in [
+            (DEFAULT, Op::Push),
+            (changed, Op::Pop),
+            (changed, Op::Reset),
+        ] {
+            sequence.push(Step {
+                present: true,
+                device: 1,
+                state: Some(state),
+                leave_after,
                 op,
             });
         }
@@ -330,8 +366,8 @@ proptest! {
     #[test]
     fn callback_and_state_sequences(
         sequence in prop::collection::vec(
-            (any::<bool>(), 0usize..2, prop::option::weighted(0.3, state()), op())
-                .prop_map(|(present, device, state, op)| Step { present, device, state, op }),
+            (any::<bool>(), 0usize..2, prop::option::weighted(0.3, state()), prop_oneof![3 => Just(0u32), 1 => 1u32..4], op())
+                .prop_map(|(present, device, state, leave_after, op)| Step { present, device, state, leave_after, op }),
             0..60,
         ),
     ) {

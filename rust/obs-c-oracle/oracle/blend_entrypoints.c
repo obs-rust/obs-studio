@@ -3,7 +3,8 @@
  * (state-blend-entrypoints.c.h), renamed oracle_gs_*, and the production
  * adapter (blend-entrypoints-fields.c.h, under its real names, which the Rust
  * shims call), over the real private layout, a thread-local stand-in
- * context, a recording device and a recording blog. */
+ * context, a recording device that can leave the context, and a recording
+ * blog. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +27,7 @@ struct oracle_blend_event {
 static THREAD_LOCAL struct graphics_subsystem blend_graphics;
 static THREAD_LOCAL bool blend_present;
 static THREAD_LOCAL struct oracle_blend_event blend_events[BLEND_MAX_EVENTS];
-static THREAD_LOCAL unsigned blend_count, blend_logs;
+static THREAD_LOCAL unsigned blend_count, blend_logs, blend_leave_after;
 static THREAD_LOCAL int blend_level;
 static THREAD_LOCAL char blend_message[128];
 
@@ -62,6 +63,9 @@ static struct oracle_blend_event *blend_record(unsigned call, const gs_device_t 
 	event->call = call;
 	event->device = device;
 	event->seen = blend_graphics.cur_blend_state;
+	/* A device call that leaves the context, for the later nested setters. */
+	if (blend_leave_after && blend_count >= blend_leave_after)
+		blend_present = false;
 	return event;
 }
 static void blend_device_enable(gs_device_t *device, bool enable)
@@ -130,6 +134,7 @@ void oracle_gs_reset_blend_state(void);
 void oracle_blend_begin(bool present, const struct blend_state *state);
 void oracle_blend_set(bool present, const struct blend_state *state);
 void oracle_blend_device(void *device);
+void oracle_blend_leave_after(unsigned count);
 void oracle_blend_clear_calls(void);
 void oracle_blend_end(void);
 unsigned oracle_blend_count(void);
@@ -157,6 +162,10 @@ void oracle_blend_device(void *device)
 {
 	blend_graphics.device = (gs_device_t *)device;
 }
+void oracle_blend_leave_after(unsigned count)
+{
+	blend_leave_after = count;
+}
 void oracle_blend_begin(bool present, const struct blend_state *state)
 {
 	oracle_blend_end();
@@ -166,7 +175,7 @@ void oracle_blend_begin(bool present, const struct blend_state *state)
 	blend_graphics.exports.device_blend_function = blend_device_function;
 	blend_graphics.exports.device_blend_function_separate = blend_device_separate;
 	blend_graphics.exports.device_blend_op = blend_device_op;
-	blend_logs = blend_count = 0;
+	blend_logs = blend_count = blend_leave_after = 0;
 	blend_level = 0;
 	blend_message[0] = '\0';
 	oracle_blend_set(present, state);

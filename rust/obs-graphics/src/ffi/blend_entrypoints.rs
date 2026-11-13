@@ -9,7 +9,7 @@
 use super::state_stacks::DarrayStack;
 use crate::blend_entrypoints::{self, Context};
 use crate::state_stacks::{self, BlendState};
-use core::ffi::{c_char, c_void};
+use core::ffi::{CStr, c_char, c_void};
 use core::ptr::NonNull;
 use obs_util::ffi::darray::darray;
 
@@ -30,7 +30,7 @@ unsafe extern "C" {
 }
 struct Native(NonNull<c_void>);
 impl Native {
-    fn context(function: &core::ffi::CStr) -> Option<Self> {
+    fn context(function: &CStr) -> Option<Self> {
         // SAFETY: static function name; the adapter validates the current context.
         NonNull::new(unsafe { obs_graphics_blend_context(function.as_ptr()) }).map(Self)
     }
@@ -73,6 +73,15 @@ impl Context for Native {
     fn operation(&mut self, value: u32) {
         // SAFETY: the validated context is current; value retains the C enum.
         unsafe { obs_graphics_blend_op(self.0.as_ptr(), value) };
+    }
+    fn revalidate(&mut self, function: &'static CStr) -> bool {
+        match Self::context(function) {
+            Some(context) => {
+                *self = context;
+                true
+            }
+            None => false,
+        }
     }
 }
 

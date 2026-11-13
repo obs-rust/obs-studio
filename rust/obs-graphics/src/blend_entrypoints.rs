@@ -11,6 +11,7 @@
 //! the alpha factors, and `gs_blend_op` passes the device the operation as
 //! stored.
 use crate::state_stacks::{self, BlendState, blend};
+use core::ffi::CStr;
 
 /// A validated graphics context's blend storage and its device's blend calls.
 pub trait Context {
@@ -27,6 +28,11 @@ pub trait Context {
     fn factors(&mut self, src_c: u32, dest_c: u32, src_a: u32, dest_a: u32);
     /// The device's `device_blend_op`.
     fn operation(&mut self, value: u32);
+    /// Read this thread's context again, as a public setter called from pop
+    /// or reset does: when there is none, write the debug line under
+    /// `function` and answer false; otherwise this context now stands for the
+    /// one found, and the answer is true.
+    fn revalidate(&mut self, function: &'static CStr) -> bool;
 }
 
 /// `gs_enable_blending`.
