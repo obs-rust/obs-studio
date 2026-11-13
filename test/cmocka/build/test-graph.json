@@ -1071,6 +1071,21 @@
         }
       ]
     },
+    "test_canvas_release": {
+      "sources": [
+        "test/cmocka/test_canvas_release.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_canvas_rules_callers": {
       "sources": [
         "test/cmocka/test_canvas_rules_callers.c"
@@ -19345,6 +19360,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_canvas_release": {
+      "target": "test_canvas_release",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_canvas_rules_callers": {
       "target": "test_canvas_rules_callers",

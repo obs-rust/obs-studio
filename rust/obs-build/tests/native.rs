@@ -229,6 +229,8 @@ mod canonical_audio_filter_scalars_are_registered;
 mod canonical_canvas_channel_getter_is_registered;
 #[path = "native/registration/canonical_canvas_flags_getter_is_registered.rs"]
 mod canonical_canvas_flags_getter_is_registered;
+#[path = "native/registration/canonical_canvas_release_is_registered.rs"]
+mod canonical_canvas_release_is_registered;
 #[path = "native/registration/canonical_canvas_video_getter_is_registered.rs"]
 mod canonical_canvas_video_getter_is_registered;
 #[path = "native/registration/canonical_canvas_video_info_getter_is_registered.rs"]
