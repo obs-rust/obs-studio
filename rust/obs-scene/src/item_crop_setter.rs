@@ -34,7 +34,7 @@ pub fn clamp(input: [i32; 4]) -> [i32; 4] {
 /// Returns whether it stored, so the caller marks the transform after the
 /// unlock.
 pub fn store(stored: &mut [i32; 4], input: [i32; 4], clamped: [i32; 4]) -> bool {
-    if *stored == input {
+    if equal(|i| (input[i], stored[i])) {
         return false;
     }
     *stored = clamped;
@@ -48,7 +48,9 @@ pub const COMPARE_ORDER: [usize; 4] = [0, 2, 1, 3];
 /// `crop_equal(input, stored)`: `sides(i)` reads side `i` of the input, then
 /// of the stored crop, and is called in [`COMPARE_ORDER`] until the first
 /// difference, as C's `&&` chain reads them.
-pub fn equal(sides: impl FnMut(usize) -> (i32, i32)) -> bool {
-    let _ = sides;
-    todo!()
+pub fn equal(mut sides: impl FnMut(usize) -> (i32, i32)) -> bool {
+    COMPARE_ORDER.into_iter().all(|i| {
+        let (input, stored) = sides(i);
+        input == stored
+    })
 }

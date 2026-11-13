@@ -18,6 +18,22 @@ fn sides(crop: SceneItemCrop) -> [i32; 4] {
     [crop.left, crop.top, crop.right, crop.bottom]
 }
 
+/// Read one side, `[left, top, right, bottom]` index `i`, of a live crop.
+///
+/// # Safety
+/// `crop` must point to a live, readable `struct obs_sceneitem_crop`.
+unsafe fn side(crop: *const SceneItemCrop, i: usize) -> i32 {
+    // SAFETY: the caller guarantees a live crop; only this field is read.
+    unsafe {
+        match i {
+            0 => ptr::addr_of!((*crop).left).read(),
+            1 => ptr::addr_of!((*crop).top).read(),
+            2 => ptr::addr_of!((*crop).right).read(),
+            _ => ptr::addr_of!((*crop).bottom).read(),
+        }
+    }
+}
+
 /// Store the clamped crop unless the raw input equals the stored crop, then
 /// mark the transform, preserving the original null diagnostics and order.
 ///
@@ -50,19 +66,20 @@ pub unsafe extern "C" fn obs_sceneitem_set_crop(
     let clamped = item_crop_setter::clamp(sides(unsafe { crop.read() }));
     // SAFETY: validated live item; C snapshots and locks its captured parent.
     let scene = unsafe { obs_sceneitem_fields_lock(item.cast()) };
-    // SAFETY: the input is read again under the lock, where C compares it.
-    let input = sides(unsafe { crop.read() });
-    // SAFETY: read and write only crop while holding the parent's video mutex.
-    let mut stored = sides(unsafe { ptr::addr_of!((*item).crop).read() });
-    let changed = item_crop_setter::store(&mut stored, input, clamped);
+    // SAFETY: the stored crop is read under the parent's video mutex.
+    let stored = unsafe { ptr::addr_of!((*item).crop) };
+    // Under the lock, as C's crop_equal: input side, then stored side, left,
+    // right, top, bottom, stopping at the first difference.
+    // SAFETY: both crops are validated and live; the stored one is locked.
+    let changed = !item_crop_setter::equal(|i| unsafe { (side(crop, i), side(stored, i)) });
     if changed {
-        // SAFETY: as above; the item's crop is exclusively ours under the lock.
+        // SAFETY: the item's crop is exclusively ours under the lock.
         unsafe {
             ptr::addr_of_mut!((*item).crop).write(SceneItemCrop {
-                left: stored[0],
-                top: stored[1],
-                right: stored[2],
-                bottom: stored[3],
+                left: clamped[0],
+                top: clamped[1],
+                right: clamped[2],
+                bottom: clamped[3],
             })
         };
     }
