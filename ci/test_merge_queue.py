@@ -116,6 +116,10 @@ class MergeQueue(unittest.TestCase):
         self.assertIn("github.event_name == 'merge_group'", extra)
         self.assertIn("inputs.mq-runner-labels", extra)
 
+    def test_cross_job_declares_host_uic_runtime_on_minimal_runners(self):
+        cross = job_block(BUILD, "cross-compile")
+        self.assertIn("libglib2.0-0t64", cross)
+
     def test_stamp_never_skips_in_merge_queue(self):
         ci_mode = job_block(BUILD, "ci-mode")
         self.assertRegex(ci_mode, r"if: github\.event_name != 'merge_group'")
