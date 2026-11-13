@@ -58,6 +58,7 @@ mod display_state;
 mod display_state_parity;
 mod enum_modules_parity;
 mod enum_scenes;
+mod enum_scenes_parity;
 mod find_modules;
 mod find_modules_parity;
 mod get_main_canvas;

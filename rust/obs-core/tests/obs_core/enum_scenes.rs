@@ -39,9 +39,9 @@ impl Fixture {
         // Three public scenes and a group, in creation order. Private scene
         // 4, other-canvas scene 5 and non-scene input 6 are not enumerated.
         let before = self.refs;
-        for i in 0..4 {
+        for (i, initial) in before.iter().copied().take(4).enumerate() {
             self.refs[i] += 1;
-            assert_eq!(self.refs[i], before[i] + 1, "temporary callback reference");
+            assert_eq!(self.refs[i], initial + 1, "temporary callback reference");
             param.seen.push(i);
             if param.acquire {
                 self.refs[i] += 1;

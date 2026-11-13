@@ -27,6 +27,7 @@ pub mod display;
 pub mod display_size;
 pub mod display_state;
 pub mod enum_modules;
+pub mod enum_scenes;
 pub mod find_modules;
 pub mod get_main_canvas;
 pub mod get_output_source;
