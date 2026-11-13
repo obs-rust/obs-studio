@@ -59,12 +59,33 @@ pub trait Core {
 
 /// `obs_shutdown_remove_scene_item()`: remove the item and continue.
 pub fn remove_scene_item<C: Core>(core: &C, item: C::Item) -> bool {
-    let _ = (core, item);
-    todo!("obs_shutdown_remove_scene_item")
+    core.item_remove(item);
+    true
 }
 
 /// `obs_shutdown_detach_scene_items()`.
 pub fn detach_scene_items(core: &impl Core) {
-    let _ = core;
-    todo!("obs_shutdown_detach_scene_items")
+    let mut sources = Vec::new();
+    core.lock();
+    core.each_source(&mut |member| {
+        if let Some(source) = core.get_ref(member) {
+            sources.push(source);
+        }
+    });
+    core.unlock();
+
+    for &source in &sources {
+        let scene = core
+            .scene_from_source(source)
+            .or_else(|| core.group_from_source(source));
+        if let Some(scene) = scene {
+            core.enum_items(scene, &mut |item| remove_scene_item(core, item));
+        }
+    }
+    for &source in &sources {
+        core.release(source);
+    }
+    drop(sources);
+
+    while core.wait_destruction() {}
 }
