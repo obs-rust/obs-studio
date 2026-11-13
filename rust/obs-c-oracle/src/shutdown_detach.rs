@@ -40,4 +40,9 @@ unsafe extern "C" {
     pub fn oracle_shutdown_detach_install(fixture: *mut c_void, hooks: *const Hooks);
     /// The original detachment over the fixture.
     pub fn oracle_shutdown_detach_original(fixture: *mut c_void);
+    /// `struct obs_shutdown_detach_calls` as the C compiler lays it out:
+    /// size, alignment, then each member's offset in declaration order.
+    pub fn oracle_shutdown_detach_calls_layout(out: *mut [usize; 12]);
+    /// `struct oracle_shutdown_detach_hooks`, the same way.
+    pub fn oracle_shutdown_detach_hooks_layout(out: *mut [usize; 12]);
 }

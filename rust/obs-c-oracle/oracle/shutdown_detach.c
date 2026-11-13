@@ -4,6 +4,7 @@
  * renamed to stand-ins that forward to the test's model, through hooks the
  * test installs for its thread. */
 #include "libobs/build/libobs.pch.h"
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -211,4 +212,42 @@ void oracle_shutdown_detach_original(void *fixture)
 {
 	struct oracle_shutdown_detach *f = fixture;
 	oracle_obs_shutdown_detach_scene_items_run(&f->core.data, NULL);
+}
+
+void oracle_shutdown_detach_calls_layout(size_t out[12]);
+void oracle_shutdown_detach_hooks_layout(size_t out[12]);
+
+/* struct obs_shutdown_detach_calls from the real private header: its size,
+ * alignment, then each member's offset in declaration order. */
+void oracle_shutdown_detach_calls_layout(size_t out[12])
+{
+	out[0] = sizeof(struct obs_shutdown_detach_calls);
+	out[1] = _Alignof(struct obs_shutdown_detach_calls);
+	out[2] = offsetof(struct obs_shutdown_detach_calls, lock);
+	out[3] = offsetof(struct obs_shutdown_detach_calls, unlock);
+	out[4] = offsetof(struct obs_shutdown_detach_calls, each_source);
+	out[5] = offsetof(struct obs_shutdown_detach_calls, get_ref);
+	out[6] = offsetof(struct obs_shutdown_detach_calls, scene_from_source);
+	out[7] = offsetof(struct obs_shutdown_detach_calls, group_from_source);
+	out[8] = offsetof(struct obs_shutdown_detach_calls, enum_items);
+	out[9] = offsetof(struct obs_shutdown_detach_calls, item_remove);
+	out[10] = offsetof(struct obs_shutdown_detach_calls, release);
+	out[11] = offsetof(struct obs_shutdown_detach_calls, wait_destruction);
+}
+
+/* struct oracle_shutdown_detach_hooks, the same way. */
+void oracle_shutdown_detach_hooks_layout(size_t out[12])
+{
+	out[0] = sizeof(struct oracle_shutdown_detach_hooks);
+	out[1] = _Alignof(struct oracle_shutdown_detach_hooks);
+	out[2] = offsetof(struct oracle_shutdown_detach_hooks, model);
+	out[3] = offsetof(struct oracle_shutdown_detach_hooks, lock);
+	out[4] = offsetof(struct oracle_shutdown_detach_hooks, unlock);
+	out[5] = offsetof(struct oracle_shutdown_detach_hooks, get_ref);
+	out[6] = offsetof(struct oracle_shutdown_detach_hooks, scene_from_source);
+	out[7] = offsetof(struct oracle_shutdown_detach_hooks, group_from_source);
+	out[8] = offsetof(struct oracle_shutdown_detach_hooks, enum_items);
+	out[9] = offsetof(struct oracle_shutdown_detach_hooks, item_remove);
+	out[10] = offsetof(struct oracle_shutdown_detach_hooks, release);
+	out[11] = offsetof(struct oracle_shutdown_detach_hooks, wait);
 }
