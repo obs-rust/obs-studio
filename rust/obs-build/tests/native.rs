@@ -5493,3 +5493,6 @@ mod canonical_scene_item_visible_is_registered;
 
 #[path = "native/mcp_runtime.rs"]
 mod mcp_runtime;
+
+#[path = "native/registration/canonical_core_private_data_is_registered.rs"]
+mod canonical_core_private_data_is_registered;
