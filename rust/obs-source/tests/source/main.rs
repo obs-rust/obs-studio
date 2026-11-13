@@ -49,6 +49,7 @@ mod draw_plan_parity;
 mod enabled_setter;
 mod enabled_setter_parity;
 mod filter_backup;
+mod filter_backup_parity;
 mod filter_count;
 mod filter_count_parity;
 mod filter_index;

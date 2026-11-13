@@ -5,7 +5,6 @@
     "core-output",
     "core-scene-lookup",
     "core-source",
-    "core-source-filter-backup",
     "null-audio",
     "util-cf"
   ],

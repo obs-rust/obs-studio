@@ -93,7 +93,10 @@ fn no_log(_: &str) {
 fn test_source_filter_backup_null_source_is_rejected() {
     let mut messages = Vec::new();
     assert!(backup::<Source>(None, |message| messages.push(message)).is_none());
-    assert_eq!(messages, ["obs_source_backup_filters: Null 'source' parameter"]);
+    assert_eq!(
+        messages,
+        ["obs_source_backup_filters: Null 'source' parameter"]
+    );
 }
 
 #[test]
@@ -108,7 +111,10 @@ fn test_source_filter_backup_empty_backups_are_owned_arrays() {
     assert!(second.is_empty());
     assert!(source.filters.is_empty());
     assert!(!source.locked);
-    assert_eq!(source.events, ["create", "lock", "unlock", "create", "lock", "unlock"]);
+    assert_eq!(
+        source.events,
+        ["create", "lock", "unlock", "create", "lock", "unlock"]
+    );
 }
 
 fn check_populated_backup(count: usize) {
@@ -154,7 +160,10 @@ fn test_source_filter_backup_forward_order_and_ownership() {
 
 #[test]
 fn test_source_filter_backup_releases_temporary_references() {
-    let mut source = Source { filters: vec![record(0)], ..Source::default() };
+    let mut source = Source {
+        filters: vec![record(0)],
+        ..Source::default()
+    };
     for _ in 0..2 {
         let array = backup(Some(&mut source), no_log).unwrap();
         assert_eq!(array.len(), 1);

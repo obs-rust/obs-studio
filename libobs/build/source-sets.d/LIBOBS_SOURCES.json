@@ -218,7 +218,6 @@
   "build/libobs.core-output+.h.c",
   "build/libobs.core-scene-lookup+.h.c",
   "build/libobs.core-source+.h.c",
-  "build/libobs.core-source-filter-backup+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
