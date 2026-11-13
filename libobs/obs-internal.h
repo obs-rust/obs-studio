@@ -312,6 +312,12 @@ const char *obs_get_hotkey_translation(obs_key_t key, const char *def);
 void obs_hotkeys_store_key_translation(obs_key_t key, const char *translation);
 
 struct obs_context_data;
+/* Private dependency of the object-bound registration unity group. Not exported. */
+obs_hotkey_pair_id register_hotkey_pair_internal(obs_hotkey_registerer_t type, void *registerer,
+						 void *(*weak_ref)(void *), struct obs_context_data *context,
+						 const char *name0, const char *description0, const char *name1,
+						 const char *description1, obs_hotkey_active_func func0,
+						 obs_hotkey_active_func func1, void *data0, void *data1);
 void obs_hotkeys_context_release(struct obs_context_data *context);
 
 void obs_hotkeys_free(void);
