@@ -341,6 +341,8 @@ mod canonical_output_handler_getters_is_registered;
 mod canonical_output_identity_getters_is_registered;
 #[path = "native/registration/canonical_output_mixer_getters_is_registered.rs"]
 mod canonical_output_mixer_getters_is_registered;
+#[path = "native/registration/canonical_output_preferred_size_is_registered.rs"]
+mod canonical_output_preferred_size_is_registered;
 #[path = "native/registration/canonical_output_protocol_getter_is_registered.rs"]
 mod canonical_output_protocol_getter_is_registered;
 #[path = "native/registration/canonical_output_protocol_null_is_registered.rs"]
