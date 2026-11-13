@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83299,
-      "libobs": 94918,
+      "libobs": 95002,
       "plugins": 148451,
       "shared": 15968
     },
-    "percent": 16.26,
-    "ported_lines": 55716,
-    "total_lines": 342636
+    "percent": 16.29,
+    "ported_lines": 55834,
+    "total_lines": 342720
   },
-  "commit": "ea7b887",
+  "commit": "22e2b71",
   "date": "2026-11-13",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 49.02,
-          "ported_lines": 31244,
-          "total_lines": 63732
+          "percent": 49.14,
+          "ported_lines": 31362,
+          "total_lines": 63816
         },
         "graphics": {
           "percent": 68.85,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 705,
-      "hybrid_lines": 39202,
-      "percent": 58.7,
-      "ported_lines": 55716,
-      "total_lines": 94918
+      "files": 708,
+      "hybrid_lines": 39168,
+      "percent": 58.77,
+      "ported_lines": 55834,
+      "total_lines": 95002
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 50.88,
-            "ported_lines": 29891,
-            "total_lines": 58743
+            "percent": 51.01,
+            "ported_lines": 30009,
+            "total_lines": 58827
           },
           "graphics": {
             "percent": 69.36,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 670,
-        "hybrid_lines": 34883,
-        "percent": 59.63,
+        "files": 673,
+        "hybrid_lines": 34849,
+        "percent": 59.71,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -238,6 +238,7 @@
           "obs-encoder-state-queries.c.h",
           "obs-encoder-type-info.c.h",
           "obs-enum-modules.c.h",
+          "obs-enum-scenes.c.h",
           "obs-find-modules.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-output-source.c.h",
@@ -349,6 +350,7 @@
           "obs-scene-blend.c.h",
           "obs-scene-bounds-place.c.h",
           "obs-scene-bounds.c.h",
+          "obs-scene-color-space.c.h",
           "obs-scene-coords.c.h",
           "obs-scene-create-reference-helpers.c.h",
           "obs-scene-create.c.h",
@@ -362,6 +364,7 @@
           "obs-scene-item-blending-mode.c.h",
           "obs-scene-item-bounds-getters.c.h",
           "obs-scene-item-crop-fields.c.h",
+          "obs-scene-item-crop-setter.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
           "obs-scene-item-id.c.h",
@@ -397,6 +400,7 @@
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
           "obs-set-output-source.c.h",
+          "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
           "obs-source-async-flag-getters.c.h",
@@ -518,15 +522,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 51530,
-        "total_lines": 86413
+        "ported_lines": 51648,
+        "total_lines": 86497
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 50.0,
-            "ported_lines": 26409,
-            "total_lines": 52817
+            "percent": 50.14,
+            "ported_lines": 26527,
+            "total_lines": 52901
           },
           "graphics": {
             "percent": 69.36,
@@ -544,9 +548,9 @@
             "total_lines": 9978
           }
         },
-        "files": 650,
-        "hybrid_lines": 32439,
-        "percent": 59.66,
+        "files": 653,
+        "hybrid_lines": 32405,
+        "percent": 59.74,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -703,6 +707,7 @@
           "obs-encoder-state-queries.c.h",
           "obs-encoder-type-info.c.h",
           "obs-enum-modules.c.h",
+          "obs-enum-scenes.c.h",
           "obs-find-modules.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-output-source.c.h",
@@ -802,6 +807,7 @@
           "obs-scene-blend.c.h",
           "obs-scene-bounds-place.c.h",
           "obs-scene-bounds.c.h",
+          "obs-scene-color-space.c.h",
           "obs-scene-coords.c.h",
           "obs-scene-create-reference-helpers.c.h",
           "obs-scene-create.c.h",
@@ -815,6 +821,7 @@
           "obs-scene-item-blending-mode.c.h",
           "obs-scene-item-bounds-getters.c.h",
           "obs-scene-item-crop-fields.c.h",
+          "obs-scene-item-crop-setter.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
           "obs-scene-item-id.c.h",
@@ -850,6 +857,7 @@
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
           "obs-set-output-source.c.h",
+          "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
           "obs-source-async-flag-getters.c.h",
@@ -969,15 +977,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 47969,
-        "total_lines": 80408
+        "ported_lines": 48087,
+        "total_lines": 80492
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 50.23,
-            "ported_lines": 27350,
-            "total_lines": 54448
+            "percent": 50.37,
+            "ported_lines": 27468,
+            "total_lines": 54532
           },
           "graphics": {
             "percent": 68.92,
@@ -995,9 +1003,9 @@
             "total_lines": 10704
           }
         },
-        "files": 661,
-        "hybrid_lines": 33797,
-        "percent": 59.25,
+        "files": 664,
+        "hybrid_lines": 33763,
+        "percent": 59.34,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1156,6 +1164,7 @@
           "obs-encoder-state-queries.c.h",
           "obs-encoder-type-info.c.h",
           "obs-enum-modules.c.h",
+          "obs-enum-scenes.c.h",
           "obs-find-modules.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-output-source.c.h",
@@ -1255,6 +1264,7 @@
           "obs-scene-blend.c.h",
           "obs-scene-bounds-place.c.h",
           "obs-scene-bounds.c.h",
+          "obs-scene-color-space.c.h",
           "obs-scene-coords.c.h",
           "obs-scene-create-reference-helpers.c.h",
           "obs-scene-create.c.h",
@@ -1268,6 +1278,7 @@
           "obs-scene-item-blending-mode.c.h",
           "obs-scene-item-bounds-getters.c.h",
           "obs-scene-item-crop-fields.c.h",
+          "obs-scene-item-crop-setter.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
           "obs-scene-item-id.c.h",
@@ -1303,6 +1314,7 @@
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
           "obs-set-output-source.c.h",
+          "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
           "obs-source-async-decoupled.c.h",
           "obs-source-async-flag-getters.c.h",
@@ -1427,12 +1439,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 49147,
-        "total_lines": 82944
+        "ported_lines": 49265,
+        "total_lines": 83028
       }
     }
   },
   "rust": {
-    "lines": 210781
+    "lines": 211299
   }
 }
