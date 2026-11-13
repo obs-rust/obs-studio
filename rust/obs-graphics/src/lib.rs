@@ -74,6 +74,7 @@ pub mod plane;
 mod platform;
 pub mod present_entrypoints;
 pub mod quat;
+pub mod raster_entrypoints;
 mod round;
 pub mod shader_file;
 pub mod shader_param_introspection;
