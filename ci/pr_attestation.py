@@ -10,7 +10,7 @@ that base's git objects. The loaded verifier must match the base as well.
 Never import scripts or policy from the head to decide trust.
 
 forge-ci/prooft 0.2.0 source pin:
-683bcf0b3fcf77548054c85991f2b03fdaca77bd (used by the isolated subprocess adapter).
+d08d58bebcd8592e4526b9bde9ca4717966a8786 (used by the isolated subprocess adapter).
 Uses its v1 Policy, Trailers, verify and lane_key APIs, not another trailer
 format. This wrapper rejects malformed/duplicate/invalid supplied evidence
 globally; omitted gates receive no credit. prooft's stricter 60-second future
@@ -44,7 +44,7 @@ import sys
 import tempfile
 import time
 
-PROOFT_REF = "683bcf0b3fcf77548054c85991f2b03fdaca77bd"
+PROOFT_REF = "d08d58bebcd8592e4526b9bde9ca4717966a8786"
 REPOSITORY = "obs-rust/obs-studio"
 ORG = "obs-rust"
 SHA = re.compile(r"[0-9a-f]{40}\Z")

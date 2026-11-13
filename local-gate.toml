@@ -117,6 +117,17 @@ optional = true
 # Complete client evidence (#4745), independent of legacy remote lane mappings.
 # With no exclusions these keys include ALL tracked linted sources, configs,
 # target cfg/toolchain, Dylints, manifests, lockfiles, and runner scripts.
+# Full-file proofs include every tracked schema, script, config and manifest.
+# BASE is resolved to an immutable SHA inside the local-gate entry point.
+[gate.lanes.client-checks]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-checks"]
+tools = ["uv", "xmllint"]
+
+[gate.lanes.client-swift]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-swift"]
+tools = ["uv", "swift-format"]
+optional = true
+
 [gate.lanes.client-lint]
 run = ["uv", "run", "ci/local_gate.py", "--lane", "client-lint"]
 tools = ["uvx", "soldr"]

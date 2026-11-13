@@ -317,7 +317,7 @@ class TrustContract(unittest.TestCase):
             f"uv run --no-project --with {subject.PROOFT_SOURCE} python -I -c",
         )
         self.assertIn(
-            "@683bcf0b3fcf77548054c85991f2b03fdaca77bd", subject.PROOFT_SOURCE
+            "@d08d58bebcd8592e4526b9bde9ca4717966a8786", subject.PROOFT_SOURCE
         )
         self.assertNotEqual(Path(invoke.call_args.kwargs["cwd"]), self.root)
 
