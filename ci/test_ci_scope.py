@@ -73,7 +73,7 @@ class CiScopeTest(unittest.TestCase):
         )
         self.assertEqual((got.macos, got.windows), (True, False))
 
-    def test_core_prs_select_windows_without_adding_macos_or_queue_work(self):
+    def test_core_prs_keep_routing_and_queue_adds_both_platforms(self):
         for path in (
             "libobs/obs.c.h",
             "rust/obs-util/src/dstr.rs",
@@ -87,7 +87,8 @@ class CiScopeTest(unittest.TestCase):
                 self.assertTrue(pr.windows)
                 self.assertFalse(pr.macos or pr.full)
                 queued = scope([path], event="merge_group")
-                self.assertFalse(queued.windows or queued.macos or queued.full)
+                self.assertTrue(queued.windows and queued.macos)
+                self.assertFalse(queued.full)
                 pushed = scope([path], event="push", ref="master")
                 self.assertTrue(pushed.windows and pushed.macos)
 
@@ -97,7 +98,7 @@ class CiScopeTest(unittest.TestCase):
                 got = scope([path], event="pull_request")
                 self.assertFalse(got.windows or got.macos or got.full)
 
-    def test_merge_group_is_linux_only_and_push_keeps_native_coverage(self):
+    def test_merge_group_and_push_keep_native_core_coverage(self):
         # #3606: the effect parser batch passed with MSVC linking skipped.
         for files in (
             ["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"],
@@ -109,25 +110,25 @@ class CiScopeTest(unittest.TestCase):
             with self.subTest(files=files):
                 got = scope(files, event="merge_group")
                 self.assertTrue(got.core)
-                self.assertFalse(got.windows)
-                self.assertFalse(got.macos)
+                self.assertTrue(got.windows)
+                self.assertTrue(got.macos)
                 pushed = scope(files, event="push", ref="master")
                 self.assertTrue(pushed.windows and pushed.macos)
                 self.assertFalse(got.full)
         got = scope(["ci/ci_scope.py"], event="merge_group")
-        self.assertFalse(got.windows or got.macos)
+        self.assertTrue(got.windows and got.macos)
 
-    def test_merge_group_trims_repeated_lanes(self):
+    def test_merge_group_restores_selected_heavy_lanes(self):
         files = [
             "libobs/obs.c.h", "frontend/widgets/OBSBasicWindow.cpp",
             "ci/ci_scope.py", "rust/obs-util/src/platform/windows/mod.rs",
             "rust/obs-util/src/platform/macos/mod.rs", "Cargo.lock",
         ]
         queued = scope(files, event="merge_group")
-        for lane in ("macos", "windows", "qt", "tier2", "qt_sdk", "full",
-                     "cross_targets", "cross_lint", "windows_link"):
+        for lane in ("macos", "windows", "qt", "tier2",
+                     "cross_lint", "windows_link"):
             with self.subTest(lane=lane):
-                self.assertFalse(getattr(queued, lane))
+                self.assertTrue(getattr(queued, lane))
         self.assertTrue(queued.core)
         self.assertFalse(queued.docs_only)
         pr = scope(files, event="pull_request")
@@ -135,6 +136,62 @@ class CiScopeTest(unittest.TestCase):
         pushed = scope(files, event="push", ref="master")
         self.assertTrue(pushed.tier2 and pushed.qt and pushed.macos and pushed.windows)
         self.assertTrue(pushed.cross_lint)
+
+    def test_queue_event_rejects_malformed_and_reads_combined_diff(self):
+        import json
+        import os
+        import subprocess
+        import tempfile
+        from unittest import mock
+        import ci_scope
+
+        with tempfile.TemporaryDirectory() as directory:
+            event = Path(directory) / "event.json"
+            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}):
+                for body in ({}, {"merge_group": {}}, {"merge_group": {"base_sha": "bad"}}):
+                    event.write_text(json.dumps(body))
+                    with self.assertRaises(ValueError):
+                        ci_scope.queue_changed_files()
+                group = {"base_sha": "a" * 40, "head_sha": "b" * 40}
+                event.write_text(json.dumps({"merge_group": group}))
+                files = ["plugins/win-capture/game-capture.c", "plugins/mac-capture/mac-display-capture.m"]
+                with mock.patch.object(ci_scope.subprocess, "run", return_value=
+                                       subprocess.CompletedProcess([], 0, "\n".join(files))) as run:
+                    self.assertEqual(ci_scope.queue_changed_files(), files)
+                self.assertEqual(run.call_args.args[0], ["git", "diff", "--name-only", group["base_sha"], group["head_sha"], "--"])
+                with mock.patch.object(ci_scope.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "")):
+                    self.assertEqual(ci_scope.queue_changed_files(), [])
+
+    def test_queue_path_fixtures(self):
+        # Native platform paths stay narrow; shared/core selects both platforms.
+        fixtures = (
+            (["plugins/win-capture/game-capture.c"], False, True, False, False),
+            (["plugins/mac-capture/mac-display-capture.m"], True, False, False, False),
+            (["libobs/util/platform-windows.c.h"], False, True, False, False),
+            (["libobs/util/platform-cocoa.m.h"], True, False, False, False),
+            (["rust/obs-util/src/platform/windows/mod.rs"], False, True, False, False),
+            (["cmake/common/helpers_common.cmake"], True, True, False, True),
+            (["frontend/widgets/OBSBasicWindow.cpp"], False, False, True, False),
+            (["libobs/obs.c.h"], True, True, False, True),
+            (["Cargo.toml"], True, True, False, True),
+            (["plugins/obs-ffmpeg/obs-ffmpeg.c"], False, False, False, False),
+            (["docs/features.md"], False, False, False, False),
+            (["rust/obs-util/README.md"], False, False, False, False),
+            (["frontend/README.md"], False, False, False, False),
+            ([], False, False, False, False),
+            # Combined immutable diff from two PRs, rather than either PR head.
+            (["plugins/win-capture/game-capture.c", "plugins/mac-capture/mac-display-capture.m"], True, True, False, False),
+        )
+        for files, macos, windows, qt, tier2 in fixtures:
+            with self.subTest(files=files):
+                got = scope(files, event="merge_group")
+                self.assertEqual((got.macos, got.windows, got.qt, got.tier2),
+                                 (macos, windows, qt, tier2))
+                non_docs = bool(files) and not got.docs_only
+                self.assertEqual(got.windows_link, non_docs)
+                self.assertEqual(got.cross_lint, non_docs)
+                self.assertFalse(got.full)
+        self.assertEqual(scope(["plugins/obs-ffmpeg/obs-ffmpeg.c"], event="merge_group").linux_targets, "obs-ffmpeg")
 
     def test_queue_runner_selection_preserves_hosted_fallbacks(self):
         import re
@@ -146,7 +203,7 @@ class CiScopeTest(unittest.TestCase):
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
-                "rust-cross-lint", "rust-cross-proof", "rust-windows-link",
+                "rust-cross-lint", "rust-cross-lint-release", "rust-cross-proof", "rust-windows-link",
                 "rust-linux-tier2-build", "rust-linux-tier2", "linux-qt-frontend",
             ), "ubuntu-26.04"),
             "check-format.yaml": {"checks": "ubuntu-latest"},
@@ -226,7 +283,7 @@ class CiScopeTest(unittest.TestCase):
             self.assertIn("needs: select-mq-runner", blocks[job])
             self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
 
-    def test_queue_runs_merge_result_tests_and_skips_windows_link(self):
+    def test_queue_runs_merge_result_tests_and_windows_link(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = text.split("  rust-windows-link:\n", 1)[1].split("    steps:", 1)[0]
         self.assertIn("needs.check-event.outputs.windows_link == 'true'", job)

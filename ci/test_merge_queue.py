@@ -65,6 +65,61 @@ class MergeQueue(unittest.TestCase):
     def test_scope_uses_merge_group_base(self):
         self.assertIn("github.event.merge_group.base_sha", job_block(BUILD, "check-event"))
 
+    def test_queue_heavy_jobs_ignore_proofs_and_attestation(self):
+        for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos",
+                     "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows",
+                     "rust-linux-tier2-build"):
+            with self.subTest(job=name):
+                header = job_block(BUILD, name).split("    steps:", 1)[0]
+                condition = re.search(r"^    if: (.+)$", header, re.M).group(1)
+                # Force every client/hosted skip output true. Queue execution
+                # must still be selected; false path scope may still skip it.
+                def allows(selected):
+                    values = {"docs_only": "false", "deferred": "true",
+                              "macos": selected, "windows": selected,
+                              "tier2": selected, "cross_lint": selected}
+                    expr = condition.removeprefix("${{").removesuffix("}}")
+                    expr = expr.replace("github.event_name", repr("merge_group"))
+                    expr = re.sub(r"needs\.check-event\.outputs\.([\w_-]+)",
+                                  lambda m: repr(values[m[1]]), expr)
+                    expr = re.sub(r"needs\.ci-mode\.outputs\.[\w_-]+", repr("true"), expr)
+                    expr = expr.replace("needs.rust-tests-linux.result", repr("success"))
+                    expr = re.sub(r"inputs\.[\w_-]+", "False", expr)
+                    expr = expr.replace("always()", "True").replace("cancelled()", "False")
+                    expr = expr.replace("&&", " and ").replace("||", " or ")
+                    expr = re.sub(r"!(?!=)", " not ", expr)
+                    return eval(expr, {"__builtins__": {}})
+                self.assertTrue(allows("true"), condition)
+                if name != "rust-tests-linux":
+                    self.assertFalse(allows("false"), condition)
+        mode = job_block(BUILD, "ci-mode")
+        self.assertIn("PROOFS: ${{ github.event_name == 'pull_request' && !inputs.full }}", mode)
+
+    def test_queue_disables_command_verdict_replay(self):
+        for text in (BUILD, (ROOT / ".github/workflows/check-format.yaml").read_text()):
+            self.assertIn("SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}", text)
+
+    def test_full_queue_rust_tests_also_ignore_hosted_proof(self):
+        fast = job_block(BUILD, "rust-tests-linux")
+        self.assertIn(
+            "if: needs.check-event.outputs.deferred != 'true' && "
+            "(github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')",
+            fast,
+        )
+
+    def test_gate_checks_child_coverage_from_exact_scope(self):
+        gate = job_block(PULL, "ci-gate")
+        self.assertIn("uv run --no-project ci/gate_jobs.py", gate)
+        self.assertIn("fetch-depth: 0", gate)
+        self.assertNotIn("needs.build-project.outputs.core", gate)
+        extra = job_block(BUILD, "rust-cross-lint-release")
+        self.assertIn("github.event_name == 'merge_group'", extra)
+        self.assertIn("inputs.mq-runner-labels", extra)
+
+    def test_cross_job_declares_host_uic_runtime_on_minimal_runners(self):
+        cross = job_block(BUILD, "cross-compile")
+        self.assertIn("libglib2.0-0t64", cross)
+
     def test_stamp_never_skips_in_merge_queue(self):
         ci_mode = job_block(BUILD, "ci-mode")
         self.assertRegex(ci_mode, r"if: github\.event_name != 'merge_group'")

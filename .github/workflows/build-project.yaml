@@ -88,6 +88,8 @@ env:
   # Pinned soldr can replay stale Rust output (zackees/zccache#1943).
   # Keep cook/target reuse and standalone C/C++ compiler caching enabled.
   SOLDR_RUSTC_WRAPPER: none
+  # Queue validation executes commands; compiler artifacts may still be restored.
+  SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}
   # A Windows runner's Python decodes with the ANSI code page, so the ci/
   # self-tests this workflow runs (ci/local_gate.py, and the children it
   # starts) raise UnicodeDecodeError on the UTF-8 workflow files (#2757).
@@ -266,7 +268,8 @@ jobs:
               # selected path in the push, not only its final commit.
               base="${{ github.event.before || 'HEAD^1' }}"
             fi
-            eval "$(uv run --no-project ci/ci_scope.py "${base}" --event "${GITHUB_EVENT_NAME}" --ref "${GITHUB_REF_NAME}")"
+            scope=$(uv run --no-project ci/ci_scope.py "${base}" --event "${GITHUB_EVENT_NAME}" --ref "${GITHUB_REF_NAME}")
+            eval "${scope}"
           fi
           # Fast PR path (#992): a PR or merge-queue run that no path escalates
           # to the full builds runs only the lanes its paths select; the
@@ -1598,9 +1601,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-      # Lane proofs (#699) are for PRs and the merge queue only, never a
-      # push, schedule, dispatch or full run (#992 folded that job in here).
-      PROOFS: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !inputs.full }}
+      # Proof skips are PR-only. Merge groups execute the selected heavy lanes.
+      PROOFS: ${{ github.event_name == 'pull_request' && !inputs.full }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -1639,9 +1641,8 @@ jobs:
 
       # Lane proofs (#699): a lane whose exact inputs already passed in a
       # trusted run of this workflow is skipped (ci/lane_proof.py). Keys come
-      # from local-gate.toml as committed on the BASE, so a merge-queue
-      # rebuild after an unrelated master change reuses the pass. Fails open:
-      # no output, no skip. Runs on the merge ref, not the PR head.
+      # from local-gate.toml as committed on the BASE. Lookup failures leave
+      # no skip output. Queue execution never consults these cached passes.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         if: env.PROOFS == 'true'
         with:
@@ -1680,7 +1681,7 @@ jobs:
     needs: [check-event, ci-mode]
     # A docs-only PR or queue run changes no Rust, C or CMake: skipped, and
     # passing CI Gate; the Format job still runs the ci/ self-tests (#2079).
-    if: needs.ci-mode.outputs.skip_rust-tests-linux != 'true' && needs.check-event.outputs.docs_only != 'true'
+    if: (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-linux != 'true') && needs.check-event.outputs.docs_only != 'true'
     defaults:
       run:
         shell: bash
@@ -1880,7 +1881,7 @@ jobs:
 
       # Skipped when a trusted run already passed these exact inputs.
       - name: Local Gate (rust-test) 🧪
-        if: needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
+        if: needs.check-event.outputs.deferred != 'true' && (github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')
         run: uv run --no-project ci/local_gate.py --lane rust-test
 
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
@@ -2027,7 +2028,9 @@ jobs:
           sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15)
           sudo apt-get "${apt_options[@]}" update
-          sudo apt-get install "${apt_options[@]}" -y --no-install-recommends cmake ninja-build
+          # The cross SDK's host Qt uic links GLib. Hosted images include it;
+          # minimal self-hosted queue runners need the runtime explicitly.
+          sudo apt-get install "${apt_options[@]}" -y --no-install-recommends cmake ninja-build libglib2.0-0t64
 
       - name: Cross Compile 🧰
         env:
@@ -2054,7 +2057,7 @@ jobs:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true') }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true')) }}
     defaults:
       run:
         shell: bash
@@ -2172,11 +2175,11 @@ jobs:
   rust-cross-lint-release:
     timeout-minutes: 45
     name: Rust Cross Lint 🦀 (release targets)
-    # Release gate only (#955): Windows arm64, macOS x64 and Linux arm64 on top
-    # of the PR gate's targets.
-    runs-on: ubuntu-26.04
+    # Queue and release lint-only targets: Windows arm64, macOS x64 and Linux
+    # arm64. The main cross matrix retains its independent test-link legs.
+    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: check-event
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.full == 'true' }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && (needs.check-event.outputs.full == 'true' || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true')) }}
     defaults:
       run:
         shell: bash
@@ -2222,7 +2225,7 @@ jobs:
     timeout-minutes: 25
     name: Rust Tests 🦀 (macos-26)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
     runs-on: macos-26
     # Starts with Fast Gate (#2985): the lane consumes none of its output, and
     # a failing gate still fails the run through CI Gate (ci/gate_jobs.py).
@@ -2266,7 +2269,7 @@ jobs:
       # (ci/rust_scope.py selects the feature, ci_scope.py the OS); the
       # workspace on master (#992).
       - name: Run Rust Tests (changed crates) 🧪
-        if: needs.check-event.outputs.deferred == 'true'
+        if: github.event_name != 'merge_group' && needs.check-event.outputs.deferred == 'true'
         env:
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
@@ -2274,7 +2277,7 @@ jobs:
           uv run --no-project ci/local_gate.py --test-diff "${BASE}"
 
       - name: Run Rust Tests 🧪
-        if: needs.check-event.outputs.deferred != 'true'
+        if: github.event_name == 'merge_group' || needs.check-event.outputs.deferred != 'true'
         run: soldr cargo test --workspace --locked
 
       - name: Run Clippy 📎
@@ -2379,7 +2382,7 @@ jobs:
     timeout-minutes: 30
     name: Rust Tests 🦀 (windows-2025-vs2026)
     # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tests-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
+    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-windows != 'true') && needs.check-event.outputs.windows == 'true' }}
     runs-on: windows-2025-vs2026
     # Starts with Fast Gate (#2985); see rust-tests-macos.
     needs: [check-event, ci-mode]
@@ -2428,7 +2431,7 @@ jobs:
       # (ci/rust_scope.py selects the feature, ci_scope.py the OS); the
       # workspace on master (#992).
       - name: Run Rust Tests (changed crates) 🧪
-        if: needs.check-event.outputs.deferred == 'true'
+        if: github.event_name != 'merge_group' && needs.check-event.outputs.deferred == 'true'
         env:
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
@@ -2440,7 +2443,7 @@ jobs:
           uv run --no-project ci/local_gate.py --test-diff "$env:BASE"
 
       - name: Run Rust Tests 🧪
-        if: needs.check-event.outputs.deferred != 'true'
+        if: github.event_name == 'merge_group' || needs.check-event.outputs.deferred != 'true'
         run: soldr cargo test --workspace --locked
 
       - name: Run Clippy 📎
@@ -2554,7 +2557,7 @@ jobs:
     # Compilation consumes no Fast Gate output and can overlap its runner.
     # Keep proof/scope checks here; OFF/ON execution waits only for this build.
     needs: [check-event, ci-mode]
-    if: ${{ needs.check-event.outputs.tier2 == 'true' && needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.ci-mode.outputs.tier2-linux_hit != 'true' }}
+    if: ${{ needs.check-event.outputs.tier2 == 'true' && (github.event_name == 'merge_group' || (needs.ci-mode.outputs.skip_rust-linux-tier2 != 'true' && needs.ci-mode.outputs.tier2-linux_hit != 'true')) }}
     # Empty unless this job ran (a skipped job has no outputs). CI Gate passes
     # only when every shard below passed, so ci.yml's tier2-lane-proof job
     # publishes the proof after the gate, not on its critical path (#3018).
@@ -3115,7 +3118,7 @@ jobs:
     needs: [check-event, ci-mode]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-macos != 'true' && needs.check-event.outputs.macos == 'true' }}
+    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tier2-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -3275,7 +3278,7 @@ jobs:
     needs: [check-event, ci-mode]
     # Only the platforms the change touches (#436); Linux Tier 2 always runs
     # (rust-linux-tier2).
-    if: ${{ always() && !cancelled() && needs.ci-mode.outputs.skip_rust-tier2-windows != 'true' && needs.check-event.outputs.windows == 'true' }}
+    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tier2-windows != 'true') && needs.check-event.outputs.windows == 'true' }}
     steps:
       # GitHub's Windows runners default to CRLF, and soldr warns that it can cost
       # recompiles and cache misses (ci/test_windows_lf_checkout.py).
