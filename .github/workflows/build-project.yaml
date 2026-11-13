@@ -66,6 +66,24 @@ on:
         required: false
         default: false
     outputs:
+      skip_checks:
+        description: Immutable-base client admission skip_checks
+        value: ${{ jobs.ci-mode.outputs.skip_checks }}
+      skip_swift-format:
+        description: Immutable-base client admission skip_swift-format
+        value: ${{ jobs.ci-mode.outputs.skip_swift-format }}
+      skip_validate-data:
+        description: Immutable-base client admission skip_validate-data
+        value: ${{ jobs.ci-mode.outputs.skip_validate-data }}
+      admission:
+        description: Immutable-base client admission admission
+        value: ${{ jobs.ci-mode.outputs.admission }}
+      data:
+        description: Data validator selection from immutable Event Data diff
+        value: ${{ jobs.check-event.outputs.data }}
+      swift:
+        description: Swift selection from Event Data, independent of Format allocation
+        value: ${{ jobs.check-event.outputs.swift }}
       core:
         description: Whether the batch changes libobs or the Rust workspace
         value: ${{ jobs.check-event.outputs.core }}
@@ -89,7 +107,7 @@ env:
   # Keep cook/target reuse and standalone C/C++ compiler caching enabled.
   SOLDR_RUSTC_WRAPPER: none
   # Queue validation executes commands; compiler artifacts may still be restored.
-  SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}
+  SOLDR_VERDICTS: ${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') && 'off' || 'auto' }}
   # A Windows runner's Python decodes with the ANSI code page, so the ci/
   # self-tests this workflow runs (ci/local_gate.py, and the children it
   # starts) raise UnicodeDecodeError on the UTF-8 workflow files (#2757).
@@ -128,6 +146,8 @@ jobs:
       cross_targets: ${{ steps.native.outputs.cross_targets }}
       cross_lint: ${{ steps.native.outputs.cross_lint }}
       windows_link: ${{ steps.native.outputs.windows_link }}
+      swift: ${{ steps.swift.outputs.swift }}
+      data: ${{ steps.swift.outputs.data }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -137,6 +157,28 @@ jobs:
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      # Read names as data, never execute PR code for an allocation decision.
+      # Unknown diffs conservatively request Swift; the gate rejects bad scope.
+      - name: Select Swift from Immutable Event Diff
+        id: swift
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          swift=true data=true
+          if [[ "$BASE" =~ ^[0-9a-f]{40}$ && "$HEAD" =~ ^[0-9a-f]{40}$ ]]; then
+            if git diff --no-ext-diff --name-only "$BASE" "$HEAD" -- '*.swift' > "$RUNNER_TEMP/swift-paths"; then
+              [[ -s "$RUNNER_TEMP/swift-paths" ]] || swift=false
+            fi
+          fi
+          if [[ "$BASE" =~ ^[0-9a-f]{40}$ && "$HEAD" =~ ^[0-9a-f]{40}$ ]]; then
+            if git diff --no-ext-diff --name-only "$BASE" "$HEAD" -- 'plugins/win-capture/data/*.json' 'plugins/rtmp-services/data/*.json' > "$RUNNER_TEMP/data-paths"; then
+              [[ -s "$RUNNER_TEMP/data-paths" ]] || data=false
+            fi
+          fi
+          echo "swift=$swift" >> "$GITHUB_OUTPUT"
+          echo "data=$data" >> "$GITHUB_OUTPUT"
 
       - name: Select Tier 2 Scheduling
         id: tier2-matrix
@@ -222,6 +264,8 @@ jobs:
           NATIVE_REUSE_SOURCE: ${{ inputs.native-cache-reuse-source }}
           NATIVE_BUDGET_PROBE: ${{ inputs.native-cache-probe }}
           GH_TOKEN: ${{ github.token }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           : Check Change Scope 🧭
           # A reusable caller cannot use this manual observation mode to omit gates.
@@ -256,7 +300,7 @@ jobs:
             cross_targets=mac-arm64,win-x64
           else
             if [[ "${GITHUB_EVENT_NAME}" == pull_request ]]; then
-              base="origin/${GITHUB_BASE_REF}"
+              base="$PR_BASE"
             elif [[ "${GITHUB_EVENT_NAME}" == merge_group ]]; then
               base="${{ github.event.merge_group.base_sha }}"
             elif [[ "${GITHUB_EVENT_NAME}" == push && "${GITHUB_REF_NAME}" == master ]]; then
@@ -268,7 +312,29 @@ jobs:
               # selected path in the push, not only its final commit.
               base="${{ github.event.before || 'HEAD^1' }}"
             fi
-            scope=$(uv run --no-project ci/ci_scope.py "${base}" --event "${GITHUB_EVENT_NAME}" --ref "${GITHUB_REF_NAME}")
+            if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+              [[ "$PR_BASE" =~ ^[0-9a-f]{40}$ && "$PR_HEAD" =~ ^[0-9a-f]{40}$ ]]
+              # The selector and its only executable dependency come from BASE.
+              # The head's manifests/source names are data, never imported code.
+              policy_dir="$RUNNER_TEMP/base-scope"
+              mkdir -p "$policy_dir"
+              git show "$PR_BASE:ci/ci_scope.py" > "$policy_dir/ci_scope.py"
+              git show "$PR_BASE:ci/platform_paths.py" > "$policy_dir/platform_paths.py"
+              cat > "$policy_dir/scope_runner.py" <<'PY_SCOPE'
+          import os, subprocess
+          from pathlib import Path
+          import ci_scope
+          ci_scope.REPO = Path.cwd()
+          ci_scope.changed_files = lambda _: [p for p in subprocess.run(
+              ["git", "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z",
+               os.environ["PR_BASE"], os.environ["PR_HEAD"], "--"],
+              check=True, text=True, capture_output=True).stdout.split("\0") if p]
+          raise SystemExit(ci_scope.main())
+          PY_SCOPE
+              scope=$(uv run --no-project --script "$policy_dir/scope_runner.py" "$base" --event "$GITHUB_EVENT_NAME" --ref "$GITHUB_REF_NAME")
+            else
+              scope=$(uv run --no-project ci/ci_scope.py "${base}" --event "${GITHUB_EVENT_NAME}" --ref "${GITHUB_REF_NAME}")
+            fi
             eval "${scope}"
           fi
           # Fast PR path (#992): a PR or merge-queue run that no path escalates
@@ -1572,105 +1638,65 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  # zackees/ci.yml GATE-008/010: an attested, in-policy PR head (local-gate.toml,
-  # ci-attestations.yml) skips the Linux unit-test jobs the local gate already
-  # ran. Pushes and merge-queue runs never skip: the queue commit is the merge
-  # result, not the stamped head (#692).
+  # zackees/ci.yml GATE-008/010: single immutable-base verifier. Unknown/old output contracts run real CI.
   ci-mode:
     name: CI Mode 🛂
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     timeout-minutes: 5
     outputs:
+      rust-test_hit: 'false'
+      cross_hit: 'false'
+      tier2-linux_hit: 'false'
+      rust-test_name: ''
+      cross_name: ''
+      tier2-linux_name: ''
       trusted: ${{ steps.gate.outputs.trusted }}
+      fast_path: ${{ steps.gate.outputs.fast_path }}
+      admission: ${{ steps.gate.outputs.admission }}
+      skip_checks: ${{ steps.gate.outputs.skip_checks }}
+      skip_swift-format: ${{ steps.gate.outputs.skip_swift-format }}
+      skip_validate-data: ${{ steps.gate.outputs.skip_validate-data }}
       skip_rust-tests-linux: ${{ steps.gate.outputs.skip_rust-tests-linux }}
       skip_rust-linux-tier2: ${{ steps.gate.outputs.skip_rust-linux-tier2 }}
-      skip_rust-cross-lint: ${{ steps.gate.outputs.skip_rust-cross-lint }}
-      skip_rust-tests-macos: ${{ steps.gate.outputs.skip_rust-tests-macos }}
-      skip_rust-tests-windows: ${{ steps.gate.outputs.skip_rust-tests-windows }}
-      skip_rust-tier2-macos: ${{ steps.gate.outputs.skip_rust-tier2-macos }}
       skip_rust-tier2-windows: ${{ steps.gate.outputs.skip_rust-tier2-windows }}
-      rust-test_hit: ${{ steps.rust-test.outputs.hit }}
-      rust-test_name: ${{ steps.rust-test.outputs.name }}
-      cross_hit: ${{ steps.cross.outputs.hit }}
-      cross_name: ${{ steps.cross.outputs.name }}
-      tier2-linux_hit: ${{ steps.tier2-linux.outputs.hit }}
-      tier2-linux_name: ${{ steps.tier2-linux.outputs.name }}
+      skip_rust-tier2-macos: ${{ steps.gate.outputs.skip_rust-tier2-macos }}
+      skip_rust-tests-windows: ${{ steps.gate.outputs.skip_rust-tests-windows }}
+      skip_rust-tests-macos: ${{ steps.gate.outputs.skip_rust-tests-macos }}
+      skip_rust-cross-lint: ${{ steps.gate.outputs.skip_rust-cross-lint }}
     permissions:
       actions: read
       contents: read
     env:
       GH_TOKEN: ${{ github.token }}
-      BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-      # Proof skips are PR-only. Merge groups execute the selected heavy lanes.
-      PROOFS: ${{ github.event_name == 'pull_request' && !inputs.full }}
+      BASE: ${{ github.event.pull_request.base.sha }}
+      HEAD: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          repository: zackees/ci.yml
-          ref: 24362f3e60248ebe72ffd261e5585640228cbc5d
-          path: .ci-lint
-          persist-credentials: false
-          sparse-checkout: ci_lint
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-
-      - name: Local Gate Attestation 🛂
+      - name: Verify Client Admission from Immutable Base 🛂
         id: gate
-        if: github.event_name != 'merge_group'
-        run: PYTHONPATH=.ci-lint uv run --no-project python -m ci_lint local-gate verify --repo . --trust --github-output
-
-      # Reports the client-side attestation for the PR head's host gates. It
-      # never touches skip_*: the gate above decides what is skipped, and it
-      # fails closed on its own. Off by default -- the step runs only when the
-      # repository variable ATTEST_MODE is `warn` or `enforce`, so P0 behaviour
-      # is unchanged; `warn` annotates and passes, `enforce` annotates and fails.
-      - name: Report Client Attestations 🧾
-        if: github.event_name == 'pull_request' && vars.ATTEST_MODE != '' && vars.ATTEST_MODE != 'off'
-        env:
-          ATTEST_MODE: ${{ vars.ATTEST_MODE }}
-        run: PYTHONPATH=.ci-lint uv run --no-project python -m ci_lint attest verify --repo . --commit "${{ github.event.pull_request.head.sha }}" --base "${{ github.event.pull_request.base.sha }}" --required "rust/all/fmt,rust/x86_64-unknown-linux-gnu/clippy,rust/x86_64-unknown-linux-gnu/dylint,rust/x86_64-unknown-linux-gnu/test" --mode "$ATTEST_MODE"
-
-
-      # Lane proofs (#699): a lane whose exact inputs already passed in a
-      # trusted run of this workflow is skipped (ci/lane_proof.py). Keys come
-      # from local-gate.toml as committed on the BASE. Lookup failures leave
-      # no skip output. Queue execution never consults these cached passes.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        if: env.PROOFS == 'true'
-        with:
-          path: merge
-          persist-credentials: false
-      - name: Fetch Base
-        if: env.PROOFS == 'true'
-        working-directory: merge
+        if: github.event_name == 'pull_request' && !inputs.full
+        # A broken verifier cannot grant a skip: all consumers compare to 'true'.
         continue-on-error: true
-        run: git fetch -q --depth=1 origin "${BASE}"
-      - name: rust-test
-        id: rust-test
-        if: env.PROOFS == 'true'
-        working-directory: merge
-        continue-on-error: true
-        run: uv run --no-project ci/lane_proof.py check --lane rust-test --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
-      - name: cross
-        id: cross
-        if: env.PROOFS == 'true'
-        working-directory: merge
-        continue-on-error: true
-        run: uv run --no-project ci/lane_proof.py check --lane cross --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
-      - name: tier2-linux
-        id: tier2-linux
-        if: env.PROOFS == 'true'
-        working-directory: merge
-        continue-on-error: true
-        run: uv run --no-project ci/lane_proof.py check --lane tier2-linux --base "${BASE}" --repo "${GITHUB_REPOSITORY}"
+        run: |
+          [[ "$BASE" =~ ^[0-9a-f]{40}$ && "$HEAD" =~ ^[0-9a-f]{40}$ && "$PR_NUMBER" =~ ^[0-9]+$ ]]
+          git fetch -q --no-tags origin "$HEAD"
+          git show "$BASE:ci/pr_attestation.py" > "$RUNNER_TEMP/pr-attestation.py"
+          GITHUB_OUTPUT="$RUNNER_TEMP/admission-outputs" uv run --no-project --script "$RUNNER_TEMP/pr-attestation.py" --base "$BASE" --head "$HEAD" --number "$PR_NUMBER" > "$RUNNER_TEMP/admission.json"
+          jq . "$RUNNER_TEMP/admission.json"
+          # An older base verifier's legacy outputs are diagnostic only.
+          if jq -e '.admission_version == 1 and .queue_policy == "heavy-v1"' "$RUNNER_TEMP/admission.json" > /dev/null; then
+            cat "$RUNNER_TEMP/admission-outputs" >> "$GITHUB_OUTPUT"
+          fi
 
   rust-tests-linux:
     # Fast Gate runs 7.7-11.3 min; 2x bounds a dead runner at 20 instead of
@@ -1979,8 +2005,8 @@ jobs:
     timeout-minutes: 45
     name: Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
-    needs: check-event
-    if: ${{ !inputs.flatpak-measurement-only && needs.check-event.outputs.cross_targets != '' }}
+    needs: [check-event, ci-mode]
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && needs.check-event.outputs.cross_targets != '' }}
     defaults:
       run:
         shell: bash
@@ -2057,7 +2083,7 @@ jobs:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true') && needs.ci-mode.outputs.skip_rust-cross-lint != 'true' && needs.ci-mode.outputs.cross_hit != 'true')) }}
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
     defaults:
       run:
         shell: bash
@@ -2129,10 +2155,10 @@ jobs:
     timeout-minutes: 30
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
-    needs: check-event
-    # Every non-docs PR runs the link check without proof/attestation skips.
-    # The merge queue reuses that coverage and runs only the Linux Fast Gate.
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows_link == 'true' }}
+    needs: [check-event, ci-mode]
+    # Every fallback non-docs PR runs the link check without proof/attestation skips.
+    # Complete member PRs defer it; every selected queue group links again.
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows_link == 'true' }}
     defaults:
       run:
         shell: bash
@@ -2178,8 +2204,8 @@ jobs:
     # Queue and release lint-only targets: Windows arm64, macOS x64 and Linux
     # arm64. The main cross matrix retains its independent test-link legs.
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
-    needs: check-event
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && (needs.check-event.outputs.full == 'true' || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true')) }}
+    needs: [check-event, ci-mode]
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || needs.check-event.outputs.full == 'true' || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true')) }}
     defaults:
       run:
         shell: bash
@@ -2957,8 +2983,8 @@ jobs:
     # Independent runner: overlap frontend compilation/tests with Fast Gate.
     # The reusable workflow still fails if either selected job fails; this
     # can spend extra Qt runner time when Fast Gate fails (#1581).
-    needs: [check-event]
-    if: ${{ !cancelled() && needs.check-event.result == 'success' && fromJSON(needs.check-event.outputs.qt) }}
+    needs: [check-event, ci-mode]
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !cancelled() && needs.check-event.result == 'success' && fromJSON(needs.check-event.outputs.qt) }}
     timeout-minutes: 30
     env:
       QT_TAG: qt6-6.11.1

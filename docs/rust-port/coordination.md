@@ -155,8 +155,11 @@ The org-wide rules, commands and the definition of Ready are in
   by the merge queue (below).
 - **PR CI is the merge gate.** Open the PR (a draft is fine) as soon as the
   RED test exists; a red CI run on a PR is expected. The local gate
-  (AGENTS.md) is recommended, not required: a stamped head lets CI skip the
-  Linux unit-test jobs, and without a stamp PR CI runs the full suite. Do not
+  (AGENTS.md) is recommended, not required. Complete self-reported client gates
+  and verified org-member author/final signer allow base-owned PR admission;
+  forks, non-members, unverified heads, invalid/partial proofs and API/verifier
+  errors run real selected checks, including all-six-target clippy/Dylint.
+  Stamp first, then sign final HEAD. Strict client enforcement is opt-in. Do not
   build fork or self-hosted CI to pre-validate PRs. Local errors from your
   environment (soldr permissions, disk, Docker, host packages):
   [troubleshooting.md](troubleshooting.md).
@@ -267,9 +270,9 @@ under the bypass policy below, and never push to master. The coordinator
 never merges outside the queue, with `--admin` or otherwise.
 The queue reruns PR CI on the merge result with current master, and the one
 required check is `CI Gate ✅` (`ci.yml`). That job always reports: it
-passes when every required job passed or was skipped (out of scope, attested by
-the local gate on the PR, or covered by a lane proof) and fails when a required job
-failed or was cancelled.
+requires selected queue jobs to execute successfully regardless of trailers or
+hosted proofs. PR skips require the immutable-base per-gate contract or proven
+path scope; missing verifier, fallback work or selected queue legs fails it.
 The cache janitor is maintenance and is excluded from this gate; see
 [the pre-work policy](../ci-tooling.md#pre-work-cache-maintenance-and-cancellation).
 
@@ -281,8 +284,8 @@ it and rebuilt every queued group (up to 5 runs for one PR, about 65 minutes
 from queueing to merge against a 16-minute run). Requiring branches to be up
 to date instead would make every agent rebase and rerun CI after every merge,
 which gets slower with each agent added. So the queue is the normal path,
-and lane proofs (docs/ci-tooling.md) let a rebuilt group skip the lanes whose
-inputs did not change.
+and compiler/dependency caches (docs/ci-tooling.md) reduce rebuild cost while
+selected heavy checks always rerun.
 
 **Maintainer bypass.** It belongs to the maintainer, or to a worker the
 maintainer explicitly authorizes; never to the coordinator. The ruleset lets the repository admin role bypass it

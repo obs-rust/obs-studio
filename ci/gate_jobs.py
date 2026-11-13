@@ -24,11 +24,16 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
+import re
 import time
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
-from ci_scope import Scope, queue_changed_files, read_text, repo_cmocka_source_paths, scope
+if TYPE_CHECKING:
+    from ci_scope import Scope
 
 UNSUCCESSFUL = {
     "failure",
@@ -114,6 +119,12 @@ def run_jobs(
     )
 
 
+def data_selected(files) -> bool:
+    return any(path.endswith(".json") and path.startswith((
+        "plugins/win-capture/data/", "plugins/rtmp-services/data/"
+    )) for path in files)
+
+
 def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> set[str]:
     """The queue execution manifest: exact job names, never proof credit.
 
@@ -145,7 +156,119 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
             expected.add(f"Build 🧱 / Rust Tier 2 ({runner})")
     if any(path.endswith(".swift") for path in files):
         expected.add("Format 🔍 / swift-format")
+    expected.update(("Validate Data 🕵️",) if data_selected(files) else ())
     return expected
+
+
+def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
+    """Require real selected PR work unless the base verifier proves its credit.
+
+    This consumes only independently recomputed BASE output, never caller/head
+    workflow outputs. Old Local-Gate/verifier output is compatible via real CI.
+    """
+    selected = SimpleNamespace(**vars(selected))
+    selected.cross_lint = not selected.docs_only
+    expected = expected_jobs(selected, files)
+    if data_selected(files):
+        expected.add("Validate Data 🕵️")
+    valid = (plan.get("admission_version") == 1 and plan.get("queue_policy") == "heavy-v1"
+             and isinstance(plan.get("gates"), dict) and isinstance(plan.get("jobs"), dict))
+    if not valid:
+        return expected
+    names = {
+        "check-format.yaml:checks": {"Format 🔍 / checks"},
+        "check-format.yaml:swift-format": {"Format 🔍 / swift-format"},
+        "ci.yml:validate-data": {"Validate Data 🕵️"},
+        "build-project.yaml:rust-tests-linux": {"Build 🧱 / Fast Gate ⚡"},
+        "build-project.yaml:rust-cross-lint": {
+            "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+            "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+            "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+        },
+    }
+    heavy = expected - {SCOPE_JOB, "Build 🧱 / CI Mode 🛂"} - set().union(*names.values())
+    gates = plan["gates"]
+    complete = (plan.get("trusted") is True and plan.get("fast_path") is True
+                and bool(plan.get("required_client_gates"))
+                and all(gates.get(gate) == "valid" for gate in plan["required_client_gates"]))
+    if complete:
+        expected -= heavy
+    for key, job_names in names.items():
+        status = plan["jobs"].get(key, {})
+        needed = status.get("required_gates", [])
+        if (status.get("skip") is True and plan.get("trusted") is True and needed
+                and all(gates.get(gate) == "valid" for gate in needed)):
+            # Fast Gate owns native touched-target compilation as well as tests.
+            if key not in ("build-project.yaml:rust-tests-linux", "build-project.yaml:rust-cross-lint") or complete:
+                expected -= job_names
+    return expected
+
+
+BASE_SCOPE_PROGRAM = r"""
+import json, sys
+from pathlib import Path
+import ci_scope
+request = json.load(sys.stdin)
+ci_scope.REPO = Path.cwd()
+selected = ci_scope.scope(request["files"], lambda p: Path(p).is_file(), ci_scope.read_text,
+    cmocka_paths=ci_scope.repo_cmocka_source_paths(Path(".")), event="pull_request")
+print(json.dumps(vars(selected)))
+"""
+
+
+def base_pr_scope(base: str, files: list[str]) -> Scope:
+    """Import only BASE's selector/dependency; checkout files remain input data."""
+    with tempfile.TemporaryDirectory(prefix="base-pr-scope-") as temp:
+        for name in ("ci_scope.py", "platform_paths.py"):
+            source = subprocess.run(["git", "show", f"{base}:ci/{name}"],
+                                    check=True, capture_output=True, text=True).stdout
+            (Path(temp) / name).write_text(source, encoding="utf-8")
+        script = Path(temp) / "scope_runner.py"
+        script.write_text(BASE_SCOPE_PROGRAM, encoding="utf-8")
+        result = subprocess.run(["uv", "run", "--no-project", "--script", str(script)],
+                                input=json.dumps({"files": files}), capture_output=True,
+                                text=True, check=True, timeout=60)
+        return SimpleNamespace(**json.loads(result.stdout))
+
+
+def pr_coverage() -> set[str]:
+    """Re-evaluate the immutable base verifier; API/errors grant no skip credit."""
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+    pr = event["pull_request"]
+    base, head, number = pr["base"]["sha"], pr["head"]["sha"], event["number"]
+    if (not isinstance(base, str) or not isinstance(head, str)
+            or not re.fullmatch(r"[0-9a-f]{40}", base)
+            or not re.fullmatch(r"[0-9a-f]{40}", head)
+            or type(number) is not int or number <= 0):
+        raise ValueError("pull_request requires immutable base/head SHAs and number")
+    files = subprocess.run(
+        ["git", "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", base, head, "--"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip("\0").split("\0")
+    files = [path for path in files if path]
+    selected = base_pr_scope(base, files)
+    plan = {}
+    try:
+        source = subprocess.run(["git", "show", f"{base}:ci/pr_attestation.py"],
+                                check=True, capture_output=True, text=True).stdout
+        with tempfile.TemporaryDirectory(prefix="base-pr-admission-") as temp:
+            script = Path(temp) / "pr_attestation.py"
+            script.write_text(source, encoding="utf-8")
+            # Do not let the subprocess append conflicting step outputs.
+            env = dict(os.environ)
+            env.pop("GITHUB_OUTPUT", None)
+            result = subprocess.run(
+                ["uv", "run", "--no-project", "--script", str(script), "--base", base,
+                 "--head", head, "--number", str(number)],
+                env=env, check=True, capture_output=True, text=True, timeout=240,
+            )
+            plan = json.loads(result.stdout)
+            if not isinstance(plan, dict):
+                raise ValueError("verifier output is not an object")
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"Base verifier unavailable; requiring real PR checks: {error}")
+        plan = {}
+    return pr_expected_jobs(selected, files, plan)
 
 
 def queue_coverage() -> set[str]:
@@ -155,6 +278,10 @@ def queue_coverage() -> set[str]:
     those outputs. CI Gate checks out the full tree so linked crates, cmocka
     sources and cross/Qt CMake rules cannot disappear in a sparse checkout.
     """
+    # Queue execution grants no client trust credit. PR admission never imports
+    # executable scope code from HEAD, including at this module's import time.
+    from ci_scope import queue_changed_files, read_text, repo_cmocka_source_paths, scope
+
     files = queue_changed_files()
     selected = scope(
         files, lambda path: Path(path).is_file(), read_text,
@@ -172,16 +299,17 @@ def main() -> int:
         return 1
     scope_failed = False
     expected = set()
-    if queue:
+    pr = os.environ.get("GITHUB_EVENT_NAME") == "pull_request"
+    if queue or pr:
         try:
-            expected = queue_coverage()
+            expected = queue_coverage() if queue else pr_coverage()
             print("Merge-group required execution manifest: " + json.dumps(sorted(expected)))
-        except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError) as error:
             print(
                 f"::error::CI Gate could not resolve merge-group scope from GITHUB_EVENT_PATH and git diff: {error}"
             )
             scope_failed = True
-    bad = blocking(jobs, require_scope=queue, expected=expected)
+    bad = blocking(jobs, require_scope=queue or pr, expected=expected)
     for name in bad:
         record = next((j for j in jobs if j["name"] == name), {})
         if runnerless(record):

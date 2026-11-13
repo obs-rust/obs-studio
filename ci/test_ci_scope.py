@@ -246,7 +246,8 @@ class CiScopeTest(unittest.TestCase):
         ))
         probe = blocks["select-mq-runner"]
         self.assertIn("runs-on: ubuntu-latest", probe)
-        self.assertNotRegex(probe, r"(?m)^    if:")  # Never skip dependants on PRs.
+        self.assertIn("if: github.event_name != 'pull_request'", probe)
+        self.assertIn("!cancelled()", blocks["build-project"].split("    uses:", 1)[0])
         self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)
         steps = dict(re.findall(
             r"^      - name: ([^\n]+)\n(.*?)(?=^      - |\Z)", probe, re.MULTILINE | re.DOTALL
@@ -280,7 +281,9 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("steps.select.outcome == 'failure'", probe)
         self.assertIn("::warning::", probe)
         for job in ("check-format", "build-project"):
-            self.assertIn("needs: select-mq-runner", blocks[job])
+            self.assertIn("select-mq-runner", blocks[job].split("    if:", 1)[0])
+            if job == "check-format":
+                self.assertIn("build-project", blocks[job].split("    if:", 1)[0])
             self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
 
     def test_queue_runs_merge_result_tests_and_windows_link(self):

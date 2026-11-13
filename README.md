@@ -203,19 +203,24 @@ maintainer re-landed the work (counted once). Updated every 4 hours.
 Lots of people and AI agents work on this repo at the same time, so CI is
 built to do as little repeated work as possible:
 
-- **Every pull request gets a quick check.** It runs the Rust and C tests on
-  Linux, plus macOS or Windows only when your change touches those
-  platforms. It does not build every app package.
-- **The full build runs before each release.** Once a day, and before
-  anything is published, CI builds and tests everything: every platform,
-  the full app, a Flatpak build check and the release packages. A beta
-  only ships if all of it passes.
-- **You can prove your change locally first.** One command (`ci-lint
-  local-gate run`) runs the same Linux checks on your machine and signs
-  your commit. CI sees the signature and skips the checks you already
-  ran. This applies to a pull request from a branch of this repository
-  whose author has write access; a fork PR runs every check anyway, so
-  stamping saves you nothing there.
+- **Every pull request gets an admission check.** A same-repository PR can
+  use client evidence when both its author and the valid signer of final HEAD
+  are verified active obs-rust members. Complete selected evidence lets Pull
+  allocate just Event Data, CI Mode and CI Gate for compile/test admission.
+  Forks, non-members, unsigned heads, unavailable membership lookups and missing
+  or invalid evidence run the real selected checks, including six-target lint.
+- **The merge queue is the heavy gate.** It reruns all selected tests, native
+  builds and links on the combined merge result, regardless of client trailers.
+  Required check names stay unchanged; unavailable runners still block admission.
+- **The full build runs before each release.** Nightly and release CI builds
+  and tests every platform, the full app, Flatpak and release packages.
+- **Local tooling is optional.** `./push` tries prooft first: complete lint,
+  clippy and Dylint for Linux x64/arm64, Windows x64/arm64 MSVC and macOS
+  x64/arm64, host tests, self-tests and validators. Swift is an optional separate
+  gate when selected. Trailers are self-reported passes, not signed execution
+  evidence. Sign the final commit after stamping; missing tools or a failed
+  private-membership lookup use real PR CI. Strict refusal is opt-in with
+  `PUSH_REQUIRE_ATTESTATION=1`. Legacy Local-Gate records remain diagnostic.
 - **Builds are cached and shared.** Rust builds go through `soldr`, which
   reuses compiled code across branches and machines.
 

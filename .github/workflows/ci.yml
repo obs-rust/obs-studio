@@ -76,9 +76,10 @@ jobs:
       actions: write
       contents: read
 
-  # Always finish successfully with an empty output outside the opt-in queue path.
+  # PRs use hosted runners directly; a queue probe must not allocate on admission.
   select-mq-runner:
     name: Select Merge Queue Runner
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
@@ -147,10 +148,13 @@ jobs:
 
   check-format:
     name: Format 🔍
-    needs: select-mq-runner
-    if: ${{ !cancelled() }}
+    needs: [select-mq-runner, build-project]
+    if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/check-format.yaml
     with:
+      skip-checks: ${{ needs.build-project.outputs.skip_checks == 'true' }}
+      skip-swift: ${{ needs.build-project.outputs.skip_swift-format == 'true' }}
+      swift: ${{ needs.build-project.outputs.swift != 'false' }}
       mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}
     permissions:
       contents: read
@@ -354,7 +358,8 @@ jobs:
   validate-data:
     timeout-minutes: 10
     name: Validate Data 🕵️
-    if: ${{ !cancelled() && github.base_ref == 'master' }}
+    needs: build-project
+    if: ${{ always() && !cancelled() && ((github.base_ref == 'master' && needs.build-project.outputs.skip_validate-data != 'true') || (github.event_name == 'merge_group' && needs.build-project.outputs.data != 'false')) }}
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -367,7 +372,7 @@ jobs:
         uses: ./.github/actions/check-changes
         id: compat
         with:
-          baseRef: origin/${{ github.base_ref }}
+          baseRef: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
           checkGlob: plugins/win-capture/data/*.json
 
       - name: Check for Invalid Compatibility Data 📉
@@ -378,7 +383,7 @@ jobs:
         uses: ./.github/actions/check-changes
         id: services
         with:
-          baseRef: origin/${{ github.base_ref }}
+          baseRef: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
           checkGlob: plugins/rtmp-services/data/*.json
 
       - name: Check Services JSON Schema 📉
@@ -403,7 +408,7 @@ jobs:
         uses: ./.github/actions/check-changes
         id: checks
         with:
-          baseRef: origin/${{ github.base_ref }}
+          baseRef: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
           checkGlob: docs/sphinx
 
       - uses: ./.github/actions/generate-docs

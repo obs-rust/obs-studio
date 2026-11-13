@@ -72,8 +72,9 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("needs.check-event.outputs.windows_link == 'true'", self.condition)
 
     def test_never_stands_down_on_proofs_or_attestation(self):
-        # Every selected PR must link, regardless of proofs or attestations.
-        for skip in ("ci-mode", "cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows =="):
+        # Only complete verified-member admission can defer the PR link.
+        self.assertIn("github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true'", self.condition)
+        for skip in ("cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows =="):
             self.assertNotIn(skip, self.condition)
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
 

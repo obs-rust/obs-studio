@@ -2,7 +2,7 @@
 # /// script
 # dependencies = []
 # ///
-"""Base-owned PR trust decision API/schema v1; no workflow routing changes.
+"""Base-owned PR identity, evidence and execution admission contract v1.
 
 Run this file from the immutable base, through uv, with --base/--head full
 commit SHAs and --number. Policy and the cached GraphQL wrapper are read from
@@ -73,6 +73,26 @@ JOBS = (
         )
     ),
 )
+# This placement policy is executable only from immutable BASE, after #4747.
+# Cross lint is analysis evidence; it never proves native builds or runtime.
+TARGETS = (
+    "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+    "x86_64-apple-darwin", "aarch64-apple-darwin",
+)
+CROSS_GATES = tuple(f"rust/{target}/client-{check}" for target in TARGETS
+                    for check in ("clippy", "dylint"))
+FORMAT_GATES = ("python/all/self-test", "data/all/flatpak-manifest", "data/all/qt-xml")
+HOST_GATES = ("general/all/client-lint", "rust/x86_64-unknown-linux-gnu/client-clippy",
+              "rust/x86_64-unknown-linux-gnu/client-dylint", "rust/x86_64-unknown-linux-gnu/client-test")
+CLIENT_GATES = tuple(dict.fromkeys((*FORMAT_GATES, *HOST_GATES, *CROSS_GATES)))
+DEFERRED_JOBS = tuple(f"build-project.yaml:{job}" for job in (
+    "rust-windows-link", "cross-compile", "rust-tests-windows", "rust-tests-macos",
+    "rust-tier2-windows", "rust-tier2-macos", "rust-linux-tier2-build",
+    "rust-linux-tier2", "linux-qt-frontend",
+))
+
+
 QUERY = """query($owner:String!,$name:String!,$number:Int!,$head:GitObjectID!) {
   repository(owner:$owner,name:$name) {
     nameWithOwner
@@ -188,6 +208,8 @@ def trust_surface(path):
         path
         in {"push", "local-gate.toml", "ci-attestations.yml", "rust-toolchain.toml"}
         or parts[0] in {"ci", ".github"}
+        or (len(parts) == 1 and path.endswith((".toml", ".json")))
+        or path in {".clang-format", ".clang-format-ignore", ".gersemirc", ".swift-format"}
         or ".cargo" in parts
         or parts[-1] in {"Cargo.toml", "Cargo.lock"}
     )
@@ -236,6 +258,13 @@ def reject_surfaces(git, base, head):
 
 def member(login, rest):
     try:
+        # Public membership is an authenticated read requiring no org Members
+        # privilege. A 404 means visibility is absent, not membership disproven.
+        public = rest(f"orgs/{ORG}/public_members/{login}")
+        if public.get("public_member") is True and public.get("user", {}).get("login", "").lower() == login.lower():
+            return None
+        if public.get("public_member") is not False:
+            raise ValueError("unknown public membership response")
         response = rest(f"orgs/{ORG}/memberships/{login}")
         if (
             response.get("state") != "active"
@@ -392,6 +421,7 @@ def evaluate(root, *, base, head, number, event, graphql, rest, now, proofs=proo
         return decision(policy, reasons, gates)
     except (
         GitError,
+        RuntimeError,
         OSError,
         ValueError,
         TypeError,
@@ -404,8 +434,72 @@ def evaluate(root, *, base, head, number, event, graphql, rest, now, proofs=proo
         return decision(policy, [f"commit/policy/evidence: {exc}"], gates)
 
 
+def selected_checks(files):
+    """Base-owned selector over immutable diff names; uncertainty selects work."""
+    if files is None:
+        return True, ("data/all/compatibility", "data/all/services-schema")
+    swift = any(path.endswith(".swift") for path in files)
+    data = []
+    if any(path.startswith("plugins/win-capture/data/") and path.endswith(".json") for path in files):
+        data.append("data/all/compatibility")
+    if any(path.startswith("plugins/rtmp-services/data/") and path.endswith(".json") for path in files):
+        data.append("data/all/services-schema")
+    return swift, tuple(data)
+
+
+def admission(result, files, *, event):
+    """One per-gate plan. Legacy trailers remain diagnostics, never full credit.
+
+    Queue deferral is placement, not a claim that client lint built native targets.
+    Even partial trusted evidence can replace its own complete check, but no heavy
+    selected work moves to the queue until ALL relevant client gates are valid.
+    """
+    swift, data = selected_checks(files)
+    required = (*CLIENT_GATES, *(("swift/all/fmt",) if swift else ()), *data)
+    trusted = result.get("trusted") is True and event == "pull_request" and files is not None
+    gates = result.get("gates", {})
+    fast = trusted and all(gates.get(gate) == "valid" for gate in required)
+    requirements = {
+        "check-format.yaml:checks": FORMAT_GATES,
+        "check-format.yaml:swift-format": ("swift/all/fmt",) if swift else (),
+        "ci.yml:validate-data": data,
+        "build-project.yaml:rust-tests-linux": HOST_GATES,
+        "build-project.yaml:rust-cross-lint": CROSS_GATES,
+        "build-project.yaml:rust-cross-proof": CROSS_GATES,
+    }
+    jobs = {}
+    for job in JOBS:
+        deferred = job in DEFERRED_JOBS and fast
+        needed = requirements.get(job, ())
+        out_of_scope = event == "pull_request" and files is not None and (
+            (job == "check-format.yaml:swift-format" and not swift)
+            or (job == "ci.yml:validate-data" and not data)
+        )
+        proven = trusted and bool(needed) and all(gates.get(gate) == "valid" for gate in needed)
+        # Fast Gate also owns touched native Linux target compilation. A partial
+        # host proof cannot suppress that work; full fast_path moves it to queue.
+        if job in ("build-project.yaml:rust-tests-linux", "build-project.yaml:rust-cross-lint",
+                   "build-project.yaml:rust-cross-proof") and not fast:
+            proven = False
+        jobs[job] = {
+            "skip": bool(deferred or out_of_scope or proven),
+            "deferred": bool(deferred),
+            "out_of_scope": out_of_scope,
+            "required_gates": list(required if deferred else needed),
+            "reasons": (["queue-only: complete client contract; heavy-v1"] if deferred else
+                        ["base path selector: out of scope"] if out_of_scope else
+                        ["complete client gates"] if proven else ["run real selected PR checks"]),
+        }
+    return {**result, "admission_version": 1, "queue_policy": "heavy-v1",
+            "fast_path": bool(fast), "required_client_gates": list(required),
+            "swift": swift, "data": bool(data), "jobs": jobs}
+
+
 def write_outputs(result, output):
     output.write(f"trusted={str(result['trusted']).lower()}\n")
+    if result.get("admission_version") == 1:
+        output.write(f"fast_path={str(result['fast_path']).lower()}\n")
+        output.write("admission=" + json.dumps(result, separators=(",", ":")) + "\n")
     for job, status in result["jobs"].items():
         job_id = job.split(":", 1)[1]
         output.write(f"skip_{job_id}={str(status['skip']).lower()}\n")
@@ -442,15 +536,19 @@ def github_reads(root, base):
             )
 
     def rest(path):
-        return json.loads(
-            subprocess.run(
-                ["gh", "api", path],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=60,
-            ).stdout
-        )
+        public = re.fullmatch(rf"orgs/{ORG}/public_members/({LOGIN.pattern.removesuffix(chr(92) + 'Z')})", path)
+        args = ["gh", "api", path]
+        if public:
+            args.append("--include")
+        result = subprocess.run(args, capture_output=True, text=True, timeout=60)
+        if public:
+            status = result.stdout.splitlines()[0] if result.stdout else ""
+            if re.fullmatch(r"HTTP/\S+ 204(?: .*)?", status) and result.returncode == 0:
+                return {"public_member": True, "user": {"login": public[1]}}
+            if re.fullmatch(r"HTTP/\S+ 404(?: .*)?", status) and result.returncode == 1:
+                return {"public_member": False}
+        result.check_returncode()
+        return json.loads(result.stdout)
 
     return graphql, rest
 
@@ -474,6 +572,13 @@ def main(argv=None):
         rest=rest,
         now=time.time(),
     )
+    try:
+        files = [path for path in Git(args.repo_dir).run(
+            "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", args.base, args.head
+        ).split("\0") if path]
+    except (GitError, OSError, subprocess.SubprocessError):
+        files = None
+    result = admission(result, files, event=args.event)
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     if output := os.environ.get("GITHUB_OUTPUT"):
         with open(output, "a", encoding="utf-8") as stream:

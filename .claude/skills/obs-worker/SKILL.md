@@ -86,23 +86,22 @@ switch away or hand off, do one of these:
 
 ### Push with `./push`
 
-`./push` is the repo's single push entry point. It runs `soldr lint rust
---attest`, asks `ghd attest stamp` to write the resulting evidence into the
-commit message as `Ci-Attestation:` trailers, pushes the branch, and opens the
-PR if there is not one already. That is what lets CI skip remote work instead of
-repeating it: the trailers are the proof that the client already ran fmt, clippy,
-dylint and the host tests.
+`./push` is the single push entry point. It tries prooft's complete client
+lint/clippy/Dylint on all six supported targets, host tests, self-tests and
+validators. Optional Swift evidence is separate. It stamps only completed passes
+and signs the final amended commit. Legacy fallback remains diagnostic; absent
+or partial proof warns and still pushes unless `PUSH_REQUIRE_ATTESTATION=1`.
+Local tooling is optional for contributors.
 
-```bash
-./push                    # attest, stamp, push, open (or reuse) the PR
-PUSH_REQUIRE_ATTESTATION=1 ./push   # refuse to push without evidence
-```
-
-A bare `git push`/`gh pr create` bypasses the attestation, so CI falls back to
-running everything — and agent guardrails refuse it. If a step in the chain is
-not available in your toolchain yet, `./push` says which one and falls back to
-pushing without evidence, which is why the gate still exists: run
-`ci-lint local-gate run` and push the stamped commit.
+CI trusts only same-repository PRs with authenticated active obs-rust membership
+for BOTH author and valid final HEAD signer. Private lookup denial, forks,
+non-members, unsigned heads, trust-surface edits, missing/invalid/stale gates and
+verifier/API errors run real selected PR checks, including six-target analysis.
+The verifier and pins come from immutable BASE. These trailers are self-reported
+proofs, not signed execution evidence. Stamp first, then sign final HEAD.
+Complete selected client gates defer heavy native/link/Qt/Tier 2 work to the
+merge queue, which reruns every selected heavy leg regardless of evidence.
+The required `CI Gate ✅` name and all four test tiers stay unchanged.
 
 When you find a dirty branch with no commits, no remote and no PR, someone
 left it behind. Before you package it, check whether master already has the
@@ -272,17 +271,12 @@ PR CI is the merge gate. Local runs give faster feedback:
   peak RSS over 20 to 50 runs for proptests (`/usr/bin/time -v` on Linux,
   `-l` on macOS) and cap every generated size that drives an allocation;
   state whether the test starts its own threads, and how many.
-- Dylint has its own gate lane: `ci/local_gate.py --lane dylint` (declared as
-  `[gate.lanes.dylint]` in `local-gate.toml`). It is keyed on `dylints/**`,
-  `rust-toolchain.toml` and `Cargo.lock` alone, so a change that touches none
-  of those reuses the previous pass instead of rebuilding the lint libraries.
-  CI runs it beside the lint lane in the Local Gate job; cross-target Dylint
-  still runs in the `Rust Cross Lint` jobs, so a local pre-push check does not
-  need the cross targets.
-- To let CI skip the Linux test jobs, commit, then stamp HEAD with the
-  local gate (the pinned command is in AGENTS.md), and push the stamped
-  commit **unchanged**. Any amend, rebase or "Update branch" drops the
-  stamp, so rebase before stamping.
+- The legacy `dylint` lane is separate and source-bound. Complete admission
+  requires client clippy AND Dylint for all six supported targets through soldr;
+  a host-only legacy run cannot prove that contract.
+- Commit, run the client lanes, stamp, then sign the final commit. Any content
+  amend, rebase or "Update branch" needs fresh evidence and final signing;
+  without it, keep the real selected PR checks.
 
 If the environment fights you (soldr permissions, disk, Docker), don't
 debug it for long: push and let PR CI run. Never `docker system prune`;
