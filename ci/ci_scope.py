@@ -51,9 +51,8 @@ Platform is decided by path alone (#897, ci/platform_paths.py): a changed
 file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
 `rust/*/src/platform/windows/`, `libobs/build/source-sets.d/
 LIBOBS_WINDOWS_SOURCES.json` (#3235), ...) starts that platform's jobs. Core files
-carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR a
-core change is Linux only. Pushes to master are the
-exception: core code selects the macOS and Windows Rust lanes too, because
+carry no platform defines (ci/platform_ifdef_ratchet.py). Core PRs select
+Windows; merge groups and master pushes select both native Rust lanes, because
 the platform builds read it and a Windows-only break in it otherwise lands
 unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
 (except `os-<os>.cmake` and every other OS-named file there, `rust-os-<os>.cmake`,
@@ -510,15 +509,10 @@ def cross_targets(files: list[str], read: Callable[[str], str]) -> str:
 
 
 def core_native_lanes(core: bool, event: str, ref: str) -> frozenset[str]:
-    """Core PRs run Windows; master pushes run both native platforms.
-
-    Hosted native runner starvation must not stall queue admission: merge groups
-    stay Linux-only (#3634). A missing PR runner delays only its author (#3637).
-    macOS core PR coverage is a separate rollout; keep native master validation.
-    """
+    """Keep PR routing; queue/master core validation runs both native hosts."""
     if core and event == "pull_request":
         return frozenset({WINDOWS})
-    if core and event == "push" and ref == "master":
+    if core and (event == "merge_group" or (event == "push" and ref == "master")):
         return frozenset({MACOS, WINDOWS})
     return frozenset()
 
@@ -572,21 +566,23 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    native = core_native_lanes(core or "ci/ci_scope.py" in files, event, ref)
+    native_core = core
+    if event == "merge_group":
+        # A host-only core file selects its own native lane via the path rules;
+        # generic core inputs require both hosts. Preserve all PR/push routing.
+        native_core = any(
+            (path.startswith(CORE_PREFIXES) or path in CORE_FILES)
+            and path_platforms(path) is None and not HIDDEN_FRAGMENT.match(path)
+            for path in files
+        )
+    native = core_native_lanes(native_core or "ci/ci_scope.py" in files, event, ref)
     macos |= MACOS in native
     windows |= WINDOWS in native
     docs_only = bool(files) and all(is_docs(path) for path in files)
-    # PRs already validated the expensive lanes. The merge result keeps the
-    # Fast Gate's Linux build/tests (and touched Linux targets), plus format.
-    if event == "merge_group":
-        return Scope(
-            core, False, False, docs_only=docs_only,
-            linux_targets=",".join(sorted(targets)),
-        )
     return Scope(
         core,
-        macos and event != "merge_group",
-        windows and event != "merge_group",
+        macos,
+        windows,
         qt,
         tier2,
         False,
@@ -596,11 +592,37 @@ def scope(
         cross_targets(files, read),
         windows_link=bool(files) and not docs_only,
         # Exercise the cross lane when its own implementation/orchestration changes.
-        cross_lint=bool(set(files) & {
+        cross_lint=(event == "merge_group" and bool(files) and not docs_only) or bool(set(files) & {
             "ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",
             "local-gate.toml", ".github/workflows/build-project.yaml",
         }),
     )
+
+
+def queue_changed_files() -> list[str]:
+    """Use both immutable event commits, including every PR in a queue group.
+
+    A missing/malformed event or unavailable commit must never select less work.
+    """
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if not event_path:
+        raise ValueError("GITHUB_EVENT_PATH is missing")
+    event = json.loads(Path(event_path).read_text())
+    if not isinstance(event, dict):
+        raise ValueError("GITHUB_EVENT_PATH JSON must be an object")
+    group = event.get("merge_group")
+    if not isinstance(group, dict):
+        raise ValueError("merge_group must be an object")
+    refs = []
+    for key in ("base_sha", "head_sha"):
+        value = group.get(key)
+        if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{40}", value):
+            raise ValueError(f"merge_group.{key} must be a full commit SHA")
+        refs.append(value)
+    return subprocess.run(
+        ["git", "diff", "--name-only", *refs, "--"],
+        check=True, capture_output=True, text=True,
+    ).stdout.splitlines()
 
 
 def changed_files(base: str) -> list[str]:
@@ -645,7 +667,7 @@ def main() -> int:
         "--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)"
     )
     args = parser.parse_args()
-    files = changed_files(args.base)
+    files = queue_changed_files() if args.event == "merge_group" else changed_files(args.base)
     result = scope(
         files,
         lambda path: Path(path).is_file(),

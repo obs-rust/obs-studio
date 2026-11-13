@@ -141,7 +141,7 @@ master's verdicts (forge-ci/setup-soldr#604, `ci/test_verdict_scope.py`).
 In CI the first master run with it (40159829966) published 8 verdicts under
 scope `b88ba65d043f3f19`, the scope PR and merge-queue Fast Gate runs read.
 It is content-keyed, so it does not depend on the
-wrapper bypass above. `SOLDR_VERDICTS=off` forces a run. The gate's source
+wrapper bypass above. `SOLDR_VERDICTS=off` forces a run; Build and Format set it for merge groups. The gate's source
 probe sets it, because before forge-ci/soldr#3913 a scratch crate in an ignored
 directory (`target/`) keyed on none of its files and replayed a stale pass.
 The lint lane runs the Dylints through `soldr dylint` with soldr's managed
@@ -416,17 +416,13 @@ the paths that select them, so a change only triggers the tests it can affect.
   defers (Linux Tier 2, Qt, the workspace tests) and runs macOS/Windows
   Rust tests and Tier 2 for paths that select them **and for core code**
   (`libobs/`, `rust/`, Cargo files). This retains coverage for native core
-  regressions (#2916, #2910). Merge groups run only Linux
-  execution in the Fast Gate, including for platform-specific diffs. Merge
-  groups skip Linux Tier 2, Qt, cross-compilation, cross lint and the Windows
-  MSVC link check as well; these remain on their existing PR/master paths.
-  Native Rust tests and
-  Tier 2 remain selected on master pushes, and full native application builds
-  remain on nightly/manual/release events. This supersedes #3606's native
-  queue policy: hosted native runner capacity can prevent queue admission
-  without executing validation. A red native master run requires fixing
-  forward or reverting; Linux cross-lint does not prove native runtime behavior.
-  CI Gate resolves the queue's core scope directly from the merge-group
+  regressions (#2916, #2910). Merge groups execute selected heavy checks on the immutable base/head diff,
+  including both native Rust/Tier 2 hosts for core/shared changes, selected
+  platform paths, Linux Tier 2 OFF/ON, Qt and C/C++ cross work. Every non-docs
+  group also runs Windows MSVC test linking and all-six-target clippy/Dylint:
+  host, the two linked cross targets and three lint-only targets. Native app
+  builds remain on nightly/manual/release events.
+  CI Gate resolves the queue's full scope directly from the merge-group
   event's base/head git diff, independently of reusable-workflow outputs.
   Missing event fields, unavailable commits and failed scope selection fail
   closed with named diagnostics. Cancelled jobs with no assigned runner and
@@ -434,8 +430,9 @@ the paths that select them, so a change only triggers the tests it can affect.
   there is no automatic retry or conversion to success.
   Scope-policy edits (`ci/ci_scope.py`) also select Windows on PRs to exercise
   the routing on hosted CI. A failed or runnerless selected Windows job still
-  blocks that PR; it cannot start on the Linux-only merge queue. No required
-  check is exempted and native master coverage remains in place.
+  blocks that PR. Selected queue jobs must also execute successfully; missing,
+  skipped or unfinished expected matrix legs fail the gate. No required check
+  is exempted and native master coverage remains in place.
   Evidence and the tradeoff are recorded in
   [the queue decision](ci-merge-group-scope.md).
   A master push builds no OBS app. Every platform and every app build runs on schedule,
@@ -458,7 +455,7 @@ Cargo files test the workspace), on every PR. No Qt is installed there.
 |---|---|
 | everything | Fast Gate: 1) fmt, clippy, Dylint; 2) unit tests of the touched crates; 3) Linux build of touched `plugins/<x>`/`shared/<x>` targets (ENABLE_FRONTEND=OFF, no Qt) |
 | `libobs/` (not platform-only files), crates linked into libobs, `test/cmocka/`, `deps/`, `rust/tools/linux-validate/`, Cargo files | Tier 2 Linux: compilation overlaps Fast Gate; OFF/ON tests wait for the Tier 2 build, with one complete suite per mode |
-| core (`libobs/`, `rust/`, Cargo files), `ci/ci_scope.py` | Windows Rust tests and Tier 2 on PRs; both native platforms on master pushes; neither on merge groups |
+| core (`libobs/`, `rust/`, Cargo files), `ci/ci_scope.py` | Windows Rust tests and Tier 2 on PRs; both native platforms on master pushes and merge groups |
 | `frontend/`, Qt-linked tests, `shared/qt`, the Qt job's own files | Qt Frontend Linux (the only Qt). Frontend platform files start no Windows/macOS Rust or Tier 2 job; Windows/macOS Qt lanes are a follow-up |
 | files matching `/platform[/-](windows, macos, linux, posix)[/.]` (posix = linux+macos), legacy OS names, shared build files (`cmake/common`, `cmake/finders`, `libobs/cmake`, root CMake, crate-root `build.rs`, `platform/mod.rs`, C++ cmocka tests) | macOS / Windows Rust tests, Tier 2, cross lint |
 | `build-aux/`, `.gitmodules`, submodules | compiled on Linux only; no full build from a PR |
@@ -484,8 +481,9 @@ independent work can finish after Fast Gate fails.
 Measure runner cost and actual gate time rather than treating the theoretical
 overlap as a proven speedup (#930, #1286).
 
-Tier 2 uses one complete suite per mode on PRs, each in its
-own runner environment: two test jobs rather than six. Merge groups skip Tier 2.
+Tier 2 uses one complete suite per mode on PRs and merge groups, each in its
+own runner environment: two test jobs rather than six. Queue groups always use
+these two complete suites, including when a caller requests full coverage.
 Main pushes, nightly and release runs retain the suite plus two serial partitions
 per backend.
 The [runner-capacity measurement](ci-tier2-queue-capacity.md) explains the
@@ -528,7 +526,7 @@ commit. Lane proofs (`ci/lane_proof.py`, #699) are keyed by a lane's
   published or a master push must merge/save test timings (#1581). If neither
   operation applies, it skips at job level; the OFF/ON test results still
   determine the reusable workflow's result and required gate.
-- On a PR or merge-queue run, `Lane Proofs 🧾` recomputes each key, with the
+- On a PR, `CI Mode 🛂` recomputes each key, with the
   lane declarations read from the base commit, and skips a lane whose key
   has a proof from a trusted run: this repository's PR workflow on a branch
   in this repository, or a merge-queue run, within 72 hours. Fork runs
@@ -540,7 +538,8 @@ commit. Lane proofs (`ci/lane_proof.py`, #699) are keyed by a lane's
 
 Over the last 200 master commits, the Rust lanes' inputs were unchanged 63% of
 the time and Tier 2's 18%, so a queue rebuild after an unrelated merge
-usually reruns only lint and the event checks. Check a key with
+can reuse PR evidence. Merge groups always rerun their selected lanes; proof
+keys never suppress queue execution. Check a key with
 `uv run ci/lane_proof.py key --lane rust-test --base origin/master`.
 
 ### CI attestation: skipping what's already proven
@@ -563,8 +562,8 @@ The two native rows can only be attested on that host (#443): a Linux stamp
 holds `lint` and `cross` but not `macos-native`/`windows-native`, so those jobs
 still run unless a developer ran the gate on a Mac or Windows box.
 
-**Never skipped by a stamp:** the event checks, the macOS, Ubuntu, Windows and
-Flatpak app builds.
+**Never skipped by a stamp:** every selected merge-group check, the event
+checks, the macOS, Ubuntu, Windows and Flatpak app builds.
 
 **The stamp is ignored (CI runs everything it would anyway) when:**
 - the PR comes from a fork or from a non-writer. GATE-008 reads the
@@ -863,19 +862,34 @@ PR and merge-group scope still use their own bases.
 
 ## Merge queue admission policy
 
-The merge queue runs the Fast Gate (format/lint and one Linux build/Rust test
-lane, including touched Linux targets), plus the Format checks and CI self-tests.
-Rust tests execute on the merge result even when a prior lane proof exists, to
-catch semantic conflicts between queued PRs. Docs-only groups retain their
-existing Fast Gate skip. Event/scope selection, CI Mode, cancellation of
-superseded groups, CI Gate and the final cache sweep remain orchestration jobs.
-Sanitizers, all Tier 2 lanes, Windows MSVC linking, Windows/macOS Rust tests,
-cross-compilation, cross lint, Qt, and Flatpak/AppImage/full app builds do not run
-on `merge_group`. PR lane selection and master push coverage are unchanged.
-Skipped jobs still report skipped conclusions; the existing gate accepts them,
-just as for docs-only PRs, while failures and cancellations still fail it.
-`CI Gate ✅` is the required merge check. Keep its dependencies limited to
-these checks. Cache maintenance stays independent and cannot block this gate.
+The merge queue is the heavy gate (#4747, maintainer direction in #4743).
+`ci/ci_scope.py` selects lanes from the immutable event `base_sha`/`head_sha`
+diff of the combined merge group. It runs Fast Gate merge-result Rust tests,
+host formatting/clippy/Dylint and touched Linux targets, selected C/C++ cross
+compilation, complete Linux Tier 2 OFF and ON suites, Qt, and selected native
+Windows/macOS Rust tests and Tier 2. Shared/core changes select both native
+hosts, matching core master-push coverage; platform paths retain their existing
+selection. Every non-docs group runs Windows MSVC test linking and all six
+clippy/Dylint targets. Main Windows x64/macOS arm64 cross legs retain test
+`--no-run`; the extra three targets lint only. GNU-oracle linking remains in
+Fast Gate when its inputs select it. Docs-only groups retain their Fast Gate skip.
+
+Client trailers, hosted lane proofs and command verdict caches cannot suppress
+selected queue execution. `SOLDR_VERDICTS=off` disables soldr verdict replay;
+restored compiler/dependency artifacts remain allowed. PR routing is unchanged
+by this restoration; attestation-only PR admission is a separate rollout.
+
+`ci/gate_jobs.py` recomputes an expected execution manifest from that same exact
+diff, with full checkout metadata, independently of reusable outputs. Each
+selected matrix leg and both complete Tier 2 modes must finish successfully.
+Missing, unexpectedly skipped, unfinished, cancelled, failed or runnerless jobs
+reject admission. True out-of-scope jobs may skip. API/scope errors fail closed;
+runner-capacity diagnostics remain errors, including unavailable native runners.
+`CI Gate ✅` remains the sole required context. Existing Linux jobs use selected
+`MQ_RUNNER_LABELS` with hosted fallback; native jobs retain native runners.
+Concurrency cancellation and independent cache maintenance are preserved.
+Sanitizers, security scans, full app builds, packaged/hardware qualification and
+release work retain their existing nightly/manual/release placement.
 
 Security analysis (CodeQL, vulnerability/dependency audits and static security
 scanners), release packaging validation, signing, publishing and distribution

@@ -479,7 +479,6 @@ jobs:
       # E1), so a regression or a bypass that rebuilt the queue shows up.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          sparse-checkout: ci
           fetch-depth: 0
           persist-credentials: false
       - name: Set Up uv 🐍
@@ -507,7 +506,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/gate_jobs.py
-      - run: echo 'All required jobs passed or were skipped.'
+      - run: echo 'Every selected queue job executed successfully; out-of-scope jobs may skip.'
   # Publish the Tier 2 Linux lane proof (ci/lane_proof.py) after the gate
   # (#3018): CI Gate passes only when every Tier 2 shard passed, and the
   # output is set only when the build ran for an unproven lane. The gate

@@ -22,14 +22,13 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import subprocess
 import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
 
-from ci_scope import scope
+from ci_scope import Scope, queue_changed_files, read_text, repo_cmocka_source_paths, scope
 
 UNSUCCESSFUL = {
     "failure",
@@ -51,7 +50,9 @@ class JobListError(RuntimeError):
     """The run's job list could not be read: every attempt failed."""
 
 
-def blocking(jobs: list[dict], *, require_scope: bool = False) -> list[str]:
+def blocking(
+    jobs: list[dict], *, require_scope: bool = False, expected: set[str] | None = None
+) -> list[str]:
     """Names of the finished jobs that should fail the gate."""
     bad = [
         j["name"]
@@ -60,17 +61,15 @@ def blocking(jobs: list[dict], *, require_scope: bool = False) -> list[str]:
         and j.get("conclusion") in UNSUCCESSFUL
         and not j["name"].startswith(EXEMPT_PREFIXES)
     ]
+    required = set(expected or ())
     if require_scope:
-        # Scope must have been selected successfully before queue validation.
-        # Missing, unfinished and skipped jobs are not evidence of coverage.
-        passed = {
-            j["name"]
-            for j in jobs
-            if j.get("status") == "completed" and j.get("conclusion") == "success"
-        }
-        bad.extend(
-            name for name in (SCOPE_JOB,) if name not in passed and name not in bad
-        )
+        required.add(SCOPE_JOB)
+    # A successful parent/reusable call is not proof that its matrix children ran.
+    passed = {
+        j["name"] for j in jobs
+        if j.get("status") == "completed" and j.get("conclusion") == "success"
+    }
+    bad.extend(name for name in sorted(required - passed) if name not in bad)
     return bad
 
 
@@ -109,30 +108,53 @@ def run_jobs(
     )
 
 
-def queue_core_scope() -> bool:
-    """Resolve the exact queue diff, independently of cancelled reusable outputs."""
-    event_path = os.environ.get("GITHUB_EVENT_PATH")
-    if not event_path:
-        raise ValueError("GITHUB_EVENT_PATH is missing")
-    event = json.loads(Path(event_path).read_text())
-    if not isinstance(event, dict):
-        raise ValueError("GITHUB_EVENT_PATH JSON must be an object")
-    group = event.get("merge_group")
-    if not isinstance(group, dict):
-        raise ValueError("merge_group must be an object")
-    refs = []
-    for key in ("base_sha", "head_sha"):
-        value = group.get(key)
-        if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{40}", value):
-            raise ValueError(f"merge_group.{key} must be a full commit SHA")
-        refs.append(value)
-    files = subprocess.run(
-        ["git", "diff", "--name-only", *refs, "--"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.splitlines()
-    return scope(files, event="merge_group").core
+def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> set[str]:
+    """The queue execution manifest: exact job names, never proof credit.
+
+    Keep names identical to build-project.yaml, including matrix mode/part names.
+    The extra cross lane executes all three lint-only targets in one job; the two
+    main targets retain independent runners and test linking.
+    """
+    expected = {SCOPE_JOB, "Build 🧱 / CI Mode 🛂", "Format 🔍 / checks"}
+    if not selected.docs_only:
+        expected.add("Build 🧱 / Fast Gate ⚡")
+    if selected.windows_link:
+        expected.add("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)")
+    if selected.cross_lint:
+        expected.update({
+            "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+            "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+            "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+        })
+    if selected.cross_targets:
+        expected.add(f"Build 🧱 / Cross Compile 🧰 ({selected.cross_targets})")
+    if selected.tier2:
+        expected.add("Build 🧱 / Rust Tier 2 Linux 🐧 (build)")
+        expected.update(f"Build 🧱 / Rust Tier 2 Linux 🐧 (tests {mode}, all)" for mode in ("OFF", "ON"))
+    if selected.qt:
+        expected.add("Build 🧱 / Qt Frontend Linux 🐧")
+    for enabled, runner in ((selected.macos, "macos-26"), (selected.windows, "windows-2025-vs2026")):
+        if enabled:
+            expected.add(f"Build 🧱 / Rust Tests 🦀 ({runner})")
+            expected.add(f"Build 🧱 / Rust Tier 2 ({runner})")
+    if any(path.endswith(".swift") for path in files):
+        expected.add("Format 🔍 / swift-format")
+    return expected
+
+
+def queue_coverage() -> set[str]:
+    """Recompute full scope with the same checkout inputs as Event Data.
+
+    No reusable outputs or attestations are used: nested cancellations can lose
+    those outputs. CI Gate checks out the full tree so linked crates, cmocka
+    sources and cross/Qt CMake rules cannot disappear in a sparse checkout.
+    """
+    files = queue_changed_files()
+    selected = scope(
+        files, lambda path: Path(path).is_file(), read_text,
+        cmocka_paths=repo_cmocka_source_paths(Path(".")), event="merge_group",
+    )
+    return expected_jobs(selected, files)
 
 
 def main() -> int:
@@ -142,7 +164,18 @@ def main() -> int:
     except JobListError as error:
         print(f"::error::CI Gate could not read this run's jobs: {error}")
         return 1
-    bad = blocking(jobs, require_scope=queue)
+    scope_failed = False
+    expected = set()
+    if queue:
+        try:
+            expected = queue_coverage()
+            print("Merge-group required execution manifest: " + json.dumps(sorted(expected)))
+        except (OSError, ValueError, subprocess.CalledProcessError) as error:
+            print(
+                f"::error::CI Gate could not resolve merge-group scope from GITHUB_EVENT_PATH and git diff: {error}"
+            )
+            scope_failed = True
+    bad = blocking(jobs, require_scope=queue, expected=expected)
     for name in bad:
         record = next((j for j in jobs if j["name"] == name), {})
         if (
@@ -158,20 +191,8 @@ def main() -> int:
             print(
                 f"::error::{name} did not succeed (conclusion={record.get('conclusion', 'missing')})"
             )
-    scope_failed = False
-    if queue:
-        try:
-            core = queue_core_scope()
-            print(
-                f"Merge-group scope resolved from event base_sha/head_sha: core={str(core).lower()}"
-            )
-        except (OSError, ValueError, subprocess.CalledProcessError) as error:
-            print(
-                f"::error::CI Gate could not resolve merge-group scope from GITHUB_EVENT_PATH and git diff: {error}"
-            )
-            scope_failed = True
     if not bad and not scope_failed:
-        print("Every finished job of this run succeeded or was skipped.")
+        print("Every required job succeeded; only out-of-scope jobs may skip.")
     return 1 if bad or scope_failed else 0
 
 

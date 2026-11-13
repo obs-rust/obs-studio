@@ -51,9 +51,10 @@ RUN_39677084695 = [
 class GateJobs(unittest.TestCase):
     def test_queue_manifest_requires_each_selected_leg_despite_proofs(self):
         from ci_scope import scope
-        selected = scope(["libobs/obs.c.h", "cmake/common/helpers_common.cmake"], event="merge_group")
+        selected = scope(["libobs/obs.c.h", ".github/workflows/build-project.yaml"], event="merge_group")
         expected = gate_jobs.expected_jobs(selected)
         required = {
+            "Build 🧱 / Cross Compile 🧰 (mac-arm64,win-x64)",
             "Build 🧱 / Rust Tests 🦀 (macos-26)",
             "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
             "Build 🧱 / Rust Tier 2 (macos-26)",
@@ -133,7 +134,7 @@ class GateJobs(unittest.TestCase):
                     return_value=done(0, "libobs/obs.c.h\n"),
                 ) as run,
             ):
-                self.assertTrue(gate_jobs.queue_core_scope())
+                self.assertTrue(gate_jobs.queue_coverage())
                 self.assertEqual(
                     run.call_args.args[0],
                     [
@@ -148,7 +149,7 @@ class GateJobs(unittest.TestCase):
                 group.pop("base_sha")
                 path.write_text(json.dumps({"merge_group": group}))
                 with self.assertRaisesRegex(ValueError, "merge_group.base_sha"):
-                    gate_jobs.queue_core_scope()
+                    gate_jobs.queue_coverage()
 
     def test_invalid_event_shapes_name_the_missing_input(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -162,7 +163,7 @@ class GateJobs(unittest.TestCase):
                 ):
                     path.write_text(json.dumps(event))
                     with self.assertRaisesRegex(ValueError, message):
-                        gate_jobs.queue_core_scope()
+                        gate_jobs.queue_coverage()
 
     def test_scope_error_does_not_hide_executed_job_failures(self):
         for conclusion in (

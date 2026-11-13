@@ -72,8 +72,26 @@ class MergeQueue(unittest.TestCase):
             with self.subTest(job=name):
                 header = job_block(BUILD, name).split("    steps:", 1)[0]
                 condition = re.search(r"^    if: (.+)$", header, re.M).group(1)
-                # A queue bypass must dominate all proof/trailer predicates.
-                self.assertRegex(condition, r"\(github.event_name == 'merge_group' \|\|")
+                # Force every client/hosted skip output true. Queue execution
+                # must still be selected; false path scope may still skip it.
+                def allows(selected):
+                    values = {"docs_only": "false", "deferred": "true",
+                              "macos": selected, "windows": selected,
+                              "tier2": selected, "cross_lint": selected}
+                    expr = condition.removeprefix("${{").removesuffix("}}")
+                    expr = expr.replace("github.event_name", repr("merge_group"))
+                    expr = re.sub(r"needs\.check-event\.outputs\.([\w_-]+)",
+                                  lambda m: repr(values[m[1]]), expr)
+                    expr = re.sub(r"needs\.ci-mode\.outputs\.[\w_-]+", repr("true"), expr)
+                    expr = expr.replace("needs.rust-tests-linux.result", repr("success"))
+                    expr = re.sub(r"inputs\.[\w_-]+", "False", expr)
+                    expr = expr.replace("always()", "True").replace("cancelled()", "False")
+                    expr = expr.replace("&&", " and ").replace("||", " or ")
+                    expr = re.sub(r"!(?!=)", " not ", expr)
+                    return eval(expr, {"__builtins__": {}})
+                self.assertTrue(allows("true"), condition)
+                if name != "rust-tests-linux":
+                    self.assertFalse(allows("false"), condition)
         mode = job_block(BUILD, "ci-mode")
         self.assertIn("PROOFS: ${{ github.event_name == 'pull_request' && !inputs.full }}", mode)
 

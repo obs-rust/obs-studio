@@ -126,7 +126,7 @@ class CiScopeTest(unittest.TestCase):
         ]
         queued = scope(files, event="merge_group")
         for lane in ("macos", "windows", "qt", "tier2",
-                     "cross_targets", "cross_lint", "windows_link"):
+                     "cross_lint", "windows_link"):
             with self.subTest(lane=lane):
                 self.assertTrue(getattr(queued, lane))
         self.assertTrue(queued.core)
@@ -167,7 +167,10 @@ class CiScopeTest(unittest.TestCase):
         fixtures = (
             (["plugins/win-capture/game-capture.c"], False, True, False, False),
             (["plugins/mac-capture/mac-display-capture.m"], True, False, False, False),
-            (["cmake/common/helpers_common.cmake"], True, True, False, False),
+            (["libobs/util/platform-windows.c.h"], False, True, False, False),
+            (["libobs/util/platform-cocoa.m.h"], True, False, False, False),
+            (["rust/obs-util/src/platform/windows/mod.rs"], False, True, False, False),
+            (["cmake/common/helpers_common.cmake"], True, True, False, True),
             (["frontend/widgets/OBSBasicWindow.cpp"], False, False, True, False),
             (["libobs/obs.c.h"], True, True, False, True),
             (["Cargo.toml"], True, True, False, True),
@@ -198,7 +201,7 @@ class CiScopeTest(unittest.TestCase):
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
-                "rust-cross-lint", "rust-cross-proof", "rust-windows-link",
+                "rust-cross-lint", "rust-cross-lint-release", "rust-cross-proof", "rust-windows-link",
                 "rust-linux-tier2-build", "rust-linux-tier2", "linux-qt-frontend",
             ), "ubuntu-26.04"),
             "check-format.yaml": {"checks": "ubuntu-latest"},
@@ -278,7 +281,7 @@ class CiScopeTest(unittest.TestCase):
             self.assertIn("needs: select-mq-runner", blocks[job])
             self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
 
-    def test_queue_runs_merge_result_tests_and_skips_windows_link(self):
+    def test_queue_runs_merge_result_tests_and_windows_link(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
         job = text.split("  rust-windows-link:\n", 1)[1].split("    steps:", 1)[0]
         self.assertIn("needs.check-event.outputs.windows_link == 'true'", job)
