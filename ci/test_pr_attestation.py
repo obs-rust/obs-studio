@@ -349,6 +349,79 @@ class TrustContract(unittest.TestCase):
         self.assertFalse(plan["fast_path"])
         self.assertFalse(plan["jobs"]["build-project.yaml:rust-tests-linux"]["skip"])
 
+    def test_planner_outputs_drive_actual_workflow_job_allocation(self):
+        from ci_scope import scope
+        from test_merge_queue import job_block
+
+        root = Path(__file__).resolve().parents[1]
+        build = (root / ".github/workflows/build-project.yaml").read_text()
+        formatting = (root / ".github/workflows/check-format.yaml").read_text()
+        paths = ["rust/obs-util/src/value.rs", "frontend/value.cpp", "plugins/win-capture/value.c",
+                 "plugins/mac/foo.swift", "plugins/rtmp-services/data/services.json"]
+        selected = scope(paths, event="pull_request")
+        result = self.evaluate(head=self.complete_client())
+        result["gates"].update({"swift/all/fmt": "valid", "data/all/services-schema": "valid"})
+        full = subject.admission(result, paths, event="pull_request")
+        for case in ("complete", "missing-test", "nonmember", "verifier-error"):
+            with self.subTest(case=case):
+                current = deepcopy(result)
+                if case == "missing-test":
+                    current["gates"].pop("rust/x86_64-unknown-linux-gnu/client-test")
+                elif case in ("nonmember", "verifier-error"):
+                    current["trusted"] = False
+                plan = subject.admission(current, paths, event="pull_request")
+                outputs = io.StringIO()
+                subject.write_outputs(plan, outputs)
+                values = dict(line.split("=", 1) for line in outputs.getvalue().splitlines())
+                scope_values = {key: str(value).lower() for key, value in vars(selected).items()}
+                scope_values["deferred"] = "true"
+                scope_values["cross_lint"] = "true"
+                for name in ("rust-tests-linux", "rust-cross-lint", "rust-cross-lint-release",
+                             "rust-windows-link", "cross-compile", "rust-linux-tier2-build",
+                             "linux-qt-frontend", "rust-tests-windows", "rust-tier2-windows"):
+                    header = job_block(build, name).split("    steps:", 1)[0]
+                    condition = re.search(r"^    if: (.+)$", header, re.M)[1]
+                    expression = condition.removeprefix("${{").removesuffix("}}")
+                    expression = expression.replace("github.event_name", repr("pull_request"))
+                    expression = re.sub(r"needs\.check-event\.outputs\.([\w_-]+)",
+                                        lambda m: repr(scope_values.get(m[1], "")), expression)
+                    expression = re.sub(r"needs\.ci-mode\.outputs\.([\w_-]+)",
+                                        lambda m: repr(values.get(m[1], "false")), expression)
+                    expression = expression.replace("needs.rust-tests-linux.result", repr("success"))
+                    expression = expression.replace("needs.check-event.result", repr("success"))
+                    expression = re.sub(r"inputs\.[\w_-]+", "False", expression)
+                    expression = expression.replace("always()", "True").replace("cancelled()", "False")
+                    expression = expression.replace("&&", " and ").replace("||", " or ")
+                    expression = re.sub(r"!(?!=)", " not ", expression)
+                    allocated = eval(expression, {"__builtins__": {}, "fromJSON": json.loads})
+                    self.assertEqual(bool(allocated), case != "complete", (case, name, condition, plan))
+                swift = job_block(formatting, "swift-format")
+                self.assertIn("inputs.swift", swift)
+                self.assertEqual(full["jobs"]["check-format.yaml:swift-format"]["skip"], True)
+
+    def test_invalid_bindings_and_trust_edits_retain_execution_plan(self):
+        for state in ("expired", "wrong-tree", "wrong-parents", "malformed"):
+            records = [RecordFixture(gate, self.tree, (self.base,), "lint", at=NOW - 30,
+                                     state=state if index == 0 else "valid").sealed()
+                       for index, gate in enumerate(subject.CLIENT_GATES)]
+            plan = self.planned(head=self.commit(records))
+            self.assertFalse(plan["fast_path"])
+            self.assertFalse(plan["jobs"]["build-project.yaml:rust-windows-link"]["skip"])
+        self.write("ci-attestations.yml", "version: 999\n")
+        self.git("add", "ci-attestations.yml")
+        self.tree = self.git("write-tree")
+        plan = self.planned(head=self.complete_client())
+        self.assertFalse(plan["fast_path"])
+        self.assertIn("trust-surface", json.dumps(plan))
+
+    def test_two_pr_merge_commit_never_uses_member_trailers(self):
+        first = self.complete_client()
+        second = self.commit([self.att(FMT)], extra="second PR")
+        merged = self.commit([], parents=(first, second))
+        plan = self.planned(head=merged, event="merge_group")
+        self.assertFalse(plan["fast_path"])
+        self.assertFalse(any(job["skip"] for job in plan["jobs"].values()))
+
     def test_workflow_consumes_only_base_owned_unified_decision(self):
         root = Path(__file__).resolve().parents[1]
         build = (root / ".github/workflows/build-project.yaml").read_text()
@@ -358,7 +431,7 @@ class TrustContract(unittest.TestCase):
         self.assertNotIn("ATTEST_MODE", mode)
         self.assertNotIn("local-gate verify", mode)
         self.assertNotIn("ci/lane_proof.py check", mode)
-        self.assertIn("steps.admission.outputs.skip_rust-tests-linux", mode)
+        self.assertIn("steps.gate.outputs.skip_rust-tests-linux", mode)
         self.assertIn("swift: ${{ steps.swift.outputs.swift }}", build)
 
     def test_verified_private_member_partial_evidence_and_distinct_signer(self):

@@ -63,7 +63,6 @@ class Rungs(unittest.TestCase):
         return result, out.getvalue(), calls
 
     def test_admission_contract_requires_client_checks_and_six_targets(self):
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
         import pr_attestation
         self.assertIn("python/all/self-test", pr_attestation.CLIENT_GATES)
         self.assertIn("general/all/client-lint", pr_attestation.CLIENT_GATES)

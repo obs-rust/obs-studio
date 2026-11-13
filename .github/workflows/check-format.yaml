@@ -6,6 +6,18 @@ on:
         description: Online merge-queue runner labels selected by the caller; empty uses hosted runners
         type: string
         default: ''
+      skip-checks:
+        description: Base-owned admission skip-checks
+        type: boolean
+        default: false
+      skip-swift:
+        description: Base-owned admission skip-swift
+        type: boolean
+        default: false
+      swift:
+        description: Base-owned admission swift
+        type: boolean
+        default: false
 permissions:
   contents: read
 # A newer run of the same ref cancels the one it supersedes, so a pushed fix
@@ -20,13 +32,14 @@ env:
   # and the children it starts) read UTF-8 files; a Windows runner's Python
   # would decode them with the ANSI code page (#2757). A no-op elsewhere.
   PYTHONUTF8: "1"
-  SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}
+  SOLDR_VERDICTS: ${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') && 'off' || 'auto' }}
 jobs:
   # One runner for every cheap check (#992): each separate job queued for its
   # own runner on the Free plan, 5-10 minutes each. On a PR the clang-format
   # and gersemi checks run in the Fast Gate's lint lane (same pinned tools,
   # same files), so they run here only on pushes.
   checks:
+    if: github.event_name != 'pull_request' || !inputs.skip-checks
     timeout-minutes: 20
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-latest' }}
     outputs:
@@ -80,7 +93,7 @@ jobs:
     timeout-minutes: 20
     runs-on: macos-26
     needs: checks
-    if: needs.checks.outputs.swift == 'true'
+    if: ${{ always() && !cancelled() && ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && inputs.swift && (github.event_name != 'pull_request' || !inputs.skip-swift) || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.checks.outputs.swift == 'true')) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

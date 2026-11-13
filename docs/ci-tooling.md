@@ -443,12 +443,15 @@ the paths that select them, so a change only triggers the tests it can affect.
 
 ### Path to lane table (fast gate)
 
-A PR needs about 5 runners: Event Data, CI Mode (attestation and lane proofs),
-Checks (swift detection, flatpak and Qt XML validators, ci/ self-tests; plus
-clang-format and gersemi on pushes), the Fast Gate and CI Gate. The Fast Gate
-runs formatters, rustfmt, clippy, Dylint and the unit tests of the crates the
-diff touches and their dependents (`ci/rust_scope.py`; libobs, dylints and
-Cargo files test the workspace), on every PR. No Qt is installed there.
+A trusted complete ordinary member PR allocates Event Data, CI Mode and
+CI Gate for compile/test admission. Independent governance/pre-work retains its
+own event policy. Format, Swift, Validate Data and compile/test jobs skip before
+runner allocation when their selected contract is satisfied. Fallback PRs run
+Format/self-tests, Fast Gate and selected native/link/Qt/Tier 2 work. Every
+non-docs fallback also runs all-six-target clippy/Dylint, including the three
+extra lint-only targets. Fast Gate still compiles touched Linux targets on
+fallback PRs; the complete member path defers those builds to the queue and
+never claims a lint stamp proves a native target build.
 `LANES` in `ci/ci_scope.py` selects the rest by path:
 
 | Paths | Lane |
@@ -509,83 +512,69 @@ runner cost in the broader #1581 study before claiming a workflow speedup.
 
 Unchanged lanes are cached by the gate, so a re-run after a small fix is fast.
 
-### Lane proofs: skipping inputs that already passed
+### Lane proofs: historical diagnostics
 
-A local-gate stamp covers one exact tree, so it can never cover a merge-queue
-commit. Lane proofs (`ci/lane_proof.py`, #699) are keyed by a lane's
-*inputs* instead:
-
-- Each lane declares what it reads in `local-gate.toml` (`exclude`/`keep`,
-  checked by tracing the lane with strace). `rust-test` and `cross` read
-  `rust/`, `dylints/`, `libobs/`, `deps/`, `plugins/obs-nvenc/` and the Cargo
-  and toolchain files; `tier2-linux` reads everything but docs, packaging,
-  the non-Linux graphics backends and CI-only files. `lint` reads everything.
-- When `Rust Tests (Linux)`, `Rust Cross Lint` or `Rust Tier 2 Linux` pass, the
-  job uploads an empty artifact named after the lane and its input key.
-  Tier 2's publishing job requests a runner only when a lane proof can be
-  published or a master push must merge/save test timings (#1581). If neither
-  operation applies, it skips at job level; the OFF/ON test results still
-  determine the reusable workflow's result and required gate.
-- On a PR, `CI Mode 🛂` recomputes each key, with the
-  lane declarations read from the base commit, and skips a lane whose key
-  has a proof from a trusted run: this repository's PR workflow on a branch
-  in this repository, or a merge-queue run, within 72 hours. Fork runs
-  never publish trusted proofs, but fork PRs do reuse proofs.
-- No proof is used when the change touches a proof surface (`local-gate.toml`,
-  `ci/lane_proof.py`, `ci/local_gate.py`, workflows and actions, the Tier 2
-  harness, `rust-toolchain.toml`), on pushes, schedules, dispatches and full
-  runs, or when the lookup fails.
-
-Over the last 200 master commits, the Rust lanes' inputs were unchanged 63% of
-the time and Tier 2's 18%, so a PR with unchanged lane inputs
-can reuse trusted evidence. Merge groups always rerun their selected lanes; proof
-keys never suppress queue execution. Check a key with
-`uv run ci/lane_proof.py key --lane rust-test --base origin/master`.
+Hosted input-key lane proofs and old `Local-Gate:` trailers remain readable
+historical diagnostics. Neither suppresses real selected PR fallback or queue
+execution. Publication jobs allocate only when an executed lane supplies a
+nonempty new proof name; an attested skip cannot publish a fresh execution pass.
+Compiler and dependency caches remain enabled. Command verdict replay is off on
+PR and queue events so fallback analysis actually executes.
 
 ### CI attestation: skipping what's already proven
 
-When `ci-lint local-gate run` passes, it adds `Local-Gate` trailers to HEAD
-that record the exact tree and the lanes that ran. In PR CI the `CI Mode` job
-verifies the stamp, and if it holds, CI skips the jobs those lanes cover:
+CI Mode extracts `ci/pr_attestation.py` from the immutable PR BASE and runs it
+through uv in isolation from head code. That executable loads its prooft source
+pin, gate declarations and freshness/input policy from the same base git objects.
+The untrusted head commit/tree/message is data. Workflow-call outputs carry that
+one decision to Format/Swift and Validate Data before runners allocate. Event
+Data selects Swift from immutable base/head names, so a skipped Format checks
+job cannot hide Swift work. CI Gate independently reruns the base verifier and
+requires every expected fallback job to have executed successfully. Missing CI
+Mode or unexpectedly skipped/missing/cancelled/runnerless work fails admission.
 
-| Job skipped | Lanes that cover it |
-|---|---|
-| Rust Tests (Linux) | `lint` and `rust-test` |
-| Rust Tier 2 Linux | `tier2-linux` |
-| Rust Cross Lint | `cross` |
-| Rust Tests (macos-26) | `lint`, `cross` and `macos-native` |
-| Rust Tests (windows-2025-vs2026) | `lint`, `cross` and `windows-native` |
-| Rust Tier 2 (macos-26) | `macos-native` |
-| Rust Tier 2 (windows-2025-vs2026) | `windows-native` |
+The fast path requires a same-repository PR whose author AND authenticated
+final HEAD signer are active obs-rust org members. GitHub must report that exact
+commit signature valid. Authenticated membership lookups support private
+memberships when permitted; denial, unknown identities, API errors or verifier
+errors mean real selected PR checks, without expanding token permissions.
+`author_association` and collaborator write access are insufficient.
 
-The two native rows can only be attested on that host (#443): a Linux stamp
-holds `lint` and `cross` but not `macos-native`/`windows-native`, so those jobs
-still run unless a developer ran the gate on a Mac or Windows box.
+Evidence is self-reported, not signed execution proof: a trusted member can lie
+about running a command. prooft checks freshness (24 hours), tree/parents or
+base-declared input keys, provenance and each gate. Stamping amends the message:
+**stamp first, then sign the final commit**. An old signature is never credit for
+the amended object. Rebase, content edits, stale/wrong-tree/malformed records,
+missing gates and edits to trust surfaces (`push`, `ci/**`, `.github/**`,
+`local-gate.toml`, `ci-attestations.yml`, manifests/toolchain/config) run real CI.
+Legacy-only and partial legacy evidence never earns complete admission.
 
-**Never skipped by a stamp:** every selected merge-group check, the event
-checks, the macOS, Ubuntu, Windows and Flatpak app builds.
+The complete client contract includes full self-tests, Flatpak and Qt XML
+validators, general lint, Linux x64 host unit/differential tests, and clippy AND
+Dylint for exactly these targets (all through soldr):
 
-**The stamp is ignored (CI runs everything it would anyway) when:**
-- the PR comes from a fork or from a non-writer. GATE-008 reads the
-  author's association from the event payload (`ci_lint/gate_trust.py`,
-  `TRUSTED_ASSOCIATIONS` = `OWNER`, `MEMBER`, `COLLABORATOR`), and GitHub
-  reports a member whose organization membership is *private* as
-  `CONTRIBUTOR`: such a member has write access and still loses the skip.
-  Make the membership public (the organization's People page, "Public")
-  if you want the stamp trusted;
-- the head isn't attested for its exact tree;
-- a lane is missing from the stamp;
-- a "surface" changed: the gate itself, the Tier 2 harness,
-  `rust-toolchain.toml`, workflows, or the `ci/` scripts the lanes use;
-- the PR falls in the 1-in-10 audit sample.
+- Linux x64: `x86_64-unknown-linux-gnu`
+- Linux arm64: `aarch64-unknown-linux-gnu`
+- Windows x64 MSVC: `x86_64-pc-windows-msvc`
+- Windows arm64 MSVC: `aarch64-pc-windows-msvc`
+- macOS x64: `x86_64-apple-darwin`
+- macOS arm64: `aarch64-apple-darwin`
 
-**The stamp is lost by any change after stamping:**
-- a content amend;
-- a rebase;
-- GitHub's "Update branch" button, which creates an unstamped merge commit.
+Swift formatting and compatibility/services JSON gates are additionally required
+when the base-owned selector finds those files. A complete check can use its own
+trusted gates; heavy native/link/Qt/Tier 2 work only defers under the full selected
+contract and the base-owned `heavy-v1` queue placement policy. The existing Fast
+Gate and main cross jobs also own native compilation/linking, so partial client
+evidence conservatively runs them in full. Cross lint never proves native tests,
+Tier 2 runtime or ABI/hardware/package behavior.
 
-A message-only amend keeps it. After any of these, re-run the gate, or accept
-that CI will run the Linux jobs itself.
+Outsiders need no client tools. `./push` warns and falls back if local tools or
+signing are unavailable; `PUSH_REQUIRE_ATTESTATION=1` is the opt-in strict mode.
+A complete stamp is required for this fast path, never for contributing RED PRs.
+The implementation's own trust-surface PR must run real checks. A later ordinary
+source PR is needed to observe verification-only allocation after this base policy
+lands. Record actual job IDs/execution and runner wait separately for the member,
+fallback and queue examples; fixtures prove routing, not measured speed gains.
 
 ## Before you push
 
@@ -732,10 +721,9 @@ Each gap is a step toward the full protocol, and a good issue to pick up:
 - **A real `ci.toml`.** Path selection lives in `ci/ci_scope.py`, outside
   ci.yml's checker. Moving it into a schema-3 `ci.toml` lets the protocol's
   tooling validate and evolve it.
-- **Audit-sampled native lanes.** `macos-native` and `windows-native` now
-  attest their platform's jobs from that host (#443). A Linux-only contributor
-  still pays for them, and no lane replays them, so a macOS or Windows change
-  from a Linux box always costs PR CI time.
+- **Native lane capacity.** The heavy queue requires selected native runtime
+  coverage, even with complete client cross-lint evidence. Runner shortages fail
+  admission; they do not grant queue proof credit.
 - **Warm PR caches.** setup-soldr restores but doesn't save on PRs, so a
   branch's first build depends on master's cache being warm.
 - **Feed lessons back.** Problems found here, such as the stale zccache
@@ -876,8 +864,8 @@ Fast Gate when its inputs select it. Docs-only groups retain their Fast Gate ski
 
 Client trailers, hosted lane proofs and command verdict caches cannot suppress
 selected queue execution. `SOLDR_VERDICTS=off` disables soldr verdict replay;
-restored compiler/dependency artifacts remain allowed. PR routing is unchanged
-by this restoration; attestation-only PR admission is a separate rollout.
+restored compiler/dependency artifacts remain allowed. PR coverage is retained
+for fallback contributors; complete verified-member PRs now use base-owned admission.
 
 `ci/gate_jobs.py` recomputes an expected execution manifest from that same exact
 diff, with full checkout metadata, independently of reusable outputs. Each
@@ -1109,8 +1097,8 @@ scope/proof checks, without waiting for Fast Gate. No artifact from Fast Gate
 is consumed by these jobs. Fast Gate remains a required job in the reusable
 workflow, and its failure/cancellation still makes the caller's required gate
 fail even when both CTest suites pass. A missing/failed build or workflow
-cancellation does not start tests. Local Rust-only attestation can still skip
-Fast Gate without covering Tier 2.
+cancellation does not start tests. Partial Rust-only evidence conservatively retains Fast Gate and selected
+Tier 2 work; complete client admission defers both to mandatory queue execution.
 
 This removes a measured dependency wait: in the October 22 baseline, four
 of nine successful PR runs and four of nine successful queue runs with both

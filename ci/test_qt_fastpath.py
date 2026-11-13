@@ -49,7 +49,7 @@ class QtFastPathTest(unittest.TestCase):
         self.assertNotRegex(self.job(), r"qt6-(base|svg)-dev")
 
     def test_qt_starts_after_scope_without_waiting_for_fast_gate(self):
-        self.assertRegex(self.job(), r"(?m)^    needs: \[check-event\]$")
+        self.assertRegex(self.job(), r"(?m)^    needs: \[check-event, ci-mode\]$")
         self.assertNotIn("needs.rust-tests-linux", self.job())
 
     def test_scope_failure_cancellation_and_out_of_scope_skip_qt(self):
@@ -60,7 +60,8 @@ class QtFastPathTest(unittest.TestCase):
             ("success", "failure", "cancelled", "skipped"), (True, False), (True, False)
         ):
             with self.subTest(status=status, scoped=scoped, cancelled=cancelled):
-                expression = condition.replace("needs.check-event.result == 'success'", str(status == "success"))
+                expression = condition.replace("github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true'", "True")
+                expression = expression.replace("needs.check-event.result == 'success'", str(status == "success"))
                 expression = expression.replace("fromJSON(needs.check-event.outputs.qt)", str(scoped))
                 expression = expression.replace("cancelled()", str(cancelled))
                 expression = expression.replace("&&", " and ").replace("!", "not ").strip()

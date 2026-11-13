@@ -54,7 +54,7 @@ class MergeQueue(unittest.TestCase):
             header = job_block(BUILD, name).split("    steps:", 1)[0]
             self.assertIn("needs: ", header)
             self.assertIn("ci-mode", header)
-            self.assertIn("fast_path", header)
+            self.assertTrue("fast_path" in header or "skip_" in header)
             self.assertIn("github.event_name", header)
 
     def test_pull_runs_in_merge_queue(self):
@@ -108,17 +108,16 @@ class MergeQueue(unittest.TestCase):
                 if name != "rust-tests-linux":
                     self.assertFalse(allows("false"), condition)
         mode = job_block(BUILD, "ci-mode")
-        self.assertIn("PROOFS: ${{ github.event_name == 'pull_request' && !inputs.full }}", mode)
+        self.assertNotIn("ci/lane_proof.py check", mode)
 
     def test_queue_disables_command_verdict_replay(self):
         for text in (BUILD, (ROOT / ".github/workflows/check-format.yaml").read_text()):
-            self.assertIn("SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}", text)
+            self.assertIn("SOLDR_VERDICTS: ${{ (github.event_name == 'merge_group' || github.event_name == 'pull_request') && 'off' || 'auto' }}", text)
 
     def test_full_queue_rust_tests_also_ignore_hosted_proof(self):
         fast = job_block(BUILD, "rust-tests-linux")
         self.assertIn(
-            "if: needs.check-event.outputs.deferred != 'true' && "
-            "(github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')",
+            "if: needs.check-event.outputs.deferred != 'true'",
             fast,
         )
 
@@ -137,7 +136,7 @@ class MergeQueue(unittest.TestCase):
 
     def test_stamp_never_skips_in_merge_queue(self):
         ci_mode = job_block(BUILD, "ci-mode")
-        self.assertRegex(ci_mode, r"if: github\.event_name != 'merge_group'")
+        self.assertIn("if: github.event_name == 'pull_request' && !inputs.full", ci_mode)
 
 
 if __name__ == "__main__":

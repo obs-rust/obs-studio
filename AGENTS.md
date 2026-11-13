@@ -86,7 +86,12 @@ many agents don't overload the shared machines and CI runners.
 
 ## Merge gate: PR CI
 
-PR CI on `obs-rust/obs-studio` is the only check that decides a merge. Open a
+`CI Gate ✅` on `obs-rust/obs-studio` remains the required merge check.
+Trusted fully attested same-repository member PRs use base-owned verification
+admission; the merge queue always executes its selected heavy lanes. Forks,
+non-members, unverified final heads, trust-surface edits and missing/invalid
+proofs or verifier/API errors retain real selected PR checks. All six supported
+targets receive clippy and Dylint on the client or in real PR fallback. Open a
 PR (a draft is fine) as soon as the RED test exists; a red CI run on a PR is
 expected, not a process failure. Do not build fork or self-hosted CI to
 pre-validate PRs. What stays mandatory: RED then GREEN, differential and Tier 2
@@ -106,25 +111,25 @@ Neither sweep is in the required-gate dependency graph. See
 
 ## Local gate (recommended, not required)
 
-The local gate gives faster feedback and, when stamped, lets CI skip the Linux
-unit-test jobs. Without a stamp, PR CI runs the full suite. Environment
-errors (soldr permissions, disk, Docker, host FFmpeg): see
-[docs/rust-port/troubleshooting.md](docs/rust-port/troubleshooting.md).
+Local tooling is optional for contributors. `./push` tries prooft's complete
+client lanes first, then deprecated partial legacy evidence, then an unattested
+push. Strict refusal remains opt-in (`PUSH_REQUIRE_ATTESTATION=1`). Self-reported
+trailers establish accountability, not signed proof of execution. Fast admission
+requires authenticated active obs-rust membership for both PR author and valid
+signer of the exact final HEAD; private lookup denial runs real CI. Stamp first,
+then sign the final amended commit. Trust decisions and pins come from immutable
+PR BASE; head code and policy never decide skips. See [the admission contract](docs/ci-tooling.md#ci-attestation-skipping-whats-already-proven).
 
-**Push through `./push`, not a bare `git push`.** It runs the client-side
-attestation (`soldr lint rust --attest`), stamps that evidence into the commit
-message as `Ci-Attestation:` trailers (`ghd attest stamp`), pushes the branch,
-and opens the PR if there is none. Those trailers are what let CI skip work the
-client already did; a bare push leaves CI to run everything, and the agent
-guardrails refuse it. Set `PUSH_REQUIRE_ATTESTATION=1` to make a missing
-attestation an error instead of a warning.
+Push through `./push`, not a bare `git push`. Legacy Local-Gate trailers alone
+cannot grant full admission. Source or history changes require fresh evidence.
+Environment failures: [troubleshooting](docs/rust-port/troubleshooting.md).
 
 - `./lint` (8 s): clang-format 22.1.3 and gersemi 0.25.0 pinned via uvx, rustfmt, clippy, and the repo Dylints (`dylints/*`). `./lint --fix` rewrites files.
 - `./unittest`: Rust Tiers 1-3, then Tier 2 (cmocka against hybrid libobs and the explicit C reference, one build in Docker; ~30-40 s warm thanks to zccache).
 - To let CI skip the Linux unit-test jobs, commit, then run
   `uvx --from git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2 ci-lint local-gate run`.
-  It runs every lane in `local-gate.toml` (unchanged lanes are cached) and stamps HEAD with attestation trailers. Push the stamped commit as-is; any later change invalidates the stamp.
-- A PR runs only the lanes its changed paths select (the `LANES` table in `ci/ci_scope.py`: Fast Gate always, plus a Linux-hosted Windows MSVC link of every test binary (`ci/windows_link_check.py`) on every non-docs PR and queue run, Tier 2 for libobs/linked crates/`test/cmocka/`, Qt for `frontend/`, a Linux build of only the touched `plugins/<x>`/`shared/<x>` targets; macOS/Windows only for their own platform files). The full OBS app builds never run from a PR path. No label changes what runs. A master push adds every lane a PR defers (Tier 2, Qt, the workspace tests) and runs the macOS/Windows Rust tests and Tier 2 only for paths that select them; it builds no OBS app. Schedule, workflow_dispatch, tags, release branches and the release gate run everything, including the macOS, Windows, Ubuntu and Flatpak app builds (#436).
+  This legacy path remains available for diagnostics; use complete client gates for fast admission and sign only after stamping.
+- Fallback PR execution runs the lanes its changed paths select (the `LANES` table in `ci/ci_scope.py`: Fast Gate always, plus a Linux-hosted Windows MSVC link of every test binary (`ci/windows_link_check.py`) on every non-docs PR and queue run, Tier 2 for libobs/linked crates/`test/cmocka/`, Qt for `frontend/`, a Linux build of only the touched `plugins/<x>`/`shared/<x>` targets; macOS/Windows only for their own platform files). The full OBS app builds never run from a PR path. No label changes what runs. A master push adds every lane a PR defers (Tier 2, Qt, the workspace tests) and runs the macOS/Windows Rust tests and Tier 2 only for paths that select them; it builds no OBS app. Schedule, workflow_dispatch, tags, release branches and the release gate run everything, including the macOS, Windows, Ubuntu and Flatpak app builds (#436).
 
 ## Quick rules
 

@@ -78,7 +78,7 @@ class AdmissionAllocationTest(unittest.TestCase):
         self.assertIn("inputs.skip-checks", checks)
         self.assertIn("inputs.skip-swift", swift)
         self.assertIn("inputs.swift", swift)
-        self.assertNotIn("needs: checks", swift)
+        self.assertIn("always()", swift)
         pull = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("skip-checks: ${{ needs.build-project.outputs.skip_checks == 'true' }}", pull)
         self.assertIn("skip_validate-data", pull)

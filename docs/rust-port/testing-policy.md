@@ -180,7 +180,13 @@ cannot prove both, so every ported unit carries the four tiers below.
 A port is not done until all applicable tiers pass. "Tier 1 passes" alone is
 not done.
 
-PR CI on `obs-rust/obs-studio` decides whether the tiers pass for a merge.
+`CI Gate ✅` on `obs-rust/obs-studio` decides admission. Complete client evidence
+from a verified org-member PR author and final HEAD signer can replace selected
+PR checks under immutable-base policy; it is self-reported, not execution proof.
+The merge queue always executes the selected heavy tiers on the combined result.
+Missing/untrusted/partial/invalid proofs, forks and verifier/API errors retain real
+selected PR checks, including clippy/Dylint on all six supported targets. Client
+tooling is optional and strict refusal is opt-in; sign only after stamping.
 Open a PR (a draft is fine) once the RED commit exists and let CI run the
 tiers; running them locally first (`./lint`, `./unittest`, `local-gate run`)
 is recommended, not required. The tiers, RED then GREEN, and the ban on

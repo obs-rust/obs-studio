@@ -7,7 +7,7 @@
 version: 1
 # prooft policy schema v1; legacy Local-Gate consumers continue using their
 # existing lanes. Only explicit per-target Ci-Attestation records earn credit
-# in the new base-owned verifier. No workflow routing changes in this rollout.
+# in the base-owned verifier. Admission defers heavy work only under heavy-v1.
 lanes:
   lint: {max-age-hours: 24}
   dylint: {max-age-hours: 24}
@@ -97,9 +97,12 @@ gates:
   rust/aarch64-apple-darwin/client-dylint: {lane: client-lint}
   rust/aarch64-apple-darwin/client-test: {lane: client-test-aarch64-apple-darwin}
 jobs:
-  build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/dylint, rust/x86_64-unknown-linux-gnu/test]
+  check-format.yaml:checks: [python/all/self-test, data/all/flatpak-manifest, data/all/qt-xml]
+  check-format.yaml:swift-format: [swift/all/fmt]
+  ci.yml:validate-data: [data/all/compatibility, data/all/services-schema]
+  build-project.yaml:rust-tests-linux: [general/all/client-lint, rust/x86_64-unknown-linux-gnu/client-clippy, rust/x86_64-unknown-linux-gnu/client-dylint, rust/x86_64-unknown-linux-gnu/client-test]
   build-project.yaml:rust-linux-tier2: [cpp/linux-x64/tier2]
-  build-project.yaml:rust-cross-lint: [rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/dylint, rust/aarch64-unknown-linux-gnu/clippy, rust/aarch64-unknown-linux-gnu/dylint, rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/dylint, rust/aarch64-pc-windows-msvc/clippy, rust/aarch64-pc-windows-msvc/dylint, rust/x86_64-apple-darwin/clippy, rust/x86_64-apple-darwin/dylint, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/dylint]
+  build-project.yaml:rust-cross-lint: [rust/x86_64-unknown-linux-gnu/client-clippy, rust/x86_64-unknown-linux-gnu/client-dylint, rust/aarch64-unknown-linux-gnu/client-clippy, rust/aarch64-unknown-linux-gnu/client-dylint, rust/x86_64-pc-windows-msvc/client-clippy, rust/x86_64-pc-windows-msvc/client-dylint, rust/aarch64-pc-windows-msvc/client-clippy, rust/aarch64-pc-windows-msvc/client-dylint, rust/x86_64-apple-darwin/client-clippy, rust/x86_64-apple-darwin/client-dylint, rust/aarch64-apple-darwin/client-clippy, rust/aarch64-apple-darwin/client-dylint]
   # The formatting and clippy gates these two run are the Linux lanes' (#427,
   # #472): only the test half needs the host.
   build-project.yaml:rust-tests-macos: [rust/all/fmt, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/test]

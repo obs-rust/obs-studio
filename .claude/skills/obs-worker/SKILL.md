@@ -86,23 +86,22 @@ switch away or hand off, do one of these:
 
 ### Push with `./push`
 
-`./push` is the repo's single push entry point. It runs `soldr lint rust
---attest`, asks `ghd attest stamp` to write the resulting evidence into the
-commit message as `Ci-Attestation:` trailers, pushes the branch, and opens the
-PR if there is not one already. That is what lets CI skip remote work instead of
-repeating it: the trailers are the proof that the client already ran fmt, clippy,
-dylint and the host tests.
+`./push` is the single push entry point. It tries prooft's complete client
+lint/clippy/Dylint on all six supported targets, host tests, self-tests and
+validators. Optional Swift evidence is separate. It stamps only completed passes
+and signs the final amended commit. Legacy fallback remains diagnostic; absent
+or partial proof warns and still pushes unless `PUSH_REQUIRE_ATTESTATION=1`.
+Local tooling is optional for contributors.
 
-```bash
-./push                    # attest, stamp, push, open (or reuse) the PR
-PUSH_REQUIRE_ATTESTATION=1 ./push   # refuse to push without evidence
-```
-
-A bare `git push`/`gh pr create` bypasses the attestation, so CI falls back to
-running everything — and agent guardrails refuse it. If a step in the chain is
-not available in your toolchain yet, `./push` says which one and falls back to
-pushing without evidence, which is why the gate still exists: run
-`ci-lint local-gate run` and push the stamped commit.
+CI trusts only same-repository PRs with authenticated active obs-rust membership
+for BOTH author and valid final HEAD signer. Private lookup denial, forks,
+non-members, unsigned heads, trust-surface edits, missing/invalid/stale gates and
+verifier/API errors run real selected PR checks, including six-target analysis.
+The verifier and pins come from immutable BASE. These trailers are self-reported
+proofs, not signed execution evidence. Stamp first, then sign final HEAD.
+Complete selected client gates defer heavy native/link/Qt/Tier 2 work to the
+merge queue, which reruns every selected heavy leg regardless of evidence.
+The required `CI Gate ✅` name and all four test tiers stay unchanged.
 
 When you find a dirty branch with no commits, no remote and no PR, someone
 left it behind. Before you package it, check whether master already has the

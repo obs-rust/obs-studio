@@ -280,7 +280,9 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("steps.select.outcome == 'failure'", probe)
         self.assertIn("::warning::", probe)
         for job in ("check-format", "build-project"):
-            self.assertIn("needs: select-mq-runner", blocks[job])
+            self.assertIn("select-mq-runner", blocks[job].split("    if:", 1)[0])
+            if job == "check-format":
+                self.assertIn("build-project", blocks[job].split("    if:", 1)[0])
             self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
 
     def test_queue_runs_merge_result_tests_and_windows_link(self):
