@@ -29,8 +29,11 @@ import re
 import time
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
-from ci_scope import Scope, queue_changed_files, read_text, repo_cmocka_source_paths, scope
+if TYPE_CHECKING:
+    from ci_scope import Scope
 
 UNSUCCESSFUL = {
     "failure",
@@ -116,6 +119,12 @@ def run_jobs(
     )
 
 
+def data_selected(files) -> bool:
+    return any(path.endswith(".json") and path.startswith((
+        "plugins/win-capture/data/", "plugins/rtmp-services/data/"
+    )) for path in files)
+
+
 def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> set[str]:
     """The queue execution manifest: exact job names, never proof credit.
 
@@ -147,10 +156,7 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
             expected.add(f"Build 🧱 / Rust Tier 2 ({runner})")
     if any(path.endswith(".swift") for path in files):
         expected.add("Format 🔍 / swift-format")
-    if any(path.endswith(".json") and path.startswith((
-        "plugins/win-capture/data/", "plugins/rtmp-services/data/"
-    )) for path in files):
-        expected.add("Validate Data 🕵️")
+    expected.update(("Validate Data 🕵️",) if data_selected(files) else ())
     return expected
 
 
@@ -160,14 +166,10 @@ def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
     This consumes only independently recomputed BASE output, never caller/head
     workflow outputs. Old Local-Gate/verifier output is compatible via real CI.
     """
-    from dataclasses import replace
-
-    selected = replace(selected, cross_lint=not selected.docs_only)
+    selected = SimpleNamespace(**vars(selected))
+    selected.cross_lint = not selected.docs_only
     expected = expected_jobs(selected, files)
-    data = any(path.endswith(".json") and path.startswith((
-        "plugins/win-capture/data/", "plugins/rtmp-services/data/"
-    )) for path in files)
-    if data:
+    if data_selected(files):
         expected.add("Validate Data 🕵️")
     valid = (plan.get("admission_version") == 1 and plan.get("queue_policy") == "heavy-v1"
              and isinstance(plan.get("gates"), dict) and isinstance(plan.get("jobs"), dict))
@@ -202,6 +204,33 @@ def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
     return expected
 
 
+BASE_SCOPE_PROGRAM = r"""
+import json, sys
+from pathlib import Path
+import ci_scope
+request = json.load(sys.stdin)
+ci_scope.REPO = Path.cwd()
+selected = ci_scope.scope(request["files"], lambda p: Path(p).is_file(), ci_scope.read_text,
+    cmocka_paths=ci_scope.repo_cmocka_source_paths(Path(".")), event="pull_request")
+print(json.dumps(vars(selected)))
+"""
+
+
+def base_pr_scope(base: str, files: list[str]) -> Scope:
+    """Import only BASE's selector/dependency; checkout files remain input data."""
+    with tempfile.TemporaryDirectory(prefix="base-pr-scope-") as temp:
+        for name in ("ci_scope.py", "platform_paths.py"):
+            source = subprocess.run(["git", "show", f"{base}:ci/{name}"],
+                                    check=True, capture_output=True, text=True).stdout
+            (Path(temp) / name).write_text(source, encoding="utf-8")
+        script = Path(temp) / "scope_runner.py"
+        script.write_text(BASE_SCOPE_PROGRAM, encoding="utf-8")
+        result = subprocess.run(["uv", "run", "--no-project", "--script", str(script)],
+                                input=json.dumps({"files": files}), capture_output=True,
+                                text=True, check=True, timeout=60)
+        return SimpleNamespace(**json.loads(result.stdout))
+
+
 def pr_coverage() -> set[str]:
     """Re-evaluate the immutable base verifier; API/errors grant no skip credit."""
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
@@ -217,8 +246,7 @@ def pr_coverage() -> set[str]:
         check=True, capture_output=True, text=True,
     ).stdout.strip("\0").split("\0")
     files = [path for path in files if path]
-    selected = scope(files, lambda path: Path(path).is_file(), read_text,
-                     cmocka_paths=repo_cmocka_source_paths(Path(".")), event="pull_request")
+    selected = base_pr_scope(base, files)
     plan = {}
     try:
         source = subprocess.run(["git", "show", f"{base}:ci/pr_attestation.py"],
@@ -250,6 +278,10 @@ def queue_coverage() -> set[str]:
     those outputs. CI Gate checks out the full tree so linked crates, cmocka
     sources and cross/Qt CMake rules cannot disappear in a sparse checkout.
     """
+    # Queue execution grants no client trust credit. PR admission never imports
+    # executable scope code from HEAD, including at this module's import time.
+    from ci_scope import queue_changed_files, read_text, repo_cmocka_source_paths, scope
+
     files = queue_changed_files()
     selected = scope(
         files, lambda path: Path(path).is_file(), read_text,

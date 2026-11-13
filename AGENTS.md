@@ -126,7 +126,7 @@ Environment failures: [troubleshooting](docs/rust-port/troubleshooting.md).
 
 - `./lint` (8 s): clang-format 22.1.3 and gersemi 0.25.0 pinned via uvx, rustfmt, clippy, and the repo Dylints (`dylints/*`). `./lint --fix` rewrites files.
 - `./unittest`: Rust Tiers 1-3, then Tier 2 (cmocka against hybrid libobs and the explicit C reference, one build in Docker; ~30-40 s warm thanks to zccache).
-- To let CI skip the Linux unit-test jobs, commit, then run
+- For legacy local-gate diagnostics, commit, then run
   `uvx --from git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2 ci-lint local-gate run`.
   This legacy path remains available for diagnostics; use complete client gates for fast admission and sign only after stamping.
 - Fallback PR execution runs the lanes its changed paths select (the `LANES` table in `ci/ci_scope.py`: Fast Gate always, plus a Linux-hosted Windows MSVC link of every test binary (`ci/windows_link_check.py`) on every non-docs PR and queue run, Tier 2 for libobs/linked crates/`test/cmocka/`, Qt for `frontend/`, a Linux build of only the touched `plugins/<x>`/`shared/<x>` targets; macOS/Windows only for their own platform files). The full OBS app builds never run from a PR path. No label changes what runs. A master push adds every lane a PR defers (Tier 2, Qt, the workspace tests) and runs the macOS/Windows Rust tests and Tier 2 only for paths that select them; it builds no OBS app. Schedule, workflow_dispatch, tags, release branches and the release gate run everything, including the macOS, Windows, Ubuntu and Flatpak app builds (#436).

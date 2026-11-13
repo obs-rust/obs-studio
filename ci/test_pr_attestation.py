@@ -96,6 +96,11 @@ jobs:
   build-project.yaml:rust-tier2-windows: [cpp/windows-x64/tier2]
 """
 
+# Keep original per-job legacy fixtures while declaring additive client gates.
+POLICY = POLICY.replace("gates:\n", "gates:\n" + "".join(
+    f"  {gate}: {{lane: lint}}\n" for gate in subject.CLIENT_GATES
+))
+
 
 class TrustContract(unittest.TestCase):
     def setUp(self):
@@ -141,6 +146,7 @@ class TrustContract(unittest.TestCase):
         }
         self.calls = []
         self.memberships = {}
+        self.public_memberships = {}
 
     def git(self, *args, input_text=None):
         result = subprocess.run(
@@ -234,6 +240,11 @@ class TrustContract(unittest.TestCase):
     def rest(self, path):
         self.calls.append(("rest", path))
         login = path.rsplit("/", 1)[1]
+        if "/public_members/" in path:
+            answer = self.public_memberships.get(login, {"public_member": False})
+            if isinstance(answer, Exception):
+                raise answer
+            return deepcopy(answer)
         answer = self.memberships.get(
             login, {"state": "active", "user": {"login": login}}
         )
@@ -356,7 +367,7 @@ class TrustContract(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         build = (root / ".github/workflows/build-project.yaml").read_text()
         formatting = (root / ".github/workflows/check-format.yaml").read_text()
-        paths = ["rust/obs-util/src/value.rs", "frontend/value.cpp", "plugins/win-capture/value.c",
+        paths = ["libobs/obs.c.h", "rust/obs-util/src/value.rs", "frontend/value.cpp", "plugins/win-capture/value.c",
                  "plugins/mac/foo.swift", "plugins/rtmp-services/data/services.json"]
         selected = scope(paths, event="pull_request")
         result = self.evaluate(head=self.complete_client())
@@ -376,6 +387,7 @@ class TrustContract(unittest.TestCase):
                 scope_values = {key: str(value).lower() for key, value in vars(selected).items()}
                 scope_values["deferred"] = "true"
                 scope_values["cross_lint"] = "true"
+                scope_values["cross_targets"] = "win-x64"
                 for name in ("rust-tests-linux", "rust-cross-lint", "rust-cross-lint-release",
                              "rust-windows-link", "cross-compile", "rust-linux-tier2-build",
                              "linux-qt-frontend", "rust-tests-windows", "rust-tier2-windows"):
@@ -404,7 +416,12 @@ class TrustContract(unittest.TestCase):
             records = [RecordFixture(gate, self.tree, (self.base,), "lint", at=NOW - 30,
                                      state=state if index == 0 else "valid").sealed()
                        for index, gate in enumerate(subject.CLIENT_GATES)]
-            plan = self.planned(head=self.commit(records))
+            changes = {"expired": {"at": NOW - 24 * 3600 - 1},
+                       "wrong-tree": {"tree": "0" * 40},
+                       "wrong-parents": {"parents": ("1" * 40,)}}
+            records[0] = replace(records[0], **changes.get(state, {})).sealed()
+            extra = "Ci-Attestation: {broken" if state == "malformed" else ""
+            plan = self.planned(head=self.commit(records, extra=extra))
             self.assertFalse(plan["fast_path"])
             self.assertFalse(plan["jobs"]["build-project.yaml:rust-windows-link"]["skip"])
         self.write("ci-attestations.yml", "version: 999\n")
@@ -446,7 +463,9 @@ class TrustContract(unittest.TestCase):
         self.assertEqual(
             paths,
             [
+                "orgs/obs-rust/public_members/private-member",
                 "orgs/obs-rust/memberships/private-member",
+                "orgs/obs-rust/public_members/signer-member",
                 "orgs/obs-rust/memberships/signer-member",
             ],
         )
@@ -461,6 +480,32 @@ class TrustContract(unittest.TestCase):
         ] = "obs-rust/obs-studio"
         self.memberships["private-member"] = {"state": "pending"}
         self.assert_runs(self.evaluate(), "membership")
+
+    def test_public_members_need_no_privileged_org_membership_lookup(self):
+        for login in ("private-member", "signer-member"):
+            self.public_memberships[login] = {"public_member": True, "user": {"login": login}}
+            self.memberships[login] = RuntimeError("org Members read not granted")
+        result = self.planned(head=self.complete_client())
+        self.assertTrue(result["fast_path"], result)
+        self.assertFalse(any("/memberships/" in path for kind, path in self.calls if kind == "rest"))
+
+    def test_public_api_errors_do_not_fall_through_to_private_credit(self):
+        self.public_memberships["private-member"] = RuntimeError("HTTP 503")
+        self.assert_runs(self.evaluate(), "membership")
+
+    def test_authenticated_public_membership_adapter_handles_only_known_statuses(self):
+        graphql, rest = subject.github_reads(self.root, self.base)
+        for status, code, expected in (("204 No Content", 0, True), ("404 Not Found", 1, False)):
+            result = subprocess.CompletedProcess([], code, stdout=f"HTTP/2.0 {status}\n\n", stderr="")
+            with patch.object(subject.subprocess, "run", return_value=result):
+                self.assertIs(rest("orgs/obs-rust/public_members/private-member")["public_member"], expected)
+        for status in ("403 Forbidden", "500 Internal Server Error", "200 OK"):
+            result = subprocess.CompletedProcess([], 1, stdout=f"HTTP/2.0 {status}\n\n", stderr="denied")
+            with patch.object(subject.subprocess, "run", return_value=result), self.assertRaises(subprocess.CalledProcessError):
+                rest("orgs/obs-rust/public_members/private-member")
+        killed = subprocess.CompletedProcess([], -9, stdout="HTTP/2.0 404 Not Found\n", stderr="")
+        with patch.object(subject.subprocess, "run", return_value=killed), self.assertRaises(subprocess.CalledProcessError):
+            rest("orgs/obs-rust/public_members/private-member")
 
     def test_denied_membership_and_unverified_signer_membership(self):
         for user in ("private-member", "signer-member"):
@@ -707,6 +752,10 @@ class TrustContract(unittest.TestCase):
             "rust/a/Cargo.toml",
             "Cargo.lock",
             ".cargo/config.toml",
+            "ruff.toml",
+            "CMakePresets.json",
+            ".clang-format",
+            ".swift-format",
         )
         for path in paths:
             with self.subTest(path=path):

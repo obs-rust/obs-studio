@@ -271,17 +271,12 @@ PR CI is the merge gate. Local runs give faster feedback:
   peak RSS over 20 to 50 runs for proptests (`/usr/bin/time -v` on Linux,
   `-l` on macOS) and cap every generated size that drives an allocation;
   state whether the test starts its own threads, and how many.
-- Dylint has its own gate lane: `ci/local_gate.py --lane dylint` (declared as
-  `[gate.lanes.dylint]` in `local-gate.toml`). It is keyed on `dylints/**`,
-  `rust-toolchain.toml` and `Cargo.lock` alone, so a change that touches none
-  of those reuses the previous pass instead of rebuilding the lint libraries.
-  CI runs it beside the lint lane in the Local Gate job; cross-target Dylint
-  still runs in the `Rust Cross Lint` jobs, so a local pre-push check does not
-  need the cross targets.
-- To let CI skip the Linux test jobs, commit, then stamp HEAD with the
-  local gate (the pinned command is in AGENTS.md), and push the stamped
-  commit **unchanged**. Any amend, rebase or "Update branch" drops the
-  stamp, so rebase before stamping.
+- The legacy `dylint` lane is separate and source-bound. Complete admission
+  requires client clippy AND Dylint for all six supported targets through soldr;
+  a host-only legacy run cannot prove that contract.
+- Commit, run the client lanes, stamp, then sign the final commit. Any content
+  amend, rebase or "Update branch" needs fresh evidence and final signing;
+  without it, keep the real selected PR checks.
 
 If the environment fights you (soldr permissions, disk, Docker), don't
 debug it for long: push and let PR CI run. Never `docker system prune`;

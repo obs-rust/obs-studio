@@ -49,8 +49,8 @@ win.
    workspace), not from `rust/`. Python goes through `uv run` / `uvx`, never
    bare `python`.
 2. **The local gate is optional.** If you run it, push the stamped commit
-   unchanged: a valid stamp lets PR CI skip the Linux test jobs. Without a
-   stamp, PR CI runs them itself.
+   with a valid signature on final HEAD. Only complete selected client gates
+   plus verified-member identity grant fast admission; otherwise real PR checks run.
 3. **Don't use GitHub as your test runner.** Don't push to "see if CI passes",
    don't re-run whole workflows to debug, and don't look for a label to
    force more CI: no label changes what runs, only the changed paths do.
@@ -535,8 +535,9 @@ Mode or unexpectedly skipped/missing/cancelled/runnerless work fails admission.
 
 The fast path requires a same-repository PR whose author AND authenticated
 final HEAD signer are active obs-rust org members. GitHub must report that exact
-commit signature valid. Authenticated membership lookups support private
-memberships when permitted; denial, unknown identities, API errors or verifier
+commit signature valid. Authenticated public-membership checks require no extra organization permissions
+for public resources ([GitHub API contract](https://docs.github.com/en/rest/orgs/members#check-public-organization-membership-for-a-user));
+private membership uses the authenticated active-state endpoint when permitted; denial, unknown identities, API errors or verifier
 errors mean real selected PR checks, without expanding token permissions.
 `author_association` and collaborator write access are insufficient.
 

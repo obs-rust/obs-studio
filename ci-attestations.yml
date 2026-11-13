@@ -2,7 +2,7 @@
 # otherwise verify remotely, named <ecosystem>/<platform>/<check>; `lane` is
 # the local-gate.toml lane whose pass proves it. `jobs` maps each remote job
 # to the gates it runs: an attested PR head skips a job only when every gate
-# it lists is attested and the head passes [gate.trust]. C/C++ gates are
+# it lists is attested and the head passes immutable-base identity policy. C/C++ gates are
 # cpp/<platform>/<check> (zackees/ci.yml docs/policy-cpp.md, #393).
 version: 1
 # prooft policy schema v1; legacy Local-Gate consumers continue using their

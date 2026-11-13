@@ -49,6 +49,35 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
+    def test_pr_scope_executes_base_selector_and_dependency_only(self):
+        with tempfile.TemporaryDirectory(prefix="base-scope-fixture-") as temp:
+            root = Path(temp)
+            (root / "ci").mkdir()
+            for name in ("ci_scope.py", "platform_paths.py"):
+                (root / "ci" / name).write_text((ROOT / "ci" / name).read_text())
+            def git(*args):
+                return subprocess.run(["git", "-C", temp, *args], check=True,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q")
+            git("config", "user.name", "Fixture")
+            git("config", "user.email", "fixture@example.invalid")
+            git("add", "ci")
+            git("commit", "-qm", "base selector")
+            base = git("rev-parse", "HEAD")
+            for name in ("ci_scope.py", "platform_paths.py"):
+                (root / "ci" / name).write_text("raise RuntimeError('head code executed')\n")
+            (root / "ci" / "gate_jobs.py").write_text(Path(gate_jobs.__file__).read_text())
+            probe = root / "ci" / "probe.py"
+            probe.write_text("import gate_jobs\nprint('gate imports without head selector')\n")
+            subprocess.run(["uv", "run", "--no-project", "--script", str(probe)],
+                           cwd=root, check=True, text=True, capture_output=True)
+            with contextlib.chdir(root):
+                selected = gate_jobs.base_pr_scope(base, ["libobs/obs.c.h"])
+            self.assertTrue(selected.core)
+            self.assertTrue(selected.windows)
+            self.assertTrue(selected.windows_link)
+            self.assertFalse(selected.docs_only)
+
     def test_pr_fallback_manifest_rejects_missing_skipped_and_runnerless_work(self):
         from ci_scope import scope
         files = ["libobs/obs.c.h", "plugins/rtmp-services/data/services.json"]
