@@ -1390,6 +1390,15 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_core_private_data": {
+      "sources": [
+        "test/cmocka/test_core_private_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_core_setup_rules_ms_steps": {
       "sources": [
         "test/cmocka/test_core_setup_rules_ms_steps.c",
@@ -19543,6 +19552,20 @@
       "requires": "ENABLE_CORE_MODULES",
       "command": [
         "${target}"
+      ]
+    },
+    "test_core_private_data": {
+      "target": "test_core_private_data",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_core_setup_rules_ms_steps": {
