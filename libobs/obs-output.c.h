@@ -573,9 +573,14 @@ void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 		 * that waits for its next packet (ffmpeg_muxer): its encoders may
 		 * never produce one, and obs_output_destroy() would wait forever
 		 * (#3739). End the capture here; a later end from the output is
-		 * ignored. */
+		 * ignored. Only while the capture still runs: a second stop of
+		 * the same output (obs_output_destroy() of an output that still
+		 * counts as active while its end thread runs) would otherwise
+		 * send the stop signal again, and a handler that frees its data
+		 * on the first one (source-record before 0.5.0) runs on freed
+		 * data (#3799). */
 		if (obs_output_stop_encoded(output->info.flags) && !delay_active(output) &&
-		    !os_atomic_load_bool(&output->delivered_packet))
+		    !os_atomic_load_bool(&output->delivered_packet) && data_active(output))
 			obs_output_end_data_capture(output);
 
 		/* Stopped while it waited to reconnect: its data capture ended
