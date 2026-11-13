@@ -2612,6 +2612,8 @@ jobs:
       # skipping doc/man/info cut a local run of the same install by 25% (#2072).
       - name: Keep apt Downloads 📦
         run: |
+          mkdir -p "$RUNNER_TEMP/apt-archives"
+          chmod a+rwx "$RUNNER_TEMP/apt-archives"
           rm -f /etc/apt/apt.conf.d/docker-clean
           printf '%s\n' force-unsafe-io 'path-exclude=/usr/share/doc/*' \
             'path-exclude=/usr/share/man/*' 'path-exclude=/usr/share/info/*' \
@@ -2620,7 +2622,7 @@ jobs:
         id: apt-cache
         with:
           mode: restore
-          path: /var/cache/apt/archives
+          path: ${{ runner.temp }}/apt-archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
@@ -2629,14 +2631,14 @@ jobs:
         run: |
           # Install Git already refreshed these lists in this fresh container.
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
-            xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -y --no-install-recommends
+            xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -o "Dir::Cache::archives=$RUNNER_TEMP/apt-archives" -y --no-install-recommends
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/cache
         with:
           mode: save
-          path: /var/cache/apt/archives
+          path: ${{ runner.temp }}/apt-archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # PRs restore the compiler cache; only master pushes save it (a cache
@@ -2824,17 +2826,18 @@ jobs:
           enable-cache: false
 
       # Restore the existing apt family for a stock fallback; tests never save it.
+      # Keep host archives per job: self-hosted runners share a Docker daemon.
       - name: Prepare apt Archive Directory
         run: |
           command -v zstd
           command -v docker
-          sudo mkdir -p /var/cache/apt/archives
-          sudo chmod a+rwx /var/cache/apt/archives
+          mkdir -p "$RUNNER_TEMP/apt-archives"
+          chmod a+rwx "$RUNNER_TEMP/apt-archives"
       - uses: ./.github/actions/cache
         id: apt-cache
         with:
           mode: restore
-          path: /var/cache/apt/archives
+          path: ${{ runner.temp }}/apt-archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -2865,7 +2868,7 @@ jobs:
             --packages "$RUNNER_TEMP/tier2-pack/runtime-packages.txt" \
             --source "$GITHUB_WORKSPACE" --build "$RUNNER_TEMP/tier2" \
             --cost "$GITHUB_WORKSPACE/.tier2-cost" --uv "$(command -v uv)" \
-            --archives /var/cache/apt/archives \
+            --archives "$RUNNER_TEMP/apt-archives" \
             --state "$RUNNER_TEMP/tier2-runtime" --mode '${{ matrix.mode }}' --part '${{ matrix.part }}'
       - name: Upload Runtime Setup Measurement
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
