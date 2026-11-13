@@ -53,23 +53,6 @@ static const char *canvas_signals[] = {
 
 /*** Reference Counting ***/
 
-void obs_canvas_release(obs_canvas_t *canvas)
-{
-	if (!obs && canvas) {
-		blog(LOG_WARNING, "Tried to release a canvas when the OBS core is shut down!");
-		return;
-	}
-
-	if (!canvas)
-		return;
-
-	obs_weak_canvas_t *control = (obs_weak_canvas_t *)canvas->context.control;
-	if (obs_ref_release(&control->ref)) {
-		obs_canvas_destroy(canvas);
-		obs_weak_canvas_release(control);
-	}
-}
-
 /*** Creation / Destruction ***/
 
 static obs_canvas_t *obs_canvas_create_internal(const char *name, const char *uuid, struct obs_video_info *ovi,

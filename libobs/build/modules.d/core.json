@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-canvas-move-fields",
+    "core-canvas-release",
     "core-encoder-priming-samples",
     "core-output",
     "core-output-weak-lifetime",
