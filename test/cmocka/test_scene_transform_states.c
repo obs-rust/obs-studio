@@ -313,6 +313,13 @@ static void nested_groups_and_parent_resolution(void **state)
 	obs_data_release(snapshot);
 
 	/* Restoring must release both the UUID and group-parent lookups. */
+	/* Group scenes are borrowed from their items. Removing a canvas owner
+	 * also removes group items and can queue the last source release before
+	 * the removal call returns. Keep caller-owned refs across those calls. */
+	obs_scene_t *outer_hold = obs_scene_get_ref(outer_scene);
+	obs_scene_t *inner_hold = obs_scene_get_ref(inner_scene);
+	assert_non_null(outer_hold);
+	assert_non_null(inner_hold);
 	obs_weak_source_t *root_weak = obs_source_get_weak_source(obs_scene_get_source(f->scene));
 	obs_weak_source_t *outer_weak = obs_source_get_weak_source(obs_scene_get_source(outer_scene));
 	obs_weak_source_t *inner_weak = obs_source_get_weak_source(obs_scene_get_source(inner_scene));
@@ -321,6 +328,8 @@ static void nested_groups_and_parent_resolution(void **state)
 	obs_canvas_scene_remove(inner_scene);
 	obs_canvas_scene_remove(outer_scene);
 	obs_canvas_scene_remove(f->scene);
+	obs_scene_release(inner_hold);
+	obs_scene_release(outer_hold);
 	obs_scene_release(f->scene);
 	f->scene = NULL;
 	while (obs_wait_for_destroy_queue()) {
