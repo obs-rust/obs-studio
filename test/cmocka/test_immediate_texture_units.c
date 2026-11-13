@@ -14,6 +14,7 @@
 
 #include "graphics/graphics-internal.h"
 #include "graphics/graphics-immediate.h"
+#include "graphics/vec2.h"
 #include "util/base.h"
 
 static struct graphics_subsystem graphics;
