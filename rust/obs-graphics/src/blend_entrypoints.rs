@@ -31,14 +31,20 @@ pub trait Context {
 
 /// `gs_enable_blending`.
 pub fn enable_blending<C: Context>(context: Option<&mut C>, enable: bool) {
-    let _ = (context, enable);
-    todo!()
+    if let Some(context) = context {
+        store_enabled(context, enable);
+    }
 }
 
 /// `gs_blend_function`: one pair for the colour and the alpha factors.
 pub fn blend_function<C: Context>(context: Option<&mut C>, src: u32, dest: u32) {
-    let _ = (context, src, dest);
-    todo!()
+    let Some(context) = context else { return };
+    let state = context.current_mut();
+    state.src_c = src;
+    state.dest_c = dest;
+    state.src_a = src;
+    state.dest_a = dest;
+    context.function(src, dest);
 }
 
 /// `gs_blend_function_separate`.
@@ -49,14 +55,36 @@ pub fn blend_function_separate<C: Context>(
     src_a: u32,
     dest_a: u32,
 ) {
-    let _ = (context, src_c, dest_c, src_a, dest_a);
-    todo!()
+    if let Some(context) = context {
+        store_factors(context, src_c, dest_c, src_a, dest_a);
+    }
 }
 
 /// `gs_blend_op`: the device gets the operation as stored.
 pub fn blend_op<C: Context>(context: Option<&mut C>, op: u32) {
-    let _ = (context, op);
-    todo!()
+    if let Some(context) = context {
+        store_op(context, op);
+    }
+}
+
+// The setters' bodies past the context check, which push and reset reach
+// with the context they already validated, as the C calls the setters.
+fn store_enabled<C: Context>(context: &mut C, enable: bool) {
+    context.current_mut().enabled = enable;
+    context.enable(enable);
+}
+fn store_factors<C: Context>(context: &mut C, src_c: u32, dest_c: u32, src_a: u32, dest_a: u32) {
+    let state = context.current_mut();
+    state.src_c = src_c;
+    state.dest_c = dest_c;
+    state.src_a = src_a;
+    state.dest_a = dest_a;
+    context.factors(src_c, dest_c, src_a, dest_a);
+}
+fn store_op<C: Context>(context: &mut C, op: u32) {
+    context.current_mut().op = op;
+    let stored = context.current().op;
+    context.operation(stored);
 }
 
 /// Save the current state without invoking the device.
@@ -65,23 +93,30 @@ pub fn push<C: Context>(context: Option<&mut C>) {
         context.push(context.current());
     }
 }
-/// Restore a saved state, always invoking enable, factors, then operation.
+/// Restore a saved state through the setters: enable, factors, then operation.
 pub fn pop<C: Context>(context: Option<&mut C>) {
     let Some(context) = context else { return };
     let Some(state) = context.pop() else { return };
-    context.enable(state.enabled);
-    context.factors(state.src_c, state.dest_c, state.src_a, state.dest_a);
-    context.operation(state.op);
+    store_enabled(context, state.enabled);
+    store_factors(
+        context,
+        state.src_c,
+        state.dest_c,
+        state.src_a,
+        state.dest_a,
+    );
+    store_op(context, state.op);
 }
-/// Reset only the components requested by the existing reset-decision helper.
+/// Reset, through the setters, only the components the reset-decision helper asks for.
 pub fn reset<C: Context>(context: Option<&mut C>) {
     let Some(context) = context else { return };
     let steps = state_stacks::blend_reset_steps(&context.current());
     if steps.enable {
-        context.enable(true);
+        store_enabled(context, true);
     }
     if steps.function {
-        context.factors(
+        store_factors(
+            context,
             blend::SRCALPHA,
             blend::INVSRCALPHA,
             blend::ONE,
@@ -89,6 +124,6 @@ pub fn reset<C: Context>(context: Option<&mut C>) {
         );
     }
     if steps.op {
-        context.operation(blend::OP_ADD);
+        store_op(context, blend::OP_ADD);
     }
 }

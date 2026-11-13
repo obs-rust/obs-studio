@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-graphics.pch.h"
+#include "libobs/build/libobs-ported-blend-entrypoints.pch.h"
 
 void gs_enable_blending(bool enable)
 {

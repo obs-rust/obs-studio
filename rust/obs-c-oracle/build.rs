@@ -695,6 +695,14 @@ fn main() {
     )
     .expect("write original blend entry points");
     std::fs::write(
+        extract_dir.join("state-blend-setters.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/state-blend-setters.c.h"),
+            "#include \"libobs/build/libobs-ported-blend-entrypoints.pch.h\"",
+        ),
+    )
+    .expect("write original blend setters");
+    std::fs::write(
         extract_dir.join("graphics_effect_file.inc"),
         extract_after_libobs_pch(&libobs.join("graphics/graphics_effect_file.c.h")),
     )
