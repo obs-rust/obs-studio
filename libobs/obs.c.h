@@ -3655,11 +3655,6 @@ obs_object_t *obs_weak_object_get_object(obs_weak_object_t *weak)
 	return NULL;
 }
 
-obs_canvas_t *obs_get_main_canvas(void)
-{
-	return obs_canvas_get_ref(obs->data.main_canvas);
-}
-
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
 #undef FREE_OBS_HASH_TABLE
 #undef FREE_OBS_LINKED_LIST
