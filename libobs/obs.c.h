@@ -2006,11 +2006,6 @@ void obs_canvas_enum_scenes(obs_canvas_t *canvas, bool (*enum_proc)(void *, obs_
 	pthread_mutex_unlock(&canvas->sources_mutex);
 }
 
-void obs_enum_scenes(bool (*enum_proc)(void *, obs_source_t *), void *param)
-{
-	obs_canvas_enum_scenes(obs->data.main_canvas, enum_proc, param);
-}
-
 typedef struct obs_context_data *(*obs_enum_get_ref_t)(struct obs_context_data *);
 typedef void (*obs_enum_release_t)(struct obs_context_data *);
 
