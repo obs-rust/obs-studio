@@ -14,6 +14,7 @@ import importlib.machinery
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import shutil
 import sys
@@ -57,6 +58,7 @@ class Rungs(unittest.TestCase):
                 mock.patch.object(push, "dirty", return_value=dirty), \
                 mock.patch.object(push, "sign_final", side_effect=lambda: calls.append(["sign-final"]) or signed, create=True), \
                 mock.patch.object(push, "supports", return_value=True), \
+                mock.patch.object(push, "soldr_environment", return_value=contextlib.nullcontext(), create=True), \
                 mock.patch.object(push, "record_client_context", return_value=True, create=True), \
                 mock.patch.object(push, "evidence_path", return_value=Path(tempfile.gettempdir()) / "push-rungs-evidence.json"):
             result = push.attest()
@@ -140,6 +142,76 @@ class Rungs(unittest.TestCase):
             return subprocess.CompletedProcess(args, int("verify-commit" in args), "key\n", "")
         with mock.patch.object(push, "run", side_effect=run):
             self.assertFalse(push.sign_final())
+
+
+class PinnedSoldr(unittest.TestCase):
+    def test_pin_matches_every_ci_setup_step(self):
+        from test_soldr_pin import workflow_pins
+        pins = workflow_pins()
+        self.assertTrue(pins)
+        for workflow, versions in pins.items():
+            with self.subTest(workflow=workflow):
+                self.assertEqual({push.soldr_pin()}, versions)
+
+    def test_bootstrap_scrubs_overrides_and_restores_callers_environment(self):
+        original = {
+            "PATH": os.defpath, "HOME": str(Path.home()),
+            "SOLDR_DYLINT_TOOLCHAIN": "nightly-broken",
+            "SOLDR_DYLINT_DRIVER": "/bad/driver", "SOLDR_RUSTC_WRAPPER": "/bad/wrapper",
+            "RUSTUP_TOOLCHAIN": "nightly-broken", "RUSTC": "/bad/rustc",
+            "RUSTDOC": "/bad/rustdoc", "RUSTC_WRAPPER": "/bad/wrapper",
+            "RUSTC_WORKSPACE_WRAPPER": "/bad/workspace-wrapper",
+            "CARGO_BUILD_RUSTC": "/bad/rustc", "CARGO_BUILD_RUSTC_WRAPPER": "/bad/wrapper",
+            "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER": "/bad/workspace-wrapper",
+        }
+        calls = []
+        executable = str(Path(tempfile.gettempdir()) / "pinned-soldr" / "soldr")
+        def command(args, **kwargs):
+            calls.append((args, dict(os.environ)))
+            output = f"soldr {push.soldr_pin()}\n" if args[-1] == "--version" else executable + "\n"
+            return subprocess.CompletedProcess(args, 0, output, "")
+        with mock.patch.dict(os.environ, original, clear=True), \
+                mock.patch.object(push.subprocess, "run", side_effect=command):
+            with push.soldr_environment("uv"):
+                self.assertEqual(os.environ["PATH"].split(os.pathsep)[0], str(Path(executable).parent))
+                self.assertEqual(os.environ["PATH"].split(os.pathsep)[1:], original["PATH"].split(os.pathsep))
+                self.assertFalse(any(k.startswith("SOLDR_DYLINT_") for k in os.environ))
+                self.assertNotIn("RUSTUP_TOOLCHAIN", os.environ)
+                self.assertNotIn("RUSTC", os.environ)
+            self.assertEqual(dict(os.environ), original)
+        self.assertIn(f"soldr=={push.soldr_pin()}", calls[0][0])
+        self.assertIn("--no-build", calls[0][0])
+        for _, environment in calls:
+            for key in original.keys() - {"PATH", "HOME"}:
+                self.assertNotIn(key, environment)
+
+    def test_explicit_path_still_requires_exact_ci_version(self):
+        executable = str(Path(tempfile.gettempdir()) / "custom" / "soldr")
+        for version, succeeds in (("0.0.0", False), (None, True)):
+            with self.subTest(version=version), \
+                    mock.patch.dict(os.environ, {"PUSH_SOLDR": executable}), \
+                    mock.patch.object(push.subprocess, "run", return_value=subprocess.CompletedProcess(
+                        [], 0, f"soldr {version or push.soldr_pin()}\n", "")) as command:
+                if succeeds:
+                    with push.soldr_environment("uv"):
+                        self.assertEqual(os.environ["PATH"].split(os.pathsep)[0], str(Path(executable).parent))
+                else:
+                    with self.assertRaisesRegex(OSError, "soldr.*requires"):
+                        with push.soldr_environment("uv"):
+                            self.fail("mismatched override reached proof commands")
+                self.assertEqual(command.call_args.args[0], [executable, "--version"])
+
+    def test_failure_restores_environment_and_never_runs_proof(self):
+        before = dict(os.environ)
+        with mock.patch.object(push, "dirty", return_value=False), \
+                mock.patch.object(push, "git", return_value=subprocess.CompletedProcess([], 0, "tree")), \
+                mock.patch.object(push.shutil, "which", return_value="uv"), \
+                mock.patch.object(push.subprocess, "run", side_effect=OSError("bootstrap unavailable")), \
+                mock.patch.object(push, "complete_prooft") as proof:
+            with self.assertRaises(OSError):
+                push.attest()
+        self.assertEqual(dict(os.environ), before)
+        proof.assert_not_called()
 
 
 class Evidence(unittest.TestCase):
