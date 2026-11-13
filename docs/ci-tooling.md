@@ -943,14 +943,13 @@ to fail; an absent App token falls back to the optional legacy
 Both repository-level and organization-level runners are supported.
 The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
-selecting labels; a match in either list qualifies. It passes the result to the
-existing Build and Format workflows. An organization API 403/404 (for example,
+selecting labels; matching idle capacity across the available lists qualifies.
+It passes the result to the existing Build and Format workflows. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
 If App token creation fails and no legacy token is available, selection falls
 back to hosted runners. Missing tokens, invalid label JSON, or no matching online
-runner in either available list emit a warning and keep each job's original hosted label. Busy online
-runners still qualify; this checks availability, not spare capacity. The probe
+runner in either available list emit a warning and keep each job's original hosted label. The probe
 checks at most five pages of 100 runners per list, with a three-second timeout per
 request; no match within that limit also falls back. An unset or empty variable skips the
 probe steps. Outside `merge_group` the selection is empty and no API call runs.
@@ -959,6 +958,18 @@ and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
 The existing Format workflow's Linux Checks job uses the same selection so it
 does not hold the gate waiting for hosted capacity.
+
+Selection requires at least `MQ_RUNNER_MIN_IDLE` matching online, non-busy
+runners (repository Actions variable, default `2`). Optional `MQ_RUNNER_DEMAND`
+(default `1`) raises the required idle count to the larger of these two values;
+set it to the desired per-run concurrency, rather than assuming all roughly 11
+Linux jobs need to start together. Busy runners do not supply idle capacity,
+and runner IDs visible in both scopes count once (a busy observation wins).
+Empty threshold variables use their defaults; invalid or nonpositive values
+fall back to hosted. The job summary records the choice, reason, online/busy/idle
+counts and required capacity, plus unavailable scopes. No queued-job API is
+queried. This is a bounded capacity snapshot, not a reservation: simultaneous
+selections can race, and runners may become busy or offline after selection.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
 Run the runner and its job processes inside its Ubuntu container image / FHS

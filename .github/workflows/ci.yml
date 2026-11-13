@@ -114,6 +114,8 @@ jobs:
         if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '' && steps.checkout.outcome == 'success' && steps.uv.outcome == 'success'
         env:
           MQ_RUNNER_LABELS: ${{ vars.MQ_RUNNER_LABELS }}
+          MQ_RUNNER_MIN_IDLE: ${{ vars.MQ_RUNNER_MIN_IDLE }}
+          MQ_RUNNER_DEMAND: ${{ vars.MQ_RUNNER_DEMAND }}
           MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token || secrets.MQ_RUNNER_STATUS_TOKEN }}
         run: uv run --no-project ci/select_mq_runner.py
       - name: Report Probe Setup Failure
