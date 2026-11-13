@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,9 +77,15 @@ class GhGraphql(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
         self.assertIn('"errors"', out.stdout)
 
-    def test_ghd_is_pinned_and_installed_through_uvx(self):
-        spec_source = SCRIPT.read_text()
-        self.assertIn("git+https://github.com/forge-ci/ghd@", spec_source)
+    def test_cold_fallback_uses_pinned_wheel_without_source_builds(self):
+        wrapper = runpy.run_path(str(SCRIPT))
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch(
+            "shutil.which", side_effect=lambda tool: "/tools/uvx" if tool == "uvx" else None
+        ):
+            self.assertEqual(
+                wrapper["ghd_command"](),
+                ["/tools/uvx", "--no-build", "--from", "ghd==0.2.1", "ghd"],
+            )
 
 
 if __name__ == "__main__":

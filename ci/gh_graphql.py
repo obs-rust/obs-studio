@@ -15,8 +15,9 @@ queries one upstream call and reuses an answer for its fresh window
 ci/test_tool_guard.py fails one written into a script, skill or doc.
 
 ghd comes from `$GHD_EXE`, else `ghd` on PATH, else
-`uvx --from git+https://github.com/forge-ci/ghd@<GHD_REF> ghd`. uv builds that
-once and caches it. `--jq` runs `jq -r`, which prints the same output as gh's
+`uvx --no-build --from ghd==<GHD_VERSION> ghd`. The published binary wheel
+avoids compiling the Rust CLI on cold admission runners. Missing wheels fail
+closed instead of starting a source build. `--jq` runs `jq -r`, which prints the same output as gh's
 `--jq` (strings unquoted). The exit status is ghd's: 1 when GitHub answered
 with `errors`.
 """
@@ -28,9 +29,10 @@ import shutil
 import subprocess
 import sys
 
-# forge-ci/ghd commit with `ghd api graphql` (forge-ci/ghd#1, merged). Bump it to adopt a newer ghd.
-GHD_REF = "3680ef44515db4645c4f190d4b3075ee1f7656df"
-GHD_SOURCE = f"git+https://github.com/forge-ci/ghd@{GHD_REF}"
+# forge-ci/ghd v0.2.1 publishes wheels for all six supported targets.
+# Keep cold identity verification inside its deadline: never build ghd here.
+GHD_VERSION = "0.2.1"
+GHD_SOURCE = f"ghd=={GHD_VERSION}"
 
 
 def ghd_command() -> list[str]:
@@ -43,7 +45,7 @@ def ghd_command() -> list[str]:
     uvx = shutil.which("uvx")
     if not uvx:
         raise SystemExit("gh_graphql: ghd not found; install uv or set GHD_EXE")
-    return [uvx, "--from", GHD_SOURCE, "ghd"]
+    return [uvx, "--no-build", "--from", GHD_SOURCE, "ghd"]
 
 
 def split_jq(args: list[str]) -> tuple[list[str], str | None]:
