@@ -13360,6 +13360,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_shutdown_detach": {
+      "sources": [
+        "test/cmocka/test_shutdown_detach.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_shutdown_leaked_scenes": {
       "sources": [
         "test/cmocka/test_shutdown_leaked_scenes.c"
@@ -23841,6 +23856,21 @@
         "${target}"
       ],
       "timeout_seconds": 60,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
+    "test_shutdown_detach": {
+      "target": "test_shutdown_detach",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
       "optional_prefixes": [
         [
           "xvfb-run",

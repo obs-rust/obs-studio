@@ -5,6 +5,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <obs-internal.h>
 #include <util/bmem.h>
 
@@ -102,7 +106,8 @@ static void test_shutdown_detaches_snapshot(void **unused)
 {
 	(void)unused;
 	long before = bnum_allocs();
-	assert_true(obs_startup("en-US", NULL, NULL));
+	if (!obs_startup("en-US", NULL, NULL))
+		skip(); /* no display: obs_startup needs one for hotkeys */
 	teardown = (struct detach_state){.unlocked = true, .retained = true};
 	struct obs_source_info info = {
 		.id = INPUT_ID,
@@ -176,8 +181,72 @@ static void test_shutdown_detaches_snapshot(void **unused)
 	assert_int_equal(bnum_allocs(), before);
 }
 
+/* Shutdown's "N source(s) were remaining" lines, recorded on the shutdown
+ * thread. The previous handler still gets every line. */
+static log_handler_t previous_log;
+static void *previous_log_param;
+static unsigned remaining_lines;
+static int remaining_sources;
+
+static void count_remaining(int level, const char *msg, va_list args, void *param)
+{
+	char line[256];
+	va_list copy;
+	va_copy(copy, args);
+	vsnprintf(line, sizeof(line), msg, copy);
+	va_end(copy);
+	if (strstr(line, " source(s) were remaining")) {
+		remaining_lines++;
+		remaining_sources = atoi(line);
+	}
+	previous_log(level, msg, args, previous_log_param);
+	(void)param;
+}
+
+/* The snapshot follows table order, so an input created before the scene is
+ * detached first. Its only owner is the scene's item: once the item is
+ * removed and the snapshot reference released, the input is destroyed before
+ * shutdown walks the tables, and only the host's scene is "remaining". */
+static void test_shutdown_releases_item_owned_input(void **unused)
+{
+	(void)unused;
+	long before = bnum_allocs();
+	if (!obs_startup("en-US", NULL, NULL))
+		skip(); /* no display: obs_startup needs one for hotkeys */
+	teardown = (struct detach_state){.unlocked = true, .retained = true};
+	struct obs_source_info info = {
+		.id = INPUT_ID,
+		.type = OBS_SOURCE_TYPE_INPUT,
+		.get_name = input_name,
+		.create = input_create,
+		.destroy = input_destroy,
+	};
+	obs_register_source(&info);
+
+	obs_source_t *input = obs_source_create_private(INPUT_ID, "input owned by an item", NULL);
+	obs_scene_t *scene = obs_scene_create_private("scene leaked by host");
+	assert_non_null(input);
+	assert_non_null(scene);
+	assert_non_null(obs_scene_add(scene, input));
+	obs_source_release(input);
+
+	remaining_lines = 0;
+	remaining_sources = 0;
+	base_get_log_handler(&previous_log, &previous_log_param);
+	base_set_log_handler(count_remaining, NULL);
+	obs_shutdown();
+	base_set_log_handler(previous_log, previous_log_param);
+
+	assert_int_equal(teardown.destroyed, 1);
+	assert_int_equal(teardown.tasks, 2);
+	assert_int_equal(remaining_lines, 1);
+	assert_int_equal(remaining_sources, 1);
+	assert_int_equal(bnum_allocs(), before);
+}
+
 int main(void)
 {
-	const struct CMUnitTest tests[] = {cmocka_unit_test(test_shutdown_detaches_snapshot)};
+	const struct CMUnitTest tests[] = {cmocka_unit_test(test_shutdown_detaches_snapshot),
+					   cmocka_unit_test(test_shutdown_releases_item_owned_input)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
