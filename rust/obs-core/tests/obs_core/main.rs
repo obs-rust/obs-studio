@@ -60,6 +60,7 @@ mod enum_modules_parity;
 mod find_modules;
 mod find_modules_parity;
 mod get_audio;
+mod get_audio_parity;
 mod get_output_source;
 mod get_output_source_parity;
 mod global_getters;
