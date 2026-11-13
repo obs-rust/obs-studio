@@ -14,7 +14,9 @@ class MasterPushScopeTest(unittest.TestCase):
         self.assertIn("github.event.before", job)
         self.assertNotIn('base="HEAD^1"', job)
         self.assertIn("github.event.merge_group.base_sha", job)
-        self.assertIn('base="origin/${GITHUB_BASE_REF}"', job)
+        self.assertIn('base="$PR_BASE"', job)
+        self.assertIn('PR_BASE: ${{ github.event.pull_request.base.sha }}', job)
+        self.assertIn('git show "$PR_BASE:ci/ci_scope.py"', job)
         self.assertIn('ci/ci_scope.py "${base}"', job)
         # The event and the ref reach the scope (#2916): a master push runs the
         # macOS and Windows Rust lanes for a core-only diff; a PR adds Windows.
