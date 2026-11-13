@@ -1900,11 +1900,6 @@ void obs_leave_graphics(void)
 		gs_leave_context();
 }
 
-audio_t *obs_get_audio(void)
-{
-	return obs->audio.audio;
-}
-
 video_t *obs_get_video(void)
 {
 	/* The main canvas has no mix until the first obs_reset_video(): no
