@@ -17246,6 +17246,21 @@
         }
       ]
     },
+    "test_vertexbuffer_create": {
+      "sources": [
+        "test/cmocka/test_vertexbuffer_create.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_video_clock_race": {
       "sources": [
         "test/cmocka/test_video_clock_race.c"
@@ -25036,6 +25051,12 @@
     },
     "test_vec4": {
       "target": "test_vec4"
+    },
+    "test_vertexbuffer_create": {
+      "target": "test_vertexbuffer_create",
+      "command": [
+        "${target}"
+      ]
     },
     "test_video_clock_race": {
       "target": "test_video_clock_race"
