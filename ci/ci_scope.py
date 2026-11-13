@@ -517,6 +517,17 @@ def core_native_lanes(core: bool, event: str, ref: str) -> frozenset[str]:
     return frozenset()
 
 
+def native_core_inputs(files: list[str], event: str, core: bool) -> bool:
+    """Preserve PR/push routing and keep queue host-only paths narrow."""
+    if event != "merge_group":
+        return core
+    return any(
+        (path.startswith(CORE_PREFIXES) or path in CORE_FILES)
+        and path_platforms(path) is None and not HIDDEN_FRAGMENT.match(path)
+        for path in files
+    )
+
+
 def scope(
     files: list[str],
     exists: Callable[[str], bool] = lambda path: False,
@@ -566,16 +577,9 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    native_core = core
-    if event == "merge_group":
-        # A host-only core file selects its own native lane via the path rules;
-        # generic core inputs require both hosts. Preserve all PR/push routing.
-        native_core = any(
-            (path.startswith(CORE_PREFIXES) or path in CORE_FILES)
-            and path_platforms(path) is None and not HIDDEN_FRAGMENT.match(path)
-            for path in files
-        )
-    native = core_native_lanes(native_core or "ci/ci_scope.py" in files, event, ref)
+    native = core_native_lanes(
+        native_core_inputs(files, event, core) or "ci/ci_scope.py" in files, event, ref
+    )
     macos |= MACOS in native
     windows |= WINDOWS in native
     docs_only = bool(files) and all(is_docs(path) for path in files)
