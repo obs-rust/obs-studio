@@ -216,6 +216,49 @@ static void changed_layout_after_clamped_start_survives_restart(void **)
 	assert_sizes(expected, actual);
 }
 
+/* OBSBasic shows the window before it restores the dock state. A tiling
+ * window manager (Hyprland, #3740) then resizes the shown window to its tile:
+ * the layout is restored into the start size and the window grows to the
+ * size the layout was saved at. The next start must get the saved layout
+ * back, not the layout as it was squeezed into the start size. */
+static void layout_survives_window_manager_resize_after_restore(void **)
+{
+	QByteArray state;
+	QList<QSize> expected;
+	{
+		Window original;
+		original.show();
+		original.window.resizeDocks(original.docks, {500, 200, 400, 200, 276}, Qt::Horizontal);
+		settle(original.window);
+		original.taller_docks();
+		expected = original.sizes();
+		state = persist(original.proportions.StateToSave());
+	}
+	QList<QSize> tiled;
+	{
+		Window first;
+		first.window.resize(1000, 600);
+		first.show();
+		first.restore(state);
+		settle(first.window);
+		first.window.resize(1600, 900);
+		settle(first.window);
+		tiled = first.sizes();
+		state = persist(first.proportions.StateToSave());
+	}
+	for (qsizetype i = 0; i < tiled.size(); ++i) {
+		print_message("dock %d after the tile resize: %dx%d\n", int(i), tiled[i].width(), tiled[i].height());
+	}
+	QList<QSize> actual;
+	{
+		Window restarted;
+		restarted.restore(state);
+		restarted.show();
+		actual = restarted.sizes();
+	}
+	assert_sizes(expected, actual);
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -223,6 +266,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test(changed_layout_at_minimum_survives_restart),
 		cmocka_unit_test(changed_layout_after_clamped_start_survives_restart),
 		cmocka_unit_test(separator_click_does_not_save_a_clamped_layout),
+		cmocka_unit_test(layout_survives_window_manager_resize_after_restore),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
 }
