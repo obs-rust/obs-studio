@@ -413,7 +413,8 @@ static void moved_and_floated_docks_stay_after_a_window_resize(void **)
 		restarted.restore(state);
 		restarted.show();
 		print_message("moved dock after restart: floating=%d, area of dock2=%d\n",
-			      restarted.docks[0]->isFloating(), int(restarted.window.dockWidgetArea(restarted.docks[2])));
+			      restarted.docks[0]->isFloating(),
+			      int(restarted.window.dockWidgetArea(restarted.docks[2])));
 		assert_true(restarted.docks[0]->isFloating());
 		assert_int_equal(restarted.window.dockWidgetArea(restarted.docks[2]), Qt::LeftDockWidgetArea);
 	}
