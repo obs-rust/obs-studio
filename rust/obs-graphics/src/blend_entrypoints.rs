@@ -73,8 +73,9 @@ pub fn blend_op<C: Context>(context: Option<&mut C>, op: u32) {
     }
 }
 
-// The setters' bodies past the context check, which push and reset reach
-// with the context they already validated, as the C calls the setters.
+// The setters' bodies past the context check. Pop and reset reach them as
+// the C reaches the public setters: each after reading the thread's context
+// again (`Context::revalidate`), since a device call may have left it.
 fn store_enabled<C: Context>(context: &mut C, enable: bool) {
     context.current_mut().enabled = enable;
     context.enable(enable);
@@ -99,28 +100,36 @@ pub fn push<C: Context>(context: Option<&mut C>) {
         context.push(context.current());
     }
 }
-/// Restore a saved state through the setters: enable, factors, then operation.
+/// Restore a saved state through the setters: enable, factors, then
+/// operation, each re-checking the context as the public setter does.
 pub fn pop<C: Context>(context: Option<&mut C>) {
     let Some(context) = context else { return };
     let Some(state) = context.pop() else { return };
-    store_enabled(context, state.enabled);
-    store_factors(
-        context,
-        state.src_c,
-        state.dest_c,
-        state.src_a,
-        state.dest_a,
-    );
-    store_op(context, state.op);
+    if context.revalidate(c"gs_enable_blending") {
+        store_enabled(context, state.enabled);
+    }
+    if context.revalidate(c"gs_blend_function_separate") {
+        store_factors(
+            context,
+            state.src_c,
+            state.dest_c,
+            state.src_a,
+            state.dest_a,
+        );
+    }
+    if context.revalidate(c"gs_blend_op") {
+        store_op(context, state.op);
+    }
 }
-/// Reset, through the setters, only the components the reset-decision helper asks for.
+/// Reset, through the setters (each re-checking the context), only the
+/// components the reset-decision helper asks for from the first state.
 pub fn reset<C: Context>(context: Option<&mut C>) {
     let Some(context) = context else { return };
     let steps = state_stacks::blend_reset_steps(&context.current());
-    if steps.enable {
+    if steps.enable && context.revalidate(c"gs_enable_blending") {
         store_enabled(context, true);
     }
-    if steps.function {
+    if steps.function && context.revalidate(c"gs_blend_function_separate") {
         store_factors(
             context,
             blend::SRCALPHA,
@@ -129,7 +138,7 @@ pub fn reset<C: Context>(context: Option<&mut C>) {
             blend::INVSRCALPHA,
         );
     }
-    if steps.op {
+    if steps.op && context.revalidate(c"gs_blend_op") {
         store_op(context, blend::OP_ADD);
     }
 }
