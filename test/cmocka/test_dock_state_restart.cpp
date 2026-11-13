@@ -380,6 +380,45 @@ static void hidden_dock_stays_hidden_after_a_window_resize(void **)
 	}
 }
 
+/* A dock the user floats or moves to another area keeps that place across a
+ * window resize and a restart, like a hidden one. */
+static void moved_and_floated_docks_stay_after_a_window_resize(void **)
+{
+	QByteArray state;
+	{
+		Window original;
+		original.show();
+		state = persist(original.proportions.StateToSave());
+	}
+	{
+		Window first;
+		first.window.resize(1000, 600);
+		first.show();
+		first.restore(state);
+		settle(first.window);
+		first.docks[0]->setFloating(true);
+		settle(first.window);
+		first.window.addDockWidget(Qt::LeftDockWidgetArea, first.docks[2]);
+		settle(first.window);
+		first.window.resize(1600, 900);
+		settle(first.window);
+		print_message("moved dock: floating=%d, area of dock2=%d\n", first.docks[0]->isFloating(),
+			      int(first.window.dockWidgetArea(first.docks[2])));
+		assert_true(first.docks[0]->isFloating());
+		assert_int_equal(first.window.dockWidgetArea(first.docks[2]), Qt::LeftDockWidgetArea);
+		state = persist(first.proportions.StateToSave());
+	}
+	{
+		Window restarted;
+		restarted.restore(state);
+		restarted.show();
+		print_message("moved dock after restart: floating=%d, area of dock2=%d\n",
+			      restarted.docks[0]->isFloating(), int(restarted.window.dockWidgetArea(restarted.docks[2])));
+		assert_true(restarted.docks[0]->isFloating());
+		assert_int_equal(restarted.window.dockWidgetArea(restarted.docks[2]), Qt::LeftDockWidgetArea);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -391,6 +430,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test(layout_survives_several_window_manager_resizes),
 		cmocka_unit_test(layout_survives_a_session_at_a_smaller_size),
 		cmocka_unit_test(hidden_dock_stays_hidden_after_a_window_resize),
+		cmocka_unit_test(moved_and_floated_docks_stay_after_a_window_resize),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
 }
