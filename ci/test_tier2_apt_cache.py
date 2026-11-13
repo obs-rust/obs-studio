@@ -5,8 +5,8 @@
 
 Every Tier 2 Linux job (build + complete OFF/ON suites) downloaded the same 339 MB of
 .debs (~20 s) into the stock ubuntu:26.04 container. The jobs now keep the
-downloads (the image's docker-clean apt config deletes them) and cache
-/var/cache/apt/archives, keyed on the package list and the image digest.
+downloads (the image's docker-clean apt config deletes them) and cache a
+job-local archive directory, keyed on the package list and the image digest.
 """
 
 from __future__ import annotations
@@ -36,8 +36,26 @@ class AptCacheTest(unittest.TestCase):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
             self.assertIn("docker-clean", j if name.endswith("-build") else (WORKFLOW.parents[2]/"rust/tools/linux-validate/ci-runtime.py").read_text(), name)
-            self.assertIn("path: /var/cache/apt/archives", j, name)
+            self.assertIn("path: ${{ runner.temp }}/apt-archives", j, name)
             self.assertIn("hashFiles('rust/tools/linux-validate/apt-packages.txt')", j, name)
+
+    def test_tier2_archive_directories_are_job_local(self):
+        # Matrix jobs on self-hosted runners share a Docker daemon. Their host
+        # archive directories must not share apt's lock or cache extraction.
+        for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
+            with self.subTest(job=name):
+                j = job(name)
+                self.assertNotIn("/var/cache/apt/archives", j)
+                self.assertIn('mkdir -p "$RUNNER_TEMP/apt-archives"', j)
+                self.assertIn('chmod a+rwx "$RUNNER_TEMP/apt-archives"', j)
+                self.assertLess(j.index('mkdir -p "$RUNNER_TEMP/apt-archives"'),
+                                j.index("id: apt-cache"))
+                paths = re.findall(r"^\s+path: (.+apt[^\n]*)$", j, re.M)
+                self.assertEqual(paths, ["${{ runner.temp }}/apt-archives"] *
+                                 (2 if name.endswith("-build") else 1))
+        self.assertIn('--archives "$RUNNER_TEMP/apt-archives"', job("rust-linux-tier2"))
+        self.assertIn('-o "Dir::Cache::archives=$RUNNER_TEMP/apt-archives"',
+                      job("rust-linux-tier2-build"))
 
     def test_build_job_dpkg_skips_fsync_and_docs(self):
         # #2072: dpkg spent 29 s unpacking with the .debs already restored.
@@ -49,8 +67,8 @@ class AptCacheTest(unittest.TestCase):
     def test_cache_is_restored_before_the_install(self):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
-            self.assertLess(j.index("path: /var/cache/apt/archives"), j.index("Install Tier 2 Packages" if name.endswith("-build") else "Test Tier 2 ("), name)
-            self.assertLess(j.index("actions/checkout@"), j.index("path: /var/cache/apt/archives"), name)
+            self.assertLess(j.index("path: ${{ runner.temp }}/apt-archives"), j.index("Install Tier 2 Packages" if name.endswith("-build") else "Test Tier 2 ("), name)
+            self.assertLess(j.index("actions/checkout@"), j.index("path: ${{ runner.temp }}/apt-archives"), name)
 
     def test_package_index_is_fetched_once_per_fresh_container(self):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
