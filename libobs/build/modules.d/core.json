@@ -6,6 +6,7 @@
     "core-scene-lookup",
     "core-source",
     "null-audio",
+    "source-private-settings",
     "util-cf"
   ],
   "depends": [
