@@ -57,18 +57,31 @@ pub trait Host {
     fn enable_color(&mut self, red: bool, green: bool, blue: bool, alpha: bool);
 }
 
+/// The context check: without a context, the debug line and no device call.
+fn valid(host: &mut impl Host, entry: Entry) -> bool {
+    if host.has_context() {
+        return true;
+    }
+    host.debug(entry);
+    false
+}
+
 pub fn set_cull_mode(host: &mut impl Host, mode: i32) {
-    let _ = (host, mode);
-    todo!()
+    if valid(host, Entry::SetCullMode) {
+        host.set_cull_mode(mode);
+    }
 }
 
 /// `GS_NEITHER` without a context; otherwise the device's answer.
 pub fn get_cull_mode(host: &mut impl Host) -> i32 {
-    let _ = host;
-    todo!()
+    if !valid(host, Entry::GetCullMode) {
+        return GS_NEITHER;
+    }
+    host.get_cull_mode()
 }
 
 pub fn enable_color(host: &mut impl Host, red: bool, green: bool, blue: bool, alpha: bool) {
-    let _ = (host, red, green, blue, alpha);
-    todo!()
+    if valid(host, Entry::EnableColor) {
+        host.enable_color(red, green, blue, alpha);
+    }
 }

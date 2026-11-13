@@ -667,6 +667,8 @@ fn main() {
         "indexbuffer-create-fields",
         "present-entrypoints",
         "present-entrypoints-fields",
+        "raster-state-entrypoints",
+        "raster-state-entrypoints-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
