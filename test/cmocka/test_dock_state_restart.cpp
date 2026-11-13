@@ -259,6 +259,50 @@ static void layout_survives_window_manager_resize_after_restore(void **)
 	assert_sizes(expected, actual);
 }
 
+/* The reporter's start from a terminal (#3740): the window first shares the
+ * workspace with the terminal, too narrow for the layout, and gets the whole
+ * workspace when the terminal is hidden. Every window resize before the user
+ * changes a dock restores the layout again, not only the first one. */
+static void layout_survives_several_window_manager_resizes(void **)
+{
+	QByteArray state;
+	QList<QSize> expected;
+	{
+		Window original;
+		original.show();
+		original.window.resizeDocks(original.docks, {500, 200, 400, 200, 276}, Qt::Horizontal);
+		settle(original.window);
+		original.taller_docks();
+		expected = original.sizes();
+		state = persist(original.proportions.StateToSave());
+	}
+	QList<QSize> full;
+	{
+		Window first;
+		first.window.resize(1000, 600);
+		first.show();
+		first.restore(state);
+		settle(first.window);
+		first.window.resize(800, 900); // tiled next to the terminal
+		settle(first.window);
+		first.window.resize(1600, 900); // the terminal is hidden
+		settle(first.window);
+		full = first.sizes();
+		state = persist(first.proportions.StateToSave());
+	}
+	print_message("in the session, after the last resize:\n");
+	assert_sizes(expected, full);
+	QList<QSize> actual;
+	{
+		Window restarted;
+		restarted.restore(state);
+		restarted.show();
+		actual = restarted.sizes();
+	}
+	print_message("after restart:\n");
+	assert_sizes(expected, actual);
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -267,6 +311,7 @@ int main(int argc, char **argv)
 		cmocka_unit_test(changed_layout_after_clamped_start_survives_restart),
 		cmocka_unit_test(separator_click_does_not_save_a_clamped_layout),
 		cmocka_unit_test(layout_survives_window_manager_resize_after_restore),
+		cmocka_unit_test(layout_survives_several_window_manager_resizes),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
 }
