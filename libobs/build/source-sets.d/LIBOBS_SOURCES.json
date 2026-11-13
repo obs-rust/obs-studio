@@ -218,6 +218,7 @@
   "build/libobs.core-canvas-move+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-scene-lookup+.h.c",
+  "build/libobs.core-scene-transform-states+.h.c",
   "build/libobs.core-source+.h.c",
   "build/libobs.effect-parser-entry+.h.c",
   "build/libobs.effect-parser-funcs+.h.c",
