@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-canvas-move",
+    "core-hotkey-background-enum",
     "core-output",
     "core-output-weak-lifetime",
     "core-scene-lookup",
