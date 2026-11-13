@@ -8,6 +8,7 @@
     "core-scene-transform-states",
     "core-source",
     "null-audio",
+    "sceneitem-private-settings",
     "util-cf"
   ],
   "depends": [

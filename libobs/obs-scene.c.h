@@ -2582,15 +2582,6 @@ void obs_sceneitem_defer_update_end(obs_sceneitem_t *item)
 		do_update_transform(item);
 }
 
-obs_data_t *obs_sceneitem_get_private_settings(obs_sceneitem_t *item)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_get_private_settings"))
-		return NULL;
-
-	obs_data_addref(item->private_settings);
-	return item->private_settings;
-}
-
 /* The matrix math is obs-scene-group-transform.c.h. The scene still reads
  * the item, still converts absolute and relative coordinates, and still
  * decides whether to invert the group's draw transform. */

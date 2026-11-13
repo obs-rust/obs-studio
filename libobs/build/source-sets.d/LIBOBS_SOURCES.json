@@ -228,5 +228,6 @@
   "build/libobs.graphics-texture-creators-fields+.h.c",
   "build/libobs.graphics-vertexbuffer-create+.h.c",
   "build/libobs.image-decode-adapter+.h.c",
-  "build/libobs.media+.h.c"
+  "build/libobs.media+.h.c",
+  "build/libobs.sceneitem-private-settings+.h.c"
 ]
