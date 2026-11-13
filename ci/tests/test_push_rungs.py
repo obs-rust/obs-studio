@@ -28,6 +28,7 @@ SPEC = importlib.util.spec_from_loader("push_script", LOADER)
 assert SPEC is not None
 push = importlib.util.module_from_spec(SPEC)
 LOADER.exec_module(push)
+from pr_attestation import PROOFT_SOURCE
 
 
 class Rungs(unittest.TestCase):
@@ -169,15 +170,10 @@ class ProoftIntegration(unittest.TestCase):
 
     The command-capture tests prove the expensive lane's Rust commands. This
     fixture tests the policy/writer contract without building those targets.
-    It runs when the rollout's pinned prooft 0.1.0 is installed.
+    It uses the verifier's exact source pin, independent of host installations.
     """
     def test_emitted_inventory_and_source_only_invalidation(self):
-        tool = shutil.which("prooft")
-        if tool is None:
-            self.skipTest("integration requires prooft==0.1.0")
-        version = subprocess.run([tool, "--version"], capture_output=True, text=True, check=True)
-        if version.stdout.strip() != "prooft 0.1.0":
-            self.skipTest("integration pins prooft==0.1.0")
+        tool = ["uv", "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"]
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             def command(*args, check=True):
@@ -200,24 +196,24 @@ class ProoftIntegration(unittest.TestCase):
                 # Clear previous host proofs: never let a Linux lint pass
                 # manufacture macOS/Windows native runtime evidence.
                 command("git", "commit", "--amend", "-qm", "Fixture input")
-                command(tool, "run", "client-lint", "--", sys.executable, "-c", "pass")
-                command(tool, "run", f"client-test-{host}", "--", sys.executable, "-c", "pass")
-                bundle = json.loads(command(tool, "emit").stdout)
+                command(*tool, "run", "client-lint", "--", sys.executable, "-c", "pass")
+                command(*tool, "run", f"client-test-{host}", "--", sys.executable, "-c", "pass")
+                bundle = json.loads(command(*tool, "emit").stdout)
                 self.assertEqual({a["gate"] for a in bundle["attestations"]}, push.client_gates(host))
             # Exit 75 is not success, even if a caller marks its lane optional.
             command("git", "commit", "--amend", "-qm", "Fixture input")
-            result = command(tool, "run", "client-test-x86_64-unknown-linux-gnu", "--",
+            result = command(*tool, "run", "client-test-x86_64-unknown-linux-gnu", "--",
                              sys.executable, "-c", "raise SystemExit(75)", check=False)
             self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(json.loads(command(tool, "emit").stdout)["attestations"], [])
-            command(tool, "run", "client-lint", "--", sys.executable, "-c", "pass")
+            self.assertEqual(json.loads(command(*tool, "emit").stdout)["attestations"], [])
+            command(*tool, "run", "client-lint", "--", sys.executable, "-c", "pass")
             message = command("git", "log", "-1", "--format=%B").stdout
             source.write_text("// changed source only\n")
             command("git", "add", "rust/fixture/src/lib.rs")
             command("git", "commit", "-qm", message)
-            self.assertEqual(json.loads(command(tool, "emit").stdout)["attestations"], [])
+            self.assertEqual(json.loads(command(*tool, "emit").stdout)["attestations"], [])
             # A successful command that changes a tracked input stamps nothing.
-            result = command(tool, "run", "client-lint", "--", sys.executable, "-c",
+            result = command(*tool, "run", "client-lint", "--", sys.executable, "-c",
                              "from pathlib import Path; Path('rust/fixture/src/lib.rs').write_text('changed')",
                              check=False)
             self.assertNotEqual(result.returncode, 0)

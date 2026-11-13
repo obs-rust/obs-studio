@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 
@@ -74,8 +75,9 @@ def tool_versions(swift: bool) -> dict[str, str]:
         probes["swift-format"] = [run_swift_format.formatter_binary(), "--version"]
     else:
         probes["xmllint"] = ["xmllint", "--version"]
-        probes["schema-dependencies"] = [
-            "uv", "run", "--no-project", "--with", "jsonschema", "--with", "json_source_map", "python", "-c",
+        probes["schema-dependencies"] = shlex.split(
+            "uv run --no-project --with jsonschema --with json_source_map python -c"
+        ) + [
             "from importlib.metadata import version; import sys; print(sys.version); "
             "print({n: version(n) for n in ('jsonschema', 'json_source_map')})",
         ]
