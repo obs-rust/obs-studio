@@ -11229,6 +11229,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_raster_state_entrypoints": {
+      "sources": [
+        "test/cmocka/test_raster_state_entrypoints.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_raw_output_video_reset": {
       "sources": [
         "test/cmocka/test_raw_output_video_reset.c"
@@ -23073,6 +23088,12 @@
     },
     "test_quick_write": {
       "target": "test_quick_write"
+    },
+    "test_raster_state_entrypoints": {
+      "target": "test_raster_state_entrypoints",
+      "command": [
+        "${target}"
+      ]
     },
     "test_raw_output_video_reset": {
       "target": "test_raw_output_video_reset",
