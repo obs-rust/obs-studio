@@ -84,6 +84,7 @@
         "libobs/obs-hotkey-background-error.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
