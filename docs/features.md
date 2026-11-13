@@ -2351,7 +2351,13 @@ area.
   that layout: the docks are squeezed for the session, and the next save
   writes the layout from the ini instead of the squeeze. Deliberate separator
   drags still save the new widths and heights when a dock is at its minimum,
-  so restarting does not revert to an older arrangement (#3740). *All*,
+  so restarting does not revert to an older arrangement (#3740). A tiling
+  window manager (Hyprland) that resizes the window to its tile right after
+  the start no longer evens out the docks: until the user changes a dock,
+  the saved layout is restored again at each new window size, and a quit
+  writes that layout, not the one squeezed into a smaller window (for
+  example after leaving full screen). Hiding, moving, floating or adding a
+  dock counts as a change and is kept (#3740). *All*,
   2026-10-24 (column: pending merge). Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
