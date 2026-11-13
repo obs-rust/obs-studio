@@ -99,6 +99,14 @@ class MergeQueue(unittest.TestCase):
         for text in (BUILD, (ROOT / ".github/workflows/check-format.yaml").read_text()):
             self.assertIn("SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}", text)
 
+    def test_full_queue_rust_tests_also_ignore_hosted_proof(self):
+        fast = job_block(BUILD, "rust-tests-linux")
+        self.assertIn(
+            "if: needs.check-event.outputs.deferred != 'true' && "
+            "(github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')",
+            fast,
+        )
+
     def test_gate_checks_child_coverage_from_exact_scope(self):
         gate = job_block(PULL, "ci-gate")
         self.assertIn("uv run --no-project ci/gate_jobs.py", gate)

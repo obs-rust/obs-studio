@@ -1881,7 +1881,7 @@ jobs:
 
       # Skipped when a trusted run already passed these exact inputs.
       - name: Local Gate (rust-test) 🧪
-        if: needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_hit != 'true'
+        if: needs.check-event.outputs.deferred != 'true' && (github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')
         run: uv run --no-project ci/local_gate.py --lane rust-test
 
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
