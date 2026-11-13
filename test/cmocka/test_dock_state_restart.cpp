@@ -303,6 +303,83 @@ static void layout_survives_several_window_manager_resizes(void **)
 	assert_sizes(expected, actual);
 }
 
+/* The reporter's full-screen start (#3740): the last session ended full
+ * screen, so OBS starts full screen with the layout, then leaves full screen
+ * into a smaller tile. Nobody touches a dock and OBS quits. The next start,
+ * at full size again, must show the layout of the start, not the layout Qt
+ * squeezed into the smaller window. */
+static void layout_survives_a_session_at_a_smaller_size(void **)
+{
+	QByteArray state;
+	QList<QSize> expected;
+	{
+		Window original;
+		original.show();
+		original.window.resizeDocks(original.docks, {500, 200, 400, 200, 276}, Qt::Horizontal);
+		settle(original.window);
+		original.taller_docks();
+		expected = original.sizes();
+		state = persist(original.proportions.StateToSave());
+	}
+	{
+		Window first;
+		first.show(); // full size
+		first.restore(state);
+		settle(first.window);
+		first.window.resize(1100, 700); // out of full screen, into a tile
+		settle(first.window);
+		print_message("in the session, at 1100x700:\n");
+		for (QSize size : first.sizes()) {
+			print_message("  %dx%d\n", size.width(), size.height());
+		}
+		state = persist(first.proportions.StateToSave());
+	}
+	QList<QSize> actual;
+	{
+		Window restarted;
+		restarted.restore(state);
+		restarted.show();
+		actual = restarted.sizes();
+	}
+	print_message("after restart:\n");
+	assert_sizes(expected, actual);
+}
+
+/* A dock the user hides through its menu action (View, Docks) stays hidden
+ * when the window is resized afterwards and after a restart: restoring the
+ * start layout on a window resize must not bring it back. */
+static void hidden_dock_stays_hidden_after_a_window_resize(void **)
+{
+	QByteArray state;
+	{
+		Window original;
+		original.show();
+		state = persist(original.proportions.StateToSave());
+	}
+	{
+		Window first;
+		first.window.resize(1000, 600);
+		first.show();
+		first.restore(state);
+		settle(first.window);
+		first.docks[1]->toggleViewAction()->trigger();
+		settle(first.window);
+		assert_false(first.docks[1]->isVisible());
+		first.window.resize(1600, 900);
+		settle(first.window);
+		print_message("hidden dock after the window resize: visible=%d\n", first.docks[1]->isVisible());
+		assert_false(first.docks[1]->isVisible());
+		state = persist(first.proportions.StateToSave());
+	}
+	{
+		Window restarted;
+		restarted.restore(state);
+		restarted.show();
+		print_message("hidden dock after restart: visible=%d\n", restarted.docks[1]->isVisible());
+		assert_false(restarted.docks[1]->isVisible());
+	}
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -312,6 +389,8 @@ int main(int argc, char **argv)
 		cmocka_unit_test(separator_click_does_not_save_a_clamped_layout),
 		cmocka_unit_test(layout_survives_window_manager_resize_after_restore),
 		cmocka_unit_test(layout_survives_several_window_manager_resizes),
+		cmocka_unit_test(layout_survives_a_session_at_a_smaller_size),
+		cmocka_unit_test(hidden_dock_stays_hidden_after_a_window_resize),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
 }
