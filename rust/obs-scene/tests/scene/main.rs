@@ -67,6 +67,7 @@ mod item_scale_getter_parity;
 mod item_transform_getters;
 
 mod item_crop_getter;
+mod item_crop_setter;
 #[allow(unsafe_code)]
 mod item_transform_getters_parity;
 
