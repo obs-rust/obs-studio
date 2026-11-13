@@ -2890,6 +2890,10 @@ area.
   is not a transition no longer changes that source; the call is ignored,
   as the other transition setters do. *All*, 2026-11-04. Issue
   [#3605](https://github.com/obs-rust/obs-studio/issues/3605).
+- A plugin or script that queues a graphics task with no function no
+  longer crashes OBS on its graphics thread: the empty task is skipped and
+  the tasks queued after it still run. *All*, 2026-11-12. Issue
+  [#4408](https://github.com/obs-rust/obs-studio/issues/4408).
 
 ### Security hardening
 

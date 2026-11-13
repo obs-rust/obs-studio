@@ -146,6 +146,9 @@
 /* obs-video-frame-timing.c */
 #include "obs-video-frame-timing.h"
 
+/* obs-video-graphics-tasks.c */
+#include "obs-video-graphics-tasks.h"
+
 /* obs-video-output-step.c */
 #include "obs-video-output-step.h"
 

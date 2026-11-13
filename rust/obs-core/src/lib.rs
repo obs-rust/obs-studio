@@ -28,6 +28,8 @@
 //! `obs-video.c.h`), the frame pacing decisions of `video_sleep()`;
 //! `libobs/obs-video-stop-requested.c.h` (from `obs-video.c.h`), the graphics
 //! thread's check that every mix's output has stopped;
+//! `libobs/obs-video-graphics-tasks.c.h` (from `obs-video.c.h`), the
+//! graphics thread's drain of its task queue;
 //! `libobs/obs-video-frame-timing.c.h` (from `obs-video.c.h`), the tick time
 //! and frame statistics of the graphics thread loop; and
 //! `libobs/obs-nix-system-info.c.h` (from `obs-nix.c.h`), the Linux and
@@ -54,6 +56,7 @@
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
 //! [`audio_render`], [`video_pacing`], [`video_stop_requested`],
+//! [`video_graphics_tasks`],
 //! [`video_frame_timing`],
 //! [`nix_system_info`], [`win_crash_report`], [`win_symbol_paths`] and
 //! [`win_system_info`].
@@ -66,7 +69,9 @@
 //! is cleared; [`canvas_rules`] holds the flags a canvas is created with and
 //! the checks of its setters; [`video_pacing`] steps the frame time after the
 //! sleep at the end of each frame; [`video_stop_requested`] tells the
-//! graphics thread when every mix's output has stopped; [`video_frame_timing`] gives the sources
+//! graphics thread when every mix's output has stopped; [`video_graphics_tasks`]
+//! runs the tasks queued for the graphics thread, each once and oldest
+//! first, with the queue unlocked while each one runs; [`video_frame_timing`] gives the sources
 //! their tick time and sums the frame statistics; [`nix_system_info`] parses
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
 //! startup log prints, and reads the `/etc/os-release` keys and values, the
@@ -158,6 +163,7 @@ pub mod tick_callbacks;
 pub mod video_copy_plan;
 pub mod video_frame_copy;
 pub mod video_frame_timing;
+pub mod video_graphics_tasks;
 pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;
