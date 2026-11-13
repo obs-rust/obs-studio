@@ -8,8 +8,8 @@ unsafe extern "C" {
 }
 
 /// # Safety
-/// OBS must be initialized and `id` must satisfy get_source_info's original
-/// C contract (a readable, NUL-terminated string when the registry is nonempty).
+/// OBS must be initialized and `id` must satisfy get_source_info's contract
+/// (NULL, or a readable NUL-terminated string).
 /// The registry entry must remain live throughout this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_source_get_icon_type(id: *const c_char) -> c_uint {

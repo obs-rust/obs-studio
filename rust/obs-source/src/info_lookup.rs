@@ -22,6 +22,13 @@ pub trait Registry {
 /// The index of the first entry whose ID is `id`, or `None`. A NULL `id`
 /// (`None`) finds nothing and reads nothing.
 pub fn find<R: Registry + ?Sized>(registry: &mut R, id: Option<&[u8]>) -> Option<usize> {
-    let _ = (registry, id);
-    todo!("get_source_info")
+    let id = id?;
+    let mut index = 0;
+    while index < registry.count() {
+        if registry.id(index) == Some(id) {
+            return Some(index);
+        }
+        index += 1;
+    }
+    None
 }

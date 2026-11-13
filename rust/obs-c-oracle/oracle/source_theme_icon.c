@@ -1,9 +1,10 @@
-/* Original whole-file C theme dispatch; real-header fixtures use the same
- * get_source_info seam as Rust. The active fixture is local to this thread. */
+/* Original whole-file C theme dispatch; both sides look IDs up with the ported
+ * get_source_info over a thread-local registry. The active fixture is local to
+ * this thread. */
 #include "libobs/build/libobs-ported-service-getters.pch.h"
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
+#include <stdlib.h>
 
 typedef const char *(*theme_getter)(const char *);
 typedef const char *(*theme_callback)(void *);
@@ -18,7 +19,6 @@ struct theme_fixture {
 	void *data;
 	const char *dark_result, *light_result;
 	size_t lookups, dark_calls, light_calls, data_matches;
-	struct obs_source_info info;
 };
 #ifdef _MSC_VER
 static __declspec(thread) struct theme_fixture *theme_active;
@@ -39,28 +39,22 @@ static const char *theme_light(void *data)
 	return theme_active->light_result;
 }
 
-bool oracle_source_theme_icon_lookup(const char *id, struct obs_source_info **info);
-bool oracle_source_theme_icon_lookup(const char *id, struct obs_source_info **info)
+/* Both getters look IDs up with the ported get_source_info over the fixture's
+ * registry (source_info_lookup.c). Each lookup is counted as it starts; with
+ * flag 4 the second lookup finds an empty registry, as if the type had been
+ * unregistered between the icon type check and the callback lookup. */
+#define THEME_FIXTURE_MAX 32
+typedef void (*theme_lookup_observer)(void *ctx);
+void oracle_source_info_lookup_use(struct obs_source_info *types, size_t num);
+struct obs_core *oracle_source_registry_exchange_core(struct obs_core *core);
+void oracle_source_info_lookup_observe(theme_lookup_observer observer, void *ctx);
+
+static void theme_lookup_started(void *ctx)
 {
-	struct theme_fixture *f = theme_active;
-	if (!f)
-		return false;
+	struct theme_fixture *f = ctx;
 	++f->lookups;
-	*info = NULL;
 	if ((f->flags & 4) && f->lookups == 2)
-		return true;
-	for (size_t i = 0; i < f->count; ++i) {
-		if (strcmp(f->ids[i], id) == 0) {
-			f->info = (struct obs_source_info){.id = f->ids[i],
-							   .icon_type = (enum obs_icon_type)f->icons[i],
-							   .type_data = f->data,
-							   .get_dark_icon = (f->flags & 1) ? theme_dark : NULL,
-							   .get_light_icon = (f->flags & 2) ? theme_light : NULL};
-			*info = &f->info;
-			break;
-		}
-	}
-	return true;
+		oracle_source_info_lookup_use(NULL, 0);
 }
 
 enum obs_icon_type oracle_obs_source_get_icon_type(const char *id);
@@ -88,9 +82,24 @@ const char *oracle_source_theme_icon_run(theme_getter getter, const char *query,
 					.data = data,
 					.dark_result = dark,
 					.light_result = light};
+	struct obs_source_info types[THEME_FIXTURE_MAX] = {0};
+	if (count > THEME_FIXTURE_MAX)
+		abort();
+	for (size_t i = 0; i < count; ++i) {
+		types[i] = (struct obs_source_info){.id = ids[i],
+						    .icon_type = (enum obs_icon_type)icons[i],
+						    .type_data = data,
+						    .get_dark_icon = (flags & 1) ? theme_dark : NULL,
+						    .get_light_icon = (flags & 2) ? theme_light : NULL};
+	}
 	struct theme_fixture *previous = theme_active;
 	theme_active = &fixture;
+	struct obs_core *previous_core = oracle_source_registry_exchange_core(NULL);
+	oracle_source_info_lookup_use(types, count);
+	oracle_source_info_lookup_observe(theme_lookup_started, &fixture);
 	const char *result = getter(query);
+	oracle_source_info_lookup_observe(NULL, NULL);
+	oracle_source_registry_exchange_core(previous_core);
 	theme_active = previous;
 	observed[0] = fixture.lookups;
 	observed[1] = fixture.dark_calls;

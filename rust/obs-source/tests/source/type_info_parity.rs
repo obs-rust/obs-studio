@@ -1,6 +1,7 @@
-//! Tier 3 against the original C lookup and wrappers. No-core calls, NULL IDs
-//! in populated registries and matched name queries without get_name are outside
-//! the characterized C domain. Lookup policy changes belong to #4608.
+//! Tier 3 against the original C wrappers, both over the ported lookup and a
+//! per-thread registry. No-core calls, NULL IDs in populated registries and
+//! matched name queries without get_name are outside the characterized C
+//! domain; the lookup's own parity is in `info_lookup_parity`.
 use core::ffi::c_char;
 use obs_source::ffi::type_info::{
     Fields, obs_get_source_output_flags, obs_is_source_configurable, obs_source_get_display_name,
