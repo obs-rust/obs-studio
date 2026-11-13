@@ -72,6 +72,7 @@ mod item_crop_setter;
 mod item_transform_getters_parity;
 
 mod item_crop_getter_parity;
+mod item_crop_setter_parity;
 
 mod item_transition_getters;
 
