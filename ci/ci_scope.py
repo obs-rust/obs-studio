@@ -579,6 +579,9 @@ def scope(
     macos |= MACOS in native
     windows |= WINDOWS in native
     docs_only = bool(files) and all(is_docs(path) for path in files)
+    if event == "merge_group" and docs_only:
+        # Documentation inside a core/frontend tree is still docs-only.
+        return Scope(core, False, False, docs_only=True)
     return Scope(
         core,
         macos,

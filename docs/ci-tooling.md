@@ -537,8 +537,8 @@ commit. Lane proofs (`ci/lane_proof.py`, #699) are keyed by a lane's
   runs, or when the lookup fails.
 
 Over the last 200 master commits, the Rust lanes' inputs were unchanged 63% of
-the time and Tier 2's 18%, so a queue rebuild after an unrelated merge
-can reuse PR evidence. Merge groups always rerun their selected lanes; proof
+the time and Tier 2's 18%, so a PR with unchanged lane inputs
+can reuse trusted evidence. Merge groups always rerun their selected lanes; proof
 keys never suppress queue execution. Check a key with
 `uv run ci/lane_proof.py key --lane rust-test --base origin/master`.
 

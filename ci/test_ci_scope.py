@@ -176,6 +176,8 @@ class CiScopeTest(unittest.TestCase):
             (["Cargo.toml"], True, True, False, True),
             (["plugins/obs-ffmpeg/obs-ffmpeg.c"], False, False, False, False),
             (["docs/features.md"], False, False, False, False),
+            (["rust/obs-util/README.md"], False, False, False, False),
+            (["frontend/README.md"], False, False, False, False),
             ([], False, False, False, False),
             # Combined immutable diff from two PRs, rather than either PR head.
             (["plugins/win-capture/game-capture.c", "plugins/mac-capture/mac-display-capture.m"], True, True, False, False),

@@ -78,6 +78,13 @@ class GateJobs(unittest.TestCase):
                     records.append(dict(job(missing, conclusion, status), client_attested=True, proof_hit=True))
                     self.assertEqual(blocking(records, expected=expected), [missing])
 
+    def test_runnerless_selected_job_cannot_prove_execution(self):
+        name = "Build 🧱 / Rust Tier 2 (macos-26)"
+        for conclusion in ("cancelled", "success"):
+            record = dict(job(name, conclusion), runner_name="", runner_id=0, steps=[],
+                          client_attested=True, proof_hit=True)
+            self.assertEqual(blocking([record], expected={name}), [name])
+
     def test_out_of_scope_skips_pass_queue_manifest(self):
         from ci_scope import scope
         expected = gate_jobs.expected_jobs(scope(["docs/features.md"], event="merge_group"))

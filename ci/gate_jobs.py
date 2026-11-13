@@ -50,6 +50,11 @@ class JobListError(RuntimeError):
     """The run's job list could not be read: every attempt failed."""
 
 
+def runnerless(job: dict) -> bool:
+    """Explicit runner-capacity evidence, rather than missing API fields."""
+    return job.get("runner_name") == "" and job.get("runner_id") == 0 and not job.get("steps")
+
+
 def blocking(
     jobs: list[dict], *, require_scope: bool = False, expected: set[str] | None = None
 ) -> list[str]:
@@ -68,6 +73,7 @@ def blocking(
     passed = {
         j["name"] for j in jobs
         if j.get("status") == "completed" and j.get("conclusion") == "success"
+        and not (j["name"] in required and runnerless(j))
     }
     bad.extend(name for name in sorted(required - passed) if name not in bad)
     return bad
@@ -178,14 +184,9 @@ def main() -> int:
     bad = blocking(jobs, require_scope=queue, expected=expected)
     for name in bad:
         record = next((j for j in jobs if j["name"] == name), {})
-        if (
-            record.get("conclusion") == "cancelled"
-            and record.get("runner_name") == ""
-            and record.get("runner_id") == 0
-            and not record.get("steps")
-        ):
+        if runnerless(record):
             print(
-                f"::error::{name}: runner capacity condition: cancelled without acquiring a runner; validation did not run"
+                f"::error::{name}: runner capacity condition: job did not acquire a runner; validation did not run"
             )
         else:
             print(
