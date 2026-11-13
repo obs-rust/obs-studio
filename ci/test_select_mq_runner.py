@@ -2,6 +2,7 @@
 """Merge queue runner availability and fail-open hosted selection (no network)."""
 
 import io
+import itertools
 import json
 import os
 import tempfile
@@ -14,10 +15,12 @@ from urllib.error import HTTPError, URLError
 import select_mq_runner as selector
 
 LABELS = '["self-hosted","linux","x64","obs-mq"]'
+RUNNER_IDS = itertools.count(1)
 
 
 def runner(status="online", *, busy=False, labels=None):
     return {
+        "id": next(RUNNER_IDS),
         "status": status,
         "busy": busy,
         "labels": [
@@ -38,6 +41,8 @@ class SelectMqRunnerTest(unittest.TestCase):
         error=None,
         org_runners=(),
         org_error=None,
+        min_idle=None,
+        demand=None,
     ):
         def respond(request, **kwargs):
             is_org = "/orgs/" in request.full_url
@@ -53,8 +58,13 @@ class SelectMqRunnerTest(unittest.TestCase):
 
         with patch.object(selector, "urlopen", side_effect=respond) as http:
             with redirect_stdout(io.StringIO()) as output:
+                options = {}
+                if min_idle is not None:
+                    options["min_idle"] = min_idle
+                if demand is not None:
+                    options["demand"] = demand
                 result = selector.select_labels(
-                    event, labels, token, "obs-rust/obs-studio"
+                    event, labels, token, "obs-rust/obs-studio", **options
                 )
         return result, http, output.getvalue()
 
@@ -69,10 +79,59 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
         self.assertLessEqual(http.call_args.kwargs["timeout"], 5)
 
-    def test_online_busy_runner_still_matches(self):
+    def test_all_six_online_runners_busy_use_hosted(self):
+        result, _, output = self.select([runner(busy=True) for _ in range(6)])
+        self.assertEqual(result, "")
+        self.assertIn("idle=0", output)
+        self.assertIn("busy=6", output)
+
+    def test_default_requires_two_idle_runners(self):
+        self.assertEqual(self.select([runner()])[0], "")
+        self.assertEqual(self.select([runner(), runner()])[0], LABELS)
+
+    def test_busy_offline_and_nonmatching_do_not_supply_idle_capacity(self):
+        entries = [runner(), runner(busy=True), runner("offline"), runner(labels=["x64"])]
+        self.assertEqual(self.select(entries)[0], "")
+        self.assertEqual(self.select([*entries, runner()])[0], LABELS)
+
+    def test_configurable_min_idle_and_demand(self):
+        entries = [runner(), runner(), runner()]
+        self.assertEqual(self.select(entries, min_idle="4")[0], "")
+        self.assertEqual(self.select(entries, min_idle="3")[0], LABELS)
+        self.assertEqual(self.select(entries, min_idle="1", demand="4")[0], "")
+        self.assertEqual(self.select(entries, min_idle="1", demand="3")[0], LABELS)
+        self.assertEqual(self.select(entries[:1], min_idle="1")[0], LABELS)
+        self.assertEqual(self.select(entries[:1], min_idle="2", demand="1")[0], "")
+
+    def test_invalid_capacity_configuration_uses_hosted_without_api(self):
+        for option in ("min_idle", "demand"):
+            for value in ("0", "-1", "oops", "1.5"):
+                with self.subTest(option=option, value=value):
+                    result, http, output = self.select([runner(), runner()], **{option: value})
+                    self.assertEqual(result, "")
+                    http.assert_not_called()
+                    self.assertIn("::warning::", output)
+        self.assertEqual(self.select([runner(), runner()], min_idle="", demand="")[0], LABELS)
+
+    def test_same_runner_in_both_scopes_counts_once(self):
+        same = runner()
+        self.assertEqual(self.select([same], org_runners=[same])[0], "")
+        self.assertEqual(self.select([same], org_runners=[same, runner()])[0], LABELS)
+
+    def test_disagreeing_busy_state_is_conservative(self):
+        same = runner()
         self.assertEqual(
-            json.loads(self.select([runner(busy=True)])[0]), json.loads(LABELS)
+            self.select([same, runner()], org_runners=[{**same, "busy": True}])[0], ""
         )
+
+    def test_unknown_busy_state_is_not_idle(self):
+        for busy in (None, "false", 0):
+            with self.subTest(busy=busy):
+                unknown = {**runner(), "busy": busy}
+                self.assertEqual(self.select([unknown, runner()])[0], "")
+        unknown = runner()
+        del unknown["busy"]
+        self.assertEqual(self.select([unknown, runner()])[0], "")
 
     def test_label_matching_is_case_insensitive(self):
         self.assertEqual(
