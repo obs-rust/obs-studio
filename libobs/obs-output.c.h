@@ -1094,16 +1094,6 @@ void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32
 	}
 }
 
-void obs_output_set_preferred_size(obs_output_t *output, uint32_t width, uint32_t height)
-{
-	if (!obs_output_valid(output, "obs_output_set_preferred_size"))
-		return;
-	if (!log_flag_video(output, __func__))
-		return;
-
-	obs_output_set_preferred_size2(output, width, height, 0);
-}
-
 /* The flags and limits obs-output-video-checks.h copies. */
 _Static_assert(OBS_OUTPUT_VIDEO_CHECKS_VIDEO == OBS_OUTPUT_VIDEO, "OBS_OUTPUT_VIDEO");
 _Static_assert(OBS_OUTPUT_VIDEO_CHECKS_AUDIO == OBS_OUTPUT_AUDIO, "OBS_OUTPUT_AUDIO");
