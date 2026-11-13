@@ -23,9 +23,11 @@ from __future__ import annotations
 
 import os
 import json
+import re
 import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -35,6 +37,50 @@ from client_checks import CLIENT_CHECK_GATES, receipt_path
 from pr_attestation import PROOFT_SOURCE
 
 REQUIRE = os.environ.get("PUSH_REQUIRE_ATTESTATION") == "1"
+
+
+def soldr_pin() -> str:
+    """Use the download pin already checked against every setup-soldr input."""
+    text = (ROOT / "cmake/common/soldr.cmake").read_text(encoding="utf-8")
+    pin = re.search(r"^set\(OBS_SOLDR_VERSION ([0-9.]+)\)$", text, re.M)
+    if not pin:
+        raise OSError("./push: missing CI soldr pin in cmake/common/soldr.cmake")
+    return pin.group(1)
+
+
+@contextmanager
+def soldr_environment(uv: str):
+    """Select CI's soldr wheel and toolchain without changing the caller's tools."""
+    version = soldr_pin()
+    original = dict(os.environ)
+    selectors = {
+        "RUSTUP_TOOLCHAIN", "RUSTC", "RUSTDOC", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER",
+        "CARGO_BUILD_RUSTC", "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
+    }
+    try:
+        for key in list(os.environ):
+            if key.startswith("SOLDR_") or key in selectors:
+                os.environ.pop(key)
+        executable = os.environ.get("PUSH_SOLDR")
+        if not executable:
+            # uv supplies the wheel's scripts directory to this child. Resolve
+            # its executable once so nested uv/prooft commands inherit it too.
+            executable = run([
+                uv, "run", "--no-project", "--no-build", "--with", f"soldr=={version}",
+                "python", "-c", "import shutil; print(shutil.which('soldr') or '')",
+            ], capture=True).stdout.strip()
+        path = Path(executable).absolute() if executable else None
+        if path is None or path.name not in {"soldr", "soldr.exe"}:
+            raise OSError(f"./push: soldr {version} requires an executable named soldr (or soldr.exe)")
+        installed = run([str(path), "--version"], capture=True).stdout.strip()
+        if installed != f"soldr {version}":
+            raise OSError(f"./push: soldr selection reports {installed!r}; CI requires soldr {version}")
+        os.environ["PATH"] = str(path.parent) + os.pathsep + original.get("PATH", os.defpath)
+        print(f"./push: CI-pinned soldr {version}: {path}; inherited toolchain overrides cleared", flush=True)
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(original)
 
 
 def run(args: list[str], *, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -240,7 +286,8 @@ def attest() -> bool:
     # this environment and does not change the user's installed prooft.
     uv = shutil.which("uv")
     if uv:
-        return complete_prooft([uv, "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"], tree)
+        with soldr_environment(uv):
+            return complete_prooft([uv, "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"], tree)
     print("./push: uv is not installed; trying the deprecated path")
     return legacy_attest(tree)
 

@@ -523,6 +523,15 @@ PR and queue events so fallback analysis actually executes.
 
 ### CI attestation: skipping what's already proven
 
+`./push` resolves the CI-pinned soldr wheel through `uv run --no-project --no-build --with soldr==<pin>`
+(cached by uv), using `cmake/common/soldr.cmake`'s version, which self-tests keep equal
+to every setup-soldr workflow input. Its directory leads PATH only during attestation;
+your installed tools stay unchanged. Proof commands clear inherited `SOLDR_*`,
+`RUSTUP_TOOLCHAIN`, Rust executable/wrapper selectors and their `CARGO_BUILD_*` equivalents,
+so the repository toolchain and lane settings apply. To use an already installed copy,
+set `PUSH_SOLDR=/absolute/path/to/soldr` (or `soldr.exe`); it must report the exact CI version.
+Bootstrap/version failures use ordinary PR CI, or refuse with `PUSH_REQUIRE_ATTESTATION=1`.
+
 CI Mode extracts `ci/pr_attestation.py` from the immutable PR BASE and runs it
 through uv in isolation from head code. That executable loads its prooft source
 pin, gate declarations and freshness/input policy from the same base git objects.
