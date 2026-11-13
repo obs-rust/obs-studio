@@ -2028,7 +2028,9 @@ jobs:
           sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
           apt_options=(-o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15)
           sudo apt-get "${apt_options[@]}" update
-          sudo apt-get install "${apt_options[@]}" -y --no-install-recommends cmake ninja-build
+          # The cross SDK's host Qt uic links GLib. Hosted images include it;
+          # minimal self-hosted queue runners need the runtime explicitly.
+          sudo apt-get install "${apt_options[@]}" -y --no-install-recommends cmake ninja-build libglib2.0-0t64
 
       - name: Cross Compile 🧰
         env:
