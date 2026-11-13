@@ -34,6 +34,9 @@
 /* obs-source-load.c */
 #include "obs-source-load.h"
 
+/* obs-shutdown-detach.c */
+#include "obs-shutdown-detach.h"
+
 /* obs.c */
 
 #include "graphics/matrix4.h"

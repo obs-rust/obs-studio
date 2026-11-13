@@ -2,7 +2,10 @@
 //! file: so far `libobs/obs-video-plan.c.h`, `libobs/obs-context-names.c.h`
 //! and `libobs/obs-core-setup-rules.c.h`,
 //! `libobs/obs-core-setup-rules-ms.c.h` and
-//! `libobs/obs-core-setup-rules-task.c.h` (from `obs.c.h`), `libobs/obs-module-paths.c.h`,
+//! `libobs/obs-core-setup-rules-task.c.h` (from `obs.c.h`), and
+//! `libobs/obs-shutdown-detach.c.h` (from `obs.c.h`), shutdown's
+//! detachment of the items of scenes the host left alive,
+//! `libobs/obs-module-paths.c.h`,
 //! `libobs/obs-module-names.c.h`, `libobs/obs-module-lists.c.h` (over
 //! `libobs/obs-module-lists-seam.h`), `libobs/obs-module-locale.c.h`,
 //! `libobs/obs-module-source-rules.c.h`, `libobs/obs-module-type-rules.c.h`,
@@ -58,6 +61,7 @@
 //! [`audio_render`], [`video_pacing`], [`video_stop_requested`],
 //! [`video_graphics_tasks`],
 //! [`video_frame_timing`],
+//! [`shutdown_detach`],
 //! [`nix_system_info`], [`win_crash_report`], [`win_symbol_paths`] and
 //! [`win_system_info`].
 //! [`video_plan`] sizes the conversion textures; [`video_output_step`]
@@ -71,7 +75,9 @@
 //! sleep at the end of each frame; [`video_stop_requested`] tells the
 //! graphics thread when every mix's output has stopped; [`video_graphics_tasks`]
 //! runs the tasks queued for the graphics thread, each once and oldest
-//! first, with the queue unlocked while each one runs; [`video_frame_timing`] gives the sources
+//! first, with the queue unlocked while each one runs; [`shutdown_detach`] removes, at shutdown, the items of every scene and
+//! group still in the source table, holding every one of them until all
+//! items are gone, then waits for the destroys that queued; [`video_frame_timing`] gives the sources
 //! their tick time and sums the frame statistics; [`nix_system_info`] parses
 //! the `/proc/cpuinfo` and `dmesg.boot` lines and the memory sizes the
 //! startup log prints, and reads the `/etc/os-release` keys and values, the
@@ -160,6 +166,7 @@ pub mod object_validity_query;
 pub mod output_protocol_registry;
 mod platform;
 pub mod set_output_source;
+pub mod shutdown_detach;
 pub mod source_load;
 pub mod source_profiler;
 pub mod tick_callbacks;
