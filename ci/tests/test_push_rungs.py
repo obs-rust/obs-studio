@@ -170,10 +170,15 @@ class ProoftIntegration(unittest.TestCase):
 
     The command-capture tests prove the expensive lane's Rust commands. This
     fixture tests the policy/writer contract without building those targets.
-    It uses the verifier's exact source pin, independent of host installations.
+    It exercises the writer selected by ./push against the repository policy.
     """
     def test_emitted_inventory_and_source_only_invalidation(self):
-        tool = ["uv", "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"]
+        with mock.patch.object(push, "dirty", return_value=False), \
+                mock.patch.object(push, "git", return_value=subprocess.CompletedProcess([], 0, "tree")), \
+                mock.patch.object(push, "complete_prooft", return_value=True) as writer:
+            self.assertTrue(push.attest())
+        selected = writer.call_args.args[0]
+        tool = [selected] if isinstance(selected, str) else selected
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             def command(*args, check=True):
@@ -198,8 +203,12 @@ class ProoftIntegration(unittest.TestCase):
                 command("git", "commit", "--amend", "-qm", "Fixture input")
                 command(*tool, "run", "client-lint", "--", sys.executable, "-c", "pass")
                 command(*tool, "run", f"client-test-{host}", "--", sys.executable, "-c", "pass")
+                command(*tool, "run", "client-checks", "--", sys.executable, "-c", "pass")
+                command(*tool, "run", "client-swift", "--", sys.executable, "-c", "pass")
                 bundle = json.loads(command(*tool, "emit").stdout)
-                self.assertEqual({a["gate"] for a in bundle["attestations"]}, push.client_gates(host))
+                self.assertEqual({a["gate"] for a in bundle["attestations"]},
+                                 push.client_gates(host) | push.CLIENT_CHECK_GATES | {"swift/all/fmt"})
+                self.assertIn("Ci-Attestation:", command("git", "log", "-1", "--format=%B").stdout)
             # Exit 75 is not success, even if a caller marks its lane optional.
             command("git", "commit", "--amend", "-qm", "Fixture input")
             result = command(*tool, "run", "client-test-x86_64-unknown-linux-gnu", "--",
