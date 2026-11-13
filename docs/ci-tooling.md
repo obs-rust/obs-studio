@@ -589,6 +589,15 @@ that CI will run the Linux jobs itself.
 
 ## Before you push
 
+`./push` runs prooft through `uv run --no-project --with` using the immutable
+`PROOFT_SOURCE` pin in `ci/pr_attestation.py`, shared with the base-owned
+verifier. The pin includes upstream commit `d08d58be`, which adds the `data`
+and `swift` ecosystems declared in `ci-attestations.yml`. Released prooft
+0.1.0 and 0.2.0 reject those gates before running a proof command; an older
+prooft on `PATH` is therefore ignored. uv caches the pinned environment
+without replacing the installed tool. A pin download or proof failure still
+uses ordinary PR CI, or refuses publication with `PUSH_REQUIRE_ATTESTATION=1`.
+
 For a focused CI/configuration bug fix, keep the RED and GREEN commits and
 record the local failing and passing commands, but push them together when
 the fix is ready. A separate remote RED run is not required. This avoids
