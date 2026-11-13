@@ -72,7 +72,18 @@ public:
 	 * minimums before any resize is observed, and the first save from it
 	 * would otherwise write the clamp over the layout the user still has in
 	 * the ini. */
-	void SetRestoredState(const QByteArray &state) { restored = state; }
+	void SetRestoredState(const QByteArray &state)
+	{
+		restored = state;
+		/* OBSBasic restores the layout into the shown window. A tiling
+		 * window manager resizes that window to its tile right after
+		 * (Hyprland, #3740): Qt squeezes the layout into the start size
+		 * and shares the new space out on its own when the window grows.
+		 * Until the user changes a dock, each window resize restores this
+		 * layout again at the new size. */
+		reapplyRestored = !state.isEmpty();
+		restoredWindowSize = window->size();
+	}
 
 protected:
 	bool eventFilter(QObject *obj, QEvent *event) override
@@ -100,6 +111,9 @@ protected:
 					const QByteArray state = window->saveState();
 					if (window->size() == extent && state != before) {
 						unclamped = state;
+						/* The user sized the docks: their layout
+						 * wins over the restored one from now on. */
+						reapplyRestored = false;
 					}
 				},
 				Qt::QueuedConnection);
@@ -148,6 +162,11 @@ private:
 	/* The layout this window was restored from: the baseline a clamped start
 	 * saves instead of the clamp (#2225). */
 	QByteArray restored;
+	/* Restore `restored` again when the window changes size, until the
+	 * user changes a dock (#3740), and the window size it was last
+	 * restored at. */
+	bool reapplyRestored = false;
+	QSize restoredWindowSize;
 	std::map<QList<QDockWidget *>, Saved> saved;
 	std::map<int, SavedArea> savedAreas;
 	bool updateQueued = false;
@@ -239,6 +258,21 @@ private:
 	void Update()
 	{
 		updateQueued = false;
+		if (reapplyRestored && window->size() != restoredWindowSize) {
+			/* The window changed size before the user changed a dock:
+			 * put the restored layout back at the new size. The shares
+			 * seen so far came from the squeezed start; the resize
+			 * events of this restore record them again. */
+			restoredWindowSize = window->size();
+			saved.clear();
+			savedAreas.clear();
+			window->restoreState(restored);
+			/* Look again once Qt has placed the docks, also when the
+			 * restore moved none of them. */
+			updateQueued = true;
+			QMetaObject::invokeMethod(this, [this] { Update(); }, Qt::QueuedConnection);
+			return;
+		}
 		UpdateRows();
 		UpdateAreas();
 		/* A dock pushed to its minimum means the window cannot show the
