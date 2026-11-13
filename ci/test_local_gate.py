@@ -195,11 +195,11 @@ class CrossTargetsTest(unittest.TestCase):
                          "local-gate.toml", ".github/workflows/build-project.yaml"):
                 with self.subTest(event=event, path=path):
                     selected = scope([path], event=event)
-                    self.assertEqual(selected.cross_lint, event == "pull_request")
-                    self.assertFalse(selected.macos)
-                    self.assertEqual(selected.windows, event == "pull_request" and path == "ci/ci_scope.py")
+                    self.assertTrue(selected.cross_lint)
+                    self.assertEqual(selected.macos, event == "merge_group" and path == "ci/ci_scope.py")
+                    self.assertEqual(selected.windows, path == "ci/ci_scope.py")
             for path in ("docs/ci-tooling.md", "rust/obs-util/src/dstr.rs"):
-                self.assertFalse(scope([path], event=event).cross_lint)
+                self.assertEqual(scope([path], event=event).cross_lint, event == "merge_group" and path.startswith("rust/"))
         workflow = (local_gate.ROOT / ".github/workflows/build-project.yaml").read_text()
         self.assertIn("cross_lint: ${{ steps.native.outputs.cross_lint }}", workflow)
         self.assertIn("needs.check-event.outputs.cross_lint == 'true'", workflow)
@@ -219,6 +219,16 @@ class CrossTargetsTest(unittest.TestCase):
                 mock.call(["test", "--workspace", "--no-run", "--locked", "--target", target]),
             ])
             dylint.assert_called_once_with(["--all", "--", *scope, "--target", target])
+
+    def test_extra_cross_targets_lint_without_linking(self):
+        with mock.patch.object(local_gate, "add_target") as add, \
+                mock.patch.object(local_gate, "soldr_cargo") as cargo, \
+                mock.patch.object(local_gate, "soldr_dylint") as dylint:
+            local_gate.lane_cross_release(False)
+        self.assertEqual([c.args[0] for c in add.call_args_list], list(local_gate.RELEASE_CROSS_TARGETS))
+        self.assertEqual(len(cargo.call_args_list), 3)
+        self.assertTrue(all(c.args[0][0] == "clippy" for c in cargo.call_args_list))
+        self.assertEqual(len(dylint.call_args_list), 3)
 
     def test_release_gate_targets(self):
         self.assertEqual(

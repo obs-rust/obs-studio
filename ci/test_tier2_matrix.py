@@ -20,6 +20,9 @@ class Tier2MatrixTest(unittest.TestCase):
             with self.subTest(event=event):
                 self.assertEqual(matrix(event), {"mode": ["OFF", "ON"], "part": ["all"]})
 
+    def test_queue_cannot_expand_to_redundant_partitions(self):
+        self.assertEqual(matrix("merge_group", full=True), {"mode": ["OFF", "ON"], "part": ["all"]})
+
     def test_background_and_release_keep_every_partition(self):
         for event in ("push", "schedule", "workflow_dispatch", "workflow_call", ""):
             with self.subTest(event=event):

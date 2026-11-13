@@ -65,6 +65,31 @@ class MergeQueue(unittest.TestCase):
     def test_scope_uses_merge_group_base(self):
         self.assertIn("github.event.merge_group.base_sha", job_block(BUILD, "check-event"))
 
+    def test_queue_heavy_jobs_ignore_proofs_and_attestation(self):
+        for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos",
+                     "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows",
+                     "rust-linux-tier2-build"):
+            with self.subTest(job=name):
+                header = job_block(BUILD, name).split("    steps:", 1)[0]
+                condition = re.search(r"^    if: (.+)$", header, re.M).group(1)
+                # A queue bypass must dominate all proof/trailer predicates.
+                self.assertRegex(condition, r"\(github.event_name == 'merge_group' \|\|")
+        mode = job_block(BUILD, "ci-mode")
+        self.assertIn("PROOFS: ${{ github.event_name == 'pull_request' && !inputs.full }}", mode)
+
+    def test_queue_disables_command_verdict_replay(self):
+        for text in (BUILD, (ROOT / ".github/workflows/check-format.yaml").read_text()):
+            self.assertIn("SOLDR_VERDICTS: ${{ github.event_name == 'merge_group' && 'off' || 'auto' }}", text)
+
+    def test_gate_checks_child_coverage_from_exact_scope(self):
+        gate = job_block(PULL, "ci-gate")
+        self.assertIn("uv run --no-project ci/gate_jobs.py", gate)
+        self.assertIn("fetch-depth: 0", gate)
+        self.assertNotIn("needs.build-project.outputs.core", gate)
+        extra = job_block(BUILD, "rust-cross-lint-release")
+        self.assertIn("github.event_name == 'merge_group'", extra)
+        self.assertIn("inputs.mq-runner-labels", extra)
+
     def test_stamp_never_skips_in_merge_queue(self):
         ci_mode = job_block(BUILD, "ci-mode")
         self.assertRegex(ci_mode, r"if: github\.event_name != 'merge_group'")
