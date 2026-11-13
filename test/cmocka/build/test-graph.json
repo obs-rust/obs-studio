@@ -13060,6 +13060,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_sceneitem_private_settings": {
+      "sources": [
+        "test/cmocka/test_sceneitem_private_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_sck_stall": {
       "sources": [
         "test/cmocka/test_sck_stall.c",
@@ -23681,6 +23696,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_sceneitem_private_settings": {
+      "target": "test_sceneitem_private_settings",
+      "command": [
+        "${target}"
       ]
     },
     "test_sck_stall": {
