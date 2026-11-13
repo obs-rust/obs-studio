@@ -10,6 +10,8 @@ mod audio_window;
 mod audio_window_parity;
 mod blend;
 mod bounds;
+mod color_space;
+mod color_space_parity;
 mod coords;
 mod crop;
 mod crop_parity;
@@ -65,10 +67,12 @@ mod item_scale_getter_parity;
 mod item_transform_getters;
 
 mod item_crop_getter;
+mod item_crop_setter;
 #[allow(unsafe_code)]
 mod item_transform_getters_parity;
 
 mod item_crop_getter_parity;
+mod item_crop_setter_parity;
 
 mod item_transition_getters;
 

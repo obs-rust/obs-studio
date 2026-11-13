@@ -19,15 +19,19 @@
 //! without its gain buffer),
 //! `libobs/obs-scene-item-order.c.h` (the order, reorder and group
 //! membership decisions: where a moved item goes, the reorder checks and
-//! group runs, and the group add and remove gates), and
+//! group runs, and the group add and remove gates),
 //! `libobs/obs-scene-transform-update.c.h` (the transform update decisions of
 //! `scene_video_render` and `update_transforms_and_prune_sources`: the scene
-//! size step and whether an item is updated).
+//! size step and whether an item is updated),
+//! `libobs/obs-scene-color-space.c.h` (the scene's video color space
+//! callback) and `libobs/obs-scene-item-crop-setter.c.h` (the scene item
+//! crop setter).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
 //! [`group_transform`], [`audio_actions`], [`item_audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
 //! [`crop`], [`render_plan`], [`item_names`], [`item_order`],
-//! [`item_transform`], and [`transform_update`]. The C ABI shims live in [`ffi`].
+//! [`item_transform`], [`transform_update`], [`color_space`] and
+//! [`item_crop_setter`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
@@ -38,6 +42,7 @@ pub mod audio_window;
 pub mod blend;
 pub mod bounds;
 pub mod bounds_place;
+pub mod color_space;
 pub mod coords;
 pub mod crop;
 pub mod extent;
@@ -68,6 +73,7 @@ pub mod item_render_getters;
 pub mod item_scale_getter;
 
 pub mod item_crop_getter;
+pub mod item_crop_setter;
 pub mod item_transform_getters;
 
 pub mod item_transition_getters;

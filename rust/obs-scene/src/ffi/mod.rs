@@ -1,5 +1,6 @@
 //! C ABI shims, one module per C file.
 pub mod atomic_update;
+pub mod color_space;
 pub mod from_source;
 pub mod group_queries;
 pub mod group_resize_defer;
@@ -34,6 +35,7 @@ pub mod item_render_getters;
 pub mod item_scale_getter;
 
 pub mod item_crop_getter;
+pub mod item_crop_setter;
 pub mod item_transform_getters;
 
 pub mod item_transition_getters;
