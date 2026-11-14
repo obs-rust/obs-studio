@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83299,
-      "libobs": 95002,
+      "libobs": 95003,
       "plugins": 148451,
       "shared": 15968
     },
     "percent": 16.29,
     "ported_lines": 55834,
-    "total_lines": 342720
+    "total_lines": 342721
   },
-  "commit": "22e2b71",
+  "commit": "bd8993e",
   "date": "2026-11-13",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -31,7 +31,7 @@
         "core": {
           "percent": 49.14,
           "ported_lines": 31362,
-          "total_lines": 63816
+          "total_lines": 63817
         },
         "graphics": {
           "percent": 68.85,
@@ -49,11 +49,11 @@
           "total_lines": 13379
         }
       },
-      "files": 708,
-      "hybrid_lines": 39168,
+      "files": 709,
+      "hybrid_lines": 39169,
       "percent": 58.77,
       "ported_lines": 55834,
-      "total_lines": 95002
+      "total_lines": 95003
     },
     "hosts": {
       "linux": {
@@ -61,7 +61,7 @@
           "core": {
             "percent": 51.01,
             "ported_lines": 30009,
-            "total_lines": 58827
+            "total_lines": 58828
           },
           "graphics": {
             "percent": 69.36,
@@ -79,8 +79,8 @@
             "total_lines": 10057
           }
         },
-        "files": 673,
-        "hybrid_lines": 34849,
+        "files": 674,
+        "hybrid_lines": 34850,
         "percent": 59.71,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -523,14 +523,14 @@
           "util/utf8.c.h"
         ],
         "ported_lines": 51648,
-        "total_lines": 86497
+        "total_lines": 86498
       },
       "macos": {
         "areas": {
           "core": {
             "percent": 50.14,
             "ported_lines": 26527,
-            "total_lines": 52901
+            "total_lines": 52902
           },
           "graphics": {
             "percent": 69.36,
@@ -548,8 +548,8 @@
             "total_lines": 9978
           }
         },
-        "files": 653,
-        "hybrid_lines": 32405,
+        "files": 654,
+        "hybrid_lines": 32406,
         "percent": 59.74,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
@@ -978,14 +978,14 @@
           "util/utf8.c.h"
         ],
         "ported_lines": 48087,
-        "total_lines": 80492
+        "total_lines": 80493
       },
       "windows": {
         "areas": {
           "core": {
             "percent": 50.37,
             "ported_lines": 27468,
-            "total_lines": 54532
+            "total_lines": 54533
           },
           "graphics": {
             "percent": 68.92,
@@ -1003,9 +1003,9 @@
             "total_lines": 10704
           }
         },
-        "files": 664,
-        "hybrid_lines": 33763,
-        "percent": 59.34,
+        "files": 665,
+        "hybrid_lines": 33764,
+        "percent": 59.33,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1440,7 +1440,7 @@
           "util/windows/window-match.c.h"
         ],
         "ported_lines": 49265,
-        "total_lines": 83028
+        "total_lines": 83029
       }
     }
   },
