@@ -500,6 +500,14 @@ not get a line.
   advanced-scene-switcher.so); ending the process`. *Linux, macOS*,
   pending merge. Issue
   [#4525](https://github.com/obs-rust/obs-studio/issues/4525).
+- **The exit watchdog on Windows.** When a plugin DLL blocks while Windows
+  unloads it at exit (for example, its static destructor waits for a
+  signal that never comes), OBS still ends after 10 s, with the same
+  `exit-watchdog: ...` line in its log and exit code 124. A small helper
+  process, `obs-exit-watchdog.exe` next to `obs64.exe`, starts with OBS
+  (log: `Exit watchdog: helper process started`) and ends it from outside.
+  *Windows*, pending merge. Issue
+  [#4589](https://github.com/obs-rust/obs-studio/issues/4589).
 - Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel

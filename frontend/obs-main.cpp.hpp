@@ -416,6 +416,15 @@ static void create_log_file(fstream &logFile)
 	if (logFile.is_open()) {
 		delete_oldest_file(false, "obs-studio/logs");
 		base_set_log_handler(do_log, &logFile);
+#ifdef OBS_FRONTEND_RUST
+		/* Windows: a plugin DLL that blocks its detach inside ExitProcess
+		 * outlives the watchdog thread. Start the watchdog's helper process
+		 * now, long before quit, so a first-start scan of it is over by then
+		 * (#4589). */
+		if (obs_exit_watchdog_start(path)) {
+			blog(LOG_INFO, "Exit watchdog: helper process started");
+		}
+#endif
 	} else {
 		blog(LOG_ERROR, "Failed to open log file");
 	}
