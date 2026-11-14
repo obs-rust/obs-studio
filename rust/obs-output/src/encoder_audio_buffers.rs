@@ -9,8 +9,10 @@ pub trait Host {
     fn free_plane(&mut self, plane: usize);
     /// Allocate an output plane with the encoder's allocator.
     fn allocate_plane(&mut self, plane: usize, bytes: usize);
-    /// Current active planes and bytes per output plane.
-    fn geometry(&self) -> (usize, usize);
+    /// Current active planes.
+    fn planes(&self) -> usize;
+    /// Current bytes per output plane.
+    fn bytes(&self) -> usize;
     /// Publish negotiated geometry before the plugin's frame-size callback.
     fn set_format(&mut self, rate: u32, planes: usize, blocksize: usize);
     /// Call the plugin once with its original context.
@@ -30,8 +32,13 @@ pub fn free(host: &mut impl Host) {
 /// Release every slot and allocate the active output planes.
 pub fn reset(host: &mut impl Host) {
     free(host);
-    let (planes, bytes) = host.geometry();
-    for plane in 0..planes {
+    // As in C, `planes` is read at every loop check and the byte count in
+    // each iteration.
+    for plane in 0.. {
+        if plane >= host.planes() {
+            break;
+        }
+        let bytes = host.bytes();
         host.allocate_plane(plane, bytes);
     }
 }
