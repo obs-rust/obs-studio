@@ -52,8 +52,11 @@ impl Host for Encoder {
             f(self);
         }
     }
-    fn geometry(&self) -> (usize, usize) {
-        (self.planes, self.bytes)
+    fn planes(&self) -> usize {
+        self.planes
+    }
+    fn bytes(&self) -> usize {
+        self.bytes
     }
     fn set_format(&mut self, rate: u32, planes: usize, blocksize: usize) {
         self.rate = rate;

@@ -36,9 +36,13 @@ impl Host for Borrowed<'_> {
             *self.0.output.add(plane) = bmalloc(bytes).cast();
         }
     }
-    fn geometry(&self) -> (usize, usize) {
-        // SAFETY: view geometry pointers borrow initialized encoder fields.
-        unsafe { (*self.0.planes, *self.0.bytes) }
+    fn planes(&self) -> usize {
+        // SAFETY: the planes pointer borrows the live encoder field.
+        unsafe { *self.0.planes }
+    }
+    fn bytes(&self) -> usize {
+        // SAFETY: the bytes pointer borrows the live encoder field.
+        unsafe { *self.0.bytes }
     }
     fn set_format(&mut self, rate: u32, planes: usize, blocksize: usize) {
         // SAFETY: these distinct fields are writable for this exclusive call.
