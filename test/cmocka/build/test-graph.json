@@ -13459,6 +13459,7 @@
       "sources": [
         "test/cmocka/test_slideshow_empty.c",
         "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/slideshow-order.c.h",
         {
           "path": "plugins/image-source/image-file-version.c.h",
           "requires": "OS_WINDOWS"
@@ -13591,6 +13592,7 @@
       "sources": [
         "test/cmocka/test_slideshow_manual_end.c",
         "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/slideshow-order.c.h",
         "plugins/image-source/obs-slideshow-mk2.c.h",
         "plugins/image-source/slideshow-size.c.h",
         "plugins/obs-transitions/transition-cut.c.h",

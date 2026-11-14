@@ -29,6 +29,7 @@
 
 #include <inttypes.h>
 
+#include "plugins/image-source/slideshow-order.h"
 #include "slideshow-size.h"
 
 /* slideshow-size.c */

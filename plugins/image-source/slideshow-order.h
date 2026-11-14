@@ -43,6 +43,10 @@ void slideshow_folder_files(os_dir_t *dir, const char *dir_path, enum slideshow_
 			    slideshow_paths_t *paths);
 void slideshow_paths_free(slideshow_paths_t *paths);
 
+/* Adds the "Folder Order" list to a slideshow's properties. */
+struct obs_properties;
+void slideshow_add_folder_order_property(struct obs_properties *ppts);
+
 /* obs-slideshow.c.h: whether a file extension is an image the slideshows
  * play */
 bool valid_extension(const char *ext);

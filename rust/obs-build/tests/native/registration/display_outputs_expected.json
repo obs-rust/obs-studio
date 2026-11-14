@@ -163,6 +163,7 @@
       "sources": [
         "test/cmocka/test_slideshow_empty.c",
         "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/slideshow-order.c.h",
         {
           "path": "plugins/image-source/image-file-version.c.h",
           "requires": "OS_WINDOWS"
