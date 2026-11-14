@@ -2913,6 +2913,10 @@ area.
   longer crashes OBS on its graphics thread: the empty task is skipped and
   the tasks queued after it still run. *All*, 2026-11-12. Issue
   [#4408](https://github.com/obs-rust/obs-studio/issues/4408).
+- A plugin or script that sets a scene item's bounds size with no size
+  (NULL) no longer crashes OBS while holding the scene's lock; the call is
+  ignored and logged, as the crop setter does. *All*, 2026-11-14. Issue
+  [#4392](https://github.com/obs-rust/obs-studio/issues/4392).
 
 ### Security hardening
 
