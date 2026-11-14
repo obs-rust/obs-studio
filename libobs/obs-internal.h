@@ -40,6 +40,7 @@
 
 #include "obs.h"
 #include "obs-canvas-flags-fields.h"
+#include "obs-encoder-init-fields.h"
 #include "obs-hotkey-background-app-id-fields.h"
 #include "obs-video-stats.h"
 #include "obs-source-own-clock-drift.h"
@@ -2218,6 +2219,23 @@ struct obs_encoder_group {
 	uint32_t encoders_reconfigured;
 	bool reconfigure_again;
 };
+
+/* Borrowed private fields; the encoder-group layout remains owned by C. */
+struct obs_encoder_group_lifecycle_fields {
+	uint32_t *started;
+	bool *destroy_on_stop;
+};
+struct obs_encoder_group_lifecycle_fields obs_encoder_group_lifecycle_fields(obs_encoder_group_t *group);
+obs_encoder_group_t *obs_encoder_group_lifecycle_alloc(void);
+void obs_encoder_group_lifecycle_free(obs_encoder_group_t *group);
+bool obs_encoder_group_lifecycle_init(obs_encoder_group_t *group);
+void obs_encoder_group_lifecycle_lock(obs_encoder_group_t *group);
+void obs_encoder_group_lifecycle_unlock(obs_encoder_group_t *group);
+void obs_encoder_group_lifecycle_mutex_destroy(obs_encoder_group_t *group);
+size_t obs_encoder_group_lifecycle_count(obs_encoder_group_t *group);
+obs_encoder_t *obs_encoder_group_lifecycle_encoder(obs_encoder_group_t *group, size_t index);
+void obs_encoder_group_lifecycle_clear(obs_encoder_t *encoder);
+void obs_encoder_group_lifecycle_free_list(obs_encoder_group_t *group);
 
 struct obs_encoder {
 	struct obs_context_data context;

@@ -34,7 +34,7 @@
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`] and [`output_conversion_callbacks`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_group_lifecycle`], [`encoder_init`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`] and [`output_conversion_callbacks`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -81,6 +81,13 @@
 //! grouped encoder start a request or wait for the current one, on which
 //! shared frame every encoder of the group applies them, the LCM of the
 //! group's frame rate divisors and the reset of an idle group;
+//! [`encoder_group_lifecycle`] creates an encoder group and decides
+//! whether its destroy waits for the last started encoder to stop, and
+//! the teardown order (each encoder's group cleared before its release,
+//! then the list, the unlock, the mutex and the group); [`encoder_init`]
+//! orders an encoder's setup: every mutex marked, the context, the six
+//! mutexes (the first two recursive) up to the first failure, then the
+//! defaults callbacks;
 //! [`encoder_gpu_rescale`] decides whether an encoder encodes from an
 //! encoder-only mix, the output that mix must have, whether a mix serves
 //! it, and which mix a shutdown releases and when its last reference goes;
@@ -138,7 +145,9 @@ pub mod encoder_frame_rate_divisor;
 pub mod encoder_gpu_gates;
 pub mod encoder_gpu_rescale;
 pub mod encoder_gpu_scaling_getters;
+pub mod encoder_group_lifecycle;
 pub mod encoder_group_reconfig;
+pub mod encoder_init;
 pub mod encoder_last_error;
 pub mod encoder_lifecycle;
 pub mod encoder_metadata;
