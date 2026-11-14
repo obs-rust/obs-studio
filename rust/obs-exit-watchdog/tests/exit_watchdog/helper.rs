@@ -46,7 +46,11 @@ fn args_read_every_value() {
 
 #[test]
 fn args_without_a_log_have_none() {
-    let args = HelperArgs::read(env(&[(ENV_PARENT, "1"), (ENV_ARM, "2"), (ENV_TIMEOUT_MS, "0")]));
+    let args = HelperArgs::read(env(&[
+        (ENV_PARENT, "1"),
+        (ENV_ARM, "2"),
+        (ENV_TIMEOUT_MS, "0"),
+    ]));
     assert_eq!(args.map(|a| a.log), Some(None));
 }
 
@@ -60,7 +64,12 @@ fn args_need_both_handles_and_the_timeout() {
             .filter(|(i, _)| *i != missing)
             .map(|(_, p)| *p)
             .collect();
-        assert_eq!(HelperArgs::read(env(&pairs)), None, "without {}", full[missing].0);
+        assert_eq!(
+            HelperArgs::read(env(&pairs)),
+            None,
+            "without {}",
+            full[missing].0
+        );
     }
 }
 
@@ -86,6 +95,7 @@ fn args_reject_bad_numbers_and_null_handles() {
 }
 
 /// The libtest selector of [`helper_process_entry`].
+#[cfg(windows)]
 pub(crate) fn entry_selector() -> &'static str {
     super::selector(concat!(module_path!(), "::helper_process_entry"))
 }
@@ -103,10 +113,7 @@ fn helper_process_entry() {
 #[cfg(not(windows))]
 #[test]
 fn start_does_nothing_off_windows() {
-    assert!(!obs_exit_watchdog::start(
-        Duration::from_secs(1),
-        None
-    ));
+    assert!(!obs_exit_watchdog::start(Duration::from_secs(1), None));
 }
 
 #[cfg(windows)]

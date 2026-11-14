@@ -8,7 +8,7 @@
 //!   `backtrace(3)` on Linux, the suspended thread's registers and frame
 //!   pointers on macOS; elsewhere none yet.
 //! - the watchdog process (#4589): `spawn_helper`, `arm_helper`,
-//!   `helper_wait` and `terminate_parent`; none yet.
+//!   `helper_wait` and `terminate_parent` on Windows; elsewhere none.
 
 cfg_select! {
     target_os = "linux" => {
@@ -54,8 +54,9 @@ cfg_select! {
         mod windows;
         mod unsupported;
         pub use windows::terminate;
-        mod no_helper;
-        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
+        #[allow(unsafe_code)] // CreateProcessW, DuplicateHandle, events, waits
+        mod windows_helper;
+        pub use windows_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
         pub use unsupported::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,

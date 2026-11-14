@@ -69,14 +69,28 @@ pub fn start(timeout: Duration, log: Option<&Path>) -> bool {
 
 /// [`start`] with a given program and arguments (tests).
 pub fn start_with(program: &Path, args: &[&OsStr], timeout: Duration, log: Option<&Path>) -> bool {
-    let _ = (program, args, timeout, log);
-    false
+    let mut started = HELPER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if started.is_some() {
+        return false;
+    }
+    let timeout_ms = timeout.as_millis().to_string();
+    let mut env: Vec<(&str, &OsStr)> = vec![(ENV_TIMEOUT_MS, OsStr::new(&timeout_ms))];
+    if let Some(log) = log {
+        env.push((ENV_LOG, log.as_os_str()));
+    }
+    *started = platform::spawn_helper(program, args, &env);
+    started.is_some()
 }
 
 /// Arms the started helper, if there is one. Returns false when there is
 /// none, or when the event could not be set.
 pub(crate) fn arm_started() -> bool {
-    false
+    let started = HELPER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    started.as_ref().is_some_and(platform::arm_helper)
 }
 
 /// What the helper reads from its environment.
@@ -97,8 +111,23 @@ impl HelperArgs {
     /// handle or the timeout is missing or not a decimal number, or a
     /// handle is 0.
     pub fn read(var: impl Fn(&str) -> Option<OsString>) -> Option<Self> {
-        let _ = var;
-        None
+        let number = |key: &str| -> Option<u64> {
+            let text = var(key)?.into_string().ok()?;
+            if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            text.parse().ok()
+        };
+        let parent = number(ENV_PARENT).filter(|&h| h != 0)?;
+        let arm = number(ENV_ARM).filter(|&h| h != 0)?;
+        let timeout = Duration::from_millis(number(ENV_TIMEOUT_MS)?);
+        let log = var(ENV_LOG).filter(|v| !v.is_empty()).map(PathBuf::from);
+        Some(Self {
+            parent,
+            arm,
+            timeout,
+            log,
+        })
     }
 }
 
@@ -107,11 +136,24 @@ impl HelperArgs {
 /// failed or the host has no helper, [`BAD_ARGS`] when the environment is
 /// not complete.
 pub fn run_helper() -> i32 {
-    BAD_ARGS
+    let Some(args) = HelperArgs::read(|key| std::env::var_os(key)) else {
+        return BAD_ARGS;
+    };
+    match platform::helper_wait(args.parent, args.arm, args.timeout) {
+        platform::Wait::ParentEnded => 0,
+        platform::Wait::TimedOut => {
+            append(args.log.as_deref(), crate::line(args.timeout).as_bytes());
+            if platform::terminate_parent(args.parent, crate::EXIT_CODE) {
+                0
+            } else {
+                1
+            }
+        }
+        platform::Wait::Failed => 1,
+    }
 }
 
 /// Appends `text` to `log`, if it opens.
-#[allow(dead_code)] // used by run_helper (GREEN)
 fn append(log: Option<&Path>, text: &[u8]) {
     if let Some(mut file) = log.and_then(|path| OpenOptions::new().append(true).open(path).ok()) {
         let _ = file.write_all(text);

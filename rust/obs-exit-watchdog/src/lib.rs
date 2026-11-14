@@ -39,8 +39,8 @@ pub mod images;
 mod platform;
 pub mod stack;
 
-use images::{Entry, Image, Owner, Table};
 pub use helper::{HelperArgs, run_helper, start, start_with};
+use images::{Entry, Image, Owner, Table};
 
 /// How long `exit()` may take after the frontend arms the watchdog.
 pub const TIMEOUT: Duration = Duration::from_secs(10);

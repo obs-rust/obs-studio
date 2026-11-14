@@ -9,6 +9,9 @@ use std::time::Duration;
 pub struct Helper;
 
 /// What the helper's wait ended with.
+// The shared helper code matches on all three; this host only returns
+// Failed.
+#[allow(dead_code)]
 pub enum Wait {
     /// OBS ended by itself.
     ParentEnded,
@@ -19,11 +22,7 @@ pub enum Wait {
 }
 
 /// Never starts.
-pub fn spawn_helper(
-    _program: &Path,
-    _args: &[&OsStr],
-    _env: &[(&str, &OsStr)],
-) -> Option<Helper> {
+pub fn spawn_helper(_program: &Path, _args: &[&OsStr], _env: &[(&str, &OsStr)]) -> Option<Helper> {
     None
 }
 
