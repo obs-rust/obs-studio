@@ -880,6 +880,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
     )
     .expect("write canvas setter extract");
+    std::fs::write(
+        extract_dir.join("source-set-name.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-set-name.c.h")),
+    )
+    .expect("write source rename extract");
     oracle.include(&extract_dir);
 
     oracle
