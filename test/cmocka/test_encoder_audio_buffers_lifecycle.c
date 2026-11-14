@@ -145,17 +145,7 @@ static audio_t *mix;
  * test skips. */
 static bool started;
 
-/* One encoder and output, initialized and released. */
-static void lifecycle(void)
-{
-	obs_encoder_t *encoder = obs_audio_encoder_create(ENCODER_ID, "audio buffers", NULL, 0, NULL);
-	obs_output_t *output = obs_output_create(OUTPUT_ID, "audio buffers", NULL, NULL);
-	obs_encoder_set_audio(encoder, mix);
-	obs_output_set_audio_encoder(output, encoder, 0);
-	obs_output_initialize_encoders(output, 0);
-	obs_output_release(output);
-	obs_encoder_release(encoder);
-}
+static void exercise(const struct plugin_case *c);
 
 static const struct plugin_case warm_up = {48000, AUDIO_FORMAT_FLOAT_PLANAR, SPEAKERS_STEREO, 1024, 2, 4};
 
@@ -176,10 +166,10 @@ static int setup(void **state)
 		return -1;
 	obs_register_encoder(&encoder_info);
 	obs_register_output(&output_info);
-	/* libobs makes some allocations once, on first use: make them before
-	 * the tests compare allocation counts. */
-	current = &warm_up;
-	lifecycle();
+	/* libobs makes some allocations once, on first use (which ones differs
+	 * by platform): run the whole case once before the tests compare
+	 * allocation counts. */
+	exercise(&warm_up);
 	return 0;
 }
 
@@ -193,13 +183,11 @@ static int teardown(void **state)
 	return 0;
 }
 
-static void run_case(const struct plugin_case *c)
+/* One encoder and output, initialized twice and released. */
+static void exercise(const struct plugin_case *c)
 {
-	if (!started)
-		skip();
 	current = c;
 	frame_size_calls = 0;
-	long baseline = bnum_allocs();
 
 	obs_encoder_t *encoder = obs_audio_encoder_create(ENCODER_ID, "audio buffers", NULL, 0, NULL);
 	obs_output_t *output = obs_output_create(OUTPUT_ID, "audio buffers", NULL, NULL);
@@ -242,7 +230,14 @@ static void run_case(const struct plugin_case *c)
 
 	obs_output_release(output);
 	obs_encoder_release(encoder);
+}
 
+static void run_case(const struct plugin_case *c)
+{
+	if (!started)
+		skip();
+	long baseline = bnum_allocs();
+	exercise(c);
 	/* Destroying the encoder freed every buffer it allocated. */
 	assert_int_equal(bnum_allocs(), baseline);
 }
