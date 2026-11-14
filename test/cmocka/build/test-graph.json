@@ -3178,6 +3178,21 @@
         "libobs-opengl/gl-egl-errors.h"
       ]
     },
+    "test_encoder_audio_buffers_lifecycle": {
+      "sources": [
+        "test/cmocka/test_encoder_audio_buffers_lifecycle.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_audio_getters": {
       "sources": [
         "test/cmocka/test_encoder_audio_getters.c"
@@ -20185,6 +20200,12 @@
     },
     "test_egl_init_error": {
       "target": "test_egl_init_error"
+    },
+    "test_encoder_audio_buffers_lifecycle": {
+      "target": "test_encoder_audio_buffers_lifecycle",
+      "command": [
+        "${target}"
+      ]
     },
     "test_encoder_audio_getters": {
       "target": "test_encoder_audio_getters",
