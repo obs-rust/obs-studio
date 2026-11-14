@@ -112,6 +112,7 @@ pub mod image_pq_scrgb;
 pub mod image_rgba64;
 pub mod image_route;
 pub mod image_wic_checks;
+pub mod key_combination_host_posix;
 pub mod lexer;
 pub mod lzw;
 pub mod media_remux;
