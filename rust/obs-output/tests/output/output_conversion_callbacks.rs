@@ -1,7 +1,7 @@
 //! Mirrors test_output_conversion_callbacks.c without FFI types.
 use obs_output::output_conversion_callbacks::{
     AUDIO, ENCODED, Rejection, VIDEO, conversion_guard, conversion_guard_reading, insertion_index,
-    removal_index, store, store_reading,
+    packet_guard, removal_index, store, store_reading,
 };
 
 #[test]
@@ -144,4 +144,10 @@ fn flag_reads() {
             assert_eq!(stored, result.ok().map(|()| flags));
         }
     }
+}
+
+#[test]
+fn null_output_packet_registration_is_refused() {
+    assert_eq!(packet_guard(false), Err(Rejection::Output));
+    assert_eq!(packet_guard(true), Ok(()));
 }

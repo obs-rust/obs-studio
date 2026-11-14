@@ -2926,6 +2926,11 @@ area.
   with no ID, no longer crashes OBS; the type is not found, as with an
   unknown ID. *All*, 2026-11-10. Issue
   [#4606](https://github.com/obs-rust/obs-studio/issues/4606).
+- A plugin or script that adds or removes a packet callback, or sets a
+  reconnect callback, with no output (NULL) no longer crashes OBS; the
+  call is ignored with a debug line, as the other output calls do. *All*,
+  2026-11-12. Issue
+  [#4754](https://github.com/obs-rust/obs-studio/issues/4754).
 
 ### Security hardening
 
