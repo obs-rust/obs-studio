@@ -28,7 +28,10 @@ const OS: u64 = 5_000 * SEC;
 fn gap_is_buffer_end_less_now() {
     // 4800 frames at 48 kHz are 100 ms.
     assert_eq!(buffered_end_gap(OS, 4800, 48_000, OS), 100 * MS);
-    assert_eq!(buffered_end_gap(OS, 4800, 48_000, OS + 40 * SEC / 1000), 60 * MS);
+    assert_eq!(
+        buffered_end_gap(OS, 4800, 48_000, OS + 40 * SEC / 1000),
+        60 * MS
+    );
     assert_eq!(buffered_end_gap(OS, 0, 48_000, OS), 0);
 }
 
@@ -150,6 +153,12 @@ struct Run {
 /// series). With `compensate`, the filter's error drives the loop filter;
 /// the resampler changes each packet by the correction `delta` gives, as
 /// `swr_set_compensation()` does.
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)] // simulated times and sample counts, far inside f64's exact range
 fn simulate(ppm: f64, jitter_ms: u64, minutes: u64, compensate: bool) -> Run {
     const RATE: u32 = 48_000;
     const PACKET: u32 = 4_800;
@@ -161,7 +170,11 @@ fn simulate(ppm: f64, jitter_ms: u64, minutes: u64, compensate: bool) -> Run {
     let start = OS as f64;
     let mut base: Option<i64> = None;
     let mut first_min = i64::MAX;
-    let mut run = Run { max_dev_ns: i64::MIN, min_dev_ns: i64::MAX, settled_err_ns: 0 };
+    let mut run = Run {
+        max_dev_ns: i64::MIN,
+        min_dev_ns: i64::MAX,
+        settled_err_ns: 0,
+    };
 
     for k in 0..packets {
         // The packet's last sample, in system time, then its arrival.
@@ -169,12 +182,17 @@ fn simulate(ppm: f64, jitter_ms: u64, minutes: u64, compensate: bool) -> Run {
         seed ^= seed << 13;
         seed ^= seed >> 7;
         seed ^= seed << 17;
-        let late = if jitter_ms == 0 { 0.0 } else { (seed % (jitter_ms * 1_000_000)) as f64 };
+        let late = if jitter_ms == 0 {
+            0.0
+        } else {
+            (seed % (jitter_ms * 1_000_000)) as f64
+        };
         let arrival = (sent + late) as u64;
 
         let out = if comp.enabled {
             let _ = drift::step(&mut comp, RATE, PACKET);
-            f64::from(PACKET) * (1.0 + f64::from(drift::delta(&comp, RATE)) / f64::from(drift::DISTANCE))
+            f64::from(PACKET)
+                * (1.0 + f64::from(drift::delta(&comp, RATE)) / f64::from(drift::DISTANCE))
         } else {
             f64::from(PACKET)
         };
@@ -205,6 +223,9 @@ fn simulate(ppm: f64, jitter_ms: u64, minutes: u64, compensate: bool) -> Run {
 
 /// The step threshold of #4143 (`TS_SMOOTHING_THRESHOLD`).
 const STEP_NS: i64 = 70 * MS;
+/// The largest filter error once settled: the arrival jitter moves the
+/// window's minimum by up to about 14 ms against the baseline.
+const SETTLED_NS: i64 = 15 * MS;
 
 #[test]
 fn loop_without_compensation_drifts_past_the_step() {
@@ -217,20 +238,46 @@ fn loop_without_compensation_drifts_past_the_step() {
 fn loop_holds_a_fast_sender_under_the_step() {
     let run = simulate(500.0, 20, 30, true);
     assert!(run.max_dev_ns < STEP_NS, "max {} ms", run.max_dev_ns / MS);
-    assert!(run.settled_err_ns <= 12 * MS, "settled {} ms", run.settled_err_ns / MS);
+    assert!(
+        run.settled_err_ns <= SETTLED_NS,
+        "settled {} ms",
+        run.settled_err_ns / MS
+    );
 }
 
 #[test]
 fn loop_holds_a_slow_sender_over_minus_the_step() {
     let run = simulate(-500.0, 20, 30, true);
     // Late packets shorten the gap by up to the jitter.
-    assert!(run.min_dev_ns > -STEP_NS - 20 * MS, "min {} ms", run.min_dev_ns / MS);
-    assert!(run.settled_err_ns <= 12 * MS, "settled {} ms", run.settled_err_ns / MS);
+    assert!(
+        run.min_dev_ns > -STEP_NS - 20 * MS,
+        "min {} ms",
+        run.min_dev_ns / MS
+    );
+    assert!(
+        run.settled_err_ns <= SETTLED_NS,
+        "settled {} ms",
+        run.settled_err_ns / MS
+    );
 }
 
 #[test]
 fn loop_leaves_a_sender_on_the_system_clock_alone() {
     let run = simulate(0.0, 20, 10, true);
-    assert!(run.max_dev_ns < 15 * MS, "max {} ms", run.max_dev_ns / MS);
-    assert!(run.settled_err_ns <= 10 * MS, "settled {} ms", run.settled_err_ns / MS);
+    // The raw gap moves by the arrival jitter (up to 20 ms late); the filter
+    // takes that out, so the loop does not follow it.
+    assert!(run.max_dev_ns < 25 * MS, "max {} ms", run.max_dev_ns / MS);
+    assert!(
+        run.settled_err_ns <= SETTLED_NS,
+        "settled {} ms",
+        run.settled_err_ns / MS
+    );
+}
+
+#[test]
+fn loop_beyond_the_clamp_still_needs_the_step() {
+    // 1200 ppm is past the loop's 1000 ppm clamp: the gap runs away, and
+    // the step of #4143 stays the bound there.
+    let run = simulate(1200.0, 20, 30, true);
+    assert!(run.max_dev_ns > STEP_NS, "max {} ms", run.max_dev_ns / MS);
 }
