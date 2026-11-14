@@ -36,6 +36,39 @@ pub trait Source {
 /// Run the original setter: the NULL check, the unchanged-name check, then
 /// the canvas rename or the table rename with its signals and cleanup.
 pub fn set_name<S: Source>(source: Option<&mut S>, log_null: impl FnOnce()) {
-    let _ = (source, log_null);
-    todo!("obs_source_set_name")
+    let Some(source) = source else {
+        log_null();
+        return;
+    };
+    if !changes(source) {
+        return;
+    }
+    // A private scene knows its canvas but is not in its list.
+    if source.requires_canvas() && !source.private() {
+        source.rename_canvas();
+        return;
+    }
+    let previous = source.save_previous();
+    if source.private() {
+        source.rename_private();
+    } else {
+        source.rename_public();
+    }
+    let mut data = source.data(&previous);
+    // Read again, as the C does: the context setters run in between.
+    if !source.private() {
+        source.signal_global(&mut data);
+    }
+    source.signal_local(&mut data);
+    source.free_data(data);
+    source.free_previous(previous);
+}
+
+/// A NULL or empty request, or a NULL current name, always renames; otherwise
+/// only a request whose bytes differ from the current name does.
+fn changes(source: &impl Source) -> bool {
+    match source.requested() {
+        None | Some([]) => true,
+        Some(requested) => source.current().is_none_or(|current| requested != current),
+    }
 }
