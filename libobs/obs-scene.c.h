@@ -30,6 +30,9 @@ static void signal_parent(obs_scene_t *parent, const char *name, calldata_t *par
 static void get_ungrouped_transform(obs_sceneitem_t *group, obs_sceneitem_t *item, struct vec2 *pos, struct vec2 *scale,
 				    float *rot);
 static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *name);
+static bool obs_sceneitem_hotkey_show(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed);
+static bool obs_sceneitem_hotkey_hide(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed);
+static void obs_sceneitem_hotkey_renamed(void *param, calldata_t *data);
 
 typedef DARRAY(struct obs_scene_item *) obs_scene_item_ptr_array_t;
 
@@ -1906,9 +1909,9 @@ static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *
 		obs_data_array_release(hotkey_array);
 	}
 
-	item->toggle_visibility = obs_hotkey_pair_register_source(scene->source, show.array, show_desc.array,
-								  hide.array, hide_desc.array, hotkey_show_sceneitem,
-								  hotkey_hide_sceneitem, item, item);
+	item->toggle_visibility =
+		obs_hotkey_pair_register_source(scene->source, show.array, show_desc.array, hide.array, hide_desc.array,
+						obs_sceneitem_hotkey_show, obs_sceneitem_hotkey_hide, item, item);
 
 	dstr_free(&show);
 	dstr_free(&hide);
@@ -2015,7 +2018,7 @@ static obs_sceneitem_t *obs_scene_add_internal(obs_scene_t *scene, obs_source_t 
 	if (!scene->source->context.private)
 		init_hotkeys(scene, item, obs_source_get_name(source));
 
-	signal_handler_connect(obs_source_get_signal_handler(source), "rename", sceneitem_renamed, item);
+	signal_handler_connect(obs_source_get_signal_handler(source), "rename", obs_sceneitem_hotkey_renamed, item);
 
 	return item;
 
@@ -2051,8 +2054,8 @@ static void obs_sceneitem_destroy(obs_sceneitem_t *item)
 		obs_data_release(item->private_settings);
 		obs_hotkey_pair_unregister(item->toggle_visibility);
 		pthread_mutex_destroy(&item->actions_mutex);
-		signal_handler_disconnect(obs_source_get_signal_handler(item->source), "rename", sceneitem_renamed,
-					  item);
+		signal_handler_disconnect(obs_source_get_signal_handler(item->source), "rename",
+					  obs_sceneitem_hotkey_renamed, item);
 		if (item->show_transition)
 			obs_source_release(item->show_transition);
 		if (item->hide_transition)
