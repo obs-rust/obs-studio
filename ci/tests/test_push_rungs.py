@@ -144,6 +144,177 @@ class Rungs(unittest.TestCase):
             self.assertFalse(push.sign_final())
 
 
+class PullRequestTransport(unittest.TestCase):
+    """Exercise main's transport decisions without publishing or running proof lanes."""
+
+    BRANCH = "fix/fork-head"
+    BASE = "obs-rust/obs-studio"
+
+    def transport(self, *, destination=BASE, push_urls=None, existing="", pressure=0,
+                  lookup_error=False, resolve_error=False, attested=False, destination_host="github.com",
+                  base_fork=False, configured_base=True, repo_override="", default_base=BASE):
+        calls = []
+        push_urls = push_urls or [f"git@github.com:{destination}.git"]
+        responses = {
+            ("git", "rev-parse", "--abbrev-ref"): (self.BRANCH, 0),
+            ("git", "log"): ("Fix fork PR creation", 0),
+            ("git", "push"): ("", 0),
+            ("gh", "api"): (existing, int(lookup_error)),
+            ("gh", "pr", "create"): ("", 0),
+            # Old main cannot tell which repository received the branch.
+            ("gh", "pr", "view"): ("", 1),
+            # gh exits zero even when no default exists; only stdout distinguishes it.
+            ("gh", "repo", "set-default"): (self.BASE if configured_base else "", 0),
+        }
+
+        def command(args, **kwargs):
+            calls.append(args)
+            if args[:3] == ["git", "remote", "get-url"]:
+                self.assertIn("--push", args)
+                self.assertIn("--all", args)
+                output, status = "\n".join(push_urls), 0
+            elif args[:3] == ["gh", "repo", "view"]:
+                # repo view ignores GH_REPO: only an explicit argument overrides
+                # the checkout's default. This mirrors real gh 2.101.0.
+                selected = destination if args[3] in push_urls else args[3]
+                selected = default_base if selected == "--json" else selected
+                host = destination_host if args[3] in push_urls else "github.com"
+                output = json.dumps({"nameWithOwner": selected, "url": f"https://{host}/{selected}", "isFork": base_fork})
+                status = int(resolve_error and args[3] in push_urls)
+            elif "backpressure.py" in " ".join(args):
+                output, status = "backpressure closed", pressure
+            else:
+                match = next((value for prefix, value in responses.items() if tuple(args[:len(prefix)]) == prefix), None)
+                self.assertIsNotNone(match, f"unexpected command: {args}")
+                output, status = match
+            if status and kwargs.get("check"):
+                raise subprocess.CalledProcessError(status, args, output, "private transport error")
+            return subprocess.CompletedProcess(args, status, output, "")
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output), \
+                mock.patch.dict(os.environ, {"GH_REPO": repo_override}), \
+                mock.patch.object(push, "REQUIRE", False), \
+                mock.patch.object(push, "dirty", return_value=False), \
+                mock.patch.object(push, "attest", return_value=attested), \
+                mock.patch.object(push.subprocess, "run", side_effect=command):
+            result = push.main([])
+        return result, calls, output.getvalue()
+
+    def creation(self, calls):
+        commands = [c for c in calls if c[:3] == ["gh", "pr", "create"]]
+        self.assertEqual(len(commands), 1)
+        return commands[0]
+
+    def assert_target(self, calls, head):
+        create = self.creation(calls)
+        self.assertIn("--head", create)
+        self.assertEqual(create[create.index("--head") + 1], head)
+        for flag in ("--repo", "--base"):
+            self.assertIn(flag, create)
+        self.assertEqual(create[create.index("--repo") + 1], f"https://github.com/{self.BASE}")
+        self.assertEqual(create[create.index("--base") + 1], "master")
+
+    def test_unattested_publish_keeps_title_and_backpressure(self):
+        result, calls, output = self.transport(pressure=75)
+        self.assertEqual(result, 0, output)
+        self.assertIn(["git", "push", "-u", "origin", self.BRANCH], calls)
+        create = self.creation(calls)
+        self.assertIn("--fill", create)
+        self.assertIn("--draft", create)
+        self.assertEqual(create[create.index("--title") + 1], "Fix fork PR creation")
+        self.assertIn("ordinary PR CI remains required", output)
+
+    def test_same_repository_keeps_unqualified_head(self):
+        result, calls, output = self.transport(attested=True)
+        self.assertEqual(result, 0, output)
+        self.assert_target(calls, self.BRANCH)
+        self.assertNotIn("--draft", self.creation(calls))
+
+    def test_fork_uses_destination_owner_and_preserves_fallback_draft(self):
+        result, calls, output = self.transport(destination="contributor/renamed-obs", pressure=75)
+        self.assertEqual(result, 0, output)
+        self.assert_target(calls, f"contributor:{self.BRANCH}")
+        self.assertIn("--draft", self.creation(calls))
+        self.assertIn("ordinary PR CI remains required", output)
+        self.assertFalse(any(c[:3] == ["gh", "api", "user"] for c in calls))
+
+    def test_separate_push_url_selects_fork_not_fetch_repository(self):
+        for url in ("git@github.com:other-owner/obs-studio.git",
+                    "https://github.com/other-owner/obs-studio.git",
+                    "ssh://git@github.com/other-owner/obs-studio.git"):
+            with self.subTest(url=url):
+                result, calls, output = self.transport(destination="other-owner/obs-studio", push_urls=[url])
+                self.assertEqual(result, 0, output)
+                self.assert_target(calls, f"other-owner:{self.BRANCH}")
+                self.assertTrue(any(url in c for c in calls if c[:3] == ["gh", "repo", "view"]))
+
+    def test_existing_fork_pr_is_reused_including_a_stacked_base(self):
+        result, calls, output = self.transport(destination="contributor/obs-studio", existing="123\n")
+        self.assertEqual(result, 0, output)
+        self.assertFalse(any(c[:3] == ["gh", "pr", "create"] for c in calls))
+        self.assertIn("PR #123 already exists", output)
+        lookup = next(c for c in calls if c[:2] == ["gh", "api"])
+        self.assertIn(f"repos/{self.BASE}/pulls", lookup)
+        self.assertIn(f"head=contributor:{self.BRANCH}", lookup)
+        self.assertEqual(lookup[lookup.index("-X") + 1], "GET")
+        self.assertIn("state=open", lookup)
+        self.assertFalse(any(a.startswith("base=") for a in lookup))
+        self.assertIn('.head.repo.full_name == "contributor/obs-studio"', lookup[lookup.index("--jq") + 1])
+
+    def test_lookup_failure_does_not_create_a_duplicate_pr(self):
+        result, calls, output = self.transport(lookup_error=True)
+        self.assertNotEqual(result, 0, output)
+        self.assertFalse(any(c[:3] == ["gh", "pr", "create"] for c in calls))
+
+    def test_ambiguous_destinations_fail_before_push(self):
+        result, calls, output = self.transport(push_urls=["git@github.com:a/obs.git", "git@github.com:b/obs.git"])
+        self.assertNotEqual(result, 0, output)
+        self.assertFalse(any(c[:2] == ["git", "push"] for c in calls))
+
+    def test_resolution_failure_does_not_push_or_expose_credentials(self):
+        secret_url = "https://user:private-token@github.com/contributor/obs-studio.git"
+        result, calls, output = self.transport(push_urls=[secret_url], resolve_error=True)
+        self.assertNotEqual(result, 0, output)
+        self.assertFalse(any(c[:2] == ["git", "push"] for c in calls))
+        self.assertNotIn("private-token", output)
+
+    def test_successful_resolution_does_not_echo_credentialed_url(self):
+        secret_url = "https://user:private-token@github.com/contributor/obs-studio.git"
+        result, calls, output = self.transport(destination="contributor/obs-studio", push_urls=[secret_url])
+        self.assertEqual(result, 0, output)
+        self.assert_target(calls, f"contributor:{self.BRANCH}")
+        self.assertNotIn("private-token", output)
+
+    def test_cross_host_destination_is_rejected_before_push(self):
+        result, calls, output = self.transport(destination_host="enterprise.example")
+        self.assertNotEqual(result, 0, output)
+        self.assertFalse(any(c[:2] == ["git", "push"] for c in calls))
+
+    def test_unconfigured_fork_base_is_not_silently_selected(self):
+        result, calls, output = self.transport(base_fork=True, configured_base=False)
+        self.assertNotEqual(result, 0, output)
+        self.assertFalse(any(c[:2] == ["git", "push"] for c in calls))
+        self.assertIn("set-default", output)
+
+    def test_explicit_fork_base_is_preserved(self):
+        for configured, override in ((True, ""), (False, self.BASE)):
+            with self.subTest(configured=configured, override=override):
+                result, calls, output = self.transport(base_fork=True, configured_base=configured, repo_override=override)
+                self.assertEqual(result, 0, output)
+                self.assert_target(calls, self.BRANCH)
+
+    def test_environment_override_is_passed_as_a_repository_argument(self):
+        result, calls, output = self.transport(
+            destination="contributor/obs-studio", default_base="contributor/obs-studio",
+            base_fork=True, configured_base=False, repo_override=self.BASE,
+        )
+        self.assertEqual(result, 0, output)
+        self.assert_target(calls, f"contributor:{self.BRANCH}")
+        base_lookup = next(c for c in calls if c[:3] == ["gh", "repo", "view"])
+        self.assertEqual(base_lookup[3], self.BASE)
+
+
 class PinnedSoldr(unittest.TestCase):
     def test_pin_matches_every_ci_setup_step(self):
         from test_soldr_pin import workflow_pins

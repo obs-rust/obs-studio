@@ -603,6 +603,16 @@ the fix is ready. A separate remote RED run is not required. This avoids
 spending runner time on an already-fixed failure; see
 [coordination.md](rust-port/coordination.md#4-pull-requests).
 
+`./push` uses gh's configured default repository as the PR base and resolves
+Git's actual `origin` push URL, including a separate `pushurl`. Fork heads use
+the destination owner's name; new PRs target `master`. An existing open PR for
+the same destination and branch is reused, including a stacked PR. Configure
+exactly one push destination on the same GitHub host as the base; ambiguous
+destinations and repository-resolution errors stop before the push.
+If the selected base is a fork, explicitly choose it with
+`gh repo set-default OWNER/REPO` or `GH_REPO`; captured repository queries cannot
+ask gh's interactive fork-selection question.
+
 1. Claim the issue and check open PRs ([coordination.md](rust-port/coordination.md)).
 2. Commit RED, then GREEN.
 3. `./lint --fix`, then commit what it changed.
