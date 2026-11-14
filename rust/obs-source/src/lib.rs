@@ -84,6 +84,9 @@
 //! `libobs/obs-source-render-route.c.h`, the source and filter render
 //! routing (which draw a source or a filter takes, the filter bypass, the
 //! default effect and the linear sRGB flags);
+//! `libobs/obs-source-set-name.c.h`, the source rename
+//! `obs_source_set_name()` (the unchanged-name check, the canvas or table
+//! rename, and its signals);
 //! `libobs/obs-source-size.c.h`, the size query routing of
 //! `obs_source_get_width()` and `obs_source_get_height()`;
 //! `libobs/obs-source-transition-access.c.h`, the getters and manual
@@ -158,7 +161,7 @@
 //! [`audio_output`], [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_access`], [`transition_audio`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
@@ -213,6 +216,7 @@ pub mod push_delay;
 pub mod push_queries;
 pub mod push_to_enable;
 pub mod render_route;
+pub mod set_name;
 pub mod settings_getter;
 pub mod size_route;
 pub mod source_duplicate;
