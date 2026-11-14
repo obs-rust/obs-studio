@@ -39,6 +39,8 @@ mod indexbuffer_create;
 mod indexbuffer_create_parity;
 mod lzw;
 mod lzw_parity;
+mod matrix_entrypoints;
+mod matrix_entrypoints_parity;
 mod present_entrypoints;
 mod present_entrypoints_parity;
 mod raster_entrypoints;

@@ -1,0 +1,14 @@
+gs_matrix_get
+gs_matrix_identity
+gs_matrix_mul
+gs_matrix_pop
+gs_matrix_push
+gs_matrix_rotaa
+gs_matrix_rotaa4f
+gs_matrix_rotquat
+gs_matrix_scale
+gs_matrix_scale3f
+gs_matrix_set
+gs_matrix_translate
+gs_matrix_translate3f
+gs_matrix_transpose

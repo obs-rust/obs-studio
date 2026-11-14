@@ -187,7 +187,7 @@ impl Stack<Matrix4> for MatrixStack<'_> {
 /// # Safety
 ///
 /// `stack` is null or a valid darray of `struct matrix4`.
-unsafe fn matrices<'a>(stack: *mut darray) -> Option<MatrixStack<'a>> {
+pub(crate) unsafe fn matrices<'a>(stack: *mut darray) -> Option<MatrixStack<'a>> {
     // SAFETY: the caller's contract.
     unsafe { stack.as_mut().map(|da| MatrixStack(DarrayStack::new(da))) }
 }
