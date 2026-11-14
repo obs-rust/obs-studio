@@ -62,6 +62,9 @@
 //! `libobs/obs-source-frame-copy.c.h`, the async frame copy plan and cache
 //! decisions of `copy_frame_data()`, `cache_video()`, `clean_cache()` and the
 //! `obs_source_output_video()` families;
+//! `libobs/obs-source-info-lookup.c.h`, the source type lookup of
+//! `get_source_info()` (the first registered type with the asked ID; a NULL
+//! ID finds nothing, an intentional difference);
 //! `libobs/obs-source-media-admission.c.h`, the media action admission
 //! decisions of the `obs_source_media_*()` functions and
 //! `process_media_actions()` (whether a call is accepted, the getters'
@@ -208,6 +211,7 @@ pub mod filter_relationship_getters;
 pub mod frame_copy;
 pub mod handler_getters;
 pub mod hidden_setter;
+pub mod info_lookup;
 pub mod media_admission;
 pub mod monitoring;
 pub mod own_clock_drift;

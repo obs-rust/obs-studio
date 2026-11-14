@@ -104,7 +104,9 @@ fn check(
         };
         assert_eq!(got, expected);
         assert_eq!(rust_events, c_events);
-        assert!(rust_events[0] == 1 || rust_events[0] == 2);
+        // A NULL asked ID reads no registry, so its one lookup is not observed.
+        let lookups = if query.is_null() { 0..=1 } else { 1..=2 };
+        assert!(lookups.contains(&rust_events[0]));
         if rust_events[index + 1] == 1 {
             assert_eq!(got, results[index]);
             assert_eq!(rust_events[3], 1);
