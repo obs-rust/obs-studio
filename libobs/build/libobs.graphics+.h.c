@@ -13,6 +13,8 @@
 #include "libobs/graphics/present-entrypoints-fields.c.h"
 #include "libobs/graphics/raster-state-entrypoints-fields.c.h"
 #include "libobs/graphics/shader-parser.c.h"
+#include "libobs/graphics/stencil-state-entrypoints.c.h"
+#include "libobs/graphics/viewport-entrypoints.c.h"
 #include "libobs/obs-graphics-effect-file-fields.c.h"
 #include "libobs/obs-vertexbuffer-access-fields.c.h"
 #include "libobs/obs-vertexbuffer-destroy-fields.c.h"
