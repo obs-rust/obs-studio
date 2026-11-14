@@ -17709,6 +17709,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_viewport_stencil_entrypoints": {
+      "sources": [
+        "test/cmocka/test_viewport_stencil_entrypoints.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_virtual_cam_shutdown": {
       "sources": [
         "frontend/tests/test_virtual_cam_shutdown.cpp"
@@ -25359,6 +25374,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_viewport_stencil_entrypoints": {
+      "target": "test_viewport_stencil_entrypoints",
+      "command": [
+        "${target}"
       ]
     },
     "test_virtual_cam_shutdown": {
