@@ -11,6 +11,9 @@ struct Encoder {
     bytes: usize,
     callback_frames: usize,
     calls: usize,
+    /// Runs after each allocation, as a stand-in for state that changes
+    /// between the reset loop's reads.
+    on_allocate: Option<fn(&mut Encoder)>,
 }
 impl Encoder {
     fn populated() -> Self {
@@ -45,6 +48,9 @@ impl Host for Encoder {
     }
     fn allocate_plane(&mut self, i: usize, bytes: usize) {
         self.outputs[i] = Some(vec![0; bytes]);
+        if let Some(f) = self.on_allocate {
+            f(self);
+        }
     }
     fn geometry(&self) -> (usize, usize) {
         (self.planes, self.bytes)
@@ -126,4 +132,21 @@ fn mirrors_c_initialize_geometry() {
         core::free(&mut e);
         assert_eq!(e.allocations(), 0);
     }
+}
+#[test]
+fn reset_rereads_geometry_each_plane() {
+    // C reads `planes` at every loop check and `framesize_bytes` in each
+    // iteration, so a change between them is seen at the next read.
+    let mut e = Encoder {
+        planes: 4,
+        bytes: 8,
+        on_allocate: Some(|e| {
+            e.planes = 2;
+            e.bytes = 3;
+        }),
+        ..Encoder::populated()
+    };
+    core::reset(&mut e);
+    let sizes: Vec<_> = e.outputs.iter().map(|o| o.as_ref().map(Vec::len)).collect();
+    assert_eq!(sizes[..3], [Some(8), Some(3), None]);
 }
