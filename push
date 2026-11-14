@@ -29,6 +29,7 @@ import subprocess
 import sys
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "ci"))
@@ -292,6 +293,77 @@ def attest() -> bool:
     return legacy_attest(tree)
 
 
+def pr_repositories() -> tuple[dict, dict]:
+    """Resolve gh's base and Git's actual push destination before publishing."""
+    urls = git("remote", "get-url", "--push", "--all", "origin", capture=True).stdout.splitlines()
+    if len(urls) != 1:
+        raise ValueError("origin must have exactly one push destination")
+
+    def repository(*args: str) -> dict:
+        # Remote URLs can embed credentials. Do not echo this command or its
+        # captured error, including through CalledProcessError's command text.
+        result = subprocess.run(
+            ["gh", "repo", "view", *args, "--json", "nameWithOwner,url,isFork"],
+            cwd=ROOT, text=True, capture_output=True, check=True,
+        )
+        return json.loads(result.stdout)
+
+    # Unlike pr create, repo view does not apply GH_REPO itself.
+    override = os.environ.get("GH_REPO")
+    base = repository(override) if override else repository()
+    if base["isFork"] and not override:
+        # Capturing gh disables its interactive fork/default prompt. Require
+        # an explicit choice instead of silently targeting the local fork.
+        default = subprocess.run(
+            ["gh", "repo", "set-default", "--view"], cwd=ROOT, text=True, capture_output=True,
+        )
+        if default.returncode or not default.stdout.strip():
+            raise ValueError("fork base requires an explicit default repository")
+    destination = repository(urls[0])
+    if urlsplit(base["url"]).hostname != urlsplit(destination["url"]).hostname:
+        raise ValueError("base and push destination must use the same GitHub host")
+    return base, destination
+
+
+def ensure_pr(branch: str, base: dict, destination: dict) -> int:
+    """Reuse the pushed head's open PR or create one against master."""
+    qualified_head = f"{destination['nameWithOwner'].split('/')[0]}:{branch}"
+    head = branch if base["url"].lower() == destination["url"].lower() else qualified_head
+    # The tracking remote may fetch upstream but push to a fork. Query the
+    # actual owner's head explicitly, and retain existing stacked PRs too.
+    selection = (
+        f"[.[] | select(.head.repo.full_name == {json.dumps(destination['nameWithOwner'])})]"
+        " | .[0].number // empty"
+    )
+    pr = run([
+        "gh", "api", f"repos/{base['nameWithOwner']}/pulls", "--hostname", urlsplit(base["url"]).hostname,
+        "-X", "GET", "-f", f"head={qualified_head}", "-f", "state=open", "--jq", selection,
+    ], capture=True, check=False)
+    if pr.returncode != 0:
+        print("./push: unable to check for an existing PR; no new PR created", file=sys.stderr)
+        return 1
+    if not pr.stdout.strip():
+        title = git("log", "-1", "--format=%s", capture=True).stdout.strip()
+        create = ["gh", "pr", "create", "--repo", base["url"], "--base", "master",
+                  "--fill", "--title", title, "--head", head]
+        # Back pressure (ci/backpressure.py): while the merge queue lands fewer
+        # PRs than are in flight, or runners are starved, a new PR opens as a
+        # draft, so the work is published but takes no queue capacity. Mark it
+        # ready once the gate reads open again.
+        gate = subprocess.run(
+            ["uv", "run", "--no-project", "--script", str(ROOT / "ci" / "backpressure.py"), "--check"],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        if gate.returncode == 75:
+            print(f"./push: {gate.stdout.strip()}; opening the PR as a draft")
+            create.append("--draft")
+        run(create)
+    else:
+        print(f"./push: PR #{pr.stdout.strip()} already exists for {branch}")
+
+    return 0
+
+
 def main(argv: list[str]) -> int:
     branch = git("rev-parse", "--abbrev-ref", "HEAD", capture=True).stdout.strip()
     if branch in {"master", "HEAD"}:
@@ -318,31 +390,21 @@ def main(argv: list[str]) -> int:
         )
         return 3
 
+    try:
+        base, destination = pr_repositories()
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError, TypeError):
+        print(
+            "./push: cannot resolve one GitHub push destination and a base on the same host; "
+            "check origin's push URL and select the base with gh repo set-default OWNER/REPO or GH_REPO",
+            file=sys.stderr,
+        )
+        return 3
+
     run(["git", "push", "-u", "origin", branch])
 
-    pr = subprocess.run(
-        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-    )
-    if pr.returncode != 0 or not pr.stdout.strip():
-        title = git("log", "-1", "--format=%s", capture=True).stdout.strip()
-        create = ["gh", "pr", "create", "--fill", "--title", title, "--head", branch]
-        # Back pressure (ci/backpressure.py): while the merge queue lands fewer
-        # PRs than are in flight, or runners are starved, a new PR opens as a
-        # draft, so the work is published but takes no queue capacity. Mark it
-        # ready once the gate reads open again.
-        gate = subprocess.run(
-            ["uv", "run", "--no-project", "--script", str(ROOT / "ci" / "backpressure.py"), "--check"],
-            cwd=ROOT, text=True, capture_output=True,
-        )
-        if gate.returncode == 75:
-            print(f"./push: {gate.stdout.strip()}; opening the PR as a draft")
-            create.append("--draft")
-        run(create)
-    else:
-        print(f"./push: PR #{pr.stdout.strip()} already exists for {branch}")
+    result = ensure_pr(branch, base, destination)
+    if result:
+        return result
 
     if not attested:
         print(
