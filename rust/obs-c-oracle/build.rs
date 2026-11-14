@@ -680,6 +680,14 @@ fn main() {
         .expect("write lifecycle extract");
     }
     std::fs::write(
+        extract_dir.join("texture-file-data2.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/texture-file-data2.c.h"),
+            "#include \"libobs/build/libobs-media.pch.h\"",
+        ),
+    )
+    .expect("write original texture file data2 wrapper");
+    std::fs::write(
         extract_dir.join("module-init.inc"),
         extract_after_libobs_pch(&libobs.join("obs-module-init.c.h")),
     )

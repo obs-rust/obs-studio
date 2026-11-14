@@ -48,6 +48,7 @@ pub mod sprite;
 pub mod stagesurface_getters;
 pub mod state_stacks;
 pub mod texture_creators;
+pub mod texture_file_data2;
 pub mod texture_metadata;
 pub mod texture_planar_creators;
 pub mod texture_render;
