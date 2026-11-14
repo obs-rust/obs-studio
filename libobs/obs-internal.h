@@ -1295,9 +1295,10 @@ struct obs_source {
 	bool own_clock_timing_set;
 	/* clock drift compensation that libobs turned on for audio on a clock of
 	 * its own, ORed into async_compensation where the resampler is made, and
-	 * the filter of its error (#4182). Written under audio_buf_mutex by the
-	 * thread that outputs the source's audio, the only one that reads them. */
-	bool own_clock_compensation;
+	 * the filter of its error (#4182). The flag is atomic: process_audio()
+	 * reads it without audio_buf_mutex. The filter is under
+	 * audio_buf_mutex. */
+	volatile bool own_clock_compensation;
 	struct obs_source_own_clock_drift own_clock_drift;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;

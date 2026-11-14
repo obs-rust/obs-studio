@@ -283,6 +283,14 @@ not get a line.
   correction is [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
   *All*, pending merge. Issue
   [#4143](https://github.com/obs-rust/obs-studio/issues/4143).
+- **NDI audio on its own clock follows a drifting sender smoothly.** For audio
+  stamped on a clock apart from its video, OBS turns on the resampler's clock
+  drift compensation by itself: it takes out a drift of up to about 0.1 %
+  (1000 ppm, a real sender is about 50 ppm) by resampling, so the delay stays
+  the same and the 60 ms steps every 23 minutes stop. Only a faster drift
+  still steps at 70 ms. Audio on its video's clock (cameras, microphones,
+  media files) is not changed. *All*, pending merge. Issue
+  [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
 
 ### Encoding, streaming and recording
 

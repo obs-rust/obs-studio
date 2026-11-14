@@ -144,7 +144,9 @@ pub trait Source {
     fn last_async_compensation(&self) -> bool;
     /// `source->last_async_compensation = value`.
     fn set_last_async_compensation(&self, value: bool);
-    /// `os_atomic_load_bool(&source->async_compensation)`.
+    /// `os_atomic_load_bool(&source->async_compensation) ||
+    /// source->own_clock_compensation`: the plugin's compensation, or the one
+    /// libobs turned on for audio on a clock of its own (#4182).
     fn async_compensation(&self) -> bool;
     /// `source->audio_failed`.
     fn audio_failed(&self) -> bool;

@@ -176,12 +176,12 @@ void obs_source_audio_output_seam_set_own_clock_timing_set(obs_source_t *source,
 
 bool obs_source_audio_output_seam_get_own_clock_compensation(const obs_source_t *source)
 {
-	return source->own_clock_compensation;
+	return os_atomic_load_bool(&source->own_clock_compensation);
 }
 
 void obs_source_audio_output_seam_set_own_clock_compensation(obs_source_t *source, bool value)
 {
-	source->own_clock_compensation = value;
+	os_atomic_set_bool(&source->own_clock_compensation, value);
 }
 
 void obs_source_audio_output_seam_get_own_clock_drift(const obs_source_t *source,

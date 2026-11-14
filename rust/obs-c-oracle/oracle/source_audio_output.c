@@ -314,7 +314,7 @@ void oracle_audio_output_set_fields(obs_source_t *source, const struct oracle_au
 	source->timing_adjust = init->timing_adjust;
 	source->own_clock_timing_adjust = init->own_clock_timing_adjust;
 	source->own_clock_timing_set = init->own_clock_timing_set;
-	source->own_clock_compensation = init->own_clock_compensation;
+	os_atomic_set_bool(&source->own_clock_compensation, init->own_clock_compensation);
 	source->last_output_frame_ts = init->last_output_frame_ts;
 	source->next_audio_ts_min = init->next_audio_ts_min;
 	source->next_audio_sys_ts_min = init->next_audio_sys_ts_min;
