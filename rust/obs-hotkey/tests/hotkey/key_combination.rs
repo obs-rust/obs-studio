@@ -164,7 +164,7 @@ fn appends_and_keeps_duplicate_modifiers() {
         "existing + Ctl + Meta + Alt + Shift",
     );
     let known = C | M | A | S;
-    expect(&t, u32::MAX & !known, OBS_KEY_INSERT, "", "Ins");
+    expect(&t, !known, OBS_KEY_INSERT, "", "Ins");
     expect(
         &t,
         u32::MAX,

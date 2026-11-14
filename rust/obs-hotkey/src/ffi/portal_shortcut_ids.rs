@@ -58,10 +58,15 @@ impl DstrText {
     ///
     /// `d` is a valid, live `struct dstr`, not used through any other path
     /// for `'a`.
-    unsafe fn of<'a>(d: *mut dstr) -> &'a mut Self {
+    pub(crate) unsafe fn of<'a>(d: *mut dstr) -> &'a mut Self {
         // SAFETY: `DstrText` is a transparent `dstr`; the caller vouches for
         // the pointer.
         unsafe { &mut *d.cast::<Self>() }
+    }
+
+    /// The `struct dstr` itself, for a C function that writes it.
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut dstr {
+        &raw mut self.0
     }
 }
 

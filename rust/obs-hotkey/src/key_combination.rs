@@ -37,6 +37,31 @@ where
     T: Text + Default,
     F: FnMut(i32, &mut T),
 {
-    let _ = (combination, &mut key_to_str, text);
-    todo!("obs_key_combination_to_str")
+    for (modifier, key) in MODIFIER_KEYS {
+        if combination.modifiers & modifier != 0 {
+            add_combo_key(key, &mut key_to_str, text);
+        }
+    }
+    if combination.key != KEY_NONE {
+        add_combo_key(combination.key, &mut key_to_str, text);
+    }
+}
+
+/// `add_combo_key`: names `key` into a fresh text, appends it after
+/// `" + "` (only when `text` has something in it) unless the name is empty,
+/// then frees the fresh text.
+fn add_combo_key<T, F>(key: i32, key_to_str: &mut F, text: &mut T)
+where
+    T: Text + Default,
+    F: FnMut(i32, &mut T),
+{
+    let mut key_str = T::default();
+    key_to_str(key, &mut key_str);
+    if !key_str.is_empty() {
+        if !text.is_empty() {
+            text.cat(c" + ");
+        }
+        text.cat_text(&key_str);
+    }
+    key_str.free();
 }

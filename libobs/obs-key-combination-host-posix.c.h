@@ -1,4 +1,4 @@
-#include "libobs/build/libobs-nix.pch.h"
+#include "libobs/build/libobs-ported-key-combination-host-posix.pch.h"
 
 static inline void add_combo_key(obs_key_t key, struct dstr *str)
 {
