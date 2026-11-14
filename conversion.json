@@ -1,17 +1,17 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 83299,
+      "frontend": 83308,
       "libobs": 95003,
       "plugins": 148451,
       "shared": 15968
     },
     "percent": 16.29,
     "ported_lines": 55834,
-    "total_lines": 342721
+    "total_lines": 342730
   },
-  "commit": "bd8993e",
-  "date": "2026-11-13",
+  "commit": "5776795",
+  "date": "2026-11-14",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -1445,6 +1445,6 @@
     }
   },
   "rust": {
-    "lines": 211299
+    "lines": 212091
   }
 }

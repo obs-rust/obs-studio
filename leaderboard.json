@@ -1,12 +1,12 @@
 {
   "repo": "obs-rust/obs-studio",
-  "generated_at": "2026-11-14T06:48:12Z",
-  "generated_pacific": "Nov 13, 2026 10:48 PM PST",
-  "since": "2026-11-13T08:00:00Z",
+  "generated_at": "2026-11-14T15:14:38Z",
+  "generated_pacific": "Nov 14, 2026 07:14 AM PST",
+  "since": "2026-11-14T08:00:00Z",
   "since_caption": "new since 12:00 AM Pacific (America/Los_Angeles)",
-  "today_total": 15,
+  "today_total": 3,
   "ranked_by": "merged_prs",
-  "merged_pr_total": 2684,
+  "merged_pr_total": 2687,
   "unattributed_prs": [],
   "contributors": [
     {
@@ -14,8 +14,8 @@
       "avatar_url": "https://github.com/zackees.png?size=200",
       "merged_prs": 1821,
       "issues_filed": 1219,
-      "today_prs": 8,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+8 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+8</span>",
+      "today_prs": 0,
+      "today_badge": "<span class=\"delta delta-none\" title=\"none since midnight Pacific\">&ndash;</span>",
       "score": 1821,
       "first_contribution": "2026-10-08T20:57:49Z",
       "last_contribution": "2026-11-13T23:30:52Z",
@@ -3069,9 +3069,9 @@
       "login": "rdoupe",
       "avatar_url": "https://github.com/rdoupe.png?size=200",
       "merged_prs": 529,
-      "issues_filed": 522,
-      "today_prs": 4,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+4 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+4</span>",
+      "issues_filed": 523,
+      "today_prs": 0,
+      "today_badge": "<span class=\"delta delta-none\" title=\"none since midnight Pacific\">&ndash;</span>",
       "score": 529,
       "first_contribution": "2026-10-10T22:17:15Z",
       "last_contribution": "2026-11-13T21:44:35Z",
@@ -3607,6 +3607,7 @@
         4846
       ],
       "issue_numbers": [
+        4857,
         4845,
         4831,
         4830,
@@ -4135,13 +4136,13 @@
     {
       "login": "vpacher",
       "avatar_url": "https://github.com/vpacher.png?size=200",
-      "merged_prs": 163,
+      "merged_prs": 166,
       "issues_filed": 175,
       "today_prs": 3,
       "today_badge": "<span class=\"delta delta-up\" title=\"+3 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+3</span>",
-      "score": 163,
+      "score": 166,
       "first_contribution": "2026-10-15T10:25:47Z",
-      "last_contribution": "2026-11-13T23:35:09Z",
+      "last_contribution": "2026-11-14T13:16:20Z",
       "pr_numbers": [
         810,
         812,
@@ -4305,7 +4306,10 @@
         4584,
         4841,
         4843,
-        4852
+        4852,
+        4856,
+        4858,
+        4859
       ],
       "issue_numbers": [
         4847,
