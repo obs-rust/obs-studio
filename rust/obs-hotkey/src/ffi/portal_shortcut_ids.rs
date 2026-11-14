@@ -63,11 +63,6 @@ impl DstrText {
         // the pointer.
         unsafe { &mut *d.cast::<Self>() }
     }
-
-    /// The `struct dstr` itself, for a C function that writes it.
-    pub(crate) fn as_mut_ptr(&mut self) -> *mut dstr {
-        &raw mut self.0
-    }
 }
 
 impl Text for DstrText {

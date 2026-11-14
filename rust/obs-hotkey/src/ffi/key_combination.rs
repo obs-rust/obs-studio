@@ -53,8 +53,9 @@ mod shims {
         core::combination_to_str(
             combination,
             |key, name: &mut DstrText| {
-                // SAFETY: `name` is a live dstr this call owns.
-                unsafe { obs_key_to_str(key, name.as_mut_ptr()) };
+                // SAFETY: `name` is a live dstr this call owns; `DstrText`
+                // is a transparent `dstr`.
+                unsafe { obs_key_to_str(key, std::ptr::from_mut(name).cast::<dstr>()) };
             },
             text,
         );
