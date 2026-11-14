@@ -474,6 +474,8 @@ static void ss_update(void *data, obs_data_t *settings)
 
 	array = obs_data_get_array(settings, S_FILES);
 	count = obs_data_array_count(array);
+	enum slideshow_folder_order folder_order =
+		slideshow_folder_order_from_string(obs_data_get_string(settings, SLIDESHOW_S_FOLDER_ORDER));
 
 	if (strcmp(tr_name, "cut_transition") != 0) {
 		if (new_duration < 100)
@@ -501,29 +503,14 @@ static void ss_update(void *data, obs_data_t *settings)
 		}
 
 		if (dir) {
-			struct dstr dir_path = {0};
-			struct os_dirent *ent;
-
-			for (;;) {
-				const char *ext;
-
-				ent = os_readdir(dir);
-				if (!ent)
-					break;
-				if (ent->directory)
-					continue;
-
-				ext = os_get_path_extension(ent->d_name);
-				if (!valid_extension(ext))
-					continue;
-
-				dstr_copy(&dir_path, path);
-				dstr_cat_ch(&dir_path, '/');
-				dstr_cat(&dir_path, ent->d_name);
-				add_file(&new_data.files, dir_path.array);
-			}
-
-			dstr_free(&dir_path);
+			/* only the images of a folder are sorted; single
+			 * files keep their place in the list */
+			slideshow_paths_t dir_files;
+			da_init(dir_files);
+			slideshow_folder_files(dir, path, folder_order, &dir_files);
+			for (size_t j = 0; j < dir_files.num; j++)
+				add_file(&new_data.files, dir_files.array[j]);
+			slideshow_paths_free(&dir_files);
 			os_closedir(dir);
 		} else {
 			add_file(&new_data.files, path);
@@ -976,6 +963,20 @@ static void ss_defaults(obs_data_t *settings)
 	obs_data_set_default_string(settings, S_PLAYBACK_MODE, S_PLAYBACK_LOOP);
 }
 
+/* slideshow_v2: saved before the folder order setting existed, so its
+ * folders keep playing in filesystem order */
+static void ss_defaults_v2(obs_data_t *settings)
+{
+	ss_defaults(settings);
+	obs_data_set_default_string(settings, SLIDESHOW_S_FOLDER_ORDER, SLIDESHOW_S_FOLDER_ORDER_FILESYSTEM);
+}
+
+static void ss_defaults_v3(obs_data_t *settings)
+{
+	ss_defaults(settings);
+	obs_data_set_default_string(settings, SLIDESHOW_S_FOLDER_ORDER, SLIDESHOW_S_FOLDER_ORDER_NATURAL);
+}
+
 static obs_properties_t *ss_properties(void *data)
 {
 	obs_properties_t *ppts = obs_properties_create();
@@ -1046,6 +1047,8 @@ static obs_properties_t *ss_properties(void *data)
 				dstr_resize(&path, (size_t)(slash - path.array + 1));
 		}
 	}
+
+	slideshow_add_folder_order_property(ppts);
 
 	obs_properties_add_editable_list(ppts, S_FILES, T_FILES, OBS_EDITABLE_LIST_TYPE_FILES,
 					 image_source_host_slideshow_filter(), path.array);
@@ -1164,6 +1167,41 @@ struct obs_source_info slideshow_info_mk2 = {
 	.version = 2,
 	.type = OBS_SOURCE_TYPE_INPUT,
 	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_COMPOSITE |
+			OBS_SOURCE_CONTROLLABLE_MEDIA | OBS_SOURCE_CAP_OBSOLETE,
+	.get_name = ss_getname,
+	.create = ss_create,
+	.destroy = ss_destroy,
+	.update = ss_update,
+	.activate = ss_activate,
+	.deactivate = ss_deactivate,
+	.video_render = ss_video_render,
+	.video_tick = ss_video_tick,
+	.audio_render = ss_audio_render,
+	.enum_active_sources = ss_enum_sources,
+	.get_width = ss_width,
+	.get_height = ss_height,
+	.get_defaults = ss_defaults_v2,
+	.get_properties = ss_properties,
+	.missing_files = ss_missingfiles,
+	.icon_type = OBS_ICON_TYPE_SLIDESHOW,
+	.media_play_pause = ss_play_pause,
+	.media_restart = ss_restart,
+	.media_stop = ss_stop,
+	.media_next = ss_next_slide,
+	.media_previous = ss_previous_slide,
+	.media_get_state = ss_get_state,
+	.video_get_color_space = ss_video_get_color_space,
+};
+
+/* slideshow_v3 differs from slideshow_v2 only in its defaults: a new
+ * slideshow plays its folders in natural name order, while slideshows saved
+ * as slideshow_v2 keep filesystem order (the same way color_source_v3 and
+ * text_gdiplus_v3 changed their defaults for new sources only). */
+struct obs_source_info slideshow_info_mk3 = {
+	.id = "slideshow",
+	.version = 3,
+	.type = OBS_SOURCE_TYPE_INPUT,
+	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_COMPOSITE |
 			OBS_SOURCE_CONTROLLABLE_MEDIA,
 	.get_name = ss_getname,
 	.create = ss_create,
@@ -1177,7 +1215,7 @@ struct obs_source_info slideshow_info_mk2 = {
 	.enum_active_sources = ss_enum_sources,
 	.get_width = ss_width,
 	.get_height = ss_height,
-	.get_defaults = ss_defaults,
+	.get_defaults = ss_defaults_v3,
 	.get_properties = ss_properties,
 	.missing_files = ss_missingfiles,
 	.icon_type = OBS_ICON_TYPE_SLIDESHOW,

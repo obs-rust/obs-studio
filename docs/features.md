@@ -2093,6 +2093,13 @@ area.
   browser sources and docks are unavailable. A slow runtime can still recover.
   *Linux*, 2026-11-07. Issue
   [#3833](https://github.com/obs-rust/obs-studio/issues/3833).
+- A new Image Slide Show plays the images of a folder in name order on Linux
+  and macOS too (slide2 before slide10), instead of the filesystem's order.
+  A Folder Order setting chooses Name (natural), Name (A-Z) or Filesystem
+  order; slideshows saved before keep filesystem order. *All*, pending
+  merge. Issue [#3451](https://github.com/obs-rust/obs-studio/issues/3451),
+  upstream
+  [obsproject/obs-studio#10382](https://github.com/obsproject/obs-studio/issues/10382).
 
 ### Scenes and UI
 

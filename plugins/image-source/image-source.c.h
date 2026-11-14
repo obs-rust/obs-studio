@@ -381,6 +381,7 @@ MODULE_EXPORT const char *obs_module_description(void)
 
 extern struct obs_source_info slideshow_info;
 extern struct obs_source_info slideshow_info_mk2;
+extern struct obs_source_info slideshow_info_mk3;
 extern struct obs_source_info color_source_info_v1;
 extern struct obs_source_info color_source_info_v2;
 extern struct obs_source_info color_source_info_v3;
@@ -393,6 +394,7 @@ bool obs_module_load(void)
 	obs_register_source(&color_source_info_v3);
 	obs_register_source(&slideshow_info);
 	obs_register_source(&slideshow_info_mk2);
+	obs_register_source(&slideshow_info_mk3);
 	return true;
 }
 
