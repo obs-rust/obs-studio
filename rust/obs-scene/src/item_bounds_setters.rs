@@ -12,8 +12,10 @@ pub const BOUNDS_MAX_ONLY: u32 = 6;
 /// cast truncates it.
 #[must_use]
 pub fn valid_bounds_type(value: i64) -> u32 {
-    let _ = value;
-    todo!()
+    match u32::try_from(value) {
+        Ok(kind) if kind <= BOUNDS_MAX_ONLY => kind,
+        _ => BOUNDS_NONE,
+    }
 }
 
 /// Why `obs_sceneitem_set_bounds` stores nothing.
@@ -29,8 +31,13 @@ pub enum Skip {
 
 /// The null checks of `obs_sceneitem_set_bounds`, item first.
 pub fn check(item: bool, bounds: bool) -> Result<(), Skip> {
-    let _ = (item, bounds);
-    todo!()
+    if !item {
+        return Err(Skip::Item);
+    }
+    if !bounds {
+        return Err(Skip::Bounds);
+    }
+    Ok(())
 }
 
 /// How `obs_sceneitem_set_bounds` stores the new size.
@@ -46,8 +53,11 @@ pub enum Store {
 /// item's `absolute_coordinates`.
 #[must_use]
 pub fn store(absolute_coordinates: bool) -> Store {
-    let _ = absolute_coordinates;
-    todo!()
+    if absolute_coordinates {
+        Store::Copy
+    } else {
+        Store::Convert
+    }
 }
 
 /// The calls each setter makes around its store.
@@ -62,6 +72,8 @@ pub trait Fields {
 
 /// One setter on a live item: lock, `write`, unlock, update.
 pub fn set<F: Fields>(item: &mut F, write: impl FnOnce(&mut F)) {
-    let _ = (item, write);
-    todo!()
+    item.lock();
+    write(item);
+    item.unlock();
+    item.update();
 }
