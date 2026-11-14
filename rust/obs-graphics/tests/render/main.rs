@@ -40,6 +40,7 @@ mod indexbuffer_create_parity;
 mod lzw;
 mod lzw_parity;
 mod matrix_entrypoints;
+mod matrix_entrypoints_parity;
 mod perspective;
 mod perspective_parity;
 mod present_entrypoints;
