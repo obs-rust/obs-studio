@@ -23,6 +23,6 @@ use crate::texture_render::ColorSpace;
 /// caller's file, alpha mode and output pointers, and the core cannot call
 /// it twice or keep it.
 pub fn create_texture_file_data2<R>(data3: impl FnOnce(&mut ColorSpace) -> R) -> R {
-    let _ = data3;
-    todo!("gs_create_texture_file_data2 (#4827)")
+    let mut unused = ColorSpace::default();
+    data3(&mut unused)
 }

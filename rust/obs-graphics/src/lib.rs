@@ -27,7 +27,8 @@
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
 //! ([`image_orient`]), `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
 //! image rows ([`image_rgba64`]), and `graphics-ffmpeg-route.c.h`, the
-//! image decoder's pixel route ([`image_route`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
+//! image decoder's pixel route ([`image_route`]), and `texture-file-data2.c.h`,
+//! the `gs_create_texture_file_data2` wrapper ([`texture_file_data2`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
 //! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion, and
 //! `graphics-ffmpeg-host-wic-checks.c.h`, the file-name check and the
 //! pixel-format pick ([`image_pq_scrgb`]).

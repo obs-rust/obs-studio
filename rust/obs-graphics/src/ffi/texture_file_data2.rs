@@ -61,6 +61,7 @@ pub unsafe fn create_texture_file_data2_with(
 /// As `gs_create_texture_file_data3`: `file` is a NUL-terminated path and
 /// `format`, `cx_out` and `cy_out` are writable. A non-null result is a
 /// `bmalloc` block the caller frees with `bfree`.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn gs_create_texture_file_data2(
     file: *const c_char,
     alpha_mode: ImageAlphaMode,
