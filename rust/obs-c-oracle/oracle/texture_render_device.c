@@ -228,20 +228,9 @@ void gs_projection_pop(void)
 	record("proj_pop");
 }
 
-void gs_matrix_push(void)
-{
-	record("mat_push");
-}
-
-void gs_matrix_pop(void)
-{
-	record("mat_pop");
-}
-
-void gs_matrix_identity(void)
-{
-	record("mat_identity");
-}
+/* gs_matrix_push(), gs_matrix_pop() and gs_matrix_identity() are the Rust
+ * matrix calls now: without a context they reach this log as "mat_push",
+ * "mat_pop" and "mat_identity" through oracle/matrix_entrypoints.c. */
 
 gs_texture_t *gs_get_render_target(void)
 {

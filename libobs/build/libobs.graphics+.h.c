@@ -9,7 +9,7 @@
 #include "libobs/graphics/graphics-viewport-fields.c.h"
 #include "libobs/graphics/graphics.c.h"
 #include "libobs/graphics/indexbuffer-create-fields.c.h"
-#include "libobs/graphics/matrix-entrypoints.c.h"
+#include "libobs/graphics/matrix-entrypoints-fields.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
 #include "libobs/graphics/perspective-fields.c.h"
 #include "libobs/graphics/present-entrypoints-fields.c.h"

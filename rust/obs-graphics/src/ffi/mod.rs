@@ -33,6 +33,7 @@ pub mod lzw;
 pub mod math_extra;
 pub mod matrix3;
 pub mod matrix4;
+pub mod matrix_entrypoints;
 pub mod perspective;
 pub mod plane;
 pub mod present_entrypoints;

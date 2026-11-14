@@ -26,7 +26,7 @@
 use crate::axisang::AxisAng;
 use crate::matrix4::Matrix4;
 use crate::quat::Quat;
-use crate::state_stacks::{MatrixOp, Stack};
+use crate::state_stacks::{self, MatrixOp, Stack};
 use crate::vec3::Vec3;
 use std::ffi::CStr;
 
@@ -121,18 +121,33 @@ pub trait Host {
 /// with a context, as the C reads its argument only then; `None` (a NULL
 /// pointer) leaves the stack alone, as `gs_matrix_stack_*` do.
 fn apply<H: Host>(host: &mut H, entry: Entry, op: impl FnOnce() -> Option<MatrixOp>) {
-    let _ = (host, entry, op);
-    todo!()
+    let Some((mut stack, cur)) = host.stack() else {
+        host.debug(entry);
+        return;
+    };
+    if let Some(op) = op() {
+        state_stacks::matrix_apply(&mut stack, *cur, op);
+    }
 }
 
 pub fn push(host: &mut impl Host) {
-    let _ = host;
-    todo!()
+    let Some((mut stack, cur)) = host.stack() else {
+        host.debug(Entry::Push);
+        return;
+    };
+    state_stacks::matrix_push(&mut stack, cur);
 }
 
 pub fn pop(host: &mut impl Host) {
-    let _ = host;
-    todo!()
+    let Some((mut stack, cur)) = host.stack() else {
+        host.debug(Entry::Pop);
+        return;
+    };
+    let popped = state_stacks::matrix_pop(&mut stack, cur);
+    drop(stack);
+    if !popped {
+        host.pop_error();
+    }
 }
 
 pub fn identity(host: &mut impl Host) {
@@ -150,8 +165,11 @@ pub fn set(host: &mut impl Host, matrix: impl FnOnce() -> Option<Matrix4>) {
 /// The top, or `None` without a context (or an empty stack): the caller
 /// then leaves its output alone.
 pub fn get(host: &mut impl Host) -> Option<Matrix4> {
-    let _ = host;
-    todo!()
+    let Some((stack, cur)) = host.stack() else {
+        host.debug(Entry::Get);
+        return None;
+    };
+    state_stacks::matrix_get(&stack, *cur)
 }
 
 pub fn mul(host: &mut impl Host, matrix: impl FnOnce() -> Option<Matrix4>) {
@@ -176,18 +194,21 @@ pub fn scale(host: &mut impl Host, scale: impl FnOnce() -> Option<Vec3>) {
 
 /// `axisang_set(&aa, x, y, z, angle)`, then `gs_matrix_rotaa(&aa)`.
 pub fn rotaa4f(host: &mut impl Host, x: f32, y: f32, z: f32, angle: f32) {
-    let _ = (host, x, y, z, angle);
-    todo!()
+    apply(host, Entry::RotAa4f, || {
+        Some(MatrixOp::RotAa(AxisAng::new(x, y, z, angle)))
+    });
 }
 
 /// `vec3_set(&p, x, y, z)`, then `gs_matrix_translate(&p)`.
 pub fn translate3f(host: &mut impl Host, x: f32, y: f32, z: f32) {
-    let _ = (host, x, y, z);
-    todo!()
+    apply(host, Entry::Translate3f, || {
+        Some(MatrixOp::Translate(Vec3::new(x, y, z)))
+    });
 }
 
 /// `vec3_set(&p, x, y, z)`, then `gs_matrix_scale(&p)`.
 pub fn scale3f(host: &mut impl Host, x: f32, y: f32, z: f32) {
-    let _ = (host, x, y, z);
-    todo!()
+    apply(host, Entry::Scale3f, || {
+        Some(MatrixOp::Scale(Vec3::new(x, y, z)))
+    });
 }
