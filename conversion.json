@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83308,
-      "libobs": 95003,
+      "libobs": 95177,
       "plugins": 148451,
       "shared": 15968
     },
-    "percent": 16.29,
-    "ported_lines": 55834,
-    "total_lines": 342730
+    "percent": 16.32,
+    "ported_lines": 55955,
+    "total_lines": 342904
   },
-  "commit": "5776795",
+  "commit": "fa1a8c8",
   "date": "2026-11-14",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 49.14,
-          "ported_lines": 31362,
-          "total_lines": 63817
+          "percent": 49.21,
+          "ported_lines": 31483,
+          "total_lines": 63981
         },
         "graphics": {
-          "percent": 68.85,
+          "percent": 68.8,
           "ported_lines": 9911,
-          "total_lines": 14396
+          "total_lines": 14406
         },
         "media-io": {
           "percent": 78.57,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 709,
-      "hybrid_lines": 39169,
-      "percent": 58.77,
-      "ported_lines": 55834,
-      "total_lines": 95003
+      "files": 713,
+      "hybrid_lines": 39222,
+      "percent": 58.79,
+      "ported_lines": 55955,
+      "total_lines": 95177
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 51.01,
-            "ported_lines": 30009,
-            "total_lines": 58828
+            "percent": 51.07,
+            "ported_lines": 30130,
+            "total_lines": 58992
           },
           "graphics": {
-            "percent": 69.36,
+            "percent": 69.31,
             "ported_lines": 9851,
-            "total_lines": 14202
+            "total_lines": 14212
           },
           "media-io": {
             "percent": 78.57,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 674,
-        "hybrid_lines": 34850,
-        "percent": 59.71,
+        "files": 678,
+        "hybrid_lines": 34903,
+        "percent": 59.73,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -438,6 +438,7 @@
           "obs-source-hidden-setter.c.h",
           "obs-source-icon-type-getter.c.h",
           "obs-source-identity-getters.c.h",
+          "obs-source-info-lookup.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
           "obs-source-media-getters.c.h",
@@ -448,6 +449,7 @@
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
           "obs-source-render-route.c.h",
+          "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
           "obs-source-size.c.h",
           "obs-source-state-getters.c.h",
@@ -522,20 +524,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 51648,
-        "total_lines": 86498
+        "ported_lines": 51769,
+        "total_lines": 86672
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 50.14,
-            "ported_lines": 26527,
-            "total_lines": 52902
+            "percent": 50.22,
+            "ported_lines": 26648,
+            "total_lines": 53066
           },
           "graphics": {
-            "percent": 69.36,
+            "percent": 69.31,
             "ported_lines": 9851,
-            "total_lines": 14202
+            "total_lines": 14212
           },
           "media-io": {
             "percent": 78.57,
@@ -548,9 +550,9 @@
             "total_lines": 9978
           }
         },
-        "files": 654,
-        "hybrid_lines": 32406,
-        "percent": 59.74,
+        "files": 658,
+        "hybrid_lines": 32459,
+        "percent": 59.76,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -895,6 +897,7 @@
           "obs-source-hidden-setter.c.h",
           "obs-source-icon-type-getter.c.h",
           "obs-source-identity-getters.c.h",
+          "obs-source-info-lookup.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
           "obs-source-media-getters.c.h",
@@ -905,6 +908,7 @@
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
           "obs-source-render-route.c.h",
+          "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
           "obs-source-size.c.h",
           "obs-source-state-getters.c.h",
@@ -977,20 +981,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 48087,
-        "total_lines": 80493
+        "ported_lines": 48208,
+        "total_lines": 80667
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 50.37,
-            "ported_lines": 27468,
-            "total_lines": 54533
+            "percent": 50.44,
+            "ported_lines": 27589,
+            "total_lines": 54697
           },
           "graphics": {
-            "percent": 68.92,
+            "percent": 68.87,
             "ported_lines": 9911,
-            "total_lines": 14381
+            "total_lines": 14391
           },
           "media-io": {
             "percent": 78.57,
@@ -1003,9 +1007,9 @@
             "total_lines": 10704
           }
         },
-        "files": 665,
-        "hybrid_lines": 33764,
-        "percent": 59.33,
+        "files": 669,
+        "hybrid_lines": 33817,
+        "percent": 59.36,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1352,6 +1356,7 @@
           "obs-source-hidden-setter.c.h",
           "obs-source-icon-type-getter.c.h",
           "obs-source-identity-getters.c.h",
+          "obs-source-info-lookup.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
           "obs-source-media-getters.c.h",
@@ -1362,6 +1367,7 @@
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
           "obs-source-render-route.c.h",
+          "obs-source-set-name.c.h",
           "obs-source-settings-getter.c.h",
           "obs-source-size.c.h",
           "obs-source-state-getters.c.h",
@@ -1439,12 +1445,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 49265,
-        "total_lines": 83029
+        "ported_lines": 49386,
+        "total_lines": 83203
       }
     }
   },
   "rust": {
-    "lines": 212091
+    "lines": 212700
   }
 }
