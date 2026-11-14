@@ -7,6 +7,8 @@
 //! - `capture_stack`: another thread's return addresses (#4525): a signal and
 //!   `backtrace(3)` on Linux, the suspended thread's registers and frame
 //!   pointers on macOS; elsewhere none yet.
+//! - the watchdog process (#4589): `spawn_helper`, `arm_helper`,
+//!   `helper_wait` and `terminate_parent` on Windows; elsewhere none.
 
 cfg_select! {
     target_os = "linux" => {
@@ -15,6 +17,8 @@ cfg_select! {
         #[allow(unsafe_code)] // dl_iterate_phdr(3), sigaction(2), pthread_kill(3), backtrace(3)
         mod linux;
         pub use unix::terminate;
+        mod no_helper;
+        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
         pub use linux::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
@@ -26,6 +30,8 @@ cfg_select! {
         #[allow(unsafe_code)] // dyld image list, Mach-O load commands, thread_get_state
         mod macos;
         pub use unix::terminate;
+        mod no_helper;
+        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
         pub use macos::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
@@ -36,6 +42,8 @@ cfg_select! {
         mod unix;
         mod unsupported;
         pub use unix::terminate;
+        mod no_helper;
+        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
         pub use unsupported::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
@@ -46,6 +54,9 @@ cfg_select! {
         mod windows;
         mod unsupported;
         pub use windows::terminate;
+        #[allow(unsafe_code)] // CreateProcessW, DuplicateHandle, events, waits
+        mod windows_helper;
+        pub use windows_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
         pub use unsupported::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
