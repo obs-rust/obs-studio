@@ -123,7 +123,7 @@ proptest! {
         ..ProptestConfig::default()
     })]
     #[test]
-    fn randomized_lifecycle_matches_c(count in 0usize..=16, started in any::<u32>(),
+    fn randomized_lifecycle_matches_c(count in 0usize..=16, started in prop_oneof![Just(0u32), Just(1), Just(2), any::<u32>()],
         repeats in 0usize..=16, direct in any::<bool>(), fail_init in any::<bool>()) {
         check(count, started, repeats, direct, fail_init);
     }
