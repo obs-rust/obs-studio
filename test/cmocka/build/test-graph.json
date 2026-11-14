@@ -13517,6 +13517,76 @@
         ]
       }
     },
+    "test_slideshow_folder_order": {
+      "sources": [
+        "test/cmocka/test_slideshow_folder_order.c",
+        "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/slideshow-order.c.h",
+        "plugins/image-source/slideshow-size.c.h",
+        {
+          "path": "plugins/image-source/image-file-version.c.h",
+          "requires": "OS_WINDOWS"
+        },
+        "plugins/obs-transitions/transition-cut.c.h",
+        {
+          "path": "plugins/image-source/build/image-source.posix+.h.c",
+          "requires": {
+            "all": [
+              {
+                "not": "OS_WINDOWS"
+              },
+              {
+                "not": "OS_MACOS"
+              }
+            ]
+          }
+        },
+        {
+          "path": "plugins/image-source/build/image-source.macos+.h.c",
+          "requires": "OS_MACOS"
+        },
+        {
+          "path": "plugins/image-source/build/image-source.windows+.h.c",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "plugins/image-source",
+        "plugins/obs-transitions"
+      ],
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/image-source/slideshow-order.h",
+        "plugins/image-source/slideshow-size.h"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_SLIDESHOW_TEST_OWNER",
+          {
+            "any": [
+              {
+                "not": "OS_LINUX"
+              },
+              "HAVE_X11_DISPLAY"
+            ]
+          }
+        ]
+      }
+    },
     "test_slideshow_manual_end": {
       "sources": [
         "test/cmocka/test_slideshow_manual_end.c",
@@ -23998,6 +24068,31 @@
     },
     "test_slideshow_empty": {
       "target": "test_slideshow_empty",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "HAVE_SLIDESHOW_TEST_OWNER",
+          {
+            "any": [
+              {
+                "not": "OS_LINUX"
+              },
+              "HAVE_X11_DISPLAY"
+            ]
+          }
+        ]
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
+    "test_slideshow_folder_order": {
+      "target": "test_slideshow_folder_order",
       "timeout_seconds": 60,
       "suite": "graphics",
       "requires": {
