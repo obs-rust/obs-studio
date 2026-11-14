@@ -95,6 +95,27 @@ fn characterized_geometry_and_repeated_lifecycle() {
     }
     compare(48000, 8, 6, 17, true, &[2, 1, 0, 2, 0]);
 }
+#[test]
+fn out_of_enum_speakers_with_planar_formats() {
+    // Speaker values outside the enum have no channels: a planar format
+    // then has no planes, so nothing is allocated (its block size is still
+    // one sample of one channel). A packed format would allocate zero
+    // bytes, which traps; see below.
+    for speakers in [7, 9, -1, i32::MAX, i32::MIN] {
+        for format in [5, 8] {
+            for mutate in [false, true] {
+                compare(48000, format, speakers, 1024, mutate, &[2, 1, 0, 2]);
+            }
+        }
+    }
+}
+#[test]
+fn frame_bytes_wrap_like_c() {
+    // FLOAT_PLANAR mono has a block size of 4. The plugin's frame size is
+    // multiplied unchecked in size_t, as in C: 4 * (MAX / 4 + 17) wraps to 64.
+    let frames = usize::MAX / 4 + 17;
+    compare(48000, 8, 1, frames, false, &[2, 1, 0, 2]);
+}
 proptest! {
     #![proptest_config(ProptestConfig { cases: obs_c_oracle::parity::cases(64), failure_persistence: None, ..ProptestConfig::default() })]
     #[test]
