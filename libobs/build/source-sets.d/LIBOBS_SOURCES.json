@@ -102,6 +102,7 @@
   "obs-source-load.h",
   "obs-source-media-admission.h",
   "obs-source-monitoring.h",
+  "obs-source-own-clock-drift.h",
   "obs-source-ptm-gate.h",
   "obs-source-render-route.h",
   "obs-source-size.h",

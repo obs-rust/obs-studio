@@ -137,6 +137,53 @@ impl OwnClockDrift {
         *self = Self::new();
     }
 
+    /// The filter as `struct obs_source_own_clock_drift` stores it in
+    /// `struct obs_source`.
+    pub fn to_raw(&self) -> OwnClockDriftRaw {
+        let mut raw = OwnClockDriftRaw::default();
+        if let Some(start) = self.start {
+            raw.start_set = true;
+            raw.start = start;
+            raw.start_min = self.start_min;
+        }
+        if let Some(baseline) = self.baseline {
+            raw.baseline_set = true;
+            raw.baseline = baseline;
+        }
+        for (raw, bucket) in raw.buckets.iter_mut().zip(self.buckets.iter()) {
+            if let Some(b) = bucket {
+                *raw = OwnClockDriftBucketRaw {
+                    id: b.id,
+                    min: b.min,
+                    set: true,
+                };
+            }
+        }
+        raw
+    }
+
+    /// The filter from `struct obs_source_own_clock_drift`. All zeroes is
+    /// [`OwnClockDrift::new`]; a field whose flag is clear is not read.
+    pub fn from_raw(raw: &OwnClockDriftRaw) -> Self {
+        let mut f = Self::new();
+        if raw.start_set {
+            f.start = Some(raw.start);
+            f.start_min = raw.start_min;
+        }
+        if raw.baseline_set {
+            f.baseline = Some(raw.baseline);
+        }
+        for (bucket, raw) in f.buckets.iter_mut().zip(raw.buckets.iter()) {
+            if raw.set {
+                *bucket = Some(Bucket {
+                    id: raw.id,
+                    min: raw.min,
+                });
+            }
+        }
+        f
+    }
+
     /// Adds `gap` to the bucket of `id`. A bucket of an older window in the
     /// same slot is replaced; a newer one is kept.
     fn insert(&mut self, id: u64, gap: i64) {
@@ -158,4 +205,47 @@ impl OwnClockDrift {
 #[allow(clippy::as_conversions)] // the remainder is below 8
 fn slot_of(id: u64) -> usize {
     (id % BUCKETS_U64) as usize
+}
+
+/// `struct obs_source_own_clock_drift_bucket`
+/// (`libobs/obs-source-own-clock-drift.h`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OwnClockDriftBucketRaw {
+    /// The bucket's number, `os_time / BUCKET_NS`.
+    pub id: u64,
+    /// The smallest gap in it.
+    pub min: i64,
+    /// Whether the slot holds a bucket.
+    pub set: bool,
+}
+
+/// `struct obs_source_own_clock_drift`
+/// (`libobs/obs-source-own-clock-drift.h`): [`OwnClockDrift`] as plain
+/// fields, so that it lives in `struct obs_source` and the C reference runs
+/// the same filter. All zeroes is a filter with no samples.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OwnClockDriftRaw {
+    /// The arrival of the first sample, when `start_set`.
+    pub start: u64,
+    /// The smallest gap in the start window so far, when `start_set`.
+    pub start_min: i64,
+    /// The start window's minimum, when `baseline_set`.
+    pub baseline: i64,
+    /// Whether a first sample came.
+    pub start_set: bool,
+    /// Whether the start window has passed.
+    pub baseline_set: bool,
+    /// The buckets, each in the slot of its number modulo [`BUCKETS`].
+    pub buckets: [OwnClockDriftBucketRaw; BUCKETS],
+}
+
+/// How much more audio a source on its own clock holds than right after a
+/// packet placed at its arrival: the gap before appending, less the offset
+/// such a packet is placed at (`sync_offset - resample_offset`). Each step
+/// saturates at the `i64` range, as `obs_source_own_clock_drift_excess()`.
+pub fn excess(gap: i64, sync_offset: i64, resample_offset: u64) -> i64 {
+    let resample = i64::try_from(resample_offset).unwrap_or(i64::MAX);
+    gap.saturating_sub(sync_offset).saturating_add(resample)
 }

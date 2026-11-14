@@ -17,7 +17,9 @@
 //!   milliseconds.
 
 use obs_media_io::audio_resampler_drift::{self as drift, Compensation};
-use obs_source::own_clock_drift::{BUCKET_NS, OwnClockDrift, WINDOW_NS, buffered_end_gap};
+use obs_source::own_clock_drift::{
+    BUCKET_NS, OwnClockDrift, OwnClockDriftRaw, WINDOW_NS, buffered_end_gap, excess,
+};
 
 const MS: i64 = 1_000_000;
 const SEC: u64 = 1_000_000_000;
@@ -126,6 +128,60 @@ fn filter_reset_forgets_the_baseline() {
     assert_eq!(f, OwnClockDrift::new());
     assert_eq!(f.sample(OS + 2 * WINDOW_NS, 300 * MS), None);
     assert_eq!(f.sample(OS + 3 * WINDOW_NS, 300 * MS), Some(0));
+}
+
+/// All zeroes is a filter with no samples, as a zeroed `struct obs_source`
+/// holds it.
+#[test]
+fn raw_zeroes_are_a_new_filter() {
+    assert_eq!(
+        OwnClockDrift::from_raw(&OwnClockDriftRaw::default()),
+        OwnClockDrift::new()
+    );
+    assert_eq!(OwnClockDrift::new().to_raw(), OwnClockDriftRaw::default());
+}
+
+/// The filter keeps its state through the C struct, at every stage: empty,
+/// starting, with its baseline, and with buckets of an older window.
+#[test]
+fn raw_round_trips() {
+    let mut f = OwnClockDrift::new();
+    let mut times = vec![OS, OS + 40_000_000, OS + WINDOW_NS, OS + 3 * WINDOW_NS];
+    times.extend((0..20).map(|i| OS + 4 * WINDOW_NS + i * BUCKET_NS / 2));
+    for (i, os) in times.into_iter().enumerate() {
+        let gap = i64::try_from(i).unwrap() * MS - 5 * MS;
+        let mut through_raw = OwnClockDrift::from_raw(&f.to_raw());
+        assert_eq!(through_raw, f);
+        assert_eq!(through_raw.sample(os, gap), f.sample(os, gap));
+        assert_eq!(through_raw, f);
+    }
+}
+
+/// A flag that is clear hides its field: a stale value there is not read.
+#[test]
+fn raw_fields_without_their_flag_are_ignored() {
+    let mut raw = OwnClockDriftRaw {
+        start: 7,
+        start_min: -3,
+        baseline: 9,
+        ..OwnClockDriftRaw::default()
+    };
+    raw.buckets[2].id = 5;
+    raw.buckets[2].min = 1;
+    assert_eq!(OwnClockDrift::from_raw(&raw), OwnClockDrift::new());
+}
+
+/// How much more audio the buffer holds than right after a placement.
+#[test]
+fn excess_is_the_gap_less_the_placement_offset() {
+    assert_eq!(excess(100 * MS, 40 * MS, 0), 60 * MS);
+    assert_eq!(excess(100 * MS, 40 * MS, 5_000_000), 65 * MS);
+    assert_eq!(excess(100 * MS, -40 * MS, 0), 140 * MS);
+    assert_eq!(excess(i64::MIN, 1, 0), i64::MIN);
+    assert_eq!(excess(i64::MAX, -1, 0), i64::MAX);
+    assert_eq!(excess(0, 0, u64::MAX), i64::MAX);
+    // each step saturates: MIN - 1 stays MIN, then + 10
+    assert_eq!(excess(i64::MIN, 1, 10), i64::MIN + 10);
 }
 
 #[test]

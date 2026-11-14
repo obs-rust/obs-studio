@@ -43,6 +43,8 @@ pub struct Init {
     pub own_clock_timing_adjust: u64,
     /// `own_clock_timing_set`.
     pub own_clock_timing_set: bool,
+    /// `own_clock_compensation`.
+    pub own_clock_compensation: bool,
 }
 
 unsafe extern "C" {

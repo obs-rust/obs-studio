@@ -258,6 +258,29 @@ fn audio_on_its_own_clock_matches() {
     assert!(state.contains(&seeded), "{state}");
 }
 
+/// A sender 5 % fast on a clock of its own, with libobs's compensation on
+/// (#4182): the filter gets its baseline, the resampler its errors, and the
+/// buffer that grows past the threshold is cut twice. Nothing consumes the
+/// buffer here, so the error is large; the order and the values must match.
+#[test]
+fn own_clock_compensation_and_its_step_match() {
+    let mut pair = Pair::new(Init {
+        timing_set: true,
+        timing_adjust: NOW.wrapping_sub(FAR) + 3 * SEC,
+        last_output_frame_ts: FAR + 14_191 * SEC,
+        compensating: true,
+        sync_offset: 5_000_000,
+        last_sync_offset: 5_000_000,
+        ..Init::default()
+    });
+    for i in 0..160u64 {
+        pair.send(FAR + i * DUR, FRAMES, 1.0);
+        pair.now += DUR * 95 / 100;
+    }
+    let state = Pair::state(pair.rust);
+    assert!(state.contains(" owncomp"), "{state}");
+}
+
 /// A stamp relative to the last one: every branch of the timing is near.
 #[derive(Debug, Clone, Copy)]
 enum Stamp {
@@ -289,7 +312,7 @@ fn init() -> impl Strategy<Value = Init> {
         prop_oneof![Just(0i64), -SEC.cast_signed()..SEC.cast_signed()],
         0u64..1000,
         0i32..3,
-        any::<[bool; 4]>(),
+        any::<[bool; 5]>(),
         // no frame, one on the audio's clock (NOW, FAR), or hours away
         prop_oneof![Just(0u64), Just(NOW), Just(FAR), any::<u64>()],
         prop_oneof![Just(0u64), any::<u64>()],
@@ -319,6 +342,7 @@ fn init() -> impl Strategy<Value = Init> {
                 async_decoupled: flags[1],
                 compensating: flags[2],
                 muted: flags[3],
+                own_clock_compensation: flags[4],
                 ..Init::default()
             },
         )
