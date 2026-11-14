@@ -17,6 +17,7 @@
 use std::ffi::{c_int, c_void};
 
 use obs_source::audio_output::{self as core, Packet, Source};
+use obs_source::own_clock_drift::OwnClockDriftRaw;
 
 unsafe extern "C" {
     fn obs_source_audio_output_seam_now() -> u64;
@@ -52,6 +53,17 @@ unsafe extern "C" {
     fn obs_source_audio_output_seam_set_own_clock_timing_adjust(source: *mut c_void, value: u64);
     fn obs_source_audio_output_seam_get_own_clock_timing_set(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_set_own_clock_timing_set(source: *mut c_void, value: bool);
+
+    fn obs_source_audio_output_seam_get_own_clock_compensation(source: *const c_void) -> bool;
+    fn obs_source_audio_output_seam_set_own_clock_compensation(source: *mut c_void, value: bool);
+    fn obs_source_audio_output_seam_get_own_clock_drift(
+        source: *const c_void,
+        value: *mut OwnClockDriftRaw,
+    );
+    fn obs_source_audio_output_seam_set_own_clock_drift(
+        source: *mut c_void,
+        value: *const OwnClockDriftRaw,
+    );
 
     fn obs_source_audio_output_seam_compensating(source: *const c_void) -> bool;
     fn obs_source_audio_output_seam_set_compensation_error(source: *mut c_void, error: i64);
@@ -214,6 +226,26 @@ impl Source for Seam {
     fn set_own_clock_timing_set(&self, value: bool) {
         // SAFETY: a live source; the caller holds its audio_buf_mutex.
         unsafe { obs_source_audio_output_seam_set_own_clock_timing_set(self.0, value) }
+    }
+    fn own_clock_compensation(&self) -> bool {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_get_own_clock_compensation(self.0) }
+    }
+    fn set_own_clock_compensation(&self, value: bool) {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex.
+        unsafe { obs_source_audio_output_seam_set_own_clock_compensation(self.0, value) }
+    }
+    fn own_clock_drift(&self) -> OwnClockDriftRaw {
+        let mut value = OwnClockDriftRaw::default();
+        // SAFETY: a live source; the caller holds its audio_buf_mutex; `value`
+        // is a live struct of the C layout.
+        unsafe { obs_source_audio_output_seam_get_own_clock_drift(self.0, &raw mut value) };
+        value
+    }
+    fn set_own_clock_drift(&self, value: OwnClockDriftRaw) {
+        // SAFETY: a live source; the caller holds its audio_buf_mutex; `value`
+        // is a live struct of the C layout.
+        unsafe { obs_source_audio_output_seam_set_own_clock_drift(self.0, &raw const value) }
     }
     fn compensating(&self) -> bool {
         // SAFETY: see the impl.

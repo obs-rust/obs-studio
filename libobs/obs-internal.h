@@ -42,6 +42,7 @@
 #include "obs-canvas-flags-fields.h"
 #include "obs-hotkey-background-app-id-fields.h"
 #include "obs-video-stats.h"
+#include "obs-source-own-clock-drift.h"
 
 #include <obsversion.h>
 #include <caption/caption.h>
@@ -1292,6 +1293,12 @@ struct obs_source {
 	 * by when it arrived, not by its timestamp. Under audio_buf_mutex. */
 	uint64_t own_clock_timing_adjust;
 	bool own_clock_timing_set;
+	/* clock drift compensation that libobs turned on for audio on a clock of
+	 * its own, ORed into async_compensation where the resampler is made, and
+	 * the filter of its error (#4182). Written under audio_buf_mutex by the
+	 * thread that outputs the source's audio, the only one that reads them. */
+	bool own_clock_compensation;
+	struct obs_source_own_clock_drift own_clock_drift;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;
 

@@ -70,6 +70,15 @@ void obs_source_audio_output_seam_set_own_clock_timing_adjust(obs_source_t *sour
 bool obs_source_audio_output_seam_get_own_clock_timing_set(const obs_source_t *source);
 void obs_source_audio_output_seam_set_own_clock_timing_set(obs_source_t *source, bool value);
 
+/* source->own_clock_compensation and source->own_clock_drift, under
+ * audio_buf_mutex (#4182) */
+bool obs_source_audio_output_seam_get_own_clock_compensation(const obs_source_t *source);
+void obs_source_audio_output_seam_set_own_clock_compensation(obs_source_t *source, bool value);
+void obs_source_audio_output_seam_get_own_clock_drift(const obs_source_t *source,
+						      struct obs_source_own_clock_drift *value);
+void obs_source_audio_output_seam_set_own_clock_drift(obs_source_t *source,
+						      const struct obs_source_own_clock_drift *value);
+
 bool obs_source_audio_output_seam_compensating(const obs_source_t *source);
 void obs_source_audio_output_seam_set_compensation_error(obs_source_t *source, int64_t error);
 

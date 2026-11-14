@@ -27,6 +27,12 @@
  * sends packets RATE_FAST times as fast as real time, stamped by their
  * samples, makes some packets silent as markers, and measures how long after
  * its packet was sent each marker starts in the program.
+ *
+ * libobs turns clock drift compensation on for audio on a clock of its own
+ * (#4182), so the resampler takes the drift out before the buffer grows past
+ * the step of #4143. The resampling cases send RATE_COMPENSATED times as fast
+ * as real time and count, through an audio capture callback, the packets that
+ * come out of the source's resampler with another length.
  */
 
 #include <stdarg.h>
@@ -59,6 +65,10 @@
 /* a fast sender clock: 10 % compresses hours of a 50 ppm drift into seconds */
 #define RATE_FAST 1.10
 #define DRIFT_LISTEN_MS 10000
+/* a sender 1 % fast: 10 ms more audio a second, out of the dead band of the
+ * resampler's loop within a few seconds */
+#define RATE_COMPENSATED 1.01
+#define RESAMPLE_LISTEN_MS 5000
 /* a marker: one silent packet in MARKER_EVERY, from packet MARKER_FIRST (the
  * program carries the tone well before it) */
 #define MARKER_EVERY 10
@@ -444,6 +454,75 @@ static int64_t largest_marker_delay(double rate)
 	return largest;
 }
 
+/* The packets the source gave the program, and how many of them the
+ * resampler made longer or shorter than they came. */
+struct resampled {
+	pthread_mutex_t mutex;
+	size_t packets;
+	size_t changed;
+	uint32_t frames;
+};
+
+static void count_resampled(void *param, obs_source_t *source, const struct audio_data *audio, bool muted)
+{
+	UNUSED_PARAMETER(source);
+	UNUSED_PARAMETER(muted);
+	struct resampled *r = param;
+
+	pthread_mutex_lock(&r->mutex);
+	r->packets++;
+	if (audio->frames != r->frames)
+		r->changed++;
+	pthread_mutex_unlock(&r->mutex);
+}
+
+/* Puts a source on the program whose audio clock runs `rate` times as fast as
+ * the system clock, `audio_offset` from its video, for RESAMPLE_LISTEN_MS, and
+ * returns how many of its 100 ms packets came out of its resampler with
+ * another length (#4182). */
+static size_t resampled_packets(double rate, int64_t audio_offset)
+{
+	struct resampled r = {.frames = 4800};
+	pthread_mutex_init(&r.mutex, NULL);
+
+	obs_data_t *settings = obs_data_create();
+	obs_data_set_int(settings, "packet_frames", r.frames);
+	obs_data_set_int(settings, "audio_offset", audio_offset);
+	obs_data_set_double(settings, "rate", rate);
+	live = obs_source_create(SOURCE_ID, "own clock source", settings, NULL);
+	obs_data_release(settings);
+	struct av *c = live ? obs_obj_get_data(live) : NULL;
+	if (!c || c->source != live) {
+		fprintf(stderr, "could not create the source\n");
+		fail();
+	}
+	obs_source_add_audio_capture_callback(live, count_resampled, &r);
+
+	obs_set_output_source(0, live);
+	os_atomic_set_bool(&c->stop, false);
+	if (pthread_create(&c->thread, NULL, av_thread, c) != 0) {
+		fprintf(stderr, "could not start the source thread\n");
+		fail();
+	}
+	c->thread_started = true;
+	os_sleep_ms(RESAMPLE_LISTEN_MS);
+	stop_av(c);
+	obs_source_remove_audio_capture_callback(live, count_resampled, &r);
+
+	pthread_mutex_lock(&r.mutex);
+	size_t packets = r.packets, changed = r.changed;
+	pthread_mutex_unlock(&r.mutex);
+	pthread_mutex_destroy(&r.mutex);
+
+	fprintf(stderr, "sender clock x%.2f, audio %+lld s from video: %zu of %zu packets resampled\n", rate,
+		(long long)(audio_offset / (int64_t)SEC), changed, packets);
+	if (packets < RESAMPLE_LISTEN_MS / 100 / 2) {
+		fprintf(stderr, "too few packets came through\n");
+		fail();
+	}
+	return changed;
+}
+
 /* ------------------------------------------------------------------------ */
 /* cases */
 
@@ -491,6 +570,28 @@ static void fast_sender_clock_does_not_build_up_delay(void **state)
 	assert_true(llabs((long long)largest_marker_delay(RATE_FAST)) < MAX_MARKER_DELAY);
 }
 
+/* #4182: libobs turns clock drift compensation on for audio on a clock of
+ * its own. A sender 1 % fast fills the buffer 10 ms a second faster than the
+ * program plays it; within a few seconds the resampler takes samples out, so
+ * some packets come out shorter than they went in. */
+static void a_fast_sender_on_its_own_clock_is_resampled(void **state)
+{
+	UNUSED_PARAMETER(state);
+	if (!obs_up)
+		skip();
+	assert_true(resampled_packets(RATE_COMPENSATED, (int64_t)(4 * HOUR)) > 0);
+}
+
+/* Guard: audio on its video's clock gets no compensation it did not ask
+ * for. */
+static void audio_on_the_video_clock_is_not_resampled(void **state)
+{
+	UNUSED_PARAMETER(state);
+	if (!obs_up)
+		skip();
+	assert_int_equal(resampled_packets(RATE_COMPENSATED, 0), 0);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -499,6 +600,8 @@ int main(void)
 		cmocka_unit_test_teardown(small_packets_audio_ahead_of_video_is_heard, case_teardown),
 		cmocka_unit_test_teardown(audio_on_the_video_clock_is_heard, case_teardown),
 		cmocka_unit_test_teardown(fast_sender_clock_does_not_build_up_delay, case_teardown),
+		cmocka_unit_test_teardown(a_fast_sender_on_its_own_clock_is_resampled, case_teardown),
+		cmocka_unit_test_teardown(audio_on_the_video_clock_is_not_resampled, case_teardown),
 	};
 
 	return cmocka_run_group_tests(tests, group_setup, group_teardown);

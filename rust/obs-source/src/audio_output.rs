@@ -45,6 +45,7 @@
 
 use crate::audio_place;
 use crate::audio_timing::{self, Action, PreLockInput, UnderLockInput};
+use crate::own_clock_drift::OwnClockDriftRaw;
 
 /// `MAX_AUDIO_CHANNELS`: the buffers [`reset_audio_data`] empties.
 pub const MAX_CHANNELS: usize = 8;
@@ -134,6 +135,17 @@ pub trait Source {
     fn own_clock_timing_set(&self) -> bool;
     /// `source->own_clock_timing_set = value`.
     fn set_own_clock_timing_set(&self, value: bool);
+
+    /// `source->own_clock_compensation`: whether libobs turned clock drift
+    /// compensation on for audio on a clock of its own (#4182).
+    fn own_clock_compensation(&self) -> bool;
+    /// `source->own_clock_compensation = value`.
+    fn set_own_clock_compensation(&self, value: bool);
+    /// `source->own_clock_drift`: the drift error filter of audio on a clock
+    /// of its own (#4182).
+    fn own_clock_drift(&self) -> OwnClockDriftRaw;
+    /// `source->own_clock_drift = value`.
+    fn set_own_clock_drift(&self, value: OwnClockDriftRaw);
 
     /// `source->resampler != NULL && source->last_async_compensation`.
     fn compensating(&self) -> bool;
