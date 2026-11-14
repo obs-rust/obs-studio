@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-canvas-move",
+    "core-encoder-preferred-color-setters",
     "core-output",
     "core-output-weak-lifetime",
     "core-scene-lookup",

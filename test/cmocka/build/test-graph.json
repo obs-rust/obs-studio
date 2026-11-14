@@ -3637,6 +3637,21 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_encoder_preferred_color_setters": {
+      "sources": [
+        "test/cmocka/test_encoder_preferred_color_setters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_encoder_preferred_color_space": {
       "sources": [
         "test/cmocka/test_encoder_preferred_color_space.c"
@@ -20367,6 +20382,9 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_encoder_preferred_color_setters": {
+      "target": "test_encoder_preferred_color_setters"
     },
     "test_encoder_preferred_color_space": {
       "target": "test_encoder_preferred_color_space"
