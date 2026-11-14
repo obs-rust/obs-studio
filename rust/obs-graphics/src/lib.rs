@@ -8,7 +8,8 @@
 //! the frame and present calls ([`present_entrypoints`]), and
 //! `raster-state-entrypoints.c.h`, the cull and colour calls
 //! ([`raster_entrypoints`]), and `state-blend-setters.c.h`, the blend
-//! setters ([`blend_entrypoints`]), from
+//! setters ([`blend_entrypoints`]), and `matrix-entrypoints.c.h`, the matrix
+//! calls ([`matrix_entrypoints`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
