@@ -34,7 +34,7 @@
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`] and [`output_conversion_callbacks`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`], [`output_conversion_callbacks`] and [`encoder_audio_buffers`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -119,6 +119,9 @@
 //! without that media) before the conversion is read or stored, where a
 //! packet callback is registered (at the front) and which one a removal
 //! takes (the first exact callback and parameter pair).
+//! [`encoder_audio_buffers`] frees every one of an encoder's audio input
+//! and output planes, allocates the active output planes, and sizes them
+//! from the negotiated format and the plugin's frame size.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
@@ -126,6 +129,7 @@
 
 pub mod caption_text;
 pub mod delay;
+pub mod encoder_audio_buffers;
 pub mod encoder_audio_getters;
 pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;

@@ -708,6 +708,7 @@ class LaneTableTest(unittest.TestCase):
 
         refs = repo_cmocka_source_paths()
         self.assertTrue(scope(["plugins/obs-websocket"], cmocka_paths=refs).tier2)
+        self.assertTrue(scope(["rust/obs-c-oracle/legacy/obs-encoder-audio-buffers.c"], cmocka_paths=refs).tier2)
 
     def test_platform_only_libobs_file_skips_linux_tier2(self):
         self.assertFalse(self.sc("libobs/util/platform-windows.c.h").tier2)
