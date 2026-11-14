@@ -1,4 +1,5 @@
 //! Original extracted C against the real C bridge and Rust sequencer.
+//! No intentional differences.
 use obs_c_oracle as _;
 use obs_output::ffi::encoder_init::{Fields, obs_encoder_init_steps};
 use proptest::prelude::*;
