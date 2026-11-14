@@ -34,11 +34,13 @@ use std::time::Duration;
 
 #[allow(unsafe_code)]
 pub mod ffi;
+pub mod helper;
 pub mod images;
 mod platform;
 pub mod stack;
 
 use images::{Entry, Image, Owner, Table};
+pub use helper::{HelperArgs, run_helper, start, start_with};
 
 /// How long `exit()` may take after the frontend arms the watchdog.
 pub const TIMEOUT: Duration = Duration::from_secs(10);
@@ -182,6 +184,11 @@ pub fn arm(timeout: Duration, log: Option<&Path>) -> bool {
 pub fn arm_with(timeout: Duration, log: Option<&Path>, table: Table) -> bool {
     if ARMED.swap(true, Ordering::SeqCst) {
         return false;
+    }
+    // A started helper (#4589) ends a hang that this thread cannot see;
+    // only one of them is armed, so the line is written once.
+    if helper::arm_started() {
+        return true;
     }
     let thread = stack::current();
     stack::prepare();

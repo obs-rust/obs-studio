@@ -8,6 +8,8 @@ use std::time::{Duration, Instant};
 
 use obs_exit_watchdog::{EXIT_CODE, LINE_PREFIX, arm, line};
 
+#[path = "helper.rs"]
+mod helper;
 #[path = "images.rs"]
 mod images;
 #[path = "naming.rs"]
