@@ -10,6 +10,8 @@
 #undef obs_source_backup_filters
 #include "source_filter_backup_fields.inc"
 
+#define ORACLE_FILTER_BACKUP_NULL_SAVE 254
+
 struct backup_fixture;
 struct backup_entry {
 	struct obs_source source;
@@ -35,6 +37,11 @@ obs_data_t *obs_save_source(obs_source_t *source)
 	if (result == 0)
 		pthread_mutex_unlock(&fixture->parent.filter_mutex);
 	fixture->saves++;
+	if (fixture->grow && fixture->saves == 1 && fixture->parent.filters.num < 16)
+		fixture->parent.filters.num++;
+	/* A save that fails gives NULL; the loop pushes it all the same. */
+	if (entry->value == ORACLE_FILTER_BACKUP_NULL_SAVE)
+		return NULL;
 	char name[32], uuid[32];
 	snprintf(name, sizeof(name), "filter-%u", (unsigned)entry->value);
 	snprintf(uuid, sizeof(uuid), "uuid-%u", (unsigned)entry->value);
@@ -49,8 +56,6 @@ obs_data_t *obs_save_source(obs_source_t *source)
 	obs_data_set_int(settings, "save_ordinal", (long long)fixture->saves);
 	obs_data_set_obj(saved, "settings", settings);
 	obs_data_release(settings);
-	if (fixture->grow && fixture->saves == 1 && fixture->parent.filters.num < 16)
-		fixture->parent.filters.num++;
 	return saved;
 }
 

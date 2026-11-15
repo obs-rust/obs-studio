@@ -21,6 +21,9 @@ unsafe extern "C" {
     fn oracle_filter_backup_logs(backup: Backup, get: GetLog, set: SetLog) -> bool;
 }
 
+/// `oracle/source_filter_backup.c`'s `ORACLE_FILTER_BACKUP_NULL_SAVE`.
+const NULL_SAVE: u8 = 254;
+
 struct Fixture(*mut c_void);
 impl Fixture {
     fn new(values: &[u8], grow: bool) -> Self {
@@ -65,6 +68,10 @@ impl Array {
     }
 }
 impl Item {
+    fn refs(&self) -> usize {
+        // SAFETY: the item is a live object from obs-data.
+        unsafe { obs_data::ffi::obs_data::ref_count_for_tests(self.0) }
+    }
     fn json(&self) -> String {
         // SAFETY: the item owns the JSON string until its next mutation or release;
         // copy it immediately, while the item is still live.
@@ -89,19 +96,26 @@ fn check(values: &[u8], grow: bool) {
     };
     assert!(!rust.0.is_null());
     assert!(!original.0.is_null());
-    let count = values.len() + usize::from(grow && !values.is_empty() && values.len() < 16);
+    let saves = values.len() + usize::from(grow && !values.is_empty() && values.len() < 16);
+    // A filter whose save gives NULL is passed to the push, which skips it.
+    let count = saves - values.iter().filter(|&&value| value == NULL_SAVE).count();
     assert_eq!(rust.count(), count);
     assert_eq!(original.count(), count);
     // SAFETY: observers only inspect live fixtures and check the mutex is unlocked.
     unsafe {
-        assert!(oracle_filter_backup_healthy(r.0, count));
-        assert!(oracle_filter_backup_healthy(c.0, count));
+        assert!(oracle_filter_backup_healthy(r.0, saves));
+        assert!(oracle_filter_backup_healthy(c.0, saves));
     }
     // Saved objects must remain usable after all their source storage is freed.
     drop(r);
     drop(c);
     for i in 0..count {
-        assert_eq!(rust.item(i).json(), original.item(i).json());
+        let (item_r, item_c) = (rust.item(i), original.item(i));
+        assert_eq!(item_r.json(), item_c.json());
+        // The array and this item hold the only references: each save's own
+        // reference was released after the push.
+        assert_eq!(item_r.refs(), 2);
+        assert_eq!(item_c.refs(), 2);
     }
     if count != 0 {
         let held_r = rust.item(0);
@@ -113,8 +127,18 @@ fn check(values: &[u8], grow: bool) {
 }
 
 #[test]
-fn empty_singleton_disabled_order_duplicates_and_callback_growth() {
-    for values in [&[][..], &[0], &[1], &[3, 2, 1], &[255, 0, 255], &[7; 16]] {
+fn empty_singleton_disabled_order_duplicates_null_saves_and_callback_growth() {
+    for values in [
+        &[][..],
+        &[0],
+        &[1],
+        &[3, 2, 1],
+        &[255, 0, 255],
+        &[7; 16],
+        &[NULL_SAVE],
+        &[1, NULL_SAVE, 2],
+        &[NULL_SAVE; 16],
+    ] {
         check(values, false);
         check(values, true);
     }
