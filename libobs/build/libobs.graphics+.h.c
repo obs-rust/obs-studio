@@ -10,6 +10,7 @@
 #include "libobs/graphics/indexbuffer-create-fields.c.h"
 #include "libobs/graphics/matrix-entrypoints.c.h"
 #include "libobs/graphics/obs-graphics-adapter.c.h"
+#include "libobs/graphics/perspective-fields.c.h"
 #include "libobs/graphics/present-entrypoints-fields.c.h"
 #include "libobs/graphics/raster-state-entrypoints-fields.c.h"
 #include "libobs/graphics/shader-parser.c.h"
