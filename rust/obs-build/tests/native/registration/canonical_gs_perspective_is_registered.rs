@@ -27,6 +27,6 @@ fn canonical_gs_perspective_is_registered() {
     let original = fs::read_to_string(root.join("libobs/graphics/graphics.c.h")).unwrap();
     assert!(!original.contains("void gs_perspective("));
     let group =
-        fs::read_to_string(root.join("libobs/build/libobs.graphics-perspective+.h.c")).unwrap();
+        fs::read_to_string(root.join("libobs/build/libobs.ported-perspective+.h.c")).unwrap();
     assert!(group.contains("#include \"libobs/graphics/graphics-perspective.c.h\""));
 }

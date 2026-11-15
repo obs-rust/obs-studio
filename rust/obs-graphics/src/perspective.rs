@@ -59,13 +59,24 @@ pub trait Host {
 /// The frustum `gs_perspective(angle, aspect, near, far)` passes the device.
 #[must_use]
 pub fn frustum(angle: f32, aspect: f32, near: f32, far: f32) -> Frustum {
-    let _ = (angle, aspect, near, far);
-    todo!("gs_perspective frustum")
+    let ymax = near * ((angle * RAD) * 0.5).tan();
+    let ymin = -ymax;
+    Frustum {
+        left: ymin * aspect,
+        right: ymax * aspect,
+        top: ymin,
+        bottom: ymax,
+        znear: near,
+        zfar: far,
+    }
 }
 
 /// `gs_perspective`: without a context, one debug line and no device call;
 /// with one, exactly one `device_frustum`.
 pub fn perspective(host: &mut impl Host, angle: f32, aspect: f32, near: f32, far: f32) {
-    let _ = (host, angle, aspect, near, far);
-    todo!("gs_perspective")
+    if !host.has_context() {
+        host.debug(NAME);
+        return;
+    }
+    host.frustum(frustum(angle, aspect, near, far));
 }

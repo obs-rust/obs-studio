@@ -1,4 +1,4 @@
-/* Unity group (BUILD.md): perspective projection frustum dispatch. */
+/* Unity group (BUILD.md): original gs_perspective for the C reference. */
 
 #include "libobs/build/libobs-graphics.pch.h"
 

@@ -5,7 +5,6 @@
     "effect-parser-funcs",
     "graphics",
     "graphics-linear-srgb",
-    "graphics-perspective",
     "graphics-texture-creators-fields",
     "graphics-vertexbuffer-create"
   ],

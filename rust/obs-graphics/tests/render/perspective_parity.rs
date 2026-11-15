@@ -7,7 +7,12 @@
 //! and line, call by call, and the safe core's frustum. Inputs: the C
 //! characterization's cases, signed zeros, infinities, NaNs, subnormals,
 //! huge and tiny values, and random bit patterns; both devices and no
-//! context. No intentional differences.
+//! context. No intentional differences. A NaN argument compares as "NaN",
+//! not by its bits: when two NaNs meet in a multiply, which one's sign and
+//! payload survive depends on the operand order the compiler emits, which
+//! neither C nor Rust specifies (the debug build's `ymax * aspect` keeps the
+//! C's first operand on GCC and the second on LLVM). Every other value
+//! compares bit for bit, signed zeros included.
 use super::perspective::{CASES, Fixture};
 use obs_c_oracle as _;
 use obs_graphics::ffi::perspective as rust;
@@ -38,6 +43,15 @@ unsafe extern "C" {
 }
 
 static DEVICES: [u8; 2] = [0; 2];
+
+/// The argument's bits, or one marker for every NaN (see the module doc).
+fn key(value: f32) -> u32 {
+    if value.is_nan() {
+        u32::MAX
+    } else {
+        value.to_bits()
+    }
+}
 
 fn device(index: usize) -> *mut c_void {
     ptr::from_ref(&DEVICES[index]).cast_mut().cast()
@@ -74,7 +88,7 @@ fn run(use_rust: bool, step: Step) -> Observed {
         Observed {
             events: events[..n]
                 .iter()
-                .map(|e| (e.device, e.args.map(f32::to_bits)))
+                .map(|e| (e.device, e.args.map(key)))
                 .collect(),
             logs: oracle_perspective_logs(),
             level: oracle_perspective_level(),
@@ -101,11 +115,18 @@ fn compare(step: Step) {
             original.events,
             [(
                 device(step.device).cast_const(),
-                perspective::frustum(angle, aspect, near, far).bits()
+                perspective::frustum(angle, aspect, near, far)
+                    .bits()
+                    .map(|bits| key(f32::from_bits(bits)))
             )],
             "{step:?}"
         );
-        assert_eq!(model.events, [(step.device, original.events[0].1)]);
+        let model_keys = model
+            .events
+            .iter()
+            .map(|&(device, bits)| (device, bits.map(|b| key(f32::from_bits(b)))))
+            .collect::<Vec<_>>();
+        assert_eq!(model_keys, [(step.device, original.events[0].1)]);
     } else {
         assert!(original.events.is_empty());
         assert!(model.events.is_empty());
