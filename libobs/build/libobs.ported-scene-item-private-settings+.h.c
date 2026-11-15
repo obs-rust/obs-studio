@@ -1,4 +1,4 @@
-/* Unity group (BUILD.md): scene-item private-settings retained getter. */
+/* Unity group (BUILD.md): original scene item private settings getter. */
 
 #include "libobs/build/libobs.pch.h"
 

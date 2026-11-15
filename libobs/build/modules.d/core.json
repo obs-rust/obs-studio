@@ -10,7 +10,6 @@
     "core-source",
     "core-source-filter-backup",
     "null-audio",
-    "sceneitem-private-settings",
     "util-cf"
   ],
   "depends": [

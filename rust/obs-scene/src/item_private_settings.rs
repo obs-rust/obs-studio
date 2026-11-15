@@ -13,6 +13,14 @@ pub fn get<T: Copy + Default>(
     addref: impl FnOnce(T),
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (stored, addref, log);
-    todo!("obs_sceneitem_get_private_settings core")
+    match stored {
+        Some(settings) => {
+            addref(settings);
+            settings
+        }
+        None => {
+            log(NAME);
+            T::default()
+        }
+    }
 }

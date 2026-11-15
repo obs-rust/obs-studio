@@ -49,6 +49,7 @@ unsafe extern "C" {
 /// # Safety
 /// A non-null item must be live and its `private_settings` readable, under
 /// the same (unlocked) contract as the original C getter.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_sceneitem_get_private_settings(
     item: *const SceneItemPrefix,
 ) -> *mut c_void {
