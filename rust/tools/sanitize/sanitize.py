@@ -424,10 +424,20 @@ def tail(path: Path, lines: int) -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:])
 
 
+# A failed build's diagnostics: ninja's FAILED line, compiler and linker
+# errors ("error:", "fatal error:", "ld: error:", "collect2: error:"),
+# unresolved symbols and ninja's stop line. Not a bare "error": ninja progress
+# lines name targets like encoder-error-ownership-link-support.c and compile
+# commands carry -Werror=..., which buried the real failure (#4870).
+BUILD_DIAGNOSTIC = re.compile(r"FAILED:|error:|undefined reference|ninja: build stopped")
+
+
 def error_lines(path: Path, limit: int = 40) -> str:
-    """The shell's `grep -E error <log> | head -40`."""
-    matches = [line for line in path.read_text(encoding="utf-8", errors="replace").splitlines() if "error" in line]
-    return "\n".join(matches[:limit])
+    """The first `limit` diagnostic lines of a build log, or its last `limit`
+    lines when it has none, so a failed build always shows something."""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    matches = [line for line in lines if BUILD_DIAGNOSTIC.search(line)]
+    return "\n".join(matches[:limit] if matches else lines[-limit:])
 
 
 # zccache's lines for a compile its daemon dropped in flight: a lost request,
