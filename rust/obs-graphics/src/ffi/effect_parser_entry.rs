@@ -17,7 +17,10 @@
 //! - `cf_parser_parse()` (a `util/cf-parser.h` inline, ported under the
 //!   header-inline exemption) is the exported `cf_lexer_lex()` (obs-util's
 //!   port) and `cf_preprocess()`, then `cur_token` the preprocessor's first
-//!   token (`cf_preprocessor_get_tokens()`);
+//!   token (`cf_preprocessor_get_tokens()`). These three go through the
+//!   private `obs_graphics_*` adapters of `obs-graphics-adapter.c.h`, as
+//!   `cf_adderror()` does, so a test linking the staticlib next to libobs
+//!   never takes obs-util's copies, and its allocator, from the staticlib;
 //! - the struct, sampler-state, technique and parameter parsers are the
 //!   obs-graphics shims ([`ep_parse_struct`], [`ep_parse_sampler_state`],
 //!   [`ep_parse_technique`], [`ep_parse_param`]), the compile step
@@ -36,7 +39,7 @@
 use core::ffi::{CStr, c_char, c_int, c_void};
 
 use obs_util::ffi::cf_parser::cf_preprocessor;
-use obs_util::ffi::cf_tokenizer::{cf_lexer, cf_lexer_lex, cf_token};
+use obs_util::ffi::cf_tokenizer::{cf_lexer, cf_token};
 use obs_util::ffi::darray::darray;
 use obs_util::ffi::lexer::{error_data, error_item, strref};
 
@@ -62,7 +65,16 @@ pub struct cf_def {
 
 unsafe extern "C" {
     fn gs_preprocessor_name() -> *const c_char;
+    // The lexer and preprocessor through the C adapters in
+    // libobs/graphics/obs-graphics-adapter.c.h, never by their own names: a
+    // test that links the staticlib next to libobs would then take them, and
+    // the obs-util allocator beside them, from the staticlib (see
+    // image_file.rs).
+    #[link_name = "obs_graphics_cf_lexer_lex"]
+    fn cf_lexer_lex(lex: *mut cf_lexer, str: *const c_char, file: *const c_char) -> bool;
+    #[link_name = "obs_graphics_cf_preprocessor_add_def"]
     fn cf_preprocessor_add_def(pp: *mut cf_preprocessor, def: *mut cf_def);
+    #[link_name = "obs_graphics_cf_preprocess"]
     fn cf_preprocess(pp: *mut cf_preprocessor, lex: *mut cf_lexer, ed: *mut error_data) -> bool;
     fn ep_check_for_keyword(
         ep: *mut effect_parser,

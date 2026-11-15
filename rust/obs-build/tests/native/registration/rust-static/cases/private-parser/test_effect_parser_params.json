@@ -12,10 +12,6 @@
         {
           "path": "test/cmocka/hosts/windows/effect-parser-lookup-import.c",
           "requires": "MSVC"
-        },
-        {
-          "path": "test/cmocka/source-enabled-setter-log-link-stubs.c",
-          "requires": "OS_WINDOWS"
         }
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
@@ -38,14 +34,6 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        },
-        {
-          "name": "winmm",
-          "requires": "OS_WINDOWS"
-        },
-        {
-          "name": "Rpcrt4",
-          "requires": "OS_WINDOWS"
         }
       ],
       "compile_options": [
@@ -58,29 +46,7 @@
         "definition": "test/cmocka/hosts/windows/effect-parser-lookup-import.def",
         "output": "effect-parser-params-lookup-import.lib"
       },
-      "sanitizers": "address,undefined",
-      "conditional_link_options": [
-        {
-          "name": "/FORCE:MULTIPLE",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/INCREMENTAL:NO",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/WX:NO",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/IGNORE:4006",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/IGNORE:4075",
-          "requires": "MSVC"
-        }
-      ]
+      "sanitizers": "address,undefined"
     }
   },
   "tests": {

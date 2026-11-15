@@ -8,11 +8,7 @@
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h",
-        {
-          "path": "test/cmocka/source-enabled-setter-log-link-stubs.c",
-          "requires": "OS_WINDOWS"
-        }
+        "libobs/graphics/graphics-linear-srgb-fields.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -34,14 +30,6 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        },
-        {
-          "name": "winmm",
-          "requires": "OS_WINDOWS"
-        },
-        {
-          "name": "Rpcrt4",
-          "requires": "OS_WINDOWS"
         }
       ],
       "sanitizers": "address,undefined",
@@ -50,28 +38,6 @@
         "gs_shader_destroy=test_shader_destroy",
         "gs_shader_get_param_by_name=test_shader_get_param_by_name",
         "gs_vertexshader_create=test_vertexshader_create"
-      ],
-      "conditional_link_options": [
-        {
-          "name": "/FORCE:MULTIPLE",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/INCREMENTAL:NO",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/WX:NO",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/IGNORE:4006",
-          "requires": "MSVC"
-        },
-        {
-          "name": "/IGNORE:4075",
-          "requires": "MSVC"
-        }
       ]
     }
   },
