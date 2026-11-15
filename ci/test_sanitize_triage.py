@@ -20,12 +20,16 @@ A frame in valgrind's own replacement functions
 frame, although its path has `shared/` in it (#4045).
 """
 
+import contextlib
 import importlib.util
+import io
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 TRIAGE = ROOT / "rust/tools/sanitize/triage.py"
@@ -92,6 +96,42 @@ def triage(*leaks, tool="asan", text=None, test="test_x", summary=None):
             capture_output=True, text=True,
         )
         return run.returncode, run.stdout
+
+
+# Entries of each tracked kind, so their rules stay tested while the real list
+# has none (the list's goal is zero entries).
+SYNTHETIC_KNOWN = {
+    ("asan", "test_known_bug"): ("bug", "a synthetic OBS bug (#1)"),
+    ("asan", "test_known_upstream"): ("third-party", "a synthetic library leak (#2)"),
+}
+
+
+def load_triage():
+    spec = importlib.util.spec_from_file_location("triage", TRIAGE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def triage_with(known, *leaks, tool="asan", test="test_x", summary=None):
+    """triage() in this process, with `known` added to the module's KNOWN."""
+    module = load_triage()
+    module.KNOWN = {**module.KNOWN, **known}
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / tool
+        (out / "tests").mkdir(parents=True)
+        (out / "tests" / "summary.txt").write_text(summary if summary is not None else f"{test} exit=0\n")
+        if leaks:
+            (out / "tests" / f"{test}.{tool}.1").write_text(HEADER + "".join(leaks))
+        stdout = io.StringIO()
+        code = 0
+        with mock.patch.object(sys, "argv", ["triage.py", str(out), "--fail-on-findings"]), \
+                contextlib.redirect_stdout(stdout):
+            try:
+                module.main()
+            except SystemExit as exit_:
+                code = exit_.code
+        return code, stdout.getvalue()
 
 
 class LeakTriageTest(unittest.TestCase):
@@ -191,16 +231,16 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("0/0 clean", md)
 
     def test_known_test_failure_is_listed_not_counted(self):
-        code, md = triage(summary="test_media_alpha_network exit=6\ntest_y exit=0\n")
+        code, md = triage_with(SYNTHETIC_KNOWN, summary="test_known_bug exit=6\ntest_y exit=0\n")
         self.assertEqual(code, 0, md)
         self.assertIn("1/1 clean", md)
-        self.assertIn("**test_media_alpha_network**", md)
+        self.assertIn("**test_known_bug**", md)
 
     def test_known_test_reports_are_listed_not_counted(self):
-        code, md = triage(OBS_LEAK, test="test_media_alpha_network")
+        code, md = triage_with(SYNTHETIC_KNOWN, OBS_LEAK, test="test_known_bug")
         self.assertEqual(code, 0, md)
         self.assertNotIn("libobs/obs-canvas.c.h:330", md)
-        self.assertIn("**test_media_alpha_network**", md)
+        self.assertIn("**test_known_bug**", md)
 
     def test_known_test_that_ran_clean_is_listed(self):
         code, md = triage(tool="valgrind", summary="test_pipe exit=0\n")
@@ -209,15 +249,36 @@ class SkipAndKnownTest(unittest.TestCase):
         self.assertIn("test_pipe", md)
 
     def test_known_bug_that_ran_clean_is_a_finding(self):
-        """test_media_alpha_network is a known bug: clean means fixed, so the entry
-        has to go, and the job says so instead of passing."""
-        code, md = triage(summary="test_media_alpha_network exit=0\n")
+        """A known bug that ran clean is fixed, so the entry has to go, and the
+        job says so instead of passing."""
+        code, md = triage_with(SYNTHETIC_KNOWN, summary="test_known_bug exit=0\n")
         self.assertEqual(code, 1, md)
         self.assertIn("ran clean: drop the entry", md)
-        self.assertIn("test_media_alpha_network", md)
+        self.assertIn("test_known_bug", md)
+
+    def test_third_party_entry_that_ran_clean_is_a_finding(self):
+        """A third-party entry tracks an upstream fix: once its test runs clean
+        the library is fixed, and the entry goes like a bug entry (#3365)."""
+        code, md = triage_with(SYNTHETIC_KNOWN, summary="test_known_upstream exit=0\n")
+        self.assertEqual(code, 1, md)
+        self.assertIn("ran clean: drop the entry", md)
+        self.assertIn("test_known_upstream", md)
+
+    def test_third_party_entry_reports_are_listed_not_counted(self):
+        code, md = triage_with(SYNTHETIC_KNOWN, OBS_LEAK, test="test_known_upstream")
+        self.assertEqual(code, 0, md)
+        self.assertIn("**test_known_upstream** (third-party)", md)
+
+    def test_media_alpha_network_leaks_count(self):
+        """The FFmpeg 8.0.1 VP9-alpha probe leak is suppressed in lsan.supp, so
+        the test is no longer exempt: any other leak in it counts (#3365)."""
+        code, md = triage(OBS_LEAK, test="test_media_alpha_network")
+        self.assertEqual(code, 1, md)
+        self.assertIn("libobs/obs-canvas.c.h:330", md)
+        self.assertNotIn("#### Known", md)
 
     def test_known_list_comes_first(self):
-        code, md = triage(summary="test_media_alpha_network exit=6\ntest_y exit=1\n")
+        code, md = triage_with(SYNTHETIC_KNOWN, summary="test_known_bug exit=6\ntest_y exit=1\n")
         self.assertEqual(code, 1, md)
         self.assertLess(md.index("#### Known"), md.index("#### Unit tests with a non-zero exit"), md)
 
@@ -234,23 +295,28 @@ class SkipAndKnownTest(unittest.TestCase):
 
 # The goal is zero. Adding an entry raises this number, so the reviewer sees it;
 # see docs/knowledge/asan-pr-failure.md. Fix the test first.
-KNOWN_ENTRIES = 3
+KNOWN_ENTRIES = 2
 
 
 class KnownListTest(unittest.TestCase):
-    """Only known bugs and tool limitations can be exempt; bugs name an issue."""
+    """Only known bugs, third-party bugs and tool limitations can be exempt;
+    bugs and third-party bugs name an issue."""
 
     def test_every_entry_has_a_kind_and_an_issue(self):
-        spec = importlib.util.spec_from_file_location("triage", TRIAGE)
-        triage_mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(triage_mod)
-        self.assert_valid_entries(triage_mod.KNOWN)
+        self.assert_valid_entries(load_triage().KNOWN)
 
     def assert_valid_entries(self, entries):
         for (tool, test), (kind, why) in entries.items():
-            self.assertIn(kind, {"bug", "tool"}, (tool, test))
+            self.assertIn(kind, {"bug", "third-party", "tool"}, (tool, test))
             if kind != "tool":
                 self.assertRegex(why, r"#\d+", (tool, test))
+
+    def test_synthetic_entries_are_valid(self):
+        self.assert_valid_entries(SYNTHETIC_KNOWN)
+
+    def test_third_party_entry_needs_an_issue(self):
+        with self.assertRaises(AssertionError):
+            self.assert_valid_entries({("asan", "test_synthetic"): ("third-party", "a library leak")})
 
     def test_flaky_entries_are_rejected(self):
         """#3370: a future exemption cannot bring the retired kind back."""
@@ -258,11 +324,8 @@ class KnownListTest(unittest.TestCase):
             self.assert_valid_entries({("asan", "test_synthetic"): ("flaky", "timing failure (#3370)")})
 
     def test_the_list_does_not_grow_unseen(self):
-        spec = importlib.util.spec_from_file_location("triage", TRIAGE)
-        triage_mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(triage_mod)
         self.assertEqual(
-            len(triage_mod.KNOWN),
+            len(load_triage().KNOWN),
             KNOWN_ENTRIES,
             "the known list changed: lower KNOWN_ENTRIES when an entry goes; "
             "to add one, read docs/knowledge/asan-pr-failure.md first",

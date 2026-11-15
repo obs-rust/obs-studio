@@ -75,6 +75,10 @@ no OBS frame are listed as external. `called_from_lib` for the glib family remov
 about 1900 of them. Do not add Mesa: TSan then does not see Mesa's mutexes, and its
 tests report about 3 times more (#3701).
 
+asan runs with `LSAN_OPTIONS=suppressions=rust/tools/sanitize/lsan.supp`, for leaks
+wholly inside a library (today one: FFmpeg 8.0.1's VP9-alpha probe, #3365). A local
+FFmpeg past 8.0 does not have that leak, so the line matches nothing there.
+
 tsan does not instrument Rust, so `-DOBS_RUST_TSAN=ON` (set by the harness) makes
 the Rust primitives call `__tsan_acquire` and `__tsan_release`. A primitive
 without them shows its hand-offs as data races in the C code (#3507).

@@ -300,6 +300,20 @@ class SanitizeHarnessTest(unittest.TestCase):
             ],
         )
 
+    def test_lsan_suppressions_are_the_ffmpeg_probe_only(self):
+        """FFmpeg 8.0.1 leaks while probing a VP9-alpha WebM that starts
+        between keyframes, with no OBS frame below avformat_find_stream_info
+        (#3365). One entry point, never a module: libavcodec.so would also
+        hide an AVPacket OBS forgets to free. LSAN_OPTIONS names no log_path,
+        so the reports stay in the log ASAN_OPTIONS names."""
+        for options in (self.module.sanitizer_options(self.out),
+                        self.module.sanitizer_options(self.out / "tests", "test_core.", fast_unwind=True)):
+            lsan = options["LSAN_OPTIONS"]
+            self.assertNotIn("log_path", lsan)
+            path = Path(next(o.split("=", 1)[1] for o in lsan.split(":") if o.startswith("suppressions=")))
+            lines = [line for line in path.read_text().splitlines() if line and not line.startswith("#")]
+            self.assertEqual(lines, ["leak:avformat_find_stream_info"])
+
     def test_configure_names_zccache_and_the_libobs_backend(self):
         command = self.module.configure_command(
             src=Path("/src"),

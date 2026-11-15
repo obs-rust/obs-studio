@@ -103,6 +103,10 @@ VALGRIND = (
 # test_video_output_formats 18 s -> 4 s, test_dock_proportions 17 s -> 4 s).
 # So only the tests that can reach FFmpeg keep it; see UnwindPolicy.
 TSAN_SUPPRESSIONS = Path(__file__).resolve().parent / "tsan.supp"
+# LeakSanitizer suppressions for leaks wholly inside a library OBS uses
+# (#3365). LSAN_OPTIONS carries no log_path: the reports keep going to the
+# ASan log that ASAN_OPTIONS names.
+LSAN_SUPPRESSIONS = Path(__file__).resolve().parent / "lsan.supp"
 SLOW_UNWIND = "fast_unwind_on_malloc=0"
 FAST_UNWIND = "fast_unwind_on_malloc=1"
 SANITIZER_OPTIONS = {
@@ -150,7 +154,8 @@ class Layout:
 
 
 def sanitizer_options(directory: Path, stem: str = "", fast_unwind: bool = False) -> dict[str, str]:
-    """The three *_OPTIONS values with log_path=<directory>/<stem><kind>.
+    """The three *_OPTIONS values with log_path=<directory>/<stem><kind>, and
+    LSAN_OPTIONS with the leak suppressions.
 
     The shell exported them for the whole run (log_path=<out>/<kind>) and
     overrode the log_path per test (log_path=<out>/tests/<name>.<kind>).
@@ -160,7 +165,9 @@ def sanitizer_options(directory: Path, stem: str = "", fast_unwind: bool = False
     options = SANITIZER_OPTIONS
     if fast_unwind:
         options = {kind: value.replace(SLOW_UNWIND, FAST_UNWIND) for kind, value in options.items()}
-    return {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in options.items()}
+    env = {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in options.items()}
+    env["LSAN_OPTIONS"] = f"suppressions={LSAN_SUPPRESSIONS}"
+    return env
 
 
 @dataclass(frozen=True)
