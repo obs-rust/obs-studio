@@ -28,13 +28,16 @@
 //! `libobs/obs-output-raw-audio-trim.c.h`, the raw output audio trim's
 //! sample-rate conversions,
 //! `libobs/obs-encoder-audio-start-frames.c.h`, the encoder audio start's
-//! sample-rate conversions, and `libobs/obs-output-conversion-setters.c.h`
+//! sample-rate conversions, `libobs/obs-output-conversion-setters.c.h`
 //! with `libobs/obs-output-packet-callbacks.c.h`, the output conversion
-//! setters and packet callback registration.
+//! setters and packet callback registration,
+//! `libobs/obs-output-encoder-getters.c.h`, the output's first video and
+//! indexed audio encoder getters, and `libobs/obs-output-update.c.h`, the
+//! output settings update.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`], [`output_conversion_callbacks`] and [`output_reconnect_callback`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`], [`output_conversion_callbacks`], [`output_reconnect_callback`], [`output_encoder_getters`] and [`output_update`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -122,6 +125,10 @@
 //! output to either packet callback setter.
 //! [`output_reconnect_callback`] picks the reconnect callback and data an
 //! output stores (no data without a callback) and refuses a NULL output.
+//! [`output_encoder_getters`] builds the occupancy mask of an output's video
+//! slots and picks the first occupied one, and bounds the audio index;
+//! [`output_update`] merges the incoming settings before the type's update
+//! callback, which runs only when the type has one.
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
