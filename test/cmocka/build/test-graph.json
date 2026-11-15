@@ -9930,6 +9930,7 @@
       "sources": [
         "test/cmocka/test_plugin_getter_races.c",
         "plugins/image-source/build/image-source.core+.h.c",
+        "plugins/image-source/slideshow-order.c.h",
         "plugins/image-source/build/image-source.posix+.h.c"
       ],
       "requires": {
