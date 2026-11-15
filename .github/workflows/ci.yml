@@ -552,7 +552,10 @@ jobs:
     name: Cache Janitor 🧹
     if: always() && github.event_name == 'merge_group'
     needs: [select-mq-runner, ci-pre, ci-gate, tier2-lane-proof]
-    runs-on: ${{ needs.select-mq-runner.outputs.labels != '' && fromJSON(needs.select-mq-runner.outputs.labels) || 'ubuntu-26.04' }}
+    # Always hosted: a queued job already holds its concurrency group, so a
+    # janitor waiting for a self-hosted runner blocked every later sweep and
+    # turned master red (#4847). It only calls the cache API.
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     # One sweep at a time, repo-wide; a running sweep is never cancelled.
     concurrency:

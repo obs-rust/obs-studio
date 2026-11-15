@@ -199,7 +199,7 @@ class CiScopeTest(unittest.TestCase):
         expected = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-26.04",
-                "tier2-lane-proof": "ubuntu-26.04", "cache-janitor": "ubuntu-26.04",
+                "tier2-lane-proof": "ubuntu-26.04",
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
