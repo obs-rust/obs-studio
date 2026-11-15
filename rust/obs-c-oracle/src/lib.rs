@@ -71,6 +71,7 @@ pub mod effect_param_types;
 pub mod effect_params;
 pub mod effect_parser_blocks;
 pub mod effect_parser_compile;
+pub mod effect_parser_entry;
 pub mod effect_parser_lifecycle;
 pub mod effect_parser_params;
 pub mod effect_parser_passes;

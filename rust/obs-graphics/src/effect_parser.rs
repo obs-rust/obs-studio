@@ -1,12 +1,15 @@
 //! Safe core of `libobs/graphics/effect-parser-blocks.c.h`,
 //! `libobs/graphics/effect-parser-passes.c.h`,
 //! `libobs/graphics/effect-parser-params.c.h`,
-//! `libobs/graphics/effect-parser-writer.c.h` and
-//! `libobs/graphics/effect-parser-compile.c.h`: the effect parser's struct
+//! `libobs/graphics/effect-parser-writer.c.h`,
+//! `libobs/graphics/effect-parser-compile.c.h` and
+//! `libobs/graphics/effect-parser-entry.c.h`: the effect parser's struct
 //! and sampler-state blocks, its passes and techniques, its parameter
 //! declarations, its shader writer ([`writer`]: the shader text the compile
-//! step builds for each pass call), and its compile step ([`compile`]: the
-//! effect `ep_parse()` fills from the parser once the text parsed).
+//! step builds for each pass call), its compile step ([`compile`]: the
+//! effect `ep_parse()` fills from the parser once the text parsed), and its
+//! entry point ([`entry`]: `ep_parse()` itself, which walks the text's
+//! top-level tokens and hands each to the parsers below).
 //!
 //! - [`parse_struct`] (`ep_parse_struct`, with `ep_parse_struct_var`):
 //!   `struct name { type name [: MAPPING]; ... };`;

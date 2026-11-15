@@ -1,0 +1,4 @@
+# graphics/effect-parser-entry.c: gs_effect_create() in graphics.c calls
+# ep_parse() inside libobs. Declared in effect-parser.h without EXPORT, so the
+# shim stays hidden the same way.
+ep_parse

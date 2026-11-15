@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs-graphics.pch.h"
+#include "libobs/build/libobs-ported-effect-parser-entry.pch.h"
 
 static bool ep_get_var_specifiers(struct effect_parser *ep, bool *is_property, bool *is_const, bool *is_uniform)
 {

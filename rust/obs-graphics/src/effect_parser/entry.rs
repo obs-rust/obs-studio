@@ -35,7 +35,10 @@
 
 use core::ffi::CStr;
 
-use crate::shader_parser::Tokens;
+use crate::shader_parser::{
+    BlockError, CFTOKEN_NONE, PARSE_CONTINUE, PARSE_EOF, Tokens, first_byte, get_name, next_name,
+    next_valid_token, token_is,
+};
 
 /// The variable specifiers before a declaration's type.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -83,18 +86,110 @@ pub trait EntryModel: Tokens {
 
 /// `ep_get_var_specifiers`: `false` at the end of the text.
 pub fn get_var_specifiers(m: &mut impl EntryModel, specifiers: &mut Specifiers) -> bool {
-    let _ = (m, specifiers);
-    todo!("ep_get_var_specifiers")
+    loop {
+        let code = m.check_for_keyword(c"property", &mut specifiers.is_property);
+        if code == PARSE_EOF {
+            return false;
+        } else if code == PARSE_CONTINUE {
+            continue;
+        }
+
+        let code = m.check_for_keyword(c"const", &mut specifiers.is_const);
+        if code == PARSE_EOF {
+            return false;
+        } else if code == PARSE_CONTINUE {
+            continue;
+        }
+
+        let code = m.check_for_keyword(c"uniform", &mut specifiers.is_uniform);
+        if code == PARSE_EOF {
+            return false;
+        } else if code == PARSE_CONTINUE {
+            continue;
+        }
+
+        break;
+    }
+    true
 }
 
-/// `ep_parse_other`: a declaration, from its first token.
+/// `report_invalid_func_keyword`.
+fn report_invalid_func_keyword(m: &mut impl EntryModel, name: &'static CStr, val: bool) {
+    if val {
+        m.add_error(BlockError::KeywordWithFunction(name));
+    }
+}
+
+/// `ep_parse_other`: a declaration, from its first token. The type and
+/// name go to the function or parameter parser, which owns them; a
+/// declaration that stops before (`goto error`) is dropped.
 pub fn parse_other(m: &mut impl EntryModel) {
-    let _ = m;
-    todo!("ep_parse_other")
+    let mut specifiers = Specifiers::default();
+
+    if !get_var_specifiers(m, &mut specifiers) {
+        return;
+    }
+
+    let Ok(type_name) = get_name(m, c"type", Some(c";")) else {
+        return;
+    };
+    let Ok(name) = next_name(m, c"name", Some(c";")) else {
+        return;
+    };
+    if !next_valid_token(m) {
+        return;
+    }
+
+    if token_is(m, c"(") {
+        report_invalid_func_keyword(m, c"property", specifiers.is_property);
+        report_invalid_func_keyword(m, c"const", specifiers.is_const);
+        report_invalid_func_keyword(m, c"uniform", specifiers.is_uniform);
+
+        m.parse_function(type_name, name);
+    } else {
+        m.parse_param(type_name, name, specifiers);
+    }
+}
+
+/// `is_whitespace` (`util/lexer.h`).
+fn is_whitespace(ch: u8) -> bool {
+    matches!(ch, b' ' | b'\r' | b'\t' | b'\n')
 }
 
 /// `ep_parse`: the result `ep_parse()` returns.
 pub fn parse(m: &mut impl EntryModel) -> bool {
-    let _ = m;
-    todo!("ep_parse")
+    if let Some(name) = m.preprocessor_name() {
+        m.add_def(name);
+    }
+
+    m.set_effect();
+    if !m.parse_text() {
+        return false;
+    }
+
+    while m.has_token() && m.kind() != CFTOKEN_NONE {
+        if token_is(m, c";") || is_whitespace(first_byte(m)) {
+            /* do nothing */
+            m.advance();
+        } else if token_is(m, c"struct") {
+            m.parse_struct();
+        } else if token_is(m, c"technique") {
+            m.parse_technique();
+        } else if token_is(m, c"sampler_state") {
+            m.parse_sampler_state();
+        } else if token_is(m, c"{") {
+            /* add error and pass braces */
+            m.add_error(BlockError::UnexpectedCodeSegment);
+            m.pass_pair();
+        } else {
+            /* parameters and functions */
+            parse_other(m);
+        }
+    }
+
+    let mut success = !m.has_errors();
+    if success {
+        success = m.compile();
+    }
+    success
 }
