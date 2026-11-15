@@ -3,15 +3,15 @@
     "by_dir": {
       "frontend": 83308,
       "libobs": 95177,
-      "plugins": 148451,
+      "plugins": 148640,
       "shared": 15968
     },
     "percent": 16.32,
-    "ported_lines": 55955,
-    "total_lines": 342904
+    "ported_lines": 55991,
+    "total_lines": 343093
   },
-  "commit": "fa1a8c8",
-  "date": "2026-11-14",
+  "commit": "37bc83d",
+  "date": "2026-11-15",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,8 +29,8 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 49.21,
-          "ported_lines": 31483,
+          "percent": 49.26,
+          "ported_lines": 31519,
           "total_lines": 63981
         },
         "graphics": {
@@ -50,17 +50,17 @@
         }
       },
       "files": 713,
-      "hybrid_lines": 39222,
-      "percent": 58.79,
-      "ported_lines": 55955,
+      "hybrid_lines": 39186,
+      "percent": 58.83,
+      "ported_lines": 55991,
       "total_lines": 95177
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 51.07,
-            "ported_lines": 30130,
+            "percent": 51.14,
+            "ported_lines": 30166,
             "total_lines": 58992
           },
           "graphics": {
@@ -80,8 +80,8 @@
           }
         },
         "files": 678,
-        "hybrid_lines": 34903,
-        "percent": 59.73,
+        "hybrid_lines": 34867,
+        "percent": 59.77,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -261,6 +261,7 @@
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
           "obs-hotkey-update-atomic.c.h",
+          "obs-key-combination-host-posix.c.h",
           "obs-missing-files.c.h",
           "obs-module-failure-info.c.h",
           "obs-module-init.c.h",
@@ -524,7 +525,7 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 51769,
+        "ported_lines": 51805,
         "total_lines": 86672
       },
       "macos": {
@@ -1451,6 +1452,6 @@
     }
   },
   "rust": {
-    "lines": 212700
+    "lines": 212860
   }
 }
