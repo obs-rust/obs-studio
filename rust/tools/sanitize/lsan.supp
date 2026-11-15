@@ -1,0 +1,15 @@
+# LeakSanitizer suppressions for the asan pass: leaks wholly inside a library
+# OBS uses, with no OBS frame between the allocation and the library's entry
+# point. sanitize.py passes this file as LSAN_OPTIONS=suppressions=... (#3365).
+# Match one library entry point, never a whole module: libavcodec.so would
+# also hide an AVPacket that OBS allocates and never frees.
+#
+# FFmpeg 8.0.1 (Ubuntu 26.04's libavformat62 7:8.0.1-3ubuntu2): probing a
+# VP9-alpha WebM that starts between keyframes ("Not all references are
+# available") leaks one AVBufferRef per probed packet, from av_buffer_ref under
+# avcodec_send_packet under avformat_find_stream_info, and the packet data it
+# holds. test_media_alpha_network's check_clip hits it with only
+# avformat_open_input, avformat_find_stream_info and avformat_close_input.
+# FFmpeg 9.0.2 does not leak there: drop this line once the asan runner's
+# FFmpeg is past 8.0.
+leak:avformat_find_stream_info

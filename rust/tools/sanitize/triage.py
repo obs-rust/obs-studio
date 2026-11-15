@@ -36,13 +36,19 @@ OBS_FRAME = re.compile(r"(?<![\w/])(?:\.\./)*(?:[\w.-]+/)*?((?:libobs|frontend|p
 # - "bug": the test is right and OBS (or its build) is wrong; it names its
 #   issue. A bug entry that ran clean is a finding: the fix drops its entry.
 # - "tool": a limitation of the tool itself, no OBS issue.
+# - "third-party": the failure is inside a library OBS uses and no narrow
+#   suppression can match it; it names the issue that tracks the upstream
+#   fix. Like a bug entry, one that ran clean is a finding.
+# A leak whose whole stack is in a library goes in lsan.supp instead, so the
+# test's other reports still count (#3365).
 KNOWN = {
     ("valgrind", "test_pipe"): ("tool", "valgrind runs posix_spawn as a plain fork, so a missing binary's exec "
                                 "failure is never reported and test_pipe_create2_missing_binary gets a pipe back"),
     ("valgrind", "test_svt_av1"): ("tool", "SVT-AV1's encoder functions exhaust valgrind's VEX translation storage "
                                    '("VEX temporary storage exhausted")'),
-    ("asan", "test_media_alpha_network"): ("bug", "LeakSanitizer reports FFmpeg packet buffers (#3365)"),
 }
+# Kinds that track an issue: a clean run means it is fixed, so the entry goes.
+TRACKED_KINDS = ("bug", "third-party")
 SKIP_EXIT = "77"
 # Not OBS, although a path below may name an OBS folder: valgrind reports its
 # own replacements as .../memcheck/../shared/vg_replace_strmem.c (#4045).
@@ -254,7 +260,7 @@ def main():  # noqa: C901
             test_reports += [(f"{name}: {k}", loc) for k, loc, _ in errs]
         hit = sorted(n for n in known if known[n] != "0" or n in reported)
         clean = sorted(n for n in known if n not in hit)
-        fixed = [n for n in clean if KNOWN[(tool, n)][0] == "bug"]
+        fixed = [n for n in clean if KNOWN[(tool, n)][0] in TRACKED_KINDS]
         # TSan runs with exitcode=0 (#3701): clean is exit 0 and no counted report.
         reported_tests = {label.split(":", 1)[0] for label, _ in test_reports}
         unclean = reported_tests.union(n for n, _ in failed) & set(ran)
