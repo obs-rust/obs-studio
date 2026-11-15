@@ -232,3 +232,5 @@ pub mod output_conversion_callbacks;
 pub mod output_weak_lifetime;
 
 pub mod output_encoder_getters;
+
+pub mod output_update;
