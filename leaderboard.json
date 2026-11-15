@@ -1,12 +1,12 @@
 {
   "repo": "obs-rust/obs-studio",
-  "generated_at": "2026-11-15T15:49:30Z",
-  "generated_pacific": "Nov 15, 2026 07:49 AM PST",
+  "generated_at": "2026-11-15T21:09:20Z",
+  "generated_pacific": "Nov 15, 2026 01:09 PM PST",
   "since": "2026-11-15T08:00:00Z",
   "since_caption": "new since 12:00 AM Pacific (America/Los_Angeles)",
-  "today_total": 2,
+  "today_total": 4,
   "ranked_by": "merged_prs",
-  "merged_pr_total": 2700,
+  "merged_pr_total": 2702,
   "unattributed_prs": [],
   "contributors": [
     {
@@ -3068,13 +3068,13 @@
     {
       "login": "rdoupe",
       "avatar_url": "https://github.com/rdoupe.png?size=200",
-      "merged_prs": 540,
+      "merged_prs": 542,
       "issues_filed": 527,
-      "today_prs": 2,
-      "today_badge": "<span class=\"delta delta-up\" title=\"+2 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+2</span>",
-      "score": 540,
+      "today_prs": 4,
+      "today_badge": "<span class=\"delta delta-up\" title=\"+4 new since 12:00 AM Pacific (America/Los_Angeles)\"><svg viewBox=\"0 0 10 9\" width=\"14\" height=\"12\" aria-label=\"up\"><polygon points=\"5,0 10,9 0,9\"/></svg>+4</span>",
+      "score": 542,
       "first_contribution": "2026-10-10T22:17:15Z",
-      "last_contribution": "2026-11-15T14:35:13Z",
+      "last_contribution": "2026-11-15T19:20:05Z",
       "pr_numbers": [
         109,
         193,
@@ -3615,7 +3615,9 @@
         4873,
         4875,
         4876,
-        4878
+        4878,
+        4879,
+        4881
       ],
       "issue_numbers": [
         4874,
