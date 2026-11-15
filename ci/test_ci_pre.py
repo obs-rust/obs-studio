@@ -151,5 +151,29 @@ class EndOfQueueJanitorTest(unittest.TestCase):
         self.assertIn("cache-janitor", allowed["permissions"]["actions: write"])
 
 
+class JanitorRunnerTest(unittest.TestCase):
+    """#4847: a sweep never waits for a self-hosted runner while holding the lock.
+
+    A queued job already holds its concurrency group, and GitHub keeps one
+    pending job per group. A janitor queued on a merge-queue runner that never
+    picks it up held `cache-janitor` for hours, and every later sweep was
+    cancelled, which marked master red. The janitor only calls the cache API,
+    so every job in that group runs on a fixed GitHub-hosted label.
+    """
+
+    def test_every_janitor_runs_on_a_fixed_hosted_label(self):
+        found = 0
+        for path in sorted(WORKFLOWS.glob("*.y*ml")):
+            for name, block in jobs(path.read_text()).items():
+                if not re.search(r"^\s+group: cache-janitor\s*$", block, re.M):
+                    continue
+                found += 1
+                with self.subTest(workflow=path.name, job=name):
+                    m = re.search(r"^    runs-on: (.+)$", block, re.M)
+                    self.assertTrue(m, "janitor has no runs-on")
+                    self.assertRegex(m.group(1).strip(), r"^ubuntu-[0-9.]+$")
+        self.assertGreaterEqual(found, 2, "expected the ci-pre.yml and ci.yml janitors")
+
+
 if __name__ == "__main__":
     unittest.main()
