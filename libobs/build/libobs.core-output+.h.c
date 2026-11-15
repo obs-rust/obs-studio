@@ -62,7 +62,7 @@
 #include "libobs/obs-output-supported-codecs-fields.c.h"
 #include "libobs/obs-output-total-frames-fields.c.h"
 #include "libobs/obs-output-type-info-fields.c.h"
-#include "libobs/obs-output-update.c.h"
+#include "libobs/obs-output-update-fields.c.h"
 #include "libobs/obs-output-video-encoder-getter-fields.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-context-getter-fields.c.h"
