@@ -124,7 +124,7 @@ static void out_param(struct dump *d, gs_effect_t *effect, const struct ep_param
 	    p->writeorder, p->array_count);
 	for (size_t i = 0; i < p->default_val.num; i++)
 		out(d, "%02x", p->default_val.array[i]);
-	out(d, " properties=%zu", p->properties.num);
+	out(d, " properties=%u", (unsigned)p->properties.num);
 	/* ep_param_init() leaves param unset (the Rust parameter shim writes
 	 * NULL) until the compile step links it, which it never does for an
 	 * annotation: only a compiled param's link is compared. */
@@ -134,7 +134,7 @@ static void out_param(struct dump *d, gs_effect_t *effect, const struct ep_param
 		out(d, " link=-");
 	else if (effect->params.num && p->param >= effect->params.array &&
 		 p->param < effect->params.array + effect->params.num)
-		out(d, " link=%zu", (size_t)(p->param - effect->params.array));
+		out(d, " link=%u", (unsigned)(p->param - effect->params.array));
 	else
 		out(d, " link=other");
 	out(d, "\n");
@@ -183,7 +183,7 @@ char *oracle_effect_parser_entry_dump(struct effect_parser *ep, gs_effect_t *eff
 	if (!ep->cfp.cur_token)
 		out(&d, "cur null\n");
 	else if (tokens)
-		out(&d, "cur %td type %d\n", ep->cfp.cur_token - tokens, ep->cfp.cur_token->type);
+		out(&d, "cur %u type %d\n", (unsigned)(ep->cfp.cur_token - tokens), ep->cfp.cur_token->type);
 	else
 		out(&d, "cur other\n");
 
@@ -236,24 +236,24 @@ char *oracle_effect_parser_entry_dump(struct effect_parser *ep, gs_effect_t *eff
 		out_strref(&d, &def->name.str);
 		out(&d, " ");
 		out_strref(&d, &def->name.unmerged_str);
-		out(&d, " type=%d params=%zu tokens=%zu macro=%d\n", def->name.type, def->params.num, def->tokens.num,
-		    def->macro);
+		out(&d, " type=%d params=%u tokens=%u macro=%d\n", def->name.type, (unsigned)def->params.num,
+		    (unsigned)def->tokens.num, def->macro);
 	}
 
-	out(&d, "effect params %zu techniques %zu\n", effect->params.num, effect->techniques.num);
+	out(&d, "effect params %u techniques %u\n", (unsigned)effect->params.num, (unsigned)effect->techniques.num);
 	for (size_t i = 0; i < effect->params.num; i++) {
 		const struct gs_effect_param *p = effect->params.array + i;
-		out(&d, "  eparam %s type=%d section=%d default=%zu annotations=%zu\n", s(p->name), (int)p->type,
-		    (int)p->section, p->default_val.num, p->annotations.num);
+		out(&d, "  eparam %s type=%d section=%d default=%u annotations=%u\n", s(p->name), (int)p->type,
+		    (int)p->section, (unsigned)p->default_val.num, (unsigned)p->annotations.num);
 	}
 	for (size_t i = 0; i < effect->techniques.num; i++) {
 		const struct gs_effect_technique *t = effect->techniques.array + i;
-		out(&d, "  etechnique %s passes=%zu\n", s(t->name), t->passes.num);
+		out(&d, "  etechnique %s passes=%u\n", s(t->name), (unsigned)t->passes.num);
 		for (size_t j = 0; j < t->passes.num; j++) {
 			const struct gs_effect_pass *p = t->passes.array + j;
-			out(&d, "    epass %s vert=%p pixel=%p vparams=%zu pparams=%zu\n", s(p->name),
-			    (void *)p->vertshader, (void *)p->pixelshader, p->vertshader_params.num,
-			    p->pixelshader_params.num);
+			out(&d, "    epass %s vert=%p pixel=%p vparams=%u pparams=%u\n", s(p->name),
+			    (void *)p->vertshader, (void *)p->pixelshader, (unsigned)p->vertshader_params.num,
+			    (unsigned)p->pixelshader_params.num);
 		}
 	}
 
