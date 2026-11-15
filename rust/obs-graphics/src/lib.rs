@@ -14,10 +14,11 @@
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
 //! `effect-parser-blocks.c.h`, `effect-parser-params.c.h`,
-//! `effect-parser-passes.c.h`, `effect-parser-writer.c.h` and
-//! `effect-parser-compile.c.h`, its struct and sampler-state blocks, its
-//! parameter declarations, annotations and value assignments, its passes and
-//! techniques, its shader writer and its compile step ([`effect_parser`]),
+//! `effect-parser-passes.c.h`, `effect-parser-writer.c.h`,
+//! `effect-parser-compile.c.h` and `effect-parser-entry.c.h`, its struct and
+//! sampler-state blocks, its parameter declarations, annotations and value
+//! assignments, its passes and techniques, its shader writer, its compile
+//! step and its entry point ([`effect_parser`]),
 //! from
 //! `libobs/graphics/shader-parser.c.h`: `shader-param-values.c.h`, the
 //! shader parser's array counts and int and float default values
