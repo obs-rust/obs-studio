@@ -554,6 +554,34 @@ class SanitizeHarnessTest(unittest.TestCase):
         builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
         self.assertEqual(builds, [None], "a source error must not be retried")
 
+    def test_a_failed_build_prints_the_diagnostic_not_targets_named_error(self):
+        # #4870: targets such as encoder-error-ownership-link-support.c fill
+        # the first 40 lines containing "error" ahead of the real failure,
+        # and compile commands carry -Werror=return-type.
+        progress = "".join(
+            f"[{n}/7346] Building C object test/cmocka/CMakeFiles/test_{n}.dir/encoder-error-ownership-link-support.c.o\n"
+            for n in range(1, 51)
+        )
+        log = self.out / "build.log"
+        log.write_text(
+            progress + "FAILED: [code=1] libobs/CMakeFiles/libobs.dir/obs.c.o\n"
+            "/usr/bin/cc -Werror=return-type -c libobs/obs.c\n"
+            "libobs/obs.c:12:3: error: 'x' undeclared\n"
+            "ninja: build stopped: cannot make progress due to previous errors.\n",
+            encoding="utf-8",
+        )
+        printed = self.module.error_lines(log).splitlines()
+        self.assertIn("FAILED: [code=1] libobs/CMakeFiles/libobs.dir/obs.c.o", printed)
+        self.assertIn("libobs/obs.c:12:3: error: 'x' undeclared", printed)
+        self.assertFalse([line for line in printed if line.startswith("[")], "no ninja progress lines")
+        self.assertNotIn("/usr/bin/cc -Werror=return-type -c libobs/obs.c", printed)
+
+    def test_a_failed_build_with_no_diagnostic_prints_the_log_tail(self):
+        log = self.out / "build.log"
+        log.write_text("".join(f"line {n}\n" for n in range(100)) + "Killed\n", encoding="utf-8")
+        printed = self.module.error_lines(log).splitlines()
+        self.assertEqual(printed[-1], "Killed", "the tail shows how the build ended")
+
 
 # A stub test: notes how many tests are running when it starts (the files in
 # running/), stays a moment, prints a line and exits 0.
