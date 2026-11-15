@@ -50,7 +50,6 @@
 #include "libobs/obs-output-module-fields.c.h"
 #include "libobs/obs-output-module-roots.c.h"
 #include "libobs/obs-output-pause-queries-fields.c.h"
-#include "libobs/obs-output-preferred-size.c.h"
 #include "libobs/obs-output-properties-fields.c.h"
 #include "libobs/obs-output-protocol-getter-fields.c.h"
 #include "libobs/obs-output-reconnect-callback.c.h"

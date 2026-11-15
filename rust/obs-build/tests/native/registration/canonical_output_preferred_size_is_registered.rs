@@ -29,8 +29,19 @@ fn canonical_output_preferred_size_is_registered() {
         extracted.is_file(),
         "legacy wrapper must have its own C unit"
     );
-    let group = fs::read_to_string(root.join("libobs/build/libobs.core-output+.h.c")).unwrap();
-    assert!(group.contains("#include \"libobs/obs-output-preferred-size.c.h\""));
+    let include = "#include \"libobs/obs-output-preferred-size.c.h\"";
+    let live = fs::read_to_string(root.join("libobs/build/libobs.core-output+.h.c")).unwrap();
+    assert!(
+        !live.contains(include),
+        "hybrid libobs takes the Rust wrapper"
+    );
+    let group =
+        fs::read_to_string(root.join("libobs/build/libobs.ported-output-preferred-size+.h.c"))
+            .unwrap();
+    assert!(
+        group.contains(include),
+        "the C reference keeps the original"
+    );
     let original = fs::read_to_string(root.join("libobs/obs-output.c.h")).unwrap();
     assert!(!original.contains("void obs_output_set_preferred_size("));
     assert!(original.contains("void obs_output_set_preferred_size2("));
