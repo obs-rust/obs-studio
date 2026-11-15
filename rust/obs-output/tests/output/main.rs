@@ -230,5 +230,6 @@ mod output_weak_lifetime;
 mod output_weak_lifetime_parity;
 
 mod output_encoder_getters;
+mod output_encoder_getters_parity;
 
 mod output_update;
