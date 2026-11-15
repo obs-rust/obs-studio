@@ -97,6 +97,7 @@
 //! [`crate::effect_param_types`]'s.
 
 pub mod compile;
+pub mod entry;
 pub mod writer;
 
 use crate::effect_param_types::{self, Route};
