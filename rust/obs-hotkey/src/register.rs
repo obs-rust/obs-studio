@@ -1,5 +1,16 @@
 //! Admission and owner selection for the five single-hotkey registration APIs.
 
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable
+)]
+
 /// The registerer kinds in `obs-hotkey.h`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -32,7 +43,12 @@ pub trait Registry<R> {
     fn source_private(&mut self, owner: Self::Owner) -> bool;
     fn lock(&mut self) -> bool;
     fn acquire(&mut self, kind: Kind, owner: Self::Owner) -> (Self::Weak, Self::Context);
-    fn register(&mut self, kind: Kind, owner: Option<(Self::Weak, Self::Context)>, request: R) -> usize;
+    fn register(
+        &mut self,
+        kind: Kind,
+        owner: Option<(Self::Weak, Self::Context)>,
+        request: R,
+    ) -> usize;
     fn unlock(&mut self);
 }
 
@@ -44,6 +60,23 @@ pub fn register<B: Registry<R>, R>(
     owner: Option<B::Owner>,
     request: R,
 ) -> usize {
-    let _ = (registry, kind, owner, request);
-    todo!()
+    let owner = match kind {
+        Kind::Frontend => None,
+        _ => {
+            let Some(owner) = owner else {
+                return usize::MAX;
+            };
+            if kind == Kind::Source && registry.source_private(owner) {
+                return usize::MAX;
+            }
+            Some(owner)
+        }
+    };
+    if !registry.lock() {
+        return usize::MAX;
+    }
+    let fields = owner.map(|owner| registry.acquire(kind, owner));
+    let id = registry.register(kind, fields, request);
+    registry.unlock();
+    id
 }

@@ -101,6 +101,15 @@ static inline obs_hotkey_id obs_hotkey_register_internal(obs_hotkey_registerer_t
 	return result;
 }
 
+/* Private call adapter: allocation, saved bindings and signals stay here. */
+obs_hotkey_id obs_hotkey_register_call(obs_hotkey_registerer_t type, void *registerer, struct obs_context_data *context,
+				       const char *name, const char *description, obs_hotkey_func func, void *data);
+obs_hotkey_id obs_hotkey_register_call(obs_hotkey_registerer_t type, void *registerer, struct obs_context_data *context,
+				       const char *name, const char *description, obs_hotkey_func func, void *data)
+{
+	return obs_hotkey_register_internal(type, registerer, context, name, description, func, data);
+}
+
 static obs_hotkey_pair_t *create_hotkey_pair(struct obs_context_data *context, obs_hotkey_active_func func0,
 					     obs_hotkey_active_func func1, void *data0, void *data1)
 {

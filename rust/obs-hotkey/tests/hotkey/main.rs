@@ -53,6 +53,7 @@ mod portal_shortcut_status_parity;
 mod press;
 mod press_parity;
 mod register;
+mod register_parity;
 mod routed_callback;
 mod routed_callback_parity;
 mod routing_controls;

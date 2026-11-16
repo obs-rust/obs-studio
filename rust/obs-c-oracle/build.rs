@@ -763,6 +763,11 @@ fn main() {
         ),
     )
     .expect("write orientation fields extract");
+    std::fs::write(
+        extract_dir.join("hotkey_register.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-hotkey-register.c.h")),
+    )
+    .expect("write original single registration wrappers");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));

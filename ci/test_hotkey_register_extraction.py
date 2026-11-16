@@ -28,7 +28,7 @@ class HotkeyRegistrationExtractionTest(unittest.TestCase):
                 self.assertEqual(len(re.findall(definition, moved, re.M | re.S)), 1)
                 self.assertIsNone(re.search(definition, original, re.M | re.S))
         self.assertRegex(original, r"obs_hotkey_register_internal\([^;]*?\)\s*\{")
-        group = (ROOT / "libobs/build/libobs.core+.h.c").read_text()
+        group = (ROOT / "libobs/build/libobs.ported-hotkey-register+.h.c").read_text()
         self.assertEqual(group.count(f'#include "{EXTRACTED}"'), 1)
 
     def test_isolated_cores_compile_registration_in_the_same_translation_unit(self):
