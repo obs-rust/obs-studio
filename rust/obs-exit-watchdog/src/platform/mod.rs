@@ -19,7 +19,10 @@ cfg_select! {
         mod linux;
         pub use unix::terminate;
         mod no_helper;
-        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
+        pub use no_helper::{
+            Helper, Wait, arm_helper, capture_remote, helper_wait, read_section, spawn_helper,
+            terminate_parent,
+        };
         pub use linux::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
@@ -32,7 +35,10 @@ cfg_select! {
         mod macos;
         pub use unix::terminate;
         mod no_helper;
-        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
+        pub use no_helper::{
+            Helper, Wait, arm_helper, capture_remote, helper_wait, read_section, spawn_helper,
+            terminate_parent,
+        };
         pub use macos::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
@@ -44,7 +50,10 @@ cfg_select! {
         mod unsupported;
         pub use unix::terminate;
         mod no_helper;
-        pub use no_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
+        pub use no_helper::{
+            Helper, Wait, arm_helper, capture_remote, helper_wait, read_section, spawn_helper,
+            terminate_parent,
+        };
         pub use unsupported::{
             IMAGES_SUPPORTED, STACK_SUPPORTED, Thread, capture_stack, current_thread, images,
             prepare_stack,
@@ -56,13 +65,17 @@ cfg_select! {
         pub use windows::terminate;
         #[allow(unsafe_code)] // CreateProcessW, DuplicateHandle, events, waits
         mod windows_helper;
-        pub use windows_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
+        pub use windows_helper::{
+            Helper, Wait, arm_helper, helper_wait, read_section, spawn_helper, terminate_parent,
+        };
         #[allow(unsafe_code)] // Toolhelp module snapshot
         mod windows_images;
         pub use windows_images::{IMAGES_SUPPORTED, images};
-        #[allow(unsafe_code)] // SuspendThread, GetThreadContext, RtlVirtualUnwind
+        #[allow(unsafe_code)] // SuspendThread, GetThreadContext, RtlVirtualUnwind, dbghelp
         mod windows_stack;
-        pub use windows_stack::{STACK_SUPPORTED, Thread, capture_stack, current_thread, prepare_stack};
+        pub use windows_stack::{
+            STACK_SUPPORTED, Thread, capture_remote, capture_stack, current_thread, prepare_stack,
+        };
     }
     windows => {
         // arm64: the image list; the stack capture (an arm64 CONTEXT and its
@@ -74,10 +87,15 @@ cfg_select! {
         pub use windows::terminate;
         #[allow(unsafe_code)] // CreateProcessW, DuplicateHandle, events, waits
         mod windows_helper;
-        pub use windows_helper::{Helper, Wait, arm_helper, helper_wait, spawn_helper, terminate_parent};
+        pub use windows_helper::{
+            Helper, Wait, arm_helper, helper_wait, read_section, spawn_helper, terminate_parent,
+        };
         #[allow(unsafe_code)] // Toolhelp module snapshot
         mod windows_images;
         pub use windows_images::{IMAGES_SUPPORTED, images};
         pub use unsupported::{STACK_SUPPORTED, Thread, capture_stack, current_thread, prepare_stack};
+        #[allow(dead_code)] // only its remote-stack stub is used here
+        mod no_helper;
+        pub use no_helper::capture_remote;
     }
 }

@@ -187,7 +187,7 @@ pub fn arm_with(timeout: Duration, log: Option<&Path>, table: Table) -> bool {
     }
     // A started helper (#4589) ends a hang that this thread cannot see;
     // only one of them is armed, so the line is written once.
-    if helper::arm_started() {
+    if helper::arm_started(&table) {
         return true;
     }
     let thread = stack::current();

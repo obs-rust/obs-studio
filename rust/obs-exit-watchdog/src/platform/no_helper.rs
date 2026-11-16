@@ -27,8 +27,18 @@ pub fn spawn_helper(_program: &Path, _args: &[&OsStr], _env: &[(&str, &OsStr)]) 
 }
 
 /// Nothing to arm.
-pub fn arm_helper(_helper: &Helper) -> bool {
+pub fn arm_helper(_helper: &Helper, _table: &crate::images::Table) -> bool {
     false
+}
+
+/// No section.
+pub fn read_section(_section: u64) -> Option<Vec<u8>> {
+    None
+}
+
+/// No frames: no other process's stack is walked here.
+pub fn capture_remote(_process: u64, _thread: u64, _out: &mut [usize]) -> usize {
+    0
 }
 
 /// Nothing to wait on.

@@ -31,6 +31,16 @@ const EXTENDED_STARTUPINFO_PRESENT: u32 = 0x0008_0000;
 const PROC_THREAD_ATTRIBUTE_HANDLE_LIST: usize = 0x0002_0002;
 const SYNCHRONIZE: u32 = 0x0010_0000;
 const PROCESS_TERMINATE: u32 = 0x0000_0001;
+/// The helper walks the armed thread's stack: it reads OBS's memory
+/// and module list (dbghelp).
+const PROCESS_VM_READ: u32 = 0x0000_0010;
+const PROCESS_QUERY_INFORMATION: u32 = 0x0000_0400;
+const PAGE_READWRITE: u32 = 0x04;
+const FILE_MAP_WRITE: u32 = 0x0002;
+const FILE_MAP_READ: u32 = 0x0004;
+/// The section that OBS writes the table into at arm: room for a few
+/// thousand modules.
+const SECTION_SIZE: usize = 1 << 20;
 const INFINITE: u32 = 0xffff_ffff;
 const WAIT_OBJECT_0: u32 = 0;
 const WAIT_TIMEOUT: u32 = 0x102;
@@ -144,12 +154,30 @@ unsafe extern "system" {
         return_size: *mut usize,
     ) -> Bool;
     fn DeleteProcThreadAttributeList(list: *mut c_void);
+    fn GetCurrentThreadId() -> u32;
+    fn CreateFileMappingW(
+        file: Handle,
+        attributes: *const SecurityAttributes,
+        protect: u32,
+        size_high: u32,
+        size_low: u32,
+        name: *const u16,
+    ) -> Handle;
+    fn MapViewOfFile(
+        mapping: Handle,
+        access: u32,
+        offset_high: u32,
+        offset_low: u32,
+        size: usize,
+    ) -> *mut c_void;
+    fn UnmapViewOfFile(base: *const c_void) -> Bool;
 }
 
-/// The started helper: OBS's end of the arm event, kept as its value so
-/// the type is `Send`.
+/// The started helper: OBS's ends of the arm event and of the section
+/// (0: none), kept as values so the type is `Send`.
 pub struct Helper {
     event: usize,
+    section: usize,
 }
 
 /// What the helper's wait ended with.
@@ -228,7 +256,7 @@ pub fn spawn_helper(program: &Path, args: &[&OsStr], env: &[(&str, &OsStr)]) -> 
             GetCurrentProcess(),
             GetCurrentProcess(),
             &mut parent,
-            SYNCHRONIZE | PROCESS_TERMINATE,
+            SYNCHRONIZE | PROCESS_TERMINATE | PROCESS_VM_READ | PROCESS_QUERY_INFORMATION,
             1,
             0,
         )
@@ -243,11 +271,29 @@ pub fn spawn_helper(program: &Path, args: &[&OsStr], env: &[(&str, &OsStr)]) -> 
         return None;
     }
 
+    // The section for the table: without it the helper still ends a hang,
+    // its line names no library.
+    // SAFETY: a pagefile-backed, unnamed section, inheritable for now.
+    let section = unsafe {
+        CreateFileMappingW(
+            ptr::without_provenance_mut(usize::MAX), // INVALID_HANDLE_VALUE
+            &attributes,
+            PAGE_READWRITE,
+            0,
+            u32::try_from(SECTION_SIZE).unwrap_or(0),
+            ptr::null(),
+        )
+    };
+
     let parent_value = parent.addr().to_string();
     let event_value = event.addr().to_string();
+    let section_value = section.addr().to_string();
     let mut all_env: Vec<(&str, &OsStr)> = env.to_vec();
     all_env.push((crate::helper::ENV_PARENT, OsStr::new(&parent_value)));
     all_env.push((crate::helper::ENV_ARM, OsStr::new(&event_value)));
+    if !section.is_null() {
+        all_env.push((crate::helper::ENV_TABLE, OsStr::new(&section_value)));
+    }
     let block = environment_block(&all_env);
 
     let mut line = Vec::new();
@@ -260,20 +306,31 @@ pub fn spawn_helper(program: &Path, args: &[&OsStr], env: &[(&str, &OsStr)]) -> 
     let mut application: Vec<u16> = program.as_os_str().encode_wide().collect();
     application.push(0);
 
-    let started = create_process(&application, &mut line, &block, &[parent, event]);
+    let mut inherit = vec![parent, event];
+    if !section.is_null() {
+        inherit.push(section);
+    }
+    let started = create_process(&application, &mut line, &block, &inherit);
     // The helper has its own copies now, or none: OBS's children must not
     // inherit these.
     close(parent);
     if started {
-        // SAFETY: `event` is a valid handle owned by this process.
+        // SAFETY: valid handles owned by this process.
         unsafe {
             SetHandleInformation(event, HANDLE_FLAG_INHERIT, 0);
+            if !section.is_null() {
+                SetHandleInformation(section, HANDLE_FLAG_INHERIT, 0);
+            }
         }
         Some(Helper {
             event: event.addr(),
+            section: section.addr(),
         })
     } else {
         close(event);
+        if !section.is_null() {
+            close(section);
+        }
         None
     }
 }
@@ -356,10 +413,48 @@ fn close(h: Handle) {
     }
 }
 
-/// Sets the helper's arm event.
-pub fn arm_helper(helper: &Helper) -> bool {
+/// Writes `table` and the calling thread's id into the section (when it
+/// fits), then sets the helper's arm event.
+pub fn arm_helper(helper: &Helper, table: &crate::images::Table) -> bool {
+    if helper.section != 0 {
+        // SAFETY: plain call.
+        let thread = u64::from(unsafe { GetCurrentThreadId() });
+        let bytes = crate::helper::encode_arm(thread, table);
+        if bytes.len() <= SECTION_SIZE {
+            // SAFETY: the section is SECTION_SIZE bytes, mapped writable;
+            // the copy fits; the view is unmapped once.
+            unsafe {
+                let view = MapViewOfFile(
+                    ptr::without_provenance_mut(helper.section),
+                    FILE_MAP_WRITE,
+                    0,
+                    0,
+                    SECTION_SIZE,
+                );
+                if !view.is_null() {
+                    ptr::copy_nonoverlapping(bytes.as_ptr(), view.cast::<u8>(), bytes.len());
+                    UnmapViewOfFile(view);
+                }
+            }
+        }
+    }
     // SAFETY: the event handle stays open for the life of the process.
     unsafe { SetEvent(ptr::without_provenance_mut(helper.event)) != 0 }
+}
+
+/// In the helper: the section's bytes (`None` if it does not map).
+pub fn read_section(section: u64) -> Option<Vec<u8>> {
+    // SAFETY: an inherited section handle of SECTION_SIZE bytes, mapped
+    // read-only, copied out and unmapped once.
+    unsafe {
+        let view = MapViewOfFile(handle(section), FILE_MAP_READ, 0, 0, SECTION_SIZE);
+        if view.is_null() {
+            return None;
+        }
+        let bytes = std::slice::from_raw_parts(view.cast::<u8>(), SECTION_SIZE).to_vec();
+        UnmapViewOfFile(view);
+        Some(bytes)
+    }
 }
 
 /// In the helper: waits until OBS ends or arms it; once armed, waits on

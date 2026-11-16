@@ -43,6 +43,7 @@ struct Context {
 }
 
 const RSP: usize = 4;
+const RBP: usize = 5;
 
 const _: () = assert!(size_of::<Context>() == 1232);
 const _: () = assert!(std::mem::offset_of!(Context, rip) == 248);
@@ -170,4 +171,202 @@ unsafe fn walk(context: &mut Context, out: &mut [usize]) -> usize {
         }
     }
     n
+}
+
+/// In the helper (#4589): the return addresses of thread `thread_id` of
+/// the process `process` (a handle with `PROCESS_VM_READ` and
+/// `PROCESS_QUERY_INFORMATION`), innermost first; returns how many.
+///
+/// OBS is blocked in `ExitProcess`, so the walk runs from outside: the
+/// thread is suspended, its registers read, and its stack walked with
+/// dbghelp's `StackWalk64` over the process's memory, as
+/// `libobs/obs-win-crash-handler.c.h` does. dbghelp is loaded at run time;
+/// without it, or without the thread, no frames are given.
+pub fn capture_remote(process: u64, thread_id: u64, out: &mut [usize]) -> usize {
+    let process: *mut c_void =
+        std::ptr::without_provenance_mut(usize::try_from(process).unwrap_or(0));
+    let Ok(thread_id) = u32::try_from(thread_id) else {
+        return 0;
+    };
+    let Some(dbghelp) = DbgHelp::load() else {
+        return 0;
+    };
+    // SAFETY: opens a thread of the process by its id; null on failure.
+    let thread = unsafe {
+        OpenThread(
+            THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION,
+            0,
+            thread_id,
+        )
+    };
+    if thread.is_null() {
+        return 0;
+    }
+    let mut n = 0;
+    // SAFETY: a valid thread handle with suspend/resume rights.
+    if unsafe { SuspendThread(thread) } != u32::MAX {
+        // SAFETY: an all-zero CONTEXT is valid input once `flags` is set.
+        let mut context: Context = unsafe { std::mem::zeroed() };
+        context.flags = CONTEXT_FULL;
+        // SAFETY: the thread is suspended; the context is aligned and large
+        // enough; dbghelp gets the process and thread it walks.
+        unsafe {
+            if GetThreadContext(thread, &raw mut context) != 0 {
+                n = dbghelp.walk(process, thread, &mut context, out);
+            }
+            ResumeThread(thread);
+        }
+    }
+    // SAFETY: the handle opened above, closed once.
+    unsafe { CloseHandle(thread) };
+    n
+}
+
+const IMAGE_FILE_MACHINE_AMD64: u32 = 0x8664;
+const ADDR_MODE_FLAT: u32 = 3;
+
+#[repr(C)]
+#[derive(Default)]
+struct Address64 {
+    offset: u64,
+    segment: u16,
+    mode: u32,
+}
+
+/// `STACKFRAME64`, with room to spare for `KDHELP64` at its end.
+#[repr(C)]
+#[derive(Default)]
+struct StackFrame64 {
+    pc: Address64,
+    ret: Address64,
+    frame: Address64,
+    stack: Address64,
+    bstore: Address64,
+    function_table_entry: usize,
+    params: [u64; 4],
+    far: i32,
+    virtual_frame: i32,
+    reserved: [u64; 3],
+    kd_help: [u64; 32],
+}
+
+type SymInitializeW = unsafe extern "system" fn(*mut c_void, *const u16, i32) -> i32;
+type SymCleanup = unsafe extern "system" fn(*mut c_void) -> i32;
+type TableAccess = unsafe extern "system" fn(*mut c_void, u64) -> *mut c_void;
+type ModuleBase = unsafe extern "system" fn(*mut c_void, u64) -> u64;
+type StackWalk64 = unsafe extern "system" fn(
+    u32,
+    *mut c_void,
+    *mut c_void,
+    *mut StackFrame64,
+    *mut c_void,
+    *const c_void,
+    Option<TableAccess>,
+    Option<ModuleBase>,
+    *const c_void,
+) -> i32;
+
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn LoadLibraryW(name: *const u16) -> *mut c_void;
+    fn GetProcAddress(module: *mut c_void, name: *const u8) -> *mut c_void;
+}
+
+/// The dbghelp functions the walk needs.
+struct DbgHelp {
+    initialize: SymInitializeW,
+    cleanup: SymCleanup,
+    stack_walk: StackWalk64,
+    table_access: TableAccess,
+    module_base: ModuleBase,
+}
+
+impl DbgHelp {
+    fn load() -> Option<Self> {
+        let name: Vec<u16> = "dbghelp.dll".encode_utf16().chain([0]).collect();
+        // SAFETY: NUL-terminated name; the library stays loaded for the
+        // life of the helper.
+        let module = unsafe { LoadLibraryW(name.as_ptr()) };
+        if module.is_null() {
+            return None;
+        }
+        let get = |symbol: &[u8]| {
+            // SAFETY: `symbol` is NUL-terminated; a null result is checked.
+            let address = unsafe { GetProcAddress(module, symbol.as_ptr()) };
+            (!address.is_null()).then_some(address)
+        };
+        // SAFETY: each address is dbghelp's export of that name, whose
+        // signature the type spells out.
+        unsafe {
+            Some(Self {
+                initialize: std::mem::transmute::<*mut c_void, SymInitializeW>(get(
+                    b"SymInitializeW\0",
+                )?),
+                cleanup: std::mem::transmute::<*mut c_void, SymCleanup>(get(b"SymCleanup\0")?),
+                stack_walk: std::mem::transmute::<*mut c_void, StackWalk64>(get(b"StackWalk64\0")?),
+                table_access: std::mem::transmute::<*mut c_void, TableAccess>(get(
+                    b"SymFunctionTableAccess64\0",
+                )?),
+                module_base: std::mem::transmute::<*mut c_void, ModuleBase>(get(
+                    b"SymGetModuleBase64\0",
+                )?),
+            })
+        }
+    }
+
+    /// Walks the suspended `thread` of `process` from `context` into `out`.
+    ///
+    /// # Safety
+    /// `thread` must be suspended, `process` must allow reading its memory
+    /// and modules, and `context` must hold the thread's registers.
+    unsafe fn walk(
+        &self,
+        process: *mut c_void,
+        thread: *mut c_void,
+        context: &mut Context,
+        out: &mut [usize],
+    ) -> usize {
+        // SAFETY: the caller's handles; invade loads the process's modules.
+        if unsafe { (self.initialize)(process, std::ptr::null(), 1) } == 0 {
+            return 0;
+        }
+        let flat = |offset| Address64 {
+            offset,
+            segment: 0,
+            mode: ADDR_MODE_FLAT,
+        };
+        let mut frame = StackFrame64 {
+            pc: flat(context.rip),
+            frame: flat(context.integer[RBP]),
+            stack: flat(context.integer[RSP]),
+            ..StackFrame64::default()
+        };
+        let mut n = 0;
+        while n < out.len() {
+            // SAFETY: valid frame and context; the default memory reader
+            // reads `process`; dbghelp's own table and module callbacks.
+            let more = unsafe {
+                (self.stack_walk)(
+                    IMAGE_FILE_MACHINE_AMD64,
+                    process,
+                    thread,
+                    &raw mut frame,
+                    std::ptr::from_mut(context).cast(),
+                    std::ptr::null(),
+                    Some(self.table_access),
+                    Some(self.module_base),
+                    std::ptr::null(),
+                )
+            };
+            let pc = usize::try_from(frame.pc.offset).unwrap_or(0);
+            if more == 0 || pc == 0 {
+                break;
+            }
+            out[n] = pc;
+            n += 1;
+        }
+        // SAFETY: pairs the initialize above.
+        unsafe { (self.cleanup)(process) };
+        n
+    }
 }
