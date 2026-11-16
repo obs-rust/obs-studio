@@ -59,4 +59,5 @@ pub mod vec3;
 pub mod vec4;
 pub mod vertexbuffer_access;
 pub mod vertexbuffer_destroy;
+pub mod viewport;
 pub mod voltexture_metadata;

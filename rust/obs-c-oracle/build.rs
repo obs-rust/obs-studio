@@ -672,6 +672,8 @@ fn main() {
         "raster-state-entrypoints-fields",
         "graphics-perspective",
         "perspective-fields",
+        "graphics-viewport",
+        "graphics-viewport-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
