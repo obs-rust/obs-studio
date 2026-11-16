@@ -17,6 +17,7 @@ import re
 import io
 import json
 from pathlib import Path
+import os
 import subprocess
 import sys
 import tempfile
@@ -773,6 +774,103 @@ class TrustContract(unittest.TestCase):
             self.evaluate(head=self.commit(tree=self.git("write-tree"))),
             "trust-surface",
         )
+
+    def cli_plan(self, head):
+        # Exercise both production diff consumers with real git history. Only
+        # external identity/time/prooft reads are replaced by existing fixtures.
+        self.evaluate(head=head)
+        evaluate = subject.evaluate
+        output = io.StringIO()
+        with (
+            patch.object(subject, "github_reads", return_value=(self.graphql, self.rest)),
+            patch.object(subject, "evaluate", side_effect=lambda *a, **kw: evaluate(*a, **kw, proofs=self.proofs)),
+            patch.object(subject.time, "time", return_value=NOW),
+            patch.dict(os.environ, {"GITHUB_OUTPUT": ""}),
+            patch("sys.stdout", output),
+        ):
+            self.assertEqual(subject.main([
+                "--repo-dir", str(self.root), "--base", self.base,
+                "--head", head, "--number", "17", "--event", "pull_request",
+            ]), 0)
+        return json.loads(output.getvalue())
+
+    def advanced_master(self):
+        branch_point = self.base
+        self.git("read-tree", branch_point)
+        for path in ("ci/master-only.py", "plugins/mac/master.swift",
+                     "plugins/rtmp-services/data/services.json"):
+            self.write(path, "master-only\n")
+            self.git("add", path)
+        self.base = self.git("commit-tree", self.git("write-tree"), "-p", branch_point,
+                             input_text="master advances")
+        self.facts["data"]["repository"]["pullRequest"]["baseRefOid"] = self.base
+        self.git("read-tree", branch_point)
+        self.write("libobs/value.c.h", "PR-only\n")
+        self.git("add", "libobs/value.c.h")
+        self.tree = self.git("write-tree")
+        return branch_point
+
+    def attested_branch(self, parents):
+        records = [RecordFixture(gate, self.tree, parents, "lint", at=NOW - 30).sealed()
+                   for gate in subject.CLIENT_GATES]
+        return self.commit(records, parents=parents)
+
+    def test_merge_base_excludes_master_only_trust_and_scope_changes(self):
+        branch_point = self.advanced_master()
+        plan = self.cli_plan(self.attested_branch((branch_point,)))
+        self.assertTrue(plan["fast_path"], plan)
+        self.assertEqual(plan["reasons"], [])
+        self.assertFalse(plan["swift"], plan)
+        self.assertFalse(plan["data"], plan)
+
+    def test_merge_base_keeps_pr_owned_trust_edits(self):
+        branch_point = self.advanced_master()
+        self.write("ci/pr-owned.py", "PR-owned\n")
+        self.git("add", "ci/pr-owned.py")
+        self.tree = self.git("write-tree")
+        plan = self.cli_plan(self.attested_branch((branch_point,)))
+        self.assertFalse(plan["fast_path"], plan)
+        self.assertIn("trust-surface: ci/pr-owned.py", json.dumps(plan))
+        self.assertNotIn("ci/master-only.py", json.dumps(plan))
+        self.assertFalse(plan["jobs"]["build-project.yaml:rust-tests-linux"]["skip"])
+
+    def test_merge_base_after_merging_master_keeps_only_pr_changes(self):
+        branch_point = self.advanced_master()
+        branch_head = self.attested_branch((branch_point,))
+        self.git("read-tree", self.base)
+        self.git("add", "libobs/value.c.h")
+        self.tree = self.git("write-tree")
+        plan = self.cli_plan(self.attested_branch((branch_head, self.base)))
+        self.assertTrue(plan["fast_path"], plan)
+        self.assertFalse(plan["swift"], plan)
+        self.assertFalse(plan["data"], plan)
+
+    def test_merge_base_missing_history_runs_all_checks(self):
+        for history in ("unrelated", "shallow"):
+            with self.subTest(history=history):
+                head = self.complete_client()
+                if history == "unrelated":
+                    self.base = self.git("commit-tree", self.base_tree, input_text="unrelated base")
+                    self.facts["data"]["repository"]["pullRequest"]["baseRefOid"] = self.base
+                else:
+                    (self.root / ".git/shallow").write_text(head + "\n")
+                plan = self.cli_plan(head)
+                self.assert_runs(plan, "commit/policy/evidence")
+                self.assertFalse(plan["fast_path"], plan)
+
+    def test_merge_base_git_error_runs_all_checks(self):
+        head = self.complete_client()
+        run = subject.Git.run
+
+        def failing_diff(git, *args):
+            if args[0] == "diff":
+                raise subject.GitError("diff unavailable")
+            return run(git, *args)
+
+        with patch.object(subject.Git, "run", failing_diff):
+            plan = self.cli_plan(head)
+        self.assert_runs(plan, "diff unavailable")
+        self.assertFalse(plan["fast_path"], plan)
 
     def test_working_tree_policy_is_never_used(self):
         self.write("ci-attestations.yml", "version: 999\n")
