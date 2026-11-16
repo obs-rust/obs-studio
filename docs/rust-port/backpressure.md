@@ -18,12 +18,13 @@ None of those parts measured the one quantity that mattered: how fast the merge 
 | signal | source |
 |---|---|
 | capacity | PRs merged in the last 2 h |
-| in flight | open non-draft PRs with auto-merge armed (queued or waiting for checks) |
-| starvation | age of the oldest `queued` workflow run (20 min or more counts as starved) |
+| width | `max_entries_to_build` from the repository's active merge-queue ruleset; fallback 5 if unreadable |
+| in flight | union of queue entries and non-draft armed PRs, excluding only conclusively parked red PRs |
+| starvation | age of the oldest queued job in its current run attempt (20 min or more counts as starved); job-less runs do not count |
 
-The gate is **open** when `in_flight < max(1, capacity)` and runners are not starved. Otherwise it is **closed** (exit code 75). By Little's law this holds the queue wait at about 2 h, whatever the runner speed is.
+When `capacity > 0`, the limit is `max(capacity, 2 * width)`. After a stall (`capacity == 0`), the limit is `width`. The gate is **open** when `in_flight < limit` and runners are not starved; otherwise it is **closed** (exit code 75). Starvation always forces headroom to zero, whatever the limit. Unreadable PR or queue state still fails closed.
 
-The limit is never below 1, so after a stall one PR can always probe the queue. When that PR merges, capacity rises and admission opens again (additive increase). When merges stop, the 2 h window drains, the limit falls and admission closes (multiplicative decrease). It needs no tuning and no human to reopen it.
+The old one-PR-per-2-h ramp after a stall took about 2 h to recover, even though the queue tests `width` entries at once. Attested PRs reach the queue in about 66 s with no PR-side CI. Allowing one build group's width during a stall and at least two during normal operation keeps that capacity useful. The oldest queued job remains the catastrophic-failure guard from the 2026-11-09 collapse. Width is read once per invocation; an unreadable ruleset uses 5 without closing admission by itself. JSON verdicts report `width`, `width_source` (`ruleset:<id>` or `fallback`) and `limit_reason` (`normal`, `stall` or `starved`).
 
 ### Who obeys it
 

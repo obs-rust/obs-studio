@@ -58,6 +58,8 @@ class AdmissionTests(unittest.TestCase):
         self.suites = []
         self.final_head = HEAD
         self.jobs = {}
+        self.width = 5
+        self.rulesets = [{"id": 123, "enforcement": "active"}]
 
     def github(self, *args):
         self.calls.append(args)
@@ -72,6 +74,12 @@ class AdmissionTests(unittest.TestCase):
         raise AssertionError(args)
 
     def api_response(self, endpoint):
+        if "/rulesets?" in endpoint:
+            return [self.rulesets]
+        if "/rulesets/" in endpoint:
+            if self.bad == "ruleset":
+                raise bp.subprocess.CalledProcessError(1, "gh", stderr="ruleset unavailable")
+            return {"rules": [{"type": "merge_queue", "parameters": {"max_entries_to_build": self.width}}]}
         if "/jobs?" in endpoint:
             jobs = self.jobs[int(endpoint.split("/runs/")[1].split("/")[0])]
             return [{"total_count": len(jobs), "jobs": jobs}]
@@ -109,11 +117,11 @@ class AdmissionTests(unittest.TestCase):
         with patch.object(bp, "gh_json", side_effect=self.github), patch.object(bp, "now", return_value=CLOCK):
             return bp.measure()
 
-    def test_parked_red_releases_one_probe(self):
+    def test_parked_red_releases_queue_width(self):
         self.prs.append(pr(2))
         v = self.measure()
         self.assertEqual((v["state"], v["in_flight"], v["parked_red"], v["limit"], v["headroom"]),
-                         ("open", 0, 2, 1, 1))
+                         ("open", 0, 2, 5, 5))
 
     def test_green_and_unknown_conserved(self):
         for contexts, state in [([check("SUCCESS")], "SUCCESS"), ([], "FAILURE"),
@@ -169,7 +177,7 @@ class AdmissionTests(unittest.TestCase):
         self.queued = [{"databaseId": 7, "createdAt": "2026-11-10T10:00:00Z"}]
         self.jobs[7] = []
         v = self.measure()
-        self.assertEqual((v["state"], v["headroom"], v["oldest_queued_min"]), ("open", 1, 0))
+        self.assertEqual((v["state"], v["headroom"], v["oldest_queued_min"]), ("open", 5, 0))
         self.assertEqual(v["ignored_queued_run_ids"], [7])
 
     def test_fresh_rerun_attempt_is_not_starved_or_fetched(self):
@@ -234,10 +242,71 @@ class AdmissionTests(unittest.TestCase):
         self.assertIn("7", err.getvalue())
         self.assertIn("zero jobs", err.getvalue())
 
-    def test_throughput_limit_unchanged(self):
-        self.merged = [{"number": n} for n in range(1, 5)]
+    def test_width_aware_limits_and_admission_boundary(self):
         self.rollup = "SUCCESS"
-        self.assertEqual(self.measure()["headroom"], 3)
+        for merges, width, limit, reason in [(0, 5, 5, "stall"), (4, 5, 10, "normal"),
+                                             (14, 5, 14, "normal"), (0, 3, 3, "stall"),
+                                             (4, 3, 6, "normal")]:
+            with self.subTest(merges=merges, width=width):
+                self.merged = [{"number": n} for n in range(1, merges + 1)]
+                self.width = width
+                self.queue = list(range(1, limit))
+                v = self.measure()
+                self.assertEqual((v["width"], v["limit"], v["limit_reason"], v["width_source"]),
+                                 (width, limit, reason, "ruleset:123"))
+                self.assertEqual((v["state"], v["headroom"]), ("open", 1))
+                self.queue.append(limit)
+                v = self.measure()
+                self.assertEqual((v["state"], v["headroom"]), ("closed", 0))
+
+    def test_starvation_overrides_every_limit(self):
+        self.queued = [{"databaseId": 7, "createdAt": "2026-11-11T11:39:00Z"}]
+        self.jobs[7] = [{"id": 70, "status": "queued", "created_at": "2026-11-11T11:39:00Z"}]
+        for merges in [0, 4, 14]:
+            with self.subTest(merges=merges):
+                self.merged = [{"number": n} for n in range(1, merges + 1)]
+                v = self.measure()
+                self.assertEqual((v["state"], v["headroom"], v["limit_reason"]), ("closed", 0, "starved"))
+
+    def test_unreadable_ruleset_falls_back_in_json_verdict(self):
+        self.bad = "ruleset"
+        with patch.object(bp, "gh_json", side_effect=self.github), patch.object(bp, "now", return_value=CLOCK), \
+                patch("sys.argv", ["backpressure"]), contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(bp.main(), 0)
+        v = json.loads(out.getvalue())
+        self.assertEqual((v["width"], v["limit"], v["width_source"], v["limit_reason"]),
+                         (5, 5, "fallback", "stall"))
+
+    def test_invalid_or_missing_width_falls_back(self):
+        for width in [None, 0, -1, "5", True]:
+            with self.subTest(width=width):
+                self.width = width
+                v = self.measure()
+                self.assertEqual((v["width"], v["width_source"]), (5, "fallback"))
+        self.rulesets = []
+        self.assertEqual(self.measure()["width_source"], "fallback")
+
+    def test_width_is_read_once_per_invocation(self):
+        self.measure()
+        ruleset_calls = [c[1] for c in self.calls if c[0] == "api" and "/rulesets" in c[1]]
+        self.assertEqual(ruleset_calls, [f"repos/{bp.REPO}/rulesets?per_page=100", f"repos/{bp.REPO}/rulesets/123"])
+
+    def test_unreadable_pr_or_queue_still_fails_closed_with_unknown_width(self):
+        original = self.github
+        for unavailable in ["pr", "queue"]:
+            self.bad = "ruleset"
+            def github(*args):
+                if ((unavailable == "pr" and args[0] == "pr") or
+                        (unavailable == "queue" and args[0] == "graphql" and "mergeQueue" in args[-1])):
+                    raise bp.subprocess.CalledProcessError(1, "gh", stderr="state unavailable")
+                return original(*args)
+            with self.subTest(unavailable=unavailable), patch.object(bp, "gh_json", side_effect=github), \
+                    patch.object(bp, "now", return_value=CLOCK), patch("sys.argv", ["backpressure"]), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(bp.main(), bp.EXIT_CLOSED)
+            v = json.loads(out.getvalue())
+            self.assertEqual((v["state"], v["headroom"]), ("closed", 0))
+            self.assertIn("GitHub state unavailable", v["reasons"][0])
 
     def test_failed_and_incomplete_reads_close_main(self):
         for bad in ["queue", "checks", "runs", "error", "malformed", "open_cap", "queued_cap", "merged_cap"]:

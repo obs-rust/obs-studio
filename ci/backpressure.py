@@ -7,15 +7,16 @@
     uv run --no-project --script ci/backpressure.py            # JSON verdict, exit 0 open / 75 closed
     uv run --no-project --script ci/backpressure.py --check    # same, one line
 
-Nothing here is configured. The 2026-11-09 queue collapse (114 open PRs, no
+The 2026-11-09 queue collapse (114 open PRs, no
 merge for 5 h) came from fixed knobs: every worker, chaperone and pool opened
 and enqueued as fast as it could, while the real capacity, which is how fast
 the merge queue actually lands PRs, had dropped to zero because hosted runners
-stopped picking up jobs. A fixed cap is wrong both ways: too high when runners
-starve, too low when they are fast. So the limit is measured, not set:
+stopped picking up jobs. Starvation remains the catastrophic-failure guard;
+admission otherwise follows observed throughput and the queue's build width:
 
     capacity  = PRs merged in the last 2 h (the queue's observed throughput)
-    limit     = max(1, capacity)            # Little's law with a ~2 h target wait
+    width     = merge_queue.max_entries_to_build from the repository rulesets
+    limit     = max(capacity, 2 * width) if capacity > 0 else width
     in_flight = union of queue entries and non-draft armed PRs, minus parked red
 
 An armed PR is parked only when unqueued, its complete CURRENT HEAD checks
@@ -29,10 +30,12 @@ The gate is OPEN when in_flight < limit and runners are being picked up, and
 CLOSED otherwise. The starvation signal is the oldest queued job in the
 current run attempt: after 20 minutes, adding work only deepens the hole.
 Queued runs with no jobs cannot consume runners and do not signal starvation.
-With no merges at all, the limit is 1: one PR probes the queue, so the system
-recovers by itself when throughput returns (additive increase), and drops
-back the moment throughput stalls (multiplicative decrease, since the window
-empties).
+After a stall, the old one-PR-per-2-h ramp took about 2 h to recover, although
+the queue tests `width` entries at once. Attested PRs reach the queue in about
+66 s with no PR-side CI, so normal admission needs at least two build groups.
+A stall admits one build group's width. Read the width once per invocation;
+if its ruleset cannot be read, use 5 and record width_source="fallback" rather
+than closing admission merely because the width is unknown.
 
 Callers: `./push` warns when closed and refuses with PUSH_RESPECT_BACKPRESSURE=1,
 pool managers stop opening PRs and chaperones stop enqueueing while it reads
@@ -127,6 +130,29 @@ def queue_entries(repo: str) -> set[int]:
         if cursor is None:
             require(len(numbers) == expected, "incomplete merge queue")
             return numbers
+
+
+def queue_width(repo: str) -> tuple[int, str]:
+    """Read once per measurement; ruleset uncertainty alone must not close it."""
+    try:
+        pages = gh_json("api", f"repos/{repo}/rulesets?per_page=100", "--paginate", "--slurp")
+        require(isinstance(pages, list) and bool(pages), "missing ruleset pages")
+        for page in pages:
+            require(isinstance(page, list), "malformed ruleset page")
+            for ruleset in page:
+                if ruleset["enforcement"] != "active":
+                    continue
+                ruleset_id = ruleset["id"]
+                require(type(ruleset_id) is int and ruleset_id > 0, "malformed ruleset identity")
+                details = gh_json("api", f"repos/{repo}/rulesets/{ruleset_id}")
+                for rule in details["rules"]:
+                    if rule["type"] == "merge_queue":
+                        width = rule["parameters"]["max_entries_to_build"]
+                        require(type(width) is int and width > 0, "invalid merge queue width")
+                        return width, f"ruleset:{ruleset_id}"
+    except (subprocess.CalledProcessError, OSError, ValueError, KeyError, TypeError, IndexError, AttributeError):
+        pass
+    return 5, "fallback"
 
 
 def terminal_red(repo: str, pr: dict) -> bool:
@@ -321,18 +347,23 @@ def measure(repo: str = REPO) -> dict:
     counted = queued | (armed - parked)
     starved_min, ignored = queued_starvation(repo, queued_runs)
     capacity = len(merged)
-    limit = max(1, capacity)
+    width, width_source = queue_width(repo)
+    limit = max(capacity, 2 * width) if capacity > 0 else width
     in_flight = len(counted)
     starved = starved_min >= STARVED_MIN
     reasons = []
     if in_flight >= limit:
-        reasons.append(f"{in_flight} PRs in flight >= {limit} merged in the last {WINDOW_H} h")
+        reasons.append(f"{in_flight} PRs in flight >= limit {limit} "
+                       f"({capacity} merged in the last {WINDOW_H} h, width {width})")
     if starved:
         reasons.append(f"oldest queued job has waited {starved_min} min for a runner")
     return {
         "state": "closed" if reasons else "open",
         "reasons": reasons,
         "limit": limit,
+        "width": width,
+        "width_source": width_source,
+        "limit_reason": "starved" if starved else "normal" if capacity > 0 else "stall",
         "in_flight": in_flight,
         "counted": in_flight,
         "parked_red": len(parked),
