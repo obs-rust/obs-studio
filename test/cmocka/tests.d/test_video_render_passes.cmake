@@ -27,6 +27,9 @@ foreach(_variant IN LISTS _video_passes_variants)
   target_include_directories(${_target} PRIVATE "${_include_dir}" ${CMOCKA_INCLUDE_DIR})
   target_link_libraries(${_target} PRIVATE ${CMOCKA_LIBRARIES})
   if(_variant STREQUAL rust)
+    # Deferred Rust-static link support includes private libobs headers, which
+    # consume the generated obsconfig.h in the full Tier 2 build.
+    target_include_directories(${_target} PRIVATE "${CMAKE_BINARY_DIR}/config")
     if(TARGET libobs_rust-static)
       target_link_libraries(${_target} PRIVATE libobs_rust-static)
     endif()
