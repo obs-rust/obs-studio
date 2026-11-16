@@ -20,6 +20,7 @@ mod extent_parity;
 mod from_source;
 mod from_source_parity;
 mod item_audio_actions;
+mod item_set_visibility;
 mod item_audio_actions_parity;
 mod item_id;
 mod item_id_parity;

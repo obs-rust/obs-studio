@@ -51,6 +51,7 @@ pub mod group_queries;
 pub mod group_resize_defer;
 pub mod group_transform;
 pub mod item_audio_actions;
+pub mod item_set_visibility;
 pub mod item_id;
 pub mod item_names;
 pub mod item_order;
