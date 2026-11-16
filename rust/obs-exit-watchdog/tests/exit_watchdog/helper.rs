@@ -14,7 +14,10 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use obs_exit_watchdog::HelperArgs;
-use obs_exit_watchdog::helper::{ENV_ARM, ENV_LOG, ENV_PARENT, ENV_TIMEOUT_MS};
+use obs_exit_watchdog::helper::{
+    ENV_ARM, ENV_LOG, ENV_PARENT, ENV_TABLE, ENV_TIMEOUT_MS, decode_arm, encode_arm,
+};
+use obs_exit_watchdog::images::{Entry, Owner, Table};
 
 fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<OsString> + 'a {
     move |key| {
@@ -32,6 +35,7 @@ fn args_read_every_value() {
         (ENV_ARM, "88"),
         (ENV_TIMEOUT_MS, "10000"),
         (ENV_LOG, "C:/obs/logs/a.txt"),
+        (ENV_TABLE, "77"),
     ]));
     assert_eq!(
         args,
@@ -40,6 +44,7 @@ fn args_read_every_value() {
             arm: 88,
             timeout: Duration::from_secs(10),
             log: Some(PathBuf::from("C:/obs/logs/a.txt")),
+            table: Some(77),
         })
     );
 }
@@ -94,6 +99,80 @@ fn args_reject_bad_numbers_and_null_handles() {
     }
 }
 
+/// The section is optional: without it, or with a bad value, the helper
+/// still ends a hang and writes the line without a library.
+#[test]
+fn args_without_a_good_table_have_none() {
+    let base = [(ENV_PARENT, "1"), (ENV_ARM, "2"), (ENV_TIMEOUT_MS, "5")];
+    assert_eq!(HelperArgs::read(env(&base)).map(|a| a.table), Some(None));
+    for bad in ["", "0", "x", "-3"] {
+        let mut pairs = base.to_vec();
+        pairs.push((ENV_TABLE, bad));
+        assert_eq!(
+            HelperArgs::read(env(&pairs)).map(|a| a.table),
+            Some(None),
+            "{bad:?}"
+        );
+    }
+}
+
+fn entry(start: usize, file: &str, owner: Owner) -> Entry {
+    Entry {
+        start,
+        end: start + 0x1000,
+        file: file.to_string(),
+        owner,
+    }
+}
+
+/// What OBS writes at arm reads back the same: the thread and every entry
+/// with its owner.
+#[test]
+fn the_armed_thread_and_the_table_read_back() {
+    let table = Table::from_entries(vec![
+        entry(0x1000, "obs64.exe", Owner::Obs),
+        entry(
+            0x5000,
+            "libremidi.dll",
+            Owner::Module("advanced-scene-switcher.dll".to_string()),
+        ),
+        entry(
+            0x9000,
+            "obs-avip.dll",
+            Owner::Module("obs-avip.dll".to_string()),
+        ),
+        entry(0xd000, "pipewire.dll", Owner::PostLoad),
+        entry(0x11000, "nss3.dll", Owner::AfterStartup),
+        entry(0x15000, "ünïcode.dll", Owner::Obs),
+    ]);
+    let bytes = encode_arm(4242, &table);
+    assert_eq!(decode_arm(&bytes), Some((4242, table)));
+    let empty = encode_arm(1, &Table::default());
+    assert_eq!(decode_arm(&empty), Some((1, Table::default())));
+}
+
+/// A cut or damaged section reads as nothing (the line then names no
+/// library), never as a wrong table.
+#[test]
+fn a_cut_or_damaged_section_reads_as_nothing() {
+    let table = Table::from_entries(vec![
+        entry(0x1000, "obs64.exe", Owner::Obs),
+        entry(0x5000, "a.dll", Owner::Module("a.dll".to_string())),
+    ]);
+    let bytes = encode_arm(7, &table);
+    for len in 0..bytes.len() {
+        assert_eq!(decode_arm(&bytes[..len]), None, "cut at {len}");
+    }
+    assert_eq!(decode_arm(&[0u8; 64]), None, "a section nobody wrote");
+    let mut damaged = bytes.clone();
+    damaged[0] ^= 0xff;
+    assert_eq!(decode_arm(&damaged), None, "a damaged header");
+    // Trailing bytes (the rest of a larger section) are ignored.
+    let mut longer = bytes.clone();
+    longer.extend([0u8; 32]);
+    assert_eq!(decode_arm(&longer), Some((7, table)));
+}
+
 /// The libtest selector of [`helper_process_entry`].
 #[cfg(windows)]
 pub(crate) fn entry_selector() -> &'static str {
@@ -123,7 +202,8 @@ mod windows {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
 
-    use obs_exit_watchdog::{EXIT_CODE, arm, line, start_with};
+    use obs_exit_watchdog::images::{Entry, Owner, Table, current, file_name};
+    use obs_exit_watchdog::{EXIT_CODE, arm, arm_with, line, start_with};
 
     use super::super::{LOG, block, count_lines, in_child, log_path, run_child, selector};
 
@@ -193,6 +273,57 @@ mod windows {
         assert!(elapsed >= TIMEOUT, "{elapsed:?}");
         let text = std::fs::read_to_string(&log).unwrap();
         assert_eq!(text, format!("earlier line\n{}", line(TIMEOUT)));
+    }
+
+    /// The helper names the DLL a hang inside `ExitProcess` waits in, and
+    /// the module that loaded it (part 4): the child's table marks this
+    /// test executable, where `on_tls` blocks, as loaded by `blocker.dll`.
+    /// The child calls `exit` on the thread that armed the helper, as OBS's
+    /// main thread does.
+    #[test]
+    fn the_helpers_line_names_the_dll() {
+        let test = selector(concat!(module_path!(), "::the_helpers_line_names_the_dll"));
+        let exe_path = std::env::current_exe().unwrap();
+        let exe = file_name(exe_path.to_str().unwrap()).to_string();
+        if in_child(test) {
+            let log = PathBuf::from(std::env::var_os(LOG).unwrap());
+            assert!(start_test_helper(&log), "the helper did not start");
+            let table = Table::from_entries(
+                current()
+                    .into_iter()
+                    .map(|i| Entry {
+                        owner: if file_name(&i.path) == exe {
+                            Owner::Module("blocker.dll".to_string())
+                        } else {
+                            Owner::Obs
+                        },
+                        file: file_name(&i.path).to_string(),
+                        start: i.start,
+                        end: i.end,
+                    })
+                    .collect(),
+            );
+            assert!(arm_with(TIMEOUT, Some(&log), table));
+            HANG_ON_DETACH.store(true, Ordering::SeqCst);
+            std::process::exit(0);
+        }
+        let log = log_path("helper-named");
+        std::fs::write(&log, "").unwrap();
+        let (out, elapsed) = run_child(test, &log);
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(out.status.code(), Some(EXIT_CODE), "{stderr}");
+        assert!(elapsed >= TIMEOUT, "{elapsed:?}");
+        let text = std::fs::read_to_string(&log).unwrap();
+        assert_eq!(count_lines(&text), 1, "{text}");
+        if cfg!(target_arch = "x86_64") {
+            assert!(
+                text.contains(&format!("is blocking in {exe} (loaded by blocker.dll); ")),
+                "{text}"
+            );
+        } else {
+            // arm64: no stack capture yet, the line names no library.
+            assert_eq!(text, line(TIMEOUT));
+        }
     }
 
     #[test]
