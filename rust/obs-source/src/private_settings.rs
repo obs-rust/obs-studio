@@ -14,6 +14,14 @@ pub fn get<T: Copy + Default>(
     addref: impl FnOnce(T),
     log: impl FnOnce(&'static CStr),
 ) -> T {
-    let _ = (source, addref, log);
-    todo!("obs_source_get_private_settings")
+    match source {
+        Some(private_settings) => {
+            addref(private_settings);
+            private_settings
+        }
+        None => {
+            log(NAME);
+            T::default()
+        }
+    }
 }
