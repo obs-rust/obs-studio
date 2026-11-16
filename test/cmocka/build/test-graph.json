@@ -17853,6 +17853,12 @@
         "test/cmocka/test_video_stop_requested.c",
         "libobs/obs-video-stop-requested-reference.c.h"
       ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
       "includes": [
         "libobs",
         "deps/libcaption"
@@ -17877,6 +17883,12 @@
     "test_video_stop_requested_rust": {
       "sources": [
         "test/cmocka/test_video_stop_requested.c"
+      ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
       ],
       "includes": [
         "libobs",
