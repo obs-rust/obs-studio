@@ -1162,7 +1162,7 @@ static obs_properties_t *ss_properties(void *data)
 {
 	obs_properties_t *ppts = obs_properties_create();
 	struct slideshow *ss = data;
-	struct obs_video_info ovi;
+	struct obs_video_info ovi = {0};
 	struct dstr path = {0};
 	obs_property_t *p;
 	int cx;
