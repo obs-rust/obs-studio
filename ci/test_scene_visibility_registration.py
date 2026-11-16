@@ -34,6 +34,8 @@ class SceneVisibilityRegistration(unittest.TestCase):
             "cmake_minimum_required(VERSION 3.28)\n"
             "project(visibility_registration C)\nenable_testing()\n"
             "set(CMAKE_BUILD_TYPE RelWithDebInfo)\n"
+            'set(OBS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/rundir")\n'
+            'file(MAKE_DIRECTORY "${OBS_OUTPUT_DIR}/${CMAKE_BUILD_TYPE}")\n'
             "add_library(OBS::libobs INTERFACE IMPORTED)\n"
             "add_library(OBS::w32-pthreads INTERFACE IMPORTED)\n"
             "add_custom_target(cmocka-tests)\n"
@@ -49,11 +51,11 @@ class SceneVisibilityRegistration(unittest.TestCase):
         self.assertEqual(listed.returncode, 0, listed.stdout + listed.stderr)
         return build, json.loads(listed.stdout)["tests"]
 
-    def test_linux_fixture_has_an_existing_target_working_directory(self):
+    def test_linux_fixture_uses_the_runtime_directory_for_shader_data(self):
         build, tests = self.configure("LINUX")
         self.assertEqual([test["name"] for test in tests], [NAME])
         properties = {entry["name"]: entry["value"] for entry in tests[0]["properties"]}
-        self.assertEqual(Path(properties["WORKING_DIRECTORY"]), build)
+        self.assertEqual(Path(properties["WORKING_DIRECTORY"]), build / "rundir/RelWithDebInfo")
         self.assertTrue(Path(properties["WORKING_DIRECTORY"]).is_dir())
         self.assertIn(NAME, (build / "dependencies.txt").read_text().split(";"))
 
