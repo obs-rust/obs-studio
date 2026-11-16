@@ -40,21 +40,27 @@ class AptCacheTest(unittest.TestCase):
             self.assertIn("hashFiles('rust/tools/linux-validate/apt-packages.txt')", j, name)
 
     def test_tier2_archive_directories_are_job_local(self):
-        # Matrix jobs on self-hosted runners share a Docker daemon. Their host
-        # archive directories must not share apt's lock or cache extraction.
+        # Hosted jobs retain separate archives and cache extraction. The build
+        # may select Dell's shared apt-locked archives, skipping Actions restore.
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             with self.subTest(job=name):
                 j = job(name)
                 self.assertNotIn("/var/cache/apt/archives", j)
-                self.assertIn('mkdir -p "$RUNNER_TEMP/apt-archives"', j)
-                self.assertIn('chmod a+rwx "$RUNNER_TEMP/apt-archives"', j)
-                self.assertLess(j.index('mkdir -p "$RUNNER_TEMP/apt-archives"'),
+                if name.endswith("-build"):
+                    self.assertIn('[ -n "$dir" ] || dir="$RUNNER_TEMP/apt-archives"', j)
+                    self.assertIn("if: steps.pcache.outputs.apt == ''", j)
+                    directory = "$dir"
+                else:
+                    directory = "$RUNNER_TEMP/apt-archives"
+                self.assertIn(f'mkdir -p "{directory}"', j)
+                self.assertIn(f'chmod a+rwx "{directory}"', j)
+                self.assertLess(j.index(f'mkdir -p "{directory}"'),
                                 j.index("id: apt-cache"))
                 paths = re.findall(r"^\s+path: (.+apt[^\n]*)$", j, re.M)
                 self.assertEqual(paths, ["${{ runner.temp }}/apt-archives"] *
                                  (2 if name.endswith("-build") else 1))
         self.assertIn('--archives "$RUNNER_TEMP/apt-archives"', job("rust-linux-tier2"))
-        self.assertIn('-o "Dir::Cache::archives=$RUNNER_TEMP/apt-archives"',
+        self.assertIn('-o "Dir::Cache::archives=$TIER2_APT_ARCHIVES"',
                       job("rust-linux-tier2-build"))
 
     def test_build_job_dpkg_skips_fsync_and_docs(self):

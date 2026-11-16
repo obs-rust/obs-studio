@@ -37,7 +37,9 @@ class Tier2BuildSetupTest(unittest.TestCase):
     def test_hosted_apt_path_and_cache_gates_are_preserved(self):
         job = build_job()
         keep = step(job, "Keep apt Downloads 📦")
-        self.assertIn("steps.pcache.outputs.apt || format('{0}/apt-archives', runner.temp)", keep)
+        self.assertIn('dir="${{ steps.pcache.outputs.apt }}"', keep)
+        self.assertIn('[ -n "$dir" ] || dir="$RUNNER_TEMP/apt-archives"', keep)
+        self.assertNotIn("runner.temp", keep)
         self.assertIn('echo "TIER2_APT_ARCHIVES=$dir" >> "$GITHUB_ENV"', keep)
         self.assertIn('Dir::Cache::archives=$TIER2_APT_ARCHIVES', step(job, "Install Tier 2 Packages 📦"))
         restore = re.search(r"- uses: ./\.github/actions/cache\n        id: apt-cache.*?(?=\n      - |\Z)", job, re.S)[0]
