@@ -15,7 +15,7 @@
 //! `libobs/obs-windows-keys.c.h`.
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
-//! [`owned_translations`],
+//! [`owned_translations`], [`background_enum`],
 //! [`press`], [`pair`], [`save_load`], [`binding_press`], [`nix_hotkey_state`],
 //! [`portal_shortcut_ids`], [`portal_shortcut_sets`],
 //! [`portal_shortcut_status`], [`nix_wayland_key_names`],
@@ -36,6 +36,7 @@ use obs_c_oracle as _; // blog
 use obs_util as _; // base log handler
 
 pub mod background_app_id;
+pub mod background_enum;
 pub mod background_error;
 pub mod background_query;
 pub mod binding_getters;

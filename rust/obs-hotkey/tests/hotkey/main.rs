@@ -2,6 +2,7 @@
 
 mod background_app_id;
 mod background_app_id_parity;
+mod background_enum;
 mod background_error;
 mod background_error_parity;
 mod background_query;
