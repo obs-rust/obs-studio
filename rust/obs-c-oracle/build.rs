@@ -657,6 +657,7 @@ fn main() {
         "texture-planar-creators",
         "texture-metadata",
         "texture-cube-access",
+        "texture-file-data2",
         "state-depth-entrypoints",
         "timer-dispatch",
         "timer-range-dispatch",
