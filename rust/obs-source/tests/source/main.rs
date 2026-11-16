@@ -67,6 +67,8 @@ mod media_admission_parity;
 mod monitoring;
 mod monitoring_parity;
 mod own_clock_drift;
+mod private_settings;
+mod private_settings_parity;
 mod ptm_gate;
 mod ptm_gate_parity;
 mod push_delay;

@@ -215,6 +215,7 @@ pub mod info_lookup;
 pub mod media_admission;
 pub mod monitoring;
 pub mod own_clock_drift;
+pub mod private_settings;
 pub mod ptm_gate;
 pub mod push_delay;
 pub mod push_queries;
