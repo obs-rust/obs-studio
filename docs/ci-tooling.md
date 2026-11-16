@@ -559,6 +559,17 @@ missing gates and edits to trust surfaces (`push`, `ci/**`, `.github/**`,
 `local-gate.toml`, `ci-attestations.yml`, manifests/toolchain/config) run real CI.
 Legacy-only and partial legacy evidence never earns complete admission.
 
+Trust-surface rejection and the admission fallback scope selector use the same
+merge-base-relative PR path set (`git diff BASE...HEAD`, with renames disabled).
+Changes made only on master after the branch point, including changes brought
+into the PR by merging master, are not attributed to the PR. The PR's own trust
+edits still force fallback. Missing merge bases (including shallow or unrelated
+history) and diff errors run real checks; an unknown scope selects every
+admission check. This changes only path attribution: policy and verifier pins
+still come from the exact immutable BASE, and evidence still binds HEAD. The
+merge queue always builds and tests the actual combined result with its selected
+heavy lanes, so interactions with newer master changes remain covered there.
+
 The complete client contract includes full self-tests, Flatpak and Qt XML
 validators, general lint, Linux x64 host unit/differential tests, and clippy AND
 Dylint for exactly these targets (all through soldr):
