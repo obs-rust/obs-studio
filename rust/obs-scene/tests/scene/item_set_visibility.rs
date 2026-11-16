@@ -15,7 +15,15 @@ struct Item {
 
 impl Item {
     fn new(refs: i64, visible: bool, user_visible: bool, queued: usize) -> Self {
-        Self { refs, visible, user_visible, queued, child: refs > 0, locked: false, trace: Vec::new() }
+        Self {
+            refs,
+            visible,
+            user_visible,
+            queued,
+            child: refs > 0,
+            locked: false,
+            trace: Vec::new(),
+        }
     }
 
     fn record(&mut self, event: &'static str) {
@@ -35,15 +43,43 @@ impl Item {
 }
 
 impl VisibilityItem for Item {
-    fn lock(&mut self) { assert!(!self.locked); self.locked = true; self.trace.push("lock"); }
-    fn unlock(&mut self) { self.record("unlock"); self.locked = false; }
-    fn clear_actions(&mut self) { self.record("clear"); self.queued = 0; }
-    fn has_active_refs(&mut self) -> bool { self.record("refs"); self.refs > 0 }
-    fn add_active_child(&mut self) { self.record("add"); self.child = true; }
-    fn remove_active_child(&mut self) { self.record("remove"); self.child = false; }
-    fn set_active_refs(&mut self, visible: bool) { self.record("set_refs"); self.refs = i64::from(visible); }
-    fn set_visible(&mut self, visible: bool) { self.record("visible"); self.visible = visible; }
-    fn set_user_visible(&mut self, visible: bool) { self.record("user_visible"); self.user_visible = visible; }
+    fn lock(&mut self) {
+        assert!(!self.locked);
+        self.locked = true;
+        self.trace.push("lock");
+    }
+    fn unlock(&mut self) {
+        self.record("unlock");
+        self.locked = false;
+    }
+    fn clear_actions(&mut self) {
+        self.record("clear");
+        self.queued = 0;
+    }
+    fn active_refs(&mut self) -> i128 {
+        self.record("refs");
+        i128::from(self.refs)
+    }
+    fn add_active_child(&mut self) {
+        self.record("add");
+        self.child = true;
+    }
+    fn remove_active_child(&mut self) {
+        self.record("remove");
+        self.child = false;
+    }
+    fn set_active_refs(&mut self, visible: bool) {
+        self.record("set_refs");
+        self.refs = i64::from(visible);
+    }
+    fn set_visible(&mut self, visible: bool) {
+        self.record("visible");
+        self.visible = visible;
+    }
+    fn set_user_visible(&mut self, visible: bool) {
+        self.record("user_visible");
+        self.user_visible = visible;
+    }
 }
 
 #[test]
@@ -67,7 +103,19 @@ fn test_scene_item_set_visibility_remove_pending_audio() {
     assert!(item.child);
     set_visibility(&mut item, false);
     item.check(false);
-    assert_eq!(item.trace, ["lock", "clear", "refs", "remove", "set_refs", "visible", "user_visible", "unlock"]);
+    assert_eq!(
+        item.trace,
+        [
+            "lock",
+            "clear",
+            "refs",
+            "remove",
+            "set_refs",
+            "visible",
+            "user_visible",
+            "unlock"
+        ]
+    );
 }
 
 #[test]
@@ -92,8 +140,12 @@ fn normalization_and_call_order_for_all_prior_reference_states() {
             set_visibility(&mut item, visible);
             item.check(visible);
             let mut expected = vec!["lock", "clear", "refs"];
-            if refs > 0 && !visible { expected.push("remove"); }
-            if refs <= 0 && visible { expected.push("add"); }
+            if refs > 0 && !visible {
+                expected.push("remove");
+            }
+            if refs <= 0 && visible {
+                expected.push("add");
+            }
             expected.extend(["set_refs", "visible", "user_visible", "unlock"]);
             assert_eq!(item.trace, expected);
         }

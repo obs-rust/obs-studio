@@ -1,0 +1,2 @@
+# Private scene reconciliation, formerly the static set_visibility helper.
+obs_sceneitem_set_visibility
