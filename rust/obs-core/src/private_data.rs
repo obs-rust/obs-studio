@@ -10,11 +10,18 @@ pub trait Host {
 }
 
 /// Replace user values in the existing object; defaults and identity survive.
-pub fn set<H: Host>(_host: &mut H, _settings: Option<H::Data>) {
-    todo!()
+pub fn set<H: Host>(host: &mut H, settings: Option<H::Data>) {
+    let data = host.private_data();
+    host.clear(data);
+    if let Some(settings) = settings {
+        let data = host.private_data();
+        host.apply(data, settings);
+    }
 }
 
 /// Return the existing object with exactly one additional reference.
-pub fn get<H: Host>(_host: &mut H) -> H::Data {
-    todo!()
+pub fn get<H: Host>(host: &mut H) -> H::Data {
+    let data = host.private_data();
+    host.addref(data);
+    data
 }
