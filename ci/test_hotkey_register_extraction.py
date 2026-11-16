@@ -4,6 +4,9 @@
 import json
 from pathlib import Path
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 
@@ -49,6 +52,48 @@ class HotkeyRegistrationExtractionTest(unittest.TestCase):
                 for group in groups:
                     if ORIGINAL not in group:
                         self.assertEqual(len(group), 1, group)
+
+    @unittest.skipUnless(
+        all(shutil.which(tool) for tool in ("cmake", "ninja", "cc")),
+        "requires CMake, Ninja and a C compiler",
+    )
+    def test_portal_adapter_is_linked_once_with_direct_or_grouped_sources(self):
+        for mode in ("missing", "direct", "grouped"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = root / "test/cmocka"
+                fixture.mkdir(parents=True)
+                (root / "pch.h").write_text("/* fixture PCH */\n")
+                (fixture / "main.c").write_text(
+                    "int support(void); int main(void) { return support() != 42; }\n"
+                )
+                adapter = "hotkey-background-error-link-support.c"
+                (fixture / adapter).write_text("int support(void) { return 42; }\n")
+                (root / "CMakeLists.txt").write_text(
+                    "cmake_minimum_required(VERSION 3.25)\n"
+                    "project(portal_link_support C)\nadd_subdirectory(test/cmocka)\n"
+                )
+                graph_sources = ["test/cmocka/main.c", f"test/cmocka/{adapter}"]
+                graph = {"targets": {"test_portal_shortcuts": {
+                    "pch": "pch.h",
+                    "unity_groups": {"main": graph_sources[:1], "adapter": graph_sources[1:]},
+                }}}
+                cmake = f"add_executable(test_portal_shortcuts main.c {' ' if mode == 'missing' else adapter})\n"
+                if mode == "grouped":
+                    cmake += (
+                        f'include("{ROOT.as_posix()}/test/cmocka/native-test-graph.cmake")\n'
+                        f"set(graph [=[{json.dumps(graph)}]=])\n"
+                        '_obs_test_graph_groups(test_portal_shortcuts "${graph}" '
+                        f'"${{PROJECT_SOURCE_DIR}}" "{";".join(graph_sources)}")\n'
+                    )
+                cmake += f'include("{ROOT.as_posix()}/test/cmocka/tests.d/hotkey_background_error_link_support.cmake")\n'
+                (fixture / "CMakeLists.txt").write_text(cmake)
+                for command in (
+                    ["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja"],
+                    ["cmake", "--build", str(root / "build"), "--parallel", "2"],
+                ):
+                    result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
