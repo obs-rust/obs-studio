@@ -31,6 +31,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
+use crate::images::Table;
 use crate::platform;
 
 /// The helper's file name, without the host's executable suffix. It ships
@@ -47,8 +48,26 @@ pub const ENV_TIMEOUT_MS: &str = "OBS_EXIT_WATCHDOG_TIMEOUT_MS";
 /// no log file).
 pub const ENV_LOG: &str = "OBS_EXIT_WATCHDOG_LOG";
 
+/// The helper's environment: the section that [`crate::arm`] writes the
+/// table and the armed thread into, as a decimal handle (absent: the line
+/// names no library).
+pub const ENV_TABLE: &str = "OBS_EXIT_WATCHDOG_TABLE";
+
 /// The exit code of a helper whose environment is not complete.
 pub const BAD_ARGS: i32 = 2;
+
+/// What OBS writes into the section when it arms the helper: the id of the
+/// armed thread (the one that then runs `exit()`) and the table.
+pub fn encode_arm(thread: u64, table: &Table) -> Vec<u8> {
+    let _ = (thread, table);
+    todo!("#4589 part 4")
+}
+
+/// Reads what [`encode_arm`] wrote; `None` when it is not complete.
+pub fn decode_arm(bytes: &[u8]) -> Option<(u64, Table)> {
+    let _ = bytes;
+    todo!("#4589 part 4")
+}
 
 /// The started helper of this process, until [`crate::arm`] arms it.
 static HELPER: Mutex<Option<platform::Helper>> = Mutex::new(None);
@@ -104,6 +123,8 @@ pub struct HelperArgs {
     pub timeout: Duration,
     /// The log file to append the line to.
     pub log: Option<PathBuf>,
+    /// The section with the armed thread and the table.
+    pub table: Option<u64>,
 }
 
 impl HelperArgs {
@@ -127,6 +148,7 @@ impl HelperArgs {
             arm,
             timeout,
             log,
+            table: None,
         })
     }
 }
