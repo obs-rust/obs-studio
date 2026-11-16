@@ -1016,6 +1016,9 @@ static void scene_video_render(void *data, gs_effect_t *effect)
 static obs_sceneitem_t *obs_scene_add_internal(obs_scene_t *scene, obs_source_t *source, obs_sceneitem_t *insert_after,
 					       int64_t id);
 
+/* Private immediate reconciliation; definition is a separate unity member. */
+static void set_visibility(struct obs_scene_item *item, bool vis);
+
 static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 {
 	const char *name = obs_data_get_string(item_data, "name");
