@@ -217,6 +217,7 @@
   "graphics/vec4.h",
   "build/libobs.core+.h.c",
   "build/libobs.core-canvas-move+.h.c",
+  "build/libobs.core-hotkey-background-enum+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-output-weak-lifetime+.h.c",
   "build/libobs.core-scene-lookup+.h.c",
@@ -231,5 +232,6 @@
   "build/libobs.graphics-texture-creators-fields+.h.c",
   "build/libobs.graphics-vertexbuffer-create+.h.c",
   "build/libobs.image-decode-adapter+.h.c",
-  "build/libobs.media+.h.c"
+  "build/libobs.media+.h.c",
+  "build/libobs.source-private-settings+.h.c"
 ]

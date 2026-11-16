@@ -5330,6 +5330,34 @@
         }
       ]
     },
+    "test_hotkey_background_enum": {
+      "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
+        "test/cmocka/test_hotkey_background_enum.c",
+        "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
+        "libobs/obs-hotkey-enum.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_background_error": {
       "sources": [
         "test/cmocka/test_hotkey_background_error.c"
@@ -5442,6 +5470,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -5532,6 +5561,7 @@
         "test/cmocka/test_hotkey_getters_characterization.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-pair-meta.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5570,6 +5600,7 @@
         "test/cmocka/test_hotkey_load.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -5639,6 +5670,7 @@
         "test/cmocka/test_hotkey_pair_steps.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -5664,6 +5696,7 @@
         "test/cmocka/test_hotkey_press_steps.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -10280,6 +10313,7 @@
         "libobs/obs-hotkey-background-error.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -14889,6 +14923,21 @@
         "libobs/data"
       ]
     },
+    "test_source_private_settings": {
+      "sources": [
+        "test/cmocka/test_source_private_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_profiler": {
       "sources": [
         "test/cmocka/test_source_profiler.c"
@@ -18148,6 +18197,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -21098,6 +21148,10 @@
           "-a"
         ]
       ]
+    },
+    "test_hotkey_background_enum": {
+      "target": "test_hotkey_background_enum",
+      "timeout_seconds": 30
     },
     "test_hotkey_background_error": {
       "target": "test_hotkey_background_error",
@@ -24552,6 +24606,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_private_settings": {
+      "target": "test_source_private_settings",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_profiler": {

@@ -3,6 +3,7 @@
   "groups": [
     "core",
     "core-canvas-move",
+    "core-hotkey-background-enum",
     "core-output",
     "core-output-weak-lifetime",
     "core-scene-lookup",
@@ -11,6 +12,7 @@
     "core-source-filter-backup",
     "core-source-type-enum",
     "null-audio",
+    "source-private-settings",
     "util-cf"
   ],
   "depends": [
