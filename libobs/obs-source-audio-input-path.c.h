@@ -48,7 +48,9 @@ static inline void reset_resampler(obs_source_t *source, const struct obs_source
 	source->sample_info.format = audio->format;
 	source->sample_info.samples_per_sec = audio->samples_per_sec;
 	source->sample_info.speakers = audio->speakers;
-	source->last_async_compensation = os_atomic_load_bool(&source->async_compensation);
+	/* libobs compensates audio on a clock of its own itself (#4182) */
+	source->last_async_compensation = os_atomic_load_bool(&source->async_compensation) ||
+					  os_atomic_load_bool(&source->own_clock_compensation);
 
 	audio_resampler_destroy(source->resampler);
 	source->resampler = NULL;
@@ -112,7 +114,9 @@ static void process_audio(obs_source_t *source, const struct obs_source_audio *a
 	};
 	if (obs_source_audio_input_reset_needed(audio_input_format(&source->sample_info), packet,
 						source->last_async_compensation,
-						os_atomic_load_bool(&source->async_compensation), discontinuous))
+						os_atomic_load_bool(&source->async_compensation) ||
+							os_atomic_load_bool(&source->own_clock_compensation),
+						discontinuous))
 		reset_resampler(source, audio);
 
 	if (audio->samples_per_sec)

@@ -103,6 +103,10 @@ VALGRIND = (
 # test_video_output_formats 18 s -> 4 s, test_dock_proportions 17 s -> 4 s).
 # So only the tests that can reach FFmpeg keep it; see UnwindPolicy.
 TSAN_SUPPRESSIONS = Path(__file__).resolve().parent / "tsan.supp"
+# LeakSanitizer suppressions for leaks wholly inside a library OBS uses
+# (#3365). LSAN_OPTIONS carries no log_path: the reports keep going to the
+# ASan log that ASAN_OPTIONS names.
+LSAN_SUPPRESSIONS = Path(__file__).resolve().parent / "lsan.supp"
 SLOW_UNWIND = "fast_unwind_on_malloc=0"
 FAST_UNWIND = "fast_unwind_on_malloc=1"
 SANITIZER_OPTIONS = {
@@ -150,7 +154,8 @@ class Layout:
 
 
 def sanitizer_options(directory: Path, stem: str = "", fast_unwind: bool = False) -> dict[str, str]:
-    """The three *_OPTIONS values with log_path=<directory>/<stem><kind>.
+    """The three *_OPTIONS values with log_path=<directory>/<stem><kind>, and
+    LSAN_OPTIONS with the leak suppressions.
 
     The shell exported them for the whole run (log_path=<out>/<kind>) and
     overrode the log_path per test (log_path=<out>/tests/<name>.<kind>).
@@ -160,7 +165,9 @@ def sanitizer_options(directory: Path, stem: str = "", fast_unwind: bool = False
     options = SANITIZER_OPTIONS
     if fast_unwind:
         options = {kind: value.replace(SLOW_UNWIND, FAST_UNWIND) for kind, value in options.items()}
-    return {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in options.items()}
+    env = {f"{kind.upper()}_OPTIONS": f"{value}:log_path={directory / f'{stem}{kind}'}" for kind, value in options.items()}
+    env["LSAN_OPTIONS"] = f"suppressions={LSAN_SUPPRESSIONS}"
+    return env
 
 
 @dataclass(frozen=True)
@@ -424,10 +431,20 @@ def tail(path: Path, lines: int) -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[-lines:])
 
 
+# A failed build's diagnostics: ninja's FAILED line, compiler and linker
+# errors ("error:", "fatal error:", "ld: error:", "collect2: error:"),
+# unresolved symbols and ninja's stop line. Not a bare "error": ninja progress
+# lines name targets like encoder-error-ownership-link-support.c and compile
+# commands carry -Werror=..., which buried the real failure (#4870).
+BUILD_DIAGNOSTIC = re.compile(r"FAILED:|error:|undefined reference|ninja: build stopped")
+
+
 def error_lines(path: Path, limit: int = 40) -> str:
-    """The shell's `grep -E error <log> | head -40`."""
-    matches = [line for line in path.read_text(encoding="utf-8", errors="replace").splitlines() if "error" in line]
-    return "\n".join(matches[:limit])
+    """The first `limit` diagnostic lines of a build log, or its last `limit`
+    lines when it has none, so a failed build always shows something."""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    matches = [line for line in lines if BUILD_DIAGNOSTIC.search(line)]
+    return "\n".join(matches[:limit] if matches else lines[-limit:])
 
 
 # zccache's lines for a compile its daemon dropped in flight: a lost request,
@@ -476,9 +493,14 @@ def prepare_toolchain(layout: Layout) -> bool:
     done = subprocess.run(
         ["uv", "run", "--no-project", str(installer), str(layout.bin_dir)],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        errors="replace",
     )
     if done.returncode != 0:
+        print(f"toolchain preparation failed: {installer} (exit code {done.returncode})", file=sys.stderr)
+        if done.stderr:
+            print("\n".join(done.stderr.splitlines()[-40:]), file=sys.stderr)
         return False
     os.environ["PATH"] = f"{layout.bin_dir}{os.pathsep}{os.environ['PATH']}"
     os.environ["ZCCACHE_CACHE_DIR"] = os.environ.get("ZCCACHE_CACHE_DIR") or str(layout.root / "zccache")

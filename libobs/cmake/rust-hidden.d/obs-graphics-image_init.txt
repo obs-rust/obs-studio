@@ -1,0 +1,3 @@
+ffmpeg_image_free
+ffmpeg_image_init
+obs_ffmpeg_image_get_buffer

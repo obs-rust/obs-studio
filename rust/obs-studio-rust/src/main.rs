@@ -39,6 +39,8 @@ struct Args {
     password: Option<String>,
     json: bool,
     mcp: bool,
+    mcp_attach: bool,
+    mcp_listen: bool,
     record_dir: Option<String>,
     command: String,
 }
@@ -52,6 +54,8 @@ fn parse_args() -> Result<Option<Args>, String> {
     let mut command = None;
     let mut json = false;
     let mut mcp = false;
+    let mut mcp_attach = false;
+    let mut mcp_listen = false;
     let mut record_dir = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -73,6 +77,8 @@ fn parse_args() -> Result<Option<Args>, String> {
             "--password" => password = Some(value("--password")?),
             "--json" => json = true,
             "--mcp" => mcp = true,
+            "--mcp-attach" => mcp_attach = true,
+            "--mcp-listen" => mcp_listen = true,
             "--record-dir" => record_dir = Some(value("--record-dir")?),
             _ if arg.starts_with('-') => return Err(format!("unknown option: {arg}")),
             _ if command.is_none() => command = Some(arg),
@@ -81,9 +87,12 @@ fn parse_args() -> Result<Option<Args>, String> {
     }
     let command = match command {
         Some(command) => command,
-        None if mcp => String::new(),
+        None if mcp || mcp_attach || mcp_listen => String::new(),
         None => return Err("missing command".to_owned()),
     };
+    if u8::from(mcp) + u8::from(mcp_attach) + u8::from(mcp_listen) > 1 {
+        return Err("choose --mcp or --mcp-attach".to_owned());
+    }
     if mcp && !command.is_empty() {
         return Err("--mcp takes no command".to_owned());
     }
@@ -93,6 +102,8 @@ fn parse_args() -> Result<Option<Args>, String> {
         password,
         json,
         mcp,
+        mcp_attach,
+        mcp_listen,
         record_dir,
         command,
     }))
@@ -141,7 +152,18 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let result = if args.mcp {
+    let result = if args.mcp_listen {
+        mcp::listen(
+            args.record_dir.as_deref(),
+            (!args.command.is_empty()).then_some(args.command.as_str()),
+        )
+        .map_err(Box::from)
+    } else if args.mcp_attach {
+        obs_mcp::platform::proxy(&obs_mcp::platform::EndpointOptions {
+            socket: (!args.command.is_empty()).then(|| args.command.clone().into()),
+        })
+        .map_err(Box::from)
+    } else if args.mcp {
         mcp::run(args.record_dir.as_deref()).map_err(Box::from)
     } else {
         run(&args)

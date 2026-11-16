@@ -15,14 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "libobs/build/libobs.pch.h"
-
-/* A frame is due once the source clock is this far past its timestamp. */
-#define FRAME_TOLERANCE 2000000ULL
-_Static_assert(FRAME_TOLERANCE == OBS_SOURCE_DEINTERLACE_PACING_FRAME_TOLERANCE, "FRAME_TOLERANCE");
-
-/* obs-source-deinterlace-select.c decides with the same threshold */
-_Static_assert(OBS_SOURCE_DEINTERLACE_SELECT_MAX_TS_VAR == MAX_TS_VAR, "MAX_TS_VAR");
+#include "libobs/build/libobs-ported-source-deinterlace.pch.h"
 
 /* async_mutex is held (async_tick()). obs-source-deinterlace-select.c
  * decides from a copy of the queue's timestamps (a queued frame's timestamp
@@ -168,23 +161,6 @@ void deinterlace_process_last_frame(obs_source_t *s, uint64_t sys_time)
 	deinterlace_get_closest_frames(s, sys_time);
 }
 
-void set_deinterlace_texture_size(obs_source_t *source)
-{
-	const enum gs_color_format format = convert_video_format(source->async_format, source->async_trc);
-
-	if (source->async_gpu_conversion) {
-		source->async_prev_texrender = gs_texrender_create(format, GS_ZS_NONE);
-
-		for (int c = 0; c < source->async_channel_count; c++)
-			source->async_prev_textures[c] =
-				gs_texture_create(source->async_convert_width[c], source->async_convert_height[c],
-						  source->async_texture_formats[c], 1, NULL, GS_DYNAMIC);
-	} else {
-		source->async_prev_textures[0] =
-			gs_texture_create(source->async_width, source->async_height, format, 1, NULL, GS_DYNAMIC);
-	}
-}
-
 void deinterlace_update_async_video(obs_source_t *source)
 {
 	if (source->deinterlace_rendered)
@@ -228,9 +204,6 @@ void deinterlace_update_async_video(obs_source_t *source)
 		break;
 	}
 }
-
-_Static_assert(sizeof(enum obs_deinterlace_mode) == sizeof(int), "enum obs_deinterlace_mode is passed as int");
-_Static_assert(sizeof(enum gs_color_space) == sizeof(int), "enum gs_color_space is passed as int");
 
 static inline gs_effect_t *get_effect(enum obs_deinterlace_mode mode)
 {
@@ -385,6 +358,3 @@ void obs_source_set_deinterlace_field_order(obs_source_t *source, enum obs_deint
 
 	source->deinterlace_top_first = field_order == OBS_DEINTERLACE_FIELD_ORDER_TOP;
 }
-
-/* File-local macros (BUILD.md): out of the next file in the unity group. */
-#undef FRAME_TOLERANCE

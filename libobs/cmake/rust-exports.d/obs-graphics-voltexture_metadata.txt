@@ -1,0 +1,4 @@
+gs_voltexture_get_width
+gs_voltexture_get_height
+gs_voltexture_get_depth
+gs_voltexture_get_color_format

@@ -1,0 +1,5 @@
+{
+  "description": "Private FFmpeg still-image adapter.",
+  "groups": ["image-decode-adapter"],
+  "depends": []
+}

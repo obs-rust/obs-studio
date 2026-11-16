@@ -1,10 +1,7 @@
 //! Tier 1 mirror of `test/cmocka/test_missing_files.c`.
 //!
-//! The live `obs_source_t` case stays with that cmocka test. Cargo tests
-//! stand in for `obs_source_get_name` and `obs_source_replace_missing_file`
-//! with the two functions at the bottom of this file. A null source returns
-//! a null name and replace returns without calling. Any other source
-//! pointer returns the name and private pointer set by [`set_source`].
+//! The source name uses the production Rust getter and a real-layout C fixture.
+//! Only the missing-file replacement callback remains a test stand-in.
 //!
 //! Not called, because the C crashes or does not return: a null list, a
 //! null file (except `release`), `get_file` past the end, append of a list
@@ -29,7 +26,7 @@ mod parity;
 
 const MARKER_ENV: &str = "OBS_MISSING_FILES_ISOLATED_TEST";
 
-/// Serializes the cargo stand-in for `obs_source_get_name`. Tier 1 children
+/// Serializes the real source-name fixture. Tier 1 children
 /// each have their own process. Differential tests in this process share it.
 pub(super) static SOURCE_LOCK: Mutex<()> = Mutex::new(());
 
@@ -47,11 +44,21 @@ static HIT: Mutex<Hit> = Mutex::new(Hit {
     data: 0,
 });
 
-static SOURCE_NAME: AtomicPtr<c_char> = AtomicPtr::new(std::ptr::null_mut());
+use obs_source::ffi::source_name::obs_source_get_name;
+unsafe extern "C" {
+    fn oracle_source_name_missing_source() -> *mut c_void;
+    fn oracle_source_name_missing_set(name: *mut c_char);
+}
+
+pub(super) fn source_fixture() -> *mut c_void {
+    // SAFETY: returns a static real-layout source, accessed under SOURCE_LOCK.
+    unsafe { oracle_source_name_missing_source() }
+}
 static SOURCE_PRIVATE: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
 
 pub(super) fn set_source(name: *const c_char, private: *mut c_void) {
-    SOURCE_NAME.store(name.cast_mut(), Ordering::SeqCst);
+    // SAFETY: SOURCE_LOCK serializes the fixture; the test keeps name alive.
+    unsafe { oracle_source_name_missing_set(name.cast_mut()) };
     SOURCE_PRIVATE.store(private, Ordering::SeqCst);
 }
 
@@ -96,20 +103,6 @@ pub(super) unsafe extern "C" fn on_replace(
     hit.src = src as usize;
     hit.path = path as usize;
     hit.data = data as usize;
-}
-
-/// `obs_source_get_name` for cargo tests. The real function stays in
-/// `obs-source.c.h` and is what libobs links.
-///
-/// # Safety
-/// `source` is null or an opaque non-null token. The returned name pointer
-/// is whatever [`set_source`] stored.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_source_get_name(source: *const c_void) -> *const c_char {
-    if source.is_null() {
-        return std::ptr::null();
-    }
-    SOURCE_NAME.load(Ordering::SeqCst)
 }
 
 /// `obs_source_replace_missing_file` for cargo tests. A null source returns.
@@ -515,7 +508,7 @@ fn source_snapshot_test() {
     let mut private_data = 0i32;
     let clip = c"clip";
     let renamed = c"renamed";
-    let source = std::ptr::dangling_mut();
+    let source = source_fixture();
     set_source(clip.as_ptr(), (&raw mut private_data).cast());
 
     let before_file = allocs();

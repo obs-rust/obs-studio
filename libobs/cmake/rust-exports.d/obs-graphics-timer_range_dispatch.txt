@@ -1,0 +1,4 @@
+gs_timer_range_begin
+gs_timer_range_destroy
+gs_timer_range_end
+gs_timer_range_get_data

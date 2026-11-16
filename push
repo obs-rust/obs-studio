@@ -5,20 +5,15 @@
 # ///
 """Push a branch the way CI expects: attest, stamp, push, then open the PR.
 
-This is the single entry point agents should use. It composes three tools that
-each do one thing -- `soldr` proves the client-side work, `ghd` writes the
-evidence into the commit message, `gh`/`ghd` open the PR -- and refuses to push
-a branch whose evidence does not exist yet.
+This is the single entry point agents should use:
 
-The chain it implements:
+    ./push -> prooft run client-lint / client-test-HOST -> final sign/verify -> push -> PR
 
-    ./push -> soldr lint rust --attest -> ghd attest stamp -> git push -> PR
-
-Two of those tools are newer than this script. When a local toolchain cannot do
-its step, `./push` says so plainly and falls back to the pre-existing path (push
-the branch and let the local gate stamp it), instead of pretending the evidence
-was produced. Set PUSH_REQUIRE_ATTESTATION=1 to make a missing toolchain an
-error -- that is the switch for the enforce phase.
+The repository lanes run formatting, ratchets and self-tests, clippy + Dylint
+for all six shipping targets, and native workspace Tiers 1-3. prooft writes
+only successful gate evidence. The deprecated soldr+ghd fallback proves partial
+host checks only. Missing evidence or signing defaults to ordinary PR CI;
+PUSH_REQUIRE_ATTESTATION=1 refuses incomplete evidence before any push.
 
 Exit codes: 0 pushed, 1 a step failed, 2 usage, 3 refused (dirty tree or missing
 evidence under PUSH_REQUIRE_ATTESTATION).
@@ -27,13 +22,66 @@ evidence under PUSH_REQUIRE_ATTESTATION).
 from __future__ import annotations
 
 import os
+import json
+import re
 import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "ci"))
+from local_gate import CLIENT_TARGETS, client_gates, host_target
+from client_checks import CLIENT_CHECK_GATES, receipt_path
+from pr_attestation import PROOFT_SOURCE
+
 REQUIRE = os.environ.get("PUSH_REQUIRE_ATTESTATION") == "1"
+
+
+def soldr_pin() -> str:
+    """Use the download pin already checked against every setup-soldr input."""
+    text = (ROOT / "cmake/common/soldr.cmake").read_text(encoding="utf-8")
+    pin = re.search(r"^set\(OBS_SOLDR_VERSION ([0-9.]+)\)$", text, re.M)
+    if not pin:
+        raise OSError("./push: missing CI soldr pin in cmake/common/soldr.cmake")
+    return pin.group(1)
+
+
+@contextmanager
+def soldr_environment(uv: str):
+    """Select CI's soldr wheel and toolchain without changing the caller's tools."""
+    version = soldr_pin()
+    original = dict(os.environ)
+    selectors = {
+        "RUSTUP_TOOLCHAIN", "RUSTC", "RUSTDOC", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER",
+        "CARGO_BUILD_RUSTC", "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
+    }
+    try:
+        for key in list(os.environ):
+            if key.startswith("SOLDR_") or key in selectors:
+                os.environ.pop(key)
+        executable = os.environ.get("PUSH_SOLDR")
+        if not executable:
+            # uv supplies the wheel's scripts directory to this child. Resolve
+            # its executable once so nested uv/prooft commands inherit it too.
+            executable = run([
+                uv, "run", "--no-project", "--no-build", "--with", f"soldr=={version}",
+                "python", "-c", "import shutil; print(shutil.which('soldr') or '')",
+            ], capture=True).stdout.strip()
+        path = Path(executable).absolute() if executable else None
+        if path is None or path.name not in {"soldr", "soldr.exe"}:
+            raise OSError(f"./push: soldr {version} requires an executable named soldr (or soldr.exe)")
+        installed = run([str(path), "--version"], capture=True).stdout.strip()
+        if installed != f"soldr {version}":
+            raise OSError(f"./push: soldr selection reports {installed!r}; CI requires soldr {version}")
+        os.environ["PATH"] = str(path.parent) + os.pathsep + original.get("PATH", os.defpath)
+        print(f"./push: CI-pinned soldr {version}: {path}; inherited toolchain overrides cleared", flush=True)
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(original)
 
 
 def run(args: list[str], *, capture: bool = False, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -64,6 +112,296 @@ def dirty() -> bool:
     return bool(git("status", "--porcelain", capture=True).stdout.strip())
 
 
+ATTEST_KEEP = 20
+ATTEST_MAX_AGE_DAYS = 7
+
+
+def evidence_path() -> Path:
+    """A per-commit evidence file, pruned periodically.
+
+    One file per commit, never a singleton: two agents pushing from the same
+    clone (or a worktree whose `.git` is a file) must not overwrite each
+    other's evidence. Pruning keeps the directory bounded -- it is scratch, not
+    a record, and the attestation itself lives in the commit message.
+    """
+
+    git_dir = Path(git("rev-parse", "--git-dir", capture=True).stdout.strip() or ".git")
+    sha = git("rev-parse", "HEAD", capture=True).stdout.strip() or "HEAD"
+    directory = git_dir / "soldr-attest"
+    directory.mkdir(parents=True, exist_ok=True)
+    prune_evidence(directory)
+    return directory / f"{sha.replace('/', '-')}.json"
+
+
+def prune_evidence(directory: Path) -> None:
+    """Drop stale evidence: older than a week, then all but the newest few."""
+
+    import time
+
+    now = time.time()
+    files = sorted(directory.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for index, path in enumerate(files):
+        age_days = (now - path.stat().st_mtime) / 86400
+        if index >= ATTEST_KEEP or age_days > ATTEST_MAX_AGE_DAYS:
+            path.unlink(missing_ok=True)
+
+
+def sign_final() -> bool:
+    """Sign after every trailer amendment, using the user's Git signing config.
+
+    No configured key/signing means ordinary PR CI. A signature on the original
+    commit is insufficient: prooft's message amendments replace that object.
+    """
+    key = run(["git", "config", "--get", "user.signingkey"], capture=True, check=False)
+    enabled = run(["git", "config", "--get", "commit.gpgsign"], capture=True, check=False)
+    if not key.stdout.strip() and enabled.stdout.strip().lower() != "true":
+        print("./push: no signing configured; final client stamp is ineligible for the fast path")
+        return False
+    signed = run(["git", "commit", "--amend", "--no-edit", "-S"], check=False)
+    if signed.returncode != 0:
+        print("./push: final signing failed; using ordinary PR CI", file=sys.stderr)
+        return False
+    return run(["git", "verify-commit", "HEAD"], check=False).returncode == 0
+
+
+def emitted_gates(prooft: list[str]) -> set[str]:
+    """Read prooft's validated bundle, never guess coverage from exit zero."""
+    proc = run([*prooft, "emit"], capture=True, check=False)
+    if proc.returncode:
+        return set()
+    try:
+        bundle = json.loads(proc.stdout)
+        if bundle.get("v") != 1 or not isinstance(bundle.get("attestations"), list):
+            return set()
+        return {a["gate"] for a in bundle["attestations"] if isinstance(a, dict) and isinstance(a.get("gate"), str)}
+    except (ValueError, TypeError, AttributeError):
+        return set()
+
+
+def complete_prooft(prooft: list[str], tree: str) -> bool:
+    """Run real repository lanes; require their complete validated inventory."""
+    host = host_target()
+    if host not in CLIENT_TARGETS:
+        print(f"./push: unsupported native target {host}; no client evidence", file=sys.stderr)
+        return False
+    # Resolve once: proof commands must never compare against a moving ref.
+    base = git("rev-parse", "--verify", "origin/master^{commit}", capture=True).stdout.strip()
+    commands = (
+        [*prooft, "run", "client-lint", "--", "uv", "run", "ci/local_gate.py", "--lane", "client-lint"],
+        [*prooft, "run", "client-checks", "--", "uv", "run", "--no-project", "ci/client_checks.py", "--base", base],
+        [*prooft, "run", f"client-test-{host}", "--", "uv", "run", "ci/local_gate.py",
+         "--lane", "client-test", "--client-target", host],
+    )
+    for command in commands:
+        if run(command, check=False).returncode != 0:
+            print("./push: client proof failed or unavailable; partial evidence only, ordinary PR CI", file=sys.stderr)
+            return False
+        if not unchanged(tree):
+            return False
+    swift = run([*prooft, "run", "client-swift", "--", "uv", "run", "--no-project",
+                 "ci/client_checks.py", "--base", base, "--swift"], check=False).returncode == 0
+    if not unchanged(tree):
+        return False
+    required = client_gates(host) | CLIENT_CHECK_GATES
+    if swift:
+        required.add("swift/all/fmt")
+    missing = required - emitted_gates(prooft)
+    if missing:
+        print(f"./push: incomplete client evidence; missing: {', '.join(sorted(missing))}", file=sys.stderr)
+        return False
+    if not record_client_context(base, tree, swift):
+        return False
+    if not sign_final() or not unchanged(tree):
+        return False
+    return not (required - emitted_gates(prooft))
+
+
+def record_client_context(base: str, tree: str, swift: bool) -> bool:
+    """Keep tool versions and exact selection in the final signed message.
+
+    prooft v1 binds tree/parents but has no tool-version metadata field. This
+    additive receipt preserves those inputs without replacing its gate format.
+    Full-file coverage makes the checks independent of a scoped selector.
+    """
+    records = {}
+    for name, optional in (("checks", False), ("swift", True)):
+        if optional and not swift:
+            continue
+        record = json.loads(receipt_path(ROOT, optional).read_text())
+        if record.get("base") != base or record.get("tree") != tree:
+            print("./push: client check receipt does not match inputs", file=sys.stderr)
+            return False
+        records[name] = record
+    message = git("log", "-1", "--format=%B", capture=True).stdout
+    message = "\n".join(line for line in message.splitlines() if not line.startswith("Client-Checks: "))
+    message += "\n\nClient-Checks: " + json.dumps(records, sort_keys=True, separators=(",", ":")) + "\n"
+    path = receipt_path(ROOT, False).parent / "message.txt"
+    path.write_text(message)
+    git("commit", "--amend", "--no-gpg-sign", "--file", str(path))
+    return True
+
+
+def unchanged(tree: str) -> bool:
+    if dirty() or git("rev-parse", "HEAD^{tree}", capture=True).stdout.strip() != tree:
+        print("./push: tracked inputs changed; client evidence invalid", file=sys.stderr)
+        return False
+    return True
+
+
+def legacy_attest(tree: str) -> bool:
+    """Deprecated writer: it can stamp host checks, never full client coverage."""
+    soldr = shutil.which("soldr")
+    if soldr and supports([soldr, "lint", "--help"], "--attest"):
+        evidence = evidence_path()
+        proc = run([soldr, "lint", "rust", "--attest", "--format", "json"], capture=True, check=False)
+        if proc.returncode != 0:
+            print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
+            return False
+        if not unchanged(tree):
+            return False
+        evidence.write_text(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "{}")
+        ghd = shutil.which("ghd")
+        if ghd and supports([ghd, "attest", "stamp", "--help"], "--evidence"):
+            print("./push: deprecated path: ghd stamps partial host coverage only; no complete client fast path")
+            run([ghd, "attest", "stamp", "--evidence", str(evidence)], check=False)
+        else:
+            print("./push: ghd has no `attest stamp`; no trailer written")
+    else:
+        print("./push: this soldr has no `lint rust --attest`; no client evidence is produced")
+    return False
+
+
+def attest() -> bool:
+    """Return complete, locally verified and signed client coverage only.
+
+    prooft run owns the evidence format and enforces clean, unchanged command
+    inputs. Each successful lane stamps its actual checks; a failed/optional
+    lane cannot be inferred from a successful older prooft soldr invocation.
+    The final stamp is signed only after ALL proof commands have finished.
+    """
+    if dirty():
+        return False
+    tree = git("rev-parse", "HEAD^{tree}", capture=True).stdout.strip()
+    # Use the verifier's immutable pin: older installed releases reject this
+    # repository's data/swift gates before any proof command can run. uv caches
+    # this environment and does not change the user's installed prooft.
+    uv = shutil.which("uv")
+    if uv:
+        with soldr_environment(uv):
+            return complete_prooft([uv, "run", "--no-project", "--with", PROOFT_SOURCE, "prooft"], tree)
+    print("./push: uv is not installed; trying the deprecated path")
+    return legacy_attest(tree)
+
+
+def pr_repositories() -> tuple[dict, dict]:
+    """Resolve gh's base and Git's actual push destination before publishing."""
+    urls = git("remote", "get-url", "--push", "--all", "origin", capture=True).stdout.splitlines()
+    if len(urls) != 1:
+        raise ValueError("origin must have exactly one push destination")
+
+    def repository(*args: str) -> dict:
+        # Remote URLs can embed credentials. Do not echo this command or its
+        # captured error, including through CalledProcessError's command text.
+        result = subprocess.run(
+            ["gh", "repo", "view", *args, "--json", "nameWithOwner,url,isFork"],
+            cwd=ROOT, text=True, capture_output=True, check=True,
+        )
+        return json.loads(result.stdout)
+
+    # Unlike pr create, repo view does not apply GH_REPO itself.
+    override = os.environ.get("GH_REPO")
+    base = repository(override) if override else repository()
+    if base["isFork"] and not override:
+        # Capturing gh disables its interactive fork/default prompt. Require
+        # an explicit choice instead of silently targeting the local fork.
+        default = subprocess.run(
+            ["gh", "repo", "set-default", "--view"], cwd=ROOT, text=True, capture_output=True,
+        )
+        if default.returncode or not default.stdout.strip():
+            raise ValueError("fork base requires an explicit default repository")
+    destination = repository(urls[0])
+    if urlsplit(base["url"]).hostname != urlsplit(destination["url"]).hostname:
+        raise ValueError("base and push destination must use the same GitHub host")
+    return base, destination
+
+
+def ensure_pr(branch: str, base: dict, destination: dict) -> int:
+    """Reuse the pushed head's open PR or create one against master."""
+    qualified_head = f"{destination['nameWithOwner'].split('/')[0]}:{branch}"
+    head = branch if base["url"].lower() == destination["url"].lower() else qualified_head
+    # The tracking remote may fetch upstream but push to a fork. Query the
+    # actual owner's head explicitly, and retain existing stacked PRs too.
+    selection = (
+        f"[.[] | select(.head.repo.full_name == {json.dumps(destination['nameWithOwner'])})]"
+        " | .[0].number // empty"
+    )
+    pr = run([
+        "gh", "api", f"repos/{base['nameWithOwner']}/pulls", "--hostname", urlsplit(base["url"]).hostname,
+        "-X", "GET", "-f", f"head={qualified_head}", "-f", "state=open", "--jq", selection,
+    ], capture=True, check=False)
+    if pr.returncode != 0:
+        print("./push: unable to check for an existing PR; no new PR created", file=sys.stderr)
+        return 1
+    if not pr.stdout.strip():
+        title = git("log", "-1", "--format=%s", capture=True).stdout.strip()
+        create = ["gh", "pr", "create", "--repo", base["url"], "--base", "master",
+                  "--fill", "--title", title, "--head", head]
+        # Back pressure (ci/backpressure.py): while the merge queue lands fewer
+        # PRs than are in flight, or runners are starved, a new PR opens as a
+        # draft, so the work is published but takes no queue capacity. Mark it
+        # ready once the gate reads open again.
+        gate = subprocess.run(
+            ["uv", "run", "--no-project", "--script", str(ROOT / "ci" / "backpressure.py"), "--check"],
+            cwd=ROOT, text=True, capture_output=True,
+        )
+        if gate.returncode == 75:
+            print(f"./push: {gate.stdout.strip()}; opening the PR as a draft")
+            create.append("--draft")
+        run(create)
+    else:
+        print(f"./push: PR #{pr.stdout.strip()} already exists for {branch}")
+
+    return 0
+
+
+def publish_branch(branch: str, before: str) -> int:
+    """Lease only a message/signature amendment of the exact published HEAD."""
+    # origin may fetch upstream but push to a fork. Query the actual push URL,
+    # without echoing it: URLs can contain credentials (as in pr_repositories).
+    urls = git("remote", "get-url", "--push", "--all", "origin", capture=True).stdout.splitlines()
+    if len(urls) != 1:
+        print("./push: ambiguous push destination; refusing to push", file=sys.stderr)
+        return 3
+    remote = subprocess.run(
+        ["git", "ls-remote", "--exit-code", "--refs", urls[0], f"refs/heads/{branch}"],
+        cwd=ROOT, text=True, capture_output=True,
+    )
+    if remote.returncode not in {0, 2}:
+        print("./push: cannot read the push destination's branch; refusing to push", file=sys.stderr)
+        return 3
+    args = ["git", "push", "-u", "origin", branch]
+    if remote.returncode == 2:
+        print("./push: new remote branch; plain push", flush=True)
+    else:
+        remote_head = remote.stdout.split()[0]
+        after = git("rev-parse", "HEAD", capture=True).stdout.strip()
+        if remote_head == before and after != before:
+            # prooft and final signing may amend more than once. Comparing tree
+            # and ordered parents permits only the resulting amended sibling.
+            identity = git("show", "-s", "--format=%T%n%P", before, capture=True).stdout
+            if git("show", "-s", "--format=%T%n%P", after, capture=True).stdout != identity:
+                print("./push: HEAD changed beyond a pure re-stamp; refusing to replace the remote head",
+                      file=sys.stderr)
+                return 3
+            print(f"./push: pure re-stamp of remote HEAD {before}; exact force-with-lease", flush=True)
+            args.append(f"--force-with-lease={branch}:{before}")
+        else:
+            print("./push: remote is not the amended pre-stamp HEAD; plain push (fast-forward only)", flush=True)
+    # The explicit expected SHA makes remote movement after ls-remote atomic:
+    # Git refuses stale leases rather than overwriting a concurrent update.
+    return run(args, check=False).returncode
+
+
 def main(argv: list[str]) -> int:
     branch = git("rev-parse", "--abbrev-ref", "HEAD", capture=True).stdout.strip()
     if branch in {"master", "HEAD"}:
@@ -73,57 +411,45 @@ def main(argv: list[str]) -> int:
         print("./push: working tree is dirty; commit or stash before pushing", file=sys.stderr)
         return 3
 
-    attested = False
-    soldr = shutil.which("soldr")
-    if soldr and supports([soldr, "lint", "--help"], "--attest"):
-        evidence = ROOT / ".git" / "soldr-attest.json"
-        proc = run(
-            [soldr, "lint", "rust", "--attest", "--format", "json"],
-            capture=True,
-            check=False,
-        )
-        if proc.returncode == 0:
-            evidence.write_text(proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else "{}")
-            ghd = shutil.which("ghd")
-            if ghd and supports([ghd, "attest", "stamp", "--help"], "--evidence"):
-                stamped = run(
-                    [ghd, "attest", "stamp", "--evidence", str(evidence)],
-                    check=False,
-                )
-                attested = stamped.returncode == 0
-            else:
-                print("./push: ghd has no `attest stamp` yet; the commit carries no Ci-Attestation trailer")
-        else:
-            print("./push: `soldr lint rust --attest` failed; see its output above", file=sys.stderr)
-            return 1
-    else:
-        print("./push: this soldr has no `lint rust --attest`; no client evidence is produced")
+    before = git("rev-parse", "HEAD", capture=True).stdout.strip()
+    try:
+        attested = attest()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print(f"./push: client evidence unavailable: {exc}; using ordinary PR CI", file=sys.stderr)
+        attested = False
+    # A command that dirties the checkout must never publish unproved changes.
+    if dirty():
+        print("./push: proof commands changed the working tree; refusing to push", file=sys.stderr)
+        return 3
 
     if not attested and REQUIRE:
         print(
-            "./push: PUSH_REQUIRE_ATTESTATION=1 but no attestation was produced; refusing",
+            "./push: PUSH_REQUIRE_ATTESTATION=1 but complete signed client evidence is missing; refusing",
             file=sys.stderr,
         )
         return 3
 
-    run(["git", "push", "-u", "origin", branch])
+    try:
+        base, destination = pr_repositories()
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError, TypeError):
+        print(
+            "./push: cannot resolve one GitHub push destination and a base on the same host; "
+            "check origin's push URL and select the base with gh repo set-default OWNER/REPO or GH_REPO",
+            file=sys.stderr,
+        )
+        return 3
 
-    pr = subprocess.run(
-        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-    )
-    if pr.returncode != 0 or not pr.stdout.strip():
-        title = git("log", "-1", "--format=%s", capture=True).stdout.strip()
-        run(["gh", "pr", "create", "--fill", "--title", title, "--head", branch])
-    else:
-        print(f"./push: PR #{pr.stdout.strip()} already exists for {branch}")
+    result = publish_branch(branch, before)
+    if result:
+        return result
+
+    result = ensure_pr(branch, base, destination)
+    if result:
+        return result
 
     if not attested:
         print(
-            "./push: pushed without client attestation. The local gate still stamps the "
-            "commit (`ci-lint local-gate run`); run it and push again if CI asks for it."
+            "./push: pushed without complete signed client evidence; ordinary PR CI remains required."
         )
     return 0
 

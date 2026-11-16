@@ -19,6 +19,9 @@ void obs_graphics_cf_adderror(struct cf_parser *p, const char *error, int level,
 			      const char *val3);
 bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out);
 char *obs_graphics_cf_literal_to_str(const char *literal, size_t count);
+bool obs_graphics_cf_lexer_lex(struct cf_lexer *lex, const char *str, const char *file);
+bool obs_graphics_cf_preprocess(struct cf_preprocessor *pp, struct cf_lexer *lex, struct error_data *ed);
+void obs_graphics_cf_preprocessor_add_def(struct cf_preprocessor *pp, struct cf_def *def);
 gs_shader_t *obs_graphics_vertexshader_create(const char *shader, const char *file, char **error_string);
 gs_shader_t *obs_graphics_pixelshader_create(const char *shader, const char *file, char **error_string);
 gs_sparam_t *obs_graphics_shader_get_param_by_name(gs_shader_t *shader, const char *name);
@@ -130,6 +133,28 @@ bool obs_graphics_cf_pass_pair(struct cf_parser *p, char in, char out)
 char *obs_graphics_cf_literal_to_str(const char *literal, size_t count)
 {
 	return cf_literal_to_str(literal, count);
+}
+
+/* cf_lexer_lex, cf_preprocess and cf_preprocessor_add_def for the effect
+ * parser's entry point (effect-parser-entry.c), called where the C called
+ * them, on the parser ep_parse() was handed. Only the Rust ep_parse() names
+ * them in a test that links the staticlib next to libobs (the private-parser
+ * _rust fixtures), so without these the staticlib's own obs-util copies
+ * would be linked, allocator included, and the lexer's buffers would be
+ * counted by one bmalloc and freed by the other (leaked -4 on Windows). */
+bool obs_graphics_cf_lexer_lex(struct cf_lexer *lex, const char *str, const char *file)
+{
+	return cf_lexer_lex(lex, str, file);
+}
+
+bool obs_graphics_cf_preprocess(struct cf_preprocessor *pp, struct cf_lexer *lex, struct error_data *ed)
+{
+	return cf_preprocess(pp, lex, ed);
+}
+
+void obs_graphics_cf_preprocessor_add_def(struct cf_preprocessor *pp, struct cf_def *def)
+{
+	cf_preprocessor_add_def(pp, def);
 }
 
 /* The graphics calls of the effect parser's compile step

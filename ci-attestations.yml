@@ -2,19 +2,72 @@
 # otherwise verify remotely, named <ecosystem>/<platform>/<check>; `lane` is
 # the local-gate.toml lane whose pass proves it. `jobs` maps each remote job
 # to the gates it runs: an attested PR head skips a job only when every gate
-# it lists is attested and the head passes [gate.trust]. C/C++ gates are
+# it lists is attested and the head passes immutable-base identity policy. C/C++ gates are
 # cpp/<platform>/<check> (zackees/ci.yml docs/policy-cpp.md, #393).
 version: 1
+# prooft policy schema v1; legacy Local-Gate consumers continue using their
+# existing lanes. Only explicit per-target Ci-Attestation records earn credit
+# in the base-owned verifier. Admission defers heavy work only under heavy-v1.
+lanes:
+  lint: {max-age-hours: 24}
+  dylint: {max-age-hours: 24}
+  rust-test: {max-age-hours: 24}
+  tier2-linux: {max-age-hours: 24}
+  cross: {max-age-hours: 24}
+  cross-release: {max-age-hours: 24}
+  macos-native: {max-age-hours: 24}
+  windows-native: {max-age-hours: 24}
+# prooft client lanes use broad, safe input keys. Source-only edits invalidate
+# lint/test evidence, including edits outside the Dylint libraries themselves.
+  client-lint:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-x86_64-unknown-linux-gnu:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-aarch64-unknown-linux-gnu:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-x86_64-pc-windows-msvc:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-aarch64-pc-windows-msvc:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-x86_64-apple-darwin:
+    inputs: ["**"]
+    max-age-hours: 24
+  client-test-aarch64-apple-darwin:
+    inputs: ["**"]
+    max-age-hours: 24
+  # No input-key reuse across histories: bind these full-file passes to the
+  # exact tree and parents. ./push also signs the base/diff/tool receipt.
+  client-checks: {max-age-hours: 24}
+  client-swift: {max-age-hours: 24}
 gates:
+  python/all/self-test: {lane: client-checks}
+  data/all/flatpak-manifest: {lane: client-checks}
+  data/all/qt-xml: {lane: client-checks}
+  data/all/compatibility: {lane: client-checks}
+  data/all/services-schema: {lane: client-checks}
+  swift/all/fmt: {lane: client-swift}
   rust/all/fmt: {lane: lint}
   rust/x86_64-unknown-linux-gnu/clippy: {lane: lint}
   rust/x86_64-unknown-linux-gnu/test: {lane: rust-test}
+  rust/x86_64-unknown-linux-gnu/dylint: {lane: dylint}
   cpp/linux-x64/tier2: {lane: tier2-linux}
   # Cross-checked from the Linux host (#472).
   rust/x86_64-pc-windows-msvc/clippy: {lane: cross}
   rust/x86_64-pc-windows-msvc/dylint: {lane: cross}
   rust/aarch64-apple-darwin/clippy: {lane: cross}
   rust/aarch64-apple-darwin/dylint: {lane: cross}
+  # Remaining supported targets; evidence is never inferred from host identity.
+  rust/aarch64-pc-windows-msvc/clippy: {lane: cross-release}
+  rust/aarch64-pc-windows-msvc/dylint: {lane: cross-release}
+  rust/x86_64-apple-darwin/clippy: {lane: cross-release}
+  rust/x86_64-apple-darwin/dylint: {lane: cross-release}
+  rust/aarch64-unknown-linux-gnu/clippy: {lane: cross-release}
+  rust/aarch64-unknown-linux-gnu/dylint: {lane: cross-release}
   # Attested on the host itself (#443): the native lanes run only on the
   # platform whose jobs they cover and exit 75 elsewhere, so a Linux gate
   # reports them not applicable and never attests them.
@@ -22,10 +75,34 @@ gates:
   rust/x86_64-pc-windows-msvc/test: {lane: windows-native}
   cpp/macos-arm64/tier2: {lane: macos-native}
   cpp/windows-x64/tier2: {lane: windows-native}
+  # Additive client checks preserve all legacy mappings during the rollout.
+  # Lint gates prove compile-time analysis, never native runtime or test links.
+  general/all/client-lint: {lane: client-lint}
+  rust/x86_64-unknown-linux-gnu/client-clippy: {lane: client-lint}
+  rust/x86_64-unknown-linux-gnu/client-dylint: {lane: client-lint}
+  rust/x86_64-unknown-linux-gnu/client-test: {lane: client-test-x86_64-unknown-linux-gnu}
+  rust/aarch64-unknown-linux-gnu/client-clippy: {lane: client-lint}
+  rust/aarch64-unknown-linux-gnu/client-dylint: {lane: client-lint}
+  rust/aarch64-unknown-linux-gnu/client-test: {lane: client-test-aarch64-unknown-linux-gnu}
+  rust/x86_64-pc-windows-msvc/client-clippy: {lane: client-lint}
+  rust/x86_64-pc-windows-msvc/client-dylint: {lane: client-lint}
+  rust/x86_64-pc-windows-msvc/client-test: {lane: client-test-x86_64-pc-windows-msvc}
+  rust/aarch64-pc-windows-msvc/client-clippy: {lane: client-lint}
+  rust/aarch64-pc-windows-msvc/client-dylint: {lane: client-lint}
+  rust/aarch64-pc-windows-msvc/client-test: {lane: client-test-aarch64-pc-windows-msvc}
+  rust/x86_64-apple-darwin/client-clippy: {lane: client-lint}
+  rust/x86_64-apple-darwin/client-dylint: {lane: client-lint}
+  rust/x86_64-apple-darwin/client-test: {lane: client-test-x86_64-apple-darwin}
+  rust/aarch64-apple-darwin/client-clippy: {lane: client-lint}
+  rust/aarch64-apple-darwin/client-dylint: {lane: client-lint}
+  rust/aarch64-apple-darwin/client-test: {lane: client-test-aarch64-apple-darwin}
 jobs:
-  build-project.yaml:rust-tests-linux: [rust/all/fmt, rust/x86_64-unknown-linux-gnu/clippy, rust/x86_64-unknown-linux-gnu/test]
+  check-format.yaml:checks: [python/all/self-test, data/all/flatpak-manifest, data/all/qt-xml]
+  check-format.yaml:swift-format: [swift/all/fmt]
+  ci.yml:validate-data: [data/all/compatibility, data/all/services-schema]
+  build-project.yaml:rust-tests-linux: [general/all/client-lint, rust/x86_64-unknown-linux-gnu/client-clippy, rust/x86_64-unknown-linux-gnu/client-dylint, rust/x86_64-unknown-linux-gnu/client-test]
   build-project.yaml:rust-linux-tier2: [cpp/linux-x64/tier2]
-  build-project.yaml:rust-cross-lint: [rust/x86_64-pc-windows-msvc/clippy, rust/x86_64-pc-windows-msvc/dylint, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/dylint]
+  build-project.yaml:rust-cross-lint: [rust/x86_64-unknown-linux-gnu/client-clippy, rust/x86_64-unknown-linux-gnu/client-dylint, rust/aarch64-unknown-linux-gnu/client-clippy, rust/aarch64-unknown-linux-gnu/client-dylint, rust/x86_64-pc-windows-msvc/client-clippy, rust/x86_64-pc-windows-msvc/client-dylint, rust/aarch64-pc-windows-msvc/client-clippy, rust/aarch64-pc-windows-msvc/client-dylint, rust/x86_64-apple-darwin/client-clippy, rust/x86_64-apple-darwin/client-dylint, rust/aarch64-apple-darwin/client-clippy, rust/aarch64-apple-darwin/client-dylint]
   # The formatting and clippy gates these two run are the Linux lanes' (#427,
   # #472): only the test half needs the host.
   build-project.yaml:rust-tests-macos: [rust/all/fmt, rust/aarch64-apple-darwin/clippy, rust/aarch64-apple-darwin/test]

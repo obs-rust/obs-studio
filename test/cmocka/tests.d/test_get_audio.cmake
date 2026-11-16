@@ -1,0 +1,11 @@
+# Exported getter from the selected real hybrid/C-reference libobs.
+add_executable(test_get_audio test_get_audio.c)
+target_include_directories(test_get_audio PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_get_audio PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_get_audio)
+if(XVFB_RUN)
+  add_test(NAME test_get_audio COMMAND ${XVFB_RUN} -a $<TARGET_FILE:test_get_audio>)
+else()
+  add_test(NAME test_get_audio COMMAND test_get_audio)
+endif()
+set_tests_properties(test_get_audio PROPERTIES TIMEOUT 30)

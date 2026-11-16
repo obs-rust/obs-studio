@@ -1,0 +1,11 @@
+# Real-layout characterization, linked to libobs so the unchanged test sees the swap.
+add_executable(test_scene_lookup test_scene_lookup.c)
+target_link_libraries(test_scene_lookup PRIVATE OBS::libobs OBS::native-test-cmocka OBS::caption Uthash::Uthash)
+target_include_directories(test_scene_lookup PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
+if(OS_WINDOWS)
+  target_link_libraries(test_scene_lookup PRIVATE OBS::w32-pthreads)
+else()
+  target_link_libraries(test_scene_lookup PRIVATE Threads::Threads)
+endif()
+add_test(NAME test_scene_lookup COMMAND test_scene_lookup)
+add_dependencies(cmocka-tests test_scene_lookup)

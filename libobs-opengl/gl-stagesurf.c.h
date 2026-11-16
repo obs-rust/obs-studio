@@ -210,7 +210,7 @@ bool gs_stagesurface_map(gs_stagesurf_t *stagesurf, uint8_t **data, uint32_t *li
 
 	gl_bind_buffer(GL_PIXEL_PACK_BUFFER, 0);
 
-	*linesize = stagesurf->bytes_per_pixel * stagesurf->width;
+	*linesize = (stagesurf->bytes_per_pixel * stagesurf->width + 3) & ~3u;
 	return true;
 
 fail:

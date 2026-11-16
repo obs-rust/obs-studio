@@ -104,18 +104,6 @@ void *obs_service_get_plugin_data(const obs_service_t *service)
 	return service->context.data;
 }
 
-/* The context fields the settings and identity functions in
- * obs-service-getters.c read, for them and their Rust port (#1913). Hidden. */
-const char *obs_service_get_context_name(const obs_service_t *service)
-{
-	return service->context.name;
-}
-
-obs_data_t *obs_service_get_context_settings(const obs_service_t *service)
-{
-	return service->context.settings;
-}
-
 /* File-local macros: keep them out of the next source of a unity build. */
 #undef get_weak
 

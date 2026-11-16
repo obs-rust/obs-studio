@@ -1,0 +1,17 @@
+# The Rust archive can select the frame and present shims beside other graphics shims.
+# Link the real adapter for legacy Rust-static consumers, never a placeholder.
+function(_present_entrypoints_link_support)
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if("libobs_rust-static" IN_LIST _links AND "OBS::libobs" IN_LIST _links)
+      get_target_property(_sources ${_target} SOURCES)
+      set(_adapter "${CMAKE_CURRENT_SOURCE_DIR}/present-entrypoints-link-support.c")
+      if(NOT _adapter IN_LIST _sources)
+        target_sources(${_target} PRIVATE "${_adapter}")
+        target_include_directories(${_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
+      endif()
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _present_entrypoints_link_support)

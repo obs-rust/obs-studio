@@ -1,0 +1,10 @@
+# ELF loader interposition supplies a recording backend without a GPU.
+if(OS_LINUX AND TARGET OBS::libobs-opengl)
+  add_executable(test_graphics_viewport test_graphics_viewport.c)
+  target_include_directories(test_graphics_viewport PRIVATE ${CMOCKA_INCLUDE_DIR})
+  target_link_libraries(test_graphics_viewport PRIVATE OBS::libobs ${CMOCKA_LIBRARIES} ${CMAKE_DL_LIBS})
+  target_compile_definitions(test_graphics_viewport PRIVATE VIEWPORT_BACKEND_PATH="$<TARGET_FILE:OBS::libobs-opengl>")
+  add_dependencies(test_graphics_viewport OBS::libobs-opengl)
+  add_dependencies(cmocka-tests test_graphics_viewport)
+  add_test(NAME test_graphics_viewport COMMAND test_graphics_viewport)
+endif()

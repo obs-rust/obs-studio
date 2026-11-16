@@ -67,15 +67,7 @@ void *obs_service_get_plugin_data(const obs_service_t *service)
 	return service->context.data;
 }
 
-const char *obs_service_get_context_name(const obs_service_t *service)
-{
-	return service->context.name;
-}
-
-obs_data_t *obs_service_get_context_settings(const obs_service_t *service)
-{
-	return service->context.settings;
-}
+/* Context getters now come from the Rust port and its real field adapter. */
 
 /* The steps on struct obs_service, its context and its reference counts
  * that the lifecycle (#1920) takes, as test doubles both sides call. Each

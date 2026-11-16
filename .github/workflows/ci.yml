@@ -76,13 +76,60 @@ jobs:
       actions: write
       contents: read
 
+  # PRs use hosted runners directly; a queue probe must not allocate on admission.
+  select-mq-runner:
+    name: Select Merge Queue Runner
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      labels: ${{ steps.select.outputs.labels }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        id: checkout
+        continue-on-error: true
+        if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''
+        with:
+          sparse-checkout: ci
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        id: uv
+        continue-on-error: true
+        if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          enable-cache: false
+      - name: Create Runner Probe App Token
+        id: mq-probe-app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        continue-on-error: true
+        if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '' && vars.MQ_PROBE_APP_ID != ''
+        with:
+          app-id: ${{ vars.MQ_PROBE_APP_ID }}
+          private-key: ${{ secrets.MQ_PROBE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: Check Runner Availability
+        id: select
+        continue-on-error: true
+        if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != '' && steps.checkout.outcome == 'success' && steps.uv.outcome == 'success'
+        env:
+          MQ_RUNNER_LABELS: ${{ vars.MQ_RUNNER_LABELS }}
+          MQ_RUNNER_MIN_IDLE: ${{ vars.MQ_RUNNER_MIN_IDLE }}
+          MQ_RUNNER_DEMAND: ${{ vars.MQ_RUNNER_DEMAND }}
+          MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token || secrets.MQ_RUNNER_STATUS_TOKEN }}
+        run: uv run --no-project ci/select_mq_runner.py
+      - name: Report Probe Setup Failure
+        if: ${{ !cancelled() && (steps.checkout.outcome == 'failure' || steps.uv.outcome == 'failure' || steps.select.outcome == 'failure') }}
+        run: echo '::warning::Merge-queue runner probe could not complete; using hosted runners.'
+
   # When master moves, GitHub starts a new queue run per queued PR, but a
   # queue ref carries the base commit, so the concurrency group above never
   # pairs it with the old one, which would keep waiting for a runner (#986).
   cancel-superseded:
     name: Cancel Superseded Queue Runs 🧹
+    needs: select-mq-runner
     if: ${{ !cancelled() && github.event_name == 'merge_group' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.select-mq-runner.outputs.labels != '' && fromJSON(needs.select-mq-runner.outputs.labels) || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       actions: write
@@ -103,16 +150,24 @@ jobs:
 
   check-format:
     name: Format 🔍
-    if: ${{ !cancelled() }}
+    needs: [select-mq-runner, build-project]
+    if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/check-format.yaml
+    with:
+      skip-checks: ${{ needs.build-project.outputs.skip_checks == 'true' }}
+      skip-swift: ${{ needs.build-project.outputs.skip_swift-format == 'true' }}
+      swift: ${{ needs.build-project.outputs.swift != 'false' }}
+      mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}
     permissions:
       contents: read
 
   build-project:
     name: Build 🧱
+    needs: select-mq-runner
     if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.flatpak-runtime-reuse-run != '' && !inputs.native-cache-measurement-only) }}
     uses: ./.github/workflows/build-project.yaml
     with:
+      mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}
       native-cache-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.native-cache-measurement-only }}
       native-cache-measurement-conflict: ${{ github.event_name == 'workflow_dispatch' && (inputs.flatpak-runtime-reuse-run != '' || inputs.tier2-setup-probe) }}
       flatpak-measurement-only: ${{ github.event_name == 'workflow_dispatch' && inputs.flatpak-measurement-only }}
@@ -305,7 +360,8 @@ jobs:
   validate-data:
     timeout-minutes: 10
     name: Validate Data 🕵️
-    if: ${{ !cancelled() && github.base_ref == 'master' }}
+    needs: build-project
+    if: ${{ always() && !cancelled() && ((github.base_ref == 'master' && needs.build-project.outputs.skip_validate-data != 'true') || (github.event_name == 'merge_group' && needs.build-project.outputs.data != 'false')) }}
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -318,7 +374,7 @@ jobs:
         uses: ./.github/actions/check-changes
         id: compat
         with:
-          baseRef: origin/${{ github.base_ref }}
+          baseRef: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
           checkGlob: plugins/win-capture/data/*.json
 
       - name: Check for Invalid Compatibility Data 📉
@@ -329,7 +385,7 @@ jobs:
         uses: ./.github/actions/check-changes
         id: services
         with:
-          baseRef: origin/${{ github.base_ref }}
+          baseRef: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
           checkGlob: plugins/rtmp-services/data/*.json
 
       - name: Check Services JSON Schema 📉
@@ -354,7 +410,7 @@ jobs:
         uses: ./.github/actions/check-changes
         id: checks
         with:
-          baseRef: origin/${{ github.base_ref }}
+          baseRef: ${{ github.event.merge_group.base_sha || format('origin/{0}', github.base_ref) }}
           checkGlob: docs/sphinx
 
       - uses: ./.github/actions/generate-docs
@@ -420,8 +476,8 @@ jobs:
     timeout-minutes: 10
     name: CI Gate ✅
     if: always()
-    needs: [cancel-superseded, check-format, build-project, validate-data, update-documentation, tier2-setup-producer, tier2-setup-consumer, native-cache-consumer, flatpak-runtime-reuse]
-    runs-on: ubuntu-26.04
+    needs: [select-mq-runner, cancel-superseded, check-format, build-project, validate-data, update-documentation, tier2-setup-producer, tier2-setup-consumer, native-cache-consumer, flatpak-runtime-reuse]
+    runs-on: ${{ needs.select-mq-runner.outputs.labels != '' && fromJSON(needs.select-mq-runner.outputs.labels) || 'ubuntu-26.04' }}
     permissions:
       actions: read
       contents: read
@@ -430,7 +486,6 @@ jobs:
       # E1), so a regression or a bypass that rebuilt the queue shows up.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          sparse-checkout: ci
           fetch-depth: 0
           persist-credentials: false
       - name: Set Up uv 🐍
@@ -458,14 +513,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/gate_jobs.py
-      - run: echo 'All required jobs passed or were skipped.'
+      - run: echo 'Every selected queue job executed successfully; out-of-scope jobs may skip.'
   # Publish the Tier 2 Linux lane proof (ci/lane_proof.py) after the gate
   # (#3018): CI Gate passes only when every Tier 2 shard passed, and the
   # output is set only when the build ran for an unproven lane. The gate
   # never waits on this job; a missing proof only means the lane runs again.
   tier2-lane-proof:
     name: Tier 2 Lane Proof 🧾
-    needs: [build-project, ci-gate]
+    needs: [select-mq-runner, build-project, ci-gate]
     # Override implicit success(): optional skipped jobs in the reusable build
     # must not suppress publication. Explicit results still fail closed.
     if: >-
@@ -475,7 +530,7 @@ jobs:
           (github.event_name == 'merge_group' ||
            (github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository)) }}
-    runs-on: ubuntu-26.04
+    runs-on: ${{ needs.select-mq-runner.outputs.labels != '' && fromJSON(needs.select-mq-runner.outputs.labels) || 'ubuntu-26.04' }}
     timeout-minutes: 5
     steps:
       - name: Mark Lane Proof 🧾
@@ -496,7 +551,10 @@ jobs:
   cache-janitor:
     name: Cache Janitor 🧹
     if: always() && github.event_name == 'merge_group'
-    needs: [ci-pre, ci-gate, tier2-lane-proof]
+    needs: [select-mq-runner, ci-pre, ci-gate, tier2-lane-proof]
+    # Always hosted: a queued job already holds its concurrency group, so a
+    # janitor waiting for a self-hosted runner blocked every later sweep and
+    # turned master red (#4847). It only calls the cache API.
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     # One sweep at a time, repo-wide; a running sweep is never cancelled.
@@ -520,4 +578,4 @@ jobs:
       - name: Sweep Caches 🧹
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: uvx --from git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2 ci-lint cache janitor --repo . --default-branch master
+        run: uvx --from git+https://github.com/zackees/ci.yml@24362f3e60248ebe72ffd261e5585640228cbc5d ci-lint cache janitor --repo . --default-branch master

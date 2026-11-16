@@ -1,0 +1,10 @@
+# Public core effect query with real video-owned OpenGL effects.
+if(OS_LINUX AND TARGET OBS::libobs-opengl)
+  add_executable(test_base_effect test_base_effect.c)
+  target_compile_definitions(test_base_effect PRIVATE GRAPHICS_MODULE_PATH="$<TARGET_FILE:OBS::libobs-opengl>")
+  target_link_libraries(test_base_effect PRIVATE OBS::libobs OBS::native-test-cmocka)
+  add_dependencies(test_base_effect libobs-opengl)
+  add_dependencies(cmocka-tests test_base_effect)
+  add_test(NAME test_base_effect COMMAND test_base_effect WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>")
+  set_tests_properties(test_base_effect PROPERTIES TIMEOUT 60)
+endif()

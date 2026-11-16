@@ -96,15 +96,6 @@ static inline void render_displays(void)
 	gs_leave_context();
 }
 
-static inline void set_render_size(uint32_t width, uint32_t height)
-{
-	gs_enable_depth_test(false);
-	gs_set_cull_mode(GS_NEITHER);
-
-	gs_ortho(0.0f, (float)width, 0.0f, (float)height, -100.0f, 100.0f);
-	gs_set_viewport(0, 0, (int)width, (int)height);
-}
-
 static inline void unmap_last_surface(struct obs_core_video_mix *video)
 {
 	for (int c = 0; c < NUM_CHANNELS; ++c) {
@@ -606,9 +597,9 @@ static inline void output_video_data(struct obs_core_video_mix *video, struct vi
 	locked = video_output_lock_frame(video->video, &output_frame, count, input_frame->timestamp);
 	if (locked) {
 		if (video->gpu_conversion) {
-			set_gpu_converted_data(&output_frame, input_frame, info);
+			obs_video_set_gpu_converted_data(&output_frame, input_frame, info);
 		} else {
-			copy_rgbx_frame(&output_frame, input_frame, info);
+			obs_video_copy_rgbx_frame(&output_frame, input_frame, info);
 		}
 
 		video_output_unlock_frame(video->video);
@@ -788,20 +779,6 @@ static void clear_gpu_frame_data(struct obs_core_video_mix *video)
 }
 
 extern THREAD_LOCAL bool is_graphics_thread;
-
-static void execute_graphics_tasks(void)
-{
-	struct obs_core_video *video = &obs->video;
-	pthread_mutex_lock(&video->task_mutex);
-	while (video->tasks.size) {
-		struct obs_task_info info;
-		deque_pop_front(&video->tasks, &info, sizeof(info));
-		pthread_mutex_unlock(&video->task_mutex);
-		info.task(info.param);
-		pthread_mutex_lock(&video->task_mutex);
-	}
-	pthread_mutex_unlock(&video->task_mutex);
-}
 
 static const char *tick_sources_name = "tick_sources";
 static const char *render_displays_name = "render_displays";

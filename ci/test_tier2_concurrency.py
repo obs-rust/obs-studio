@@ -22,6 +22,7 @@ TIMEOUTS = {
     "test_pipewire_screencast_shm": 90,
     "test_screencast_portal_teardown": 60,
     "test_vlc_audio_pacing": 120,
+    "test_source_transition_video": 120,
     "test_xshm_resolution_change": 60,
 }
 
@@ -107,7 +108,9 @@ set(OBS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output")
                     name = test["name"]
                     properties = {p["name"]: p["value"] for p in test["properties"]}
                     with self.subTest(test=name):
-                        exclusive = name.startswith("test_deinterlace_2x_field_order_") or (name == "test_xshm_resolution_change" and not wrapper)
+                        exclusive = (name.startswith("test_deinterlace_2x_field_order_")
+                                     or name == "test_source_transition_video"
+                                     or (name == "test_xshm_resolution_change" and not wrapper))
                         self.assertEqual(bool(properties.get("RUN_SERIAL")), exclusive,
                                          "Retain timing isolation and unisolated display mutation")
                         self.assertEqual(properties["TIMEOUT"], TIMEOUTS[name])

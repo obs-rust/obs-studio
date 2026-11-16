@@ -71,12 +71,45 @@ static void invalid_sizes_are_ignored(void **state)
 	assert_int_equal(rtmp->m_inChunkSize, 4096);
 }
 
+/* Window Acknowledgement Size and Set Peer Bandwidth carry a 32-bit value.
+ * A message shorter than that is ignored. The body buffer is longer than
+ * the size the message declares, so reading past the declared size would
+ * change the stored value. */
+static void receive_bandwidth(RTMP *rtmp, uint8_t type, uint32_t body_size)
+{
+	char body[5] = {0, 0, 0x10, 0, 2};
+	RTMPPacket packet = {0};
+	packet.m_packetType = type;
+	packet.m_nBodySize = body_size;
+	packet.m_body = body;
+	assert_int_equal(RTMP_ClientPacket(rtmp, &packet), 0);
+}
+
+static void short_bandwidth_messages_are_ignored(void **state)
+{
+	RTMP *rtmp = *state;
+	int server_bw = rtmp->m_nServerBW;
+	int client_bw = rtmp->m_nClientBW;
+
+	receive_bandwidth(rtmp, RTMP_PACKET_TYPE_SERVER_BW, 3);
+	assert_int_equal(rtmp->m_nServerBW, server_bw);
+	receive_bandwidth(rtmp, RTMP_PACKET_TYPE_CLIENT_BW, 0);
+	assert_int_equal(rtmp->m_nClientBW, client_bw);
+
+	receive_bandwidth(rtmp, RTMP_PACKET_TYPE_SERVER_BW, 4);
+	assert_int_equal(rtmp->m_nServerBW, 0x1000);
+	receive_bandwidth(rtmp, RTMP_PACKET_TYPE_CLIENT_BW, 5);
+	assert_int_equal(rtmp->m_nClientBW, 0x1000);
+	assert_int_equal(rtmp->m_nClientBW2, 2);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test_setup_teardown(valid_sizes, setup, teardown),
 		cmocka_unit_test_setup_teardown(short_message_is_ignored, setup, teardown),
 		cmocka_unit_test_setup_teardown(invalid_sizes_are_ignored, setup, teardown),
+		cmocka_unit_test_setup_teardown(short_bandwidth_messages_are_ignored, setup, teardown),
 	};
 
 	return cmocka_run_group_tests(tests, NULL, NULL);

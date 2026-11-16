@@ -36,6 +36,7 @@ pub mod dstr_libc;
 pub mod ffi;
 pub mod file_serializer;
 pub mod lexer;
+pub mod module_registry;
 pub mod path_extension;
 pub mod pipe;
 pub mod platform;

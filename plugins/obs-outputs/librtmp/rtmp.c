@@ -2739,6 +2739,11 @@ PublisherAuth(RTMP *r, AVal *description)
                     aptr->av_len = par - aptr->av_val - 1;
                     aptr = NULL;
                 }
+                if (!val)
+                {
+                    RTMP_Log(RTMP_LOGDEBUG, "%s, par:\"%s\" has no value, ignoring", __func__, par);
+                    continue;
+                }
                 if (strcmp(par, "user") == 0)
                 {
                     user.av_val = val;
@@ -2764,6 +2769,14 @@ PublisherAuth(RTMP *r, AVal *description)
             }
             if (aptr)
                 aptr->av_len = (int)strlen(aptr->av_val);
+
+            if (!user.av_val || !salt.av_val)
+            {
+                RTMP_Log(RTMP_LOGERROR, "%s, needauth without user or salt", __func__);
+                free(orig_ptr);
+                r->Link.pFlags |= RTMP_PUB_CLEAN;
+                return 0;
+            }
 
             /* hash1 = base64enc(md5(user + _aodbeAuthSalt + password)) */
             MD5_Init(&md5ctx);
@@ -2832,18 +2845,20 @@ PublisherAuth(RTMP *r, AVal *description)
             return 0;
         }
 
-        ptr = malloc(r->Link.app.av_len + pubToken.av_len);
-        strncpy(ptr, r->Link.app.av_val, r->Link.app.av_len);
-        strncpy(ptr + r->Link.app.av_len, pubToken.av_val, pubToken.av_len);
+        ptr = malloc(r->Link.app.av_len + pubToken.av_len + 1);
+        memcpy(ptr, r->Link.app.av_val, r->Link.app.av_len);
+        memcpy(ptr + r->Link.app.av_len, pubToken.av_val, pubToken.av_len);
         r->Link.app.av_len += pubToken.av_len;
+        ptr[r->Link.app.av_len] = '\0';
         if(r->Link.pFlags & RTMP_PUB_ALLOC)
             free(r->Link.app.av_val);
         r->Link.app.av_val = ptr;
 
-        ptr = malloc(r->Link.tcUrl.av_len + pubToken.av_len);
-        strncpy(ptr, r->Link.tcUrl.av_val, r->Link.tcUrl.av_len);
-        strncpy(ptr + r->Link.tcUrl.av_len, pubToken.av_val, pubToken.av_len);
+        ptr = malloc(r->Link.tcUrl.av_len + pubToken.av_len + 1);
+        memcpy(ptr, r->Link.tcUrl.av_val, r->Link.tcUrl.av_len);
+        memcpy(ptr + r->Link.tcUrl.av_len, pubToken.av_val, pubToken.av_len);
         r->Link.tcUrl.av_len += pubToken.av_len;
+        ptr[r->Link.tcUrl.av_len] = '\0';
         if(r->Link.pFlags & RTMP_PUB_ALLOC)
             free(r->Link.tcUrl.av_val);
         r->Link.tcUrl.av_val = ptr;
@@ -2931,6 +2946,11 @@ PublisherAuth(RTMP *r, AVal *description)
                     aptr->av_len = par - aptr->av_val - 1;
                     aptr = NULL;
                 }
+                if (!val)
+                {
+                    RTMP_Log(RTMP_LOGDEBUG, "%s, par:\"%s\" has no value, ignoring", __func__, par);
+                    continue;
+                }
                 if (strcmp(par, "user") == 0)
                 {
                     user.av_val = val;
@@ -2947,7 +2967,13 @@ PublisherAuth(RTMP *r, AVal *description)
             if (aptr)
                 aptr->av_len = (int)strlen(aptr->av_val);
 
-            /* FIXME: handle case where user==NULL or nonce==NULL */
+            if (!user.av_val || !nonce.av_val)
+            {
+                RTMP_Log(RTMP_LOGERROR, "%s, needauth without user or nonce", __func__);
+                free(orig_ptr);
+                r->Link.pFlags |= RTMP_PUB_CLEAN;
+                return 0;
+            }
 
             snprintf(nchex, sizeof(nchex), "%08x", nc);
             snprintf(cnonce, sizeof(cnonce), "%08x", rand());
@@ -3111,6 +3137,11 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
     AVal method;
     double txn;
     int ret = 0, nRes;
+    if (nBodySize < 1)
+    {
+        RTMP_Log(RTMP_LOGWARNING, "%s, empty invoke packet", __func__);
+        return 0;
+    }
     if (body[0] != 0x02)		/* make sure it is a string method name we start with */
     {
         RTMP_Log(RTMP_LOGWARNING, "%s, Sanity failed. no string method in invoke packet",
@@ -3296,9 +3327,21 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
                     free(methodInvoked.av_val);
                     goto leave;
                 }
-                RTMP_Log(RTMP_LOGDEBUG, "%s, error description: %s", __func__, description.av_val);
-                /* if PublisherAuth returns 1, then reconnect */
-                if (PublisherAuth(r, &description) == 1)
+                /* PublisherAuth searches the description as a C string, and a
+                 * decoded AMF string is not terminated: give it a copy. */
+                int reconnect = 0;
+                char *desc = malloc((size_t)description.av_len + 1);
+                if (desc)
+                {
+                    memcpy(desc, description.av_val, description.av_len);
+                    desc[description.av_len] = '\0';
+                    description.av_val = desc;
+                    RTMP_Log(RTMP_LOGDEBUG, "%s, error description: %s", __func__, description.av_val);
+                    reconnect = PublisherAuth(r, &description) == 1;
+                    free(desc);
+                }
+                /* if PublisherAuth returned 1, then reconnect */
+                if (reconnect)
                 {
                     RTMP_Close(r);
                     if (r->Link.pFlags & RTMP_PUB_CLATE)
@@ -3367,9 +3410,10 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
             RTMP_Close(r);
 
             if (description.av_len)
-                RTMP_Log(RTMP_LOGERROR, "%s:\n%s (%s)", r->Link.tcUrl.av_val, code.av_val, description.av_val);
+                RTMP_Log(RTMP_LOGERROR, "%s:\n%.*s (%.*s)", r->Link.tcUrl.av_val, code.av_len, code.av_val,
+                         description.av_len, description.av_val);
             else
-                RTMP_Log(RTMP_LOGERROR, "%s:\n%s", r->Link.tcUrl.av_val, code.av_val);
+                RTMP_Log(RTMP_LOGERROR, "%s:\n%.*s", r->Link.tcUrl.av_val, code.av_len, code.av_val);
         }
 
         else if (AVMATCH(&code, &av_NetStream_Play_Start)
@@ -3426,9 +3470,9 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
 
         else
         {
-            RTMP_Log(RTMP_LOGWARNING, "Unhandled: %s:\n%s", r->Link.tcUrl.av_val, code.av_val);
+            RTMP_Log(RTMP_LOGWARNING, "Unhandled: %s:\n%.*s", r->Link.tcUrl.av_val, code.av_len, code.av_val);
             if (description.av_len)
-                RTMP_Log(RTMP_LOGDEBUG, "Description: %s", description.av_val);
+                RTMP_Log(RTMP_LOGDEBUG, "Description: %.*s", description.av_len, description.av_val);
         }
     }
     else if (AVMATCH(&method, &av_playlist_ready))
@@ -3775,6 +3819,11 @@ HandleCtrl(RTMP *r, const RTMPPacket *packet)
 static void
 HandleServerBW(RTMP *r, const RTMPPacket *packet)
 {
+    if (packet->m_nBodySize < 4)
+    {
+        RTMP_Log(RTMP_LOGWARNING, "%s: message too short, ignoring", __func__);
+        return;
+    }
     r->m_nServerBW = AMF_DecodeInt32(packet->m_body);
     RTMP_Log(RTMP_LOGDEBUG, "%s: server BW = %d", __func__, r->m_nServerBW);
 }
@@ -3782,6 +3831,11 @@ HandleServerBW(RTMP *r, const RTMPPacket *packet)
 static void
 HandleClientBW(RTMP *r, const RTMPPacket *packet)
 {
+    if (packet->m_nBodySize < 4)
+    {
+        RTMP_Log(RTMP_LOGWARNING, "%s: message too short, ignoring", __func__);
+        return;
+    }
     r->m_nClientBW = AMF_DecodeInt32(packet->m_body);
     if (packet->m_nBodySize > 4)
         r->m_nClientBW2 = packet->m_body[4];
@@ -3915,6 +3969,22 @@ RTMP_ReadPacket(RTMP *r, RTMPPacket *packet)
 
         if (nSize >= 6)
         {
+            RTMPPacket *stored = r->m_vecChannelsIn[packet->m_nChannel];
+
+            /* This header carries a body size, so it starts a new message.
+             * A body left from a message that was never finished on this
+             * channel was allocated for that message's size: drop it, so
+             * the body below is allocated for this one. The same goes for
+             * a body the caller left in the packet. */
+            if (stored && stored->m_body)
+            {
+                if (packet->m_body == stored->m_body)
+                    packet->m_body = NULL;
+                RTMPPacket_Free(stored);
+                stored->m_nBytesRead = 0;
+            }
+            RTMPPacket_Free(packet);
+
             packet->m_nBodySize = AMF_DecodeInt24(header + 3);
             packet->m_nBytesRead = 0;
 
@@ -3953,6 +4023,12 @@ RTMP_ReadPacket(RTMP *r, RTMPPacket *packet)
         }
         // didAlloc = TRUE;
         packet->m_headerType = (hbuf[0] & 0xc0) >> 6;
+    }
+
+    if (packet->m_nBytesRead > packet->m_nBodySize)
+    {
+        RTMP_Log(RTMP_LOGERROR, "%s, packet state is inconsistent", __func__);
+        return FALSE;
     }
 
     nToRead = packet->m_nBodySize - packet->m_nBytesRead;
@@ -4462,8 +4538,10 @@ RTMP_Close(RTMP *r)
     {
         free(r->Link.app.av_val);
         r->Link.app.av_val = NULL;
+        r->Link.app.av_len = 0;
         free(r->Link.tcUrl.av_val);
         r->Link.tcUrl.av_val = NULL;
+        r->Link.tcUrl.av_len = 0;
     }
 #else
     for (int idx = 0; idx < r->Link.nStreams; idx++)
@@ -4682,13 +4760,16 @@ HTTP_read(RTMP *r, int fill)
 {
     char *ptr;
     int hlen;
+    int nFill = 1;
+    /* nFill: what the last refill read. A closed peer, a timeout or a full
+     * buffer reads nothing, and then the response can never complete. */
 
 restart:
     if (fill)
-        RTMPSockBuf_Fill(&r->m_sb);
+        nFill = RTMPSockBuf_Fill(&r->m_sb);
     if (r->m_sb.sb_size < 13)
     {
-        if (fill)
+        if (fill && nFill > 0)
             goto restart;
         return -2;
     }
@@ -4697,7 +4778,7 @@ restart:
     r->m_sb.sb_start[r->m_sb.sb_size] = '\0';
     if (!strstr(r->m_sb.sb_start, "\r\n\r\n"))
     {
-        if (fill)
+        if (fill && nFill > 0)
             goto restart;
         return -2;
     }
@@ -4711,13 +4792,16 @@ restart:
     if (!ptr)
         return -1;
     hlen = atoi(ptr+16);
+    /* The body holds at least the polling byte or the client id's newline. */
+    if (hlen < 1)
+        return -1;
     ptr = strstr(ptr+16, "\r\n\r\n");
     if (!ptr)
         return -1;
     ptr += 4;
-    if (ptr + (r->m_clientID.av_val ? 1 : hlen) > r->m_sb.sb_start + r->m_sb.sb_size)
+    if ((r->m_clientID.av_val ? 1 : hlen) > (r->m_sb.sb_start + r->m_sb.sb_size) - ptr)
     {
-        if (fill)
+        if (fill && nFill > 0)
             goto restart;
         return -2;
     }

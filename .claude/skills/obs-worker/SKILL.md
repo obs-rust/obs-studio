@@ -38,6 +38,36 @@ you last read them (`git log -1 --format=%cs -- <file>`).
 git fetch origin && git rebase --autostash origin/master
 ```
 
+**Check that master is green** before you branch for new work. PR and
+merge-queue CI do not run every lane that a master push runs, so a merge can
+break master while its own checks were green (#4059 broke every master push
+run for 13 hours, #4168). Read the newest push runs:
+
+```sh
+gh run list -R obs-rust/obs-studio --branch master --event push -L 10 \
+  --json conclusion,headSha,createdAt,databaseId
+```
+
+If the newest completed run failed, find the first red commit (the runs in
+time order) and read its failing job log (`gh run view <run> --log-failed`).
+Then:
+
+- **An infrastructure flake** (a download that fails with HTTP 5xx, a lost
+  runner): rerun the failed jobs of that run only
+  (`gh run rerun <run> --failed`). Do not file an issue.
+- **A real break:** first search open and closed issues and open PRs for the
+  error text and the file. Several workers see the same red master, and only
+  one of them fixes it. If nobody has it, file it, claim it and forward-fix
+  it before your own work. The issue and the PR name the causing PR and the
+  first red run ("broken by #4059, run 42516069306").
+- **A break you cannot fix:** file the issue with the same data and say why.
+
+While master is red, unrelated work can continue. Do not trust a failed check
+that has the same cause as the red master, and rebase after the fix merges.
+
+Then read what changed on your earlier work (§7, "After the merge"): new
+comments on your issues and PRs can be the most important next work.
+
 Work in your own branch, named `port/<unit>`, `fix/<issue>-<topic>`,
 `test/<unit>` or `infra/<topic>`, in the checkout you were started in. Don't
 touch other people's branches, and don't delete local branches you didn't
@@ -56,23 +86,22 @@ switch away or hand off, do one of these:
 
 ### Push with `./push`
 
-`./push` is the repo's single push entry point. It runs `soldr lint rust
---attest`, asks `ghd attest stamp` to write the resulting evidence into the
-commit message as `Ci-Attestation:` trailers, pushes the branch, and opens the
-PR if there is not one already. That is what lets CI skip remote work instead of
-repeating it: the trailers are the proof that the client already ran fmt, clippy,
-dylint and the host tests.
+`./push` is the single push entry point. It tries prooft's complete client
+lint/clippy/Dylint on all six supported targets, host tests, self-tests and
+validators. Optional Swift evidence is separate. It stamps only completed passes
+and signs the final amended commit. Legacy fallback remains diagnostic; absent
+or partial proof warns and still pushes unless `PUSH_REQUIRE_ATTESTATION=1`.
+Local tooling is optional for contributors.
 
-```bash
-./push                    # attest, stamp, push, open (or reuse) the PR
-PUSH_REQUIRE_ATTESTATION=1 ./push   # refuse to push without evidence
-```
-
-A bare `git push`/`gh pr create` bypasses the attestation, so CI falls back to
-running everything — and agent guardrails refuse it. If a step in the chain is
-not available in your toolchain yet, `./push` says which one and falls back to
-pushing without evidence, which is why the gate still exists: run
-`ci-lint local-gate run` and push the stamped commit.
+CI trusts only same-repository PRs with authenticated active obs-rust membership
+for BOTH author and valid final HEAD signer. Private lookup denial, forks,
+non-members, unsigned heads, trust-surface edits, missing/invalid/stale gates and
+verifier/API errors run real selected PR checks, including six-target analysis.
+The verifier and pins come from immutable BASE. These trailers are self-reported
+proofs, not signed execution evidence. Stamp first, then sign final HEAD.
+Complete selected client gates defer heavy native/link/Qt/Tier 2 work to the
+merge queue, which reruns every selected heavy leg regardless of evidence.
+The required `CI Gate ✅` name and all four test tiers stay unchanged.
 
 When you find a dirty branch with no commits, no remote and no PR, someone
 left it behind. Before you package it, check whether master already has the
@@ -242,17 +271,12 @@ PR CI is the merge gate. Local runs give faster feedback:
   peak RSS over 20 to 50 runs for proptests (`/usr/bin/time -v` on Linux,
   `-l` on macOS) and cap every generated size that drives an allocation;
   state whether the test starts its own threads, and how many.
-- Dylint has its own gate lane: `ci/local_gate.py --lane dylint` (declared as
-  `[gate.lanes.dylint]` in `local-gate.toml`). It is keyed on `dylints/**`,
-  `rust-toolchain.toml` and `Cargo.lock` alone, so a change that touches none
-  of those reuses the previous pass instead of rebuilding the lint libraries.
-  CI runs it beside the lint lane in the Local Gate job; cross-target Dylint
-  still runs in the `Rust Cross Lint` jobs, so a local pre-push check does not
-  need the cross targets.
-- To let CI skip the Linux test jobs, commit, then stamp HEAD with the
-  local gate (the pinned command is in AGENTS.md), and push the stamped
-  commit **unchanged**. Any amend, rebase or "Update branch" drops the
-  stamp, so rebase before stamping.
+- The legacy `dylint` lane is separate and source-bound. Complete admission
+  requires client clippy AND Dylint for all six supported targets through soldr;
+  a host-only legacy run cannot prove that contract.
+- Commit, run the client lanes, stamp, then sign the final commit. Any content
+  amend, rebase or "Update branch" needs fresh evidence and final signing;
+  without it, keep the real selected PR checks.
 
 If the environment fights you (soldr permissions, disk, Docker), don't
 debug it for long: push and let PR CI run. Never `docker system prune`;
@@ -318,6 +342,26 @@ running, wait and retry.
   landings, or user-facing features that still need checking on a
   device: watch those through to merge.
 
+- **After the merge, check the master push run of your merge commit**
+  (`gh run list -R obs-rust/obs-studio --branch master --event push --commit <sha>`).
+  If it fails for a reason the PR's own CI did not run, §1 applies, and the
+  causing PR is yours.
+- **Keep reading your issues and PRs after the merge.** Reviewers and users
+  comment after a merge, and a question that nobody answers can hide a bug (a
+  review question on #4049 had no answer when it merged; a related bug in the
+  same code followed in #4143). Before new work, list what changed since your
+  last check, your PRs merged in the last 7 days included, and read every
+  comment newer than your own last one:
+
+  ```sh
+  gh search issues --repo obs-rust/obs-studio --involves @me --updated ">=<date>"
+  gh search prs --repo obs-rust/obs-studio --involves @me --updated ">=<date>"
+  ```
+
+  Do not use the notifications inbox as the trigger: several agents can act
+  as one account, and a person can mark notifications as read. An unanswered
+  question or review comment is work: answer it, or file the follow-up it
+  asks for.
 - After the merge, ask whether this work taught something that cost hours to
   find and that the next worker would find again. If so, open a follow-up PR
   with a concept in `docs/knowledge/` ([when to write one](../../../docs/knowledge/index.md#when-to-write-a-concept)).

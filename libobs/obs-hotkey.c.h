@@ -73,30 +73,6 @@ void obs_hotkey_set_description(obs_hotkey_id id, const char *desc)
 	hotkey->description = bstrdup(desc);
 }
 
-void obs_hotkey_pair_set_names(obs_hotkey_pair_id id, const char *name0, const char *name1)
-{
-	obs_hotkey_pair_t *pair;
-
-	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
-	if (!pair)
-		return;
-
-	obs_hotkey_set_name(pair->id[0], name0);
-	obs_hotkey_set_name(pair->id[1], name1);
-}
-
-void obs_hotkey_pair_set_descriptions(obs_hotkey_pair_id id, const char *desc0, const char *desc1)
-{
-	obs_hotkey_pair_t *pair;
-
-	HASH_FIND_HKEY(obs->hotkeys.hotkey_pairs, id, pair);
-	if (!pair)
-		return;
-
-	obs_hotkey_set_description(pair->id[0], desc0);
-	obs_hotkey_set_description(pair->id[1], desc1);
-}
-
 static void hotkey_signal(const char *signal, obs_hotkey_t *hotkey)
 {
 	calldata_t data;
@@ -374,22 +350,6 @@ static inline void enum_bindings(obs_hotkey_binding_internal_enum_func func, voi
 	}
 }
 
-static inline void enum_context_hotkeys(struct obs_context_data *context, obs_hotkey_internal_enum_func func,
-					void *data)
-{
-	const size_t num = context->hotkeys.num;
-	const obs_hotkey_id *array = context->hotkeys.array;
-	obs_hotkey_t *hotkey;
-
-	for (size_t i = 0; i < num; i++) {
-		HASH_FIND_HKEY(obs->hotkeys.hotkeys, array[i], hotkey);
-		if (!hotkey)
-			continue;
-		if (!func(data, hotkey))
-			break;
-	}
-}
-
 struct binding_find_data {
 	obs_hotkey_id id;
 	size_t *idx;
@@ -487,11 +447,6 @@ void obs_hotkey_seam_signal(const char *signal, obs_hotkey_t *hotkey)
 void obs_hotkey_seam_enum_bindings(obs_hotkey_binding_internal_enum_func func, void *data)
 {
 	enum_bindings(func, data);
-}
-
-void obs_hotkey_seam_enum_context(struct obs_context_data *context, obs_hotkey_internal_enum_func func, void *data)
-{
-	enum_context_hotkeys(context, func, data);
 }
 
 size_t obs_hotkey_seam_context_count(const struct obs_context_data *context)
@@ -676,29 +631,6 @@ void obs_hotkeys_free(void)
 	}
 }
 
-void obs_enum_hotkeys(obs_hotkey_enum_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	obs_hotkey_t *hk, *tmp;
-	HASH_ITER (hh, obs->hotkeys.hotkeys, hk, tmp) {
-		if (!func(data, hk->id, hk))
-			break;
-	}
-
-	unlock();
-}
-
-void obs_enum_hotkey_bindings(obs_hotkey_binding_enum_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	enum_bindings(func, data);
-	unlock();
-}
-
 struct obs_hotkey_binding_fields obs_hotkey_binding_fields(obs_hotkey_binding_t *binding)
 {
 	return (struct obs_hotkey_binding_fields){
@@ -814,16 +746,6 @@ enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *fla
 	return state;
 }
 
-char *obs_hotkeys_get_background_error(void)
-{
-	if (!lock())
-		return NULL;
-
-	char *error = obs->hotkeys.background.error ? bstrdup(obs->hotkeys.background.error) : NULL;
-	unlock();
-	return error;
-}
-
 char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 {
 	if (!lock())
@@ -856,20 +778,6 @@ char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo)
 		return NULL;
 	}
 	return trigger.array;
-}
-
-void obs_hotkeys_enum_background_shortcuts(obs_hotkey_background_enum_func func, void *data)
-{
-	if (!func || !lock())
-		return;
-
-	struct obs_hotkeys_background *background = &obs->hotkeys.background;
-	for (size_t i = 0; i < background->shortcuts.num; i++) {
-		struct obs_hotkey_background_shortcut *shortcut = &background->shortcuts.array[i];
-		if (!func(data, shortcut->combo, shortcut->trigger, shortcut->bound))
-			break;
-	}
-	unlock();
 }
 
 /* Lets the platform client act on a retry or probe change, then unlocks.
@@ -979,44 +887,6 @@ void *obs_hotkey_thread(void *arg)
 	return NULL;
 }
 
-void obs_hotkey_trigger_routed_callback(obs_hotkey_id id, bool pressed)
-{
-	if (!lock())
-		return;
-
-	if (!obs->hotkeys.reroute_hotkeys)
-		goto unlock;
-
-	obs_hotkey_t *hotkey;
-	HASH_FIND_HKEY(obs->hotkeys.hotkeys, id, hotkey);
-	if (!hotkey)
-		goto unlock;
-
-	hotkey->func(hotkey->data, id, hotkey, pressed);
-
-unlock:
-	unlock();
-}
-
-void obs_hotkey_set_callback_routing_func(obs_hotkey_callback_router_func func, void *data)
-{
-	if (!lock())
-		return;
-
-	obs->hotkeys.router_func = func;
-	obs->hotkeys.router_func_data = data;
-	unlock();
-}
-
-void obs_hotkey_enable_callback_rerouting(bool enable)
-{
-	if (!lock())
-		return;
-
-	obs->hotkeys.reroute_hotkeys = enable;
-	unlock();
-}
-
 /* The key name store (obs->hotkeys.translations[]): obs_hotkeys_set_translations_s()
  * in obs-hotkey-translations.c.h calls it for each name it sets. Declared in
  * obs-internal.h; not exported. */
@@ -1036,32 +906,6 @@ const char *obs_get_hotkey_translation(obs_key_t key, const char *def)
 	}
 
 	return obs->hotkeys.translations[key] ? obs->hotkeys.translations[key] : def;
-}
-
-void obs_hotkeys_set_audio_hotkeys_translations(const char *mute, const char *unmute, const char *push_to_mute,
-						const char *push_to_talk, const char *monitor_on,
-						const char *monitor_off)
-{
-#define SET_T(n)               \
-	bfree(obs->hotkeys.n); \
-	obs->hotkeys.n = bstrdup(n)
-	SET_T(mute);
-	SET_T(unmute);
-	SET_T(push_to_mute);
-	SET_T(push_to_talk);
-	SET_T(monitor_on);
-	SET_T(monitor_off);
-#undef SET_T
-}
-
-void obs_hotkeys_set_sceneitem_hotkeys_translations(const char *show, const char *hide)
-{
-#define SET_T(n)                           \
-	bfree(obs->hotkeys.sceneitem_##n); \
-	obs->hotkeys.sceneitem_##n = bstrdup(n)
-	SET_T(show);
-	SET_T(hide);
-#undef SET_T
 }
 
 /* This file hashes integer keys (HASH_FUNCTION above); restore util/uthash.h's

@@ -28,3 +28,20 @@ pub fn run(_record_dir: Option<&str>) -> io::Result<()> {
         "this build has no libobs; rebuild with --features bundled-native",
     ))
 }
+
+/// Serve a headless socket until stdin closes.
+/// # Errors
+/// Fails if libobs or the socket cannot start.
+#[cfg(feature = "bundled-native")]
+pub fn listen(record_dir: Option<&str>, socket: Option<&str>) -> io::Result<()> {
+    obs_mcp::host::serve_socket(
+        &obs_mcp::host::StartOptions::from_env(record_dir.map(Into::into)),
+        &obs_mcp::platform::EndpointOptions {
+            socket: socket.map(Into::into),
+        },
+    )
+}
+#[cfg(not(feature = "bundled-native"))]
+pub fn listen(record_dir: Option<&str>, _: Option<&str>) -> io::Result<()> {
+    run(record_dir)
+}

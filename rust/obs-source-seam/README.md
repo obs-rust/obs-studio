@@ -9,6 +9,7 @@ private libobs adapter and exports the C functions under their original names.
 | `libobs/obs-source-audio-input-path.c.h` | `obs_source::audio_input_path` | `ffi::source_audio_input_path` | `libobs/obs-source-audio-input-path-seam.h` |
 | `libobs/obs-source-audio-output.c.h` | `obs_source::audio_output` | `ffi::source_audio_output` | `libobs/obs-source-audio-output-seam.h` |
 | `libobs/obs-source-audio-settings.c.h` | `obs_source::audio_settings` | `ffi::source_audio_settings` | `libobs/obs-source-audio-settings-seam.h` |
+| `libobs/obs-source-deinterlace.c.h` (the rest: the frame take, update, render and setters) | `obs_source::deinterlace` | `ffi::source_deinterlace` | `libobs/obs-source-deinterlace-seam.h` and `obs_source_deinterlace_fields()`, and the frame cache, the async texture upload, the effect load and the graphics calls through `Calls` |
 | `libobs/obs-source-transition-access.c.h` | `obs_source::transition_access` | `ffi::source_transition_access` | `libobs/obs-source-transition-seam.h`, and `obs_source_get_ref()` and `obs_transition_set()` through `Calls` |
 | `libobs/obs-source-transition-restore.c.h` | `obs_source::transition_load` (`load`) | `ffi::source_transition_restore` | `libobs/obs-source-transition-seam.h`, the `obs_data` reads, and the libobs source calls through `Calls` |
 | `libobs/obs-source-transition-settings.c.h` | `obs_source::transition_settings` | `ffi::source_transition_settings` | `libobs/obs-source-transition-seam.h` |
@@ -16,6 +17,7 @@ private libobs adapter and exports the C functions under their original names.
 | `libobs/obs-source-transition-slots.c.h` | `obs_source::transition_slots` | `ffi::source_transition_slots` | `libobs/obs-source-transition-seam.h`, and the libobs source calls through `Calls` |
 | `libobs/obs-source-transition-stop.c.h` | `obs_source::transition_stop` | `ffi::source_transition_stop` | `libobs/obs-source-transition-seam.h`, and the libobs source calls, the signals and the video frame time through `Calls` |
 | `libobs/obs-source-transition-switch.c.h` | `obs_source::transition_switch` | `ffi::source_transition_switch` | `libobs/obs-source-transition-seam.h`, and the libobs source calls, the signals, the clock and the size port through `Calls` |
+| `libobs/obs-source-transition-video.c.h` | `obs_source::transition_video` | `ffi::source_transition_video` | `libobs/obs-source-transition-seam.h`, and the stop and size ports, the libobs source calls, the signal, the transparent texture and the graphics calls through `Calls` |
 | `libobs/obs-source-transition.c.h` (the rest: audio render, init and free) | `obs_source::transition_audio` | `ffi::source_transition` | `libobs/obs-source-transition-seam.h` on the stop shims' `Seam`, and the libobs source, audio and graphics calls through `Calls` (which extends the stop shims') |
 
 ## Why a crate of its own

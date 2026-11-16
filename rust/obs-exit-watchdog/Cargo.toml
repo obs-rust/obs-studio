@@ -1,0 +1,30 @@
+[package]
+autotests = false
+name = "obs-exit-watchdog"
+version = "0.1.0"
+description = "The exit watchdog: end OBS when exit() blocks after shutdown (obs-rust/obs-studio#4065)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# _exit(2), in src/platform/unix.rs only.
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
+# The tests run in obs-gpu-status's obs-tests-gpu (ci/test_binary_cap.py: one
+# executable per category; this is the frontend's Rust).
+[lib]
+test = false
+
+# The watchdog process (#4589), shipped next to the OBS executable on
+# Windows. Its tests run with the library's, in obs-tests-gpu.
+[[bin]]
+name = "obs-exit-watchdog"
+path = "src/bin/obs-exit-watchdog.rs"
+# Same name as the library: its docs would collide.
+doc = false
+test = false

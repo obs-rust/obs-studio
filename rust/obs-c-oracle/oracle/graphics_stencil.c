@@ -75,7 +75,6 @@ static void stencil_op(gs_device_t *device, enum gs_stencil_side side, enum gs_s
 #define gs_get_context stencil_context
 #define blog stencil_blog
 #include "graphics-stencil-adapter.inc"
-#undef blog
 #define gs_enable_stencil_test oracle_gs_enable_stencil_test
 #define gs_enable_stencil_write oracle_gs_enable_stencil_write
 #define gs_stencil_function oracle_gs_stencil_function
@@ -85,6 +84,7 @@ static void stencil_op(gs_device_t *device, enum gs_stencil_side side, enum gs_s
 #undef gs_stencil_function
 #undef gs_enable_stencil_write
 #undef gs_enable_stencil_test
+#undef blog
 #undef gs_get_context
 
 void oracle_stencil_reset(bool present)

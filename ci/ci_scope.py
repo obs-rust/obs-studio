@@ -46,20 +46,13 @@ Platform and Qt lanes:
            Qt frontend build and its unit tests (#992);
 - qt_sdk:  rust/obs-build's Qt SDK resolver changed -> the macOS and
            Windows Rust lanes check it against the published Qt SDKs (#1878);
-- asan:    a compile input of a target that already names a conversion group in
-           its `target_compile_options` (the ratchet #2625/#2938, read from
-           ci/conversion_ratchet.py) changed on a PR -> that PR's Sanitizers
-           check builds `asan`. Only a `pull_request` selects it: a merge-queue
-           run keeps the path selection, so the queue pays nothing (#2072,
-           #2593), and a master push or the schedule runs the full lane anyway;
 - core:    libobs or the Rust workspace changed (informational).
 Platform is decided by path alone (#897, ci/platform_paths.py): a changed
 file of a platform (`win-capture/`, `platform-osx.mm`, `threading-posix.c`,
 `rust/*/src/platform/windows/`, `libobs/build/source-sets.d/
 LIBOBS_WINDOWS_SOURCES.json` (#3235), ...) starts that platform's jobs. Core files
-carry no platform defines (ci/platform_ifdef_ratchet.py), so on a PR a
-core change is Linux only. Pushes to master are the
-exception: core code selects the macOS and Windows Rust lanes too, because
+carry no platform defines (ci/platform_ifdef_ratchet.py). Core PRs select
+Windows; merge groups and master pushes select both native Rust lanes, because
 the platform builds read it and a Windows-only break in it otherwise lands
 unseen (#2916, #2910). `.github/`, `cmake/common/`, `cmake/finders/`, `libobs/cmake/`
 (except `os-<os>.cmake` and every other OS-named file there, `rust-os-<os>.cmake`,
@@ -96,7 +89,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from conversion_ratchet import hit as ratchet_hit, repo_ratcheted_dirs
 from platform_paths import (
     LINUX,
     MACOS,
@@ -167,8 +159,8 @@ class Scope:
     qt_sdk: bool = False
     docs_only: bool = False
     cross_targets: str = ""
-    asan: bool = False
     cross_lint: bool = False
+    windows_link: bool = False
 
 
 # The path -> lane table (#992). Adding a module is adding a row. Globs use
@@ -517,17 +509,23 @@ def cross_targets(files: list[str], read: Callable[[str], str]) -> str:
 
 
 def core_native_lanes(core: bool, event: str, ref: str) -> frozenset[str]:
-    """Core PRs run Windows; master pushes run both native platforms.
-
-    Hosted native runner starvation must not stall queue admission: merge groups
-    stay Linux-only (#3634). A missing PR runner delays only its author (#3637).
-    macOS core PR coverage is a separate rollout; keep native master validation.
-    """
+    """Keep PR routing; queue/master core validation runs both native hosts."""
     if core and event == "pull_request":
         return frozenset({WINDOWS})
-    if core and event == "push" and ref == "master":
+    if core and (event == "merge_group" or (event == "push" and ref == "master")):
         return frozenset({MACOS, WINDOWS})
     return frozenset()
+
+
+def native_core_inputs(files: list[str], event: str, core: bool) -> bool:
+    """Preserve PR/push routing and keep queue host-only paths narrow."""
+    if event != "merge_group":
+        return core
+    return any(
+        (path.startswith(CORE_PREFIXES) or path in CORE_FILES)
+        and path_platforms(path) is None and not HIDDEN_FRAGMENT.match(path)
+        for path in files
+    )
 
 
 def scope(
@@ -538,7 +536,6 @@ def scope(
     cmocka_paths: tuple[str, ...] = (),
     event: str = "",
     ref: str = "",
-    ratchet_dirs: tuple[str, ...] = (),
 ) -> Scope:
     """`exists(path)` says whether a file exists in the checkout, `read(path)`
     returns its text ("" when missing). `submodules` is accepted for callers
@@ -580,24 +577,19 @@ def scope(
         found = os_lanes(path)
         macos |= MACOS in found
         windows |= WINDOWS in found
-    native = core_native_lanes(core or "ci/ci_scope.py" in files, event, ref)
+    native = core_native_lanes(
+        native_core_inputs(files, event, core) or "ci/ci_scope.py" in files, event, ref
+    )
     macos |= MACOS in native
     windows |= WINDOWS in native
     docs_only = bool(files) and all(is_docs(path) for path in files)
-    # #2923: the ratchet's blind spot is the configuration. A PR that changes a
-    # compile input of a target which already names a conversion group runs the
-    # sanitizer lane — a source below it, or the CMakeLists that names the group
-    # (#2956) — so the diagnostic that only that build reports is paid for by
-    # the PR that causes it. Pull requests only: the merge queue keeps the path
-    # selection (#2072, #2593) and a master push or the schedule runs the full
-    # lane anyway.
-    asan = event == "pull_request" and any(
-        ratchet_hit(path, ratchet_dirs) for path in files
-    )
+    if event == "merge_group" and docs_only:
+        # Documentation inside a core/frontend tree is still docs-only.
+        return Scope(core, False, False, docs_only=True)
     return Scope(
         core,
-        macos and event != "merge_group",
-        windows and event != "merge_group",
+        macos,
+        windows,
         qt,
         tier2,
         False,
@@ -605,13 +597,39 @@ def scope(
         qt_sdk,
         docs_only,
         cross_targets(files, read),
-        asan,
+        windows_link=bool(files) and not docs_only,
         # Exercise the cross lane when its own implementation/orchestration changes.
-        cross_lint=bool(set(files) & {
+        cross_lint=(event == "merge_group" and bool(files) and not docs_only) or bool(set(files) & {
             "ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",
             "local-gate.toml", ".github/workflows/build-project.yaml",
         }),
     )
+
+
+def queue_changed_files() -> list[str]:
+    """Use both immutable event commits, including every PR in a queue group.
+
+    A missing/malformed event or unavailable commit must never select less work.
+    """
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if not event_path:
+        raise ValueError("GITHUB_EVENT_PATH is missing")
+    event = json.loads(Path(event_path).read_text())
+    if not isinstance(event, dict):
+        raise ValueError("GITHUB_EVENT_PATH JSON must be an object")
+    group = event.get("merge_group")
+    if not isinstance(group, dict):
+        raise ValueError("merge_group must be an object")
+    refs = []
+    for key in ("base_sha", "head_sha"):
+        value = group.get(key)
+        if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{40}", value):
+            raise ValueError(f"merge_group.{key} must be a full commit SHA")
+        refs.append(value)
+    return subprocess.run(
+        ["git", "diff", "--name-only", *refs, "--"],
+        check=True, capture_output=True, text=True,
+    ).stdout.splitlines()
 
 
 def changed_files(base: str) -> list[str]:
@@ -656,7 +674,7 @@ def main() -> int:
         "--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)"
     )
     args = parser.parse_args()
-    files = changed_files(args.base)
+    files = queue_changed_files() if args.event == "merge_group" else changed_files(args.base)
     result = scope(
         files,
         lambda path: Path(path).is_file(),
@@ -664,7 +682,6 @@ def main() -> int:
         cmocka_paths=repo_cmocka_source_paths(Path(".")),
         event=args.event,
         ref=args.ref,
-        ratchet_dirs=repo_ratcheted_dirs(Path(".")),
     )
     lines = [f"{k}={str(v).lower()}" for k, v in vars(result).items()]
     print("\n".join(lines))

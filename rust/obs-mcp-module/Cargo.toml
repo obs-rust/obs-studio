@@ -1,0 +1,18 @@
+[package]
+name = "obs-mcp-module"
+version = "0.1.0"
+description = "In-app local control module for OBS"
+autotests = false
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+[lib]
+crate-type = ["cdylib"]
+test = false
+doctest = false
+[lints]
+workspace = true
+[target.'cfg(unix)'.dependencies]
+obs-mcp = { path = "../obs-mcp", features = ["libobs"] }
+libloading = { workspace = true, default-features = true }

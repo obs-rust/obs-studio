@@ -1,0 +1,2 @@
+obs_sceneitem_transition_load
+obs_sceneitem_transition_save

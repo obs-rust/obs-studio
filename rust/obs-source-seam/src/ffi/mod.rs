@@ -1,8 +1,10 @@
 //! C ABI shims, one module per C file.
 
+pub mod source_async_decoupled;
 pub mod source_audio_input_path;
 pub mod source_audio_output;
 pub mod source_audio_settings;
+pub mod source_deinterlace;
 pub mod source_transition;
 pub mod source_transition_access;
 pub mod source_transition_restore;
@@ -11,3 +13,4 @@ pub mod source_transition_size;
 pub mod source_transition_slots;
 pub mod source_transition_stop;
 pub mod source_transition_switch;
+pub mod source_transition_video;

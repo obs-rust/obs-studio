@@ -2,6 +2,8 @@
 
 mod effect_destroy;
 mod effect_destroy_parity;
+mod effect_file;
+mod effect_file_parity;
 mod effect_lookups;
 mod effect_lookups_layout;
 mod effect_lookups_parity;
@@ -14,6 +16,8 @@ mod effect_params_parity;
 mod effect_parser;
 mod effect_parser_compile;
 mod effect_parser_compile_parity;
+mod effect_parser_entry;
+mod effect_parser_entry_parity;
 mod effect_parser_lifecycle;
 mod effect_parser_params;
 mod effect_parser_params_parity;
@@ -26,6 +30,10 @@ mod effect_passes;
 mod effect_passes_parity;
 mod linear_srgb;
 mod linear_srgb_parity;
+mod shader_file;
+mod shader_file_parity;
+mod shader_param_introspection;
+mod shader_param_introspection_parity;
 mod shader_param_names;
 mod shader_param_names_parity;
 mod shader_param_values;
@@ -46,6 +54,7 @@ use std::sync::Mutex;
 /// tests never interleave their save and restore.
 pub(crate) static LOG_HANDLER: Mutex<()> = Mutex::new(());
 
+mod stagesurface_getters;
+mod stagesurface_getters_parity;
 mod stencil;
-
 mod stencil_parity;

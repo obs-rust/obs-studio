@@ -1,0 +1,2 @@
+obs_object_get_ref
+obs_object_release

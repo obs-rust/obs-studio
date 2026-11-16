@@ -1,0 +1,10 @@
+# Public media queries against actual hybrid and C-reference libraries.
+add_executable(test_source_media_getters test_source_media_getters.c)
+target_include_directories(test_source_media_getters PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_source_media_getters PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+if(TARGET OBS::w32-pthreads)
+  target_link_libraries(test_source_media_getters PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_source_media_getters)
+add_test(NAME test_source_media_getters COMMAND test_source_media_getters)
+set_tests_properties(test_source_media_getters PROPERTIES TIMEOUT 30)

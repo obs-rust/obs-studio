@@ -1,0 +1,3 @@
+obs_output_defaults
+obs_get_output_properties
+obs_output_properties

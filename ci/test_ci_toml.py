@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CI_TOML = ROOT / "ci.toml"
 GITHUB = ROOT / ".github"
 WORKFLOWS = GITHUB / "workflows"
-PIN = "a1917ce76598904ce515cd7eec83450c317ea6f2"
+PIN = "24362f3e60248ebe72ffd261e5585640228cbc5d"
 
 # Paths whose CACHE-001 exception is burned down: every cache step in them goes
 # through the `.github/actions/cache` wrapper (#2737). Paths are relative to

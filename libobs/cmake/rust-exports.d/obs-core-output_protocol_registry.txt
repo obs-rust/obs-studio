@@ -1,0 +1,2 @@
+obs_enum_output_protocols
+obs_is_output_protocol_registered

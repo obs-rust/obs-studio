@@ -9,6 +9,8 @@
 
 /// The camera-busy warning (#3724): `frontend/utility/obs-camera-busy.h`.
 pub use obs_camera_busy::ffi as camera_busy;
+/// The exit watchdog (#4065): `frontend/utility/obs-exit-watchdog.h`.
+pub use obs_exit_watchdog::ffi as exit_watchdog;
 /// The shared fallback warning (#2218): `frontend/utility/obs-fallback-warning.h`.
 pub use obs_fallback_warning::ffi as fallback_warning;
 /// GPU acceleration status (#846): `frontend/utility/obs-gpu-status.h`.

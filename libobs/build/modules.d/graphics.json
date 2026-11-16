@@ -4,7 +4,9 @@
     "effect-parser-funcs",
     "graphics",
     "graphics-linear-srgb",
-    "graphics-stencil-adapter"
+    "graphics-stencil-adapter",
+    "graphics-texture-creators-fields",
+    "graphics-vertexbuffer-create"
   ],
   "depends": []
 }

@@ -7,13 +7,15 @@
 use std::io::Write as _;
 use std::rc::Rc;
 
+use crate::server::{ToolAnnotations, ToolError, TypedTool};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use flate2::write::ZlibEncoder;
 use flate2::{Compression, Crc};
-use serde_json::{Value, json};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
-use crate::server::{Content, Tool, ToolRegistry};
+use crate::server::{Content, ToolRegistry};
 
 /// Raw pixels from [`CaptureBackend::capture`].
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,6 +30,14 @@ pub struct Frame {
 
 /// The capture operation the tool needs from OBS.
 pub trait CaptureBackend {
+    /// Typed frame capture request.
+    /// # Errors
+    /// Reports a missing source or unavailable graphics pipeline.
+    fn capture_frame(&self, request: CaptureInput) -> Result<Frame, ToolError> {
+        self.capture(request.source.as_deref(), request.width, request.height)
+            .map_err(ToolError::processing)
+    }
+
     /// Renders `source` (or the program output when `None`) and returns its
     /// pixels. `width` and `height` are the requested size; a side left `None`
     /// keeps the aspect ratio or the native size.
@@ -107,85 +117,83 @@ fn push_chunk(png: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) -> Result<(), Stri
     Ok(())
 }
 
-/// An optional positive pixel dimension argument.
-fn dimension_arg(arguments: &Value, key: &str) -> Result<Option<u32>, String> {
-    match arguments.get(key) {
-        None => Ok(None),
-        Some(v) => v
-            .as_u64()
-            .and_then(|n| u32::try_from(n).ok())
-            .filter(|&n| n > 0)
-            .map(Some)
-            .ok_or_else(|| format!("argument `{key}` must be a positive integer")),
-    }
+/// Screenshot selection and requested size.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CaptureInput {
+    /// Source to capture; omit for program output.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// Width in pixels.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    /// Height in pixels.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
 }
-
-/// The `screenshot` tool bound to a backend.
+/// Captured PNG and its dimensions.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct CaptureOutput {
+    /// PNG bytes encoded in base64.
+    pub data: String,
+    /// Width in pixels.
+    pub width: u32,
+    /// Height in pixels.
+    pub height: u32,
+    /// Source name, or null for program output.
+    pub source: Option<String>,
+}
 struct ScreenshotTool {
     backend: Rc<dyn CaptureBackend>,
 }
-
-impl ScreenshotTool {
-    /// Captures; returns the base64 PNG, its size and the source captured.
-    fn capture(&self, arguments: &Value) -> Result<(String, Frame, Option<String>), String> {
-        let source = match arguments.get("source") {
-            None => None,
-            Some(Value::String(s)) if !s.is_empty() => Some(s.as_str()),
-            Some(_) => return Err("argument `source` must be a non-empty string".into()),
-        };
-        let width = dimension_arg(arguments, "width")?;
-        let height = dimension_arg(arguments, "height")?;
-        let frame = self.backend.capture(source, width, height)?;
-        let png = STANDARD.encode(encode_png(&frame)?);
-        Ok((png, frame, source.map(str::to_owned)))
-    }
-}
-
-impl Tool for ScreenshotTool {
-    fn name(&self) -> &str {
-        "screenshot"
-    }
-
+impl TypedTool for ScreenshotTool {
+    type Input = CaptureInput;
+    type Output = CaptureOutput;
+    const NAME: &'static str = "screenshot";
+    const ANNOTATIONS: ToolAnnotations = ToolAnnotations::READ_ONLY;
     fn description(&self) -> &str {
-        "Capture a PNG screenshot of a source, or of the program output when no source is named. \
-         Returns the image plus a text item {width, height, source} (source is null for the \
-         program output). The PNG has an alpha channel (RGBA): pixels nothing was drawn on, such as an empty scene, \
-         are fully transparent, which a viewer may show as white. A source only appears in the \
-         program output once it is an item of the program scene."
+        "Capture a PNG screenshot of a source, or of the program output when no source is named. Returns the image plus a text item {width, height, source} (source is null for the program output). The PNG has an alpha channel (RGBA): pixels nothing was drawn on, such as an empty scene, are fully transparent, which a viewer may show as white. A source only appears in the program output once it is an item of the program scene."
     }
-
-    fn input_schema(&self) -> Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "source": { "type": "string", "minLength": 1, "description": "Source name; omit for the program output." },
-                "width": { "type": "integer", "minimum": 1, "description": "Image width in pixels." },
-                "height": { "type": "integer", "minimum": 1, "description": "Image height in pixels." },
-            },
-            "additionalProperties": false,
+    fn call(&self, input: CaptureInput) -> Result<CaptureOutput, ToolError> {
+        if input.source.as_ref().is_some_and(String::is_empty) {
+            return Err(ToolError::processing(
+                "argument `source` must be a non-empty string",
+            ));
+        }
+        if input.width == Some(0) || input.height == Some(0) {
+            return Err(ToolError::processing(
+                "width and height must be positive integers",
+            ));
+        }
+        let frame = self.backend.capture_frame(input.clone())?;
+        let data = STANDARD.encode(encode_png(&frame).map_err(ToolError::processing)?);
+        Ok(CaptureOutput {
+            data,
+            width: frame.width,
+            height: frame.height,
+            source: input.source,
         })
     }
-
-    fn call(&self, arguments: &Value) -> Result<String, String> {
-        self.capture(arguments).map(|(png, ..)| png)
-    }
-
-    fn call_content(&self, arguments: &Value) -> Result<Vec<Content>, String> {
-        let (data, frame, source) = self.capture(arguments)?;
-        let size = json!({ "width": frame.width, "height": frame.height, "source": source });
+    fn content(output: &CaptureOutput) -> Result<Vec<Content>, ToolError> {
+        let size = serde_json::json!({ "width": output.width, "height": output.height, "source": output.source });
         Ok(vec![
             Content::Image {
-                data,
+                data: output.data.clone(),
                 mime_type: "image/png".to_owned(),
             },
             Content::Text(size.to_string()),
         ])
     }
 }
-
-/// Registers the `screenshot` tool on `registry`, backed by `backend`.
+/// Registers the typed screenshot tool.
 pub fn register(registry: &mut ToolRegistry, backend: &Rc<dyn CaptureBackend>) {
     registry.register(Box::new(ScreenshotTool {
         backend: Rc::clone(backend),
     }));
+}
+
+/// Generated tool schema contracts.
+#[must_use]
+pub fn schemas() -> Vec<serde_json::Value> {
+    vec![crate::server::tool_schema::<ScreenshotTool>()]
 }

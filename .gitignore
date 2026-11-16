@@ -17,6 +17,9 @@ compile_commands.json
 /target/
 # The Dylint pass of the local gate (ci/local_gate.py soldr_dylint, #2293).
 /target-dylint/
+# The MCP app build (ci/mcp_build.py). Kept outside target/ because a cargo
+# lock it leaves there makes soldr refuse every other build in the checkout.
+/target-mcp/
 # zackees/setup-soldr's cook-cache side files, restored beside target/.
 /target.soldr-*
 /dylints/*/target/

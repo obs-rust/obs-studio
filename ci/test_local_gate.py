@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib.util
+import contextlib
 import io
 import os
 import subprocess
@@ -195,10 +196,10 @@ class CrossTargetsTest(unittest.TestCase):
                 with self.subTest(event=event, path=path):
                     selected = scope([path], event=event)
                     self.assertTrue(selected.cross_lint)
-                    self.assertFalse(selected.macos)
-                    self.assertEqual(selected.windows, event == "pull_request" and path == "ci/ci_scope.py")
+                    self.assertEqual(selected.macos, event == "merge_group" and path == "ci/ci_scope.py")
+                    self.assertEqual(selected.windows, path == "ci/ci_scope.py")
             for path in ("docs/ci-tooling.md", "rust/obs-util/src/dstr.rs"):
-                self.assertFalse(scope([path], event=event).cross_lint)
+                self.assertEqual(scope([path], event=event).cross_lint, event == "merge_group" and path.startswith("rust/"))
         workflow = (local_gate.ROOT / ".github/workflows/build-project.yaml").read_text()
         self.assertIn("cross_lint: ${{ steps.native.outputs.cross_lint }}", workflow)
         self.assertIn("needs.check-event.outputs.cross_lint == 'true'", workflow)
@@ -219,6 +220,16 @@ class CrossTargetsTest(unittest.TestCase):
             ])
             dylint.assert_called_once_with(["--all", "--", *scope, "--target", target])
 
+    def test_extra_cross_targets_lint_without_linking(self):
+        with mock.patch.object(local_gate, "add_target") as add, \
+                mock.patch.object(local_gate, "soldr_cargo") as cargo, \
+                mock.patch.object(local_gate, "soldr_dylint") as dylint:
+            local_gate.lane_cross_release(False)
+        self.assertEqual([c.args[0] for c in add.call_args_list], list(local_gate.RELEASE_CROSS_TARGETS))
+        self.assertEqual(len(cargo.call_args_list), 3)
+        self.assertTrue(all(c.args[0][0] == "clippy" for c in cargo.call_args_list))
+        self.assertEqual(len(dylint.call_args_list), 3)
+
     def test_release_gate_targets(self):
         self.assertEqual(
             local_gate.RELEASE_CROSS_TARGETS,
@@ -227,8 +238,85 @@ class CrossTargetsTest(unittest.TestCase):
         self.assertIn("cross-release", local_gate.LANES)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class ClientLanesTest(unittest.TestCase):
+    TARGETS = (
+        "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
+        "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+        "x86_64-apple-darwin", "aarch64-apple-darwin",
+    )
+
+    def test_all_six_targets_lint_once_without_test_linking(self):
+        for host in self.TARGETS:
+            calls = []
+            def capture(cmd, **kw):
+                calls.append(cmd)
+            with self.subTest(host=host), contextlib.ExitStack() as stack:
+                for name in ("tracked_files", "changed_since_master"):
+                    stack.enter_context(mock.patch.object(local_gate, name, return_value=[]))
+                for name in ("clang_format", "gersemi", "ruff_ratchet", "self_test",
+                             "check_test_binary_inventory", "check_feature_sets", "platform_ifdef_ratchet",
+                             "perf_guard_lint", "knowledge_lint", "add_target"):
+                    stack.enter_context(mock.patch.object(local_gate, name))
+                stack.enter_context(mock.patch.object(local_gate, "host_target", return_value=host, create=True))
+                stack.enter_context(mock.patch.object(local_gate, "run", side_effect=capture))
+                local_gate.LANES["client-lint"](False)
+            for target in self.TARGETS:
+                clippy = [c for c in calls if c[:3] == ["soldr", "cargo", "clippy"]
+                          and (c[c.index("--target") + 1] if "--target" in c else host) == target]
+                dylint = [c for c in calls if c[:2] == ["soldr", "dylint"]
+                          and (c[c.index("--target") + 1] if "--target" in c else host) == target]
+                self.assertEqual(len(clippy), 1 + (len(local_gate.FEATURE_SETS) if target == host else 0))
+                self.assertEqual(len(dylint), 1)
+                for command in clippy + dylint:
+                    if target != host:
+                        self.assertIn("obs-c-oracle", command)
+            self.assertFalse(any(c[:3] == ["soldr", "cargo", "test"] for c in calls))
+
+    def test_host_features_and_dedicated_dylint_are_preserved(self):
+        with mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0], create=True), \
+                mock.patch.object(local_gate, "lane_lint") as lint, \
+                mock.patch.object(local_gate, "lane_dylint") as dylint, \
+                mock.patch.object(local_gate, "cross_lint") as cross:
+            local_gate.LANES["client-lint"](False)
+        lint.assert_called_once_with(False, self_tests=False)
+        dylint.assert_called_once_with(False)
+        cross.assert_called_once_with(self.TARGETS[1:], link=False)
+
+    def test_failed_target_fails_client_lane(self):
+        with mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0], create=True), \
+                mock.patch.object(local_gate, "lane_lint"), mock.patch.object(local_gate, "lane_dylint"), \
+                mock.patch.object(local_gate, "add_target"), \
+                mock.patch.object(local_gate, "soldr_cargo", side_effect=subprocess.CalledProcessError(1, "clippy")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                local_gate.LANES["client-lint"](False)
+
+    def test_unsupported_host_does_not_prove_any_lane(self):
+        with mock.patch.object(local_gate, "host_target", return_value="riscv64-unknown-linux-gnu", create=True), \
+                mock.patch.object(local_gate, "lane_lint") as lint:
+            with self.assertRaises(local_gate.NotApplicable):
+                local_gate.LANES["client-lint"](False)
+        lint.assert_not_called()
+
+    def test_client_test_preserves_workspace_features_and_linux_gnu_link(self):
+        for host in self.TARGETS:
+            with self.subTest(host=host), \
+                    mock.patch.object(local_gate, "host_target", return_value=host, create=True), \
+                    mock.patch.object(local_gate.host_platform, "is_linux", return_value=host.endswith("linux-gnu")), \
+                    mock.patch.object(local_gate, "run"), \
+                    mock.patch.object(local_gate, "rust_tests") as tests, \
+                    mock.patch.object(local_gate, "windows_gnu_no_run") as gnu:
+                local_gate.LANES["client-test"](False)
+            self.assertEqual(tests.call_args_list, [mock.call(["--workspace"])] +
+                             [mock.call(list(args)) for args in local_gate.FEATURE_TEST_SETS])
+            self.assertEqual(gnu.call_count, int(host.endswith("linux-gnu")))
+
+    def test_off_host_client_test_exits_not_applicable_without_running_tests(self):
+        with mock.patch.object(sys, "argv", ["local_gate.py", "--lane", "client-test",
+                                           "--client-target", "aarch64-apple-darwin"]), \
+                mock.patch.object(local_gate, "host_target", return_value=self.TARGETS[0]), \
+                mock.patch.object(local_gate, "lane_rust_test") as tests:
+            self.assertEqual(local_gate.main(), 75)
+        tests.assert_not_called()
 
 
 class ClangFormatScopeTest(unittest.TestCase):
@@ -324,6 +412,57 @@ class EmptyTestDiffTest(unittest.TestCase):
         test_diff.assert_not_called()
 
 
+class TestDiffGnuOracleTest(unittest.TestCase):
+    """--test-diff also builds the C oracle for windows-gnu when the diff
+    touches its C inputs, on a Linux host only (#4168)."""
+
+    def run_test_diff(self, files, platform="linux"):
+        cargo = []
+
+        def fake_subprocess(cmd, **kw):
+            if cmd[:2] == ["git", "diff"]:
+                return subprocess.CompletedProcess(cmd, 0, stdout="\n".join(files))
+            if "metadata" in cmd:
+                root = local_gate.ROOT
+                packages = [
+                    {"name": "obs-util", "manifest_path": str(root / "rust/obs-util/Cargo.toml"), "dependencies": []},
+                    {"name": "obs-c-oracle", "manifest_path": str(root / "rust/obs-c-oracle/Cargo.toml"),
+                     "dependencies": [{"name": "obs-util"}]},
+                ]
+                return subprocess.CompletedProcess(cmd, 0, stdout=__import__("json").dumps({"packages": packages}))
+            raise AssertionError(cmd)
+
+        with (
+            mock.patch.object(local_gate.subprocess, "run", side_effect=fake_subprocess),
+            mock.patch.object(local_gate, "rust_tests"),
+            mock.patch.object(local_gate, "run", side_effect=lambda cmd, *a, **k: cargo.append(cmd)),
+            mock.patch.object(local_gate, "soldr_cargo", side_effect=lambda args, env=None: cargo.append(["soldr", "cargo", *args])),
+            mock.patch.object(local_gate, "toolchain_gcc_ld", return_value="/sysroot/gcc-ld"),
+            mock.patch.object(local_gate.host_platform, "is_linux", return_value=platform == "linux"),
+            mock.patch.object(sys, "stdout", new=io.StringIO()),
+        ):
+            local_gate.test_diff("base")
+        return [c for c in cargo if "x86_64-pc-windows-gnu" in c]
+
+    def test_an_oracle_change_builds_the_oracle_for_windows_gnu(self):
+        calls = self.run_test_diff(["rust/obs-c-oracle/oracle/output_pause_queries.c"])
+        self.assertIn(["soldr", "rustup", "target", "add", "x86_64-pc-windows-gnu"], calls)
+        self.assertIn(
+            ["soldr", "cargo", "test", "-p", "obs-c-oracle", "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"], calls
+        )
+
+    def test_a_libobs_change_builds_it_too(self):
+        self.assertTrue(self.run_test_diff(["libobs/obs-output.c.h"]))
+
+    def test_a_crate_change_without_oracle_inputs_does_not(self):
+        self.assertEqual(self.run_test_diff(["rust/obs-util/src/lib.rs"]), [])
+
+    def test_not_on_a_macos_or_windows_host(self):
+        for platform in ("darwin", "win32"):
+            with self.subTest(platform=platform):
+                self.assertEqual(self.run_test_diff(["rust/obs-c-oracle/build.rs"], platform), [])
+
+
 class LaneGroupTest(unittest.TestCase):
     """The Docker Tier 2 lane shares no build directory with the host lanes, so
     it runs as its own heavy chain beside them instead of after them (#2769)."""
@@ -342,3 +481,7 @@ class LaneGroupTest(unittest.TestCase):
 
     def test_the_new_group_stays_a_heavy_lane(self):
         self.assertEqual(self.lanes()["tier2-linux"].get("weight", "heavy"), "heavy")
+
+
+if __name__ == "__main__":
+    unittest.main()

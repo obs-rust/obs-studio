@@ -8,6 +8,7 @@ arguments are:
 
     uv run --script ci/docker_task.py run --name NAME [options] -- CMD...
     uv run --script ci/docker_task.py gc  --name NAME [--image IMAGE] [--apply] [--apply-legacy]
+    uv run --script ci/docker_task.py gc  --older-than HOURS [--name NAME ...] [--apply]
 
 run:
   --name NAME             task name. Container: NAME-<checkout id>, where the
@@ -61,6 +62,14 @@ made before labels existed (NAME-*-<12 hex>, unlabelled) are only listed;
 --apply-legacy removes those not belonging to this checkout. Volumes in use
 by a container are never removed.
 
+gc --older-than HOURS (no --name needed) also sweeps the per-run volumes of
+checkouts that still exist, for every task (#4638): a
+`*-validate-*-{build,zccache}-<12 hex>` volume older than HOURS is listed, and
+with --apply removed, unless a container (running or stopped) uses it or any
+volume with the same 12-hex checkout key is younger than HOURS or used by a
+container: a live partner means the checkout is still building. Run it from a
+cron, e.g. `gc --older-than 24 --apply`.
+
 Exit status: 2 for a usage or argument error, 75 when a container of the same
 name is already running and --wait was not given, otherwise the status of the
 command that ran in the container.
@@ -78,6 +87,7 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import NoReturn, Sequence
 
@@ -125,7 +135,7 @@ s.connect(sys.argv[1])' "$sock" 2>/dev/null; then
 done
 exec "$@"'''
 
-USAGE = "usage: docker_task.py run|gc --name NAME ... (see the header)"
+USAGE = "usage: docker_task.py run --name NAME ... | gc --name NAME|--older-than HOURS ... (see the header)"
 
 
 def die(message: str) -> NoReturn:
@@ -648,6 +658,7 @@ class GcOptions:
     repo: str = ""
     apply: bool = False
     apply_legacy: bool = False
+    older_than: float | None = None
 
 
 GC_OPTIONS = {"--name": "task", "--image": "image", "--repo": "repo"}
@@ -655,7 +666,7 @@ GC_FLAGS = {"--apply": "apply", "--apply-legacy": "apply_legacy"}
 
 
 def parse_gc(argv: Sequence[str]) -> GcOptions:
-    """`gc`'s arguments: --name, --image, --apply, --apply-legacy."""
+    """`gc`'s arguments: --name, --image, --apply, --apply-legacy, --older-than."""
     options = GcOptions()
     rest = list(argv)
     while rest:
@@ -664,11 +675,78 @@ def parse_gc(argv: Sequence[str]) -> GcOptions:
             setattr(options, GC_FLAGS[option], True)
         elif option in GC_OPTIONS:
             setattr(options, GC_OPTIONS[option], take(option, rest))
+        elif option == "--older-than":
+            options.older_than = hours(take(option, rest))
         else:
             die(f"unknown option {option}")
-    if not options.task:
-        die("--name is required")
+    if not options.task and options.older_than is None:
+        die("--name or --older-than is required")
     return options
+
+
+def hours(spec: str) -> float:
+    """--older-than's HOURS: a number, zero or more."""
+    try:
+        value = float(spec)
+    except ValueError:
+        die(f"--older-than needs a number of hours, not {spec!r}")
+    if not value >= 0:
+        die(f"--older-than needs a number of hours, not {spec!r}")
+    return value
+
+
+# A per-run volume: NAME-...validate...-build|zccache-<12 hex checkout key>.
+PER_RUN_VOLUME = re.compile(r"-validate-(?:.+-)?(?:build|zccache)-([0-9a-f]{12})$")
+CHECKOUT_KEY = re.compile(r"-([0-9a-f]{12})$")
+
+
+def now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def parse_created(text: str) -> datetime:
+    """`docker volume inspect`'s CreatedAt (RFC 3339) as an aware datetime."""
+    return datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
+
+
+def mounted_volumes() -> set[str]:
+    """Every volume a container, running or stopped, mounts."""
+    listed = quiet(["docker", "ps", "-a", "--no-trunc", "--format", "{{.Mounts}}"])
+    return {name.strip() for line in listed.splitlines() for name in line.split(",") if name.strip()}
+
+
+def gc_old_volumes(options: GcOptions) -> None:
+    """Per-run build and zccache volumes older than --older-than hours whose
+    checkout key has no fresh or mounted volume (#4638)."""
+    assert options.older_than is not None
+    names = quiet(["docker", "volume", "ls", "-q"]).split()
+    keyed = [n for n in names if CHECKOUT_KEY.search(n)]
+    if not keyed:
+        return
+    created: dict[str, datetime] = {}
+    listing = quiet(["docker", "volume", "inspect", "-f", "{{.Name}}\t{{.CreatedAt}}", *keyed])
+    for line in listing.splitlines():
+        name, _, stamp = line.partition("\t")
+        try:
+            created[name] = parse_created(stamp)
+        except ValueError:
+            continue
+    mounted = mounted_volumes()
+    cutoff = now() - timedelta(hours=options.older_than)
+    live_keys: set[str] = set()
+    for name in keyed:
+        # A volume whose age is unknown counts as fresh: it keeps its key.
+        if name in mounted or name not in created or created[name] > cutoff:
+            live_keys.add(CHECKOUT_KEY.search(name).group(1))
+    for name in keyed:
+        match = PER_RUN_VOLUME.search(name)
+        if not match or match.group(1) in live_keys:
+            continue
+        age = int((now() - created[name]).total_seconds() // 3600)
+        if not options.apply:
+            print(f"volume {name} ({age} h old, key unused)")
+        elif succeeds(["docker", "volume", "rm", name]):
+            print(f"removed volume {name} ({age} h old, key unused)")
 
 
 def gc_stack_volumes(options: GcOptions) -> None:
@@ -730,9 +808,12 @@ def gc(argv: Sequence[str]) -> int:
     options = parse_gc(argv)
     repo = options.repo or quiet(["git", "rev-parse", "--show-toplevel"]).strip() or os.getcwd()
     own_id = checkout_id(os.path.realpath(repo))
-    gc_stack_volumes(options)
-    gc_legacy_volumes(options, own_id)
-    gc_containers(options)
+    if options.older_than is not None:
+        gc_old_volumes(options)
+    if options.task:
+        gc_stack_volumes(options)
+        gc_legacy_volumes(options, own_id)
+        gc_containers(options)
     if options.image:
         prune_images(options.image, KEEP_IMAGES, options.apply)
     return 0

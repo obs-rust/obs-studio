@@ -1,0 +1,10 @@
+# Actual-library characterization; no OBS startup, devices or display needed.
+add_executable(test_source_push_to_delay test_source_push_to_delay.c)
+target_include_directories(test_source_push_to_delay PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_source_push_to_delay PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+if(TARGET OBS::w32-pthreads)
+  target_link_libraries(test_source_push_to_delay PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_source_push_to_delay)
+add_test(NAME test_source_push_to_delay COMMAND test_source_push_to_delay)
+set_tests_properties(test_source_push_to_delay PROPERTIES TIMEOUT 30)

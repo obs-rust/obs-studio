@@ -1,0 +1,1 @@
+obs_encoder_set_last_error

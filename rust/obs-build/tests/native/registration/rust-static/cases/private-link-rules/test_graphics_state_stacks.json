@@ -6,7 +6,9 @@
         "test/cmocka/test_graphics_state_stacks.c",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c",
+        "libobs/obs-graphics-effect-file-fields.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -30,7 +32,10 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "sanitizers": "address,undefined",
       "conditional_link_options": [

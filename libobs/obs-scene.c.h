@@ -146,6 +146,20 @@ static inline void full_unlock(struct obs_scene *scene)
 	video_unlock(scene);
 }
 
+/* Private boundary for the extracted atomic update callback. */
+void obs_scene_atomic_full_lock(obs_scene_t *scene);
+void obs_scene_atomic_full_unlock(obs_scene_t *scene);
+
+void obs_scene_atomic_full_lock(obs_scene_t *scene)
+{
+	full_lock(scene);
+}
+
+void obs_scene_atomic_full_unlock(obs_scene_t *scene)
+{
+	full_unlock(scene);
+}
+
 /* The transform fields of an item: the render path reads them under the
  * parent's video lock, so a setter or getter on another thread takes it too.
  * Hold it only for the fields: no signal, and no call into a plugin (#3569). */
@@ -396,17 +410,6 @@ static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, c
 	float x, y;
 	get_scene_dimensions(item, &x, &y);
 	obs_scene_item_relative_scale(dst, v, y, item->scale_ref.y);
-}
-
-/* A bounds type outside the enum (a hand-edited or foreign scene
- * collection, undo data, a plugin) has no bounding box: OBS_BOUNDS_NONE.
- * Takes the int64 a load reads, before any cast truncates it, and an enum
- * value from a setter (an unsigned or a signed int, by compiler). */
-static inline enum obs_bounds_type valid_bounds_type(int64_t type)
-{
-	if (type < OBS_BOUNDS_NONE || type > OBS_BOUNDS_MAX_ONLY)
-		return OBS_BOUNDS_NONE;
-	return (enum obs_bounds_type)type;
 }
 
 static void calculate_bounds_data(struct obs_scene_item *item, struct vec2 *origin, struct vec2 *scale, uint32_t *cx,
@@ -1528,21 +1531,6 @@ static bool scene_audio_render(void *data, uint64_t *ts_out, struct obs_source_a
 }
 
 enum gs_color_space scene_video_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces);
-enum gs_color_space scene_video_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces)
-{
-	UNUSED_PARAMETER(data);
-	UNUSED_PARAMETER(count);
-	UNUSED_PARAMETER(preferred_spaces);
-
-	enum gs_color_space space = GS_CS_SRGB;
-	struct obs_video_info ovi;
-	if (obs_get_video_info(&ovi)) {
-		if (ovi.colorspace == VIDEO_CS_2100_PQ || ovi.colorspace == VIDEO_CS_2100_HLG)
-			space = GS_CS_709_EXTENDED;
-	}
-
-	return space;
-}
 
 const struct obs_source_info scene_info = {
 	.id = "scene",
@@ -1594,16 +1582,6 @@ static inline obs_scene_t *create_private_id(obs_canvas_t *canvas, const char *i
 {
 	struct obs_source *source = obs_source_create_private_with_canvas(canvas, id, name, NULL);
 	return source->context.data;
-}
-
-obs_scene_t *obs_scene_create(const char *name)
-{
-	return create_id(obs->data.main_canvas, "scene", name);
-}
-
-obs_scene_t *obs_scene_create_private(const char *name)
-{
-	return create_private_id(obs->data.main_canvas, "scene", name);
 }
 
 static obs_source_t *get_child_at_idx(obs_scene_t *scene, size_t idx)
@@ -1836,112 +1814,6 @@ static inline void obs_scene_addref(obs_scene_t *scene)
 		obs_source_addref(scene->source);
 }
 
-obs_scene_t *obs_scene_get_ref(obs_scene_t *scene)
-{
-	if (!scene)
-		return NULL;
-	if (obs_source_get_ref(scene->source) != NULL)
-		return scene;
-	return NULL;
-}
-
-void obs_scene_release(obs_scene_t *scene)
-{
-	if (scene)
-		obs_source_release(scene->source);
-}
-
-obs_scene_t *obs_scene_from_source(const obs_source_t *source)
-{
-	if (!source || strcmp(source->info.id, scene_info.id) != 0)
-		return NULL;
-
-	return source->context.data;
-}
-
-obs_scene_t *obs_group_from_source(const obs_source_t *source)
-{
-	if (!source || strcmp(source->info.id, group_info.id) != 0)
-		return NULL;
-
-	return source->context.data;
-}
-
-obs_sceneitem_t *obs_scene_find_source(obs_scene_t *scene, const char *name)
-{
-	struct obs_scene_item *item;
-
-	if (!scene)
-		return NULL;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (strcmp(item->source->context.name, name) == 0)
-			break;
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return item;
-}
-
-obs_sceneitem_t *obs_scene_find_source_recursive(obs_scene_t *scene, const char *name)
-{
-	struct obs_scene_item *item;
-
-	if (!scene)
-		return NULL;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (strcmp(item->source->context.name, name) == 0)
-			break;
-
-		if (item->is_group) {
-			obs_scene_t *group = item->source->context.data;
-			obs_sceneitem_t *child = obs_scene_find_source(group, name);
-			if (child) {
-				item = child;
-				break;
-			}
-		}
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return item;
-}
-
-obs_sceneitem_t *obs_scene_find_sceneitem_by_id(obs_scene_t *scene, int64_t id)
-{
-	struct obs_scene_item *item;
-
-	if (!scene)
-		return NULL;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (item->id == id)
-			break;
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return item;
-}
-
 /* Must be called with the scene locked. Only compares pointers and follows the
  * links of items that are in the scene, which the scene lock protects. An item
  * that left the scene may be changed by whoever holds its new scene's lock, so
@@ -2000,49 +1872,6 @@ void obs_scene_enum_items(obs_scene_t *scene, bool (*callback)(obs_scene_t *, ob
 	full_unlock(scene);
 }
 
-static obs_sceneitem_t *sceneitem_get_ref(obs_sceneitem_t *si)
-{
-	long owners = os_atomic_load_long(&si->ref);
-	while (owners > 0) {
-		if (os_atomic_compare_exchange_long(&si->ref, &owners, owners + 1)) {
-			return si;
-		}
-	}
-	return NULL;
-}
-
-static bool hotkey_show_sceneitem(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-
-	obs_sceneitem_t *si = sceneitem_get_ref(data);
-	if (pressed && si && !os_atomic_load_bool(&si->user_visible)) {
-		obs_sceneitem_set_visible(si, true);
-		obs_sceneitem_release(si);
-		return true;
-	}
-
-	obs_sceneitem_release(si);
-	return false;
-}
-
-static bool hotkey_hide_sceneitem(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotkey, bool pressed)
-{
-	UNUSED_PARAMETER(id);
-	UNUSED_PARAMETER(hotkey);
-
-	obs_sceneitem_t *si = sceneitem_get_ref(data);
-	if (pressed && si && os_atomic_load_bool(&si->user_visible)) {
-		obs_sceneitem_set_visible(si, false);
-		obs_sceneitem_release(si);
-		return true;
-	}
-
-	obs_sceneitem_release(si);
-	return false;
-}
-
 static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *name)
 {
 	struct obs_data_array *hotkey_array;
@@ -2086,30 +1915,6 @@ static void init_hotkeys(obs_scene_t *scene, obs_sceneitem_t *item, const char *
 	dstr_free(&legacy);
 	dstr_free(&show_desc);
 	dstr_free(&hide_desc);
-}
-
-static void sceneitem_rename_hotkey(const obs_sceneitem_t *scene_item, const char *new_name)
-{
-	struct dstr show_desc = {0};
-	struct dstr hide_desc = {0};
-
-	dstr_copy(&show_desc, obs->hotkeys.sceneitem_show);
-	dstr_replace(&show_desc, "%1", new_name);
-	dstr_copy(&hide_desc, obs->hotkeys.sceneitem_hide);
-	dstr_replace(&hide_desc, "%1", new_name);
-
-	obs_hotkey_pair_set_descriptions(scene_item->toggle_visibility, show_desc.array, hide_desc.array);
-
-	dstr_free(&show_desc);
-	dstr_free(&hide_desc);
-}
-
-static void sceneitem_renamed(void *param, calldata_t *data)
-{
-	obs_sceneitem_t *scene_item = param;
-	const char *name = calldata_string(data, "new_name");
-
-	sceneitem_rename_hotkey(scene_item, name);
 }
 
 static inline bool source_has_audio(obs_source_t *source)
@@ -2331,189 +2136,6 @@ static void signal_parent(obs_scene_t *parent, const char *command, calldata_t *
 	signal_handler_signal(parent->source->context.signals, command, params);
 }
 
-struct passthrough {
-	obs_data_array_t *ids;
-	obs_data_array_t *scenes_and_groups;
-	bool all_items;
-};
-
-bool save_transform_states(obs_scene_t *scene, obs_sceneitem_t *item, void *vp_pass);
-bool save_transform_states(obs_scene_t *scene, obs_sceneitem_t *item, void *vp_pass)
-{
-	struct passthrough *pass = (struct passthrough *)vp_pass;
-	if (obs_sceneitem_selected(item) || pass->all_items) {
-		obs_data_t *temp = obs_data_create();
-		obs_data_array_t *item_ids = (obs_data_array_t *)pass->ids;
-
-		struct obs_transform_info info;
-		struct obs_sceneitem_crop crop;
-		obs_sceneitem_get_info2(item, &info);
-		obs_sceneitem_get_crop(item, &crop);
-
-		struct vec2 pos = info.pos;
-		struct vec2 scale = info.scale;
-		float rot = info.rot;
-		uint32_t alignment = info.alignment;
-		uint32_t bounds_type = (uint32_t)info.bounds_type;
-		uint32_t bounds_alignment = info.bounds_alignment;
-		bool crop_to_bounds = info.crop_to_bounds;
-		struct vec2 bounds = info.bounds;
-
-		obs_data_set_int(temp, "id", obs_sceneitem_get_id(item));
-		obs_data_set_vec2(temp, "pos", &pos);
-		obs_data_set_vec2(temp, "scale", &scale);
-		obs_data_set_double(temp, "rot", (double)rot);
-		obs_data_set_int(temp, "alignment", alignment);
-		obs_data_set_int(temp, "bounds_type", bounds_type);
-		obs_data_set_vec2(temp, "bounds", &bounds);
-		obs_data_set_int(temp, "bounds_alignment", bounds_alignment);
-		obs_data_set_bool(temp, "crop_to_bounds", crop_to_bounds);
-		obs_data_set_int(temp, "top", crop.top);
-		obs_data_set_int(temp, "bottom", crop.bottom);
-		obs_data_set_int(temp, "left", crop.left);
-		obs_data_set_int(temp, "right", crop.right);
-
-		obs_data_array_push_back(item_ids, temp);
-
-		obs_data_release(temp);
-	}
-
-	obs_source_t *item_source = obs_sceneitem_get_source(item);
-
-	if (obs_source_is_group(item_source)) {
-		obs_data_t *temp = obs_data_create();
-		obs_data_array_t *nids = obs_data_array_create();
-
-		obs_data_set_string(temp, "scene_name", obs_source_get_name(item_source));
-		obs_data_set_string(temp, "scene_uuid", obs_source_get_uuid(item_source));
-		obs_data_set_bool(temp, "is_group", true);
-		obs_data_set_string(temp, "group_parent", obs_source_get_uuid(obs_scene_get_source(scene)));
-
-		struct passthrough npass = {nids, pass->scenes_and_groups, pass->all_items};
-		obs_sceneitem_group_enum_items(item, save_transform_states, (void *)&npass);
-
-		obs_data_set_array(temp, "items", nids);
-
-		obs_data_array_push_back(pass->scenes_and_groups, temp);
-
-		obs_data_release(temp);
-		obs_data_array_release(nids);
-	}
-
-	return true;
-}
-
-obs_data_t *obs_scene_save_transform_states(obs_scene_t *scene, bool all_items)
-{
-	obs_data_t *wrapper = obs_data_create();
-	obs_data_array_t *scenes_and_groups = obs_data_array_create();
-	obs_data_array_t *item_ids = obs_data_array_create();
-
-	struct passthrough pass = {item_ids, scenes_and_groups, all_items};
-
-	obs_data_t *temp = obs_data_create();
-
-	obs_data_set_string(temp, "scene_name", obs_source_get_name(obs_scene_get_source(scene)));
-	obs_data_set_string(temp, "scene_uuid", obs_source_get_uuid(obs_scene_get_source(scene)));
-	obs_data_set_bool(temp, "is_group", false);
-
-	obs_scene_enum_items(scene, save_transform_states, (void *)&pass);
-
-	obs_data_set_array(temp, "items", item_ids);
-	obs_data_array_push_back(scenes_and_groups, temp);
-
-	obs_data_set_array(wrapper, "scenes_and_groups", scenes_and_groups);
-
-	obs_data_array_release(item_ids);
-	obs_data_array_release(scenes_and_groups);
-	obs_data_release(temp);
-
-	return wrapper;
-}
-
-void load_transform_states(obs_data_t *temp, void *vp_scene);
-void load_transform_states(obs_data_t *temp, void *vp_scene)
-{
-	obs_scene_t *scene = (obs_scene_t *)vp_scene;
-	int64_t id = obs_data_get_int(temp, "id");
-	obs_sceneitem_t *item = obs_scene_find_sceneitem_by_id(scene, id);
-
-	struct obs_transform_info info;
-	struct obs_sceneitem_crop crop;
-	obs_data_get_vec2(temp, "pos", &info.pos);
-	obs_data_get_vec2(temp, "scale", &info.scale);
-	info.rot = (float)obs_data_get_double(temp, "rot");
-	info.alignment = (uint32_t)obs_data_get_int(temp, "alignment");
-	info.bounds_type = valid_bounds_type(obs_data_get_int(temp, "bounds_type"));
-	info.bounds_alignment = (uint32_t)obs_data_get_int(temp, "bounds_alignment");
-	obs_data_get_vec2(temp, "bounds", &info.bounds);
-	info.crop_to_bounds = obs_data_get_bool(temp, "crop_to_bounds");
-	crop.top = (int)obs_data_get_int(temp, "top");
-	crop.bottom = (int)obs_data_get_int(temp, "bottom");
-	crop.left = (int)obs_data_get_int(temp, "left");
-	crop.right = (int)obs_data_get_int(temp, "right");
-
-	obs_sceneitem_defer_update_begin(item);
-
-	obs_sceneitem_set_info2(item, &info);
-	obs_sceneitem_set_crop(item, &crop);
-
-	obs_sceneitem_defer_update_end(item);
-}
-
-void iterate_scenes_and_groups_transform_states(obs_data_t *data, void *vp);
-void iterate_scenes_and_groups_transform_states(obs_data_t *data, void *vp)
-{
-	obs_data_array_t *items = obs_data_get_array(data, "items");
-	obs_source_t *scene_source = obs_get_source_by_uuid(obs_data_get_string(data, "scene_uuid"));
-	obs_scene_t *scene = obs_scene_from_source(scene_source);
-
-	if (obs_data_get_bool(data, "is_group")) {
-		obs_source_t *parent_source = obs_get_source_by_uuid(obs_data_get_string(data, "group_parent"));
-		obs_scene_t *parent = obs_scene_from_source(parent_source);
-		obs_sceneitem_t *group = obs_scene_get_group(parent, obs_data_get_string(data, "scene_name"));
-		scene = obs_sceneitem_group_get_scene(group);
-
-		obs_source_release(parent_source);
-	}
-
-	obs_data_array_enum(items, load_transform_states, (void *)scene);
-
-	UNUSED_PARAMETER(vp);
-
-	obs_data_array_release(items);
-	obs_source_release(scene_source);
-}
-
-void obs_scene_load_transform_states(const char *data)
-{
-	obs_data_t *dat = obs_data_create_from_json(data);
-
-	obs_data_array_t *scenes_and_groups = obs_data_get_array(dat, "scenes_and_groups");
-
-	obs_data_array_enum(scenes_and_groups, iterate_scenes_and_groups_transform_states, NULL);
-
-	obs_data_release(dat);
-	obs_data_array_release(scenes_and_groups);
-}
-
-void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
-{
-	struct calldata params;
-	uint8_t stack[128];
-	const char *command = select ? "item_select" : "item_deselect";
-
-	if (!item || item->selected == select || !item->parent)
-		return;
-
-	item->selected = select;
-
-	calldata_init_fixed(&params, stack, sizeof(stack));
-	calldata_set_ptr(&params, "item", item);
-
-	signal_parent(item->parent, command, &params);
-}
-
 #define do_update_transform(item)                                          \
 	do {                                                               \
 		if (!item->parent || item->parent->is_group)               \
@@ -2521,6 +2143,12 @@ void obs_sceneitem_select(obs_sceneitem_t *item, bool select)
 		else                                                       \
 			update_item_transform(item, false);                \
 	} while (false)
+
+/* Dependency of the extracted bounds setters; keep update dispatch here. */
+static void scene_item_bounds_update_transform(obs_sceneitem_t *item)
+{
+	do_update_transform(item);
+}
 
 void obs_sceneitem_set_pos(obs_sceneitem_t *item, const struct vec2 *pos)
 {
@@ -2713,50 +2341,6 @@ void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 	obs_scene_release(scene);
 }
 
-void obs_sceneitem_set_bounds_type(obs_sceneitem_t *item, enum obs_bounds_type type)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->bounds_type = valid_bounds_type(type);
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds_alignment(obs_sceneitem_t *item, uint32_t alignment)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->bounds_align = alignment;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds_crop(obs_sceneitem_t *item, bool crop)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->crop_to_bounds = crop;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
-void obs_sceneitem_set_bounds(obs_sceneitem_t *item, const struct vec2 *bounds)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		if (!item->absolute_coordinates)
-			size_from_absolute(&item->bounds, bounds, item);
-		else
-			vec2_copy(&item->bounds, bounds);
-		item_fields_unlock(scene);
-
-		do_update_transform(item);
-	}
-}
-
 void obs_sceneitem_get_pos(const obs_sceneitem_t *item, struct vec2 *pos)
 {
 	if (!item)
@@ -2927,31 +2511,6 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 	return true;
 }
 
-bool obs_sceneitem_set_locked(obs_sceneitem_t *item, bool lock)
-{
-	struct calldata cd;
-	uint8_t stack[256];
-
-	if (!item)
-		return false;
-
-	if (item->locked == lock)
-		return false;
-
-	if (!item->parent)
-		return false;
-
-	item->locked = lock;
-
-	calldata_init_fixed(&cd, stack, sizeof(stack));
-	calldata_set_ptr(&cd, "item", item);
-	calldata_set_bool(&cd, "locked", lock);
-
-	signal_parent(item->parent, "item_locked", &cd);
-
-	return true;
-}
-
 static bool sceneitems_match(obs_scene_t *scene, obs_sceneitem_t *const *items, size_t size, bool *order_matches)
 {
 	obs_sceneitem_t *item = scene->first_item;
@@ -3006,80 +2565,6 @@ bool obs_scene_reorder_items(obs_scene_t *scene, obs_sceneitem_t *const *item_or
 	return true;
 }
 
-void obs_scene_atomic_update(obs_scene_t *scene, obs_scene_atomic_update_func func, void *data)
-{
-	if (!scene)
-		return;
-
-	scene = obs_scene_get_ref(scene);
-	if (!scene)
-		return;
-
-	full_lock(scene);
-	func(data, scene);
-	full_unlock(scene);
-	obs_scene_release(scene);
-}
-
-static inline bool crop_equal(const struct obs_sceneitem_crop *crop1, const struct obs_sceneitem_crop *crop2)
-{
-	return crop1->left == crop2->left && crop1->right == crop2->right && crop1->top == crop2->top &&
-	       crop1->bottom == crop2->bottom;
-}
-
-void obs_sceneitem_set_crop(obs_sceneitem_t *item, const struct obs_sceneitem_crop *crop)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_crop"))
-		return;
-	if (!obs_ptr_valid(crop, "obs_sceneitem_set_crop"))
-		return;
-
-	/* Clamp first: the render path must not see a value that is not clamped. */
-	struct obs_sceneitem_crop clamped = *crop;
-	clamped.left = obs_scene_clamp_crop(clamped.left);
-	clamped.right = obs_scene_clamp_crop(clamped.right);
-	clamped.top = obs_scene_clamp_crop(clamped.top);
-	clamped.bottom = obs_scene_clamp_crop(clamped.bottom);
-
-	obs_scene_t *scene = item_fields_lock(item);
-	if (crop_equal(crop, &item->crop)) {
-		item_fields_unlock(scene);
-		return;
-	}
-	item->crop = clamped;
-	item_fields_unlock(scene);
-
-	os_atomic_set_bool(&item->update_transform, true);
-}
-
-void obs_sceneitem_set_scale_filter(obs_sceneitem_t *item, enum obs_scale_type filter)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_scale_filter"))
-		return;
-
-	item->scale_filter = filter;
-
-	os_atomic_set_bool(&item->update_transform, true);
-}
-
-void obs_sceneitem_set_blending_method(obs_sceneitem_t *item, enum obs_blending_method method)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_method"))
-		return;
-
-	item->blend_method = method;
-}
-
-void obs_sceneitem_set_blending_mode(obs_sceneitem_t *item, enum obs_blending_type type)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_set_blending_mode"))
-		return;
-
-	item->blend_type = type;
-
-	os_atomic_set_bool(&item->update_transform, true);
-}
-
 void obs_sceneitem_defer_update_begin(obs_sceneitem_t *item)
 {
 	if (!obs_ptr_valid(item, "obs_sceneitem_defer_update_begin"))
@@ -3095,32 +2580,6 @@ void obs_sceneitem_defer_update_end(obs_sceneitem_t *item)
 
 	if (os_atomic_dec_long(&item->defer_update) == 0)
 		do_update_transform(item);
-}
-
-void obs_sceneitem_defer_group_resize_begin(obs_sceneitem_t *item)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_defer_group_resize_begin"))
-		return;
-
-	os_atomic_inc_long(&item->defer_group_resize);
-}
-
-void obs_sceneitem_defer_group_resize_end(obs_sceneitem_t *item)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_defer_group_resize_end"))
-		return;
-
-	if (os_atomic_dec_long(&item->defer_group_resize) == 0)
-		os_atomic_set_bool(&item->update_group_resize, true);
-}
-
-obs_data_t *obs_sceneitem_get_private_settings(obs_sceneitem_t *item)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_get_private_settings"))
-		return NULL;
-
-	obs_data_addref(item->private_settings);
-	return item->private_settings;
 }
 
 /* The matrix math is obs-scene-group-transform.c.h. The scene still reads
@@ -3417,39 +2876,6 @@ obs_sceneitem_t *obs_scene_insert_group2(obs_scene_t *scene, const char *name, o
 	if (signal && item)
 		signal_refresh(scene);
 	return item;
-}
-
-obs_sceneitem_t *obs_scene_get_group(obs_scene_t *scene, const char *name)
-{
-	if (!scene || !name || !*name) {
-		return NULL;
-	}
-
-	obs_sceneitem_t *group = NULL;
-	obs_sceneitem_t *item;
-
-	full_lock(scene);
-
-	item = scene->first_item;
-	while (item) {
-		if (item->is_group && item->source->context.name) {
-			if (strcmp(item->source->context.name, name) == 0) {
-				group = item;
-				break;
-			}
-		}
-
-		item = item->next;
-	}
-
-	full_unlock(scene);
-
-	return group;
-}
-
-obs_scene_t *obs_sceneitem_group_get_scene(const obs_sceneitem_t *item)
-{
-	return (item && item->is_group) ? item->source->context.data : NULL;
 }
 
 void obs_sceneitem_group_ungroup(obs_sceneitem_t *item)
@@ -3775,16 +3201,6 @@ obs_sceneitem_t *obs_sceneitem_get_group(obs_scene_t *scene, obs_sceneitem_t *gr
 	return group;
 }
 
-bool obs_source_is_group(const obs_source_t *source)
-{
-	return source && strcmp(source->info.id, group_info.id) == 0;
-}
-
-bool obs_source_is_scene(const obs_source_t *source)
-{
-	return source && strcmp(source->info.id, scene_info.id) == 0;
-}
-
 void obs_sceneitem_group_enum_items(obs_sceneitem_t *group, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),
 				    void *param)
 {
@@ -3803,27 +3219,6 @@ void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)
 
 	if (os_atomic_set_bool(&item->update_transform, false))
 		update_item_transform(item, false);
-}
-
-void obs_sceneitem_set_transition(obs_sceneitem_t *item, bool show, obs_source_t *transition)
-{
-	if (!item)
-		return;
-
-	obs_source_t **target = show ? &item->show_transition : &item->hide_transition;
-	if (*target)
-		obs_source_release(*target);
-	*target = obs_source_get_ref(transition);
-}
-
-void obs_sceneitem_set_transition_duration(obs_sceneitem_t *item, bool show, uint32_t duration_ms)
-{
-	if (!item)
-		return;
-	if (show)
-		item->show_transition_duration = duration_ms;
-	else
-		item->hide_transition_duration = duration_ms;
 }
 
 void obs_sceneitem_transition_stop(void *data, calldata_t *calldata);
@@ -3888,40 +3283,6 @@ void obs_sceneitem_do_transition(obs_sceneitem_t *item, bool visible)
 		obs_transition_set(transition, NULL);
 		obs_transition_start(transition, OBS_TRANSITION_MODE_AUTO, duration, item->source);
 	}
-}
-
-void obs_sceneitem_transition_load(struct obs_scene_item *item, obs_data_t *data, bool show)
-{
-	if (!item || !data)
-		return;
-	const char *id = obs_data_get_string(data, "id");
-	if (id && strlen(id)) {
-		const char *tn = obs_data_get_string(data, "name");
-		obs_data_t *s = obs_data_get_obj(data, "transition");
-		obs_source_t *t = obs_source_create_private(id, tn, s);
-		obs_sceneitem_set_transition(item, show, t);
-		obs_source_release(t);
-		obs_data_release(s);
-	} else {
-		obs_sceneitem_set_transition(item, show, NULL);
-	}
-	obs_sceneitem_set_transition_duration(item, show, (uint32_t)obs_data_get_int(data, "duration"));
-}
-
-obs_data_t *obs_sceneitem_transition_save(struct obs_scene_item *item, bool show)
-{
-	obs_data_t *data = obs_data_create();
-	struct obs_source *transition = show ? item->show_transition : item->hide_transition;
-	if (transition) {
-		obs_data_set_string(data, "id", obs_source_get_unversioned_id(transition));
-		obs_data_set_string(data, "versioned_id", obs_source_get_id(transition));
-		obs_data_set_string(data, "name", obs_source_get_name(transition));
-		obs_data_t *s = obs_source_get_settings(transition);
-		obs_data_set_obj(data, "transition", s);
-		obs_data_release(s);
-	}
-	obs_data_set_int(data, "duration", show ? item->show_transition_duration : item->hide_transition_duration);
-	return data;
 }
 
 void obs_scene_prune_sources(obs_scene_t *scene)

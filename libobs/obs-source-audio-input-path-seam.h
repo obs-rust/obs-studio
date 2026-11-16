@@ -59,6 +59,7 @@ int obs_source_audio_input_path_seam_get_sample_speakers(const obs_source_t *sou
 void obs_source_audio_input_path_seam_set_sample_info(obs_source_t *source, struct obs_source_audio_input_format value);
 bool obs_source_audio_input_path_seam_get_last_async_compensation(const obs_source_t *source);
 void obs_source_audio_input_path_seam_set_last_async_compensation(obs_source_t *source, bool value);
+/* source->async_compensation, or libobs's own for audio on its own clock (#4182) */
 bool obs_source_audio_input_path_seam_get_async_compensation(const obs_source_t *source);
 bool obs_source_audio_input_path_seam_get_audio_failed(const obs_source_t *source);
 void obs_source_audio_input_path_seam_set_audio_failed(obs_source_t *source, bool value);

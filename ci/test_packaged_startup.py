@@ -758,3 +758,31 @@ class FrontendStartupProgressTest(unittest.TestCase):
                 config, "windows", 0.0, "fresh", timeout
             )
             self.assertIs(raised, timeout)
+
+
+class ExitWatchdogTest(unittest.TestCase):
+    """The exit watchdog's helper in the Windows package (#4589)."""
+
+    def test_a_missing_helper_is_reported(self):
+        with tempfile.TemporaryDirectory() as root:
+            app = Path(root) / "obs64.exe"
+            app.write_bytes(b"")
+            with self.assertRaisesRegex(RuntimeError, "helper is missing"):
+                smoke.require_windows_watchdog_helper(app, "x64")
+
+    def test_a_helper_for_another_cpu_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            app = Path(root) / "obs64.exe"
+            helper = Path(root) / smoke.WATCHDOG_HELPER
+            pe = bytearray(64)
+            pe[:2] = b"MZ"
+            struct.pack_into("<I", pe, 0x3C, 64)
+            helper.write_bytes(bytes(pe) + b"PE\0\0" + struct.pack("<H", 0xAA64))
+            with self.assertRaisesRegex(RuntimeError, "is not x64"):
+                smoke.require_windows_watchdog_helper(app, "x64")
+            self.assertEqual(smoke.require_windows_watchdog_helper(app, "arm64"), helper)
+
+    def test_the_log_must_say_the_helper_started(self):
+        smoke.require_watchdog_started(f"info: {smoke.WATCHDOG_STARTED}\n")
+        with self.assertRaisesRegex(RuntimeError, "did not start the exit watchdog"):
+            smoke.require_watchdog_started("info: Loaded Modules:\n")

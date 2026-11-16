@@ -11,14 +11,18 @@
 //! static string) for the fixed one. `obs_key_t` is a C enum, passed as
 //! `int`.
 //!
-//! Intentional difference from C, only where C has undefined behavior: a
-//! null out-parameter is not written (C dereferences it).
+//! Intentional differences from C, only where C has undefined behavior: a
+//! null out-parameter is not written (C dereferences it); a value outside
+//! `0 .. OBS_KEY_LAST_VALUE - 1` gets `NONE`, which the C caller returns on
+//! (C gave it the keysym route, and the caller indexed its keycode table
+//! with it).
 
 use std::ffi::{c_char, c_int};
 
 use crate::nix_wayland_key_names::{self as core, Route};
 
-/// `enum obs_nix_wayland_key_names_route`. `NONE` (0) is never returned.
+/// `enum obs_nix_wayland_key_names_route`.
+const ROUTE_NONE: c_int = 0;
 const ROUTE_MOUSE: c_int = 1;
 const ROUTE_NUMPAD: c_int = 2;
 const ROUTE_FIXED: c_int = 3;
@@ -69,5 +73,6 @@ pub unsafe extern "C" fn obs_nix_wayland_key_names_route(
             ROUTE_FUNCTION
         }
         Route::Keysym => ROUTE_KEYSYM,
+        Route::None => ROUTE_NONE,
     }
 }

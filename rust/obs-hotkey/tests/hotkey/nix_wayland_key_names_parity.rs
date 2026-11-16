@@ -15,9 +15,13 @@
 //! - A null `number` or `name`: for every key the shim returns the C's
 //!   route and writes nothing.
 //!
-//! Intentional difference, checked on its own and excluded from the
-//! comparison (`rust/README.md` lists it too): a null out-parameter is not
-//! written; the C dereferences it, so the C side is never called with one.
+//! Intentional differences, checked on their own and excluded from the
+//! comparison (`rust/README.md` lists them too):
+//! - a null out-parameter is not written; the C dereferences it, so the C
+//!   side is never called with one;
+//! - a value outside `0 .. OBS_KEY_LAST_VALUE - 1` gets `NONE` from the
+//!   shim, where the C gives `KEYSYM` (its caller then indexed the keycode
+//!   table with it): `values_outside_the_table` pins both sides.
 //!
 //! Reminder: the mutation check (break the core, see this file fail) is done
 //! once per port, not on every change.
@@ -57,11 +61,11 @@ fn named(
 
 #[test]
 fn values_match_the_c() {
-    // The shim's code for a key of each route, NONE (0) never returned.
+    // The shim's code for a key of each route; NONE for a value outside the table.
     let code = |key| named(obs_nix_wayland_key_names_route, key).0;
     let rust: [i64; 7] = [
         i64::try_from(OBS_KEY_LAST_VALUE).unwrap(),
-        0,
+        i64::from(code(-1)),
         i64::from(code(k::OBS_KEY_MOUSE1)),
         i64::from(code(k::OBS_KEY_NUM0)),
         i64::from(code(k::OBS_KEY_INSERT)),
@@ -85,6 +89,25 @@ fn every_route_matches() {
         compared += 1;
     }
     assert_eq!(compared, LAST);
+}
+
+/// The intentional difference: outside the table the C routes to the keysym
+/// and writes nothing; the shim gives `NONE` and writes nothing either.
+#[test]
+fn values_outside_the_table() {
+    let keysym = named(oracle_obs_nix_wayland_key_names_route, k::OBS_KEY_A).0;
+    for key in [c_int::MIN, -2, -1, LAST, LAST + 1, c_int::MAX] {
+        assert_eq!(
+            named(oracle_obs_nix_wayland_key_names_route, key),
+            (keysym, UNSET_NUMBER, None),
+            "C route of {key}"
+        );
+        assert_eq!(
+            named(obs_nix_wayland_key_names_route, key),
+            (0, UNSET_NUMBER, None),
+            "Rust route of {key}"
+        );
+    }
 }
 
 #[test]

@@ -2,12 +2,10 @@
 //!
 //! The first test mirrors the `module_locale` case of
 //! `test/cmocka/test_core_module_load.c` one to one, in the same order,
-//! with the same files and the same expected text. [`load`] stands for
-//! `obs_module_load_locale()`: it looks the [`default_file`] up with
-//! `module_paths::find_file` (`obs_find_module_file()`), stops when that is
-//! missing or the locale [`is_default`], and adds the [`locale_file`] when
-//! it exists. The root is "/R" where the C test writes "R", and the
-//! working directory of the empty data path case is "/R/loc", as there.
+//! with the same files and the same expected text. [`load`] calls the production
+//! safe `module_load_locale` core with a fake filesystem and lookup backend.
+//! The root is "/R" where the C test writes "R", and the working directory
+//! of the empty data path case is "/R/loc", as there.
 //!
 //! Cases marked "characterized, not endorsed" are odd but real (#1876) and
 //! kept as the C has them. The tests after the first pin the edges: NULL
@@ -92,22 +90,36 @@ fn load(
     def: Option<&str>,
     locale: Option<&str>,
 ) -> Option<(&'static str, Option<&'static str>)> {
-    if !module {
-        return None;
+    struct Loader<'a> {
+        fs: &'a FakeFs,
+        data: Option<&'a [u8]>,
     }
-    let (def, locale) = (def?.as_bytes(), locale?.as_bytes());
-    let data = data.map(str::as_bytes);
-    let first = find_file(fs, data, Some(&default_file(Some(def))))?;
-    let (mut a, mut b) = fs.text(&first);
-    if is_default(Some(locale), Some(def)) {
-        return Some((a, b));
+    impl obs_core::module_load_locale::LocaleLoader for Loader<'_> {
+        type Lookup = (&'static str, Option<&'static str>);
+        fn create(&mut self, name: &[u8]) -> Option<Self::Lookup> {
+            let path = find_file(self.fs, self.data, Some(name))?;
+            Some(self.fs.text(&path))
+        }
+        fn add(&mut self, lookup: &mut Self::Lookup, name: &[u8]) -> bool {
+            let Some(path) = find_file(self.fs, self.data, Some(name)) else {
+                return false;
+            };
+            let (a, b) = self.fs.text(&path);
+            *lookup = (a, b.or(lookup.1));
+            true
+        }
+        fn invalid(&mut self) {}
+        fn failed(&mut self, _locale: &[u8]) {}
     }
-    if let Some(second) = find_file(fs, data, Some(&locale_file(Some(locale)))) {
-        let (a2, b2) = fs.text(&second);
-        a = a2;
-        b = b2.or(b);
-    }
-    Some((a, b))
+    obs_core::module_load_locale::load(
+        &mut Loader {
+            fs,
+            data: data.map(str::as_bytes),
+        },
+        module,
+        def.map(str::as_bytes),
+        locale.map(str::as_bytes),
+    )
 }
 
 /// `obs_find_module_file()` of the module with the data path `data`.

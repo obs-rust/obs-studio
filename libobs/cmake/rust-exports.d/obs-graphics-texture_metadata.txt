@@ -1,0 +1,3 @@
+gs_texture_get_color_format
+gs_texture_get_height
+gs_texture_get_width

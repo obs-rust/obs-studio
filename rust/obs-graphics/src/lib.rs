@@ -1,15 +1,24 @@
 //! Rust ports of `libobs/graphics`, and of the units extracted from
 //! `libobs/graphics/graphics.c.h`: so far `graphics-sprite.c.h`, the sprite
 //! and texture upload geometry ([`sprite`]), and `graphics-immediate.c.h`,
-//! the immediate-mode vertex counts and texture units ([`immediate`]), from
+//! the immediate-mode vertex counts and texture units ([`immediate`]), and
+//! `texture-planar-creators.c.h`, the NV12 and P010 texture creators
+//! ([`texture_planar_creators`]), and `indexbuffer-create.c.h`, the index
+//! buffer create ([`indexbuffer_create`]), and `present-entrypoints.c.h`,
+//! the frame and present calls ([`present_entrypoints`]), and
+//! `raster-state-entrypoints.c.h`, the cull and colour calls
+//! ([`raster_entrypoints`]), and `graphics-perspective.c.h`, the
+//! perspective frustum ([`perspective`]), and `state-blend-setters.c.h`, the blend
+//! setters ([`blend_entrypoints`]), from
 //! `libobs/graphics/effect-parser.c.h`: `effect-param-types.c.h`, the effect
 //! parameter types and default-value shapes, and `effect-param-numbers.c.h`,
 //! its int values and array counts ([`effect_param_types`]), and
 //! `effect-parser-blocks.c.h`, `effect-parser-params.c.h`,
-//! `effect-parser-passes.c.h`, `effect-parser-writer.c.h` and
-//! `effect-parser-compile.c.h`, its struct and sampler-state blocks, its
-//! parameter declarations, annotations and value assignments, its passes and
-//! techniques, its shader writer and its compile step ([`effect_parser`]),
+//! `effect-parser-passes.c.h`, `effect-parser-writer.c.h`,
+//! `effect-parser-compile.c.h` and `effect-parser-entry.c.h`, its struct and
+//! sampler-state blocks, its parameter declarations, annotations and value
+//! assignments, its passes and techniques, its shader writer, its compile
+//! step and its entry point ([`effect_parser`]),
 //! from
 //! `libobs/graphics/shader-parser.c.h`: `shader-param-values.c.h`, the
 //! shader parser's array counts and int and float default values
@@ -18,7 +27,8 @@
 //! `graphics-ffmpeg-orient.c.h`, the image orientation and size check
 //! ([`image_orient`]), `graphics-ffmpeg-rgba64.c.h`, the 16-bit RGBA
 //! image rows ([`image_rgba64`]), and `graphics-ffmpeg-route.c.h`, the
-//! image decoder's pixel route ([`image_route`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
+//! image decoder's pixel route ([`image_route`]), and `texture-file-data2.c.h`,
+//! the `gs_create_texture_file_data2` wrapper ([`texture_file_data2`]), and from `libobs/graphics/graphics-ffmpeg-host-windows.c.h`:
 //! `graphics-ffmpeg-host-pq.c.h`, the JPEG XR PQ-to-scRGB conversion, and
 //! `graphics-ffmpeg-host-wic-checks.c.h`, the file-name check and the
 //! pixel-format pick ([`image_pq_scrgb`]).
@@ -33,8 +43,12 @@
 use obs_c_oracle as _; // links the test bmalloc/bfree (oracle/test_bmem.c)
 
 pub mod axisang;
+pub mod blend_entrypoints;
 pub mod bounds;
+pub mod cubetexture_access;
+pub mod depth_dispatch;
 pub mod effect_destroy;
+pub mod effect_file;
 pub mod effect_lookups;
 pub mod effect_param_types;
 pub mod effect_params;
@@ -46,30 +60,49 @@ pub mod ffi;
 pub mod gif;
 pub mod gif_blocks;
 pub mod gif_frame;
+pub mod image_decode;
 pub mod image_file;
+pub mod image_init;
 pub mod image_orient;
 pub mod image_pq_scrgb;
 pub mod image_rgba64;
 pub mod image_route;
 pub mod immediate;
+pub mod immediate_arguments;
+pub mod immediate_scalars;
+pub mod indexbuffer_create;
 pub mod linear_srgb;
 pub mod lzw;
 pub mod math_extra;
 pub mod matrix3;
 pub mod matrix4;
+pub mod perspective;
 pub mod plane;
 mod platform;
+pub mod present_entrypoints;
 pub mod quat;
+pub mod raster_entrypoints;
 mod round;
+pub mod shader_file;
+pub mod shader_param_introspection;
 pub mod shader_param_names;
 pub mod shader_param_values;
 pub mod shader_parser;
 pub mod shader_sampler_convert;
 pub mod sprite;
+pub mod stagesurface_getters;
 pub mod state_stacks;
+pub mod stencil;
+pub mod texture_creators;
+pub mod texture_file_data2;
+pub mod texture_metadata;
+pub mod texture_planar_creators;
 pub mod texture_render;
+pub mod timer_dispatch;
+pub mod timer_range_dispatch;
 pub mod vec2;
 pub mod vec3;
 pub mod vec4;
-
-pub mod stencil;
+pub mod vertexbuffer_access;
+pub mod vertexbuffer_destroy;
+pub mod voltexture_metadata;

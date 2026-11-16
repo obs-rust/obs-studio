@@ -134,7 +134,7 @@ ZCCACHE_RESET = (
 TIMING_TESTS_D = (
     "test_slideshow_mem_cap",
 )
-TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker")
+TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_source_deinterlace", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker", "test_source_transition_video")
 TEST_GRAPH = ROOT / "test" / "cmocka" / "build" / "test-graph.json"
 
 
@@ -146,6 +146,12 @@ class TimingLockTest(unittest.TestCase):
         tests = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]
         for name in TIMING_TESTS_GRAPH:
             self.assertIn("timing", tests[name].get("resource_locks", []), name)
+
+    def test_transition_video_has_exclusive_ctest_scheduling(self):
+        # Its frame-bound callback assertions race a background texture trylock
+        # under competing native-graphics load (#4468).
+        test = json.loads(TEST_GRAPH.read_text(encoding="utf-8"))["tests"]["test_source_transition_video"]
+        self.assertTrue(test.get("run_serial"), "transition video must not compete with other CTest processes")
 
     def test_a_resource_lock_runs_alone_in_the_pool(self):
         payload = json.dumps(
@@ -172,6 +178,35 @@ class SanitizeHarnessTest(unittest.TestCase):
         path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
         return path
+
+    def test_toolchain_failure_reports_installer_exit_and_stderr_tail(self):
+        stubs = self.out / "stubs"
+        stubs.mkdir()
+        body = "echo quiet-stdout\n" + "".join(f"echo diagnostic-{i} >&2\n" for i in range(50)) + "exit 23\n"
+        write_stub(stubs, "uv", body)
+        env = dict(os.environ, SAN_OUT=str(self.out / "out"), PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}")
+        with patch.dict(os.environ, env, clear=True), patch.object(self.module, "build_obs") as build:
+            code, out, err = self.invoke("asan", "1")
+        self.assertEqual(code, 1)
+        build.assert_not_called()
+        self.assertIn("toolchain preparation failed", err)
+        self.assertIn("install_zccache.py", err)
+        self.assertIn("exit code 23", err)
+        self.assertEqual(
+            [line for line in err.splitlines() if line.startswith("diagnostic-")],
+            [f"diagnostic-{i}" for i in range(10, 50)],
+        )
+        self.assertNotIn("quiet-stdout", out + err)
+
+    def test_successful_toolchain_install_is_quiet(self):
+        stubs = self.out / "stubs"
+        stubs.mkdir()
+        write_stub(stubs, "uv", "echo quiet-stdout\necho quiet-stderr >&2\nexit 0\n")
+        printed, errors = io.StringIO(), io.StringIO()
+        with patch.dict(os.environ, PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}"):
+            with redirect_stdout(printed), redirect_stderr(errors):
+                self.assertTrue(self.module.prepare_toolchain(self.layout()))
+        self.assertEqual(printed.getvalue() + errors.getvalue(), "")
 
     def test_tool_flags_and_build_type(self):
         # -ffp-contract=off (#3362): the runner's gcc fuses a multiply and a
@@ -264,6 +299,20 @@ class SanitizeHarnessTest(unittest.TestCase):
                 "race:invokeMethodCallableHelper<WaitForOutputToStop",
             ],
         )
+
+    def test_lsan_suppressions_are_the_ffmpeg_probe_only(self):
+        """FFmpeg 8.0.1 leaks while probing a VP9-alpha WebM that starts
+        between keyframes, with no OBS frame below avformat_find_stream_info
+        (#3365). One entry point, never a module: libavcodec.so would also
+        hide an AVPacket OBS forgets to free. LSAN_OPTIONS names no log_path,
+        so the reports stay in the log ASAN_OPTIONS names."""
+        for options in (self.module.sanitizer_options(self.out),
+                        self.module.sanitizer_options(self.out / "tests", "test_core.", fast_unwind=True)):
+            lsan = options["LSAN_OPTIONS"]
+            self.assertNotIn("log_path", lsan)
+            path = Path(next(o.split("=", 1)[1] for o in lsan.split(":") if o.startswith("suppressions=")))
+            lines = [line for line in path.read_text().splitlines() if line and not line.startswith("#")]
+            self.assertEqual(lines, ["leak:avformat_find_stream_info"])
 
     def test_configure_names_zccache_and_the_libobs_backend(self):
         command = self.module.configure_command(
@@ -518,6 +567,34 @@ class SanitizeHarnessTest(unittest.TestCase):
         self.assertIsNone(libdir)
         builds = [zccache for command, zccache in calls if command[:2] == ["cmake", "--build"]]
         self.assertEqual(builds, [None], "a source error must not be retried")
+
+    def test_a_failed_build_prints_the_diagnostic_not_targets_named_error(self):
+        # #4870: targets such as encoder-error-ownership-link-support.c fill
+        # the first 40 lines containing "error" ahead of the real failure,
+        # and compile commands carry -Werror=return-type.
+        progress = "".join(
+            f"[{n}/7346] Building C object test/cmocka/CMakeFiles/test_{n}.dir/encoder-error-ownership-link-support.c.o\n"
+            for n in range(1, 51)
+        )
+        log = self.out / "build.log"
+        log.write_text(
+            progress + "FAILED: [code=1] libobs/CMakeFiles/libobs.dir/obs.c.o\n"
+            "/usr/bin/cc -Werror=return-type -c libobs/obs.c\n"
+            "libobs/obs.c:12:3: error: 'x' undeclared\n"
+            "ninja: build stopped: cannot make progress due to previous errors.\n",
+            encoding="utf-8",
+        )
+        printed = self.module.error_lines(log).splitlines()
+        self.assertIn("FAILED: [code=1] libobs/CMakeFiles/libobs.dir/obs.c.o", printed)
+        self.assertIn("libobs/obs.c:12:3: error: 'x' undeclared", printed)
+        self.assertFalse([line for line in printed if line.startswith("[")], "no ninja progress lines")
+        self.assertNotIn("/usr/bin/cc -Werror=return-type -c libobs/obs.c", printed)
+
+    def test_a_failed_build_with_no_diagnostic_prints_the_log_tail(self):
+        log = self.out / "build.log"
+        log.write_text("".join(f"line {n}\n" for n in range(100)) + "Killed\n", encoding="utf-8")
+        printed = self.module.error_lines(log).splitlines()
+        self.assertEqual(printed[-1], "Killed", "the tail shows how the build ended")
 
 
 # A stub test: notes how many tests are running when it starts (the files in

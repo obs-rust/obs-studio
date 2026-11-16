@@ -234,6 +234,12 @@ fn sources_and_items(backend: &ObsBackend) {
 }
 
 fn stats_capture_and_outputs(backend: &ObsBackend) {
+    let error = obs_mcp::tools::control::ControlBackend::vcam_start(backend, Default::default())
+        .unwrap_err();
+    assert_eq!(
+        error.code, 207,
+        "no video must be rejected before entering the native camera plugin"
+    );
     let stats = backend.stats();
     assert_eq!(stats.fps, 0.0, "no video subsystem, no frames");
     assert_eq!(stats.dropped_frames, 0);
@@ -253,6 +259,20 @@ fn stats_capture_and_outputs(backend: &ObsBackend) {
     let error = named.start(OutputKind::Record).unwrap_err();
     assert!(error.contains("missing_record"), "{error}");
     assert!(!named.status(OutputKind::Record).active);
+    // Typed operations distinguish readiness from processing failures, including
+    // stop on an unconfigured output (not an already-stopped configured output).
+    let request = obs_mcp::tools::outputs::OutputRequest {
+        kind: OutputKind::Record,
+    };
+    for error in [
+        backend.start_output(request).unwrap_err(),
+        backend.stop_output(request).unwrap_err(),
+        named.start_output(request).unwrap_err(),
+    ] {
+        assert_eq!(error.code, 207);
+        assert_eq!(error.category, obs_mcp::server::ErrorCategory::NotReady);
+        assert!(error.retryable);
+    }
 }
 
 /// The tools and resources a client calls reach the same libobs state.

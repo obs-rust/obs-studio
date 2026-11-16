@@ -1,0 +1,10 @@
+obs_add_disabled_module
+obs_add_module_path
+obs_add_safe_module
+obs_find_module_file
+obs_log_loaded_modules
+obs_module_add_encoder
+obs_module_add_output
+obs_module_add_service
+obs_module_add_source
+obs_module_get_config_path

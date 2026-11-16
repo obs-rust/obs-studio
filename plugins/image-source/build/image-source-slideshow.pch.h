@@ -13,3 +13,11 @@
 #include <util/dstr.h>
 #include <util/task.h>
 #include "plugins/image-source/image-source-host.h"
+
+/* slideshow-order.c */
+#include <stdlib.h>
+#include <string.h>
+
+#include <util/bmem.h>
+
+#include "plugins/image-source/slideshow-order.h"

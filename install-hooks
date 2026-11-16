@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Install the repo's git hooks. Today that is the rustfmt pre-commit hook.
+
+    ./install-hooks            # install into this clone
+    ./install-hooks --check    # report whether they are installed
+
+The hook file is a one-line shim that runs `ci/hooks/pre_commit_fmt.py`, so the
+logic stays in the repository (versioned, testable) and the hook only points at
+it. Re-running is safe: it overwrites only a shim it wrote, and refuses to
+clobber a pre-commit hook that someone else installed.
+"""
+
+from __future__ import annotations
+
+import os
+import stat
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+SHIM = "#!/bin/sh\n# installed by ./install-hooks -- runs the repo's rustfmt hook\nexec python3 -P \"$(git rev-parse --show-toplevel)/ci/hooks/pre_commit_fmt.py\" \"$@\"\n"
+MARKER = "installed by ./install-hooks"
+
+
+def hook_path() -> Path:
+    toplevel = os.popen("git rev-parse --show-toplevel").read().strip()
+    gitdir = os.popen("git rev-parse --git-dir").read().strip()
+    base = Path(toplevel) / gitdir if not os.path.isabs(gitdir) else Path(gitdir)
+    return base / "hooks" / "pre-commit"
+
+
+def main(argv: list[str]) -> int:
+    target = hook_path()
+    installed = target.is_file() and MARKER in target.read_text()
+    if "--check" in argv:
+        print(f"pre-commit hook: {'installed' if installed else 'NOT installed'} ({target})")
+        return 0 if installed else 1
+    if target.exists() and not installed:
+        print(f"{target} exists and was not written by this script; leaving it alone", file=sys.stderr)
+        return 2
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(SHIM)
+    target.chmod(target.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    print(f"installed {target}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

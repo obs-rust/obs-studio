@@ -26,13 +26,15 @@
 //! `libobs/obs-encoder-pause.c.h`, the encoder pause checks,
 //! `libobs/obs-output-caption.c.h`, the output caption plan,
 //! `libobs/obs-output-raw-audio-trim.c.h`, the raw output audio trim's
-//! sample-rate conversions, and
+//! sample-rate conversions,
 //! `libobs/obs-encoder-audio-start-frames.c.h`, the encoder audio start's
-//! sample-rate conversions.
+//! sample-rate conversions, and `libobs/obs-output-conversion-setters.c.h`
+//! with `libobs/obs-output-packet-callbacks.c.h`, the output conversion
+//! setters and packet callback registration.
 //!
 //! [`delay`], [`interleave`], [`caption_text`], [`protocols`],
 //! [`encoder_roi`], [`video_checks`], [`encoder_size`],
-//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`] and [`encoder_audio_start_frames`] are the safe cores: [`delay`] decides when a held
+//! [`encoder_audio_start`], [`stop_stats`], [`raw_audio`], [`output_slots`], [`encoder_gpu_gates`], [`encoder_bind`], [`encoder_lifecycle`], [`encoder_packet_ts`], [`encoder_group_reconfig`], [`encoder_gpu_rescale`], [`output_start`], [`output_begin`], [`output_stop`], [`output_reconnect`], [`output_pause`], [`encoder_pause`], [`output_caption`], [`raw_audio_trim`], [`encoder_audio_start_frames`] and [`output_conversion_callbacks`] are the safe cores: [`delay`] decides when a held
 //! packet, start or stop leaves the delay queue, and what start, stop and
 //! cleanup do to the output;
 //! [`interleave`] queues an output's encoded packets until every track has
@@ -112,6 +114,11 @@
 //! packet is dropped) and turns the cut from its front into frames;
 //! [`encoder_audio_start_frames`] gives an encoder's audio packet length and
 //! its offset from the video's start in frames, at the sample rate.
+//! [`output_conversion_callbacks`] decides which check rejects an output
+//! conversion (no output, no conversion, an encoded output, an output
+//! without that media) before the conversion is read or stored, where a
+//! packet callback is registered (at the front) and which one a removal
+//! takes (the first exact callback and parameter pair).
 //! The C ABI shims live in [`ffi`]. Later units of `obs-output.c` join this
 //! crate.
 
@@ -123,6 +130,8 @@ pub mod encoder_audio_getters;
 pub mod encoder_audio_start;
 pub mod encoder_audio_start_frames;
 pub mod encoder_bind;
+pub mod encoder_clear_roi;
+pub mod encoder_configuration;
 pub mod encoder_counters;
 pub mod encoder_dimensions;
 pub mod encoder_frame_rate_divisor;
@@ -135,34 +144,50 @@ pub mod encoder_lifecycle;
 pub mod encoder_metadata;
 pub mod encoder_packet_ts;
 pub mod encoder_pause;
+pub mod encoder_preferred_color_space;
 pub mod encoder_preferred_format;
+pub mod encoder_preferred_range;
+pub mod encoder_properties;
+pub mod encoder_registry_queries;
 pub mod encoder_roi;
 pub mod encoder_roi_state;
 pub mod encoder_scaling_enabled;
+pub mod encoder_set_name;
+pub mod encoder_set_preferred_format;
+pub mod encoder_settings;
 pub mod encoder_size;
 pub mod encoder_state_queries;
 pub mod interleave;
+pub mod output_active;
 pub mod output_begin;
 pub mod output_can_pause;
 pub mod output_caption;
+pub mod output_caption_queue;
+pub mod output_congestion;
 pub mod output_flags;
 pub mod output_handler_getters;
 pub mod output_identity;
+pub mod output_last_error;
 pub mod output_mixer_getters;
+pub mod output_module;
 pub mod output_pause;
 pub mod output_pause_queries;
 pub mod output_protocols;
 pub mod output_reconnect;
+pub mod output_reconnect_settings;
 pub mod output_reconnecting;
 pub mod output_service_getter;
+pub mod output_set_media;
 pub mod output_slots;
 pub mod output_start;
 pub mod output_stop;
 pub mod output_supported_codecs;
+pub mod output_type_info;
 pub mod protocols;
 pub mod raw_audio;
 pub mod raw_audio_trim;
 pub mod service;
+pub mod service_context_getters;
 pub mod service_module_lookup;
 pub mod service_state;
 pub mod service_weak_acquire;
@@ -183,3 +208,19 @@ pub mod weak_encoder_identity;
 pub mod output_total_frames;
 
 pub mod output_connect_time;
+
+pub mod output_frames_dropped;
+
+pub mod output_properties;
+
+pub mod output_settings;
+
+pub mod output_mixer_setters;
+
+pub mod output_video_encoder_getter;
+
+pub mod output_size_getters;
+
+pub mod output_preferred_size;
+
+pub mod output_conversion_callbacks;

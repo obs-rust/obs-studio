@@ -80,6 +80,13 @@ pub enum BlockError {
     InvalidRowCount,
     /// The effect parser's matrix values: `"Invalid column count"`.
     InvalidColumnCount,
+    /// The effect parser's entry point, at a top-level `{`: `"Unexpected
+    /// code segment"`.
+    UnexpectedCodeSegment,
+    /// The effect parser's entry point, at a function declared with a
+    /// variable specifier: `"'$1' keyword cannot be used with a function"`
+    /// with the specifier.
+    KeywordWithFunction(&'static CStr),
 }
 
 impl BlockError {
@@ -93,6 +100,11 @@ impl BlockError {
             Self::CompileNotNecessary => (c"compile keyword not necessary", None),
             Self::InvalidRowCount => (c"Invalid row count", None),
             Self::InvalidColumnCount => (c"Invalid column count", None),
+            Self::UnexpectedCodeSegment => (c"Unexpected code segment", None),
+            Self::KeywordWithFunction(keyword) => (
+                c"'$1' keyword cannot be used with a function",
+                Some(keyword),
+            ),
         }
     }
 
@@ -106,7 +118,9 @@ impl BlockError {
             | Self::UnexpectedEof
             | Self::SyntaxError
             | Self::InvalidRowCount
-            | Self::InvalidColumnCount => LEX_ERROR,
+            | Self::InvalidColumnCount
+            | Self::UnexpectedCodeSegment
+            | Self::KeywordWithFunction(_) => LEX_ERROR,
         }
     }
 }
@@ -284,6 +298,18 @@ pub(crate) fn token_is_type(
     PARSE_SUCCESS
 }
 
+/// `cf_get_name`: the current token's text when it is a name, or the code.
+pub(crate) fn get_name(
+    t: &mut impl Tokens,
+    name: &'static CStr,
+    goto_token: Option<&CStr>,
+) -> Result<Vec<u8>, i32> {
+    match token_is_type(t, CFTOKEN_NAME, name, goto_token) {
+        PARSE_SUCCESS => Ok(t.text().to_vec()),
+        code => Err(code),
+    }
+}
+
 /// `cf_next_name`: the name's text, or the code.
 pub(crate) fn next_name(
     t: &mut impl Tokens,
@@ -293,11 +319,7 @@ pub(crate) fn next_name(
     if !next_valid_token(t) {
         return Err(PARSE_EOF);
     }
-    // cf_get_name
-    match token_is_type(t, CFTOKEN_NAME, name, goto_token) {
-        PARSE_SUCCESS => Ok(t.text().to_vec()),
-        code => Err(code),
-    }
+    get_name(t, name, goto_token)
 }
 
 /// `cf_next_token_copy`.

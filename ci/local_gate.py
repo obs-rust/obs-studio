@@ -675,7 +675,7 @@ def check_feature_sets() -> None:
     print(f"+ Cargo feature sets: {len(FEATURE_SETS)} runs, every feature built on and off", flush=True)
 
 
-def lane_lint(fix: bool) -> None:
+def lane_lint(fix: bool, *, self_tests: bool = True) -> None:
     files = tracked_files()
     in_ci = bool(os.environ.get("GITHUB_ACTIONS"))
     fmt_files = format_scope(files, None if in_ci else changed_since_master(), in_ci)
@@ -684,7 +684,8 @@ def lane_lint(fix: bool) -> None:
     clang_format(fmt_files, fix)
     gersemi(fmt_files, fix)
     ruff_ratchet(files)
-    self_test()
+    if self_tests:
+        self_test()
     check_test_binary_inventory()
     check_feature_sets()
     platform_ifdef_ratchet()
@@ -709,6 +710,49 @@ def lane_dylint(fix: bool) -> None:
 # gate adds win-arm64, mac-x64 and linux-arm64.
 CROSS_TARGETS = ("x86_64-pc-windows-msvc", "aarch64-apple-darwin")
 RELEASE_CROSS_TARGETS = ("aarch64-pc-windows-msvc", "x86_64-apple-darwin", "aarch64-unknown-linux-gnu")
+CLIENT_TARGETS = (
+    "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+    "x86_64-apple-darwin", "aarch64-apple-darwin",
+)
+
+
+def host_target() -> str:
+    """Ask the managed compiler, including architecture/ABI, rather than guessing."""
+    result = subprocess.run(["soldr", "rustc", "-vV"], cwd=ROOT, text=True, capture_output=True, check=True)
+    return next((line.removeprefix("host: ").strip() for line in result.stdout.splitlines()
+                 if line.startswith("host: ")), "unknown")
+
+
+def client_host() -> str:
+    target = host_target()
+    if target not in CLIENT_TARGETS:
+        raise NotApplicable(f"client evidence requires a shipping native target, got {target}")
+    return target
+
+
+def client_gates(host: str) -> set[str]:
+    """Client lint is never native runtime or test-link evidence.
+
+    Distinct check names preserve the old local-gate/remote lane contracts
+    during migration: prooft 0.1 assigns each gate to exactly one lane.
+    """
+    return {"general/all/client-lint", *(f"rust/{t}/client-{c}" for t in CLIENT_TARGETS
+                                        for c in ("clippy", "dylint")), f"rust/{host}/client-test"}
+
+
+def lane_client_lint(fix: bool) -> None:
+    host = client_host()
+    lane_lint(fix, self_tests=False)  # client-checks owns the identical full self-test command.
+    print(f"== client {host}: clippy passed", flush=True)
+    lane_dylint(fix)  # Keep the host's dedicated warm target-dylint root.
+    print(f"== client {host}: dylint passed", flush=True)
+    cross_lint(tuple(t for t in CLIENT_TARGETS if t != host), link=False)
+
+
+def lane_client_test(fix: bool) -> None:
+    client_host()
+    lane_rust_test(fix)
 
 
 def target_std_installed(target: str) -> bool:
@@ -739,7 +783,9 @@ def cross_lint(targets: tuple[str, ...], link: bool) -> None:
     for target in targets:
         add_target(target)
         soldr_cargo(["clippy", *scope, "--locked", "--target", target, "--", "-D", "warnings"])
+        print(f"== client {target}: clippy passed", flush=True)
         soldr_dylint(["--all", "--", *scope, "--target", target])
+        print(f"== client {target}: dylint passed", flush=True)
         if link:
             # Every test binary, C oracle included, must also compile and link
             # for the target (#516, #695): cc compiles all the oracle's C, and
@@ -812,8 +858,15 @@ def lane_rust_test(fix: bool) -> None:
     for args in FEATURE_TEST_SETS:
         rust_tests(list(args))
     # Every test binary, C oracle included, must also link for a GCC-based
-    # Windows target (obs-rust/obs-studio#291). soldr provides the
-    # mingw-w64 cross toolchain; nothing runs, so no Wine is needed.
+    # Windows target (obs-rust/obs-studio#291).
+    if host_platform.is_linux():
+        windows_gnu_no_run(["--workspace"])
+
+
+def windows_gnu_no_run(packages: list[str]) -> None:
+    """Builds the test binaries of `packages` for x86_64-pc-windows-gnu
+    without running them. soldr provides the mingw-w64 cross toolchain;
+    nothing runs, so no Wine is needed."""
     # The target is added here, not in rust-toolchain.toml: listing it there
     # made soldr on a Windows host build and run every test as windows-gnu.
     run(["soldr", "rustup", "target", "add", "x86_64-pc-windows-gnu"])
@@ -821,7 +874,7 @@ def lane_rust_test(fix: bool) -> None:
     # place the oracle's rlib before the crates that call into it.
     gcc_ld = toolchain_gcc_ld()
     soldr_cargo(
-        ["test", "--workspace", "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"],
+        ["test", *packages, "--locked", "--no-run", "--target", "x86_64-pc-windows-gnu"],
         {"CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS": f"-C link-arg=-B{gcc_ld} -C link-arg=-fuse-ld=lld"},
     )
 
@@ -831,7 +884,7 @@ def test_diff(base: str) -> None:
     gate's PR-path test step (#992). The full lane runs on master."""
     import json
 
-    from rust_scope import affected
+    from rust_scope import affected, touches_gnu_oracle
 
     files = subprocess.run(["git", "diff", "--name-only", base, "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
     meta = json.loads(
@@ -843,10 +896,16 @@ def test_diff(base: str) -> None:
     }
     mode, names = affected(files, crates)
     print(f"== test scope: {mode} {names}", flush=True)
-    if mode == "skip":
-        return
-    pkgs = ["--workspace"] if mode == "workspace" else [a for n in names for a in ("-p", n)]
-    rust_tests(pkgs)
+    if mode != "skip":
+        pkgs = ["--workspace"] if mode == "workspace" else [a for n in names for a in ("-p", n)]
+        rust_tests(pkgs)
+    # The oracle gets its pthread renames only in a windows-gnu build, which
+    # the full lane runs on master only: a change to its C inputs builds it
+    # here, or it breaks master after the merge (#4168). Linux hosts only:
+    # soldr's mingw-w64 cross toolchain is for Linux.
+    if host_platform.is_linux() and touches_gnu_oracle(files):
+        print("== windows-gnu: the diff touches the C oracle's inputs", flush=True)
+        windows_gnu_no_run(["-p", "obs-c-oracle"])
 
 
 def lane_tier2_linux(fix: bool) -> None:
@@ -903,8 +962,26 @@ def lane_windows_native(fix: bool) -> None:
          "-CMockaPrefix", prefix])
 
 
+def client_checks_base() -> str:
+    base = os.environ.get("OBS_CLIENT_BASE", "origin/master")
+    return subprocess.run(["git", "rev-parse", "--verify", f"{base}^{{commit}}"],
+                          cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
+
+
+def lane_client_checks(fix: bool) -> None:
+    run(["uv", "run", "--no-project", "ci/client_checks.py", "--base", client_checks_base()])
+
+
+def lane_client_swift(fix: bool) -> None:
+    result = subprocess.run(["uv", "run", "--no-project", "ci/client_checks.py", "--base", client_checks_base(), "--swift"], cwd=ROOT)
+    if result.returncode:
+        raise NotApplicable("Swift formatting unavailable or failed; remote fallback required")
+
+
 LANES = {"lint": lane_lint, "dylint": lane_dylint, "rust-test": lane_rust_test, "cross": lane_cross, "cross-release": lane_cross_release,
-         "tier2-linux": lane_tier2_linux, "macos-native": lane_macos_native, "windows-native": lane_windows_native}
+         "tier2-linux": lane_tier2_linux, "macos-native": lane_macos_native, "windows-native": lane_windows_native,
+         "client-lint": lane_client_lint, "client-test": lane_client_test,
+          "client-checks": lane_client_checks, "client-swift": lane_client_swift}
 
 # The lint lane's formatter checks on their own, for CI's format jobs: the
 # same pinned tools and files as `./lint`, so the two cannot disagree (#427).
@@ -918,7 +995,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-diff", metavar="BASE", help="run unit tests only for crates changed since BASE (fast gate)")
     parser.add_argument("--only", choices=sorted(CHECKS), help="run only this check (CI format jobs)")
     parser.add_argument("--cross-target", choices=CROSS_TARGETS, help="CI: run one cross target on its own runner")
+    parser.add_argument("--client-target", choices=CLIENT_TARGETS, help="client-test: require this exact native target")
     args = parser.parse_args()
+    if args.client_target and args.lane != ["client-test"]:
+        parser.error("--client-target requires only --lane client-test")
     if args.cross_target and (args.lane != ["cross"] or args.only or args.test_diff is not None):
         parser.error("--cross-target requires only --lane cross")
     if args.test_diff is not None and not args.test_diff.strip():
@@ -927,6 +1007,15 @@ def parse_args() -> argparse.Namespace:
         # every lane: the ci/ self-tests are POSIX-only (#2743).
         parser.error("--test-diff needs a base commit, not an empty value")
     return args
+
+
+def run_lane(name: str, args: argparse.Namespace) -> None:
+    if args.client_target and client_host() != args.client_target:
+        raise NotApplicable(f"native {args.client_target} tests cannot run on this host")
+    if name == "cross" and args.cross_target:
+        cross_lint((args.cross_target,), link=True)
+    else:
+        LANES[name](args.fix)
 
 
 def main() -> int:
@@ -944,14 +1033,11 @@ def main() -> int:
         return 0
     # cross-release runs only in the release gate (#955).
     ran = 0
-    for name in args.lane or [n for n in LANES if n != "cross-release"]:
+    for name in args.lane or [n for n in LANES if n not in ("cross-release", "client-lint", "client-test", "client-checks", "client-swift")]:
         start = time.monotonic()
         print(f"== lane {name}", flush=True)
         try:
-            if name == "cross" and args.cross_target:
-                cross_lint((args.cross_target,), link=True)
-            else:
-                LANES[name](args.fix)
+            run_lane(name, args)
         except NotApplicable as exc:
             # Exit 75 (EX_TEMPFAIL) when the host cannot run any lane it was
             # asked for: ci-lint reads that as "not applicable" for an

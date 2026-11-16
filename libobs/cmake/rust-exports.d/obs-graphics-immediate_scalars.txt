@@ -1,0 +1,2 @@
+gs_normal3f
+gs_vertex2f

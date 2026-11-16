@@ -341,10 +341,10 @@ pub fn parse_nvidia_smi(output: &str) -> Vec<GpuDevice> {
 
 /// Run `nvidia-smi`; an absent tool or a failing driver yields no devices.
 pub fn query_nvidia_smi() -> Vec<GpuDevice> {
-    match Command::new("nvidia-smi")
-        .args(["--query-gpu=name,pci.device_id", "--format=csv,noheader"])
-        .output()
-    {
+    let mut cmd = Command::new("nvidia-smi");
+    cmd.args(["--query-gpu=name,pci.device_id", "--format=csv,noheader"]);
+    platform::hide_console(&mut cmd);
+    match cmd.output() {
         Ok(out) if out.status.success() => parse_nvidia_smi(&String::from_utf8_lossy(&out.stdout)),
         _ => Vec::new(),
     }

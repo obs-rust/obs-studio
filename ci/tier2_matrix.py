@@ -8,7 +8,7 @@ import os
 def matrix(event: str, *, full: bool = False) -> dict[str, list[str]]:
     # Hosted queue wait now dwarfs the serial tests' runtime (#2072).
     # Complete CTest runs retain RUN_SERIAL isolation within each backend.
-    compact = event in ("pull_request", "merge_group") and not full
+    compact = event == "merge_group" or (event == "pull_request" and not full)
     return {
         "mode": ["OFF", "ON"],
         "part": ["all"] if compact else ["suite", "serial-1-of-2", "serial-2-of-2"],

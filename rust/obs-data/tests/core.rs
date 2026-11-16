@@ -8,6 +8,8 @@ mod audio_monitoring;
 mod callback;
 #[path = "data/main.rs"]
 mod data;
+#[path = "../../obs-encoder/tests/encoder/main.rs"]
+mod encoder;
 #[path = "../../obs-hotkey/tests/hotkey/main.rs"]
 mod hotkey;
 #[path = "../../obs-mcp/tests/mcp/main.rs"]

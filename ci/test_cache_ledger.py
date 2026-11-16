@@ -305,6 +305,9 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn("if: always()", step)
             # The gate rejects continue-on-error in its jobs: the action's own steps carry it.
             self.assertNotIn("continue-on-error", step)
+            # A job that fails before checkout has no local action to run
+            # (run 42755735949): the step is skipped instead of erroring.
+            self.assertIn("hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''", step)
             self.assertIn("uses: ./.github/actions/job-cache-ledger", step)
 
     def test_action_is_fail_open_and_runs_through_uv(self):

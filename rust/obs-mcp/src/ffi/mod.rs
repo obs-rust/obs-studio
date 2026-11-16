@@ -622,6 +622,7 @@ pub fn render_rgba(source: &Source, from: (u32, u32), to: (u32, u32)) -> Result<
 mod stdio;
 pub use stdio::claim_stdout;
 
+mod host_display;
 mod setup;
 #[cfg(feature = "fault-injection")]
 pub use setup::fail_audio_mixer;
@@ -630,7 +631,9 @@ pub use setup::{Pipeline, configure};
 /// A started libobs; dropping it shuts libobs down.
 ///
 /// Every other value from this module must be dropped first.
-pub struct Libobs(());
+pub struct Libobs {
+    _display: host_display::Display,
+}
 
 impl Libobs {
     /// Starts libobs with the `en-US` locale and no module search paths.
@@ -639,12 +642,17 @@ impl Libobs {
     ///
     /// Returns an error when libobs refuses to start.
     pub fn start() -> Result<Self, String> {
+        // SAFETY: this query only reads libobs's existing startup state.
+        if unsafe { sys::obs_initialized() } {
+            return Err("libobs is already initialized".to_owned());
+        }
+        let display = host_display::Display::open();
         // SAFETY: the locale is a NUL-terminated static string; null optional
         // paths and name store are supported by `obs_startup`.
         let started =
             unsafe { sys::obs_startup(c"en-US".as_ptr(), std::ptr::null(), std::ptr::null_mut()) };
         if started {
-            Ok(Self(()))
+            Ok(Self { _display: display })
         } else {
             Err("obs_startup failed".to_owned())
         }
@@ -677,3 +685,6 @@ pub fn log_warning(text: &str) {
     // consumes exactly the one argument passed.
     unsafe { blog(LOG_WARNING, c"obs-mcp: %s".as_ptr(), text.as_ptr()) };
 }
+
+mod control;
+pub use control::render_stats;

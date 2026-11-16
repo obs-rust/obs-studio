@@ -49,6 +49,109 @@ RUN_39677084695 = [
 
 
 class GateJobs(unittest.TestCase):
+    def test_pr_scope_executes_base_selector_and_dependency_only(self):
+        with tempfile.TemporaryDirectory(prefix="base-scope-fixture-") as temp:
+            root = Path(temp)
+            (root / "ci").mkdir()
+            for name in ("ci_scope.py", "platform_paths.py"):
+                (root / "ci" / name).write_text((ROOT / "ci" / name).read_text())
+            def git(*args):
+                return subprocess.run(["git", "-C", temp, *args], check=True,
+                                      capture_output=True, text=True).stdout.strip()
+            git("init", "-q")
+            git("config", "user.name", "Fixture")
+            git("config", "user.email", "fixture@example.invalid")
+            git("add", "ci")
+            git("commit", "-qm", "base selector")
+            base = git("rev-parse", "HEAD")
+            for name in ("ci_scope.py", "platform_paths.py"):
+                (root / "ci" / name).write_text("raise RuntimeError('head code executed')\n")
+            (root / "ci" / "gate_jobs.py").write_text(Path(gate_jobs.__file__).read_text())
+            probe = root / "ci" / "probe.py"
+            probe.write_text("import gate_jobs\nprint('gate imports without head selector')\n")
+            subprocess.run(["uv", "run", "--no-project", "--script", str(probe)],
+                           cwd=root, check=True, text=True, capture_output=True)
+            with contextlib.chdir(root):
+                selected = gate_jobs.base_pr_scope(base, ["libobs/obs.c.h"])
+            self.assertTrue(selected.core)
+            self.assertTrue(selected.windows)
+            self.assertTrue(selected.windows_link)
+            self.assertFalse(selected.docs_only)
+
+    def test_pr_fallback_manifest_rejects_missing_skipped_and_runnerless_work(self):
+        from ci_scope import scope
+        files = ["libobs/obs.c.h", "plugins/rtmp-services/data/services.json"]
+        selected = scope(files, event="pull_request")
+        expected = gate_jobs.pr_expected_jobs(selected, files, {})
+        self.assertIn("Build 🧱 / CI Mode 🛂", expected)
+        self.assertIn("Build 🧱 / Rust Cross Lint 🦀 (release targets)", expected)
+        self.assertIn("Validate Data 🕵️", expected)
+        for name in expected:
+            healthy = [job(n, "success") for n in expected if n != name]
+            self.assertEqual(blocking(healthy, expected=expected), [name])
+            healthy.append(job(name, "skipped"))
+            self.assertEqual(blocking(healthy, expected=expected), [name])
+
+    def test_complete_pr_requires_proven_gates_and_active_queue_policy(self):
+        import pr_attestation
+        from ci_scope import scope
+        files = ["libobs/obs.c.h"]
+        selected = scope(files, event="pull_request")
+        result = {"trusted": True, "reasons": [],
+                  "gates": dict.fromkeys(pr_attestation.CLIENT_GATES, "valid")}
+        plan = pr_attestation.admission(result, files, event="pull_request")
+        self.assertEqual(gate_jobs.pr_expected_jobs(selected, files, plan),
+                         {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂"})
+        for field in ("queue_policy", "gates", "admission_version"):
+            invalid = dict(plan)
+            invalid.pop(field)
+            self.assertIn("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
+                          gate_jobs.pr_expected_jobs(selected, files, invalid))
+
+    def test_queue_manifest_requires_each_selected_leg_despite_proofs(self):
+        from ci_scope import scope
+        selected = scope(["libobs/obs.c.h", ".github/workflows/build-project.yaml"], event="merge_group")
+        expected = gate_jobs.expected_jobs(selected)
+        required = {
+            "Build 🧱 / Cross Compile 🧰 (mac-arm64,win-x64)",
+            "Build 🧱 / Rust Tests 🦀 (macos-26)",
+            "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
+            "Build 🧱 / Rust Tier 2 (macos-26)",
+            "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
+            "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+            "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+            "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+            "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+            "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+        }
+        self.assertTrue(required <= expected, required - expected)
+        healthy = [dict(job(n, "success"), client_attested=True, proof_hit=True) for n in expected]
+        self.assertEqual(blocking(healthy, expected=expected), [])
+        for missing in required:
+            for conclusion, status in (("skipped", "completed"), (None, "queued"),
+                                       (None, "in_progress"), ("cancelled", "completed"),
+                                       ("failure", "completed"), (None, "completed")):
+                with self.subTest(missing=missing, conclusion=conclusion, status=status):
+                    records = [j for j in healthy if j["name"] != missing]
+                    self.assertEqual(blocking(records, expected=expected), [missing])
+                    records.append(dict(job(missing, conclusion, status), client_attested=True, proof_hit=True))
+                    self.assertEqual(blocking(records, expected=expected), [missing])
+
+    def test_runnerless_selected_job_cannot_prove_execution(self):
+        name = "Build 🧱 / Rust Tier 2 (macos-26)"
+        for conclusion in ("cancelled", "success"):
+            record = dict(job(name, conclusion), runner_name="", runner_id=0, steps=[],
+                          client_attested=True, proof_hit=True)
+            self.assertEqual(blocking([record], expected={name}), [name])
+
+    def test_out_of_scope_skips_pass_queue_manifest(self):
+        from ci_scope import scope
+        expected = gate_jobs.expected_jobs(scope(["docs/features.md"], event="merge_group"))
+        jobs = [job(n, "success") for n in expected]
+        jobs += [job("Build 🧱 / Rust Tier 2 (macos-26)", "skipped"),
+                 job("Build 🧱 / Fast Gate ⚡", "skipped")]
+        self.assertEqual(blocking(jobs, expected=expected), [])
+
     def test_runnerless_cancellation_is_diagnosed_even_without_scope(self):
         jobs = [
             dict(
@@ -73,7 +176,7 @@ class GateJobs(unittest.TestCase):
                 os.environ, {"GITHUB_EVENT_NAME": "merge_group", "CORE_SCOPE": ""}
             ),
             mock.patch.object(
-                gate_jobs, "queue_core_scope", return_value=True, create=True
+                gate_jobs, "queue_coverage", return_value={gate_jobs.SCOPE_JOB}
             ),
             mock.patch.object(
                 gate_jobs,
@@ -97,7 +200,7 @@ class GateJobs(unittest.TestCase):
                     return_value=done(0, "libobs/obs.c.h\n"),
                 ) as run,
             ):
-                self.assertTrue(gate_jobs.queue_core_scope())
+                self.assertTrue(gate_jobs.queue_coverage())
                 self.assertEqual(
                     run.call_args.args[0],
                     [
@@ -112,7 +215,7 @@ class GateJobs(unittest.TestCase):
                 group.pop("base_sha")
                 path.write_text(json.dumps({"merge_group": group}))
                 with self.assertRaisesRegex(ValueError, "merge_group.base_sha"):
-                    gate_jobs.queue_core_scope()
+                    gate_jobs.queue_coverage()
 
     def test_invalid_event_shapes_name_the_missing_input(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -126,7 +229,7 @@ class GateJobs(unittest.TestCase):
                 ):
                     path.write_text(json.dumps(event))
                     with self.assertRaisesRegex(ValueError, message):
-                        gate_jobs.queue_core_scope()
+                        gate_jobs.queue_coverage()
 
     def test_scope_error_does_not_hide_executed_job_failures(self):
         for conclusion in (
@@ -141,7 +244,7 @@ class GateJobs(unittest.TestCase):
                 mock.patch.dict(os.environ, {"GITHUB_EVENT_NAME": "merge_group"}),
                 mock.patch.object(
                     gate_jobs,
-                    "queue_core_scope",
+                    "queue_coverage",
                     side_effect=ValueError("merge_group.head_sha missing"),
                 ),
                 mock.patch.object(

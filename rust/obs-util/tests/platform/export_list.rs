@@ -22,6 +22,8 @@ fn no_mangle_fns(src: &str) -> Vec<String> {
             if let Some(pos) = item {
                 let name: String = next[pos..]
                     .trim_start()
+                    .strip_prefix("mut ")
+                    .unwrap_or(next[pos..].trim_start())
                     .chars()
                     .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
                     .collect();

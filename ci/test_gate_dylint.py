@@ -20,6 +20,16 @@ GATE = Path(local_gate.__file__)
 
 
 class GateDylintTest(unittest.TestCase):
+    def test_client_proofs_cover_linted_sources_and_runner_inputs(self):
+        import tomllib
+        lanes = tomllib.loads((local_gate.ROOT / "local-gate.toml").read_text())["gate"]["lanes"]
+        for name in ("client-lint", "client-test"):
+            self.assertIn(name, lanes)
+            # No exclusions means every tracked source/config/runner is keyed.
+            self.assertFalse(lanes[name].get("exclude"), name)
+        policy = (local_gate.ROOT / "ci-attestations.yml").read_text()
+        self.assertIn('inputs: ["**"]', policy)
+
     def test_missing_toolchain_uses_root_pin(self):
         for inherited in (None, ""):
             for beside_clippy in (False, True):

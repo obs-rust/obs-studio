@@ -1,0 +1,12 @@
+# Public API characterization before the scene-item hotkey Rust port.
+add_executable(test_scene_item_hotkeys test_scene_item_hotkeys.c)
+target_include_directories(test_scene_item_hotkeys PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_scene_item_hotkeys PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_scene_item_hotkeys)
+find_program(XVFB_RUN xvfb-run)
+if(XVFB_RUN)
+  add_test(NAME test_scene_item_hotkeys COMMAND ${XVFB_RUN} -a $<TARGET_FILE:test_scene_item_hotkeys>)
+else()
+  add_test(NAME test_scene_item_hotkeys COMMAND test_scene_item_hotkeys)
+endif()
+set_tests_properties(test_scene_item_hotkeys PROPERTIES TIMEOUT 30)

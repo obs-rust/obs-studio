@@ -1,0 +1,18 @@
+[package]
+autotests = false
+name = "obs-encoder"
+version = "0.1.0"
+description = "Rust ownership operations for libobs encoders"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+test = false
+
+[dependencies]
+obs-util = { path = "../obs-util" }

@@ -261,6 +261,30 @@ impl Latches for Pair {
     }
 }
 
+// Reuse all eleven unchanged safe pair-latch characterizations through the
+// routed callback core as well as the pair latch core.
+impl obs_hotkey::routed_callback::Registry for Pair {
+    type Hotkey = Half;
+    fn lock(&mut self) -> bool {
+        true
+    }
+    fn enabled(&self) -> bool {
+        true
+    }
+    fn find(&mut self, id: usize) -> Option<Half> {
+        match id {
+            0 => Some(FIRST),
+            1 => Some(SECOND),
+            _ => None,
+        }
+    }
+    fn call(&mut self, half: Half, id: usize, pressed: bool) {
+        assert_eq!(half.index(), id);
+        event(self, half, pressed, |p| p.func(half, pressed));
+    }
+    fn unlock(&mut self) {}
+}
+
 impl Pair {
     /// `setup()`: the frontend's funcs, true for a press they act on and
     /// false for a release.
@@ -289,7 +313,7 @@ impl Pair {
     }
 
     fn trigger(&mut self, half: Half, pressed: bool) {
-        event(self, half, pressed, |p| p.func(half, pressed));
+        obs_hotkey::routed_callback::trigger(self, half.index(), pressed);
     }
 
     fn press(&mut self, half: Half) {

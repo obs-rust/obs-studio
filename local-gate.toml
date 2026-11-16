@@ -2,24 +2,22 @@
 #
 # Before pushing, from a clean, committed tree:
 #
-#   uvx --from git+https://github.com/zackees/ci.yml@a1917ce76598904ce515cd7eec83450c317ea6f2 ci-lint local-gate run
+#   uvx --from git+https://github.com/zackees/ci.yml@24362f3e60248ebe72ffd261e5585640228cbc5d ci-lint local-gate run
 #
 # runs every lane below (each cached on its inputs, so an unchanged lane is
 # skipped in seconds) and stamps HEAD with a tree-bound `Local-Gate:` trailer
 # plus one `Ci-Attestation:` trailer per gate (ci-attestations.yml). CI's
-# ci-mode job reads them: an attested, in-policy PR head skips the Linux
-# unit-test jobs the gate already ran. Install the pre-push hook once per
+# ci-mode job retains these as legacy diagnostics. Complete per-gate client
+# evidence plus verified member identity is required for admission skips. Install the pre-push hook once per
 # clone with `... ci-lint local-gate install-hook`.
 #
 # ./lint and ./unittest run the same lanes without stamping.
 [gate]
 run = ["uv", "run", "ci/local_gate.py"]
 verify = "build-project.yaml:ci-mode"
-# Not skippable by a Linux attestation, so they start at once instead of
-# waiting on ci-mode: event data, the full OBS builds (themselves skipped for
-# non-native PRs by check-event's quick gate), and ci.yml's format/validation
-# jobs, which are seconds long. The macOS/Windows Rust and Tier 2 legs are
-# skippable by their own native lanes ([gate.trust] below, #443).
+# Legacy mirror/trust declarations are retained for older clients. CI admission
+# uses ci/pr_attestation.py from immutable BASE; legacy records do not grant
+# queue deferral. Format/Data receive its unified workflow-call decision.
 
 # The manual fresh-runner compiler transfer trial cannot be locally attested.
 verify-exempt = [
@@ -93,8 +91,8 @@ group = "docker"
 exclude = [
   "docs/**", "**/*.md", "build-aux/**", "libobs-d3d11/**", "libobs-metal/**", "libobs-winrt/**",
   "additional_install_files/**", "tools/**", "ci/**", ".github/**", ".claude/**", "rust/*/tests/**",
-  "rust/*/benches/**", "rust/*/examples/**", "rust/obs-c-oracle/**", "rust/obs-camera-busy/**",
-  "rust/obs-fallback-warning/**", "rust/obs-gpu-status/**", "rust/obs-frontend/**",
+  "rust/*/benches/**", "rust/*/examples/**", "rust/obs-c-oracle/**", "rust/obs-camera-busy/**", "rust/obs-exit-watchdog/**",
+  "rust/obs-mcp-module/**", "rust/obs-fallback-warning/**", "rust/obs-gpu-status/**", "rust/obs-frontend/**",
 ]
 keep = ["rust/*/Cargo.toml", "rust/obs-mcp/tests/**", "rust/obs-studio-rust/tests/**", "rust/obs-sys/tests/**"]
 
@@ -114,10 +112,65 @@ run = ["uv", "run", "ci/local_gate.py", "--lane", "windows-native"]
 tools = ["soldr"]
 optional = true
 
-# GATE-008: decided from THIS file as committed on the PR's base. Fails
-# closed: fork or non-writer author, `ci-full` label, head not attested for
-# its exact tree, a missing lane, a changed surface, or the 1-in-10 audit
-# sample all run the jobs. Pushes to master always run everything.
+# Complete client evidence (#4745), independent of legacy remote lane mappings.
+# With no exclusions these keys include ALL tracked linted sources, configs,
+# target cfg/toolchain, Dylints, manifests, lockfiles, and runner scripts.
+# Full-file proofs include every tracked schema, script, config and manifest.
+# BASE is resolved to an immutable SHA inside the local-gate entry point.
+[gate.lanes.client-checks]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-checks"]
+tools = ["uv", "xmllint"]
+
+[gate.lanes.client-swift]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-swift"]
+tools = ["uv", "swift-format"]
+optional = true
+
+[gate.lanes.client-lint]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-lint"]
+tools = ["uvx", "soldr"]
+
+# Dynamic host entry point; only the target-qualified aliases below may stamp
+# a native runtime gate. GNU-oracle linking runs only where soldr supports it.
+[gate.lanes.client-test]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-x86_64-unknown-linux-gnu]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "x86_64-unknown-linux-gnu"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-aarch64-unknown-linux-gnu]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "aarch64-unknown-linux-gnu"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-x86_64-pc-windows-msvc]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "x86_64-pc-windows-msvc"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-aarch64-pc-windows-msvc]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "aarch64-pc-windows-msvc"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-x86_64-apple-darwin]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "x86_64-apple-darwin"]
+tools = ["soldr"]
+optional = true
+
+[gate.lanes.client-test-aarch64-apple-darwin]
+run = ["uv", "run", "ci/local_gate.py", "--lane", "client-test", "--client-target", "aarch64-apple-darwin"]
+tools = ["soldr"]
+optional = true
+
+# Legacy GATE-008 declarations for diagnostic compatibility only. The active
+# policy is verified org-member author AND final HEAD signer, base-owned gates,
+# and real fallback on any uncertainty. No label changes scope. Queue checks
+# always execute; client lint never proves native runtime or compilation.
 [gate.trust]
 mode = "enforce"
 skip = [

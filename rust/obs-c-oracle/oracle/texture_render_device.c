@@ -36,6 +36,9 @@ static size_t next_texture;
 static size_t next_zstencil;
 static bool fail_texture;
 static bool fail_zstencil;
+/* Bit n fails the nth texture create since the last fail_creates call. */
+static uint32_t fail_mask;
+static unsigned create_index;
 static gs_texture_t *device_target;
 static gs_zstencil_t *device_zs;
 static enum gs_color_space device_space;
@@ -52,6 +55,11 @@ int oracle_texrender_device_handle(const void *ptr);
 const char *oracle_texrender_device_log(void);
 void oracle_texrender_device_clear_log(void);
 void oracle_texrender_device_quiet(bool on);
+void oracle_texrender_device_fail_creates(uint32_t mask);
+void oracle_texrender_device_note(const char *text);
+void oracle_graphics_set_context_present(bool present);
+gs_texture_t *oracle_texrender_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format,
+					      uint32_t levels, const uint8_t **data, uint32_t flags);
 
 RECORD_FORMAT static void record(const char *format, ...)
 {
@@ -101,10 +109,13 @@ int oracle_texrender_device_handle(const void *ptr)
 
 void oracle_texrender_device_reset(void)
 {
+	oracle_graphics_set_context_present(true);
 	next_texture = 0;
 	next_zstencil = 0;
 	fail_texture = false;
 	fail_zstencil = false;
+	fail_mask = 0;
+	create_index = 0;
 	quiet = false;
 	device_target = (gs_texture_t *)&textures[0];
 	device_zs = (gs_zstencil_t *)&zstencils[0];
@@ -138,14 +149,29 @@ void oracle_texrender_device_quiet(bool on)
 	quiet = on;
 }
 
+/* Makes the texture creates fail whose bit is set: bit 0 the next one, bit 1
+ * the one after, and so on. */
+void oracle_texrender_device_fail_creates(uint32_t mask)
+{
+	fail_mask = mask;
+	create_index = 0;
+}
+
+/* Appends text to the call log as one more call (the planar creators' device
+ * exports, oracle/texture_planar_creators.c). */
+void oracle_texrender_device_note(const char *text)
+{
+	record("%s", text);
+}
+
 void oracle_texrender_device_clear_log(void)
 {
 	log_len = 0;
 	call_log[0] = 0;
 }
 
-gs_texture_t *gs_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format, uint32_t levels,
-				const uint8_t **data, uint32_t flags)
+gs_texture_t *oracle_texrender_texture_create(uint32_t width, uint32_t height, enum gs_color_format color_format,
+					      uint32_t levels, const uint8_t **data, uint32_t flags)
 {
 	/* image-file passes its pixels: record a hash of the RGBA bytes. */
 	if (data && *data)
@@ -154,7 +180,8 @@ gs_texture_t *gs_texture_create(uint32_t width, uint32_t height, enum gs_color_f
 	else
 		record("tex_create %u %u f%d l%u %s 0x%x", width, height, (int)color_format, levels,
 		       data ? "data" : "null", flags);
-	if (fail_texture)
+	create_index++;
+	if (fail_texture || (create_index <= 32 && (fail_mask >> (create_index - 1)) & 1))
 		return NULL;
 	next_texture = next_texture % (POOL_SIZE - 1) + 1;
 	texture_cx[next_texture] = width;

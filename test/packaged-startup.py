@@ -353,6 +353,104 @@ def require_windows_modules(log: str) -> None:
         )
 
 
+WATCHDOG_HELPER = "obs-exit-watchdog.exe"
+WATCHDOG_STARTED = "Exit watchdog: helper process started"
+WATCHDOG_LINE = "exit-watchdog: exit did not finish in 1 s"
+
+
+def require_windows_watchdog_helper(app: Path, arch: str) -> Path:
+    """The exit watchdog's helper ships next to the executable (#4589)."""
+    helper = app.parent / WATCHDOG_HELPER
+    if not helper.is_file():
+        raise RuntimeError(f"packaged exit watchdog helper is missing: {helper}")
+    require_windows_arch(helper, arch)
+    return helper
+
+
+def require_watchdog_started(log: str) -> None:
+    if WATCHDOG_STARTED not in log:
+        raise RuntimeError(
+            "packaged frontend did not start the exit watchdog helper"
+        )
+
+
+def require_watchdog_ends_a_blocked_process(helper: Path, work: Path) -> None:
+    """Arms the packaged helper on a process that never exits by itself, the
+    way OBS arms it at quit, and checks that it ends that process with exit
+    code 124 and appends its line to the log (#4589)."""
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.CreateEventW.restype = wintypes.HANDLE
+    kernel32.CreateEventW.argtypes = (
+        ctypes.c_void_p,
+        wintypes.BOOL,
+        wintypes.BOOL,
+        wintypes.LPCWSTR,
+    )
+    kernel32.SetEvent.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+
+    class SecurityAttributes(ctypes.Structure):
+        _fields_ = [
+            ("nLength", wintypes.DWORD),
+            ("lpSecurityDescriptor", ctypes.c_void_p),
+            ("bInheritHandle", wintypes.BOOL),
+        ]
+
+    blocked = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+    process = event = None
+    try:
+        synchronize, terminate = 0x00100000, 0x0001
+        process = kernel32.OpenProcess(synchronize | terminate, True, blocked.pid)
+        inheritable = SecurityAttributes(ctypes.sizeof(SecurityAttributes), None, True)
+        event = kernel32.CreateEventW(ctypes.byref(inheritable), True, False, None)
+        if not process or not event:
+            raise RuntimeError(
+                f"watchdog check: handles failed ({ctypes.get_last_error()})"
+            )
+        log = work / "watchdog-check.txt"
+        log.write_text("earlier line\n", encoding="utf-8")
+        env = dict(os.environ)
+        env.update(
+            OBS_EXIT_WATCHDOG_PARENT=str(process),
+            OBS_EXIT_WATCHDOG_ARM=str(event),
+            OBS_EXIT_WATCHDOG_TIMEOUT_MS="1000",
+            OBS_EXIT_WATCHDOG_LOG=str(log),
+        )
+        startup = subprocess.STARTUPINFO(
+            lpAttributeList={"handle_list": [process, event]}
+        )
+        watcher = subprocess.Popen(
+            [str(helper)], env=env, startupinfo=startup, close_fds=True
+        )
+        kernel32.SetEvent(event)
+        try:
+            code = blocked.wait(timeout=20)
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError(
+                "packaged exit watchdog helper did not end a blocked process"
+            ) from error
+        if code != 124:
+            raise RuntimeError(f"blocked process ended with {code}, not 124")
+        if watcher.wait(timeout=10) != 0:
+            raise RuntimeError(f"watchdog helper exited with {watcher.returncode}")
+        text = log.read_text(encoding="utf-8")
+        if not text.startswith("earlier line\n" + WATCHDOG_LINE):
+            raise RuntimeError(f"watchdog helper log is wrong: {text!r}")
+        print("packaged exit watchdog: helper ended a blocked process", flush=True)
+    finally:
+        for handle in (process, event):
+            if handle:
+                kernel32.CloseHandle(handle)
+        if blocked.poll() is None:
+            blocked.kill()
+            blocked.wait(timeout=10)
+
+
 def validate_profile(
     platform: str, kinds: list[str], inputs: list[dict], scene: dict, profile: dict
 ) -> None:
@@ -847,6 +945,7 @@ def main() -> None:  # noqa: C901
         if args.expect_arch is None:
             raise RuntimeError("Windows packages require --expect-arch")
         require_windows_arch(app, args.expect_arch)
+        helper = require_windows_watchdog_helper(app, args.expect_arch)
     with socket.socket() as reservation:
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]
@@ -916,6 +1015,8 @@ def main() -> None:  # noqa: C901
                     "packaged frontend did not verify its Windows application identity"
                 )
             require_windows_modules(identity_logs[-1])
+            require_watchdog_started(identity_logs[-1])
+            require_watchdog_ends_a_blocked_process(helper, config)
         print(
             "packaged startup: capture plugins registered, saved profile loaded, clean shutdown"
         )

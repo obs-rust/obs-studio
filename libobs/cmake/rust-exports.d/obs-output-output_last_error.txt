@@ -1,0 +1,1 @@
+obs_output_set_last_error

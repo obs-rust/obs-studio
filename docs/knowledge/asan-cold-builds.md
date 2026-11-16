@@ -19,9 +19,8 @@ build took 15 to 27 minutes and a warm one about 4. Cold times alone vary by
 
 - Only a run on master saves it (`Save zccache` in
   `.github/workflows/sanitizers.yaml`), and on master only the nightly runs asan.
-- A PR runs asan only if it changes a ratcheted target's compile input
-  (`ci/conversion_ratchet.py`, `ci/ci_scope.py`, #2923). The merge queue does not
-  run it for that reason.
+- No PR and no merge-queue run builds asan (maintainer directive 2026-11-09;
+  until then a PR that changed a ratcheted target's compile input did, #2923).
 - A PR or a dispatch restores by prefix, so it takes the newest nightly's cache if
   there is one.
 - The cache can be gone hours after the nightly. On 2026-11-01 the 14:57 and 15:44

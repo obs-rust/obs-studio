@@ -73,7 +73,7 @@ class CiScopeTest(unittest.TestCase):
         )
         self.assertEqual((got.macos, got.windows), (True, False))
 
-    def test_core_prs_select_windows_without_adding_macos_or_queue_work(self):
+    def test_core_prs_keep_routing_and_queue_adds_both_platforms(self):
         for path in (
             "libobs/obs.c.h",
             "rust/obs-util/src/dstr.rs",
@@ -87,7 +87,8 @@ class CiScopeTest(unittest.TestCase):
                 self.assertTrue(pr.windows)
                 self.assertFalse(pr.macos or pr.full)
                 queued = scope([path], event="merge_group")
-                self.assertFalse(queued.windows or queued.macos or queued.full)
+                self.assertTrue(queued.windows and queued.macos)
+                self.assertFalse(queued.full)
                 pushed = scope([path], event="push", ref="master")
                 self.assertTrue(pushed.windows and pushed.macos)
 
@@ -97,7 +98,7 @@ class CiScopeTest(unittest.TestCase):
                 got = scope([path], event="pull_request")
                 self.assertFalse(got.windows or got.macos or got.full)
 
-    def test_merge_group_is_linux_only_and_push_keeps_native_coverage(self):
+    def test_merge_group_and_push_keep_native_core_coverage(self):
         # #3606: the effect parser batch passed with MSVC linking skipped.
         for files in (
             ["rust/obs-graphics/src/effect_parser.rs", "libobs/graphics/effect.c.h"],
@@ -109,13 +110,190 @@ class CiScopeTest(unittest.TestCase):
             with self.subTest(files=files):
                 got = scope(files, event="merge_group")
                 self.assertTrue(got.core)
-                self.assertFalse(got.windows)
-                self.assertFalse(got.macos)
+                self.assertTrue(got.windows)
+                self.assertTrue(got.macos)
                 pushed = scope(files, event="push", ref="master")
                 self.assertTrue(pushed.windows and pushed.macos)
                 self.assertFalse(got.full)
         got = scope(["ci/ci_scope.py"], event="merge_group")
-        self.assertFalse(got.windows or got.macos)
+        self.assertTrue(got.windows and got.macos)
+
+    def test_merge_group_restores_selected_heavy_lanes(self):
+        files = [
+            "libobs/obs.c.h", "frontend/widgets/OBSBasicWindow.cpp",
+            "ci/ci_scope.py", "rust/obs-util/src/platform/windows/mod.rs",
+            "rust/obs-util/src/platform/macos/mod.rs", "Cargo.lock",
+        ]
+        queued = scope(files, event="merge_group")
+        for lane in ("macos", "windows", "qt", "tier2",
+                     "cross_lint", "windows_link"):
+            with self.subTest(lane=lane):
+                self.assertTrue(getattr(queued, lane))
+        self.assertTrue(queued.core)
+        self.assertFalse(queued.docs_only)
+        pr = scope(files, event="pull_request")
+        self.assertTrue(pr.tier2 and pr.qt and pr.cross_lint and pr.windows_link)
+        pushed = scope(files, event="push", ref="master")
+        self.assertTrue(pushed.tier2 and pushed.qt and pushed.macos and pushed.windows)
+        self.assertTrue(pushed.cross_lint)
+
+    def test_queue_event_rejects_malformed_and_reads_combined_diff(self):
+        import json
+        import os
+        import subprocess
+        import tempfile
+        from unittest import mock
+        import ci_scope
+
+        with tempfile.TemporaryDirectory() as directory:
+            event = Path(directory) / "event.json"
+            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}):
+                for body in ({}, {"merge_group": {}}, {"merge_group": {"base_sha": "bad"}}):
+                    event.write_text(json.dumps(body))
+                    with self.assertRaises(ValueError):
+                        ci_scope.queue_changed_files()
+                group = {"base_sha": "a" * 40, "head_sha": "b" * 40}
+                event.write_text(json.dumps({"merge_group": group}))
+                files = ["plugins/win-capture/game-capture.c", "plugins/mac-capture/mac-display-capture.m"]
+                with mock.patch.object(ci_scope.subprocess, "run", return_value=
+                                       subprocess.CompletedProcess([], 0, "\n".join(files))) as run:
+                    self.assertEqual(ci_scope.queue_changed_files(), files)
+                self.assertEqual(run.call_args.args[0], ["git", "diff", "--name-only", group["base_sha"], group["head_sha"], "--"])
+                with mock.patch.object(ci_scope.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "")):
+                    self.assertEqual(ci_scope.queue_changed_files(), [])
+
+    def test_queue_path_fixtures(self):
+        # Native platform paths stay narrow; shared/core selects both platforms.
+        fixtures = (
+            (["plugins/win-capture/game-capture.c"], False, True, False, False),
+            (["plugins/mac-capture/mac-display-capture.m"], True, False, False, False),
+            (["libobs/util/platform-windows.c.h"], False, True, False, False),
+            (["libobs/util/platform-cocoa.m.h"], True, False, False, False),
+            (["rust/obs-util/src/platform/windows/mod.rs"], False, True, False, False),
+            (["cmake/common/helpers_common.cmake"], True, True, False, True),
+            (["frontend/widgets/OBSBasicWindow.cpp"], False, False, True, False),
+            (["libobs/obs.c.h"], True, True, False, True),
+            (["Cargo.toml"], True, True, False, True),
+            (["plugins/obs-ffmpeg/obs-ffmpeg.c"], False, False, False, False),
+            (["docs/features.md"], False, False, False, False),
+            (["rust/obs-util/README.md"], False, False, False, False),
+            (["frontend/README.md"], False, False, False, False),
+            ([], False, False, False, False),
+            # Combined immutable diff from two PRs, rather than either PR head.
+            (["plugins/win-capture/game-capture.c", "plugins/mac-capture/mac-display-capture.m"], True, True, False, False),
+        )
+        for files, macos, windows, qt, tier2 in fixtures:
+            with self.subTest(files=files):
+                got = scope(files, event="merge_group")
+                self.assertEqual((got.macos, got.windows, got.qt, got.tier2),
+                                 (macos, windows, qt, tier2))
+                non_docs = bool(files) and not got.docs_only
+                self.assertEqual(got.windows_link, non_docs)
+                self.assertEqual(got.cross_lint, non_docs)
+                self.assertFalse(got.full)
+        self.assertEqual(scope(["plugins/obs-ffmpeg/obs-ffmpeg.c"], event="merge_group").linux_targets, "obs-ffmpeg")
+
+    def test_queue_runner_selection_preserves_hosted_fallbacks(self):
+        import re
+
+        expected = {
+            "ci.yml": {
+                "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-26.04",
+                "tier2-lane-proof": "ubuntu-26.04",
+            },
+            "build-project.yaml": dict.fromkeys((
+                "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
+                "rust-cross-lint", "rust-cross-lint-release", "rust-cross-proof", "rust-windows-link",
+                "rust-linux-tier2-build", "rust-linux-tier2", "linux-qt-frontend",
+            ), "ubuntu-26.04"),
+            "check-format.yaml": {"checks": "ubuntu-latest"},
+        }
+        for name, jobs in expected.items():
+            text = (ROOT / ".github/workflows" / name).read_text()
+            selection = ("needs.select-mq-runner.outputs.labels" if name == "ci.yml"
+                         else "inputs.mq-runner-labels")
+            blocks = dict(re.findall(
+                r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
+            ))
+            for job, fallback in jobs.items():
+                with self.subTest(workflow=name, job=job):
+                    self.assertIn(
+                        f"runs-on: ${{{{ {selection} != '' && fromJSON({selection})"
+                        f" || '{fallback}' }}}}", blocks[job],
+                    )
+                    if name == "ci.yml":
+                        self.assertRegex(blocks[job], r"needs: .*select-mq-runner")
+            self.assertNotIn("fromJSON(vars.MQ_RUNNER_LABELS)", text)
+            self.assertEqual(text.count(f"fromJSON({selection})"),
+                             len(jobs) + (name == "build-project.yaml"))
+            for runner in re.findall(r"^    runs-on: (.+)$", text, re.MULTILINE):
+                if runner.startswith(("macos-", "windows-")):
+                    self.assertNotIn("MQ_RUNNER_LABELS", runner)
+            if name == "build-project.yaml":
+                self.assertIn("startsWith(matrix.os, 'ubuntu-')", blocks["ubuntu-build"])
+                self.assertIn(f"fromJSON({selection})", blocks["ubuntu-build"])
+                self.assertIn(" || matrix.os }}", blocks["ubuntu-build"])
+            if name != "ci.yml":
+                self.assertIn("mq-runner-labels:", text)
+                self.assertIn("default: ''", text)
+
+    def test_queue_runner_probe_and_reusable_inputs(self):
+        import re
+
+        text = (ROOT / ".github/workflows/ci.yml").read_text()
+        blocks = dict(re.findall(
+            r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
+        ))
+        probe = blocks["select-mq-runner"]
+        self.assertIn("runs-on: ubuntu-latest", probe)
+        self.assertIn("if: github.event_name != 'pull_request'", probe)
+        self.assertIn("!cancelled()", blocks["build-project"].split("    uses:", 1)[0])
+        self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)
+        steps = dict(re.findall(
+            r"^      - name: ([^\n]+)\n(.*?)(?=^      - |\Z)", probe, re.MULTILINE | re.DOTALL
+        ))
+        app = steps["Create Runner Probe App Token"]
+        self.assertRegex(app, r"uses: actions/create-github-app-token@[0-9a-f]{40} # v[23]\.")
+        self.assertIn("id: mq-probe-app", app)
+        self.assertIn("continue-on-error: true", app)
+        self.assertIn(
+            "if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''"
+            " && vars.MQ_PROBE_APP_ID != ''\n", app,
+        )
+        for setting in (
+            "app-id: ${{ vars.MQ_PROBE_APP_ID }}",
+            "private-key: ${{ secrets.MQ_PROBE_APP_PRIVATE_KEY }}",
+            "owner: ${{ github.repository_owner }}",
+        ):
+            self.assertIn(setting, app)
+        self.assertLess(probe.index("id: mq-probe-app"), probe.index("id: select"))
+        self.assertIn(
+            "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
+            " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
+        )
+        for variable in ("MQ_RUNNER_MIN_IDLE", "MQ_RUNNER_DEMAND"):
+            self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
+        self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
+        self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
+        self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
+        self.assertEqual(probe.count("continue-on-error: true"), 4)
+        for step in ("checkout", "uv"):
+            self.assertIn(f"steps.{step}.outcome == 'success'", probe)
+            self.assertIn(f"steps.{step}.outcome == 'failure'", probe)
+        self.assertIn("steps.select.outcome == 'failure'", probe)
+        self.assertIn("::warning::", probe)
+        for job in ("check-format", "build-project"):
+            self.assertIn("select-mq-runner", blocks[job].split("    if:", 1)[0])
+            if job == "check-format":
+                self.assertIn("build-project", blocks[job].split("    if:", 1)[0])
+            self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
+
+    def test_queue_runs_merge_result_tests_and_windows_link(self):
+        text = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        job = text.split("  rust-windows-link:\n", 1)[1].split("    steps:", 1)[0]
+        self.assertIn("needs.check-event.outputs.windows_link == 'true'", job)
+        self.assertIn('echo "windows_link=${windows_link:-true}"', text)
+        self.assertIn("(github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')", text)
 
     def test_core_file_content_is_not_read(self):
         # Core files carry no platform defines (the ratchet lint enforces
@@ -750,53 +928,14 @@ class HostNamedFilesTest(unittest.TestCase):
         for path in ("rust/obs-build/src/libobs.rs", "rust/obs-util/src/dstr.rs"):
             self.assertFalse(scope([path]).qt_sdk, path)
 
-    def test_a_ratcheted_target_selects_the_sanitizer_lane_on_a_pr(self):
-        # #2923: the conversion ratchet is only checked by the configuration that
-        # last compiled the target, so a sanitizer-only diagnostic reached master
-        # three times. A PR that changes a ratcheted target's compile input runs
-        # asan and pays for its own diagnostic.
-        ratchet = ("frontend", "plugins/obs-ffmpeg")
-        for path in (
-            "frontend/components/OBSAdvAudioCtrl.cpp.hpp",
-            "frontend/utility/platform-osx.mm.hpp",
-            "plugins/obs-ffmpeg/obs-ffmpeg-vaapi.c.h",
-        ):
-            got = scope([path], event="pull_request", ratchet_dirs=ratchet)
-            self.assertTrue(got.asan, path)
-
-    def test_the_sanitizer_lane_keeps_the_merge_queue_short(self):
-        # The queue reruns CI on the merge result (#692); a sanitizer build there
-        # would grow the critical path for every ratcheted change (#2072, #2593).
-        ratchet = ("frontend",)
-        for event in ("merge_group", "push", ""):
-            got = scope(
-                ["frontend/OBSApp.cpp"], event=event, ref="master", ratchet_dirs=ratchet
-            )
-            self.assertFalse(got.asan, event)
-
-    def test_the_sanitizer_lane_ignores_what_is_not_a_compile_input(self):
-        ratchet = ("frontend",)
-        for path in ("docs/rust-port/naming.md", "plugins/obs-x264/obs-x264.c"):
-            got = scope([path], event="pull_request", ratchet_dirs=ratchet)
-            self.assertFalse(got.asan, path)
-
-    def test_the_pr_that_turns_a_targets_ratchet_on_selects_the_sanitizer_lane(self):
-        # #2956: opt-in diffs are one CMakeLists with 9 added lines, so the
-        # source-file rule alone left that PR's sanitizer build to the night's
-        # schedule — the blind spot #2923 exists to remove.
-        got = scope(
-            ["plugins/decklink-captions/CMakeLists.txt"],
-            event="pull_request",
-            ratchet_dirs=("plugins/decklink-captions",),
-        )
-        self.assertTrue(got.asan)
-
-    def test_a_pin_only_target_selects_no_sanitizer_lane(self):
-        # Nothing in the tree is ratcheted unless its CMakeLists names a group
-        # (ci/conversion_ratchet.py): an untracked directory selects nothing.
-        got = scope(["plugins/foo/foo.c"], event="pull_request", ratchet_dirs=())
-        self.assertFalse(got.asan)
-
+    def test_no_event_selects_a_sanitizer_lane(self):
+        # Maintainer directive 2026-11-09: ASan runs nightly only
+        # (sanitizers.yaml schedule), never on a PR or in the merge queue, so
+        # the scope has no sanitizer lane at all, ratcheted target or not.
+        files = ["frontend/OBSApp.cpp", "plugins/decklink-captions/CMakeLists.txt"]
+        for event in ("pull_request", "merge_group", "push", ""):
+            got = scope(files, event=event, ref="master")
+            self.assertNotIn("asan", vars(got), event)
 
 if __name__ == "__main__":
     unittest.main()

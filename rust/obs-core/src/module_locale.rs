@@ -4,9 +4,8 @@
 //! the default locale's file ([`default_file`], `locale/<default>.ini`) and
 //! the locale's file ([`locale_file`], `/locale/<locale>.ini`), and whether
 //! the locale is the default one, so that its file is not added
-//! ([`is_default`]). `obs-module.c` keeps the module, the lookups
-//! (`obs_find_module_file()`, `text_lookup_create()`, `text_lookup_add()`)
-//! and the logging, and passes the locales in.
+//! ([`is_default`]). [`crate::module_load_locale`] coordinates the lookups
+//! and logging through its host services.
 //!
 //! Locales are bytes, not text: they come from the configuration and the
 //! module, so they can hold anything but NUL. `None` is a NULL string, which

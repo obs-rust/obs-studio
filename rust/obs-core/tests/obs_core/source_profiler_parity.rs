@@ -930,3 +930,85 @@ fn shim_runs_without_graphics() {
         source_profiler_remove_source(src);
     }
 }
+
+// ---------------------------------------------------------------------------
+// the shim's timer and timer-range calls, with obs-graphics linked
+
+unsafe extern "C" {
+    // The entry points the shim calls (ffi/source_profiler.rs), by the same
+    // names: obs-graphics defines them, so a cargo-test stand-in for them
+    // would be a second definition.
+    fn gs_timer_destroy(timer: *mut c_void);
+    fn gs_timer_range_destroy(range: *mut c_void);
+    // The obs-c-oracle timer fixtures that obs-graphics' entry points log
+    // through (oracle/timer_dispatch.c, oracle/timer_range_dispatch.c).
+    fn oracle_td_run(
+        context: bool,
+        timer: bool,
+        ticks: bool,
+        op: u32,
+        result: bool,
+        write: bool,
+        value: u64,
+        output: *mut u64,
+    ) -> bool;
+    fn oracle_td_log() -> *const std::ffi::c_char;
+    fn oracle_trd_run(
+        context: bool,
+        range: bool,
+        disjoint: bool,
+        frequency: bool,
+        op: u32,
+        result: bool,
+        writes: u32,
+        value_disjoint: bool,
+        value: u64,
+        out_disjoint: *mut bool,
+        out_frequency: *mut u64,
+    ) -> bool;
+    fn oracle_trd_log() -> *const std::ffi::c_char;
+}
+
+/// `gs_timer_*` and `gs_timer_range_*` resolve to obs-graphics' dispatch,
+/// not to do-nothing stand-ins: with no graphics context they log the
+/// same debug line libobs does. Two definitions of these names broke the
+/// `port_comparison` link (#4786, #4615).
+#[test]
+fn shim_timers_are_obs_graphics_dispatch() {
+    let mut ticks = 0u64;
+    let mut disjoint = false;
+    let mut frequency = 0u64;
+    // SAFETY: op 4 runs no entry point; it only clears this thread's
+    // fixture logs and leaves no graphics context. The entry points take
+    // NULL handles and return before touching them.
+    let (timer_log, range_log) = unsafe {
+        oracle_td_run(false, false, false, 4, false, false, 0, &raw mut ticks);
+        oracle_trd_run(
+            false,
+            false,
+            false,
+            false,
+            4,
+            false,
+            0,
+            false,
+            0,
+            &raw mut disjoint,
+            &raw mut frequency,
+        );
+        gs_timer_destroy(ptr::null_mut());
+        gs_timer_range_destroy(ptr::null_mut());
+        (
+            std::ffi::CStr::from_ptr(oracle_td_log()).to_owned(),
+            std::ffi::CStr::from_ptr(oracle_trd_log()).to_owned(),
+        )
+    };
+    assert_eq!(
+        timer_log.to_str(),
+        Ok("gs_timer_destroy: called while not in a graphics context")
+    );
+    assert_eq!(
+        range_log.to_str(),
+        Ok("gs_timer_range_destroy: called while not in a graphics context")
+    );
+}

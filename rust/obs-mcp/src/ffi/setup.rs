@@ -187,6 +187,7 @@ fn path_c(path: &Path) -> Result<CString, String> {
 }
 
 fn reset_video(options: &StartOptions) -> Result<(), String> {
+    super::host_display::require_video_display()?;
     let module = c_string(&options.graphics_module, "graphics module")?;
     let mut info = sys::obs_video_info {
         graphics_module: module.as_ptr(),
@@ -207,6 +208,10 @@ fn reset_video(options: &StartOptions) -> Result<(), String> {
     // libobs copies what it keeps.
     let code = unsafe { sys::obs_reset_video(&raw mut info) };
     if code == sys::OBS_VIDEO_SUCCESS {
+        eprintln!(
+            "obs-mcp: video started ({}x{} @ {} fps)",
+            options.size.0, options.size.1, options.fps
+        );
         return Ok(());
     }
     let why = match code {

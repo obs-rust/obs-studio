@@ -614,7 +614,13 @@ pub fn configure_ffmpeg(
             "native FFmpeg graph for {target} is not implemented yet"
         ));
     }
-    for group in ["vaapi", "vaapi-device-select", "vaapi-probe-policy"] {
+    for group in [
+        "host-linux",
+        "mux-host-posix",
+        "vaapi",
+        "vaapi-device-select",
+        "vaapi-probe-policy",
+    ] {
         library
             .sources
             .push(root.join(format!("plugins/obs-ffmpeg/build/obs-ffmpeg.{group}+.h.c")));
@@ -622,6 +628,18 @@ pub fn configure_ffmpeg(
     for package in ["libva", "libva-drm", "libpci", "libdrm"] {
         crate::libobs::add_package(library, target, package)?;
     }
+    Ok(())
+}
+
+pub fn configure_ffmpeg_mux(
+    target: &str,
+    root: &Path,
+    library: &mut crate::SharedLibrary,
+) -> Result<(), String> {
+    configure_module(target, library)?;
+    library
+        .sources
+        .push(root.join("plugins/obs-ffmpeg/ffmpeg-mux/build/ffmpeg-mux.posix+.h.c"));
     Ok(())
 }
 
@@ -818,9 +836,13 @@ pub fn configure_source(
             }
             library.include_dirs.push(root.join("deps/glad/include"));
         }
-        SourceModule::V4l2 { udev: true } => {
-            add_package(library, target, "libudev")?;
-            library.definitions.push(("HAVE_UDEV".into(), None));
+        SourceModule::V4l2 { udev } => {
+            add_package(library, target, "libpulse")?;
+            library.definitions.push(("HAVE_LIBPULSE".into(), None));
+            if udev {
+                add_package(library, target, "libudev")?;
+                library.definitions.push(("HAVE_UDEV".into(), None));
+            }
         }
         SourceModule::X11Capture => {
             library.include_dirs.push(root.join("deps/glad/include"));

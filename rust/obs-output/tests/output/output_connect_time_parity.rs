@@ -6,11 +6,12 @@ use proptest::prelude::*;
 
 unsafe extern "C" {
     fn oracle_output_connect_time_layout(layout: *mut usize);
-    fn oracle_output_connect_time_new(callback: bool, result: i32) -> *mut c_void;
+    fn oracle_output_connect_time_new(callback: bool, result: i32, null_data: bool) -> *mut c_void;
     fn oracle_output_connect_time_unchanged(output: *mut c_void, calls: u32) -> bool;
     fn oracle_output_connect_time_free(output: *mut c_void);
     fn oracle_obs_output_get_connect_time_ms(output: *mut c_void) -> i32;
     fn oracle_output_connect_time_null_log(rust: bool) -> bool;
+    fn oracle_output_connect_time_valid_silent(rust: bool, output: *mut c_void) -> bool;
 }
 
 #[test]
@@ -36,27 +37,39 @@ impl Drop for Output {
         unsafe { oracle_output_connect_time_free(self.0) };
     }
 }
-fn check(callback: bool, result: i32) {
+fn check(callback: bool, result: i32, null_data: bool) {
     // SAFETY: oracle owns a real output with a synchronous callback.
-    let output = Output(unsafe { oracle_output_connect_time_new(callback, result) });
+    let output = Output(unsafe { oracle_output_connect_time_new(callback, result, null_data) });
     assert!(!output.0.is_null());
     // SAFETY: live fixture and plugin data remain valid through both calls.
     unsafe {
         assert_eq!(
             obs_output_get_connect_time_ms(output.0),
-            if callback { result } else { -1 }
+            if !callback {
+                -1
+            } else if null_data {
+                -73
+            } else {
+                result
+            }
         );
         assert!(oracle_output_connect_time_unchanged(
             output.0,
-            u32::from(callback)
+            u32::from(callback && !null_data)
         ));
         assert_eq!(
             oracle_obs_output_get_connect_time_ms(output.0),
-            if callback { result } else { -1 }
+            if !callback {
+                -1
+            } else if null_data {
+                -73
+            } else {
+                result
+            }
         );
         assert!(oracle_output_connect_time_unchanged(
             output.0,
-            2 * u32::from(callback)
+            2 * u32::from(callback && !null_data)
         ));
     }
 }
@@ -64,7 +77,9 @@ fn check(callback: bool, result: i32) {
 fn characterized_signed_results() {
     for callback in [false, true] {
         for result in [i32::MIN, -97, -1, 0, 29, i32::MAX] {
-            check(callback, result);
+            for null_data in [false, true] {
+                check(callback, result, null_data);
+            }
         }
     }
 }
@@ -88,7 +103,29 @@ proptest! {
         ..ProptestConfig::default()
     })]
     #[test]
-    fn random_results_match_c(callback in any::<bool>(), result in any::<i32>()) {
-        check(callback, result);
+    fn random_results_match_c(callback in any::<bool>(), result in any::<i32>(), null_data in any::<bool>()) {
+        check(callback, result, null_data);
+    }
+}
+
+#[test]
+fn valid_outputs_emit_no_diagnostic() {
+    if !super::isolated(concat!(
+        module_path!(),
+        "::valid_outputs_emit_no_diagnostic"
+    )) {
+        return;
+    }
+    for rust in [false, true] {
+        for callback in [false, true] {
+            for null_data in [false, true] {
+                // SAFETY: oracle creates a real output with synchronous plugin data.
+                let output =
+                    Output(unsafe { oracle_output_connect_time_new(callback, 23, null_data) });
+                assert!(!output.0.is_null());
+                // SAFETY: live fixture; logger capture runs in this isolated child.
+                assert!(unsafe { oracle_output_connect_time_valid_silent(rust, output.0) });
+            }
+        }
     }
 }

@@ -201,5 +201,29 @@ class UvRunIsolationTest(unittest.TestCase):
         self.assertEqual(hits, [], f"{len(hits)} `uv run` without --no-project/--no-sync/--script:\n" + "\n".join(hits))
 
 
+class FastGateUvSetupTest(unittest.TestCase):
+    def test_single_setup_before_uv_with_cache_settings(self):
+        workflow = (WORKFLOWS / "build-project.yaml").read_text(encoding="utf-8")
+        job = re.search(
+            r"^  rust-tests-linux:\n(?P<body>.*?)(?=^  [\w-]+:|\Z)",
+            workflow, re.MULTILINE | re.DOTALL,
+        )
+        self.assertIsNotNone(job, "Fast Gate job must exist")
+        body = job.group("body")
+        setups = list(re.finditer(r"^        uses: astral-sh/setup-uv@([^\s]+)", body, re.MULTILINE))
+        self.assertEqual(len(setups), 1, "Fast Gate must install uv exactly once")
+        setup = setups[0]
+        self.assertRegex(setup.group(1), r"^[0-9a-f]{40}$")
+        commands = list(re.finditer(
+            r"^(?!\s*(?:#|- name:|uses:)).*\b(?:uv\s+(?:run|tool)|uvx\s+|command -v uv\b)",
+            body, re.MULTILINE,
+        ))
+        self.assertTrue(commands, "Fast Gate must contain a uv command")
+        self.assertLess(setup.start(), commands[0].start())
+        setup_block = body[setup.start():].split("\n      - ", 1)[0]
+        self.assertIn("save-cache: ${{ github.ref == 'refs/heads/master' }}", setup_block)
+        self.assertIn("cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}", setup_block)
+
+
 if __name__ == "__main__":
     unittest.main()

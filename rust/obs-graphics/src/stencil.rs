@@ -24,17 +24,6 @@ pub trait Backend {
 }
 
 /// Dispatch once to a valid context; absent contexts never reach the device.
-pub fn dispatch(backend: Option<&mut impl Backend>, command: Command) {
-    let Some(backend) = backend else { return };
-    match command {
-        Command::Test(enable) => backend.test(enable),
-        Command::Write(enable) => backend.write(enable),
-        Command::Function { side, test } => backend.function(side, test),
-        Command::Op {
-            side,
-            fail,
-            zfail,
-            zpass,
-        } => backend.op(side, fail, zfail, zpass),
-    }
+pub fn dispatch(_backend: Option<&mut impl Backend>, _command: Command) {
+    todo!("resume stencil dispatch after merged C extraction")
 }

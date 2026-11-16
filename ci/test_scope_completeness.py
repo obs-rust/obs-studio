@@ -46,7 +46,6 @@ LANE_FIELDS = (
     "qt",
     "qt_sdk",
     "linux_targets",
-    "asan",
     "cross_targets",
 )
 

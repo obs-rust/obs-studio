@@ -1,0 +1,2 @@
+obs_sceneitem_defer_group_resize_begin
+obs_sceneitem_defer_group_resize_end

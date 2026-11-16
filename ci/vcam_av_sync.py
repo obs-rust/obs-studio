@@ -4,7 +4,7 @@
 # ///
 """A/V sync of the Linux Virtual Camera and its OBS Virtual Microphone.
 
-Drives a running OBS over obs-websocket (no clicks, no computer use):
+Drives OBS over a private MCP socket or obs-websocket (no clicks, no computer use):
 
     uv run --script ci/vcam_av_sync.py measure [--seconds 12] [--url ws://127.0.0.1:4455]
     uv run --script ci/vcam_av_sync.py analyze <capture.mkv> <clip events json>
@@ -31,6 +31,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import stat
+import uuid
 import signal
 import subprocess
 import sys
@@ -155,14 +158,153 @@ async def obs_request(ws, kind: str, data: dict | None = None) -> dict:
             return msg["d"].get("responseData") or {}
 
 
-async def measure(args: argparse.Namespace) -> dict:
-    import websockets
+class McpSession:
+    """Bounded newline JSON-RPC exchange over an existing OBS socket."""
 
+    def __init__(self, reader, writer):
+        self.reader, self.writer = reader, writer
+        self.next_id = 0
+
+    async def rpc(self, method: str, params: dict) -> dict:
+        self.next_id += 1
+        request = {"jsonrpc": "2.0", "id": self.next_id, "method": method, "params": params}
+        self.writer.write(json.dumps(request).encode() + b"\n")
+        await self.writer.drain()
+        line = await asyncio.wait_for(self.reader.readline(), timeout=310)
+        if not line:
+            raise RuntimeError("MCP socket closed before response")
+        reply = json.loads(line)
+        if reply.get("jsonrpc") != "2.0" or reply.get("id") != self.next_id:
+            raise RuntimeError("MCP response version/ID mismatch")
+        if "error" in reply:
+            raise RuntimeError(f"MCP protocol error: {reply['error']}")
+        if "result" not in reply:
+            raise RuntimeError("MCP response has no result")
+        return reply["result"]
+
+    async def call(self, name: str, arguments: dict | None = None) -> dict:
+        result = await self.rpc("tools/call", {"name": name, "arguments": arguments or {}})
+        if result.get("isError"):
+            raise RuntimeError(f"{name}: {result.get('structuredContent', result)}")
+        if "structuredContent" not in result:
+            raise RuntimeError(f"{name}: missing structuredContent")
+        return result["structuredContent"]
+
+
+async def connect_mcp(socket_path: str | None):
+    """Attach without spawning a GUI or a second OBS."""
+    if socket_path is None:
+        runtime = os.environ.get("XDG_RUNTIME_DIR")
+        if not runtime:
+            raise RuntimeError("XDG_RUNTIME_DIR is unset; use --mcp-socket")
+        socket_path = str(Path(runtime) / "obs-studio-rust/control.sock")
+    metadata = Path(socket_path).lstat()
+    if not stat.S_ISSOCK(metadata.st_mode) or metadata.st_uid != os.geteuid() or metadata.st_mode & 0o077:
+        raise RuntimeError("MCP endpoint must be a private socket owned by this user")
+    reader, writer = await asyncio.open_unix_connection(socket_path, limit=32 * 1024 * 1024)
+    session = McpSession(reader, writer)
+    try:
+        await session.rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
+                                      "clientInfo": {"name": "vcam-av-sync", "version": "1"}})
+        writer.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode() + b"\n")
+        await writer.drain()
+        return session
+    except BaseException:
+        writer.close()
+        await writer.wait_closed()
+        raise
+
+
+async def stop_capture(recorder) -> None:
+    """Stop and reap a capture even when a device ignores SIGINT."""
+    if recorder.poll() is not None:
+        return
+    recorder.send_signal(signal.SIGINT)
+    try:
+        await asyncio.to_thread(recorder.wait, timeout=10)
+    except subprocess.TimeoutExpired:
+        recorder.kill()
+        await asyncio.to_thread(recorder.wait, timeout=5)
+
+
+async def measure_mcp(args: argparse.Namespace, clip: Path, capture: Path) -> dict:
+    session = await connect_mcp(args.mcp_socket)
+    recorder = None
+    created = False
+    # A unique name prevents modifying or removing a user's existing source.
+    name = f"{SOURCE_NAME}-{uuid.uuid4().hex[:12]}"
+    try:
+        scene = (await session.call("scene_get_current"))["name"]
+        if not scene:
+            scene = f"vcam-av-sync-scene-{uuid.uuid4().hex[:12]}"
+            await session.call("scene_create", {"name": scene})
+        video = await session.call("screenshot", {"source": scene})
+        await session.call("vcam_start", {"wait": True, "timeout_ms": 5000, "audio_enabled": True})
+        mic = await session.call("vmic_status")
+        if mic.get("active") is not True:
+            raise RuntimeError(f"virtual microphone is not active: {mic}")
+        await session.call("source_create", {"scene": scene, "kind": "ffmpeg_source", "name": name,
+                           "settings": {"is_local_file": True, "local_file": str(clip), "looping": True,
+                                        "restart_on_activate": True, "close_when_inactive": False}})
+        created = True
+        await session.call("scene_item_set_transform", {"scene": scene, "source": name,
+                           "position": {"x": 0.0, "y": 0.0},
+                           "scale": {"x": video["width"] / 640.0, "y": video["height"] / 360.0}})
+        state = await session.call("wait_for", {"condition": {"type": "media_state", "name": name, "state": "playing"},
+                                               "timeout_ms": 10000})
+        if not state["satisfied"]:
+            raise RuntimeError(f"probe did not start: {state}")
+        await session.call("stats_reset")
+        recorder = subprocess.Popen(
+            ["ffmpeg", "-loglevel", "error", "-y", "-f", "v4l2", "-ts", "abs", "-i", args.device,
+             "-f", "pulse", "-wallclock", "1", "-fragment_size", "1920", "-i", args.source,
+             "-map", "0:v", "-map", "1:a", "-c:v", "ffv1", "-c:a", "pcm_f32le", "-copyts", str(capture)])
+        # Capture must already be listening before the known media timeline begins.
+        await asyncio.sleep(1.0)
+        await session.call("media_restart", {"name": name})
+        restarted = time.time()
+        await asyncio.sleep(args.seconds)
+        await stop_capture(recorder)
+        if recorder.returncode not in (0, 255):
+            raise RuntimeError(f"ffmpeg capture failed: {recorder.returncode}")
+        snapshot = await session.call("stats_get")
+    finally:
+        original_error = sys.exception()
+        try:
+            if created:
+                await session.call("source_remove", {"name": name})
+        except Exception as cleanup_error:
+            if original_error is None:
+                raise
+            original_error.add_note(f"probe cleanup also failed: {cleanup_error}")
+        finally:
+            try:
+                if recorder is not None:
+                    await stop_capture(recorder)
+            finally:
+                session.writer.close()
+                await session.writer.wait_closed()
+    result = analyze(capture, EVENTS, restarted)
+    result.update({"capture": str(capture), "transport": "mcp", "stats": snapshot,
+                   "measured_from": "independent ffmpeg v4l2/PulseAudio capture of flash/beep probe"})
+    return result
+
+
+async def measure(args: argparse.Namespace) -> dict:
     work = Path(tempfile.mkdtemp(prefix="vcam-av-sync-"))
     clip = work / "probe.mkv"
     write_clip(clip)
     capture = work / "capture.mkv"
-    async with websockets.connect(args.url, subprotocols=["obswebsocket.json"]) as ws:
+    if args.transport == "mcp":
+        return await measure_mcp(args, clip, capture)
+    import websockets
+    try:
+        ws = await websockets.connect(args.url, subprotocols=["obswebsocket.json"], open_timeout=5)
+    except (OSError, TimeoutError):
+        if args.transport == "auto":
+            return await measure_mcp(args, clip, capture)
+        raise
+    try:
         await ws.recv()
         await ws.send(json.dumps({"op": 1, "d": {"rpcVersion": 1}}))
         await ws.recv()
@@ -199,7 +341,10 @@ async def measure(args: argparse.Namespace) -> dict:
             await asyncio.to_thread(recorder.wait)
         finally:
             await obs_request(ws, "RemoveInput", {"inputName": SOURCE_NAME})
+    finally:
+        await ws.close()
     result = analyze(capture, EVENTS, restarted)
+    result["transport"] = "websocket"
     result["capture"] = str(capture)
     return result
 
@@ -224,6 +369,8 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("measure")
+    m.add_argument("--transport", choices=("auto", "websocket", "mcp"), default="auto")
+    m.add_argument("--mcp-socket", default=None)
     m.add_argument("--url", default="ws://127.0.0.1:4455")
     m.add_argument("--device", default="/dev/video9")
     m.add_argument("--source", default="obs_virtual_microphone")

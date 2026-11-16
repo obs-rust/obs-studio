@@ -31,8 +31,8 @@ def job(path: Path, name: str) -> str:
 
 class PoolTest(unittest.TestCase):
     def test_cheap_jobs_use_the_standard_pool(self):
-        self.assertIn("runs-on: ubuntu-latest", job(FORMAT, "checks"))
-        self.assertIn("runs-on: ubuntu-latest", job(PULL, "cancel-superseded"))
+        self.assertIn("|| 'ubuntu-latest' }}", job(FORMAT, "checks"))
+        self.assertIn("|| 'ubuntu-latest' }}", job(PULL, "cancel-superseded"))
 
 
 class SwiftGateTest(unittest.TestCase):
@@ -40,7 +40,10 @@ class SwiftGateTest(unittest.TestCase):
         j = job(FORMAT, "swift-format")
         self.assertIn("runs-on: macos-26", j)
         self.assertIn("needs: checks", j)
-        self.assertIn("if: needs.checks.outputs.swift == 'true'", j)
+        self.assertIn("inputs.swift", j)
+        self.assertIn("inputs.skip-swift", j)
+        self.assertIn("always()", j)
+        self.assertIn("needs.checks.outputs.swift == 'true'", j)
 
     def test_change_check_compares_against_the_base(self):
         j = job(FORMAT, "checks")

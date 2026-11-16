@@ -1,0 +1,36 @@
+# Characterizes static C source only, in both Tier 2 modes. This deliberately
+# extracts the real bodies rather than copying them into a stand-in encoder.
+set(_encoder_buffers_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-audio-buffers.c.h")
+if(NOT EXISTS "${_encoder_buffers_source}")
+  set(_encoder_buffers_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder.c.h")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_encoder_buffers_source}")
+file(READ "${_encoder_buffers_source}" _encoder_buffers_text)
+set(_encoder_buffers_header "")
+foreach(_encoder_buffers_name IN ITEMS free_audio_buffers reset_audio_buffers intitialize_audio_encoder)
+  string(FIND "${_encoder_buffers_text}" "void ${_encoder_buffers_name}(" _encoder_buffers_start)
+  if(_encoder_buffers_start LESS 0)
+    message(FATAL_ERROR "Cannot locate ${_encoder_buffers_name} for characterization")
+  endif()
+  string(SUBSTRING "${_encoder_buffers_text}" ${_encoder_buffers_start} -1 _encoder_buffers_tail)
+  string(FIND "${_encoder_buffers_tail}" "\n}\n" _encoder_buffers_end)
+  if(_encoder_buffers_end LESS 0)
+    message(FATAL_ERROR "Cannot locate end of ${_encoder_buffers_name}")
+  endif()
+  math(EXPR _encoder_buffers_length "${_encoder_buffers_end} + 3")
+  string(SUBSTRING "${_encoder_buffers_tail}" 0 ${_encoder_buffers_length} _encoder_buffers_body)
+  string(APPEND _encoder_buffers_header "static ${_encoder_buffers_body}\n")
+endforeach()
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/encoder-audio-buffers-under-test.h" "${_encoder_buffers_header}")
+
+add_executable(test_encoder_audio_buffers test_encoder_audio_buffers.c)
+target_include_directories(test_encoder_audio_buffers PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(
+  test_encoder_audio_buffers
+  PRIVATE OBS::libobs OBS::caption Uthash::Uthash OBS::native-test-cmocka
+)
+if(OS_WINDOWS)
+  target_link_libraries(test_encoder_audio_buffers PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_encoder_audio_buffers)
+add_test(NAME test_encoder_audio_buffers COMMAND test_encoder_audio_buffers)

@@ -14,9 +14,25 @@ from __future__ import annotations
 
 WORKSPACE_PREFIXES = ("libobs/", "dylints/", "deps/", ".cargo/", "rust/tools/", "plugins/obs-nvenc/")
 WORKSPACE_FILES = {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "ci/local_gate.py", "ci/nextest_tool.py", "ci/nextest.toml"}
+# What the C oracle's build compiles or watches (rust/obs-c-oracle/build.rs):
+# its windows-gnu build, the only one with GNU_ORACLE_RENAMES, must run on a
+# PR that touches one of them (#4168).
+GNU_ORACLE_INPUTS = (
+    "rust/obs-c-oracle/",
+    "libobs/",
+    "deps/",
+    "plugins/obs-nvenc/",
+    "rust/obs-hotkey/src/nix_wayland_keys/",
+)
+
 # Inputs outside rust/ that a crate's tests read: obs-build's graph contract
 # counts the test/cmocka targets (#1891).
 CRATE_INPUTS = {"test/cmocka/": "obs-build"}
+
+
+def touches_gnu_oracle(files: list[str]) -> bool:
+    """Whether the diff changes an input of the C oracle's build."""
+    return any(path.startswith(GNU_ORACLE_INPUTS) for path in files)
 
 
 def affected(files: list[str], crates: dict[str, tuple[str, set[str]]]):

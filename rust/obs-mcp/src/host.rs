@@ -75,14 +75,7 @@ impl StartOptions {
     }
 }
 
-fn default_graphics_module() -> String {
-    if cfg!(windows) {
-        "libobs-d3d11"
-    } else {
-        "libobs-opengl"
-    }
-    .to_owned()
-}
+use crate::platform::default_graphics_module;
 
 /// A started libobs with video, audio, modules and the record and stream
 /// outputs set up. Every step after `obs_startup` that fails is recorded, not
@@ -153,4 +146,28 @@ pub fn serve_stdio(options: &StartOptions) -> io::Result<()> {
     drop(server);
     drop(backend);
     result
+}
+
+/// Start a headless instance on a socket until stdin closes.
+/// # Errors
+/// Returns startup or transport errors.
+pub fn serve_socket(
+    options: &StartOptions,
+    endpoint: &crate::platform::EndpointOptions,
+) -> io::Result<()> {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let runtime = Runtime::start(options)?;
+    let socket = crate::platform::SocketServer::bind(endpoint)?;
+    let stop = Arc::new(AtomicBool::new(false));
+    let stdin_stop = stop.clone();
+    std::thread::spawn(move || {
+        let _ = io::copy(&mut io::stdin().lock(), &mut io::sink());
+        stdin_stop.store(true, Ordering::Release);
+    });
+    let backend = Rc::new(runtime.backend().with_cancellation(stop.clone()));
+    eprintln!("OBS control socket ready");
+    socket.run(&stop, || ObsBackend::server(&backend))
 }

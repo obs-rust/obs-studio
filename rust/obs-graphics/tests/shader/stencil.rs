@@ -1,4 +1,4 @@
-//! Tier 1 mirrors test_graphics_stencil.c's recording-device assertions.
+//! Tier 1 mirrors test_viewport_stencil_entrypoints.c's recording-device assertions.
 use obs_graphics::stencil::{Backend, Command, dispatch};
 
 #[derive(Default)]
@@ -34,7 +34,7 @@ fn test_graphics_stencil_dispatch() {
             commands.extend([Command::Test(value), Command::Write(value)]);
         }
     }
-    for side in 0..3 {
+    for side in 1..=3 {
         for test in 0..8 {
             commands.push(Command::Function { side, test });
         }
@@ -51,12 +51,21 @@ fn test_graphics_stencil_dispatch() {
             }
         }
     }
+    commands.extend([
+        Command::Function { side: 0, test: 99 },
+        Command::Op {
+            side: 7,
+            fail: 8,
+            zfail: 6,
+            zpass: 0x7fff,
+        },
+    ]);
     for command in commands.iter().copied() {
         dispatch(Some(&mut device), command);
         assert_eq!(device.calls.len(), 1);
         assert_eq!(device.calls.pop(), Some(command));
     }
-    assert_eq!(commands.len(), 680);
+    assert_eq!(commands.len(), 682);
     for _ in 0..2 {
         for command in [
             Command::Test(true),

@@ -1,0 +1,10 @@
+# Public API characterization against hybrid and C-reference libobs.
+add_executable(test_output_encoder_getters test_output_encoder_getters.c)
+target_include_directories(test_output_encoder_getters PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_output_encoder_getters PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+if(OS_WINDOWS)
+  target_link_libraries(test_output_encoder_getters PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_output_encoder_getters)
+add_test(NAME test_output_encoder_getters COMMAND test_output_encoder_getters)
+set_tests_properties(test_output_encoder_getters PROPERTIES TIMEOUT 30)

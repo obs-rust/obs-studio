@@ -25,7 +25,14 @@ the role (AGENTS.md says so).
 Stop at the first step that has work, do it, then report (§6). A tick that
 started a background agent can end there.
 
-1. **Your own PRs.** For each open PR you opened:
+1. **New comments on your work.** List the issues and PRs you are involved
+   in that changed since the last tick, your PRs merged in the last 7 days
+   included, and read every comment newer than your own last one
+   (obs-worker §7, "Keep reading your issues and PRs after the merge").
+   Answer a question or a review comment, or file the follow-up it asks for.
+   For each of your PRs that merged since the last tick, check the master
+   push run of its merge commit (obs-worker §7).
+2. **Your own PRs.** For each open PR you opened:
    - Green and `CLEAN`: queue it (`gh pr merge <N> -R obs-rust/obs-studio`).
      `gh pr merge` can print nothing, so confirm the entry with the
      merge-queue query in the coordinator skill §1, or by running
@@ -38,10 +45,16 @@ started a background agent can end there.
      close and reopen the PR. CI does not start after a retarget.
    - Draft waiting on evidence: when the evidence is in, comment it, mark the
      PR ready and queue it.
-2. **After any merge:** `git fetch origin && git rebase --autostash
+3. **After any merge:** `git fetch origin && git rebase --autostash
    origin/master` in the checkout you work in.
-3. **Master health.** PRs do not run the scheduled workflows (Sanitizers, the
-   nightly full run, release), so a red one can stay red for days unseen:
+4. **Master health.** First the push runs on master: PR and merge-queue CI
+   do not run every lane a master push runs, so a merge can break master
+   while its own checks were green (#4168). Check them and act as obs-worker
+   §1 "Check that master is green" says (flake: rerun the failed jobs; a real
+   break: search, then file, claim and forward-fix it, naming the causing PR
+   and the first red run). Then the scheduled workflows: PRs do not run them
+   (Sanitizers, the nightly full run, release), so a red one can stay red
+   for days unseen:
    ```sh
    gh run list -R obs-rust/obs-studio --event schedule -L 10 \
      --json workflowName,conclusion,createdAt
@@ -50,7 +63,7 @@ started a background agent can end there.
    for the error text and the file. A fix may already be on master, merged
    after the failing run started (#2014 repeated #2005, which #2007 had
    already fixed). Otherwise file it, claim it and fix it like any bug.
-4. **The next issue** (§2). If nothing qualifies, the tick is idle (§6).
+5. **The next issue** (§2). If nothing qualifies, the tick is idle (§6).
 
 ## 2. Choosing the next issue
 

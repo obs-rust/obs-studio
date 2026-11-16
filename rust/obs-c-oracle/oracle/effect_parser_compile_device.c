@@ -138,7 +138,8 @@ gs_shader_t *gs_pixelshader_create(const char *shader, const char *file, char **
 	return compile_create("pixel", shader, file, error_string);
 }
 
-gs_sparam_t *gs_shader_get_param_by_name(gs_shader_t *shader, const char *name)
+gs_sparam_t *oracle_compile_param_by_name(gs_shader_t *shader, const char *name);
+gs_sparam_t *oracle_compile_param_by_name(gs_shader_t *shader, const char *name)
 {
 	uintptr_t tag = (uintptr_t)shader;
 

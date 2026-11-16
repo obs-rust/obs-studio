@@ -76,6 +76,75 @@ test_video_scaler_direct
 
 
 class NativeB2Portability(unittest.TestCase):
+    def test_scene_lock_adapter_supplies_platform_link_services(self):
+        # Evaluate the real deferred registration for the three Windows failures,
+        # then link its crash/log/video providers without any libobs dependency.
+        names = ("test_scene_audio_window_steps_rust", "test_scene_bounds_place_rust",
+                 "test_scene_render_plan_steps_rust")
+        fragment = ROOT / "test/cmocka/tests.d/scene_item_locked_setter_link_support.cmake"
+        for windows in (False, True):
+            with self.subTest(windows=windows), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory)
+                dummy = source / "dummy.c"
+                dummy.write_text("int main(void) { return 0; }\n")
+                probe = source / "probe.c"
+                probe.write_text('''#include <stdlib.h>
+#include "util/base.h"
+struct obs_video_info;
+bool obs_get_video_info(struct obs_video_info *info);
+log_handler_t base_default_log_handler(void);
+void base_log_literal(log_handler_t handler, void *param, int level, const char *msg);
+int main(void) {
+    if (getenv("OBS_TEST_PLATFORM_LINK_SERVICES")) {
+        log_handler_t handler = base_default_log_handler();
+        obs_get_video_info(NULL);
+        base_log_literal(handler, NULL, 0, "probe");
+        bcrash("probe");
+    }
+    return 0;
+}
+''')
+                lines = ["cmake_minimum_required(VERSION 3.28)", "project(scene_lock_links C)",
+                         "enable_testing()", f"set(WIN32 {'TRUE' if windows else 'FALSE'})",
+                         f'set(CMAKE_SOURCE_DIR "{ROOT.as_posix()}")',
+                         f'set(CMAKE_CURRENT_SOURCE_DIR "{(ROOT / "test/cmocka").as_posix()}")',
+                         "add_library(libobs_rust-static INTERFACE)",
+                         "add_library(OBS::caption INTERFACE IMPORTED)",
+                         "add_library(Uthash::Uthash INTERFACE IMPORTED)",
+                         "add_library(OBS::w32-pthreads INTERFACE IMPORTED)"]
+                for name in (*names, "test_scene_reference", "test_source_reference"):
+                    lines.append(f'add_executable({name} "{dummy.as_posix()}")')
+                    if name != "test_scene_reference":
+                        lines.append(f"target_link_libraries({name} PRIVATE libobs_rust-static)")
+                lines += [f'include("{fragment.as_posix()}")', "function(check_links)"]
+                for name in names:
+                    lines += [f"get_target_property(links {name} LINK_LIBRARIES)",
+                              "if(NOT scene_item_locked_setter_platform_link_support IN_LIST links)",
+                              f'message(FATAL_ERROR "{name}: missing platform services")', "endif()"]
+                    for library in ("Rpcrt4", "winmm"):
+                        condition = "NOT " if windows else ""
+                        lines += [f"if({condition}{library} IN_LIST links)",
+                                  f'message(FATAL_ERROR "{name}: incorrect {library} selection")', "endif()"]
+                for name in ("test_scene_reference", "test_source_reference"):
+                    lines += [f"get_target_property(links {name} LINK_LIBRARIES)",
+                              "if(scene_item_locked_setter_platform_link_support IN_LIST links)",
+                              f'message(FATAL_ERROR "{name}: unexpected platform services")', "endif()"]
+                lines += [f'add_executable(scene_platform_probe "{probe.as_posix()}")',
+                          f'target_include_directories(scene_platform_probe PRIVATE "{(ROOT / "libobs").as_posix()}")',
+                          "target_link_libraries(scene_platform_probe PRIVATE scene_item_locked_setter_platform_link_support)",
+                          "add_test(NAME scene_platform_probe COMMAND scene_platform_probe)",
+                          "endfunction()", "cmake_language(DEFER CALL check_links)"]
+                (source / "CMakeLists.txt").write_text("\n".join(lines))
+                build = source / "build"
+                commands = [["cmake", "-S", str(source), "-B", str(build)]]
+                if not windows:
+                    commands += [["cmake", "--build", str(build), "--config", "Debug",
+                                  "--target", "scene_platform_probe"],
+                                 ["ctest", "--test-dir", str(build), "-C", "Debug", "--output-on-failure"]]
+                for command in commands:
+                    result = subprocess.run(command, capture_output=True, text=True, check=False)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_scene_archive_consumers_supply_getter_logging(self):
         # MSVC keeps the getters' blog reference in the scene archive member
         # pulled by these pure rule tests (#3891, Windows LNK2019).
@@ -85,6 +154,7 @@ class NativeB2Portability(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(graph["targets"][name]["sources"], [
                     stub, "test/cmocka/" + name.removesuffix("_rust") + ".c",
+                    "test/cmocka/core-output-protocol-registry-link-support.c",
                     "test/cmocka/core-texture-activity-link-stubs.c",
                     "test/cmocka/module-name-lookup-link-stubs.c",
                     "test/cmocka/object-validity-query-link-stubs.c",
@@ -92,12 +162,15 @@ class NativeB2Portability(unittest.TestCase):
                     "test/cmocka/output-pause-query-link-stubs.c",
                     "test/cmocka/output-service-getter-link-stub.c",
                     "test/cmocka/scene-group-query-link-stubs.c",
+                    "test/cmocka/scene-item-blending-mode-link-support.c",
+                    "test/cmocka/scene-item-group-scene-link-support.c",
                     "test/cmocka/scene-item-parent-getter-link-stub.c",
                     "test/cmocka/scene-item-transition-getter-link-stub.c",
                     "test/cmocka/scene-item-visible-link-support.c",
                     "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/source-handler-getter-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
+                    "libobs/build/libobs.image-decode-adapter+.h.c",
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):
@@ -319,6 +392,30 @@ class NativeB2Portability(unittest.TestCase):
         self.assertIn("libobs_rust-static", legacy)
         self.assertIn('_target STREQUAL "test_scene_item_crop_rust"', legacy)
         self.assertIn("scene-source-getter-link-support.c", legacy)
+
+    def test_scene_group_scene_supplies_live_adapters_to_static_consumers(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/scene-item-group-scene.json"
+        support = json.loads(entry.read_text())
+        names = {name for name, target in graph["targets"].items()
+                 if name.startswith("test_scene") and "libobs_rust-static" in target.get("libraries", [])}
+        self.assertEqual(set(support), names)
+        adapter = "test/cmocka/scene-item-group-scene-link-support.c"
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(support[name]["sources"], [adapter])
+                self.assertEqual(graph["targets"][name]["sources"].count(adapter), 1)
+                for library in ("OBS::caption", "Uthash::Uthash"):
+                    self.assertIn(library, graph["targets"][name]["libraries"])
+        for path in [adapter, "libobs/obs-scene-item-group-scene-fields.c.h"]:
+            text = (ROOT / path).read_text()
+            self.assertIn("return &item->is_group;", text)
+            self.assertIn("return &item->source->context.data;", text)
+            self.assertNotIn("abort(", text)
+        legacy = (ROOT / "test/cmocka/tests.d/scene_item_group_scene_link_support.cmake").read_text()
+        self.assertIn("scene-item-group-scene-link-support.c", legacy)
+        self.assertIn("libobs_rust-static", legacy)
+        self.assertIn("OBS::w32-pthreads", legacy)
 
     def test_scene_group_queries_supply_standalone_field_adapters(self):
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())

@@ -69,7 +69,9 @@ struct Node {
     key: Vec<u8>,
 }
 
-/// `UT_hash_bucket`: the chain is stored head first.
+/// `UT_hash_bucket`. The chain is stored tail first: the last element is
+/// uthash's chain head, so prepending (`HASH_ADD_TO_BKT`) is an O(1) push
+/// and a long chain of duplicates loads in linear time, as in C.
 #[derive(Debug, Default)]
 struct Bucket {
     chain: Vec<Node>,
@@ -106,7 +108,7 @@ impl Model {
         self.num_items += 1;
         let b = self.bucket_of(node.hashv);
         let bucket = &mut self.buckets[b];
-        bucket.chain.insert(0, node);
+        bucket.chain.push(node);
         let count = bucket.chain.len() as u32;
         if count >= (bucket.expand_mult + 1) * BKT_CAPACITY_THRESH && !self.noexpand {
             self.expand();
@@ -122,7 +124,8 @@ impl Model {
         let mut nonideal = 0u32;
         let mut fresh: Vec<Bucket> = (0..new_len).map(|_| Bucket::default()).collect();
         for old in std::mem::take(&mut self.buckets) {
-            for node in old.chain {
+            // Walk each old chain from its head, as uthash does.
+            for node in old.chain.into_iter().rev() {
                 let nb = &mut fresh[node.hashv as usize & (new_len - 1)];
                 let count = nb.chain.len() as u32 + 1;
                 if count > ideal {
@@ -131,7 +134,7 @@ impl Model {
                         nb.expand_mult += 1;
                     }
                 }
-                nb.chain.insert(0, node);
+                nb.chain.push(node);
             }
         }
         self.buckets = fresh;
@@ -152,6 +155,7 @@ impl Model {
         self.buckets[self.bucket_of(hashv)]
             .chain
             .iter()
+            .rev()
             .find(|n| n.hashv == hashv && n.key == key)
             .map(|n| n.id)
     }

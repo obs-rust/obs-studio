@@ -32,14 +32,20 @@ static int output_connect_time_callback(void *data)
 	fixture->identity = fixture->output.context.data == fixture;
 	return fixture->result;
 }
-void *oracle_output_connect_time_new(bool callback, int result);
-void *oracle_output_connect_time_new(bool callback, int result)
+/* A stored NULL must reach the callback unchanged. */
+static int output_connect_time_null_data(void *data)
+{
+	return data == NULL ? -73 : 91;
+}
+void *oracle_output_connect_time_new(bool callback, int result, bool null_data);
+void *oracle_output_connect_time_new(bool callback, int result, bool null_data)
 {
 	struct output_connect_time_fixture *fixture = calloc(1, sizeof(*fixture));
 	if (fixture) {
 		fixture->result = result;
-		fixture->output.context.data = fixture;
-		fixture->output.info.get_connect_time_ms = callback ? output_connect_time_callback : NULL;
+		fixture->output.context.data = null_data ? NULL : fixture;
+		fixture->output.info.get_connect_time_ms =
+			callback ? (null_data ? output_connect_time_null_data : output_connect_time_callback) : NULL;
 		memcpy(&fixture->before, &fixture->output, sizeof(fixture->before));
 	}
 	return fixture;
@@ -85,4 +91,21 @@ bool oracle_output_connect_time_null_log(bool rust)
 	base_set_log_handler(old_handler, old_param);
 	return result == -1 && log.count == 1 && log.level == LOG_DEBUG &&
 	       strcmp(log.message, "obs_output_get_connect_time_ms: Null 'output' parameter") == 0;
+}
+
+/* Call only in the logger-isolated test process. */
+bool oracle_output_connect_time_valid_silent(bool rust, void *output);
+bool oracle_output_connect_time_valid_silent(bool rust, void *output)
+{
+	struct output_connect_time_log log = {0};
+	log_handler_t old_handler;
+	void *old_param;
+	base_get_log_handler(&old_handler, &old_param);
+	base_set_log_handler(output_connect_time_capture, &log);
+	if (rust)
+		obs_output_get_connect_time_ms(output);
+	else
+		oracle_obs_output_get_connect_time_ms(output);
+	base_set_log_handler(old_handler, old_param);
+	return log.count == 0;
 }

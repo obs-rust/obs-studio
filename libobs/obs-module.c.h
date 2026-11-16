@@ -19,7 +19,7 @@
 
 extern const char *get_module_extension(void);
 
-obs_module_t *loadingModule = NULL;
+extern obs_module_t *loadingModule;
 
 static inline int req_func_not_found(const char *name, const char *path)
 {
@@ -69,42 +69,6 @@ static int load_module_exports(struct obs_module *mod, const char *path)
 static inline char *get_module_name(const char *file)
 {
 	return obs_module_names_module_name(file, get_module_extension());
-}
-
-int obs_module_load_metadata(struct obs_module *mod);
-int obs_module_load_metadata(struct obs_module *mod)
-{
-	struct obs_module_metadata *md = NULL;
-
-	/* Check if the metadata file exists */
-	char *path = obs_module_names_manifest_path(mod->data_path);
-
-	if (os_file_exists(path)) {
-		/* If we find a metadata file, allocate a new metadata. */
-		md = bmalloc(sizeof(obs_module_metadata_t));
-		obs_data_t *metadata = obs_data_create_from_json_file(path);
-
-		md->display_name = bstrdup(obs_data_get_string(metadata, "display_name"));
-		md->id = bstrdup(obs_data_get_string(metadata, "id"));
-		md->version = bstrdup(obs_data_get_string(metadata, "version"));
-		md->os_arch = bstrdup(obs_data_get_string(metadata, "os_arch"));
-		md->name = bstrdup(obs_data_get_string(metadata, "name"));
-		md->description = bstrdup(obs_data_get_string(metadata, "description"));
-		md->long_description = bstrdup(obs_data_get_string(metadata, "long_description"));
-
-		obs_data_t *urls = obs_data_get_obj(metadata, "urls");
-		md->repository_url = bstrdup(obs_data_get_string(urls, "repository"));
-		md->website_url = bstrdup(obs_data_get_string(urls, "website"));
-		md->support_url = bstrdup(obs_data_get_string(urls, "support"));
-		obs_data_release(urls);
-
-		md->has_banner = obs_data_get_bool(metadata, "has_banner");
-		md->has_icon = obs_data_get_bool(metadata, "has_icon");
-		obs_data_release(metadata);
-	}
-	bfree(path);
-	mod->metadata = md;
-	return MODULE_SUCCESS;
 }
 
 int obs_open_module(obs_module_t **module, const char *path, const char *data_path)
@@ -197,28 +161,6 @@ bool obs_create_disabled_module(obs_module_t **module, const char *path, const c
 	obs->first_disabled_module = (*module);
 
 	return true;
-}
-
-bool obs_init_module(obs_module_t *module)
-{
-	if (!module || !obs)
-		return false;
-	if (module->loaded)
-		return true;
-
-	const char *profile_name =
-		profile_store_name(obs_get_profiler_name_store(), "obs_init_module(%s)", module->file);
-	profile_start(profile_name);
-
-	loadingModule = module;
-	module->loaded = module->load();
-	loadingModule = NULL;
-
-	if (!module->loaded)
-		blog(LOG_WARNING, "Failed to initialize module '%s'", module->file);
-
-	profile_end(profile_name);
-	return module->loaded;
 }
 
 extern void get_plugin_info(const char *path, bool *is_obs_plugin);
@@ -433,14 +375,6 @@ void obs_load_plugins(struct obs_runtime_module_info *info, struct obs_module_fa
 	dstr_free(&failure.fail_modules);
 }
 
-void obs_post_load_modules(void)
-{
-	obs_host_post_load_modules();
-	for (obs_module_t *mod = obs->first_module; !!mod; mod = mod->next)
-		if (mod->post_load)
-			mod->post_load();
-}
-
 /* Function to find a specifically defined module. Used for loading core modules by name.
  * info->path_info.binary should be path to the module binary, without its file extension.
  * info->path_info.data should be path to the module data directory including the module name.
@@ -457,37 +391,6 @@ bool find_core_module(struct obs_runtime_module_info *info, obs_find_module_call
 
 	return obs_module_names_find_core(info->path_info.binary, name, info->path_info.data, info->type,
 					  get_module_extension(), callback, data);
-}
-
-void obs_find_modules2(obs_find_module_callback2_t callback, void *param)
-{
-	if (!obs)
-		return;
-
-	for (size_t i = 0; i < obs->module_paths.num; i++) {
-		struct obs_module_path *omp = obs->module_paths.array + i;
-		obs_module_paths_find(omp->bin, omp->data, omp->type, get_module_extension(),
-				      obs_host_add_module_extension, callback, param);
-	}
-}
-
-void obs_find_modules(obs_find_module_callback_t callback, void *param)
-{
-	/* the structure is ABI compatible so we can just cast the callback */
-	obs_find_modules2((obs_find_module_callback2_t)callback, param);
-}
-
-void obs_enum_modules(obs_enum_module_callback_t callback, void *param)
-{
-	struct obs_module *module;
-	if (!obs)
-		return;
-
-	module = obs->first_module;
-	while (module) {
-		callback(param, module);
-		module = module->next;
-	}
 }
 
 void free_module(struct obs_module *mod)
@@ -559,46 +462,6 @@ void free_module(struct obs_module *mod)
 		bfree(mod->metadata);
 	}
 	bfree(mod);
-}
-
-lookup_t *obs_module_load_locale(obs_module_t *module, const char *default_locale, const char *locale)
-{
-	char *name = NULL;
-	lookup_t *lookup = NULL;
-
-	if (!module || !default_locale || !locale) {
-		blog(LOG_WARNING, "obs_module_load_locale: Invalid parameters");
-		return NULL;
-	}
-
-	name = obs_module_locale_default_file(default_locale);
-
-	char *file = obs_find_module_file(module, name);
-	if (file)
-		lookup = text_lookup_create(file);
-
-	bfree(file);
-
-	if (!lookup) {
-		blog(LOG_WARNING, "Failed to load '%s' text for module: '%s'", default_locale, module->file);
-		goto cleanup;
-	}
-
-	if (obs_module_locale_is_default(locale, default_locale))
-		goto cleanup;
-
-	bfree(name);
-	name = obs_module_locale_file(locale);
-
-	file = obs_find_module_file(module, name);
-
-	if (!text_lookup_add(lookup, file))
-		blog(LOG_WARNING, "Failed to load '%s' text for module: '%s'", locale, module->file);
-
-	bfree(file);
-cleanup:
-	bfree(name);
-	return lookup;
 }
 
 /* A registration copies only the fields of the caller's structure that lie

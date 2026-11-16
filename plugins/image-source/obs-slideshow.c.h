@@ -611,6 +611,8 @@ static void ss_update(void *data, obs_data_t *settings)
 
 	array = obs_data_get_array(settings, S_FILES);
 	count = obs_data_array_count(array);
+	enum slideshow_folder_order folder_order =
+		slideshow_folder_order_from_string(obs_data_get_string(settings, SLIDESHOW_S_FOLDER_ORDER));
 
 	/* ------------------------------------- */
 	/* create new list of sources */
@@ -628,29 +630,14 @@ static void ss_update(void *data, obs_data_t *settings)
 		}
 
 		if (dir) {
-			struct dstr dir_path = {0};
-			struct os_dirent *ent;
-
-			for (;;) {
-				const char *ext;
-
-				ent = os_readdir(dir);
-				if (!ent)
-					break;
-				if (ent->directory)
-					continue;
-
-				ext = os_get_path_extension(ent->d_name);
-				if (!valid_extension(ext))
-					continue;
-
-				dstr_copy(&dir_path, path);
-				dstr_cat_ch(&dir_path, '/');
-				dstr_cat(&dir_path, ent->d_name);
-				add_file(ss, &new_files, dir_path.array, &cx, &cy);
-			}
-
-			dstr_free(&dir_path);
+			/* only the images of a folder are sorted; single
+			 * files keep their place in the list */
+			slideshow_paths_t dir_files;
+			da_init(dir_files);
+			slideshow_folder_files(dir, path, folder_order, &dir_files);
+			for (size_t j = 0; j < dir_files.num; j++)
+				add_file(ss, &new_files, dir_files.array[j], &cx, &cy);
+			slideshow_paths_free(&dir_files);
 			os_closedir(dir);
 		} else {
 			add_file(ss, &new_files, path, &cx, &cy);
@@ -1162,6 +1149,9 @@ static void ss_defaults(obs_data_t *settings)
 	obs_data_set_default_string(settings, S_BEHAVIOR, S_BEHAVIOR_ALWAYS_PLAY);
 	obs_data_set_default_string(settings, S_MODE, S_MODE_AUTO);
 	obs_data_set_default_bool(settings, S_LOOP, true);
+	/* only slideshows saved before slideshow_v2 load as this one, so their
+	 * folders keep playing in filesystem order */
+	obs_data_set_default_string(settings, SLIDESHOW_S_FOLDER_ORDER, SLIDESHOW_S_FOLDER_ORDER_FILESYSTEM);
 }
 
 static const char *aspects[] = {"16:9", "16:10", "4:3", "1:1"};
@@ -1172,7 +1162,7 @@ static obs_properties_t *ss_properties(void *data)
 {
 	obs_properties_t *ppts = obs_properties_create();
 	struct slideshow *ss = data;
-	struct obs_video_info ovi;
+	struct obs_video_info ovi = {0};
 	struct dstr path = {0};
 	obs_property_t *p;
 	int cx;
@@ -1237,6 +1227,8 @@ static obs_properties_t *ss_properties(void *data)
 		}
 		pthread_mutex_unlock(&ss->mutex);
 	}
+
+	slideshow_add_folder_order_property(ppts);
 
 	obs_properties_add_editable_list(ppts, S_FILES, T_FILES, OBS_EDITABLE_LIST_TYPE_FILES,
 					 image_source_host_slideshow_filter(), path.array);

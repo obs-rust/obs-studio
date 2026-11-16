@@ -38,6 +38,13 @@ static int output_pause_queries_unlock_probe(pthread_mutex_t *mutex)
 	return pthread_mutex_unlock(mutex);
 }
 
+/* The mingw build renames every pthread function on the command line
+ * (-Dpthread_mutex_lock=oracle_pthread_mutex_lock, w32-pthreads): keep that
+ * name for the rest of the file and use the probes only here (#4168). */
+#pragma push_macro("pthread_mutex_lock")
+#pragma push_macro("pthread_mutex_unlock")
+#undef pthread_mutex_lock
+#undef pthread_mutex_unlock
 #define pthread_mutex_lock output_pause_queries_lock_probe
 #define pthread_mutex_unlock output_pause_queries_unlock_probe
 #define obs_output_paused oracle_obs_output_paused
@@ -48,6 +55,8 @@ static int output_pause_queries_unlock_probe(pthread_mutex_t *mutex)
 #include "output_pause_queries_fields.inc"
 #undef pthread_mutex_unlock
 #undef pthread_mutex_lock
+#pragma pop_macro("pthread_mutex_unlock")
+#pragma pop_macro("pthread_mutex_lock")
 
 void *oracle_output_pause_queries_new(bool paused, uint64_t offset);
 void *oracle_output_pause_queries_new(bool paused, uint64_t offset)

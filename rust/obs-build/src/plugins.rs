@@ -611,7 +611,7 @@ pub fn build_ffmpeg(
         dependencies: vec![core.into()],
         ..SharedLibrary::default()
     };
-    crate::platform::configure_module(&build.target, &mut mux)?;
+    crate::platform::configure_ffmpeg_mux(&build.target, &root, &mut mux)?;
     // Executable naming, not the MODULE filename selected by configure_module.
     mux.file_name = None;
     if features.mux_debug {

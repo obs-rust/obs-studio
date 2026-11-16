@@ -1706,15 +1706,16 @@ static bool Update(wchar_t *cmdLine)
 	 * Install virtual camera                */
 
 	auto runcommand = [](wchar_t *cmd) {
+		/* CREATE_NO_WINDOW, not CREATE_NEW_CONSOLE + SW_HIDE: a new
+		 * console's window still flashes on screen before the hide takes
+		 * effect (obs-rust/obs-studio#4172). */
 		STARTUPINFO si = {};
 		si.cb = sizeof(si);
-		si.dwFlags = STARTF_USESHOWWINDOW;
-		si.wShowWindow = SW_HIDE;
 
 		Log(L"Executing: %s", cmd);
 
 		PROCESS_INFORMATION pi;
-		bool success = !!CreateProcessW(nullptr, cmd, nullptr, nullptr, false, CREATE_NEW_CONSOLE, nullptr,
+		bool success = !!CreateProcessW(nullptr, cmd, nullptr, nullptr, false, CREATE_NO_WINDOW, nullptr,
 						nullptr, &si, &pi);
 		if (success) {
 			WaitForSingleObject(pi.hProcess, INFINITE);

@@ -33,7 +33,7 @@ use obs_core::view::MAX_CHANNELS;
 use proptest::prelude::*;
 
 /// The doubles' state (trace hook, mixes) is process-wide.
-static LOCK: Mutex<()> = Mutex::new(());
+pub(super) static LOCK: Mutex<()> = Mutex::new(());
 static TRACE: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 unsafe extern "C" fn record(event: *const c_char, name: *const c_char, value: c_longlong) {

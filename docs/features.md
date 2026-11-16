@@ -75,6 +75,30 @@ not get a line.
 
 ### Headless and automation
 
+- **MCP starts without X11.** The headless host uses an available Wayland
+  compositor or X server, and serves control requests without either display.
+  Video operations report unavailability when no display can create graphics.
+  *Linux*, 2026-11-09. Issue [#4464](https://github.com/obs-rust/obs-studio/issues/4464),
+  PR [#4466](https://github.com/obs-rust/obs-studio/pull/4466).
+
+- **Bounded MCP waits.** Agents can wait for typed output/source/media/metric
+  conditions and request automatic waits on starts, without GUI interaction or
+  fixed sleeps. Timeouts return the last observation. *All*, 2026-11-09.
+  Issue [#4447](https://github.com/obs-rust/obs-studio/issues/4447),
+  PR [#4454](https://github.com/obs-rust/obs-studio/pull/4454).
+
+- **Virtual device and media control.** MCP can start/stop Virtual Camera, inspect
+  its paired mic, restart media, inspect pipeline graphs and read/reset measured
+  stage counters. Unmeasured device/sync values stay null. *All* (device support
+  depends on the loaded plugin), 2026-11-09. Issue [#4446](https://github.com/obs-rust/obs-studio/issues/4446),
+  PR [#4452](https://github.com/obs-rust/obs-studio/pull/4452).
+
+- **Typed MCP control.** Existing OBS MCP tools publish input and output schemas,
+  structured results and machine-readable domain errors. Read operations carry
+  annotations, and repeated output start/stop calls succeed with current state.
+  *All*, 2026-11-09. Issue [#4445](https://github.com/obs-rust/obs-studio/issues/4445),
+  PR [#4450](https://github.com/obs-rust/obs-studio/pull/4450).
+
 - **`--disable-shutdown-check` works again.** After an unclean stop (power
   loss, OOM killer, a hard stop of the VM or container), OBS starts without
   the "Crash Detected" dialog and logs the unclean shutdown as a warning on
@@ -251,6 +275,22 @@ not get a line.
   the tone of such a source no longer breaks up into gaps and overlaps
   (73–89 % of the program instead of 93 %). *All*, pending merge. Issue
   [#3747](https://github.com/obs-rust/obs-studio/issues/3747).
+- **NDI audio on its own clock stays in sync with a fast sender.** Audio
+  whose sender clock runs faster than the computer's no longer plays later
+  and later (about 0.2 s an hour at 50 ppm, without a limit): OBS takes its
+  timing again when it runs more than 70 ms ahead. Each such step skips
+  about 60 ms of audio, once every 23 minutes at 50 ppm; a smooth
+  correction is [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
+  *All*, pending merge. Issue
+  [#4143](https://github.com/obs-rust/obs-studio/issues/4143).
+- **NDI audio on its own clock follows a drifting sender smoothly.** For audio
+  stamped on a clock apart from its video, OBS turns on the resampler's clock
+  drift compensation by itself: it takes out a drift of up to about 0.1 %
+  (1000 ppm, a real sender is about 50 ppm) by resampling, so the delay stays
+  the same and the 60 ms steps every 23 minutes stop. Only a faster drift
+  still steps at 70 ms. Audio on its video's clock (cameras, microphones,
+  media files) is not changed. *All*, pending merge. Issue
+  [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
 
 ### Encoding, streaming and recording
 
@@ -455,6 +495,31 @@ not get a line.
   published; the last frame stays on screen and the recording continues.
   *macOS*, pending merge. Issue
   [#2223](https://github.com/obs-rust/obs-studio/issues/2223).
+- **OBS ends when a plugin blocks its exit.** When OBS has finished its
+  shutdown but the process does not end within 10 s (for example, a
+  plugin's static destructor waits for a thread that never stops), OBS
+  writes `exit-watchdog: exit did not finish in 10 s ...` to its log and
+  ends with exit code 124, instead of staying in the background without a
+  window. *Linux, macOS*, pending merge. Issue
+  [#4065](https://github.com/obs-rust/obs-studio/issues/4065).
+- **The exit watchdog names the plugin.** The line names the library OBS
+  waits in and the plugin that loaded it, also a library a plugin loaded
+  itself, for example `... is blocking in libremidi.so.4 (loaded by
+  advanced-scene-switcher.so); ending the process`. *Linux, macOS*,
+  pending merge. Issue
+  [#4525](https://github.com/obs-rust/obs-studio/issues/4525). On
+  *Windows x64* the line names the DLL too, also when a DLL blocks while
+  Windows unloads it at exit: the helper process walks OBS's stack from
+  outside. Issue
+  [#4589](https://github.com/obs-rust/obs-studio/issues/4589).
+- **The exit watchdog on Windows.** When a plugin DLL blocks while Windows
+  unloads it at exit (for example, its static destructor waits for a
+  signal that never comes), OBS still ends after 10 s, with the same
+  `exit-watchdog: ...` line in its log and exit code 124. A small helper
+  process, `obs-exit-watchdog.exe` next to `obs64.exe`, starts with OBS
+  (log: `Exit watchdog: helper process started`) and ends it from outside.
+  *Windows*, pending merge. Issue
+  [#4589](https://github.com/obs-rust/obs-studio/issues/4589).
 - Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel
@@ -813,6 +878,12 @@ area.
   [#2196](https://github.com/obs-rust/obs-studio/pull/2196).
 
 ### Video capture
+
+- I420 recordings and raw video output no longer have sheared chroma when
+  the output width is four pixels past a multiple of eight (for example 1364)
+  with the OpenGL renderer. *Linux, macOS*, pending merge. Issue
+  [#4126](https://github.com/obs-rust/obs-studio/issues/4126), PR
+  [#4132](https://github.com/obs-rust/obs-studio/pull/4132).
 
 - A macOS display capture no longer keeps showing the last frame after its
   display is unplugged, moved to another port or reconfigured: it notices the
@@ -1686,6 +1757,11 @@ area.
   not started yet. Such a recording now stops at once and can start
   again. *All*, 2026-11-06. Issue
   [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
+- OBS no longer crashes when a recording stops or fails right after it was
+  started, before it got any data, with an older Source Record filter
+  (before 0.5.0): such a stop sent the output's stop signal twice, and the
+  filter freed its data twice. *All*, 2026-11-13. Issue
+  [#3799](https://github.com/obs-rust/obs-studio/issues/3799).
 - OBS no longer hangs on exit after a stream was stopped while it waited to
   reconnect, such as an SRT stream (from OBS or from a Source Record filter)
   to a server that does not answer. The stop now finishes at once.
@@ -2021,6 +2097,13 @@ area.
   browser sources and docks are unavailable. A slow runtime can still recover.
   *Linux*, 2026-11-07. Issue
   [#3833](https://github.com/obs-rust/obs-studio/issues/3833).
+- A new Image Slide Show plays the images of a folder in name order on Linux
+  and macOS too (slide2 before slide10), instead of the filesystem's order.
+  A Folder Order setting chooses Name (natural), Name (A-Z) or Filesystem
+  order; slideshows saved before keep filesystem order. *All*, pending
+  merge. Issue [#3451](https://github.com/obs-rust/obs-studio/issues/3451),
+  upstream
+  [obsproject/obs-studio#10382](https://github.com/obsproject/obs-studio/issues/10382).
 
 ### Scenes and UI
 
@@ -2295,7 +2378,13 @@ area.
   that layout: the docks are squeezed for the session, and the next save
   writes the layout from the ini instead of the squeeze. Deliberate separator
   drags still save the new widths and heights when a dock is at its minimum,
-  so restarting does not revert to an older arrangement (#3740). *All*,
+  so restarting does not revert to an older arrangement (#3740). A tiling
+  window manager (Hyprland) that resizes the window to its tile right after
+  the start no longer evens out the docks: until the user changes a dock,
+  the saved layout is restored again at each new window size, and a quit
+  writes that layout, not the one squeezed into a smaller window (for
+  example after leaving full screen). Hiding, moving, floating or adding a
+  dock counts as a change and is kept (#3740). *All*,
   2026-10-24 (column: pending merge). Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
@@ -2425,9 +2514,20 @@ area.
   gets a made-up time or a stray transition stop on that source: the time
   is 0 and the force stop does nothing. *All*, 2026-11-08. Issue
   [#4032](https://github.com/obs-rust/obs-studio/issues/4032).
+- A plugin or script that hands obs_transition_video_get_color_space a
+  missing transition no longer crashes OBS, and one that hands it a source
+  that is not a transition gets sRGB instead of a space made up from that
+  source's unused fields; obs_transition_video_render_direct's debug line
+  for a missing transition now names obs_transition_video_render_direct
+  instead of obs_transition_video_render. *All*, 2026-11-09. Issue
+  [#4091](https://github.com/obs-rust/obs-studio/issues/4091).
 
 ### Stability
 
+- **Loaded module log without a core.** An embedder, plugin or script that
+  calls obs_log_loaded_modules before obs_startup or after obs_shutdown no
+  longer crashes OBS; with no core it logs nothing. *All*, 2026-11-10. Issue
+  [#4465](https://github.com/obs-rust/obs-studio/issues/4465).
 - An embedder or plugin that leaves a scene alive no longer crashes shutdown
   when the scene still owns input sources or nested groups. *All*, pending
   merge. Issue [#3458](https://github.com/obs-rust/obs-studio/issues/3458), PR
@@ -2828,6 +2928,15 @@ area.
   is not a transition no longer changes that source; the call is ignored,
   as the other transition setters do. *All*, 2026-11-04. Issue
   [#3605](https://github.com/obs-rust/obs-studio/issues/3605).
+- A plugin or script that queues a graphics task with no function no
+  longer crashes OBS on its graphics thread: the empty task is skipped and
+  the tasks queued after it still run. *All*, 2026-11-12. Issue
+  [#4408](https://github.com/obs-rust/obs-studio/issues/4408).
+- A plugin or script that asks about a source type with no ID (NULL), for
+  its name, flags, defaults, properties or icon, or that creates a source
+  with no ID, no longer crashes OBS; the type is not found, as with an
+  unknown ID. *All*, 2026-11-10. Issue
+  [#4606](https://github.com/obs-rust/obs-studio/issues/4606).
 
 ### Security hardening
 
@@ -3020,3 +3129,14 @@ area.
   *All platforms*, 2026-11-02. Follows
   [#3491](https://github.com/obs-rust/obs-studio/pull/3491), epic
   [#3283](https://github.com/obs-rust/obs-studio/issues/3283).
+
+- **Control socket** (#4456): private Unix MCP endpoint, `--mcp-attach` stdio proxy,
+  and an in-app frontend module that controls the existing OBS instance.
+
+- **Typed control client and probe** (#4457): fluent Rust socket client and
+  `ci/vcam_av_sync.py --transport mcp` with automatic fallback when the websocket
+  service is absent, bounded capture shutdown, typed waits and probe cleanup.
+
+- MCP: `./mcp` builds and launches an isolated libobs-enabled control server, automatically provisioning the native SDK on NixOS (#4507).
+
+- MCP: `./mcp` builds and locates EGL graphics, Virtual Camera/virtual mic, FFmpeg media/AAC and x264 runtime modules automatically (#4521).

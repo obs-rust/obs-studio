@@ -1,9 +1,9 @@
-/* Unrelated static source-step consumers must never call this private adapter. */
-#include <stdlib.h>
+/* Real private fields for standalone Rust-static consumers; legacy filename. */
 #include "obs-internal.h"
 
 struct obs_source_push_query_fields obs_source_push_query_fields(obs_source_t *source)
 {
-	(void)source;
-	abort();
+	return (struct obs_source_push_query_fields){&source->audio_mutex, &source->push_to_mute_enabled,
+						     &source->push_to_talk_enabled, &source->push_to_mute_delay,
+						     &source->push_to_talk_delay};
 }

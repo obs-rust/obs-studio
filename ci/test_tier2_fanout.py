@@ -118,7 +118,7 @@ class WorkflowTest(unittest.TestCase):
         m = re.search(r"^  tier2-lane-proof:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)", ci, re.S | re.M)
         self.assertIsNotNone(m, "ci.yml has no tier2-lane-proof job")
         proof = m.group(1)
-        self.assertIn("needs: [build-project, ci-gate]", proof)
+        self.assertIn("needs: [select-mq-runner, build-project, ci-gate]", proof)
         self.assertIn("needs.ci-gate.result == 'success'", proof)
         self.assertIn("needs.build-project.outputs.tier2-linux-proof != ''", proof)
         self.assertIn("name: ${{ needs.build-project.outputs.tier2-linux-proof }}", proof)

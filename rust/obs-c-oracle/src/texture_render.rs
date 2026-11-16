@@ -37,4 +37,9 @@ unsafe extern "C" {
     /// Sends libobs log lines to the call log (`log <level> <line>`), or
     /// back to the default handler.
     pub fn oracle_texrender_device_capture_log(on: bool);
+    /// Makes the texture creates fail whose bit is set in `mask`: bit 0 the
+    /// next one, bit 1 the one after, and so on.
+    pub fn oracle_texrender_device_fail_creates(mask: u32);
+    /// Appends `text` to the call log as one more call.
+    pub fn oracle_texrender_device_note(text: *const c_char);
 }

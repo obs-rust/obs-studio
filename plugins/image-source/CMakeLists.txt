@@ -12,6 +12,7 @@ target_sources(
     image-file-version.h
     image-source-host.h
     build/image-source.slideshow+.h.c
+    slideshow-order.h
     slideshow-size.h
 )
 

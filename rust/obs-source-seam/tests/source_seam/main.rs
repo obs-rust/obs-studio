@@ -4,6 +4,8 @@
 mod audio_input_path_parity;
 mod audio_output_parity;
 mod audio_settings_parity;
+mod deinterlace_layout;
+mod deinterlace_parity;
 mod transition_access_parity;
 mod transition_audio_parity;
 mod transition_restore_parity;
@@ -13,3 +15,5 @@ mod transition_size_parity;
 mod transition_slots_parity;
 mod transition_stop_parity;
 mod transition_switch_parity;
+mod transition_video_layout;
+mod transition_video_parity;

@@ -1,0 +1,2 @@
+/* Real private-layout adapter for standalone consumers of the Rust archive. */
+#include "libobs/obs-output-reconnect-settings-fields.c.h"

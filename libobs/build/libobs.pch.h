@@ -23,6 +23,7 @@
 #include "obs-core-modules.h"
 #include "obs-defs.h"
 #include "obs-module.h"
+#include "obs-module-lists-seam.h"
 #include "obs-module-load-rules.h"
 #include "obs-module-register-copy.h"
 #include "obs-module-type-rules.h"
@@ -32,6 +33,9 @@
 
 /* obs-source-load.c */
 #include "obs-source-load.h"
+
+/* obs-shutdown-detach.c */
+#include "obs-shutdown-detach.h"
 
 /* obs.c */
 
@@ -139,14 +143,23 @@
 /* obs-video-copy-plan.c */
 #include "obs-video-copy-plan.h"
 
+/* obs-video-frame-copy.c */
+#include "obs-video-frame-copy.h"
+
 /* obs-video-frame-timing.c */
 #include "obs-video-frame-timing.h"
+
+/* obs-video-graphics-tasks.c */
+#include "obs-video-graphics-tasks.h"
 
 /* obs-video-output-step.c */
 #include "obs-video-output-step.h"
 
 /* obs-video-pacing.c */
 #include "obs-video-pacing.h"
+
+/* obs-video-stop-requested.c */
+#include "obs-video-stop-requested.h"
 
 /* obs-video.c */
 #include <time.h>
@@ -162,6 +175,7 @@
 #include "obs-canvas-rules.h"
 
 /* obs-display.c */
+#include "obs-display-seam.h"
 #include "obs-host/display-clear-workaround.h"
 #include "obs-host/display-srgb-clear.h"
 
@@ -225,6 +239,7 @@
 
 #include "obs-source-deinterlace-draw.h"
 #include "obs-source-deinterlace-pacing.h"
+#include "obs-source-deinterlace-seam.h"
 #include "obs-source-deinterlace-select.h"
 
 /* obs-source-transition.c */
@@ -237,6 +252,7 @@
 #include "obs-source-audio-input-path-seam.h"
 #include "obs-source-audio-output-seam.h"
 #include "obs-source-audio-settings-seam.h"
+#include "obs-source-push-to-enable.h"
 #include "obs-source-transition-seam.h"
 #include "obs-source-transition-size.h"
 #include "obs-source-transition-start.h"

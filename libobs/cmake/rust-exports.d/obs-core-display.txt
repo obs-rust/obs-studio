@@ -1,0 +1,6 @@
+obs_display_add_draw_callback
+obs_display_create
+obs_display_destroy
+obs_display_remove_draw_callback
+obs_display_resize
+obs_display_update_color_space

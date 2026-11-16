@@ -1,0 +1,3 @@
+gs_texcoord
+gs_vertex2v
+gs_vertex3f

@@ -124,6 +124,9 @@ impl crate::usage::UsageSource for PdhSource {
 
 cfg_select! {
     target_os = "linux" => {
+
+        /// Only Windows gives console children their own window.
+        pub(crate) fn hide_console(_cmd: &mut std::process::Command) {}
         /// GPUs on this machine: the sysfs/`/dev/dri` tree, then `nvidia-smi`.
         pub fn system_devices() -> Vec<GpuDevice> {
             let mut devices = crate::detect_devices(std::path::Path::new("/"));
@@ -157,6 +160,17 @@ cfg_select! {
         }
     }
     windows => {
+
+        /// Keeps a child process from opening a console window. The frontend
+        /// is a GUI-subsystem executable with no console, so Windows creates a
+        /// new one for each console child (`nvidia-smi`), which flashes on
+        /// screen for as long as the child runs (obs-rust/obs-studio#4172).
+        pub(crate) fn hide_console(cmd: &mut std::process::Command) {
+            use std::os::windows::process::CommandExt;
+            /// `CREATE_NO_WINDOW` from `winbase.h`.
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
         #[allow(unsafe_code)] // DXGI COM calls; see the module docs
         mod windows;
 
@@ -197,6 +211,9 @@ cfg_select! {
         }
     }
     target_os = "macos" => {
+
+        /// Only Windows gives console children their own window.
+        pub(crate) fn hide_console(_cmd: &mut std::process::Command) {}
         #[allow(unsafe_code)] // Metal, IOKit and objc calls; see the module docs
         mod macos;
 
@@ -237,6 +254,9 @@ cfg_select! {
         }
     }
     _ => {
+
+        /// Only Windows gives console children their own window.
+        pub(crate) fn hide_console(_cmd: &mut std::process::Command) {}
         /// GPUs on this machine: only `nvidia-smi` is consulted.
         pub fn system_devices() -> Vec<GpuDevice> {
             crate::query_nvidia_smi()

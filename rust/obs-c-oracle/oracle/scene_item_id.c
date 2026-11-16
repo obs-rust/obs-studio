@@ -102,3 +102,40 @@ unsigned oracle_scene_item_id_null_probe(scene_id_getter getter)
 		result |= 8;
 	return result;
 }
+
+/* Compile the unchanged extracted setter as the differential baseline. */
+void oracle_obs_sceneitem_set_id(obs_sceneitem_t *item, int64_t id);
+#define obs_sceneitem_set_id oracle_obs_sceneitem_set_id
+#include "obs-scene-item-set-id.c.h"
+#undef obs_sceneitem_set_id
+
+typedef void (*scene_id_setter)(obs_sceneitem_t *, int64_t);
+unsigned oracle_scene_item_set_id_probe(unsigned flags, int64_t initial, int64_t id, scene_id_setter setter);
+
+unsigned oracle_scene_item_set_id_probe(unsigned flags, int64_t initial, int64_t id, scene_id_setter setter)
+{
+	struct obs_scene_item item = {0};
+	item.ref = -31;
+	item.id = initial;
+	item.selected = (flags & 1) != 0;
+	item.locked = (flags & 2) != 0;
+	item.removed = (flags & 4) != 0;
+	item.is_group = (flags & 8) != 0;
+	item.is_scene = (flags & 16) != 0;
+	item.update_transform = (flags & 32) != 0;
+	item.update_group_resize = (flags & 64) != 0;
+	struct obs_scene_item expected;
+	memcpy(&expected, &item, sizeof(item));
+	oracle_obs_sceneitem_set_id(&expected, id);
+	setter(&item, id);
+	unsigned result = 0;
+	if (item.id != expected.id || item.id != id)
+		result |= 1;
+	if (memcmp(&expected, &item, sizeof(item)))
+		result |= 2;
+	/* Repeated writes must be equally exact and leave all other bytes alone. */
+	setter(&item, id);
+	if (memcmp(&expected, &item, sizeof(item)))
+		result |= 4;
+	return result;
+}

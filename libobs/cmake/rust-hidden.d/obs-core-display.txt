@@ -1,0 +1,6 @@
+# obs-display.c: obs_display_init() and obs_display_free() are declared in
+# obs-internal.h without EXPORT, and render_display() is called only from
+# render_displays() (obs-video.c), so the three shims stay hidden.
+obs_display_free
+obs_display_init
+render_display

@@ -37,6 +37,26 @@ pub trait Tool {
     fn description(&self) -> &str;
     /// JSON Schema of the arguments object.
     fn input_schema(&self) -> Value;
+    /// JSON Schema of successful structured output, when supported.
+    fn output_schema(&self) -> Option<Value> {
+        None
+    }
+    /// MCP advisory annotations.
+    fn annotations(&self) -> Option<Value> {
+        None
+    }
+    /// Executes with protocol faults separated from domain failures.
+    /// # Errors
+    /// Returns a protocol invalid-arguments message.
+    fn call_result(&self, arguments: &Value) -> Result<Value, String> {
+        let (content, is_error) = match self.call_content(arguments) {
+            Ok(items) => (items, false),
+            Err(text) => (vec![Content::Text(text)], true),
+        };
+        Ok(
+            json!({"content": content.iter().map(Content::to_json).collect::<Vec<_>>(), "isError": is_error}),
+        )
+    }
     /// Runs the tool; `Err` is reported to the model as a tool error.
     ///
     /// # Errors
@@ -80,11 +100,18 @@ impl ToolRegistry {
             .tools
             .iter()
             .map(|t| {
-                json!({
+                let mut definition = json!({
                     "name": t.name(),
                     "description": t.description(),
                     "inputSchema": t.input_schema(),
-                })
+                });
+                if let Some(schema) = t.output_schema() {
+                    definition["outputSchema"] = schema;
+                }
+                if let Some(annotations) = t.annotations() {
+                    definition["annotations"] = annotations;
+                }
+                definition
             })
             .collect();
         json!({ "tools": tools })

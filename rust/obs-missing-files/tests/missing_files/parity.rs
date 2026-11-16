@@ -1,6 +1,6 @@
 //! Tier 3: the shim against the original `obs-missing-files.c.h`.
 //!
-//! Both sides call the cargo stand-in for `obs_source_get_name` and
+//! Both sides call the production source-name getter with a real-layout fixture and
 //! `obs_source_replace_missing_file`. Allocations share `bnum_allocs`, so a
 //! count is taken only after one side has freed everything.
 
@@ -154,7 +154,7 @@ fn compare_file(path: Option<&str>, src_type: c_int, source_null: bool) {
     let source = if source_null {
         std::ptr::null_mut()
     } else {
-        std::ptr::dangling_mut()
+        super::source_fixture()
     };
     if !source_null {
         set_source(c"clip".as_ptr(), private);

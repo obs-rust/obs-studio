@@ -100,6 +100,7 @@ struct oracle_audio_output_init {
 	uint64_t last_output_frame_ts;
 	uint64_t own_clock_timing_adjust;
 	bool own_clock_timing_set;
+	bool own_clock_compensation;
 };
 
 static ORACLE_THREAD_LOCAL obs_source_t *current;
@@ -150,6 +151,23 @@ static uint64_t fnv_add(uint64_t hash, const uint8_t *bytes, size_t size)
 	return hash;
 }
 
+/* field by field: the struct's padding is not compared */
+static void put_own_clock_drift(char *out, size_t cap, size_t *len, const struct obs_source_own_clock_drift *f)
+{
+	put_str(out, cap, len, f->start_set ? " drift start " : " drift nostart ");
+	put_hex(out, cap, len, f->start);
+	put_str(out, cap, len, " ");
+	put_hex(out, cap, len, (uint64_t)f->start_min);
+	put_str(out, cap, len, f->baseline_set ? " base " : " nobase ");
+	put_hex(out, cap, len, (uint64_t)f->baseline);
+	for (size_t i = 0; i < OBS_SOURCE_OWN_CLOCK_DRIFT_BUCKETS; i++) {
+		put_str(out, cap, len, f->buckets[i].set ? " b " : " nob ");
+		put_hex(out, cap, len, f->buckets[i].id);
+		put_str(out, cap, len, " ");
+		put_hex(out, cap, len, (uint64_t)f->buckets[i].min);
+	}
+}
+
 static void put_fields(char *out, size_t cap, size_t *len, const obs_source_t *source)
 {
 	put_str(out, cap, len, source->timing_set ? "set adj " : "unset adj ");
@@ -157,6 +175,8 @@ static void put_fields(char *out, size_t cap, size_t *len, const obs_source_t *s
 	put_str(out, cap, len, " own ");
 	put_str(out, cap, len, source->own_clock_timing_set ? " ownset" : " ownunset");
 	put_hex(out, cap, len, source->own_clock_timing_adjust);
+	put_str(out, cap, len, source->own_clock_compensation ? " owncomp" : " ownnocomp");
+	put_own_clock_drift(out, cap, len, &source->own_clock_drift);
 	put_str(out, cap, len, " min ");
 	put_hex(out, cap, len, source->next_audio_ts_min);
 	put_str(out, cap, len, " sys ");
@@ -294,6 +314,7 @@ void oracle_audio_output_set_fields(obs_source_t *source, const struct oracle_au
 	source->timing_adjust = init->timing_adjust;
 	source->own_clock_timing_adjust = init->own_clock_timing_adjust;
 	source->own_clock_timing_set = init->own_clock_timing_set;
+	os_atomic_set_bool(&source->own_clock_compensation, init->own_clock_compensation);
 	source->last_output_frame_ts = init->last_output_frame_ts;
 	source->next_audio_ts_min = init->next_audio_ts_min;
 	source->next_audio_sys_ts_min = init->next_audio_sys_ts_min;

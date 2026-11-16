@@ -42,6 +42,7 @@
 #include "obs-canvas-flags-fields.h"
 #include "obs-hotkey-background-app-id-fields.h"
 #include "obs-video-stats.h"
+#include "obs-source-own-clock-drift.h"
 
 #include <obsversion.h>
 #include <caption/caption.h>
@@ -187,6 +188,8 @@ struct obs_module_metadata {
 	char *website_url;
 	char *name;
 };
+
+int obs_module_load_metadata(struct obs_module *mod);
 
 typedef const char *(*obs_module_metadata_callback_t)(void);
 
@@ -810,6 +813,11 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* Live core required; storage is borrowed only under draw_callbacks_mutex. */
+extern struct darray *obs_core_tick_callbacks_array(struct obs_core *core);
+extern void obs_core_tick_callbacks_lock(struct obs_core *core);
+extern void obs_core_tick_callbacks_unlock(struct obs_core *core);
+
 /* Every field accessor requires a non-null owner, checked by the Rust shim. */
 struct obs_core_texture_activity_fields {
 	const bool *nv12;
@@ -877,11 +885,19 @@ struct obs_weak_object_identity_fields {
 };
 struct obs_weak_object_identity_fields obs_weak_object_identity_fields(const obs_weak_object_t *weak);
 
+/* Borrowed atomic native-long address; caller rejects NULL first. */
+const volatile long *obs_weak_object_expired_field(const obs_weak_object_t *weak);
+
 typedef void (*obs_destroy_cb)(void *obj);
+
+/* Private common-context operations; callers reject NULL before access. */
+obs_weak_object_t *obs_object_ref_control(const obs_object_t *object);
+void obs_object_ref_destroy(obs_object_t *object);
 
 #include "obs-object-query-fields.h"
 #include "obs-scene-group-query-fields.h"
 #include "obs-scene-item-parent-fields.h"
+#include "obs-scene-ref-fields.h"
 #include "obs-scene-source-fields.h"
 #include "obs-scene-item-transition-fields.h"
 
@@ -1115,6 +1131,8 @@ struct obs_weak_canvas {
 	struct obs_canvas *canvas;
 };
 
+extern obs_weak_canvas_t *obs_canvas_ref_control(const obs_canvas_t *canvas);
+
 struct obs_canvas {
 	struct obs_context_data context;
 
@@ -1275,6 +1293,13 @@ struct obs_source {
 	 * by when it arrived, not by its timestamp. Under audio_buf_mutex. */
 	uint64_t own_clock_timing_adjust;
 	bool own_clock_timing_set;
+	/* clock drift compensation that libobs turned on for audio on a clock of
+	 * its own, ORed into async_compensation where the resampler is made, and
+	 * the filter of its error (#4182). The flag is atomic: process_audio()
+	 * reads it without audio_buf_mutex. The filter is under
+	 * audio_buf_mutex. */
+	volatile bool own_clock_compensation;
+	struct obs_source_own_clock_drift own_clock_drift;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;
 
@@ -1453,12 +1478,17 @@ struct obs_source_filter_relationship_fields {
 struct obs_source_filter_relationship_fields obs_source_filter_relationship_fields(const obs_source_t *filter);
 /* Borrowed field addresses only: no Rust mirror of the private source layout,
  * ownership, synchronization, or getter decisions in the C adapter. */
+#include "libobs/obs-source-deinterlace-texture-fields.h"
+
 struct obs_source_deinterlace_fields {
 	const enum obs_deinterlace_mode *mode;
 	const bool *top_first;
 };
 
 struct obs_source_deinterlace_fields obs_source_deinterlace_fields(const obs_source_t *source);
+/* Non-NULL live source required. Borrowed atomic storage; no lock or mutation. */
+volatile bool *obs_source_async_compensation_field(obs_source_t *source);
+
 /* Borrowed addresses only; Rust owns the getter decisions and reads only the
  * requested field under the original caller's synchronization contract. */
 struct obs_source_async_flag_fields {
@@ -1466,6 +1496,12 @@ struct obs_source_async_flag_fields {
 	const bool *decoupled;
 };
 struct obs_source_async_flag_fields obs_source_async_flag_fields(const obs_source_t *source);
+
+/* Private operations for the Rust async-decoupling core; source is live and non-NULL. */
+void obs_source_async_decoupled_store(obs_source_t *source, bool value);
+void obs_source_async_decoupled_lock(obs_source_t *source);
+void obs_source_async_decoupled_invalidate(obs_source_t *source);
+void obs_source_async_decoupled_unlock(obs_source_t *source);
 
 /* Borrowed addresses only; source must be non-NULL and live. No ownership or
  * synchronization changes, and each getter reads only its requested field. */
@@ -1475,6 +1511,10 @@ struct obs_source_boolean_query_fields {
 };
 struct obs_source_boolean_query_fields obs_source_boolean_query_fields(const obs_source_t *source);
 
+/* Enabled setter adapters: caller rejects NULL and retains the source lifetime. */
+bool *obs_source_enabled_setter_field(obs_source_t *source);
+signal_handler_t *obs_source_enabled_setter_signals(obs_source_t *source);
+
 /* Borrowed procedure-handler address. Caller rejects NULL before access. */
 /* Read-only count address; source lifetime and synchronization stay with C. */
 struct obs_source_filter_count_fields {
@@ -1482,10 +1522,27 @@ struct obs_source_filter_count_fields {
 };
 extern struct obs_source_filter_count_fields obs_source_filter_count_fields(const obs_source_t *source);
 
+/* Caller rejects NULL before taking the writable rotation address. */
+extern long *obs_source_async_rotation_fields(obs_source_t *source);
+
+/* Borrowed array under filter_mutex; callers reject NULL before locking. */
+extern obs_source_t *const *obs_source_filter_index_lock(obs_source_t *source, size_t *count);
+extern void obs_source_filter_index_unlock(obs_source_t *source);
+
 struct obs_source_handler_getters_fields {
 	proc_handler_t *const *proc;
 };
 extern struct obs_source_handler_getters_fields obs_source_handler_getters_fields(const obs_source_t *source);
+
+/* Borrowed type-data member address; caller rejects NULL before access. */
+/* Private registered-identity field addresses; callers must reject NULL. */
+extern const enum obs_source_type *obs_source_type_id_type_field(const obs_source_t *source);
+extern const char *const *obs_source_type_id_id_field(const obs_source_t *source);
+
+struct obs_source_type_data_fields {
+	void *const *data;
+};
+extern struct obs_source_type_data_fields obs_source_type_data_fields(const obs_source_t *source);
 
 /* Borrowed identity field addresses. Caller must reject NULL before access. */
 struct obs_source_identity_getter_fields {
@@ -1538,6 +1595,19 @@ uint32_t obs_source_base_width(const obs_source_t *source);
 uint32_t obs_source_base_height(const obs_source_t *source);
 
 extern struct obs_source_info *get_source_info(const char *id);
+/* Private borrowed source-type snapshot, measured against the real header. */
+struct obs_source_type_info_fields {
+	const char *(*get_name)(void *type_data);
+	void *type_data;
+	uint32_t output_flags;
+	bool has_properties;
+	bool has_properties2;
+};
+struct obs_source_type_info_fields obs_source_type_info_fields(const struct obs_source_info *info);
+/* Private registry view for the Rust get_source_info (obs-source-info-lookup-fields.c.h). */
+extern size_t obs_source_info_lookup_count(void);
+extern struct obs_source_info *obs_source_info_lookup_entry(size_t index);
+extern const char *obs_source_info_lookup_id(const struct obs_source_info *info);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
 				    obs_data_t *hotkey_data, bool private);
@@ -1895,6 +1965,26 @@ struct obs_output_flags_fields {
 };
 extern struct obs_output_flags_fields obs_output_flags_fields(const obs_output_t *output);
 
+/* Borrowed output-type metadata snapshot; reject NULL before field access. */
+struct obs_output_type_info_fields {
+	const char *(*get_name)(void *);
+	void *type_data;
+	uint32_t flags;
+	const char *video;
+	const char *audio;
+};
+extern struct obs_output_type_info_fields obs_output_type_info_fields(const struct obs_output_info *info);
+
+/* Opaque callback/context snapshot for the output properties Rust port. */
+struct obs_output_properties_fields {
+	void (*defaults)(obs_data_t *);
+	obs_properties_t *(*properties)(void *);
+	void *data;
+	obs_data_t *settings;
+};
+extern struct obs_output_properties_fields obs_output_properties_type_fields(const struct obs_output_info *info);
+extern struct obs_output_properties_fields obs_output_properties_instance_fields(const obs_output_t *output);
+
 /* Borrowed handler field addresses; callers must reject NULL before access. */
 struct obs_output_handler_getters_fields {
 	signal_handler_t *const *signal;
@@ -1907,6 +1997,8 @@ struct obs_output_service_getter_fields {
 	obs_service_t *const *service;
 };
 extern struct obs_output_service_getter_fields obs_output_service_getter_fields(const obs_output_t *output);
+
+extern obs_data_t *const *obs_output_settings_fields(const obs_output_t *output);
 
 /* Borrowed instance identity fields; reject NULL before taking member addresses. */
 struct obs_output_identity_fields {
@@ -1934,6 +2026,16 @@ struct obs_output_mixer_getters_fields {
 };
 extern struct obs_output_mixer_getters_fields obs_output_mixer_getters_fields(const obs_output_t *output);
 
+/* Plugin callback and borrowed plugin data; caller must reject NULL. */
+struct obs_output_congestion_fields {
+	float (*callback)(void *data);
+	void *data;
+};
+extern struct obs_output_congestion_fields obs_output_congestion_fields(const obs_output_t *output);
+
+/* Private writable error slot; callers validate output before borrowing it. */
+extern char **obs_output_last_error_fields(obs_output_t *output);
+
 /* Borrowed atomic C long address; NULL output produces a NULL field. */
 struct obs_output_total_frames_fields {
 	const volatile long *frames;
@@ -1944,6 +2046,19 @@ struct obs_output_reconnecting_fields {
 	const volatile bool *reconnecting;
 };
 extern struct obs_output_reconnecting_fields obs_output_reconnecting_fields(const obs_output_t *output);
+/* Borrowed atomic flag addresses; NULL output produces NULL fields. */
+struct obs_output_active_fields {
+	const volatile bool *active;
+	const volatile bool *reconnecting;
+};
+extern struct obs_output_active_fields obs_output_active_fields(const obs_output_t *output);
+
+/* Borrowed plugin callback and context; caller must reject NULL first. */
+struct obs_output_frames_dropped_fields {
+	int (*callback)(void *data);
+	void *data;
+};
+extern struct obs_output_frames_dropped_fields obs_output_frames_dropped_fields(const obs_output_t *output);
 
 /* Private member addresses; callers must reject NULL before taking them. */
 struct obs_output_pause_queries_fields {
@@ -2248,6 +2363,16 @@ struct obs_encoder_last_error_fields {
 	char *const *message;
 };
 extern struct obs_encoder_last_error_fields obs_encoder_last_error_fields(obs_encoder_t *encoder);
+/* Mutable ROI fields; callbacks lock the real shared ROI mutex. Not public ABI. */
+struct obs_encoder_clear_roi_fields {
+	size_t *count;
+	uint32_t *increment;
+	void *mutex;
+	void (*lock)(void *mutex);
+	void (*unlock)(void *mutex);
+};
+struct obs_encoder_clear_roi_fields obs_encoder_clear_roi_fields(obs_encoder_t *encoder);
+
 /* Private borrowed field addresses; no encoder layout crosses the C/Rust seam. */
 struct obs_encoder_roi_state_fields {
 	const size_t *count;
@@ -2255,7 +2380,30 @@ struct obs_encoder_roi_state_fields {
 };
 extern struct obs_encoder_roi_state_fields obs_encoder_roi_state_fields(const obs_encoder_t *encoder);
 
+/* Private encoder context/name view for the name setter; not public ABI. */
+struct obs_encoder_set_name_fields {
+	struct obs_context_data *context;
+	const char *name;
+};
+extern struct obs_encoder_set_name_fields obs_encoder_set_name_fields(obs_encoder_t *encoder);
+
 extern struct obs_encoder_info *find_encoder(const char *id);
+
+/* Private borrowed encoder-type snapshot, measured against the real C header. */
+struct obs_encoder_type_info_fields {
+	const char *(*get_name)(void *type_data);
+	void *type_data;
+	const char *codec;
+};
+struct obs_encoder_type_info_fields obs_encoder_type_info_fields(const struct obs_encoder_info *info);
+
+/* Read-only registry metadata addresses; registered info remains C-owned. */
+struct obs_encoder_registry_query_fields {
+	const enum obs_encoder_type *kind;
+	const uint32_t *caps;
+};
+struct obs_encoder_registry_query_fields obs_encoder_registry_query_fields(const struct obs_encoder_info *info);
+
 extern char *obs_encoder_dup_last_error(obs_encoder_t *encoder);
 
 extern bool obs_encoder_initialize(obs_encoder_t *encoder);
@@ -2293,12 +2441,59 @@ struct obs_encoder_metadata_fields {
 };
 struct obs_encoder_metadata_fields obs_encoder_metadata_fields(const obs_encoder_t *encoder);
 
+/* Mutable format storage borrowed only for the setter call. */
+struct obs_encoder_set_preferred_format_fields {
+	const enum obs_encoder_type *kind;
+	enum video_format *format;
+};
+extern struct obs_encoder_set_preferred_format_fields obs_encoder_set_preferred_format_fields(obs_encoder_t *encoder);
+
 /* Borrowed addresses only; the encoder remains owned by C. */
 struct obs_encoder_preferred_format_fields {
 	const enum obs_encoder_type *kind;
 	const enum video_format *format;
 };
 struct obs_encoder_preferred_format_fields obs_encoder_preferred_format_fields(const obs_encoder_t *encoder);
+
+/* Borrowed addresses only; the encoder remains owned by C. */
+struct obs_encoder_preferred_color_space_fields {
+	const enum obs_encoder_type *kind;
+	const enum video_colorspace *space;
+};
+struct obs_encoder_preferred_color_space_fields obs_encoder_preferred_color_space_fields(const obs_encoder_t *encoder);
+
+/* Borrowed addresses only; the encoder remains owned by C. */
+struct obs_encoder_preferred_range_fields {
+	const enum obs_encoder_type *kind;
+	const enum video_range_type *range;
+};
+struct obs_encoder_preferred_range_fields obs_encoder_preferred_range_fields(const obs_encoder_t *encoder);
+
+/* Shared by the C defaults API and C-reference property constructors. */
+static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *info)
+{
+	obs_data_t *settings = obs_data_create();
+	if (info->get_defaults) {
+		info->get_defaults(settings);
+	}
+	if (info->get_defaults2) {
+		info->get_defaults2(settings, info->type_data);
+	}
+	return settings;
+}
+
+/* Callback snapshots; all handles remain borrowed from the registered type/encoder. */
+struct obs_encoder_properties_fields {
+	obs_properties_t *(*properties)(void *data);
+	obs_properties_t *(*properties2)(void *data, void *type_data);
+	void (*defaults)(obs_data_t *settings);
+	void (*defaults2)(obs_data_t *settings, void *type_data);
+	void *type_data;
+	void *data;
+	obs_data_t *settings;
+};
+struct obs_encoder_properties_fields obs_encoder_properties_type_fields(const struct obs_encoder_info *info);
+struct obs_encoder_properties_fields obs_encoder_properties_instance_fields(const obs_encoder_t *encoder);
 
 /* Borrowed scaled-axis addresses, with no ownership or value conversion. */
 struct obs_encoder_scaling_enabled_fields {
@@ -2314,6 +2509,24 @@ struct obs_encoder_frame_rate_divisor_fields {
 	char *const *name;
 };
 struct obs_encoder_frame_rate_divisor_fields obs_encoder_frame_rate_divisor_fields(const obs_encoder_t *encoder);
+
+/* Borrowed writable configuration fields. Caller rejects NULL first. */
+struct obs_encoder_configuration_fields {
+	const enum obs_encoder_type *kind;
+	volatile bool *active;
+	const bool *initialized;
+	uint32_t *width;
+	uint32_t *height;
+	enum obs_scale_type *gpu;
+	uint32_t *divisor;
+	void *media;
+	video_t **fps_override;
+	const char *name;
+};
+struct obs_encoder_configuration_fields obs_encoder_configuration_fields(obs_encoder_t *encoder);
+bool obs_encoder_configuration_output_size(void *media, uint32_t *width, uint32_t *height);
+void obs_encoder_configuration_free_override(void *video);
+void *obs_encoder_configuration_create_override(void *media, uint32_t divisor);
 
 /* What the encoded packet interleaver reads from an encoder, as values: the
  * time base, the frame size and the encoder group (NULL without one). Not

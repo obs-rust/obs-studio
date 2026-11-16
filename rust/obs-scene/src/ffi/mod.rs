@@ -1,7 +1,14 @@
 //! C ABI shims, one module per C file.
+pub mod atomic_update;
+pub mod color_space;
+pub mod from_source;
 pub mod group_queries;
+pub mod group_resize_defer;
+pub mod item_audio_actions;
 pub mod item_id;
 pub mod item_parent_getter;
+pub mod item_private_settings;
+pub mod kind;
 
 pub mod scene_audio_actions;
 pub mod scene_audio_mix;
@@ -29,8 +36,23 @@ pub mod item_render_getters;
 pub mod item_scale_getter;
 
 pub mod item_crop_getter;
+pub mod item_crop_setter;
 pub mod item_transform_getters;
 
 pub mod item_transition_getters;
+pub mod item_transition_setters;
 
+pub mod item_group_scene;
 pub mod item_visible;
+
+pub mod item_blending_method;
+pub mod item_blending_mode;
+pub mod item_locked_setter;
+pub mod item_scale_filter;
+pub mod item_transition_serialization;
+pub mod lookup;
+
+pub mod item_select;
+
+pub mod create;
+pub mod refs;

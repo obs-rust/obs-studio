@@ -1,0 +1,6 @@
+# obs-source-deinterlace.c (obs-source-seam): the deinterlace frame take,
+# texture update and render, declared in the private obs-internal.h and
+# called by obs-source.c.
+deinterlace_process_last_frame
+deinterlace_render
+deinterlace_update_async_video

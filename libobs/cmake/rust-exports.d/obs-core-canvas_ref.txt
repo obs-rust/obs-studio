@@ -1,0 +1,5 @@
+obs_weak_canvas_addref
+obs_weak_canvas_release
+obs_canvas_get_ref
+obs_canvas_get_weak_canvas
+obs_weak_canvas_get_canvas

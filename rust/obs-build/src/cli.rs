@@ -6,10 +6,11 @@ use std::{
     path::PathBuf,
 };
 
-pub const USAGE: &str = "Usage: obs-build build [OPTIONS]\n\nBuild and stage the Linux hybrid OBS application through Cargo and cc::Build.\n\n  --root PATH                 Source checkout (default: current directory)\n  --output PATH               Build directory (default: ROOT/build_cargo)\n  --target TRIPLE              Requested native target (default: this target)\n  --profile NAME               debug, release, relwithdebinfo, minsizerel\n  --separate-core             Compile core group members individually\n  --core-pch                  Enable core/backend precompiled headers\n  --disable-hevc              Disable HEVC\n  --disable-service-updates   Disable RTMP service updates\n  --without-nvenc             Omit the NVIDIA hardware encoder and helper\n  --without-nvenc-ffmpeg-ids  Do not register FFmpeg NVENC encoder aliases\n  --without-websocket         Omit the original obs-websocket plugin\n  --without-frontend-tools    Omit the frontend Tools plugin\n  --without-scripting         Omit Lua/Python scripting\n  --without-lua               Omit Lua bindings\n  --without-python            Omit Python bindings\n  --with-vlc | --with-jack | --with-sndio | --with-fdk | --with-qsv\n  --cef-root PATH             Build browser source/panels using this CEF SDK\n  --without-browser-panels    Build browser source without panels\n  --datachannel-include PATH  WebRTC SDK headers (requires library)\n  --datachannel-library PATH  WebRTC SDK library (requires headers)\n  -h, --help                  Show help\n";
+pub const USAGE: &str = "Usage: obs-build build [OPTIONS]\n       obs-build mcp-runtime --request PATH\n\nBuild and stage the Linux hybrid OBS application through Cargo and cc::Build.\n\n  --root PATH                 Source checkout (default: current directory)\n  --output PATH               Build directory (default: ROOT/build_cargo)\n  --target TRIPLE              Requested native target (default: this target)\n  --profile NAME               debug, release, relwithdebinfo, minsizerel\n  --separate-core             Compile core group members individually\n  --core-pch                  Enable core/backend precompiled headers\n  --disable-hevc              Disable HEVC\n  --disable-service-updates   Disable RTMP service updates\n  --without-nvenc             Omit the NVIDIA hardware encoder and helper\n  --without-nvenc-ffmpeg-ids  Do not register FFmpeg NVENC encoder aliases\n  --without-websocket         Omit the original obs-websocket plugin\n  --without-frontend-tools    Omit the frontend Tools plugin\n  --without-scripting         Omit Lua/Python scripting\n  --without-lua               Omit Lua bindings\n  --without-python            Omit Python bindings\n  --with-vlc | --with-jack | --with-sndio | --with-fdk | --with-qsv\n  --cef-root PATH             Build browser source/panels using this CEF SDK\n  --without-browser-panels    Build browser source without panels\n  --datachannel-include PATH  WebRTC SDK headers (requires library)\n  --datachannel-library PATH  WebRTC SDK library (requires headers)\n  -h, --help                  Show help\n";
 
 pub enum Invocation {
     Help,
+    McpRuntime(crate::mcp_runtime::Request),
     Build(Box<Request>),
 }
 
@@ -33,6 +34,19 @@ where
     };
     if command == "--help" || command == "-h" {
         return Ok(Invocation::Help);
+    }
+    if command == "mcp-runtime" {
+        if arguments.next().as_deref() != Some(std::ffi::OsStr::new("--request")) {
+            return Err("mcp-runtime requires --request PATH".into());
+        }
+        let path = arguments.next().ok_or("--request needs a path")?;
+        if arguments.next().is_some() {
+            return Err("unexpected mcp-runtime argument".into());
+        }
+        let bytes = std::fs::read(PathBuf::from(path)).map_err(|error| error.to_string())?;
+        return serde_json::from_slice(&bytes)
+            .map(Invocation::McpRuntime)
+            .map_err(|error| error.to_string());
     }
     if command != "build" {
         return Err(format!("unknown command: {}", command.to_string_lossy()));
@@ -216,6 +230,7 @@ where
             return Ok(());
         }
         Invocation::Build(request) => request,
+        Invocation::McpRuntime(request) => return crate::mcp_runtime::build(&request).map(|_| ()),
     };
     let root = request
         .root

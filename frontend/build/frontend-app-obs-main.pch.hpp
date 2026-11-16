@@ -14,6 +14,10 @@
 #include <utility/OBSTranslator.hpp>
 #include <utility/platform.hpp>
 
+#ifdef OBS_FRONTEND_RUST
+#include "frontend/utility/obs-exit-watchdog.h"
+#endif
+
 #include <qt-wrappers.hpp>
 #include <util/platform.h>
 #include <util/profiler.h>

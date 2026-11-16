@@ -8,6 +8,11 @@ status: active
 
 # An asan failure on your PR
 
+Since 2026-11-09 no PR runs asan: it runs nightly and on dispatch only. A nightly
+failure, or a dispatch of `sanitizers.yaml -f tools=asan` for your branch (on a
+separate ref, see [sanitizer-dispatch.md](sanitizer-dispatch.md)), is handled the
+same way.
+
 ## The trap
 
 The asan job fails a PR on any unit-test failure or sanitizer report (#3290). The
@@ -45,8 +50,8 @@ no known cause yet.
 
 ## Checks
 
-- `ci/test_sanitize_triage.py` `KnownListTest`: only `bug` and `tool` kinds are
-  allowed, each `bug` entry names an issue, and the number of entries matches
+- `ci/test_sanitize_triage.py` `KnownListTest`: only `bug`, `third-party` and `tool` kinds are
+  allowed, each `bug` and `third-party` entry names an issue, and the number of entries matches
   `KNOWN_ENTRIES`. To add an entry you
   must raise that number, which shows in the diff for the reviewer. To drop one
   you must lower it, so the number can not go stale.

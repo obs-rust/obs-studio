@@ -2,7 +2,8 @@
 //! per file: `libobs/obs-scene-bounds.c.h`, `libobs/obs-scene-blend.c.h`,
 //! `libobs/obs-scene-bounds-place.c.h`, `libobs/obs-scene-coords.c.h`,
 //! `libobs/obs-scene-group-transform.c.h`,
-//! `libobs/obs-scene-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
+//! `libobs/obs-scene-audio-actions.c.h` and its item side,
+//! `libobs/obs-scene-item-audio-actions.c.h`, `libobs/obs-scene-extent.c.h`,
 //! `libobs/obs-scene-crop.c.h`, `libobs/obs-scene-render-plan.c.h` (the
 //! per-item render decisions of `render_item` and `render_item_texture`),
 //! `libobs/obs-scene-item-names.c.h` (the scene item save/load names and
@@ -18,34 +19,45 @@
 //! without its gain buffer),
 //! `libobs/obs-scene-item-order.c.h` (the order, reorder and group
 //! membership decisions: where a moved item goes, the reorder checks and
-//! group runs, and the group add and remove gates), and
+//! group runs, and the group add and remove gates),
 //! `libobs/obs-scene-transform-update.c.h` (the transform update decisions of
 //! `scene_video_render` and `update_transforms_and_prune_sources`: the scene
-//! size step and whether an item is updated).
+//! size step and whether an item is updated),
+//! `libobs/obs-scene-color-space.c.h` (the scene's video color space
+//! callback) and `libobs/obs-scene-item-crop-setter.c.h` (the scene item
+//! crop setter).
 //!
 //! The safe cores are [`bounds`], [`bounds_place`], [`blend`], [`coords`],
-//! [`group_transform`], [`audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
+//! [`group_transform`], [`audio_actions`], [`item_audio_actions`], [`audio_window`], [`audio_mix`], [`extent`],
 //! [`crop`], [`render_plan`], [`item_names`], [`item_order`],
-//! [`item_transform`], and [`transform_update`]. The C ABI shims live in [`ffi`].
+//! [`item_transform`], [`transform_update`], [`color_space`] and
+//! [`item_crop_setter`]. The C ABI shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 
+pub mod atomic_update;
 pub mod audio_actions;
 pub mod audio_mix;
 pub mod audio_window;
 pub mod blend;
 pub mod bounds;
 pub mod bounds_place;
+pub mod color_space;
 pub mod coords;
 pub mod crop;
 pub mod extent;
+pub mod from_source;
 pub mod group_queries;
+pub mod group_resize_defer;
 pub mod group_transform;
+pub mod item_audio_actions;
 pub mod item_id;
 pub mod item_names;
 pub mod item_order;
 pub mod item_parent_getter;
+pub mod item_private_settings;
 pub mod item_transform;
+pub mod kind;
 mod platform;
 pub mod render_plan;
 pub mod source_getters;
@@ -62,8 +74,23 @@ pub mod item_render_getters;
 pub mod item_scale_getter;
 
 pub mod item_crop_getter;
+pub mod item_crop_setter;
 pub mod item_transform_getters;
 
 pub mod item_transition_getters;
+pub mod item_transition_setters;
 
+pub mod item_group_scene;
 pub mod item_visible;
+
+pub mod item_blending_method;
+pub mod item_blending_mode;
+pub mod item_locked_setter;
+pub mod item_scale_filter;
+pub mod item_transition_serialization;
+pub mod lookup;
+
+pub mod item_select;
+
+pub mod create;
+pub mod refs;

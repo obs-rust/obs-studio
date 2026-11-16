@@ -1,0 +1,3 @@
+gs_cubetexture_destroy
+gs_cubetexture_get_size
+gs_cubetexture_get_color_format

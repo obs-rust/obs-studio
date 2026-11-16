@@ -1,0 +1,12 @@
+# Actual-library characterization, shared unchanged by hybrid and C reference.
+add_executable(test_raw_audio_remove test_raw_audio_remove.c)
+target_include_directories(test_raw_audio_remove PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_raw_audio_remove PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
+add_dependencies(cmocka-tests test_raw_audio_remove)
+find_program(XVFB_RUN xvfb-run)
+if(XVFB_RUN)
+  add_test(NAME test_raw_audio_remove COMMAND ${XVFB_RUN} -a $<TARGET_FILE:test_raw_audio_remove>)
+else()
+  add_test(NAME test_raw_audio_remove COMMAND test_raw_audio_remove)
+endif()
+set_tests_properties(test_raw_audio_remove PROPERTIES TIMEOUT 60)

@@ -1,0 +1,3 @@
+obs_get_source_output_flags
+obs_is_source_configurable
+obs_source_get_display_name

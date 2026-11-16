@@ -1,7 +1,9 @@
 //! C ABI shims, one module per C file.
 
+pub mod source_async_compensation;
 pub mod source_async_flag_getters;
 pub mod source_async_pacing;
+pub mod source_async_rotation;
 pub mod source_async_upload;
 pub mod source_audio_active;
 pub mod source_audio_input;
@@ -16,27 +18,49 @@ pub mod source_deinterlace_draw;
 pub mod source_deinterlace_getters;
 pub mod source_deinterlace_pacing;
 pub mod source_deinterlace_select;
+pub mod source_deinterlace_texture;
 pub mod source_draw_plan;
 pub mod source_draw_technique;
 pub mod source_duplicate;
+pub mod source_enabled_setter;
 pub mod source_filter_chain;
 pub mod source_filter_count;
+pub mod source_filter_index;
 pub mod source_filter_relationship_getters;
 pub mod source_frame_copy;
 pub mod source_handler_getters;
+pub mod source_hidden_setter;
+pub mod source_icon_type;
 pub mod source_identity_getters;
+pub mod source_info_lookup;
 pub mod source_media_admission;
 pub mod source_monitoring;
+pub mod source_name;
+pub mod source_private_settings;
 pub mod source_ptm_gate;
+pub mod source_push_delay;
 pub mod source_push_queries;
+pub mod source_push_to_enable;
 pub mod source_render_route;
+pub mod source_set_name;
+pub mod source_settings_getter;
 pub mod source_size;
 pub mod source_state_getters;
+pub mod source_theme_icon;
 pub mod source_transition_clock;
 pub mod source_transition_load;
 pub mod source_transition_render;
 pub mod source_transition_sample_time;
 pub mod source_transition_start;
+pub mod source_type_data;
+pub mod source_type_lookup;
 pub mod source_video_tick;
 pub mod source_volume;
 pub mod source_volume_mul;
+pub mod type_info;
+
+pub mod source_type_id_getters;
+
+pub mod source_media_getters;
+
+pub mod source_module;

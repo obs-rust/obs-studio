@@ -1,15 +1,31 @@
 # Merge-group scope and native runner capacity — 2026-11-04
 
-Decision: merge-group execution is Linux-only. Native Rust tests and Tier 2
-remain on master pushes for core/platform changes, and full native application
-builds remain on nightly/manual/release events. Application builds already did
-not run on merge-group or master push; none are newly deferred here.
+Current decision (#4747, authorized in #4743): merge groups execute selected
+heavy checks on the merge result. This supersedes the November 4 Linux-only
+placement decision described below. PR routing stays unchanged until the
+separate admission cutover; full application builds remain nightly/manual/release.
 
-This supersedes #3606. Native compiler/linker/runtime regressions can land
-before detection and require fixing forward or reverting. Linux cross-lint
-does not replace native runtime coverage. Native PR path selection is preserved. Changes to `ci/ci_scope.py` also select
-native validation on master push, so routing changes exercise their consumers.
-The queue continues to validate its selected Linux work.
+The immutable event base/head diff includes every PR in the group. Core/shared
+changes select both native Windows and macOS Rust tests and Tier 2; platform
+paths retain their current selection. Linux Tier 2 runs two complete suites,
+OFF and ON, from the existing shared build/runtime producers. Qt, C/C++ cross
+compilation and touched Linux targets keep their path rules. Every non-docs
+group also runs Windows MSVC test linking and clippy/Dylint for the host plus
+all five cross targets. The two main cross targets still link tests with
+`--no-run`; the extra three lint only. GNU-oracle link coverage is retained.
+
+No client trailer, hosted input proof or cached test/lint verdict may suppress
+queue execution. Build and Format set `SOLDR_VERDICTS=off`; compiler/dependency
+artifacts may still be restored. CI Gate computes a full expected job manifest
+independently of reusable outputs and requires success for every selected job,
+including individual matrix legs and complete OFF/ON modes. Missing, skipped,
+unfinished, cancelled and runnerless selected jobs reject admission. True
+out-of-scope skips remain allowed. The required context is still `CI Gate ✅`.
+Eligible Linux jobs use the selected `MQ_RUNNER_LABELS` with hosted fallback;
+native jobs retain native runners. Capacity failures remain failures and never
+authorize bypassing the queue. Cancellation and independent janitor behavior
+are unchanged. Security scans, sanitizers and packaged/hardware qualification
+remain on their existing nightly/manual/release events.
 
 ## Failure and cause
 
@@ -56,8 +72,8 @@ belong on the PR. A cancelled workflow is never green proof.
 
 RED commit `3b23668df`: three focused tests failed with seven assertion failures:
 missing capacity diagnosis, a healthy queue rejected for empty reusable output,
-and native queue selection. GREEN resolves scope independently, preserves
-fail-closed diagnostics, and selects only Linux execution on merge-group.
+and native queue selection. That change resolved scope independently and preserved fail-closed diagnostics.
+The current tests restore selected heavy execution and enforce its manifest.
 Tests extend the existing Python files. Rust/C/API port tiers do not apply to
 this CI-only change. Push-scope regressions preserve native selection for core
 and platform changes; tests do not substitute for real hosted execution evidence.

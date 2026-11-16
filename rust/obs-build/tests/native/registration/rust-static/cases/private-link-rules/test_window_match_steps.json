@@ -4,7 +4,8 @@
     "test_window_match_steps_rust": {
       "sources": [
         "test/cmocka/test_window_match_steps.c",
-        "libobs/util/base-variadic.c.h"
+        "libobs/util/base-variadic.c.h",
+        "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
       "includes": [
         ".",
@@ -18,7 +19,10 @@
         {
           "name": "PkgConfig::_window_match_test_gio",
           "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
-        }
+        },
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil"
       ],
       "requires": {
         "all": [

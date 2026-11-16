@@ -825,48 +825,6 @@ void obs_main_view_free(struct obs_view *view)
 			blog(LOG_INFO, "\t%d " #type "(s) were remaining", unfreed); \
 	} while (false)
 
-static bool obs_shutdown_remove_scene_item(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
-{
-	UNUSED_PARAMETER(scene);
-	UNUSED_PARAMETER(param);
-	obs_sceneitem_remove(item);
-	return true;
-}
-
-static void obs_shutdown_detach_scene_items(struct obs_core_data *data)
-{
-	DARRAY(obs_source_t *) sources;
-	da_init(sources);
-	struct obs_context_data *ctx, *tmp;
-
-	/* A scene can release the last reference of another table member.
-	 * Snapshot under the table lock and retain every source until all scene
-	 * and group items have been detached, including nested groups (#3458). */
-	pthread_mutex_lock(&data->sources_mutex);
-	HASH_ITER (hh_uuid, *(struct obs_context_data **)&data->sources, ctx, tmp) {
-		obs_source_t *source = obs_source_get_ref((obs_source_t *)ctx);
-		if (source)
-			da_push_back(sources, &source);
-	}
-	pthread_mutex_unlock(&data->sources_mutex);
-
-	for (size_t i = 0; i < sources.num; i++) {
-		obs_scene_t *scene = obs_scene_from_source(sources.array[i]);
-		if (!scene)
-			scene = obs_group_from_source(sources.array[i]);
-		if (scene)
-			obs_scene_enum_items(scene, obs_shutdown_remove_scene_item, NULL);
-	}
-	for (size_t i = 0; i < sources.num; i++)
-		obs_source_release(sources.array[i]);
-	da_free(sources);
-
-	/* Sources owned only by an item may now have queued their destruction.
-	 * Finish that work before walking the tables to reclaim host leaks. */
-	while (os_task_queue_wait(obs->destruction_task_thread))
-		;
-}
-
 static void obs_free_data(void)
 {
 	struct obs_core_data *data = &obs->data;
@@ -1162,6 +1120,10 @@ static bool obs_init(const char *locale, const char *module_config_path, profile
 		blog(LOG_ERROR, "obs_startup: destruction task queue creation failed");
 		return false;
 	}
+	/* Finish the worker's thread-name setup before returning from startup.
+	 * On Windows it allocates and frees a temporary name through bmem, so
+	 * letting it overlap callers makes bnum_allocs() snapshots unstable. */
+	os_task_queue_wait(obs->destruction_task_thread);
 
 	if (module_config_path)
 		obs->module_config_path = bstrdup(module_config_path);
@@ -1835,30 +1797,11 @@ bool obs_get_audio_info2(struct obs_audio_info2 *oai2)
 	}
 }
 
-bool obs_enum_source_types(size_t idx, const char **id)
-{
-	if (idx >= obs->source_types.num)
-		return false;
-	*id = obs->source_types.array[idx].id;
-	return true;
-}
-
 bool obs_enum_input_types(size_t idx, const char **id)
 {
 	if (idx >= obs->input_types.num)
 		return false;
 	*id = obs->input_types.array[idx].id;
-	return true;
-}
-
-bool obs_enum_input_types2(size_t idx, const char **id, const char **unversioned_id)
-{
-	if (idx >= obs->input_types.num)
-		return false;
-	if (id)
-		*id = obs->input_types.array[idx].id;
-	if (unversioned_id)
-		*unversioned_id = obs->input_types.array[idx].unversioned_id;
 	return true;
 }
 
@@ -1938,27 +1881,12 @@ void obs_leave_graphics(void)
 		gs_leave_context();
 }
 
-audio_t *obs_get_audio(void)
-{
-	return obs->audio.audio;
-}
-
 video_t *obs_get_video(void)
 {
 	/* The main canvas has no mix until the first obs_reset_video(): no
 	 * video yet, as obs_canvas_get_video() answers for any canvas (#2237). */
 	const obs_canvas_t *canvas = obs->data.main_canvas;
 	return canvas && canvas->mix ? canvas->mix->video : NULL;
-}
-
-obs_source_t *obs_get_output_source(uint32_t channel)
-{
-	return obs_canvas_get_channel(obs->data.main_canvas, channel);
-}
-
-void obs_set_output_source(uint32_t channel, obs_source_t *source)
-{
-	obs_canvas_set_channel(obs->data.main_canvas, channel, source);
 }
 
 void obs_enum_sources(bool (*enum_proc)(void *, obs_source_t *), void *param)
@@ -2010,11 +1938,6 @@ void obs_canvas_enum_scenes(obs_canvas_t *canvas, bool (*enum_proc)(void *, obs_
 	}
 
 	pthread_mutex_unlock(&canvas->sources_mutex);
-}
-
-void obs_enum_scenes(bool (*enum_proc)(void *, obs_source_t *), void *param)
-{
-	obs_canvas_enum_scenes(obs->data.main_canvas, enum_proc, param);
 }
 
 typedef struct obs_context_data *(*obs_enum_get_ref_t)(struct obs_context_data *);
@@ -2311,34 +2234,6 @@ obs_encoder_t *obs_get_encoder_by_name(const char *name)
 obs_service_t *obs_get_service_by_name(const char *name)
 {
 	return get_context_by_name(&obs->data.first_service, name, &obs->data.services_mutex, obs_service_addref_safe_);
-}
-
-gs_effect_t *obs_get_base_effect(enum obs_base_effect effect)
-{
-	switch (effect) {
-	case OBS_EFFECT_DEFAULT:
-		return obs->video.default_effect;
-	case OBS_EFFECT_DEFAULT_RECT:
-		return obs->video.default_rect_effect;
-	case OBS_EFFECT_OPAQUE:
-		return obs->video.opaque_effect;
-	case OBS_EFFECT_SOLID:
-		return obs->video.solid_effect;
-	case OBS_EFFECT_REPEAT:
-		return obs->video.repeat_effect;
-	case OBS_EFFECT_BICUBIC:
-		return obs->video.bicubic_effect;
-	case OBS_EFFECT_LANCZOS:
-		return obs->video.lanczos_effect;
-	case OBS_EFFECT_AREA:
-		return obs->video.area_effect;
-	case OBS_EFFECT_BILINEAR_LOWRES:
-		return obs->video.bilinear_lowres_effect;
-	case OBS_EFFECT_PREMULTIPLIED_ALPHA:
-		return obs->video.premultiplied_alpha_effect;
-	}
-
-	return NULL;
 }
 
 static void obs_render_canvas_texture_internal(obs_canvas_t *canvas, enum gs_blend_type src_c,
@@ -3165,32 +3060,6 @@ bool obs_set_audio_monitoring_device(const char *name, const char *id)
 	return true;
 }
 
-void obs_get_audio_monitoring_device(const char **name, const char **id)
-{
-	if (name)
-		*name = obs->audio.monitoring_device_name;
-	if (id)
-		*id = obs->audio.monitoring_device_id;
-}
-
-void obs_add_tick_callback(void (*tick)(void *param, float seconds), void *param)
-{
-	struct tick_callback data = {tick, param};
-
-	pthread_mutex_lock(&obs->data.draw_callbacks_mutex);
-	da_insert(obs->data.tick_callbacks, 0, &data);
-	pthread_mutex_unlock(&obs->data.draw_callbacks_mutex);
-}
-
-void obs_remove_tick_callback(void (*tick)(void *param, float seconds), void *param)
-{
-	struct tick_callback data = {tick, param};
-
-	pthread_mutex_lock(&obs->data.draw_callbacks_mutex);
-	da_erase_item(obs->data.tick_callbacks, &data);
-	pthread_mutex_unlock(&obs->data.draw_callbacks_mutex);
-}
-
 void obs_add_main_render_callback(void (*draw)(void *param, uint32_t cx, uint32_t cy), void *param)
 {
 	struct draw_callback data = {draw, param};
@@ -3355,12 +3224,6 @@ void obs_add_raw_audio_callback(size_t mix_idx, const struct audio_convert_info 
 {
 	struct obs_core_audio *audio = &obs->audio;
 	audio_output_connect(audio->audio, mix_idx, conversion, callback, param);
-}
-
-void obs_remove_raw_audio_callback(size_t mix_idx, audio_output_callback_t callback, void *param)
-{
-	struct obs_core_audio *audio = &obs->audio;
-	audio_output_disconnect(audio->audio, mix_idx, callback, param);
 }
 
 void obs_apply_private_data(obs_data_t *settings)
@@ -3683,32 +3546,6 @@ void obs_set_ui_task_handler(obs_task_handler_t handler)
 	obs_queue_task(OBS_TASK_UI, set_ui_thread, NULL, false);
 }
 
-obs_object_t *obs_object_get_ref(obs_object_t *object)
-{
-	if (!object)
-		return NULL;
-
-	return obs_weak_object_get_object(object->control);
-}
-
-void obs_object_release(obs_object_t *object)
-{
-	if (!obs) {
-		blog(LOG_WARNING, "Tried to release an object when the OBS "
-				  "core is shut down!");
-		return;
-	}
-
-	if (!object)
-		return;
-
-	obs_weak_object_t *control = object->control;
-	if (obs_ref_release(&control->ref)) {
-		object->destroy(object);
-		obs_weak_object_release(control);
-	}
-}
-
 void obs_weak_object_addref(obs_weak_object_t *weak)
 {
 	if (!weak)
@@ -3745,16 +3582,6 @@ obs_object_t *obs_weak_object_get_object(obs_weak_object_t *weak)
 		return weak->object;
 
 	return NULL;
-}
-
-bool obs_weak_object_expired(obs_weak_object_t *weak)
-{
-	return weak ? obs_weak_ref_expired(&weak->ref) : true;
-}
-
-obs_canvas_t *obs_get_main_canvas(void)
-{
-	return obs_canvas_get_ref(obs->data.main_canvas);
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */

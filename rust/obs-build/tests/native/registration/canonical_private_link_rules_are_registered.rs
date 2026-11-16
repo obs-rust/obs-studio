@@ -70,6 +70,9 @@ fn canonical_private_link_rules_are_registered() {
                     "libobs_rust-static",
                     "m",
                     "OBS::w32-pthreads",
+                    "FFmpeg::avcodec",
+                    "FFmpeg::avformat",
+                    "FFmpeg::avutil",
                     "LibUUID::LibUUID",
                     "PkgConfig::_window_match_test_gio",
                 ] {
@@ -95,9 +98,10 @@ fn canonical_private_link_rules_are_registered() {
                 );
                 let window = &graph.targets[CASES[1]];
                 let artifacts = window.dependency_artifacts(&facts, &interfaces).unwrap();
+                // The FFmpeg adapter libraries follow the host dependency.
                 assert_eq!(
-                    artifacts.last().unwrap(),
-                    Path::new(if gio {
+                    artifacts[artifacts.len() - 4],
+                    PathBuf::from(if gio {
                         "PkgConfig::_window_match_test_gio"
                     } else {
                         "LibUUID::LibUUID"

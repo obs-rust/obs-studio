@@ -1,0 +1,4 @@
+obs_output_add_packet_callback
+obs_output_remove_packet_callback
+obs_output_set_audio_conversion
+obs_output_set_video_conversion

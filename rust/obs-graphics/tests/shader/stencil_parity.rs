@@ -103,7 +103,7 @@ fn test_graphics_stencil_exhaustive_matches_c() {
             commands.extend([Command::Test(v), Command::Write(v)]);
         }
     }
-    for side in 0..3 {
+    for side in 1..=3 {
         for test in 0..8 {
             commands.push(Command::Function { side, test });
         }
@@ -120,23 +120,60 @@ fn test_graphics_stencil_exhaustive_matches_c() {
             }
         }
     }
-    assert_eq!(commands.len(), 680);
-    compare(false, &commands[..4]);
+    commands.extend([
+        Command::Function { side: 0, test: 99 },
+        Command::Op {
+            side: 7,
+            fail: 8,
+            zfail: 6,
+            zpass: 0x7fff,
+        },
+    ]);
+    assert_eq!(commands.len(), 682);
+    compare(
+        false,
+        &[
+            Command::Test(true),
+            Command::Write(false),
+            Command::Function { side: 2, test: 1 },
+            Command::Op {
+                side: 3,
+                fail: 2,
+                zfail: 3,
+                zpass: 4,
+            },
+        ],
+    );
     compare(true, &commands);
-    compare(false, &commands[..4]);
+    compare(
+        false,
+        &[
+            Command::Test(true),
+            Command::Write(false),
+            Command::Function { side: 2, test: 1 },
+            Command::Op {
+                side: 3,
+                fail: 2,
+                zfail: 3,
+                zpass: 4,
+            },
+        ],
+    );
 }
 
 fn command() -> impl Strategy<Value = Command> {
     prop_oneof![
         any::<bool>().prop_map(Command::Test),
         any::<bool>().prop_map(Command::Write),
-        (0..3i32, 0..8i32).prop_map(|(side, test)| Command::Function { side, test }),
-        (0..3i32, 0..6i32, 0..6i32, 0..6i32).prop_map(|(side, fail, zfail, zpass)| Command::Op {
-            side,
-            fail,
-            zfail,
-            zpass
-        }),
+        (0..=0x7fffi32, 0..=0x7fffi32).prop_map(|(side, test)| Command::Function { side, test }),
+        (0..=0x7fffi32, 0..=0x7fffi32, 0..=0x7fffi32, 0..=0x7fffi32).prop_map(
+            |(side, fail, zfail, zpass)| Command::Op {
+                side,
+                fail,
+                zfail,
+                zpass
+            }
+        ),
     ]
 }
 
