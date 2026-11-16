@@ -146,6 +146,23 @@ unsafe fn with<R>(d: *mut dstr, f: impl FnOnce(&mut Dstr) -> R) -> R {
     r
 }
 
+/// How many bytes of `d`'s block hold its string: `capacity`, or `len + 1`
+/// for a block whose capacity is 0 (`dstr_from_mbs` leaves one, as in C),
+/// and 0 for a NULL array (#4901).
+///
+/// # Safety
+///
+/// `d` must point to a valid `dstr`.
+unsafe fn block_extent(d: *const dstr) -> usize {
+    // SAFETY: the caller guarantees `d`.
+    let (array, len, capacity) = unsafe { ((*d).array, (*d).len, (*d).capacity) };
+    if array.is_null() {
+        0
+    } else {
+        capacity.max(len + 1)
+    }
+}
+
 /// `dstr_ensure_capacity` from `dstr.h`: the same growth rule and the same
 /// `brealloc` call, so `capacity` (and the allocator traffic) match C.
 ///
@@ -196,10 +213,10 @@ pub(crate) unsafe fn free(d: *mut dstr) {
 /// for `n` reads.
 unsafe fn write_at(d: *mut dstr, at: usize, src: *const u8, n: usize) {
     // SAFETY: the caller guarantees `d` is valid.
-    let (old, old_cap) = unsafe { ((*d).array as *const u8, (*d).capacity) };
+    let (old, old_extent) = unsafe { ((*d).array as *const u8, block_extent(d)) };
     let own = (!old.is_null())
         .then(|| (src as usize).wrapping_sub(old as usize))
-        .filter(|&off| off < old_cap);
+        .filter(|&off| off < old_extent);
     // SAFETY: forwarded to the caller.
     unsafe { ensure_capacity(d, at + n + 1) };
     // SAFETY: the buffer now holds `at + n + 1` bytes. An own-buffer source
@@ -293,13 +310,13 @@ unsafe fn copy_in_place(d: *mut dstr, array: *const c_char) {
 /// # Safety
 ///
 /// `d` must be a valid `dstr`.
-unsafe fn points_into(d: *mut dstr, p: *const c_char) -> bool {
+pub(crate) unsafe fn points_into(d: *mut dstr, p: *const c_char) -> bool {
     // SAFETY: the caller guarantees `d`.
-    let (array, capacity) = unsafe { ((*d).array as *const u8, (*d).capacity) };
-    if p.is_null() || array.is_null() || capacity == 0 {
+    let (array, extent) = unsafe { ((*d).array as *const u8, block_extent(d)) };
+    if p.is_null() || array.is_null() {
         return false;
     }
-    (p as *const u8 as usize).wrapping_sub(array as usize) < capacity
+    (p as *const u8 as usize).wrapping_sub(array as usize) < extent
 }
 
 /// `dstr_safe_printf` in one pass: grow once, write once.
