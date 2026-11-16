@@ -251,14 +251,106 @@ fn the_host_lists_its_images_in_load_order() {
         .map(|e| e.file.clone())
         .unwrap_or_default();
     assert!(
-        owner.starts_with("libc") || owner.starts_with("libsystem"),
+        owner.starts_with("libc") || owner.starts_with("libsystem") || owner == "ucrtbase.dll",
         "malloc in {owner:?}"
     );
 }
 
+#[cfg(not(windows))]
 fn libc_malloc_address() -> usize {
     unsafe extern "C" {
         fn malloc(size: usize) -> *mut std::ffi::c_void;
     }
     malloc as unsafe extern "C" fn(usize) -> *mut std::ffi::c_void as usize
+}
+
+/// On Windows, `malloc` taken by address is the import stub in this
+/// executable; the C library's own is in `ucrtbase.dll`.
+#[cfg(windows)]
+fn libc_malloc_address() -> usize {
+    windows::export("ucrtbase.dll", c"malloc")
+}
+
+#[cfg(windows)]
+mod windows {
+    use std::ffi::{CStr, c_void};
+
+    use obs_exit_watchdog::images::{current, file_name};
+    use obs_exit_watchdog::stack;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn LoadLibraryW(name: *const u16) -> *mut c_void;
+        fn GetModuleHandleW(name: *const u16) -> *mut c_void;
+        fn GetProcAddress(module: *mut c_void, name: *const i8) -> *mut c_void;
+    }
+
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain([0]).collect()
+    }
+
+    /// The address of `name` exported by `dll` (loaded if it is not).
+    pub(super) fn export(dll: &str, name: &CStr) -> usize {
+        let dll = wide(dll);
+        // SAFETY: NUL-terminated strings; the module stays loaded.
+        unsafe {
+            let mut module = GetModuleHandleW(dll.as_ptr());
+            if module.is_null() {
+                module = LoadLibraryW(dll.as_ptr());
+            }
+            assert!(!module.is_null());
+            GetProcAddress(module, name.as_ptr()).addr()
+        }
+    }
+
+    /// Windows lists its images, and on x64 captures another thread's stack
+    /// (#4589): the watchdog line can name the DLL.
+    #[test]
+    fn windows_lists_images_and_captures_stacks() {
+        assert!(!current().is_empty(), "no image list on Windows");
+        if !cfg!(target_arch = "x86_64") {
+            return;
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            tx.send(stack::current()).unwrap();
+            super::super::block()
+        });
+        let thread = rx.recv().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        stack::prepare();
+        let mut frames = [0usize; 64];
+        assert!(
+            stack::capture(&thread, &mut frames) > 1,
+            "no stack capture on Windows x64"
+        );
+    }
+
+    /// A library loaded later comes after the ones loaded before it, as
+    /// `LoadLibrary` of a plugin and its dependencies does in OBS.
+    #[test]
+    fn a_library_loaded_later_comes_last() {
+        // Not loaded by the test executable or the C runtime.
+        const LATE: &str = "winmm.dll";
+        let before = current();
+        if before
+            .iter()
+            .any(|i| file_name(&i.path).eq_ignore_ascii_case(LATE))
+        {
+            return; // already loaded by another test of this process
+        }
+        let _ = export(LATE, c"timeGetTime");
+        let after = current();
+        let at = after
+            .iter()
+            .position(|i| file_name(&i.path).eq_ignore_ascii_case(LATE))
+            .unwrap_or_else(|| panic!("{LATE} not listed: {after:?}"));
+        for image in &before {
+            let was = after
+                .iter()
+                .position(|i| i.start == image.start)
+                .unwrap_or_else(|| panic!("{image:?} gone"));
+            assert!(was < at, "{image:?} is listed after {LATE}");
+        }
+    }
 }
