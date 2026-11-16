@@ -507,7 +507,11 @@ not get a line.
   itself, for example `... is blocking in libremidi.so.4 (loaded by
   advanced-scene-switcher.so); ending the process`. *Linux, macOS*,
   pending merge. Issue
-  [#4525](https://github.com/obs-rust/obs-studio/issues/4525).
+  [#4525](https://github.com/obs-rust/obs-studio/issues/4525). On
+  *Windows x64* the line names the DLL when OBS blocks in `exit()` before
+  Windows unloads the DLLs, or when the helper process is missing; a block
+  while Windows unloads them is named in a later change. Issue
+  [#4589](https://github.com/obs-rust/obs-studio/issues/4589).
 - **The exit watchdog on Windows.** When a plugin DLL blocks while Windows
   unloads it at exit (for example, its static destructor waits for a
   signal that never comes), OBS still ends after 10 s, with the same
