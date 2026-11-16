@@ -2,7 +2,7 @@
 # through the Linux/Xvfb path, not the Windows D3D11 or macOS test harnesses.
 if(OS_LINUX AND TARGET OBS::libobs-opengl)
   # Public API characterization, linked against whichever libobs Tier 2 selects.
-  add_executable(test_scene_item_set_visibility test_scene_item_set_visibility.c)
+  add_executable(test_scene_item_set_visibility "${CMAKE_CURRENT_LIST_DIR}/../test_scene_item_set_visibility.c")
   target_include_directories(test_scene_item_set_visibility PRIVATE ${CMOCKA_INCLUDE_DIR})
   target_link_libraries(test_scene_item_set_visibility PRIVATE OBS::libobs ${CMOCKA_LIBRARIES})
   if(TARGET OBS::w32-pthreads)

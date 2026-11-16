@@ -20,8 +20,8 @@ class SceneVisibilityRegistration(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         source = Path(temporary.name)
         build = source / "build"
-        # Configure the unchanged real C fixture; no graphics code executes here.
-        shutil.copyfile(ROOT / "test/cmocka" / f"{NAME}.c", source / f"{NAME}.c")
+        # The real fragment resolves the unchanged fixture relative to itself.
+        # No graphics code executes in this configure-only check.
         backend = (
             "add_library(libobs-opengl SHARED IMPORTED)\n"
             "add_library(OBS::libobs-opengl ALIAS libobs-opengl)\n"
