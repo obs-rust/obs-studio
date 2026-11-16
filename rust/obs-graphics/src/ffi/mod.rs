@@ -47,6 +47,7 @@ pub mod shader_sampler_convert;
 pub mod sprite;
 pub mod stagesurface_getters;
 pub mod state_stacks;
+pub mod stencil;
 pub mod texture_creators;
 pub mod texture_file_data2;
 pub mod texture_metadata;

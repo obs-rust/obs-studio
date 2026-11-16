@@ -811,9 +811,15 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("graphics/vertexbuffer-access.c.h")),
     )
     .expect("write vertex-buffer access extract");
+    std::fs::write(
+        extract_dir.join("graphics-stencil.inc"),
+        extract_after_libobs_pch(&libobs.join("graphics/stencil-state-entrypoints.c.h")),
+    )
+    .expect("write original stencil dispatch");
     for stem in [
         "graphics-linear-srgb",
         "graphics-linear-srgb-fields",
+        "graphics-stencil-adapter",
         "texture-creators-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));

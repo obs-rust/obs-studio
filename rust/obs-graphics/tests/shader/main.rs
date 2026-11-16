@@ -56,3 +56,5 @@ pub(crate) static LOG_HANDLER: Mutex<()> = Mutex::new(());
 
 mod stagesurface_getters;
 mod stagesurface_getters_parity;
+mod stencil;
+mod stencil_parity;
