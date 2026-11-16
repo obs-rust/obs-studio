@@ -613,6 +613,13 @@ If the selected base is a fork, explicitly choose it with
 `gh repo set-default OWNER/REPO` or `GH_REPO`; captured repository queries cannot
 ask gh's interactive fork-selection question.
 
+When stamping amends an already-published HEAD, `./push` uses an exact
+`--force-with-lease=<branch>:<pre-stamp-sha>` only if the push destination
+still names that pre-stamp commit and the amended commit preserves its tree
+and parents. A concurrent remote update rejects the lease. New branches and
+ordinary fast-forward updates use a plain push; divergent history is never
+force-pushed. The publication message reports which case applies.
+
 1. Claim the issue and check open PRs ([coordination.md](rust-port/coordination.md)).
 2. Commit RED, then GREEN.
 3. `./lint --fix`, then commit what it changed.
