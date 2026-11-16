@@ -4,6 +4,7 @@ import contextlib
 import datetime as dt
 import importlib.util
 import io
+import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -30,6 +31,12 @@ def commit(sha=HEAD):
 def removal(reason="failed_checks"):
     return {"__typename": "RemovedFromMergeQueueEvent", "reason": reason,
             "beforeCommit": {"oid": "b" * 40}}
+
+
+def history(nodes, *, head=HEAD, previous=False, cursor=None):
+    return {"data": {"repository": {"pullRequest": {
+        "headRefOid": head, "timelineItems": {"nodes": nodes,
+            "pageInfo": {"hasPreviousPage": previous, "startCursor": cursor}}}}}}
 
 
 class CooperationTests(unittest.TestCase):
@@ -91,10 +98,11 @@ class CooperationTests(unittest.TestCase):
                  ([commit(), removal(), removal("manual")], True),
                  ([commit("c" * 40), removal(), commit()], True),
                  ([commit(), removal(), {"__typename": "HeadRefForcePushedEvent",
+                                        "afterCommit": {"oid": HEAD}}], False),
+                 ([commit(), commit("c" * 40), removal(), {"__typename": "HeadRefForcePushedEvent",
                                         "afterCommit": {"oid": HEAD}}], True)]
         for timeline, allowed in cases:
-            data = {"data": {"repository": {"pullRequest": {
-                "headRefOid": HEAD, "timelineItems": {"nodes": timeline}}}}}
+            data = history(timeline)
             with self.subTest(timeline=timeline), patch.object(bot, "gh_json", return_value=data):
                 go, why = bot.should_enqueue(pr())
             self.assertEqual(go, allowed)
@@ -106,6 +114,48 @@ class CooperationTests(unittest.TestCase):
                 patch.object(bot, "should_enqueue", return_value=(False, "failed in the merge queue")):
             self.assertEqual(bot.publish(1, pr(), None, "new"), "left out: failed in the merge queue")
         self.assertFalse(any(c.args[:3] == ("gh", "pr", "merge") for c in run.call_args_list))
+
+    def test_queue_history_pages_back_to_head(self):
+        pages = [history([removal()], previous=True, cursor="older"), history([commit()])]
+        with patch.object(bot, "gh_json", side_effect=pages) as api:
+            self.assertEqual(bot.should_enqueue(pr()), (False, "failed in the merge queue"))
+        self.assertIn("before=older", api.call_args.args)
+
+    def test_unknown_failure_history_refuses_before_mutation(self):
+        bad = [history([removal()]), history([commit(), removal()], head="new"),
+               {"errors": [{"message": "API unavailable"}]}]
+        for data in bad:
+            with self.subTest(data=data), patch.object(bot, "gh_json", side_effect=[pr(), data]), \
+                    patch.object(bot, "run") as run:
+                with self.assertRaises(RuntimeError):
+                    bot.rebase_pr(1, False)
+                run.assert_not_called()
+
+    def test_failure_snapshot_survives_rebase(self):
+        commands = []
+        def run(*args, **kwargs):
+            commands.append(args)
+            if args[:2] == ("git", "rev-parse"):
+                return HEAD if len([c for c in commands if c[:2] == args[:2]]) == 1 else "new"
+            return ""
+        with patch.object(bot, "gh_json", side_effect=[pr(), history([commit(), removal()])]) as api, \
+                patch.object(bot, "run", side_effect=run), patch.object(bot, "replay", return_value=0):
+            self.assertIn("left out: failed in the merge queue", bot.rebase_pr(1, False))
+        self.assertEqual(api.call_count, 2)
+        self.assertFalse(any(c[:3] == ("gh", "pr", "merge") for c in commands))
+
+    def test_graphql_uses_shared_wrapper(self):
+        with patch.object(bot, "run", return_value=json.dumps(history([]))) as run:
+            bot.failed_in_queue(pr())
+        self.assertEqual(run.call_args.args[:4], ("uv", "run", "--no-project", "--script"))
+        self.assertTrue(run.call_args.args[4].endswith("gh_graphql.py"))
+
+    def test_failed_arm_outcome_sets_nonzero_exit(self):
+        with patch.object(bot.sys, "argv", ["ai_rebase.py", "1"]), \
+                patch.object(bot, "run", return_value=HEAD), \
+                patch.object(bot, "rebase_pr", return_value="pushed: old -> new; failed to arm auto-merge: rejected"), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(bot.main(), 1)
 
     def test_stacked_draft_still_becomes_ready_and_arms(self):
         stack = (42, "c" * 40, "MERGED")

@@ -43,7 +43,24 @@ A resolution is refused, and the PR is left untouched with a comment explaining 
 - `git diff --check` fails,
 - the file is a lock file or binary.
 
-The push uses `--force-with-lease` against the head that was fetched, so an author's concurrent push always wins. It then decides whether the PR goes back in the queue, biased towards yes: auto-merge is armed (pinned to the new head) unless the PR is a draft, says hold or "do not enqueue" in its body or labels, has changes requested, or failed more than two real checks on its old head. Back pressure is left to the queue and the gate.
+The push uses `--force-with-lease` against the head that was fetched, so an author's concurrent push always wins. It then decides whether the PR goes back in the queue, biased towards yes: auto-merge is armed (pinned to the new head) unless the PR is a draft, says hold or "do not enqueue" in its body or labels, has changes requested, failed more than two real checks on its old head, or failed in the merge queue. Back pressure is left to the queue and the gate. The arm command leaves the merge strategy to the queue (which squashes); a rejected arm is reported as `failed to arm auto-merge` and makes the script exit nonzero even when the push succeeded.
+
+### Cooperation with the coordinator, manager and worker pool
+
+The bot owns mechanical rebases of DIRTY PRs and landing stacked drafts after their parent merges. The coordinator/manager assigns a worker to real failures or rebases the bot refuses, and checks whether the bot is enabled before assigning overlapping rebase or landing work. Both bulk selection and explicit PR runs respect these signals:
+
+| label | owner and contract |
+|---|---|
+| `pool-active` | A pool worker adds it before working on an existing PR and removes it when retiring. The bot reports `skipped: worker active` and does not fetch, check out, rebase or push that PR. |
+| `queue-failed` | The manager adds it after a real queue test failure, dequeues and disarms the PR, and stops its watcher. The bot reports `left out: failed in the merge queue` and leaves it disarmed. Remove it only after a worker fixes and verifies the failure; a human/coordinator decides when to requeue an infrastructure failure. Watchers must honor the label too. |
+
+The bot also grants at least 30 minutes of quiet time after a head push, reporting `skipped: worker active`. GitHub often returns null for commit `pushedDate`, so the cheap signal is PR `updatedAt`: pushes advance it even when the commit was authored earlier. Comments or label changes can conservatively extend that quiet time. Missing activity data also skips the PR. Skipped workers consume no bulk headroom; the remaining candidates keep their original oldest-first order.
+
+Even without `queue-failed`, the bot checks the most recent `removed_from_merge_queue` timeline event before rebasing. A `failed_checks` ejection on the current PR head prevents re-arming. The event's `beforeCommit` is a synthetic queue commit, so the bot uses ordered commit/force-push timeline events to bind the failure to the PR head, paging backwards when necessary. A newer head or a later non-failure removal does not inherit an old failure. Unreadable or incomplete failure history refuses the operation instead of guessing. The old head's verdict survives the bot's own rebase; rebasing alone cannot clear a real failure.
+
+Stacked drafts keep the first line `Stacked on #P: review only the commits after <sha>.` Once P merges, the bot replays only commits after that SHA, replaces the stacking note and marks the PR ready, subject to the same ownership, holds and queue-failure guards. Lease pushes, FIFO ordering and back-pressure headroom remain in force. Bot pushes carry no client attestation, so the rebased PR runs fallback CI.
+
+As of 2026-11-16, the bot is disabled because `AI_REBASE_TOKEN` has been missing since 11-10. These cooperation guards make re-enabling safer; they do not set the token or enable the bot. Refs #4896.
 
 `.github/workflows/ai-rebase.yaml` runs the script on every master push, every 30 minutes, and on manual dispatch with explicit PR numbers.
 
