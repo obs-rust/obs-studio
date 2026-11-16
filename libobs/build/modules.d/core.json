@@ -9,6 +9,7 @@
     "core-scene-transform-states",
     "core-source",
     "core-source-filter-backup",
+    "core-source-type-enum",
     "null-audio",
     "util-cf"
   ],
