@@ -70,6 +70,7 @@
 #include "libobs/obs-service.c.h"
 #include "libobs/obs-video-gpu-encode.c.h"
 #include "libobs/obs-video-graphics-tasks.c.h"
+#include "libobs/obs-video-render-passes.c.h"
 #include "libobs/obs-video-render-size.c.h"
 #include "libobs/obs-video-stop-requested.c.h"
 #include "libobs/obs-video.c.h"
