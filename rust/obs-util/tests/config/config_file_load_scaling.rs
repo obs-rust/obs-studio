@@ -4,19 +4,32 @@
 //! Identical keys all land in one bucket, uthash stops expanding after two
 //! ineffective expands, and the chain grows to the number of duplicates. A
 //! model that pays O(chain) per insert turns a few hundred kilobytes of
-//! `k=` lines into a load that takes seconds to minutes. The test times the
-//! load at two sizes and checks the ratio, which stays near the size ratio for
-//! linear work and near its square for quadratic work, so it does not depend
-//! on how fast the machine is.
+//! `k=` lines into a load that takes seconds to minutes.
+//!
+//! The test compares one load of `LARGE` entries with `COPIES` loads of
+//! `SMALL` entries, where `LARGE = COPIES * SMALL`. Both phases do the same
+//! linear work, so the ratio is about 1 for linear work and about `COPIES`
+//! (32) for quadratic work, on any machine. Both phases also run for about
+//! the same time, so a busy host slows both by a similar share.
+//!
+//! An earlier form timed one load of 10000 entries against one of 80000 and
+//! failed on the macOS CI runner with ratios of 24 and 28 against a bound of
+//! 24 (#4835). Locally, on efficiency cores under load, its ratio spread from
+//! 7 to 21 while this ratio stays near 1. A large load that is also slower per
+//! entry (more memory) adds to both forms; the wide gap between 1 and
+//! `COPIES` leaves room for it.
 
 use std::time::{Duration, Instant};
 
 use obs_util::config_file::Config;
 
-const SMALL: usize = 10_000;
-const LARGE: usize = 8 * SMALL;
-/// Linear work gives about 8, quadratic about 64.
-const MAX_RATIO: f64 = 24.0;
+const SMALL: usize = 2_500;
+const COPIES: usize = 32;
+const LARGE: usize = COPIES * SMALL;
+/// Rounds of both phases, interleaved, so both sample the same load.
+const ROUNDS: usize = 3;
+/// Linear work gives about 1, quadratic about `COPIES` (32).
+const MAX_RATIO: f64 = 8.0;
 
 fn repeated_keys(n: usize) -> Vec<u8> {
     let mut t = String::with_capacity(n * 12 + 4);
@@ -35,43 +48,38 @@ fn repeated_sections(n: usize) -> Vec<u8> {
     t.into_bytes()
 }
 
-/// Best of three loads, so a noisy neighbour on CI only makes it slower.
-fn best_load(text: &[u8], check: impl Fn(&Config)) -> Duration {
-    (0..3)
-        .map(|_| {
-            let start = Instant::now();
-            let c = Config::open_string(text);
-            let took = start.elapsed();
-            check(&c);
-            took
-        })
-        .min()
-        .unwrap()
+/// Loads, checks and drops `text` `copies` times and returns the time of all
+/// of it. Both phases time the same steps, and only one config is alive at a
+/// time.
+fn timed_loads(text: &[u8], copies: usize, check: impl Fn(&Config)) -> Duration {
+    let start = Instant::now();
+    for _ in 0..copies {
+        check(&Config::open_string(text));
+    }
+    start.elapsed()
 }
 
 fn assert_linear(name: &str, build: fn(usize) -> Vec<u8>, want: fn(usize) -> Option<String>) {
     let small = build(SMALL);
     let large = build(LARGE);
-    let t_small = best_load(&small, |c| {
-        assert_eq!(
-            c.get_string(b"s", b"k"),
-            want(SMALL).map(String::into_bytes),
-            "{name} {SMALL}"
-        );
-    });
-    let t_large = best_load(&large, |c| {
-        assert_eq!(
-            c.get_string(b"s", b"k"),
-            want(LARGE).map(String::into_bytes),
-            "{name} {LARGE}"
-        );
-    });
+    let check = |n: usize| {
+        let want = want(n).map(String::into_bytes);
+        move |c: &Config| assert_eq!(c.get_string(b"s", b"k"), want, "{name} {n}")
+    };
+    // Best of each phase over interleaved rounds: a noisy neighbour can only
+    // make a phase slower.
+    let mut t_small = Duration::MAX;
+    let mut t_large = Duration::MAX;
+    for _ in 0..ROUNDS {
+        t_small = t_small.min(timed_loads(&small, COPIES, check(SMALL)));
+        t_large = t_large.min(timed_loads(&large, 1, check(LARGE)));
+    }
     // Floor the small time so timer resolution cannot inflate the ratio.
     let ratio = t_large.as_secs_f64() / t_small.as_secs_f64().max(1e-3);
     assert!(
         ratio < MAX_RATIO,
-        "{name}: {LARGE} entries took {t_large:?}, {SMALL} took {t_small:?}; \
-         ratio {ratio:.1} for 8x the input (linear is about 8, quadratic about 64)"
+        "{name}: 1 load of {LARGE} entries took {t_large:?}, {COPIES} loads of {SMALL} \
+         took {t_small:?}; ratio {ratio:.2} (linear is about 1, quadratic about {COPIES})"
     );
 }
 
