@@ -468,7 +468,8 @@ jobs:
           fi
 
           # Rust must actually be linked into the production library, never the C reference.
-          lib=$(find build_* -not -path '*libobs-c-reference/*' \( -name obs.dll -o -name 'libobs.so*' -o -path '*libobs.framework/Versions/A/libobs' \) -type f | head -1)
+          # Only the library: unity objects such as libobs.source-*+.h.c.o match 'libobs.so*' (#4905).
+          lib=$(find build_* -not -path '*libobs-c-reference/*' \( -name obs.dll -o -name libobs.so -o -name 'libobs.so.[0-9]*' -o -path '*libobs.framework/Versions/A/libobs' \) -type f | head -1)
           echo "libobs: $lib"
           [ -n "$lib" ] || { echo "::error::libobs was not built"; exit 1; }
           grep -a -q '/rustc/' "$lib" || { echo "::error::no Rust code in $lib"; exit 1; }
