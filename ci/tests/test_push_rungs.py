@@ -315,6 +315,147 @@ class PullRequestTransport(unittest.TestCase):
         self.assertEqual(base_lookup[3], self.BASE)
 
 
+class RestampPublication(unittest.TestCase):
+    """Run main against real Git objects and a disposable bare push remote."""
+
+    BRANCH = "fix/restamp"
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="push-restamp-")
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        self.local = root / "local"
+        self.remote = root / "remote.git"
+        self.local.mkdir()
+        self.git("init", "--bare", str(self.remote))
+        self.git("init", "-b", self.BRANCH)
+        self.git("config", "user.name", "Push test")
+        self.git("config", "user.email", "push@example.invalid")
+        self.git("config", "commit.gpgsign", "false")
+        self.git("config", "core.hooksPath", str(root / "no-hooks"))
+        self.git("commit", "--allow-empty", "-m", "base")
+        (self.local / "input").write_text("original\n")
+        self.git("add", "input")
+        self.git("commit", "-m", "feature")
+        self.before = self.git("rev-parse", "HEAD")
+        self.git("remote", "add", "origin", str(self.remote))
+        self.pushes = []
+
+    def git(self, *args):
+        return subprocess.run(["git", *args], cwd=self.local, check=True,
+                              text=True, capture_output=True).stdout.strip()
+
+    def remote_head(self):
+        return self.git("--git-dir", str(self.remote), "rev-parse", f"refs/heads/{self.BRANCH}")
+
+    def seed(self):
+        self.git("push", "origin", self.BRANCH)
+
+    def stamp(self):
+        self.git("commit", "--amend", "-m", "feature\n\nCi-Attestation: test")
+        return True
+
+    def advance_remote(self):
+        # A separate remote commit exists before the client begins stamping.
+        self.git("commit", "--allow-empty", "-m", "concurrent remote work")
+        rival = self.git("rev-parse", "HEAD")
+        self.git("push", "origin", "HEAD:refs/heads/rival")
+        self.git("reset", "--hard", self.before)
+        return rival
+
+    def publish(self, stamp=None, race=None):
+        original_run = push.run
+
+        def command(args, **kwargs):
+            if args[:2] == ["git", "push"]:
+                self.pushes.append(args)
+                if race:
+                    race()
+                kwargs["capture"] = True
+            return original_run(args, **kwargs)
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output), \
+                mock.patch.object(push, "ROOT", self.local), \
+                mock.patch.object(push, "REQUIRE", False), \
+                mock.patch.object(push, "attest", side_effect=stamp or self.stamp), \
+                mock.patch.object(push, "pr_repositories", return_value=({}, {})), \
+                mock.patch.object(push, "ensure_pr", return_value=0), \
+                mock.patch.object(push, "run", side_effect=command):
+            try:
+                result = push.main([])
+            except subprocess.CalledProcessError as exc:
+                result = exc.returncode
+        return result, output.getvalue()
+
+    def test_new_branch_uses_plain_push(self):
+        result, output = self.publish()
+        self.assertEqual(result, 0, output)
+        self.assertEqual(self.pushes, [["git", "push", "-u", "origin", self.BRANCH]])
+        self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+        self.assertIn("plain push", output)
+
+    def test_exact_remote_head_restamp_uses_pinned_lease(self):
+        self.seed()
+        result, output = self.publish()
+        self.assertEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+        self.assertIn(f"--force-with-lease={self.BRANCH}:{self.before}", self.pushes[0])
+        self.assertIn("re-stamp", output)
+
+    def test_remote_moved_after_stamp_is_refused(self):
+        self.seed()
+        rival = self.advance_remote()
+
+        def stamp():
+            self.stamp()
+            self.git("--git-dir", str(self.remote), "update-ref", f"refs/heads/{self.BRANCH}", rival)
+            return True
+
+        result, output = self.publish(stamp)
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), rival)
+        self.assertFalse(any(a.startswith("--force") for c in self.pushes for a in c))
+
+    def test_remote_moved_during_publication_is_protected_by_lease(self):
+        self.seed()
+        rival = self.advance_remote()
+        result, output = self.publish(race=lambda: self.git(
+            "--git-dir", str(self.remote), "update-ref", f"refs/heads/{self.BRANCH}", rival))
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), rival)
+        self.assertIn(f"--force-with-lease={self.BRANCH}:{self.before}", self.pushes[0])
+
+    def test_diverged_history_is_refused(self):
+        self.seed()
+        self.git("commit", "--amend", "-m", "divergent local history")
+        result, output = self.publish()
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.before)
+        self.assertFalse(any(a.startswith("--force") for c in self.pushes for a in c))
+
+    def test_content_amendment_is_not_a_restamp(self):
+        self.seed()
+
+        def stamp():
+            (self.local / "input").write_text("changed\n")
+            self.git("add", "input")
+            return self.stamp()
+
+        result, output = self.publish(stamp)
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.before)
+        self.assertFalse(any(a.startswith("--force") for c in self.pushes for a in c))
+
+    def test_fast_forward_fixup_keeps_plain_push(self):
+        self.seed()
+        self.git("commit", "--allow-empty", "-m", "fixup")
+        result, output = self.publish()
+        self.assertEqual(result, 0, output)
+        self.assertEqual(self.pushes, [["git", "push", "-u", "origin", self.BRANCH]])
+        self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+
+
 class PinnedSoldr(unittest.TestCase):
     def test_pin_matches_every_ci_setup_step(self):
         from test_soldr_pin import workflow_pins
