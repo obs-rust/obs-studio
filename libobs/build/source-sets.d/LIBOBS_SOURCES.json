@@ -217,7 +217,6 @@
   "graphics/vec4.h",
   "build/libobs.core+.h.c",
   "build/libobs.core-canvas-move+.h.c",
-  "build/libobs.core-hotkey-background-enum+.h.c",
   "build/libobs.core-output+.h.c",
   "build/libobs.core-output-weak-lifetime+.h.c",
   "build/libobs.core-scene-lookup+.h.c",

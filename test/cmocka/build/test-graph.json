@@ -5358,6 +5358,21 @@
         }
       ]
     },
+    "test_hotkey_background_enum_library": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_enum_library.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_background_error": {
       "sources": [
         "test/cmocka/test_hotkey_background_error.c"
@@ -21152,6 +21167,18 @@
     "test_hotkey_background_enum": {
       "target": "test_hotkey_background_enum",
       "timeout_seconds": 30
+    },
+    "test_hotkey_background_enum_library": {
+      "target": "test_hotkey_background_enum_library",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
     },
     "test_hotkey_background_error": {
       "target": "test_hotkey_background_error",
