@@ -9,6 +9,12 @@ commit SHAs and --number. Policy and the cached GraphQL wrapper are read from
 that base's git objects. The loaded verifier must match the base as well.
 Never import scripts or policy from the head to decide trust.
 
+PR trust and scope use merge-base-relative names, excluding changes made only
+on BASE since the branch point (including master merged into the PR). Policy
+still comes from immutable BASE and evidence binds HEAD; the merge queue runs
+its selected heavy checks on the actual combined result. Missing merge history
+or diff errors retain real checks.
+
 forge-ci/prooft 0.2.0 source pin:
 d08d58bebcd8592e4526b9bde9ca4717966a8786 (used by the isolated subprocess adapter).
 Uses its v1 Policy, Trailers, verify and lane_key APIs, not another trailer
@@ -246,12 +252,16 @@ def base_objects(git, base, head):
     return commit
 
 
-def reject_surfaces(git, base, head):
+def changed_paths(git, base, head):
+    """PR-owned names from the merge base; missing history raises GitError."""
     # --no-renames exposes both removed and added names; -z handles odd paths.
-    paths = git.run(
-        "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", base, head
-    ).split("\0")
-    touched = sorted(path for path in paths if path and trust_surface(path))
+    return [path for path in git.run(
+        "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", f"{base}...{head}"
+    ).split("\0") if path]
+
+
+def reject_surfaces(git, base, head):
+    touched = sorted(path for path in changed_paths(git, base, head) if trust_surface(path))
     if touched:
         raise ValueError("trust-surface: " + ", ".join(touched))
 
@@ -573,9 +583,7 @@ def main(argv=None):
         now=time.time(),
     )
     try:
-        files = [path for path in Git(args.repo_dir).run(
-            "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", args.base, args.head
-        ).split("\0") if path]
+        files = changed_paths(Git(args.repo_dir), args.base, args.head)
     except (GitError, OSError, subprocess.SubprocessError):
         files = None
     result = admission(result, files, event=args.event)
