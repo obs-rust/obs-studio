@@ -5,7 +5,7 @@
     "core-canvas-move",
     "core-output",
     "core-output-weak-lifetime",
-    "core-private-data",
+    "core-private-data-fields",
     "core-scene-lookup",
     "core-scene-transform-states",
     "core-source",
