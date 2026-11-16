@@ -31,12 +31,21 @@ pub trait BackgroundShortcuts {
 /// Call `func` for each shortcut in order, under the mutex, until it returns
 /// false. A missing callback returns before locking; an unavailable core
 /// returns without calling it.
-#[expect(clippy::todo, reason = "RED stub")]
 pub fn enumerate<B, F>(list: &mut B, func: Option<F>)
 where
     B: BackgroundShortcuts,
     F: FnMut(B::Shortcut) -> bool,
 {
-    let _ = (list, func);
-    todo!("port obs_hotkeys_enum_background_shortcuts")
+    let Some(mut func) = func else {
+        return;
+    };
+    if !list.lock() {
+        return;
+    }
+    for index in 0.. {
+        if index >= list.count() || !func(list.get(index)) {
+            break;
+        }
+    }
+    list.unlock();
 }

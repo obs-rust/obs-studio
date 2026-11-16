@@ -1,0 +1,1 @@
+obs_hotkeys_enum_background_shortcuts
