@@ -57,6 +57,21 @@ class FastGateOversubscriptionTest(unittest.TestCase):
         with mock.patch.dict(gate.os.environ, {"OBS_GATE_TEST_THREADS": "16"}, clear=False):
             self.assertEqual(gate.test_threads(), 16)
 
+    def test_slow_groups_start_before_the_bulk_queue(self):
+        # #4896: the native compiler group and pipe spawn stress tests formed
+        # a long tail after most tests finished. Full inherits default's
+        # per-setting overrides; neither profile should leave them at priority 0.
+        for profile in ("default", "full"):
+            rules = list(self.cfg["profile"][profile].get("overrides", []))
+            if profile != "default":
+                rules += self.cfg["profile"]["default"].get("overrides", [])
+            for pattern in ("native_build::", "pipe_parity::"):
+                with self.subTest(profile=profile, pattern=pattern):
+                    priorities = [rule["priority"] for rule in rules
+                                  if "priority" in rule and f"test(/{pattern}/)" in rule.get("filter", "")]
+                    self.assertTrue(priorities and priorities[0] > 0,
+                                    f"{profile}: {pattern} must start before ordinary tests")
+
 
 if __name__ == "__main__":
     unittest.main()
