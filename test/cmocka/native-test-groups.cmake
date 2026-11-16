@@ -1,6 +1,8 @@
 # Explicit C unity partitions shared with obs-build. Keeping callers separate
 # from definitions preserves GNU ld --wrap's undefined-reference boundary.
 function(_obs_test_graph_groups target graph root sources)
+  # Deferred link-support hooks must also recognize sources inside generated groups.
+  set_property(TARGET ${target} PROPERTY OBS_NATIVE_TEST_GRAPH_SOURCES "${sources}")
   string(JSON kind ERROR_VARIABLE error TYPE "${graph}" targets "${target}" unity_groups)
   if(error)
     return()
