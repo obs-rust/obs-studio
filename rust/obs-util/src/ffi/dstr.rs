@@ -293,7 +293,7 @@ unsafe fn copy_in_place(d: *mut dstr, array: *const c_char) {
 /// # Safety
 ///
 /// `d` must be a valid `dstr`.
-unsafe fn points_into(d: *mut dstr, p: *const c_char) -> bool {
+pub(crate) unsafe fn points_into(d: *mut dstr, p: *const c_char) -> bool {
     // SAFETY: the caller guarantees `d`.
     let (array, capacity) = unsafe { ((*d).array as *const u8, (*d).capacity) };
     if p.is_null() || array.is_null() || capacity == 0 {

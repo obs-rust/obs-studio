@@ -893,6 +893,61 @@ fn converted_dstr_remove_matches_c() {
     check_converted(&d, b"", 0, false);
 }
 
+// #4901: a converted dstr has capacity 0 but still owns its `len + 1`
+// bytes, so a pointer into them is in its buffer.
+#[test]
+fn converted_dstr_buffer_holds_its_string() {
+    let mut d = converted_pair(b"abcdef");
+    let p = d.r.array;
+    // SAFETY: `d.r` is a valid converted dstr; `points_into` only compares
+    // addresses, and `wrapping_add` makes no pointer that is read.
+    unsafe {
+        assert!(r::points_into(&mut d.r, p));
+        assert!(
+            r::points_into(&mut d.r, p.wrapping_add(6)),
+            "the terminator"
+        );
+        assert!(
+            !r::points_into(&mut d.r, p.wrapping_add(7)),
+            "one past the block"
+        );
+    }
+}
+
+// #4901: appending a converted dstr to itself. The grow moves the block, and
+// the source must be read from the new block, as C does.
+#[test]
+fn converted_dstr_self_append_matches_c() {
+    let input: Vec<u8> = b"abcdefghijklmnopqrstuvwxyz"
+        .iter()
+        .copied()
+        .cycle()
+        .take(4000)
+        .collect();
+    for n in [None, Some(1000)] {
+        let mut d = converted_pair(&input);
+        let (pr, pc): (*mut dstr, *mut OracleDstr) = (&raw mut d.r, &raw mut d.c);
+        // SAFETY: both are valid converted dstrs; C allows `dst == str`.
+        unsafe {
+            match n {
+                None => {
+                    r::dstr_cat_dstr(pr, pr);
+                    c::oracle_dstr_cat_dstr(pc, pc);
+                }
+                Some(n) => {
+                    r::dstr_ncat_dstr(pr, pr, n);
+                    c::oracle_dstr_ncat_dstr(pc, pc, n);
+                }
+            }
+        }
+        let mut expected = input.clone();
+        expected.extend_from_slice(&input[..n.unwrap_or(input.len())]);
+        let (rust, c) = d.snaps();
+        assert_eq!(c.bytes, expected, "C baseline, n = {n:?}");
+        assert_eq!(rust, c, "Rust/C parity, n = {n:?}");
+    }
+}
+
 #[test]
 fn converted_dstr_depad_matches_c() {
     for (input, expected) in [
