@@ -14,6 +14,8 @@ then failed every package check:
 from __future__ import annotations
 
 import re
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -48,6 +50,27 @@ class ReleaseStepPitfallsTest(unittest.TestCase):
         step = text.split("gh release upload continuous", 1)[1].split("gh release edit continuous", 1)[0]
         self.assertIn("gh release delete-asset continuous", step)
 
+
+    def test_libobs_lookup_finds_only_the_library(self):
+        # The 2026-11-16 release (run 43939448954) took the unity object
+        # libobs.source-private-settings+.h.c.o for libobs.so ('libobs.so*')
+        # and failed "no Rust code in" it (#4905). Run the step's own find.
+        text = (ROOT / ".github" / "workflows" / "release-rust.yaml").read_text()
+        m = re.search(r"^\s*lib=\$\((find build_\* .*?) \| head -1\)$", text, re.M)
+        self.assertIsNotNone(m, "release-rust.yaml no longer has the lib=$(find ...) line")
+        with tempfile.TemporaryDirectory() as tmp:
+            build = Path(tmp)
+            objs = build / "build_ubuntu/libobs/CMakeFiles/libobs-mod-core.dir/build"
+            objs.mkdir(parents=True)
+            for name in ("libobs.source-private-settings+.h.c.o", "libobs.sources+.h.c.o"):
+                (objs / name).write_bytes(b"")
+            (build / "build_ubuntu/libobs/libobs.so.30").write_bytes(b"")
+            (build / "build_ubuntu/libobs/libobs.so").symlink_to("libobs.so.30")
+            ref = build / "build_ubuntu/libobs-c-reference"
+            ref.mkdir()
+            (ref / "libobs.so.30").write_bytes(b"")
+            out = subprocess.run(["bash", "-c", m.group(1)], cwd=build, capture_output=True, text=True, check=True)
+        self.assertEqual(out.stdout.split(), ["build_ubuntu/libobs/libobs.so.30"])
 
     def test_daily_beta_is_a_pre_release(self):
         # The daily beta is a pre-release; only a maintainer's certify dispatch
