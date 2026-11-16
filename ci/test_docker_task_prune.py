@@ -174,5 +174,144 @@ class PruneKeepsCurrentImage(unittest.TestCase):
         self.assertNotIn("obs-task:3333", printed)
 
 
+# Per-run volumes for `gc --older-than` (#4638). The fake prints
+# `docker volume ls -q`, answers `docker volume inspect -f ... NAME...` with
+# "<name>\t<CreatedAt>" lines from $VOLUMES, lists the volumes containers
+# mount from $MOUNTS for `docker ps -a ... --format {{.Mounts}}`, and logs
+# `docker volume rm NAME`.
+FAKE_DOCKER_VOLUMES = """#!/bin/sh
+if [ "$1 $2" = "volume ls" ]; then
+  cut -f1 "$VOLUMES"
+elif [ "$1 $2" = "volume inspect" ]; then
+  shift 4
+  for name in "$@"; do
+    grep "^$name	" "$VOLUMES"
+  done
+elif [ "$1" = "ps" ]; then
+  cat "$MOUNTS"
+elif [ "$1 $2" = "volume rm" ]; then
+  printf '%s\\n' "$3" >> "$REMOVED"
+fi
+exit 0
+"""
+
+NOW = "2026-11-15T12:00:00+00:00"
+OLD = "2026-11-03T07:30:59-05:00"
+FRESH = "2026-11-15T11:29:00+00:00"
+
+
+class GcOlderThan(unittest.TestCase):
+    """#4638: `gc --older-than H` reclaims the per-run build and zccache
+    volumes of checkouts that still exist, but never a key still in use."""
+
+    def setUp(self):
+        self.module = load_module()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.bin = root / "bin"
+        self.bin.mkdir()
+        docker = self.bin / "docker"
+        docker.write_text(FAKE_DOCKER_VOLUMES, encoding="utf-8")
+        docker.chmod(0o755)
+        self.volumes = root / "volumes"
+        self.mounts = root / "mounts"
+        self.mounts.touch()
+        self.removed = root / "removed"
+        self.removed.touch()
+
+    def gc(self, volumes: dict[str, str], mounts: str = "", args=("--older-than", "24", "--apply")) -> str:
+        """`gc ARGS` against the fake docker at NOW; returns what it printed."""
+        self.volumes.write_text("".join(f"{n}\t{c}\n" for n, c in volumes.items()), encoding="utf-8")
+        self.mounts.write_text(mounts, encoding="utf-8")
+        env = {
+            "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}",
+            "VOLUMES": str(self.volumes),
+            "MOUNTS": str(self.mounts),
+            "REMOVED": str(self.removed),
+        }
+        out = StringIO()
+        with patch.dict(os.environ, env), redirect_stdout(out), patch.object(
+            self.module, "now", lambda: self.module.parse_created(NOW)
+        ):
+            self.module.gc(list(args))
+        return out.getvalue()
+
+    def gone(self) -> list[str]:
+        return sorted(self.removed.read_text(encoding="utf-8").split())
+
+    def test_needs_no_task_name(self):
+        self.gc({})
+        self.assertEqual(self.gone(), [])
+
+    def test_an_old_unused_pair_is_removed(self):
+        self.gc({
+            "obs-rust-linux-validate-build-1e26c0a3ee51": OLD,
+            "obs-rust-linux-validate-zccache-1e26c0a3ee51": OLD,
+            "obs-studio10-output-error-validate-build-6a4d99a369ca": OLD,
+            "obs-rust-linux-validate-obs-studio10-build-6a4d99a369ca": OLD,
+        })
+        self.assertEqual(self.gone(), [
+            "obs-rust-linux-validate-build-1e26c0a3ee51",
+            "obs-rust-linux-validate-obs-studio10-build-6a4d99a369ca",
+            "obs-rust-linux-validate-zccache-1e26c0a3ee51",
+            "obs-studio10-output-error-validate-build-6a4d99a369ca",
+        ])
+
+    def test_an_old_build_volume_with_a_fresh_partner_is_kept(self):
+        # The case from the report: build-cf38… 40 h old, zccache-cf38… 31 min.
+        self.gc({
+            "obs-rust-linux-validate-build-cf38ef20b89e": OLD,
+            "obs-rust-linux-validate-zccache-cf38ef20b89e": FRESH,
+        })
+        self.assertEqual(self.gone(), [])
+
+    def test_an_old_pair_with_a_partner_in_use_is_kept(self):
+        self.gc(
+            {
+                "obs-rust-linux-validate-build-cf38ef20b89e": OLD,
+                "obs-rust-linux-validate-zccache-cf38ef20b89e": OLD,
+                "obs-rust-linux-validate-obs3-soldr-cf38ef20b89e": OLD,
+            },
+            mounts="/src,obs-rust-linux-validate-obs3-soldr-cf38ef20b89e\n",
+        )
+        self.assertEqual(self.gone(), [])
+
+    def test_a_volume_a_stopped_container_mounts_is_kept(self):
+        self.gc(
+            {"obs-rust-linux-validate-build-1e26c0a3ee51": OLD},
+            mounts="obs-rust-linux-validate-build-1e26c0a3ee51,obs-rust-linux-validate-cargo-git\n",
+        )
+        self.assertEqual(self.gone(), [])
+
+    def test_only_build_and_zccache_volumes_are_removed(self):
+        self.gc({
+            "obs-rust-linux-validate-cargo-registry": OLD,
+            "obs-rust-linux-validate-obs3-soldr-5dd0892dd40b": OLD,
+            "obs-rust-linux-build-5dd0892dd40b": OLD,
+            "docker-task-soldr-0.9.1": OLD,
+        })
+        self.assertEqual(self.gone(), [])
+
+    def test_a_dry_run_only_lists(self):
+        printed = self.gc(
+            {"obs-rust-linux-validate-build-1e26c0a3ee51": OLD},
+            args=("--older-than", "24"),
+        )
+        self.assertEqual(self.gone(), [])
+        self.assertIn("obs-rust-linux-validate-build-1e26c0a3ee51", printed)
+
+    def test_older_than_takes_hours(self):
+        self.gc({"obs-rust-linux-validate-build-1e26c0a3ee51": FRESH}, args=("--older-than", "0", "--apply"))
+        self.assertEqual(self.gone(), ["obs-rust-linux-validate-build-1e26c0a3ee51"])
+        for bad in ("x", "-1"):
+            with self.subTest(bad=bad), self.assertRaises(SystemExit):
+                self.module.parse_gc(["--older-than", bad])
+
+    def test_gc_without_name_or_age_is_a_usage_error(self):
+        with self.assertRaises(SystemExit):
+            self.module.parse_gc([])
+
+
 if __name__ == "__main__":
     unittest.main()

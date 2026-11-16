@@ -1,4 +1,5 @@
 //! Borrow registry metadata through the existing real-header icon adapter.
+use super::source_type_lookup::get_source_info;
 use crate::theme_icon::{Registry, Theme};
 use core::{
     ffi::{c_char, c_void},
@@ -7,7 +8,6 @@ use core::{
 
 type Callback = unsafe extern "C" fn(*mut c_void) -> *const c_char;
 unsafe extern "C" {
-    fn get_source_info(id: *const c_char) -> *const c_void;
     fn obs_source_info_icon_data(info: *const c_void) -> *mut c_void;
     fn obs_source_info_dark_icon(info: *const c_void) -> Option<Callback>;
     fn obs_source_info_light_icon(info: *const c_void) -> Option<Callback>;

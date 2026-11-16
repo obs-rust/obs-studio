@@ -9,6 +9,15 @@
 extern "C" {
 #endif
 
+/* Starts the exit watchdog's helper process (obs-rust/obs-studio#4589):
+ * on Windows only, from the file next to the OBS executable, with the
+ * watchdog's timeout and `log_path` (UTF-8, may be NULL). Once it runs,
+ * obs_exit_watchdog_arm() arms it instead of a thread, so a plugin DLL
+ * that blocks its detach inside ExitProcess is still ended. Call it early,
+ * long before quit. Returns false when no helper started (another host, no
+ * helper file, or already started). */
+bool obs_exit_watchdog_start(const char *log_path);
+
 /* Arms the exit watchdog once per process, for the calling thread. When
  * the process still runs after the watchdog's timeout, it appends one line
  * to `log_path` (UTF-8, may be NULL) and to stderr, naming the library the

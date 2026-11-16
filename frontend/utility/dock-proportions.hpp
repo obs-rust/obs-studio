@@ -55,6 +55,12 @@ public:
 	 * possible (#3740). A currently unclamped window saves itself. */
 	QByteArray StateToSave() const
 	{
+		/* Nobody changed a dock since the start: the layout of the
+		 * start is still the user's. What the window shows now may be
+		 * that layout squeezed into a smaller window (#3740). */
+		if (reapplyRestored) {
+			return restored;
+		}
 		if (!AnyDockAtMinimum()) {
 			return window->saveState();
 		}
@@ -72,7 +78,24 @@ public:
 	 * minimums before any resize is observed, and the first save from it
 	 * would otherwise write the clamp over the layout the user still has in
 	 * the ini. */
-	void SetRestoredState(const QByteArray &state) { restored = state; }
+	void SetRestoredState(const QByteArray &state)
+	{
+		restored = state;
+		/* OBSBasic restores the layout into the shown window. A tiling
+		 * window manager resizes that window to its tile right after
+		 * (Hyprland, #3740): Qt squeezes the layout into the start size
+		 * and shares the new space out on its own when the window grows.
+		 * Until the user changes a dock, each window resize restores this
+		 * layout again at the new size. */
+		reapplyRestored = !state.isEmpty();
+		restoredWindowSize = window->size();
+		/* The snapshot is taken once Qt has placed the docks. */
+		restoredSnapshot.clear();
+		if (reapplyRestored && !updateQueued) {
+			updateQueued = true;
+			QMetaObject::invokeMethod(this, [this] { Update(); }, Qt::QueuedConnection);
+		}
+	}
 
 protected:
 	bool eventFilter(QObject *obj, QEvent *event) override
@@ -100,10 +123,17 @@ protected:
 					const QByteArray state = window->saveState();
 					if (window->size() == extent && state != before) {
 						unclamped = state;
+						/* The user sized the docks: their layout
+						 * wins over the restored one from now on. */
+						reapplyRestored = false;
 					}
 				},
 				Qt::QueuedConnection);
-		} else if (event->type() == QEvent::Resize && !updateQueued) {
+		} else if ((event->type() == QEvent::Resize ||
+			    (obj != window && (event->type() == QEvent::Show || event->type() == QEvent::Hide))) &&
+			   !updateQueued) {
+			/* A dock shown or hidden alone in its area resizes no
+			 * other dock: look at the layout then too. */
 			/* The layout resizes the docks of a row one at a time:
 			 * look at the row once it has placed all of them. The
 			 * window's own resize counts too: a widening window can
@@ -148,6 +178,15 @@ private:
 	/* The layout this window was restored from: the baseline a clamped start
 	 * saves instead of the clamp (#2225). */
 	QByteArray restored;
+	/* Restore `restored` again when the window changes size, until the
+	 * user changes a dock (#3740), and the window size it was last
+	 * restored at. */
+	bool reapplyRestored = false;
+	QSize restoredWindowSize;
+	/* saveState() once a restore of `restored` has settled. A different
+	 * state at the same window size is a change by the user (or a
+	 * plugin): a dock hidden, moved, floated or added. */
+	QByteArray restoredSnapshot;
 	std::map<QList<QDockWidget *>, Saved> saved;
 	std::map<int, SavedArea> savedAreas;
 	bool updateQueued = false;
@@ -239,6 +278,37 @@ private:
 	void Update()
 	{
 		updateQueued = false;
+		if (reapplyRestored) {
+			if (window->size() != restoredWindowSize) {
+				/* The window changed size before the user changed a
+				 * dock: put the restored layout back at the new
+				 * size. The shares seen so far came from the
+				 * squeezed start; the resize events after the user's
+				 * first change record them again. */
+				restoredWindowSize = window->size();
+				saved.clear();
+				savedAreas.clear();
+				window->restoreState(restored);
+				/* Look again once Qt has placed the docks, also when
+				 * the restore moved none of them. */
+				restoredSnapshot.clear();
+				updateQueued = true;
+				QMetaObject::invokeMethod(this, [this] { Update(); }, Qt::QueuedConnection);
+				return;
+			}
+			const QByteArray now = window->saveState();
+			if (restoredSnapshot.isEmpty()) {
+				restoredSnapshot = now;
+				return;
+			}
+			if (now == restoredSnapshot) {
+				return;
+			}
+			/* The layout changed at the same window size: the user
+			 * changed a dock. Their layout counts from now on: no more
+			 * restores, and saves follow the usual rules. */
+			reapplyRestored = false;
+		}
 		UpdateRows();
 		UpdateAreas();
 		/* A dock pushed to its minimum means the window cannot show the

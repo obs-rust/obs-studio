@@ -1,3 +1,7 @@
+gs_blend_function
+gs_blend_function_separate
+gs_blend_op
 gs_blend_state_pop
 gs_blend_state_push
+gs_enable_blending
 gs_reset_blend_state

@@ -2,6 +2,8 @@
 
 mod background_app_id;
 mod background_app_id_parity;
+mod background_enum;
+mod background_enum_parity;
 mod background_error;
 mod background_error_parity;
 mod background_query;
@@ -17,6 +19,8 @@ mod cocoa_keys_parity;
 mod hotkey_name_map;
 mod identity_getters;
 mod identity_getters_parity;
+mod key_combination;
+mod key_combination_parity;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
 mod nix_wayland_key_names;

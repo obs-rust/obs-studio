@@ -573,9 +573,14 @@ void obs_output_actual_stop(obs_output_t *output, bool force, uint64_t ts)
 		 * that waits for its next packet (ffmpeg_muxer): its encoders may
 		 * never produce one, and obs_output_destroy() would wait forever
 		 * (#3739). End the capture here; a later end from the output is
-		 * ignored. */
+		 * ignored. Only while the capture still runs: a second stop of
+		 * the same output (obs_output_destroy() of an output that still
+		 * counts as active while its end thread runs) would otherwise
+		 * send the stop signal again, and a handler that frees its data
+		 * on the first one (source-record before 0.5.0) runs on freed
+		 * data (#3799). */
 		if (obs_output_stop_encoded(output->info.flags) && !delay_active(output) &&
-		    !os_atomic_load_bool(&output->delivered_packet))
+		    !os_atomic_load_bool(&output->delivered_packet) && data_active(output))
 			obs_output_end_data_capture(output);
 
 		/* Stopped while it waited to reconnect: its data capture ended
@@ -1092,16 +1097,6 @@ void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32
 		if (output->video_encoders[idx])
 			obs_encoder_set_scaled_size(output->video_encoders[idx], width, height);
 	}
-}
-
-void obs_output_set_preferred_size(obs_output_t *output, uint32_t width, uint32_t height)
-{
-	if (!obs_output_valid(output, "obs_output_set_preferred_size"))
-		return;
-	if (!log_flag_video(output, __func__))
-		return;
-
-	obs_output_set_preferred_size2(output, width, height, 0);
 }
 
 /* The flags and limits obs-output-video-checks.h copies. */
@@ -2241,55 +2236,12 @@ void obs_output_release(obs_output_t *output)
 	}
 }
 
-void obs_weak_output_addref(obs_weak_output_t *weak)
-{
-	if (!weak)
-		return;
-
-	obs_weak_ref_addref(&weak->ref);
-}
-
-void obs_weak_output_release(obs_weak_output_t *weak)
-{
-	if (!weak)
-		return;
-
-	if (obs_weak_ref_release(&weak->ref))
-		bfree(weak);
-}
-
 obs_output_t *obs_output_get_ref(obs_output_t *output)
 {
 	if (!output)
 		return NULL;
 
 	return obs_weak_output_get_output(get_weak(output));
-}
-
-obs_weak_output_t *obs_output_get_weak_output(obs_output_t *output)
-{
-	if (!output)
-		return NULL;
-
-	obs_weak_output_t *weak = get_weak(output);
-	obs_weak_output_addref(weak);
-	return weak;
-}
-
-obs_output_t *obs_weak_output_get_output(obs_weak_output_t *weak)
-{
-	if (!weak)
-		return NULL;
-
-	if (obs_weak_ref_get_ref(&weak->ref))
-		return weak->output;
-
-	return NULL;
-}
-
-bool obs_weak_output_references_output(obs_weak_output_t *weak, obs_output_t *output)
-{
-	return weak && output && weak->output == output;
 }
 
 static struct caption_text *caption_text_new(const char *text, size_t bytes, struct caption_text *tail,

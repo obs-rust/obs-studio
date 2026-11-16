@@ -283,6 +283,14 @@ not get a line.
   correction is [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
   *All*, pending merge. Issue
   [#4143](https://github.com/obs-rust/obs-studio/issues/4143).
+- **NDI audio on its own clock follows a drifting sender smoothly.** For audio
+  stamped on a clock apart from its video, OBS turns on the resampler's clock
+  drift compensation by itself: it takes out a drift of up to about 0.1 %
+  (1000 ppm, a real sender is about 50 ppm) by resampling, so the delay stays
+  the same and the 60 ms steps every 23 minutes stop. Only a faster drift
+  still steps at 70 ms. Audio on its video's clock (cameras, microphones,
+  media files) is not changed. *All*, pending merge. Issue
+  [#4182](https://github.com/obs-rust/obs-studio/issues/4182).
 
 ### Encoding, streaming and recording
 
@@ -499,7 +507,19 @@ not get a line.
   itself, for example `... is blocking in libremidi.so.4 (loaded by
   advanced-scene-switcher.so); ending the process`. *Linux, macOS*,
   pending merge. Issue
-  [#4525](https://github.com/obs-rust/obs-studio/issues/4525).
+  [#4525](https://github.com/obs-rust/obs-studio/issues/4525). On
+  *Windows x64* the line names the DLL too, also when a DLL blocks while
+  Windows unloads it at exit: the helper process walks OBS's stack from
+  outside. Issue
+  [#4589](https://github.com/obs-rust/obs-studio/issues/4589).
+- **The exit watchdog on Windows.** When a plugin DLL blocks while Windows
+  unloads it at exit (for example, its static destructor waits for a
+  signal that never comes), OBS still ends after 10 s, with the same
+  `exit-watchdog: ...` line in its log and exit code 124. A small helper
+  process, `obs-exit-watchdog.exe` next to `obs64.exe`, starts with OBS
+  (log: `Exit watchdog: helper process started`) and ends it from outside.
+  *Windows*, pending merge. Issue
+  [#4589](https://github.com/obs-rust/obs-studio/issues/4589).
 - Repeated null-output encoding sessions reclaim complete stop threads. *All*.
 - **No swscale warning for every JPEG.** Loading a JPEG image (Image
   Source, Image Slide Show) no longer logs FFmpeg's "deprecated pixel
@@ -1737,6 +1757,11 @@ area.
   not started yet. Such a recording now stops at once and can start
   again. *All*, 2026-11-06. Issue
   [#3739](https://github.com/obs-rust/obs-studio/issues/3739).
+- OBS no longer crashes when a recording stops or fails right after it was
+  started, before it got any data, with an older Source Record filter
+  (before 0.5.0): such a stop sent the output's stop signal twice, and the
+  filter freed its data twice. *All*, 2026-11-13. Issue
+  [#3799](https://github.com/obs-rust/obs-studio/issues/3799).
 - OBS no longer hangs on exit after a stream was stopped while it waited to
   reconnect, such as an SRT stream (from OBS or from a Source Record filter)
   to a server that does not answer. The stop now finishes at once.
@@ -2072,6 +2097,13 @@ area.
   browser sources and docks are unavailable. A slow runtime can still recover.
   *Linux*, 2026-11-07. Issue
   [#3833](https://github.com/obs-rust/obs-studio/issues/3833).
+- A new Image Slide Show plays the images of a folder in name order on Linux
+  and macOS too (slide2 before slide10), instead of the filesystem's order.
+  A Folder Order setting chooses Name (natural), Name (A-Z) or Filesystem
+  order; slideshows saved before keep filesystem order. *All*, pending
+  merge. Issue [#3451](https://github.com/obs-rust/obs-studio/issues/3451),
+  upstream
+  [obsproject/obs-studio#10382](https://github.com/obsproject/obs-studio/issues/10382).
 
 ### Scenes and UI
 
@@ -2346,7 +2378,13 @@ area.
   that layout: the docks are squeezed for the session, and the next save
   writes the layout from the ini instead of the squeeze. Deliberate separator
   drags still save the new widths and heights when a dock is at its minimum,
-  so restarting does not revert to an older arrangement (#3740). *All*,
+  so restarting does not revert to an older arrangement (#3740). A tiling
+  window manager (Hyprland) that resizes the window to its tile right after
+  the start no longer evens out the docks: until the user changes a dock,
+  the saved layout is restored again at each new window size, and a quit
+  writes that layout, not the one squeezed into a smaller window (for
+  example after leaving full screen). Hiding, moving, floating or adding a
+  dock counts as a change and is kept (#3740). *All*,
   2026-10-24 (column: pending merge). Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
@@ -2894,6 +2932,11 @@ area.
   longer crashes OBS on its graphics thread: the empty task is skipped and
   the tasks queued after it still run. *All*, 2026-11-12. Issue
   [#4408](https://github.com/obs-rust/obs-studio/issues/4408).
+- A plugin or script that asks about a source type with no ID (NULL), for
+  its name, flags, defaults, properties or icon, or that creates a source
+  with no ID, no longer crashes OBS; the type is not found, as with an
+  unknown ID. *All*, 2026-11-10. Issue
+  [#4606](https://github.com/obs-rust/obs-studio/issues/4606).
 
 ### Security hardening
 

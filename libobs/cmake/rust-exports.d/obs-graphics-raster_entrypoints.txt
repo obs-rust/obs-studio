@@ -1,0 +1,3 @@
+gs_enable_color
+gs_get_cull_mode
+gs_set_cull_mode

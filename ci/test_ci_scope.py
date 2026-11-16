@@ -199,7 +199,7 @@ class CiScopeTest(unittest.TestCase):
         expected = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-26.04",
-                "tier2-lane-proof": "ubuntu-26.04", "cache-janitor": "ubuntu-26.04",
+                "tier2-lane-proof": "ubuntu-26.04",
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
@@ -271,6 +271,8 @@ class CiScopeTest(unittest.TestCase):
             "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
             " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
         )
+        for variable in ("MQ_RUNNER_MIN_IDLE", "MQ_RUNNER_DEMAND"):
+            self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
         self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
         self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")

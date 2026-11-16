@@ -2604,7 +2604,6 @@
     "test_effect_parser_blocks_rust": {
       "sources": [
         "test/cmocka/test_effect_parser_blocks.c",
-        "libobs/graphics/effect-parser-entry.c.h",
         "libobs/graphics/effect-parser.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
@@ -2689,7 +2688,6 @@
     "test_effect_parser_compile_rust": {
       "sources": [
         "test/cmocka/test_effect_parser_compile.c",
-        "libobs/graphics/effect-parser-entry.c.h",
         "libobs/graphics/effect-parser.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
@@ -2865,7 +2863,6 @@
     "test_effect_parser_params_rust": {
       "sources": [
         "test/cmocka/test_effect_parser_params.c",
-        "libobs/graphics/effect-parser-entry.c.h",
         "libobs/graphics/effect-parser.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
@@ -2944,7 +2941,6 @@
     "test_effect_parser_passes_rust": {
       "sources": [
         "test/cmocka/test_effect_parser_passes.c",
-        "libobs/graphics/effect-parser-entry.c.h",
         "libobs/graphics/effect-parser.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
@@ -3027,7 +3023,6 @@
     "test_effect_parser_shader_call_rust": {
       "sources": [
         "test/cmocka/test_effect_parser_shader_call.c",
-        "libobs/graphics/effect-parser-entry.c.h",
         "libobs/graphics/effect-parser.c.h",
         "libobs/graphics/effect-parser-funcs.c.h",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
@@ -5232,6 +5227,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_gs_perspective": {
+      "sources": [
+        "test/cmocka/test_gs_perspective.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "m",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_happy_eyeballs": {
       "sources": [
         "test/cmocka/test_happy_eyeballs.c"
@@ -5302,6 +5318,49 @@
     "test_hotkey_background_app_id": {
       "sources": [
         "test/cmocka/test_hotkey_background_app_id.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
+    "test_hotkey_background_enum": {
+      "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
+        "test/cmocka/test_hotkey_background_enum.c",
+        "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
+        "libobs/obs-hotkey-enum.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
+    "test_hotkey_background_enum_library": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_enum_library.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -5426,6 +5485,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -5516,6 +5576,7 @@
         "test/cmocka/test_hotkey_getters_characterization.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-pair-meta.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5554,6 +5615,7 @@
         "test/cmocka/test_hotkey_load.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -5623,6 +5685,7 @@
         "test/cmocka/test_hotkey_pair_steps.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -5648,6 +5711,7 @@
         "test/cmocka/test_hotkey_press_steps.c",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -8685,6 +8749,24 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_output_preferred_size": {
+      "sources": [
+        "test/cmocka/test_output_preferred_size.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_protocol_getter": {
       "sources": [
         "test/cmocka/test_output_protocol_getter.c"
@@ -9084,6 +9166,21 @@
         }
       ],
       "sanitizers": "address,undefined"
+    },
+    "test_output_weak_lifetime": {
+      "sources": [
+        "test/cmocka/test_output_weak_lifetime.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
     },
     "test_pipe": {
       "sources": [
@@ -9915,6 +10012,7 @@
       "sources": [
         "test/cmocka/test_plugin_getter_races.c",
         "plugins/image-source/build/image-source.core+.h.c",
+        "plugins/image-source/slideshow-order.c.h",
         "plugins/image-source/build/image-source.posix+.h.c"
       ],
       "requires": {
@@ -10230,6 +10328,7 @@
         "libobs/obs-hotkey-background-error.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -11228,6 +11327,21 @@
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_LINUX"
+    },
+    "test_raster_state_entrypoints": {
+      "sources": [
+        "test/cmocka/test_raster_state_entrypoints.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
     },
     "test_raw_output_video_reset": {
       "sources": [
@@ -13060,6 +13174,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_sceneitem_private_settings": {
+      "sources": [
+        "test/cmocka/test_sceneitem_private_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_sck_stall": {
       "sources": [
         "test/cmocka/test_sck_stall.c",
@@ -13360,6 +13489,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_shutdown_detach": {
+      "sources": [
+        "test/cmocka/test_shutdown_detach.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_shutdown_leaked_scenes": {
       "sources": [
         "test/cmocka/test_shutdown_leaked_scenes.c"
@@ -13414,6 +13558,7 @@
       "sources": [
         "test/cmocka/test_slideshow_empty.c",
         "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/slideshow-order.c.h",
         {
           "path": "plugins/image-source/image-file-version.c.h",
           "requires": "OS_WINDOWS"
@@ -13472,10 +13617,81 @@
         ]
       }
     },
+    "test_slideshow_folder_order": {
+      "sources": [
+        "test/cmocka/test_slideshow_folder_order.c",
+        "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/slideshow-order.c.h",
+        "plugins/image-source/slideshow-size.c.h",
+        {
+          "path": "plugins/image-source/image-file-version.c.h",
+          "requires": "OS_WINDOWS"
+        },
+        "plugins/obs-transitions/transition-cut.c.h",
+        {
+          "path": "plugins/image-source/build/image-source.posix+.h.c",
+          "requires": {
+            "all": [
+              {
+                "not": "OS_WINDOWS"
+              },
+              {
+                "not": "OS_MACOS"
+              }
+            ]
+          }
+        },
+        {
+          "path": "plugins/image-source/build/image-source.macos+.h.c",
+          "requires": "OS_MACOS"
+        },
+        {
+          "path": "plugins/image-source/build/image-source.windows+.h.c",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "plugins/image-source",
+        "plugins/obs-transitions"
+      ],
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/image-source/slideshow-order.h",
+        "plugins/image-source/slideshow-size.h"
+      ],
+      "requires": {
+        "all": [
+          "HAVE_SLIDESHOW_TEST_OWNER",
+          {
+            "any": [
+              {
+                "not": "OS_LINUX"
+              },
+              "HAVE_X11_DISPLAY"
+            ]
+          }
+        ]
+      }
+    },
     "test_slideshow_manual_end": {
       "sources": [
         "test/cmocka/test_slideshow_manual_end.c",
         "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/slideshow-order.c.h",
         "plugins/image-source/obs-slideshow-mk2.c.h",
         "plugins/image-source/slideshow-size.c.h",
         "plugins/obs-transitions/transition-cut.c.h",
@@ -13511,6 +13727,62 @@
           "HAVE_X11_DISPLAY"
         ]
       }
+    },
+    "test_slideshow_properties_no_video": {
+      "sources": [
+        "test/cmocka/test_slideshow_properties_no_video.c",
+        "plugins/image-source/obs-slideshow.c.h",
+        "plugins/image-source/obs-slideshow-mk2.c.h",
+        "plugins/image-source/slideshow-order.c.h",
+        "plugins/image-source/slideshow-size.c.h",
+        {
+          "path": "plugins/image-source/image-file-version.c.h",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "path": "plugins/image-source/build/image-source.posix+.h.c",
+          "requires": {
+            "all": [
+              {
+                "not": "OS_WINDOWS"
+              },
+              {
+                "not": "OS_MACOS"
+              }
+            ]
+          }
+        },
+        {
+          "path": "plugins/image-source/build/image-source.macos+.h.c",
+          "requires": "OS_MACOS"
+        },
+        {
+          "path": "plugins/image-source/build/image-source.windows+.h.c",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        "plugins/image-source"
+      ],
+      "watch_inputs": [
+        "libobs/data",
+        "plugins/image-source/build/image-source-slideshow.pch.h",
+        "plugins/image-source/build/image-source.pch.h",
+        "plugins/image-source/image-source-host.h",
+        "plugins/image-source/slideshow-order.h",
+        "plugins/image-source/slideshow-size.h"
+      ],
+      "requires": "HAVE_SLIDESHOW_TEST_OWNER"
     },
     "test_slideshow_size": {
       "sources": [
@@ -14244,6 +14516,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_filter_backup": {
+      "sources": [
+        "test/cmocka/test_source_filter_backup.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_filter_chain_steps": {
       "sources": [
         "test/cmocka/test_source_filter_chain_steps.c",
@@ -14705,6 +14992,21 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_source_private_settings": {
+      "sources": [
+        "test/cmocka/test_source_private_settings.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_source_profiler": {
@@ -15246,6 +15548,15 @@
       },
       "watch_inputs": [
         "libobs/data"
+      ]
+    },
+    "test_source_type_enum": {
+      "sources": [
+        "test/cmocka/test_source_type_enum.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
       ]
     },
     "test_source_video_tick_steps": {
@@ -17598,6 +17909,12 @@
         "test/cmocka/test_video_stop_requested.c",
         "libobs/obs-video-stop-requested-reference.c.h"
       ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
       "includes": [
         "libobs",
         "deps/libcaption"
@@ -17623,6 +17940,12 @@
       "sources": [
         "test/cmocka/test_video_stop_requested.c"
       ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
       "includes": [
         "libobs",
         "deps/libcaption"
@@ -17647,6 +17970,21 @@
       "libraries": [
         "OBS::libobs",
         "OBS::native-test-cmocka"
+      ]
+    },
+    "test_viewport_stencil_entrypoints": {
+      "sources": [
+        "test/cmocka/test_viewport_stencil_entrypoints.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ]
     },
     "test_virtual_cam_shutdown": {
@@ -17942,6 +18280,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
         "libobs/obs-hotkey-bindings.c.h",
@@ -20853,6 +21192,14 @@
       ],
       "optional_prefixes_requires": "OS_LINUX"
     },
+    "test_gs_perspective": {
+      "target": "test_gs_perspective",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
     "test_happy_eyeballs": {
       "target": "test_happy_eyeballs",
       "suite": "core",
@@ -20875,6 +21222,22 @@
     },
     "test_hotkey_background_app_id": {
       "target": "test_hotkey_background_app_id",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ]
+    },
+    "test_hotkey_background_enum": {
+      "target": "test_hotkey_background_enum",
+      "timeout_seconds": 30
+    },
+    "test_hotkey_background_enum_library": {
+      "target": "test_hotkey_background_enum_library",
       "command": [
         "${target}"
       ],
@@ -22113,6 +22476,12 @@
         "${target}"
       ]
     },
+    "test_output_preferred_size": {
+      "target": "test_output_preferred_size",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_output_protocol_getter": {
       "target": "test_output_protocol_getter",
       "command": [
@@ -22287,6 +22656,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_output_weak_lifetime": {
+      "target": "test_output_weak_lifetime",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_pipe": {
       "target": "test_pipe"
@@ -23083,6 +23459,12 @@
     "test_quick_write": {
       "target": "test_quick_write"
     },
+    "test_raster_state_entrypoints": {
+      "target": "test_raster_state_entrypoints",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_raw_output_video_reset": {
       "target": "test_raw_output_video_reset",
       "command": [
@@ -23683,6 +24065,12 @@
         ]
       ]
     },
+    "test_sceneitem_private_settings": {
+      "target": "test_sceneitem_private_settings",
+      "command": [
+        "${target}"
+      ]
+    },
     "test_sck_stall": {
       "target": "test_sck_stall"
     },
@@ -23850,6 +24238,21 @@
         ]
       ]
     },
+    "test_shutdown_detach": {
+      "target": "test_shutdown_detach",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
+    },
     "test_shutdown_leaked_scenes": {
       "target": "test_shutdown_leaked_scenes",
       "command": [
@@ -23918,6 +24321,31 @@
       ],
       "optional_prefixes_requires": "OS_LINUX"
     },
+    "test_slideshow_folder_order": {
+      "target": "test_slideshow_folder_order",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": {
+        "all": [
+          "HAVE_SLIDESHOW_TEST_OWNER",
+          {
+            "any": [
+              {
+                "not": "OS_LINUX"
+              },
+              "HAVE_X11_DISPLAY"
+            ]
+          }
+        ]
+      },
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a"
+        ]
+      ],
+      "optional_prefixes_requires": "OS_LINUX"
+    },
     "test_slideshow_manual_end": {
       "target": "test_slideshow_manual_end",
       "timeout_seconds": 120,
@@ -23930,6 +24358,12 @@
         ]
       },
       "suite": "graphics"
+    },
+    "test_slideshow_properties_no_video": {
+      "target": "test_slideshow_properties_no_video",
+      "timeout_seconds": 60,
+      "suite": "graphics",
+      "requires": "HAVE_SLIDESHOW_TEST_OWNER"
     },
     "test_slideshow_size": {
       "target": "test_slideshow_size"
@@ -24136,6 +24570,14 @@
         "${target}"
       ]
     },
+    "test_source_filter_backup": {
+      "target": "test_source_filter_backup",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
     "test_source_filter_chain_steps": {
       "target": "test_source_filter_chain_steps",
       "command": [
@@ -24265,6 +24707,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_source_private_settings": {
+      "target": "test_source_private_settings",
+      "command": [
+        "${target}"
       ]
     },
     "test_source_profiler": {
@@ -24449,6 +24897,20 @@
         "timing"
       ],
       "run_serial": true
+    },
+    "test_source_type_enum": {
+      "target": "test_source_type_enum",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_source_video_tick_steps": {
       "target": "test_source_video_tick_steps",
@@ -25263,6 +25725,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_viewport_stencil_entrypoints": {
+      "target": "test_viewport_stencil_entrypoints",
+      "command": [
+        "${target}"
       ]
     },
     "test_virtual_cam_shutdown": {

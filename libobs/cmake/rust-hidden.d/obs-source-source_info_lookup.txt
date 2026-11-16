@@ -1,0 +1,4 @@
+# obs-source-info-lookup.c (obs-source): get_source_info() is declared in
+# obs-internal.h without EXPORT; obs-source.c and the property and icon
+# getters call it inside libobs.
+get_source_info

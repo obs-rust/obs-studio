@@ -2,12 +2,16 @@
   "description": "The libobs core: objects, outputs, sources, the null audio device, and the CoreFoundation-style utilities every host builds (util-cf).",
   "groups": [
     "core",
-    "core-canvas-move",
+    "core-canvas-move-fields",
     "core-output",
+    "core-output-weak-lifetime",
     "core-scene-lookup",
     "core-scene-transform-states",
     "core-source",
+    "core-source-filter-backup",
+    "core-source-type-enum",
     "null-audio",
+    "source-private-settings",
     "util-cf"
   ],
   "depends": [

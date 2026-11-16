@@ -45,6 +45,7 @@
 
 use crate::audio_place;
 use crate::audio_timing::{self, Action, PreLockInput, UnderLockInput};
+use crate::own_clock_drift::{self, OwnClockDrift, OwnClockDriftRaw};
 
 /// `MAX_AUDIO_CHANNELS`: the buffers [`reset_audio_data`] empties.
 pub const MAX_CHANNELS: usize = 8;
@@ -134,6 +135,17 @@ pub trait Source {
     fn own_clock_timing_set(&self) -> bool;
     /// `source->own_clock_timing_set = value`.
     fn set_own_clock_timing_set(&self, value: bool);
+
+    /// `source->own_clock_compensation`: whether libobs turned clock drift
+    /// compensation on for audio on a clock of its own (#4182).
+    fn own_clock_compensation(&self) -> bool;
+    /// `source->own_clock_compensation = value`.
+    fn set_own_clock_compensation(&self, value: bool);
+    /// `source->own_clock_drift`: the drift error filter of audio on a clock
+    /// of its own (#4182).
+    fn own_clock_drift(&self) -> OwnClockDriftRaw;
+    /// `source->own_clock_drift = value`.
+    fn set_own_clock_drift(&self, value: OwnClockDriftRaw);
 
     /// `source->resampler != NULL && source->last_async_compensation`.
     fn compensating(&self) -> bool;
@@ -260,6 +272,167 @@ fn push_back<S: Source>(source: &S, data: S::Data, frames: u32) {
     source.clear_last_buf_size();
 }
 
+/// [`own_clock_drift::buffered_end_gap`] of the source's buffer: how far the
+/// end of its first channel is ahead of `os_time`. The caller holds
+/// `audio_buf_mutex`.
+fn buffered_end_gap<S: Source>(source: &S, sample_rate: u32, os_time: u64) -> i64 {
+    let frames = source
+        .buf_size(0)
+        .checked_div(size_of::<f32>())
+        .unwrap_or(0);
+    own_clock_drift::buffered_end_gap(
+        source.audio_ts(),
+        u64::try_from(frames).unwrap_or(u64::MAX),
+        sample_rate,
+        os_time,
+    )
+}
+
+/// The own timing of a packet on a clock of its own, before
+/// `under_lock()`: the first such packet sets it from its arrival and turns
+/// libobs's own clock drift compensation on (#4182); later, a buffer more
+/// than `TS_SMOOTHING_THRESHOLD` over a placement at the arrival takes the
+/// timing again. Returns whether the packet must be placed at its arrival.
+/// The caller holds `audio_buf_mutex`.
+fn own_clock_timing<S: Source>(source: &S, arrival: u64, sample_rate: u32, os_time: u64) -> bool {
+    if !source.own_clock_timing_set() {
+        // reset_audio_timing() for the audio's own timing
+        source.set_own_clock_timing_adjust(arrival);
+        source.set_own_clock_timing_set(true);
+        // its clock drifts from the system clock: compensate it (#4182)
+        source.set_own_clock_compensation(true);
+        return false;
+    }
+    if audio_place::started(source.audio_ts())
+        && own_clock_drift::excess(
+            buffered_end_gap(source, sample_rate, os_time),
+            source.sync_offset(),
+            source.resample_offset(),
+        ) > audio_timing::TS_SMOOTHING_THRESHOLD.cast_signed()
+    {
+        // The buffer holds more than TS_SMOOTHING_THRESHOLD more audio than
+        // right after a packet placed at its arrival: a sender clock that
+        // drifts faster than the compensation follows (#4143, #4182). Take
+        // the timing of this packet again and place it there.
+        source.set_own_clock_timing_adjust(arrival);
+        return true;
+    }
+    false
+}
+
+/// The error of audio on a clock of its own after its packet went into the
+/// buffer: the end of the buffered audio against the arrival, filtered
+/// (#4182). A placed packet starts the filter again. The caller holds
+/// `audio_buf_mutex`.
+fn own_clock_error<S: Source>(
+    source: &S,
+    appended: bool,
+    sample_rate: u32,
+    os_time: u64,
+) -> Option<i64> {
+    let mut drift = OwnClockDrift::from_raw(&source.own_clock_drift());
+    let error = if appended {
+        drift.sample(os_time, buffered_end_gap(source, sample_rate, os_time))
+    } else {
+        drift.reset();
+        None
+    };
+    source.set_own_clock_drift(drift.to_raw());
+    error
+}
+
+/// The timing of the second `audio_buf_mutex` region: `under_lock()` on the
+/// packet's timing (the video's or its own), with a packet on a clock of its
+/// own that is placed instead of appended taken from its arrival (#4182), and
+/// the stores. The caller holds `audio_buf_mutex`.
+fn second_region_timing<S: Source>(
+    source: &S,
+    pre: &audio_timing::PreLock,
+    timestamp: u64,
+    os_time: u64,
+    on_video_clock: bool,
+    mut place_at_arrival: bool,
+) -> audio_timing::UnderLock {
+    let arrival = os_time.wrapping_sub(timestamp);
+    let packet_timing_adjust = if on_video_clock {
+        source.timing_adjust()
+    } else {
+        source.own_clock_timing_adjust()
+    };
+
+    let mut input = UnderLockInput {
+        timestamp: pre.timestamp,
+        packet_timing_adjust,
+        data_timestamp: timestamp,
+        os_time,
+        next_audio_ts_min: source.next_audio_ts_min(),
+        resample_offset: source.resample_offset(),
+        sync_offset: source.sync_offset(),
+        timing_adjust: if on_video_clock {
+            source.timing_adjust()
+        } else {
+            source.own_clock_timing_adjust()
+        },
+        next_audio_sys_ts_min: source.next_audio_sys_ts_min(),
+        last_sync_offset: source.last_sync_offset(),
+        continuous: pre.continuous && on_video_clock,
+    };
+    let mut under = audio_timing::under_lock(input);
+
+    // With compensation on, the sender's time runs away from the arrival. A
+    // packet on a clock of its own that is placed instead of appended takes
+    // its timing from its arrival, so it lands there (#4182).
+    if !on_video_clock
+        && !place_at_arrival
+        && !under.push_back
+        && !under.reset_timing
+        && packet_timing_adjust != arrival
+    {
+        source.set_own_clock_timing_adjust(arrival);
+        input.packet_timing_adjust = arrival;
+        input.timing_adjust = arrival;
+        under = audio_timing::under_lock(input);
+        place_at_arrival = true;
+    }
+    if place_at_arrival {
+        under.push_back = false;
+    }
+
+    if under.reset_timing {
+        source.set_timing_set(true);
+        if on_video_clock {
+            source.set_timing_adjust(under.timing_adjust);
+        } else {
+            source.set_own_clock_timing_adjust(under.timing_adjust);
+        }
+    }
+    source.set_next_audio_sys_ts_min(under.next_audio_sys_ts_min);
+    source.set_last_sync_offset(under.last_sync_offset);
+
+    under
+}
+
+/// Appends the packet or places it at `timestamp`, if the source outputs
+/// its audio. Returns whether it was appended, or `None` for a source that
+/// buffers nothing. The caller holds `audio_buf_mutex`.
+fn buffer_packet<S: Source>(
+    source: &S,
+    packet: Packet<S::Data>,
+    append: bool,
+    timestamp: u64,
+) -> Option<bool> {
+    if !audio_place::outputs(source.monitoring_type()) {
+        return None;
+    }
+    if append && audio_place::started(source.audio_ts()) {
+        push_back(source, packet.data, packet.frames);
+        Some(true)
+    } else {
+        place(source, packet.data, packet.frames, timestamp);
+        Some(false)
+    }
+}
+
 /// `source_output_audio_data()`. The caller holds `audio_mutex`.
 pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
     let sample_rate = source.sample_rate();
@@ -289,6 +462,9 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
         source.set_timing_adjust(pre.timing_adjust);
     }
 
+    // libobs's own compensation of audio on a clock of its own (#4182)
+    let mut own_compensation = source.own_clock_compensation();
+
     source.unlock_audio_buf();
 
     match pre.action {
@@ -307,8 +483,9 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
 
     // Feed the error to the resampler so that the samples keep pace with the
     // timestamps instead of drifting until the threshold above is exceeded.
-    // After a resync the error is unknown, so hold.
-    if source.compensating() {
+    // After a resync the error is unknown, so hold. Audio that libobs
+    // compensates itself gets its error after it is buffered (#4182).
+    if !own_compensation && source.compensating() {
         source.set_compensation_error(pre.drift_error);
     }
 
@@ -320,67 +497,30 @@ pub fn output_audio_data<S: Source>(source: &S, packet: Packet<S::Data>) {
     // clock (#3747); audio on a clock of its own keeps its own timing
     let on_video_clock =
         audio_timing::follows_video(packet.timestamp, source.last_output_frame_ts());
-    if !on_video_clock && !source.own_clock_timing_set() {
-        // reset_audio_timing() for the audio's own timing
-        source.set_own_clock_timing_adjust(os_time.wrapping_sub(packet.timestamp));
-        source.set_own_clock_timing_set(true);
-    } else if !on_video_clock
-        && packet
-            .timestamp
-            .wrapping_add(source.own_clock_timing_adjust())
-            .wrapping_sub(os_time)
-            .cast_signed()
-            > audio_timing::TS_SMOOTHING_THRESHOLD.cast_signed()
-    {
-        // A sender clock faster than the system clock places its audio later
-        // and later after its arrival, and no other path moves this timing
-        // (#4143): take the timing of this packet again.
-        source.set_own_clock_timing_adjust(os_time.wrapping_sub(packet.timestamp));
-    }
-    let packet_timing_adjust = if on_video_clock {
-        source.timing_adjust()
-    } else {
-        source.own_clock_timing_adjust()
-    };
-
-    let under = audio_timing::under_lock(UnderLockInput {
-        timestamp: pre.timestamp,
-        packet_timing_adjust,
-        data_timestamp: packet.timestamp,
+    let arrival = os_time.wrapping_sub(packet.timestamp);
+    let place_at_arrival =
+        !on_video_clock && own_clock_timing(source, arrival, sample_rate, os_time);
+    own_compensation = own_compensation || !on_video_clock && source.own_clock_compensation();
+    let under = second_region_timing(
+        source,
+        &pre,
+        packet.timestamp,
         os_time,
-        next_audio_ts_min: source.next_audio_ts_min(),
-        resample_offset: source.resample_offset(),
-        sync_offset: source.sync_offset(),
-        timing_adjust: if on_video_clock {
-            source.timing_adjust()
-        } else {
-            source.own_clock_timing_adjust()
-        },
-        next_audio_sys_ts_min: source.next_audio_sys_ts_min(),
-        last_sync_offset: source.last_sync_offset(),
-        continuous: pre.continuous && on_video_clock,
-    });
+        on_video_clock,
+        place_at_arrival,
+    );
 
-    if under.reset_timing {
-        source.set_timing_set(true);
-        if on_video_clock {
-            source.set_timing_adjust(under.timing_adjust);
-        } else {
-            source.set_own_clock_timing_adjust(under.timing_adjust);
-        }
-    }
-    source.set_next_audio_sys_ts_min(under.next_audio_sys_ts_min);
-    source.set_last_sync_offset(under.last_sync_offset);
-
-    if audio_place::outputs(source.monitoring_type()) {
-        if under.push_back && audio_place::started(source.audio_ts()) {
-            push_back(source, packet.data, packet.frames);
-        } else {
-            place(source, packet.data, packet.frames, under.timestamp);
-        }
-    }
+    // the error of audio on a clock of its own (#4182)
+    let own_error = buffer_packet(source, packet, under.push_back, under.timestamp)
+        .filter(|_| !on_video_clock)
+        .and_then(|appended| own_clock_error(source, appended, sample_rate, os_time));
 
     source.unlock_audio_buf();
+
+    // until the filter has its baseline, 0: the loop holds
+    if !on_video_clock && own_compensation && source.compensating() {
+        source.set_compensation_error(own_error.unwrap_or(0));
+    }
 
     let muted = source.muted(os_time);
     source.signal_audio_data(packet.data, muted);

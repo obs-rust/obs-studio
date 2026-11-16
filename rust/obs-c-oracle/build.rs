@@ -657,6 +657,7 @@ fn main() {
         "texture-planar-creators",
         "texture-metadata",
         "texture-cube-access",
+        "texture-file-data2",
         "state-depth-entrypoints",
         "timer-dispatch",
         "timer-range-dispatch",
@@ -667,6 +668,10 @@ fn main() {
         "indexbuffer-create-fields",
         "present-entrypoints",
         "present-entrypoints-fields",
+        "raster-state-entrypoints",
+        "raster-state-entrypoints-fields",
+        "graphics-perspective",
+        "perspective-fields",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
@@ -694,6 +699,14 @@ fn main() {
         ),
     )
     .expect("write original blend entry points");
+    std::fs::write(
+        extract_dir.join("state-blend-setters.inc"),
+        extract_after_pch(
+            &libobs.join("graphics/state-blend-setters.c.h"),
+            "#include \"libobs/build/libobs-ported-blend-entrypoints.pch.h\"",
+        ),
+    )
+    .expect("write original blend setters");
     std::fs::write(
         extract_dir.join("graphics_effect_file.inc"),
         extract_after_libobs_pch(&libobs.join("graphics/graphics_effect_file.c.h")),
@@ -870,6 +883,11 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
     )
     .expect("write canvas setter extract");
+    std::fs::write(
+        extract_dir.join("source-set-name.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-set-name.c.h")),
+    )
+    .expect("write source rename extract");
     oracle.include(&extract_dir);
 
     oracle

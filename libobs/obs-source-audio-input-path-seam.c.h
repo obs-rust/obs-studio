@@ -158,7 +158,8 @@ void obs_source_audio_input_path_seam_set_last_async_compensation(obs_source_t *
 
 bool obs_source_audio_input_path_seam_get_async_compensation(const obs_source_t *source)
 {
-	return os_atomic_load_bool(&source->async_compensation);
+	/* libobs compensates audio on a clock of its own itself (#4182) */
+	return os_atomic_load_bool(&source->async_compensation) || os_atomic_load_bool(&source->own_clock_compensation);
 }
 
 bool obs_source_audio_input_path_seam_get_audio_failed(const obs_source_t *source)

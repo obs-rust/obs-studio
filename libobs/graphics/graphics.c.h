@@ -205,22 +205,6 @@ uint32_t gs_image_max_texture_size(void)
 	return (uint32_t)os_atomic_load_long(&max_texture_size);
 }
 
-static uint32_t device_max_texture_size(graphics_t *graphics)
-{
-	if (graphics->exports.device_get_max_texture_size)
-		return graphics->exports.device_get_max_texture_size(graphics->device);
-
-	/* Upper bounds fixed by the API: Direct3D 11 at feature level 11 and
-	 * up (8192 below), and Metal on every Mac. */
-	switch (graphics->exports.device_get_type()) {
-	case GS_DEVICE_DIRECT3D_11:
-	case GS_DEVICE_METAL:
-		return 16384;
-	default:
-		return 0;
-	}
-}
-
 int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 {
 	int errcode = GS_ERROR_FAIL;
@@ -809,28 +793,6 @@ void gs_draw_cube_backdrop(gs_texture_t *cubetex, const struct quat *rot, float 
 	UNUSED_PARAMETER(znear);
 }
 
-void gs_reset_viewport(void)
-{
-	uint32_t cx, cy;
-
-	if (!gs_valid("gs_reset_viewport"))
-		return;
-
-	gs_get_size(&cx, &cy);
-	gs_set_viewport(0, 0, (int)cx, (int)cy);
-}
-
-void gs_set_2d_mode(void)
-{
-	uint32_t cx, cy;
-
-	if (!gs_valid("gs_set_2d_mode"))
-		return;
-
-	gs_get_size(&cx, &cy);
-	gs_ortho(0.0f, (float)cx, 0.0f, (float)cy, -1.0, -1024.0f);
-}
-
 void gs_set_3d_mode(double fovy, double znear, double zvar)
 {
 	/* TODO */
@@ -918,23 +880,6 @@ void gs_cubetexture_set_image(gs_texture_t *cubetex, uint32_t side, const void *
 	UNUSED_PARAMETER(data);
 	UNUSED_PARAMETER(linesize);
 	UNUSED_PARAMETER(invert);
-}
-
-void gs_perspective(float angle, float aspect, float near, float far)
-{
-	graphics_t *graphics = thread_graphics;
-	float xmin, xmax, ymin, ymax;
-
-	if (!gs_valid("gs_perspective"))
-		return;
-
-	ymax = near * tanf(RAD(angle) * 0.5f);
-	ymin = -ymax;
-
-	xmin = ymin * aspect;
-	xmax = ymax * aspect;
-
-	graphics->exports.device_frustum(graphics->device, xmin, xmax, ymin, ymax, near, far);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1308,198 +1253,6 @@ void gs_stage_texture(gs_stagesurf_t *dst, gs_texture_t *src)
 		return;
 
 	graphics->exports.device_stage_texture(graphics->device, dst, src);
-}
-
-void gs_set_cull_mode(enum gs_cull_mode mode)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_cull_mode"))
-		return;
-
-	graphics->exports.device_set_cull_mode(graphics->device, mode);
-}
-
-enum gs_cull_mode gs_get_cull_mode(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_cull_mode"))
-		return GS_NEITHER;
-
-	return graphics->exports.device_get_cull_mode(graphics->device);
-}
-
-void gs_enable_blending(bool enable)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_blending"))
-		return;
-
-	graphics->cur_blend_state.enabled = enable;
-	graphics->exports.device_enable_blending(graphics->device, enable);
-}
-
-void gs_enable_stencil_test(bool enable)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_stencil_test"))
-		return;
-
-	graphics->exports.device_enable_stencil_test(graphics->device, enable);
-}
-
-void gs_enable_stencil_write(bool enable)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_stencil_write"))
-		return;
-
-	graphics->exports.device_enable_stencil_write(graphics->device, enable);
-}
-
-void gs_enable_color(bool red, bool green, bool blue, bool alpha)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_enable_color"))
-		return;
-
-	graphics->exports.device_enable_color(graphics->device, red, green, blue, alpha);
-}
-
-void gs_blend_function(enum gs_blend_type src, enum gs_blend_type dest)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_blend_function"))
-		return;
-
-	graphics->cur_blend_state.src_c = src;
-	graphics->cur_blend_state.dest_c = dest;
-	graphics->cur_blend_state.src_a = src;
-	graphics->cur_blend_state.dest_a = dest;
-	graphics->exports.device_blend_function(graphics->device, src, dest);
-}
-
-void gs_blend_function_separate(enum gs_blend_type src_c, enum gs_blend_type dest_c, enum gs_blend_type src_a,
-				enum gs_blend_type dest_a)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_blend_function_separate"))
-		return;
-
-	graphics->cur_blend_state.src_c = src_c;
-	graphics->cur_blend_state.dest_c = dest_c;
-	graphics->cur_blend_state.src_a = src_a;
-	graphics->cur_blend_state.dest_a = dest_a;
-	graphics->exports.device_blend_function_separate(graphics->device, src_c, dest_c, src_a, dest_a);
-}
-
-void gs_blend_op(enum gs_blend_op_type op)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_blend_op"))
-		return;
-
-	graphics->cur_blend_state.op = op;
-	graphics->exports.device_blend_op(graphics->device, graphics->cur_blend_state.op);
-}
-
-void gs_stencil_function(enum gs_stencil_side side, enum gs_depth_test test)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_stencil_function"))
-		return;
-
-	graphics->exports.device_stencil_function(graphics->device, side, test);
-}
-
-void gs_stencil_op(enum gs_stencil_side side, enum gs_stencil_op_type fail, enum gs_stencil_op_type zfail,
-		   enum gs_stencil_op_type zpass)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_stencil_op"))
-		return;
-
-	graphics->exports.device_stencil_op(graphics->device, side, fail, zfail, zpass);
-}
-
-void gs_set_viewport(int x, int y, int width, int height)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_viewport"))
-		return;
-
-	graphics->exports.device_set_viewport(graphics->device, x, y, width, height);
-}
-
-void gs_get_viewport(struct gs_rect *rect)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_get_viewport", rect))
-		return;
-
-	graphics->exports.device_get_viewport(graphics->device, rect);
-}
-
-void gs_set_scissor_rect(const struct gs_rect *rect)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_scissor_rect"))
-		return;
-
-	graphics->exports.device_set_scissor_rect(graphics->device, rect);
-}
-
-void gs_ortho(float left, float right, float top, float bottom, float znear, float zfar)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_ortho"))
-		return;
-
-	graphics->exports.device_ortho(graphics->device, left, right, top, bottom, znear, zfar);
-}
-
-void gs_frustum(float left, float right, float top, float bottom, float znear, float zfar)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_frustum"))
-		return;
-
-	graphics->exports.device_frustum(graphics->device, left, right, top, bottom, znear, zfar);
-}
-
-void gs_projection_push(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_projection_push"))
-		return;
-
-	graphics->exports.device_projection_push(graphics->device);
-}
-
-void gs_projection_pop(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_projection_pop"))
-		return;
-
-	graphics->exports.device_projection_pop(graphics->device);
 }
 
 void gs_swapchain_destroy(gs_swapchain_t *swapchain)

@@ -20,6 +20,12 @@
  * stops like ffmpeg_muxer. Each case runs in a child process with a
  * watchdog, so a hang fails the case instead of the test run. Core video
  * needs a display, so the cases skip without one.
+ *
+ * #3799: one stop sends `stop` once. Older source-record versions force-stop
+ * their output, release it from their `stop` handler (queued) and free the
+ * handler's data there, without disconnecting it. A second `stop` for the
+ * same stop, sent when the release finds the output still active and stops
+ * it again, runs that handler on freed data: a double free, and OBS aborts.
  */
 
 #include <stdarg.h>
@@ -50,6 +56,8 @@ enum result {
 	RESULT_STOP_NOT_FINISHED = 12,
 	RESULT_NO_PACKETS_IN_CONTROL = 13,
 	RESULT_PACKETS_WITHOUT_AUDIO = 14,
+	RESULT_NO_STOP_SIGNAL = 15,
+	RESULT_STOP_SIGNALLED_TWICE = 16,
 	RESULT_HUNG = 99,
 };
 
@@ -68,6 +76,10 @@ static const char *result_name(int r)
 		return "control: the output got no packet with audio";
 	case RESULT_PACKETS_WITHOUT_AUDIO:
 		return "the output got packets although the audio encoder produced none";
+	case RESULT_NO_STOP_SIGNAL:
+		return "the force stop sent no stop signal within 3 s";
+	case RESULT_STOP_SIGNALLED_TWICE:
+		return "one stop sent the stop signal more than once";
 	case RESULT_HUNG:
 		return "hung (watchdog): obs_output_stop()/obs_output_release() did not return";
 	default:
@@ -76,6 +88,16 @@ static const char *result_name(int r)
 }
 
 static volatile bool audio_produces;
+/* `stop` signals of the output, counted by a handler that is never
+ * disconnected, as in source-record before 0.5.0 */
+static volatile long stop_signals;
+
+static void count_stop(void *data, calldata_t *cd)
+{
+	UNUSED_PARAMETER(data);
+	UNUSED_PARAMETER(cd);
+	os_atomic_inc_long(&stop_signals);
+}
 static uint8_t packet_byte;
 
 /* ------------------------------------------------------------------------- */
@@ -325,14 +347,59 @@ static int run_case(bool audio)
 	return RESULT_OK;
 }
 
-static int run_in_child(bool audio)
+/* source-record's stop (#3799): force stop, and release as soon as the first
+ * `stop` arrived, while the end of the capture may still run */
+static int run_force_stop_release(void)
+{
+	if (!init_core())
+		return RESULT_NO_STARTUP;
+	register_encoders();
+	register_output();
+	os_atomic_set_bool(&audio_produces, false);
+
+	obs_encoder_t *venc = obs_video_encoder_create(VENC_ID, "video", NULL, NULL);
+	obs_encoder_t *aenc = obs_audio_encoder_create(AENC_ID, "audio", NULL, 0, NULL);
+	obs_output_t *output = obs_output_create(OUTPUT_ID, "output", NULL, NULL);
+	obs_encoder_set_video(venc, obs_get_video());
+	obs_encoder_set_audio(aenc, obs_get_audio());
+	obs_output_set_video_encoder(output, venc);
+	obs_output_set_audio_encoder(output, aenc, 0);
+	signal_handler_connect(obs_output_get_signal_handler(output), "stop", count_stop, NULL);
+
+	if (!obs_output_start(output))
+		return RESULT_NO_START;
+
+	os_sleep_ms(1500);
+	obs_output_force_stop(output);
+	int waited = 0;
+	while (os_atomic_load_long(&stop_signals) == 0 && waited < 3000) {
+		os_sleep_ms(1);
+		waited++;
+	}
+	if (os_atomic_load_long(&stop_signals) == 0)
+		return RESULT_NO_STOP_SIGNAL;
+	bool active_at_release = obs_output_active(output);
+
+	obs_output_release(output);
+	obs_encoder_release(venc);
+	obs_encoder_release(aenc);
+	long signals = os_atomic_load_long(&stop_signals);
+	fprintf(stderr, "force stop and release: %ld stop signal(s), output %s at the release\n", signals,
+		active_at_release ? "still active" : "inactive");
+	if (signals != 1)
+		return RESULT_STOP_SIGNALLED_TWICE;
+	obs_shutdown();
+	return RESULT_OK;
+}
+
+static int run_in_child(bool audio, bool force_release)
 {
 	fflush(stderr);
 	pid_t pid = fork();
 	if (pid < 0)
 		return RESULT_HUNG;
 	if (pid == 0)
-		_exit(run_case(audio));
+		_exit(force_release ? run_force_stop_release() : run_case(audio));
 
 	int status = 0;
 	for (int waited = 0; waited < WATCHDOG_MS; waited += 50) {
@@ -352,13 +419,13 @@ static bool have_display(void)
 	return display && *display;
 }
 
-static void expect(bool audio)
+static void expect_case(bool audio, bool force_release)
 {
 	if (!have_display()) {
 		fprintf(stderr, "skipped: no display\n");
 		skip();
 	}
-	int r = run_in_child(audio);
+	int r = run_in_child(audio, force_release);
 	if (r == RESULT_NO_STARTUP) {
 		fprintf(stderr, "skipped: %s\n", result_name(r));
 		skip();
@@ -367,6 +434,11 @@ static void expect(bool audio)
 		fprintf(stderr, "audio %s: %s\n", audio ? "on" : "off", result_name(r));
 		fail();
 	}
+}
+
+static void expect(bool audio)
+{
+	expect_case(audio, false);
 }
 
 /* #3739: no packet ever reached the output */
@@ -383,11 +455,19 @@ static void output_with_packets_stops_and_is_destroyed(void **state)
 	expect(true);
 }
 
+/* #3799: a force stop and a release right after its `stop` send `stop` once */
+static void force_stop_and_release_signal_stop_once(void **state)
+{
+	UNUSED_PARAMETER(state);
+	expect_case(false, true);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(output_without_packets_stops_and_is_destroyed),
 		cmocka_unit_test(output_with_packets_stops_and_is_destroyed),
+		cmocka_unit_test(force_stop_and_release_signal_stop_once),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -1,6 +1,7 @@
 //! C ABI shims, one module per C file.
 
 pub mod background_app_id;
+pub mod background_enum;
 pub mod background_error;
 pub mod background_query;
 pub mod binding_getters;
@@ -9,6 +10,8 @@ pub mod bindings;
 pub mod cocoa_keys;
 pub mod hotkey_name_map;
 pub mod identity_getters;
+#[cfg(not(target_os = "macos"))]
+pub mod key_combination;
 pub mod nix_hotkey_state;
 pub mod nix_wayland_key_names;
 pub mod nix_wayland_keys;

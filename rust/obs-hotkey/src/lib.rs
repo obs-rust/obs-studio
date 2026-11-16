@@ -10,17 +10,18 @@
 //! `libobs/obs-nix-wayland-key-names.c.h`,
 //! `libobs/obs-nix-wayland-keys.c.h`, `libobs/obs-nix-wayland-seats.c.h`,
 //! `libobs/obs-nix-x11-hotkeys.c.h`, `libobs/obs-nix-x11-input.c.h`,
-//! `libobs/obs-nix-x11-keys.c.h`, `libobs/obs-cocoa-keys.c.h` and
+//! `libobs/obs-nix-x11-keys.c.h`, `libobs/obs-cocoa-keys.c.h`,
+//! `libobs/obs-key-combination-host-posix.c.h` and
 //! `libobs/obs-windows-keys.c.h`.
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
-//! [`owned_translations`],
+//! [`owned_translations`], [`background_enum`],
 //! [`press`], [`pair`], [`save_load`], [`binding_press`], [`nix_hotkey_state`],
 //! [`portal_shortcut_ids`], [`portal_shortcut_sets`],
 //! [`portal_shortcut_status`], [`nix_wayland_key_names`],
 //! [`nix_wayland_keys`], [`nix_wayland_seats`],
-//! [`nix_x11_hotkeys`], [`nix_x11_input`], [`nix_x11_keys`], [`cocoa_keys`]
-//! and [`windows_keys`].
+//! [`nix_x11_hotkeys`], [`nix_x11_input`], [`nix_x11_keys`], [`cocoa_keys`],
+//! [`key_combination`] and [`windows_keys`].
 //! The X11 and Wayland key names share one crate-private table,
 //! `key_route`. The C ABI shims live in [`ffi`].
 
@@ -35,6 +36,7 @@ use obs_c_oracle as _; // blog
 use obs_util as _; // base log handler
 
 pub mod background_app_id;
+pub mod background_enum;
 pub mod background_error;
 pub mod background_query;
 pub mod binding_getters;
@@ -42,6 +44,7 @@ pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
 pub mod identity_getters;
+pub mod key_combination;
 mod key_route;
 pub mod name_map;
 pub mod nix_hotkey_state;

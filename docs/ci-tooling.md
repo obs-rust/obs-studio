@@ -523,6 +523,15 @@ PR and queue events so fallback analysis actually executes.
 
 ### CI attestation: skipping what's already proven
 
+`./push` resolves the CI-pinned soldr wheel through `uv run --no-project --no-build --with soldr==<pin>`
+(cached by uv), using `cmake/common/soldr.cmake`'s version, which self-tests keep equal
+to every setup-soldr workflow input. Its directory leads PATH only during attestation;
+your installed tools stay unchanged. Proof commands clear inherited `SOLDR_*`,
+`RUSTUP_TOOLCHAIN`, Rust executable/wrapper selectors and their `CARGO_BUILD_*` equivalents,
+so the repository toolchain and lane settings apply. To use an already installed copy,
+set `PUSH_SOLDR=/absolute/path/to/soldr` (or `soldr.exe`); it must report the exact CI version.
+Bootstrap/version failures use ordinary PR CI, or refuse with `PUSH_REQUIRE_ATTESTATION=1`.
+
 CI Mode extracts `ci/pr_attestation.py` from the immutable PR BASE and runs it
 through uv in isolation from head code. That executable loads its prooft source
 pin, gate declarations and freshness/input policy from the same base git objects.
@@ -579,11 +588,37 @@ fallback and queue examples; fixtures prove routing, not measured speed gains.
 
 ## Before you push
 
+`./push` runs prooft through `uv run --no-project --with` using the immutable
+`PROOFT_SOURCE` pin in `ci/pr_attestation.py`, shared with the base-owned
+verifier. The pin includes upstream commit `d08d58be`, which adds the `data`
+and `swift` ecosystems declared in `ci-attestations.yml`. Released prooft
+0.1.0 and 0.2.0 reject those gates before running a proof command; an older
+prooft on `PATH` is therefore ignored. uv caches the pinned environment
+without replacing the installed tool. A pin download or proof failure still
+uses ordinary PR CI, or refuses publication with `PUSH_REQUIRE_ATTESTATION=1`.
+
 For a focused CI/configuration bug fix, keep the RED and GREEN commits and
 record the local failing and passing commands, but push them together when
 the fix is ready. A separate remote RED run is not required. This avoids
 spending runner time on an already-fixed failure; see
 [coordination.md](rust-port/coordination.md#4-pull-requests).
+
+`./push` uses gh's configured default repository as the PR base and resolves
+Git's actual `origin` push URL, including a separate `pushurl`. Fork heads use
+the destination owner's name; new PRs target `master`. An existing open PR for
+the same destination and branch is reused, including a stacked PR. Configure
+exactly one push destination on the same GitHub host as the base; ambiguous
+destinations and repository-resolution errors stop before the push.
+If the selected base is a fork, explicitly choose it with
+`gh repo set-default OWNER/REPO` or `GH_REPO`; captured repository queries cannot
+ask gh's interactive fork-selection question.
+
+When stamping amends an already-published HEAD, `./push` uses an exact
+`--force-with-lease=<branch>:<pre-stamp-sha>` only if the push destination
+still names that pre-stamp commit and the amended commit preserves its tree
+and parents. A concurrent remote update rejects the lease. New branches and
+ordinary fast-forward updates use a plain push; divergent history is never
+force-pushed. The publication message reports which case applies.
 
 1. Claim the issue and check open PRs ([coordination.md](rust-port/coordination.md)).
 2. Commit RED, then GREEN.
@@ -925,14 +960,13 @@ to fail; an absent App token falls back to the optional legacy
 Both repository-level and organization-level runners are supported.
 The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
-selecting labels; a match in either list qualifies. It passes the result to the
-existing Build and Format workflows. An organization API 403/404 (for example,
+selecting labels; matching idle capacity across the available lists qualifies.
+It passes the result to the existing Build and Format workflows. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
 If App token creation fails and no legacy token is available, selection falls
 back to hosted runners. Missing tokens, invalid label JSON, or no matching online
-runner in either available list emit a warning and keep each job's original hosted label. Busy online
-runners still qualify; this checks availability, not spare capacity. The probe
+runner in either available list emit a warning and keep each job's original hosted label. The probe
 checks at most five pages of 100 runners per list, with a three-second timeout per
 request; no match within that limit also falls back. An unset or empty variable skips the
 probe steps. Outside `merge_group` the selection is empty and no API call runs.
@@ -941,6 +975,18 @@ and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
 The existing Format workflow's Linux Checks job uses the same selection so it
 does not hold the gate waiting for hosted capacity.
+
+Selection requires at least `MQ_RUNNER_MIN_IDLE` matching online, non-busy
+runners (repository Actions variable, default `2`). Optional `MQ_RUNNER_DEMAND`
+(default `1`) raises the required idle count to the larger of these two values;
+set it to the desired per-run concurrency, rather than assuming all roughly 11
+Linux jobs need to start together. Busy runners do not supply idle capacity,
+and runner IDs visible in both scopes count once (a busy observation wins).
+Empty threshold variables use their defaults; invalid or nonpositive values
+fall back to hosted. The job summary records the choice, reason, online/busy/idle
+counts and required capacity, plus unavailable scopes. No queued-job API is
+queried. This is a bounded capacity snapshot, not a reservation: simultaneous
+selections can race, and runners may become busy or offline after selection.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
 Run the runner and its job processes inside its Ubuntu container image / FHS

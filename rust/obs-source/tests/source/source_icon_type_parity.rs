@@ -1,5 +1,6 @@
 //! Tier 3: the public shim versus the original C over every enum and missing IDs.
-//! NULL IDs are excluded: get_source_info calls strcmp without a NULL guarantee.
+//! Both sides look IDs up with the ported get_source_info over the icon
+//! registry, the shared fixture's default (source_info_lookup.c).
 use core::ffi::{c_char, c_uint};
 use core::mem::{align_of, size_of};
 use obs_source::ffi::source_icon_type::obs_source_get_icon_type;

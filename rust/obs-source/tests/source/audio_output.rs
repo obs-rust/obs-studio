@@ -14,6 +14,7 @@ use obs_source::audio_output::{
     reset_audio_data_at_sys_time, reset_audio_timing,
 };
 use obs_source::audio_place::{MAX_BUF_SIZE, MONITOR_ONLY};
+use obs_source::own_clock_drift::{OwnClockDrift, OwnClockDriftRaw};
 use proptest::prelude::*;
 
 const RATE: u32 = 48_000;
@@ -45,6 +46,8 @@ struct Fake {
     last_output_frame_ts: Cell<u64>,
     own_clock_timing_adjust: Cell<u64>,
     own_clock_timing_set: Cell<bool>,
+    own_clock_compensation: Cell<bool>,
+    own_clock_drift: Cell<OwnClockDriftRaw>,
     compensating: Cell<bool>,
     muted: Cell<bool>,
     sizes: RefCell<[usize; MAX_CHANNELS]>,
@@ -201,6 +204,24 @@ impl Source for Fake {
         self.guard("own_clock_timing_set");
         self.rec(format!("own timing_set={value}"));
         self.own_clock_timing_set.set(value);
+    }
+    fn own_clock_compensation(&self) -> bool {
+        self.guard("own_clock_compensation");
+        self.own_clock_compensation.get()
+    }
+    fn set_own_clock_compensation(&self, value: bool) {
+        self.guard("own_clock_compensation");
+        self.rec(format!("own compensation={value}"));
+        self.own_clock_compensation.set(value);
+    }
+    fn own_clock_drift(&self) -> OwnClockDriftRaw {
+        self.guard("own_clock_drift");
+        self.own_clock_drift.get()
+    }
+    fn set_own_clock_drift(&self, value: OwnClockDriftRaw) {
+        self.guard("own_clock_drift");
+        self.rec("own drift");
+        self.own_clock_drift.set(value);
     }
     fn compensating(&self) -> bool {
         self.compensating.get()
@@ -636,23 +657,64 @@ fn a_late_continuous_packet_on_another_clock_keeps_its_own_timing() {
     assert_eq!(f.next_audio_sys_ts_min.get(), due + DUR);
 }
 
-/// A sender clock faster than the system clock puts each packet on a clock
-/// of its own later after its arrival (#4143). More than
-/// TS_SMOOTHING_THRESHOLD ahead, the packet takes its own timing again from
-/// its arrival, and is placed there instead of appended.
-#[test]
-fn a_continuous_packet_far_ahead_on_another_clock_takes_its_timing_again() {
-    let f = Fake::new();
-    let due = NOW + 100 * MSEC;
+/// The frame a source with audio on a clock of its own last showed: far from
+/// the audio's stamps.
+const FRAME_TS: u64 = FAR + 14_191_000 * MSEC;
+
+/// A source whose audio runs on a clock of its own, with its own timing set
+/// so that a packet stamped `FAR` is due at `due`.
+fn own_clock(f: &Fake, due: u64) {
     f.timing_set.set(true);
-    f.timing_adjust
-        .set(NOW.wrapping_sub(FAR + 14_191_000 * MSEC));
+    f.timing_adjust.set(NOW.wrapping_sub(FRAME_TS));
     f.own_clock_timing_adjust.set(due.wrapping_sub(FAR));
     f.own_clock_timing_set.set(true);
     f.next_audio_ts_min.set(FAR);
     f.next_audio_sys_ts_min.set(due);
-    f.audio_ts.set(NOW - 500 * MSEC);
-    f.last_output_frame_ts.set(FAR + 14_191_000 * MSEC);
+    f.last_output_frame_ts.set(FRAME_TS);
+}
+
+/// `frames` frames in both channels of the buffer.
+fn buffered(f: &Fake, frames: u64) {
+    let size = usize::try_from(frames).unwrap() * 4;
+    f.set_size(0, size);
+    f.set_size(1, size);
+}
+
+/// 1 ms of frames at [`RATE`].
+const FRAMES_PER_MS: u64 = 48;
+
+/// A sender clock faster than the system clock stamps each packet later
+/// after its arrival, but with clock drift compensation the buffer does not
+/// grow: the packet is appended, and its timing stays (#4182). Before, a
+/// packet more than TS_SMOOTHING_THRESHOLD ahead in the sender's time took
+/// its timing again and was placed, which cut the buffered audio (#4143).
+#[test]
+fn a_steady_buffer_is_appended_however_far_the_sender_runs_ahead() {
+    let f = Fake::new();
+    let due = NOW + 100 * MSEC;
+    own_clock(&f, due);
+    f.audio_ts.set(NOW - 20 * MSEC);
+    buffered(&f, 40 * FRAMES_PER_MS);
+
+    output_audio_data(&f, packet(FAR));
+
+    let log = f.take();
+    assert!(!log.iter().any(|l| l.contains("adjust=")), "{log:?}");
+    assert!(log.iter().any(|l| l.starts_with("push ")), "{log:?}");
+    assert!(!log.iter().any(|l| l.starts_with("place ")), "{log:?}");
+    assert_eq!(f.own_clock_timing_adjust.get(), due.wrapping_sub(FAR));
+}
+
+/// A buffer that holds more than TS_SMOOTHING_THRESHOLD more audio than right
+/// after a placement (a drift past the resampler's clamp) is cut at once: the
+/// packet takes its timing again from its arrival and is placed there, with
+/// no wait for the error filter (#4143, #4182).
+#[test]
+fn a_buffer_over_the_threshold_is_placed_at_the_arrival_at_once() {
+    let f = Fake::new();
+    own_clock(&f, NOW);
+    f.audio_ts.set(NOW);
+    buffered(&f, 80 * FRAMES_PER_MS);
 
     output_audio_data(&f, packet(FAR));
 
@@ -663,6 +725,175 @@ fn a_continuous_packet_far_ahead_on_another_clock_takes_its_timing_again() {
     assert!(!log.iter().any(|l| l.starts_with("push ")), "{log:?}");
     assert_eq!(f.own_clock_timing_adjust.get(), want);
     assert_eq!(f.next_audio_sys_ts_min.get(), NOW + DUR);
+}
+
+/// The step counts from where a placed packet lands, the sync offset less
+/// the resampler's offset: 100 ms buffered with a 40 ms sync offset is 60 ms
+/// over, and stays; 120 ms is 80 ms over, and is cut.
+#[test]
+fn the_step_counts_from_the_sync_offset() {
+    for (ms, cut) in [(100, false), (120, true)] {
+        let f = Fake::new();
+        own_clock(&f, NOW);
+        f.sync_offset.set(40_000_000);
+        f.last_sync_offset.set(40_000_000);
+        f.audio_ts.set(NOW);
+        buffered(&f, ms * FRAMES_PER_MS);
+
+        output_audio_data(&f, packet(FAR));
+
+        let log = f.take();
+        assert_eq!(
+            log.iter().any(|l| l.starts_with("place ")),
+            cut,
+            "{ms} ms: {log:?}"
+        );
+    }
+}
+
+/// With compensation on, the sender's time runs away from the arrival (about
+/// 180 ms an hour at 50 ppm). A packet that is placed instead of appended (a
+/// changed sync offset, #333) takes its timing from its arrival again, so it
+/// lands there, not where the sender's time puts it.
+#[test]
+fn a_placed_packet_on_another_clock_lands_at_its_arrival() {
+    let f = Fake::new();
+    own_clock(&f, NOW + 50 * MSEC);
+    f.audio_ts.set(NOW - 20 * MSEC);
+    buffered(&f, 40 * FRAMES_PER_MS);
+    f.sync_offset.set(10_000_000);
+
+    output_audio_data(&f, packet(FAR));
+
+    let want = NOW.wrapping_sub(FAR);
+    let log = f.take();
+    assert!(log.iter().any(|l| l.starts_with("place ")), "{log:?}");
+    assert_eq!(f.own_clock_timing_adjust.get(), want);
+    assert_eq!(f.next_audio_sys_ts_min.get(), NOW + DUR);
+}
+
+/// The first packet on a clock of its own turns libobs's own clock drift
+/// compensation on (#4182).
+#[test]
+fn the_first_packet_on_another_clock_turns_compensation_on() {
+    let f = Fake::new();
+    f.last_output_frame_ts.set(FRAME_TS);
+
+    output_audio_data(&f, packet(FAR));
+
+    assert!(f.own_clock_compensation.get());
+    let log = f.take();
+    let at = log.iter().position(|l| l == "own timing_set=true").unwrap();
+    assert_eq!(log[at + 1], "own compensation=true");
+}
+
+/// Audio of a source with no video, and audio on its video's clock, never
+/// turns it on: microphones, desktop audio and media files keep no resampler
+/// they did not ask for.
+#[test]
+fn audio_on_the_video_clock_never_turns_compensation_on() {
+    for frame in [0, FAR + MSEC] {
+        let f = Fake::new();
+        f.last_output_frame_ts.set(frame);
+        output_audio_data(&f, packet(FAR));
+        output_audio_data(&f, packet(FAR + DUR));
+        assert!(!f.own_clock_compensation.get(), "frame {frame}");
+        assert!(
+            !f.take().iter().any(|l| l.starts_with("own compensation")),
+            "frame {frame}"
+        );
+    }
+}
+
+/// For audio on a clock of its own, the resampler gets the filtered error of
+/// the buffer's end against the arrival, after the packet is appended,
+/// instead of the timestamp error, which is about 0 for a sender that
+/// stamps by its own sample count (#4182).
+#[test]
+fn the_resampler_gets_the_filtered_error_for_audio_on_another_clock() {
+    let f = Fake::new();
+    own_clock(&f, NOW);
+    f.compensating.set(true);
+    f.own_clock_compensation.set(true);
+    let mut drift = OwnClockDrift::new();
+    assert_eq!(drift.sample(NOW - 1500 * MSEC, 0), None);
+    let thirty = i64::try_from(30 * MSEC).unwrap();
+    // the first sample is 8 buckets older: out of the window
+    assert_eq!(drift.sample(NOW - 400 * MSEC, thirty), Some(thirty));
+    f.own_clock_drift.set(drift.to_raw());
+    f.audio_ts.set(NOW - 10 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    // after the append: NOW - 10 ms + 21.333333 ms, less NOW
+    let gap: i64 = 11_333_333;
+    let log = f.take();
+    let errors: Vec<_> = log.iter().filter(|l| l.starts_with("error=")).collect();
+    assert_eq!(errors, [&format!("error={gap}")], "{log:?}");
+    let error = log.iter().position(|l| l.starts_with("error=")).unwrap();
+    let push = log.iter().position(|l| l.starts_with("push ")).unwrap();
+    assert!(push < error, "{log:?}");
+    assert_eq!(log[error - 1], "unlock");
+    let mut want = drift;
+    assert_eq!(want.sample(NOW, gap), Some(gap));
+    assert_eq!(f.own_clock_drift.get(), want.to_raw());
+}
+
+/// Until the filter has its baseline, the error is 0: the loop holds.
+#[test]
+fn the_resampler_holds_while_the_filter_starts() {
+    let f = Fake::new();
+    own_clock(&f, NOW);
+    f.compensating.set(true);
+    f.own_clock_compensation.set(true);
+    f.audio_ts.set(NOW - 10 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    let log = f.take();
+    let errors: Vec<_> = log.iter().filter(|l| l.starts_with("error=")).collect();
+    assert_eq!(errors, ["error=0"], "{log:?}");
+    let error = log.iter().position(|l| l.starts_with("error=")).unwrap();
+    let push = log.iter().position(|l| l.starts_with("push ")).unwrap();
+    assert!(push < error, "{log:?}");
+    assert_ne!(f.own_clock_drift.get(), OwnClockDriftRaw::default());
+}
+
+/// A packet of a compensated source that arrives on the video's clock (no
+/// frame shown just then) gives the loop no error: it holds.
+#[test]
+fn a_video_clock_packet_of_a_compensated_source_gives_no_error() {
+    let f = Fake::new();
+    own_clock(&f, NOW);
+    f.compensating.set(true);
+    f.own_clock_compensation.set(true);
+    f.last_output_frame_ts.set(0);
+    f.audio_ts.set(NOW - 10 * MSEC);
+
+    output_audio_data(&f, packet(FAR));
+
+    let log = f.take();
+    assert!(!log.iter().any(|l| l.starts_with("error=")), "{log:?}");
+}
+
+/// A placed packet starts the filter again: its baseline was the old
+/// buffer's.
+#[test]
+fn a_placed_packet_on_another_clock_starts_the_filter_again() {
+    let f = Fake::new();
+    own_clock(&f, NOW);
+    let mut drift = OwnClockDrift::new();
+    drift.sample(NOW - 1500 * MSEC, 0);
+    drift.sample(NOW - 400 * MSEC, 0);
+    f.own_clock_drift.set(drift.to_raw());
+    f.audio_ts.set(NOW);
+    buffered(&f, 80 * FRAMES_PER_MS);
+
+    output_audio_data(&f, packet(FAR));
+
+    let log = f.take();
+    assert!(log.iter().any(|l| l.starts_with("place ")), "{log:?}");
+    assert_eq!(f.own_clock_drift.get(), OwnClockDriftRaw::default());
 }
 
 /// At TS_SMOOTHING_THRESHOLD ahead, not more, the packet keeps its own
@@ -847,6 +1078,18 @@ impl Source for Moves {
     }
     fn set_compensation_error(&self, error: i64) {
         self.0.set_compensation_error(error);
+    }
+    fn own_clock_compensation(&self) -> bool {
+        self.0.own_clock_compensation()
+    }
+    fn set_own_clock_compensation(&self, value: bool) {
+        self.0.set_own_clock_compensation(value);
+    }
+    fn own_clock_drift(&self) -> OwnClockDriftRaw {
+        self.0.own_clock_drift()
+    }
+    fn set_own_clock_drift(&self, value: OwnClockDriftRaw) {
+        self.0.set_own_clock_drift(value);
     }
     fn buf_size(&self, channel: usize) -> usize {
         self.0.buf_size(channel)

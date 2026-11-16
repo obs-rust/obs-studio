@@ -350,22 +350,6 @@ static inline void enum_bindings(obs_hotkey_binding_internal_enum_func func, voi
 	}
 }
 
-static inline void enum_context_hotkeys(struct obs_context_data *context, obs_hotkey_internal_enum_func func,
-					void *data)
-{
-	const size_t num = context->hotkeys.num;
-	const obs_hotkey_id *array = context->hotkeys.array;
-	obs_hotkey_t *hotkey;
-
-	for (size_t i = 0; i < num; i++) {
-		HASH_FIND_HKEY(obs->hotkeys.hotkeys, array[i], hotkey);
-		if (!hotkey)
-			continue;
-		if (!func(data, hotkey))
-			break;
-	}
-}
-
 struct binding_find_data {
 	obs_hotkey_id id;
 	size_t *idx;
@@ -463,11 +447,6 @@ void obs_hotkey_seam_signal(const char *signal, obs_hotkey_t *hotkey)
 void obs_hotkey_seam_enum_bindings(obs_hotkey_binding_internal_enum_func func, void *data)
 {
 	enum_bindings(func, data);
-}
-
-void obs_hotkey_seam_enum_context(struct obs_context_data *context, obs_hotkey_internal_enum_func func, void *data)
-{
-	enum_context_hotkeys(context, func, data);
 }
 
 size_t obs_hotkey_seam_context_count(const struct obs_context_data *context)
@@ -799,20 +778,6 @@ char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo)
 		return NULL;
 	}
 	return trigger.array;
-}
-
-void obs_hotkeys_enum_background_shortcuts(obs_hotkey_background_enum_func func, void *data)
-{
-	if (!func || !lock())
-		return;
-
-	struct obs_hotkeys_background *background = &obs->hotkeys.background;
-	for (size_t i = 0; i < background->shortcuts.num; i++) {
-		struct obs_hotkey_background_shortcut *shortcut = &background->shortcuts.array[i];
-		if (!func(data, shortcut->combo, shortcut->trigger, shortcut->bound))
-			break;
-	}
-	unlock();
 }
 
 /* Lets the platform client act on a retry or probe change, then unlocks.

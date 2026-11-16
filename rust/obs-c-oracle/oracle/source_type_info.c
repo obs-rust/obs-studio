@@ -1,4 +1,5 @@
-/* Original C queries and real-header fixtures share the existing source lookup. */
+/* Original C queries and real-header fixtures share the ported source lookup
+ * over a per-thread registry (source_info_lookup.c). */
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 #include "source_type_info_fields.inc"
 
 struct obs_core *oracle_source_registry_exchange_core(struct obs_core *core);
-size_t oracle_source_registry_lookups(const char **last);
+size_t oracle_source_registry_lookups(void);
 struct sti_trace {
 	const char *result;
 	void *last;
@@ -54,11 +55,11 @@ static void sti_defaults2(void *type_data, obs_data_t *settings)
 typedef const char *(*sti_name_query)(const char *id);
 typedef uint32_t (*sti_flags_query)(const char *id);
 typedef bool (*sti_configurable_query)(const char *id);
+/* One lookup per query, seen by the shared fixture as it starts; a NULL ID
+ * reads no registry, so it is not seen (source_info_lookup.c). */
 static bool sti_one_lookup(size_t before, const char *query)
 {
-	const char *last = NULL;
-	size_t after = oracle_source_registry_lookups(&last);
-	return after == before + 1 && last == query;
+	return oracle_source_registry_lookups() == before + (query != NULL);
 }
 
 bool oracle_source_type_info_check(const char *const *ids, const uint32_t *flags, const unsigned char *masks,
@@ -105,19 +106,18 @@ bool oracle_source_type_info_check(const char *const *ids, const uint32_t *flags
 	}
 	for (size_t i = 0; i < result_count; ++i) {
 		trace = (struct sti_trace){.result = results[i]};
-		const char *last = NULL;
-		size_t lookups = oracle_source_registry_lookups(&last);
+		size_t lookups = oracle_source_registry_lookups();
 		uint32_t rust_flags = output_flags(query);
 		valid = valid && sti_one_lookup(lookups, query);
 		uint32_t c_flags = oracle_obs_get_source_output_flags(query);
 		valid = valid && rust_flags == c_flags && trace.calls == 0;
-		lookups = oracle_source_registry_lookups(&last);
+		lookups = oracle_source_registry_lookups();
 		bool rust_configurable = configurable(query);
 		valid = valid && sti_one_lookup(lookups, query);
 		bool c_configurable = oracle_obs_is_source_configurable(query);
 		valid = valid && rust_configurable == c_configurable && trace.calls == 0;
 		if (names) {
-			lookups = oracle_source_registry_lookups(&last);
+			lookups = oracle_source_registry_lookups();
 			const char *rust_name = name(query);
 			valid = valid && sti_one_lookup(lookups, query);
 			size_t rust_calls = trace.calls;

@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-scene-item-private-settings+.h.c"
+  ]
+}

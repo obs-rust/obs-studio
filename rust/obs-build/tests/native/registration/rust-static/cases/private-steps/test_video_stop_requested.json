@@ -5,6 +5,12 @@
       "sources": [
         "test/cmocka/test_video_stop_requested.c"
       ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
       "includes": [
         "libobs",
         "deps/libcaption"

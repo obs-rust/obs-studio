@@ -19,3 +19,12 @@ libc = { workspace = true }
 # executable per category; this is the frontend's Rust).
 [lib]
 test = false
+
+# The watchdog process (#4589), shipped next to the OBS executable on
+# Windows. Its tests run with the library's, in obs-tests-gpu.
+[[bin]]
+name = "obs-exit-watchdog"
+path = "src/bin/obs-exit-watchdog.rs"
+# Same name as the library: its docs would collide.
+doc = false
+test = false

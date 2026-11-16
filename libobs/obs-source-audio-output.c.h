@@ -119,6 +119,15 @@ static inline void source_output_audio_push_back(obs_source_t *source, const str
 	source->last_audio_input_buf_size = 0;
 }
 
+/* obs_source_own_clock_drift_gap() of the source's buffer: how far the end
+ * of its first channel is ahead of @os_time. The caller holds
+ * audio_buf_mutex. */
+static inline int64_t source_buffered_end_gap(const obs_source_t *source, size_t sample_rate, uint64_t os_time)
+{
+	return obs_source_own_clock_drift_gap(source->audio_ts, source->audio_input_buf[0].size / sizeof(float),
+					      (uint32_t)sample_rate, os_time);
+}
+
 void source_output_audio_data(obs_source_t *source, const struct audio_data *data)
 {
 	size_t sample_rate = audio_output_get_sample_rate(obs->audio.audio);
@@ -157,6 +166,9 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 		source->timing_adjust = pre.timing_adjust;
 	}
 
+	/* libobs's own compensation of audio on a clock of its own (#4182) */
+	bool own_compensation = os_atomic_load_bool(&source->own_clock_compensation);
+
 	pthread_mutex_unlock(&source->audio_buf_mutex);
 
 	switch (pre.action) {
@@ -177,8 +189,10 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 
 	/* Feed the error to the resampler so that the samples keep pace with
 	 * the timestamps instead of drifting until the threshold above is
-	 * exceeded. After a resync the error is unknown, so hold. */
-	if (source->resampler && source->last_async_compensation)
+	 * exceeded. After a resync the error is unknown, so hold. Audio that
+	 * libobs compensates itself gets its error after it is buffered
+	 * (#4182). */
+	if (!own_compensation && source->resampler && source->last_async_compensation)
 		audio_resampler_set_compensation_error(source->resampler, pre.drift_error);
 
 	source->next_audio_ts_min = pre.next_audio_ts_min;
@@ -189,16 +203,26 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 	 * clock (#3747); audio on a clock of its own keeps its own timing */
 	const bool on_video_clock =
 		obs_source_audio_timing_follows_video(data->timestamp, source->last_output_frame_ts);
+	const uint64_t arrival = os_time - data->timestamp;
+	bool place_at_arrival = false;
 	if (!on_video_clock && !source->own_clock_timing_set) {
 		/* reset_audio_timing() for the audio's own timing */
-		source->own_clock_timing_adjust = os_time - data->timestamp;
+		source->own_clock_timing_adjust = arrival;
 		source->own_clock_timing_set = true;
-	} else if (!on_video_clock && (int64_t)(data->timestamp + source->own_clock_timing_adjust - os_time) >
-					      (int64_t)OBS_SOURCE_AUDIO_TS_SMOOTHING_THRESHOLD) {
-		/* A sender clock faster than the system clock places its audio
-		 * later and later after its arrival, and no other path moves
-		 * this timing (#4143): take the timing of this packet again. */
-		source->own_clock_timing_adjust = os_time - data->timestamp;
+		/* its clock drifts from the system clock: compensate it (#4182) */
+		os_atomic_set_bool(&source->own_clock_compensation, true);
+		own_compensation = true;
+	} else if (!on_video_clock && obs_source_audio_place_started(source->audio_ts) &&
+		   obs_source_own_clock_drift_excess(source_buffered_end_gap(source, sample_rate, os_time),
+						     source->sync_offset, source->resample_offset) >
+			   (int64_t)OBS_SOURCE_AUDIO_TS_SMOOTHING_THRESHOLD) {
+		/* The buffer holds more than TS_SMOOTHING_THRESHOLD more audio
+		 * than right after a packet placed at its arrival: a sender clock
+		 * that drifts faster than the compensation follows (#4143,
+		 * #4182). Take the timing of this packet again and place it
+		 * there. */
+		source->own_clock_timing_adjust = arrival;
+		place_at_arrival = true;
 	}
 	timing_adjust = on_video_clock ? source->timing_adjust : source->own_clock_timing_adjust;
 
@@ -215,7 +239,23 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 		.last_sync_offset = source->last_sync_offset,
 		.continuous = pre.continuous && on_video_clock,
 	};
+	const struct obs_source_audio_timing_under under_in = under;
 	obs_source_audio_timing_under_lock(&under);
+
+	/* With compensation on, the sender's time runs away from the arrival.
+	 * A packet on a clock of its own that is placed instead of appended
+	 * takes its timing from its arrival, so it lands there (#4182). */
+	if (!on_video_clock && !place_at_arrival && !under.push_back && !under.reset_timing &&
+	    timing_adjust != arrival) {
+		source->own_clock_timing_adjust = arrival;
+		under = under_in;
+		under.packet_timing_adjust = arrival;
+		under.timing_adjust = arrival;
+		obs_source_audio_timing_under_lock(&under);
+		place_at_arrival = true;
+	}
+	if (place_at_arrival)
+		under.push_back = false;
 
 	if (under.reset_timing) {
 		/* reset_audio_timing(source, data->timestamp, os_time) */
@@ -230,14 +270,39 @@ void source_output_audio_data(obs_source_t *source, const struct audio_data *dat
 	in.timestamp = under.timestamp;
 	push_back = under.push_back;
 
-	if (obs_source_audio_place_outputs((int)source->monitoring_type)) {
-		if (push_back && obs_source_audio_place_started(source->audio_ts))
+	const bool outputs = obs_source_audio_place_outputs((int)source->monitoring_type);
+	bool appended = false;
+	if (outputs) {
+		if (push_back && obs_source_audio_place_started(source->audio_ts)) {
 			source_output_audio_push_back(source, &in);
-		else
+			appended = true;
+		} else {
 			source_output_audio_place(source, &in);
+		}
+	}
+
+	/* The error of audio on a clock of its own: the end of the buffered
+	 * audio against the arrival, filtered (#4182). A placed packet starts
+	 * the filter again. */
+	int64_t own_error = 0;
+	if (!on_video_clock && outputs) {
+		struct obs_source_own_clock_drift drift = source->own_clock_drift;
+		if (appended) {
+			int64_t error;
+			if (obs_source_own_clock_drift_sample(
+				    &drift, os_time, source_buffered_end_gap(source, sample_rate, os_time), &error))
+				own_error = error;
+		} else {
+			obs_source_own_clock_drift_reset(&drift);
+		}
+		source->own_clock_drift = drift;
 	}
 
 	pthread_mutex_unlock(&source->audio_buf_mutex);
+
+	/* until the filter has its baseline, 0: the loop holds */
+	if (!on_video_clock && own_compensation && source->resampler && source->last_async_compensation)
+		audio_resampler_set_compensation_error(source->resampler, own_error);
 
 	source_signal_audio_data(source, data, source_muted(source, os_time));
 }

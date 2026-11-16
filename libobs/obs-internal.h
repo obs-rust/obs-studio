@@ -42,6 +42,7 @@
 #include "obs-canvas-flags-fields.h"
 #include "obs-hotkey-background-app-id-fields.h"
 #include "obs-video-stats.h"
+#include "obs-source-own-clock-drift.h"
 
 #include <obsversion.h>
 #include <caption/caption.h>
@@ -1292,6 +1293,13 @@ struct obs_source {
 	 * by when it arrived, not by its timestamp. Under audio_buf_mutex. */
 	uint64_t own_clock_timing_adjust;
 	bool own_clock_timing_set;
+	/* clock drift compensation that libobs turned on for audio on a clock of
+	 * its own, ORed into async_compensation where the resampler is made, and
+	 * the filter of its error (#4182). The flag is atomic: process_audio()
+	 * reads it without audio_buf_mutex. The filter is under
+	 * audio_buf_mutex. */
+	volatile bool own_clock_compensation;
+	struct obs_source_own_clock_drift own_clock_drift;
 	uint64_t last_sys_timestamp;
 	bool async_rendered;
 
@@ -1596,6 +1604,10 @@ struct obs_source_type_info_fields {
 	bool has_properties2;
 };
 struct obs_source_type_info_fields obs_source_type_info_fields(const struct obs_source_info *info);
+/* Private registry view for the Rust get_source_info (obs-source-info-lookup-fields.c.h). */
+extern size_t obs_source_info_lookup_count(void);
+extern struct obs_source_info *obs_source_info_lookup_entry(size_t index);
+extern const char *obs_source_info_lookup_id(const struct obs_source_info *info);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
 				    obs_data_t *hotkey_data, bool private);
