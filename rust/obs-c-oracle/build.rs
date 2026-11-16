@@ -783,12 +783,12 @@ fn main() {
         extract_dir.join("object-ref-weak.inc"),
         [
             extract_c(
-                &libobs.join("obs.c.h"),
+                &libobs.join("obs-weak-object-refs.c.h"),
                 "void obs_weak_object_release(",
                 "}",
             ),
             extract_c(
-                &libobs.join("obs.c.h"),
+                &libobs.join("obs-weak-object-refs.c.h"),
                 "obs_object_t *obs_weak_object_get_object(",
                 "}",
             ),
