@@ -122,6 +122,7 @@ mod object_validity_query;
 mod object_validity_query_parity;
 mod output_protocol_registry;
 mod output_protocol_registry_parity;
+mod private_data;
 mod set_output_source;
 mod set_output_source_parity;
 mod shutdown_detach;
