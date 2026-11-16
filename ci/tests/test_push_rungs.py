@@ -157,6 +157,8 @@ class PullRequestTransport(unittest.TestCase):
         push_urls = push_urls or [f"git@github.com:{destination}.git"]
         responses = {
             ("git", "rev-parse", "--abbrev-ref"): (self.BRANCH, 0),
+            ("git", "rev-parse", "HEAD"): ("a" * 40, 0),
+            ("git", "ls-remote"): ("", 2),
             ("git", "log"): ("Fix fork PR creation", 0),
             ("git", "push"): ("", 0),
             ("gh", "api"): (existing, int(lookup_error)),
@@ -454,6 +456,28 @@ class RestampPublication(unittest.TestCase):
         self.assertEqual(result, 0, output)
         self.assertEqual(self.pushes, [["git", "push", "-u", "origin", self.BRANCH]])
         self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+
+    def test_restamp_queries_separate_push_destination(self):
+        self.seed()
+        self.git("remote", "set-url", "origin", str(self.local / "missing-fetch-remote"))
+        self.git("remote", "set-url", "--push", "origin", str(self.remote))
+        result, output = self.publish()
+        self.assertEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+        self.assertIn(f"--force-with-lease={self.BRANCH}:{self.before}", self.pushes[0])
+
+    def test_parent_amendment_is_not_a_restamp(self):
+        self.seed()
+
+        def stamp():
+            self.git("commit", "--allow-empty", "-m", "new parent")
+            return self.stamp()
+
+        result, output = self.publish(stamp)
+        # This is a normal fast-forward, but must never get force permission.
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.before)
+        self.assertEqual(self.pushes, [])
 
 
 class PinnedSoldr(unittest.TestCase):

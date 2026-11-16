@@ -364,6 +364,44 @@ def ensure_pr(branch: str, base: dict, destination: dict) -> int:
     return 0
 
 
+def publish_branch(branch: str, before: str) -> int:
+    """Lease only a message/signature amendment of the exact published HEAD."""
+    # origin may fetch upstream but push to a fork. Query the actual push URL,
+    # without echoing it: URLs can contain credentials (as in pr_repositories).
+    urls = git("remote", "get-url", "--push", "--all", "origin", capture=True).stdout.splitlines()
+    if len(urls) != 1:
+        print("./push: ambiguous push destination; refusing to push", file=sys.stderr)
+        return 3
+    remote = subprocess.run(
+        ["git", "ls-remote", "--exit-code", "--refs", urls[0], f"refs/heads/{branch}"],
+        cwd=ROOT, text=True, capture_output=True,
+    )
+    if remote.returncode not in {0, 2}:
+        print("./push: cannot read the push destination's branch; refusing to push", file=sys.stderr)
+        return 3
+    args = ["git", "push", "-u", "origin", branch]
+    if remote.returncode == 2:
+        print("./push: new remote branch; plain push", flush=True)
+    else:
+        remote_head = remote.stdout.split()[0]
+        after = git("rev-parse", "HEAD", capture=True).stdout.strip()
+        if remote_head == before and after != before:
+            # prooft and final signing may amend more than once. Comparing tree
+            # and ordered parents permits only the resulting amended sibling.
+            identity = git("show", "-s", "--format=%T%n%P", before, capture=True).stdout
+            if git("show", "-s", "--format=%T%n%P", after, capture=True).stdout != identity:
+                print("./push: HEAD changed beyond a pure re-stamp; refusing to replace the remote head",
+                      file=sys.stderr)
+                return 3
+            print(f"./push: pure re-stamp of remote HEAD {before}; exact force-with-lease", flush=True)
+            args.append(f"--force-with-lease={branch}:{before}")
+        else:
+            print("./push: remote is not the amended pre-stamp HEAD; plain push (fast-forward only)", flush=True)
+    # The explicit expected SHA makes remote movement after ls-remote atomic:
+    # Git refuses stale leases rather than overwriting a concurrent update.
+    return run(args, check=False).returncode
+
+
 def main(argv: list[str]) -> int:
     branch = git("rev-parse", "--abbrev-ref", "HEAD", capture=True).stdout.strip()
     if branch in {"master", "HEAD"}:
@@ -373,6 +411,7 @@ def main(argv: list[str]) -> int:
         print("./push: working tree is dirty; commit or stash before pushing", file=sys.stderr)
         return 3
 
+    before = git("rev-parse", "HEAD", capture=True).stdout.strip()
     try:
         attested = attest()
     except (OSError, subprocess.CalledProcessError) as exc:
@@ -400,7 +439,9 @@ def main(argv: list[str]) -> int:
         )
         return 3
 
-    run(["git", "push", "-u", "origin", branch])
+    result = publish_branch(branch, before)
+    if result:
+        return result
 
     result = ensure_pr(branch, base, destination)
     if result:
