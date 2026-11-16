@@ -30,18 +30,22 @@ fn canonical_canvas_release_is_registered() {
     );
     let old = fs::read_to_string(root.join("libobs/obs-canvas.c.h")).unwrap();
     assert!(!old.contains("void obs_canvas_release("));
+    // Swapped (#4817): the original C builds only into the C reference.
     let group =
-        fs::read_to_string(root.join("libobs/build/libobs.core-canvas-release+.h.c")).unwrap();
+        fs::read_to_string(root.join("libobs/build/libobs.ported-canvas-release+.h.c")).unwrap();
     assert!(group.contains("#include \"libobs/obs-canvas-release.c.h\""));
+    let ported =
+        fs::read_to_string(root.join("libobs/build/ported-source-sets/canvas-release.json"))
+            .unwrap();
+    assert!(ported.contains("\"build/libobs.ported-canvas-release+.h.c\""));
     let sources: Vec<String> = serde_json::from_str(
         &fs::read_to_string(root.join("libobs/build/source-sets.d/LIBOBS_SOURCES.json")).unwrap(),
     )
     .unwrap();
-    assert_eq!(
-        sources
+    assert!(
+        !sources
             .iter()
-            .filter(|source| *source == "build/libobs.core-canvas-release+.h.c")
-            .count(),
-        1
+            .any(|source| source.contains("canvas-release")),
+        "hybrid libobs must take obs_canvas_release from obs-core"
     );
 }

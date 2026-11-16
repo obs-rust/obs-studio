@@ -27,6 +27,8 @@ mod canvas_readonly_getters;
 mod canvas_readonly_getters_parity;
 mod canvas_ref;
 mod canvas_ref_parity;
+mod canvas_release;
+mod canvas_release_parity;
 mod canvas_render;
 mod canvas_render_parity;
 mod canvas_rules;
