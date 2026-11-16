@@ -10,6 +10,7 @@ more gets a named override whose comment cites the issue.
 
 from __future__ import annotations
 
+import re
 import tomllib
 import unittest
 from pathlib import Path
@@ -32,11 +33,16 @@ class NextestBudgetTest(unittest.TestCase):
         for o in overrides:
             self.assertIn("test(", o["filter"], o)
             self.assertNotIn("all()", o["filter"], o)
-            self.assertIn("slow-timeout", o, o)
-        blocks = self.text.split("[[profile.default.overrides]]")[1:]
-        for before, block in zip(self.text.split("[[profile.default.overrides]]"), blocks):
+            if "slow-timeout" not in o:
+                # Scheduling-only rules cannot alter selection, concurrency,
+                # retries or timeouts. Timeout exceptions keep the #2888 check.
+                self.assertEqual(set(o), {"filter", "priority"}, o)
+                self.assertIs(type(o["priority"]), int, o)
+                self.assertTrue(-100 <= o["priority"] <= 100, o)
+        for before, override in zip(self.text.split("[[profile.default.overrides]]"), overrides):
             comment = before.rstrip().splitlines()[-1]
-            self.assertTrue(comment.startswith("#") and "#2888" in comment, comment)
+            issue = "#2888" in comment if "slow-timeout" in override else re.search(r"#\d+", comment)
+            self.assertTrue(comment.startswith("#") and issue, comment)
 
 
 if __name__ == "__main__":
