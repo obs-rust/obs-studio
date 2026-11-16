@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83308,
-      "libobs": 95246,
+      "libobs": 95281,
       "plugins": 148640,
       "shared": 15968
     },
-    "percent": 16.34,
-    "ported_lines": 56072,
-    "total_lines": 343162
+    "percent": 16.38,
+    "ported_lines": 56232,
+    "total_lines": 343197
   },
-  "commit": "6d15015",
-  "date": "2026-11-15",
+  "commit": "dcf03a0",
+  "date": "2026-11-16",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 49.31,
+          "percent": 49.3,
           "ported_lines": 31554,
-          "total_lines": 63997
+          "total_lines": 64007
         },
         "graphics": {
-          "percent": 68.86,
-          "ported_lines": 9957,
-          "total_lines": 14459
+          "percent": 69.85,
+          "ported_lines": 10117,
+          "total_lines": 14484
         },
         "media-io": {
           "percent": 78.57,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 718,
-      "hybrid_lines": 39174,
-      "percent": 58.87,
-      "ported_lines": 56072,
-      "total_lines": 95246
+      "files": 721,
+      "hybrid_lines": 39049,
+      "percent": 59.02,
+      "ported_lines": 56232,
+      "total_lines": 95281
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 51.18,
+            "percent": 51.17,
             "ported_lines": 30201,
-            "total_lines": 59008
+            "total_lines": 59018
           },
           "graphics": {
-            "percent": 69.38,
-            "ported_lines": 9897,
-            "total_lines": 14265
+            "percent": 70.38,
+            "ported_lines": 10057,
+            "total_lines": 14290
           },
           "media-io": {
             "percent": 78.57,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 683,
-        "hybrid_lines": 34855,
-        "percent": 59.82,
+        "files": 686,
+        "hybrid_lines": 34730,
+        "percent": 59.98,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -98,6 +98,7 @@
           "graphics/effect-params.c.h",
           "graphics/effect-parser-blocks.c.h",
           "graphics/effect-parser-compile.c.h",
+          "graphics/effect-parser-entry.c.h",
           "graphics/effect-parser-lifecycle.c.h",
           "graphics/effect-parser-params.c.h",
           "graphics/effect-parser-passes.c.h",
@@ -145,6 +146,7 @@
           "graphics/state-depth-entrypoints.c.h",
           "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
+          "graphics/texture-file-data2.c.h",
           "graphics/texture-metadata.c.h",
           "graphics/texture-planar-creators.c.h",
           "graphics/texture-render.c.h",
@@ -529,20 +531,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 51886,
-        "total_lines": 86741
+        "ported_lines": 52046,
+        "total_lines": 86776
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 50.27,
+            "percent": 50.26,
             "ported_lines": 26683,
-            "total_lines": 53082
+            "total_lines": 53092
           },
           "graphics": {
-            "percent": 69.38,
-            "ported_lines": 9897,
-            "total_lines": 14265
+            "percent": 70.38,
+            "ported_lines": 10057,
+            "total_lines": 14290
           },
           "media-io": {
             "percent": 78.57,
@@ -555,9 +557,9 @@
             "total_lines": 9978
           }
         },
-        "files": 663,
-        "hybrid_lines": 32447,
-        "percent": 59.81,
+        "files": 666,
+        "hybrid_lines": 32322,
+        "percent": 59.98,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -573,6 +575,7 @@
           "graphics/effect-params.c.h",
           "graphics/effect-parser-blocks.c.h",
           "graphics/effect-parser-compile.c.h",
+          "graphics/effect-parser-entry.c.h",
           "graphics/effect-parser-lifecycle.c.h",
           "graphics/effect-parser-params.c.h",
           "graphics/effect-parser-passes.c.h",
@@ -620,6 +623,7 @@
           "graphics/state-depth-entrypoints.c.h",
           "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
+          "graphics/texture-file-data2.c.h",
           "graphics/texture-metadata.c.h",
           "graphics/texture-planar-creators.c.h",
           "graphics/texture-render.c.h",
@@ -990,20 +994,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 48289,
-        "total_lines": 80736
+        "ported_lines": 48449,
+        "total_lines": 80771
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 50.49,
+            "percent": 50.48,
             "ported_lines": 27624,
-            "total_lines": 54713
+            "total_lines": 54723
           },
           "graphics": {
-            "percent": 68.94,
-            "ported_lines": 9957,
-            "total_lines": 14444
+            "percent": 69.92,
+            "ported_lines": 10117,
+            "total_lines": 14469
           },
           "media-io": {
             "percent": 78.57,
@@ -1016,9 +1020,9 @@
             "total_lines": 10704
           }
         },
-        "files": 674,
-        "hybrid_lines": 33805,
-        "percent": 59.4,
+        "files": 677,
+        "hybrid_lines": 33680,
+        "percent": 59.57,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1035,6 +1039,7 @@
           "graphics/effect-params.c.h",
           "graphics/effect-parser-blocks.c.h",
           "graphics/effect-parser-compile.c.h",
+          "graphics/effect-parser-entry.c.h",
           "graphics/effect-parser-lifecycle.c.h",
           "graphics/effect-parser-params.c.h",
           "graphics/effect-parser-passes.c.h",
@@ -1084,6 +1089,7 @@
           "graphics/state-depth-entrypoints.c.h",
           "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
+          "graphics/texture-file-data2.c.h",
           "graphics/texture-metadata.c.h",
           "graphics/texture-planar-creators.c.h",
           "graphics/texture-render.c.h",
@@ -1458,12 +1464,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 49467,
-        "total_lines": 83272
+        "ported_lines": 49627,
+        "total_lines": 83307
       }
     }
   },
   "rust": {
-    "lines": 213210
+    "lines": 213853
   }
 }
