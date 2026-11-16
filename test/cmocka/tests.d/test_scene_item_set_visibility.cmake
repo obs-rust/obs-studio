@@ -25,6 +25,7 @@ if(OS_LINUX AND TARGET OBS::libobs-opengl)
   endif()
   set_tests_properties(
     test_scene_item_set_visibility
-    PROPERTIES TIMEOUT 30 WORKING_DIRECTORY "$<TARGET_FILE_DIR:test_scene_item_set_visibility>"
+    # Linux stages the shaders relative to this runtime directory.
+    PROPERTIES TIMEOUT 30 WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
   )
 endif()
