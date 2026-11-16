@@ -1,4 +1,6 @@
-if(TARGET OBS::libobs-opengl)
+# Match test_scene_color_space: this fixture initializes a real OpenGL context
+# through the Linux/Xvfb path, not the Windows D3D11 or macOS test harnesses.
+if(OS_LINUX AND TARGET OBS::libobs-opengl)
   # Public API characterization, linked against whichever libobs Tier 2 selects.
   add_executable(test_scene_item_set_visibility test_scene_item_set_visibility.c)
   target_include_directories(test_scene_item_set_visibility PRIVATE ${CMOCKA_INCLUDE_DIR})
@@ -23,6 +25,6 @@ if(TARGET OBS::libobs-opengl)
   endif()
   set_tests_properties(
     test_scene_item_set_visibility
-    PROPERTIES TIMEOUT 30 WORKING_DIRECTORY "${OBS_OUTPUT_DIR}/$<CONFIG>"
+    PROPERTIES TIMEOUT 30 WORKING_DIRECTORY "$<TARGET_FILE_DIR:test_scene_item_set_visibility>"
   )
 endif()
