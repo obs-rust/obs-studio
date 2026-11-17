@@ -2718,23 +2718,39 @@ jobs:
 
       # The package list is shared with the local Docker harness (run.sh).
       - name: Install Tier 2 Packages 📦
+        env:
+          TIER2_APT_SHARED: ${{ steps.pcache.outputs.apt != '' }}
         run: |
           # Install Git already refreshed these lists in this fresh container.
-          # On the Dell, Tier 2 builds share one archive dir. apt takes its lock
-          # without a timeout ("held by process 0" from another container), so
-          # queue on a blocking flock. An empty archive downloads for minutes
-          # (run 44049453484, #4954); hosted dirs are job-local and never wait.
+          export TIER2_INSTALL_ARCHIVES="$TIER2_APT_ARCHIVES"
+          if [ "${TIER2_APT_SHARED:-false}" = true ]; then
+            # Only downloads write the shared Dell archive. Release the flock
+            # before dpkg: each container has its own package database (#4997).
+            grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
+              xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" \
+                flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
+                sudo apt-get install --download-only -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
+            # apt also writes archives/lock and partial/ during installation.
+            # Copy only completed .debs to a private cache; reflink when possible,
+            # copy across mounts otherwise. Never share writable package inodes.
+            TIER2_INSTALL_ARCHIVES=$(mktemp -d "$RUNNER_TEMP/tier2-apt.XXXXXX")
+            chmod a+rx "$TIER2_INSTALL_ARCHIVES"
+            for deb in "$TIER2_APT_ARCHIVES"/*.deb; do
+              [ -f "$deb" ] || continue
+              cp --reflink=auto "$deb" "$TIER2_INSTALL_ARCHIVES/"
+            done
+          fi
           # force-unsafe-io still syncs dpkg's database per package. eatmydata
           # cuts this throwaway container's HDD install from 468 s to 47 s.
           # An interrupted unpack leaves dpkg half-configured (job 134123589625).
-          # Recover inside each attempt, under the same archive lock. Configure
-          # may fail on missing dependencies; let apt's repair install fix them.
+          # Recover inside each attempt. Configure may fail on missing
+          # dependencies; let apt's repair install fix them. Hosted jobs keep
+          # their original job-local archive and need no separate download pass.
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
-            xargs flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
-              "${GITHUB_WORKSPACE}/.github/scripts/retry" bash -ec '
+            xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" bash -ec '
                 sudo eatmydata dpkg --configure -a || true
-                sudo eatmydata apt-get -f install -y -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES"
-                sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends "$@"
+                sudo eatmydata apt-get -f install -y -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES"
+                sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES" -y --no-install-recommends "$@"
               ' tier2-apt
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾

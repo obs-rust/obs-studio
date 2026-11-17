@@ -129,8 +129,11 @@ else
   locked=yes
 fi
 printf '%s\t%s\t%s\n' "$phase" "$locked" "$cache" >> "$TRACE"
+printf '%s\n' "$@" > "$TRACE.$phase.args"
 if [ "$phase" = download ]; then
   [ "$locked" = yes ] && [ "$cache" = "$SHARED_ARCHIVES" ]
+  count=$(grep -c '^download' "$TRACE")
+  [ "$count" -gt "$FAIL_DOWNLOADS" ] || exit 42
   printf 'complete package\n' > "$cache/fixture.deb"
 else
   [ "$locked" = no ]
@@ -181,7 +184,7 @@ fi
                 command, cwd=WORKFLOW.parents[2], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 text=True, start_new_session=True,
                 env={**env, "RUNNER_TEMP": str(first_temp), "TRACE": str(root / "first.trace"),
-                     "BLOCK_INSTALL": "yes"},
+                     "BLOCK_INSTALL": "yes", "FAIL_DOWNLOADS": "1", "RETRY_ATTEMPTS": "3"},
             )
             try:
                 self.assertTrue(select.select([ready_fd], [], [], 5)[0],
@@ -190,7 +193,7 @@ fi
                 second = subprocess.run(
                     command, cwd=WORKFLOW.parents[2], capture_output=True, text=True, timeout=5,
                     env={**env, "RUNNER_TEMP": str(second_temp), "TRACE": str(root / "second.trace"),
-                         "BLOCK_INSTALL": "no"},
+                         "BLOCK_INSTALL": "no", "FAIL_DOWNLOADS": "0"},
                 )
                 self.assertEqual(second.returncode, 0, second.stderr)
                 self.assertIsNone(first.poll(), "first install must remain blocked until released")
@@ -200,8 +203,14 @@ fi
                 for name, private_root in (("first", first_temp), ("second", second_temp)):
                     calls = [line.split("\t") for line in (root / f"{name}.trace").read_text().splitlines()]
                     self.assertEqual([call[:2] for call in calls],
-                                     [["download", "yes"], ["configure", "no"],
+                                     [["download", "yes"]] * (2 if name == "first" else 1) +
+                                     [["configure", "no"],
                                       ["repair", "no"], ["install", "no"]])
+                    download_args = (root / f"{name}.trace.download.args").read_text().splitlines()
+                    install_args = (root / f"{name}.trace.install.args").read_text().splitlines()
+                    self.assertEqual(download_args[:4], ["apt-get", "install", "--download-only", "-o"])
+                    self.assertEqual(download_args[5:], install_args[5:])
+                    self.assertTrue(download_args[5:7] == ["-y", "--no-install-recommends"])
                     self.assertEqual(calls[0][2], str(archives))
                     cache = Path(calls[-1][2])
                     self.assertTrue(cache.is_relative_to(private_root), cache)
