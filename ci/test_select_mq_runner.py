@@ -90,12 +90,12 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertIn("idle=0", output)
         self.assertIn("busy=6", output)
 
-    def test_prefer_uses_all_busy_online_runners(self):
+    def test_prefer_busy_runners_do_not_override_capacity(self):
         entries = [runner(busy=True) for _ in range(6)]
         for scope in ("repository", "organization"):
             with self.subTest(scope=scope):
                 options = {"runners" if scope == "repository" else "org_runners": entries}
-                self.assertEqual(self.select(mode="prefer", **options)[0], LABELS)
+                self.assertEqual(self.select(mode="prefer", **options)[0], "")
 
     def test_prefer_all_offline_uses_hosted(self):
         result, _, output = self.select([runner("offline", busy=True)], mode="prefer")
@@ -111,7 +111,7 @@ class SelectMqRunnerTest(unittest.TestCase):
 
     def test_prefer_preserves_available_scope_on_probe_failure(self):
         self.assertEqual(
-            self.select([runner(busy=True)], mode="prefer", org_error=URLError("down"))[0],
+            self.select([runner()], mode="prefer", org_error=URLError("down"))[0],
             LABELS,
         )
 
@@ -125,11 +125,21 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(self.select([runner()], mode="")[0], LABELS)
         self.assertEqual(self.select([runner()], mode="", min_idle="2")[0], "")
 
-    def test_prefer_ignores_idle_thresholds(self):
-        self.assertEqual(
-            self.select([runner(busy=True)], mode="prefer", min_idle="0", demand="bad")[0],
-            LABELS,
-        )
+    def test_prefer_respects_minimum_and_per_run_demand(self):
+        for mode in ("", "prefer"):
+            for idle in range(7):
+                with self.subTest(mode=mode, idle=idle):
+                    entries = [runner() for _ in range(idle)]
+                    entries += [runner(busy=True) for _ in range(6 - idle)]
+                    self.assertEqual(
+                        self.select(entries, mode=mode, demand="6")[0],
+                        LABELS if idle == 6 else "",
+                    )
+            self.assertEqual(self.select([runner()], mode=mode, min_idle="2")[0], "")
+            for option in ("min_idle", "demand"):
+                result, http, _ = self.select([runner()], mode=mode, **{option: "bad"})
+                self.assertEqual(result, "")
+                http.assert_not_called()
 
     def test_unknown_mode_uses_hosted_without_api(self):
         result, http, _ = self.select([runner()], mode="typo")
@@ -428,7 +438,7 @@ class SelectMqRunnerTest(unittest.TestCase):
             ):
                 with redirect_stdout(io.StringIO()):
                     self.assertEqual(selector.main(), 0)
-            self.assertEqual(output.read_text(), "labels=\n")
+            self.assertEqual(output.read_text(), "heavy-labels=\n")
 
     def test_main_writes_single_line_label_json(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -453,7 +463,7 @@ class SelectMqRunnerTest(unittest.TestCase):
                     side_effect=lambda *a, **kw: io.BytesIO(payload),
                 ):
                     self.assertEqual(selector.main(), 0)
-            self.assertEqual(output.read_text(), f"labels={LABELS}\n")
+            self.assertEqual(output.read_text(), f"heavy-labels={LABELS}\n")
 
     def test_capacity_accumulates_across_scopes(self):
         self.assertEqual(self.select([runner()], org_runners=[runner()])[0], LABELS)
@@ -485,7 +495,7 @@ class SelectMqRunnerTest(unittest.TestCase):
             (
                 [runner(busy=True) for _ in range(6)],
                 {"MQ_RUNNER_MODE": "prefer"},
-                LABELS,
+                "",
                 "online=6, busy=6, idle=0",
                 None,
             ),
@@ -543,7 +553,7 @@ class SelectMqRunnerTest(unittest.TestCase):
                     redirect_stdout(io.StringIO()),
                 ):
                     self.assertEqual(selector.main(), 0)
-                self.assertEqual(output.read_text(), f"labels={expected}\n")
+                self.assertEqual(output.read_text(), f"heavy-labels={expected}\n")
                 report = summary.read_text()
                 self.assertIn("**self-hosted**" if expected else "**hosted**", report)
                 self.assertIn(reason, report)
