@@ -2802,6 +2802,8 @@ jobs:
           OBS_TIER2_SRC: ${{ github.workspace }}
           OBS_TIER2_BUILD: ${{ runner.temp }}/tier2
           OBS_TIER2_PACK: ${{ runner.temp }}/tier2-pack
+          # Only the Dell's marker-backed persistent slot bypasses zccache.
+          OBS_TIER2_LAUNCHER: ${{ steps.pcache.outputs.zccache == '' && 'zccache' || '' }}
           ZCCACHE_CACHE_DIR: ${{ steps.pcache.outputs.zccache || format('{0}/.tier2-zccache', github.workspace) }}
           OBS_LIBOBS_MODULE_CACHE_DIR: ${{ github.workspace }}/.tier2-modcache
           OBS_TIER2_COST_DIR: ${{ github.workspace }}/.tier2-cost

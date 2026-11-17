@@ -152,8 +152,20 @@ cd "$SRC"
 # points it at a host dir (OBS_ZCCACHE_DIR, which CI restores and saves with
 # actions/cache) or the checkout's zccache volume. The daemon starts on the first
 # compile; stop it on exit so its index is flushed to the cache dir.
+# OBS_TIER2_LAUNCHER defaults to zccache only when unset; empty means no
+# launcher (the many-core Dell bypasses the daemon's throughput bottleneck).
+tier2_launcher="${OBS_TIER2_LAUNCHER-zccache}"
+launcher_args=(-UCMAKE_C_COMPILER_LAUNCHER -UCMAKE_CXX_COMPILER_LAUNCHER)
+if [ -n "$tier2_launcher" ]; then
+  launcher_args=("-DCMAKE_C_COMPILER_LAUNCHER=$tier2_launcher" "-DCMAKE_CXX_COMPILER_LAUNCHER=$tier2_launcher")
+else
+  # Clear both a kept tree's cache entries and CMake's environment defaults.
+  unset CMAKE_C_COMPILER_LAUNCHER CMAKE_CXX_COMPILER_LAUNCHER
+fi
 export ZCCACHE_CACHE_DIR="${ZCCACHE_CACHE_DIR:-$BUILD/zccache}"
-trap 'zccache stop >/dev/null 2>&1 || true' EXIT
+if [ "$tier2_launcher" = zccache ]; then
+  trap 'zccache stop >/dev/null 2>&1 || true' EXIT
+fi
 
 # Read the same canonical source sets as CMake and obs-build, then expand the
 # selected ported groups into implementation object names. Scraping sources.cmake
@@ -195,7 +207,7 @@ else
   cmake -S "$SRC" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID \
-    -DCMAKE_C_COMPILER_LAUNCHER=zccache -DCMAKE_CXX_COMPILER_LAUNCHER=zccache \
+    "${launcher_args[@]}" \
     -DOBS_LIBOBS_MODULE_CACHE= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     ${OBS_EXTRA_CFLAGS:+"-DCMAKE_C_FLAGS=$OBS_EXTRA_CFLAGS" "-DCMAKE_CXX_FLAGS=$OBS_EXTRA_CFLAGS"} \
     "${runpath_flags[@]}" \
@@ -232,7 +244,7 @@ else
     # A lost request ("daemon response failure") and a connection the daemon
     # reset mid-compile ("broken connection to daemon", #3346) both exit 1.
     lost_requests=$(grep -cE '^zccache\[err\]\[R\]: (daemon response failure|broken connection to daemon)' "$build.build.log" || true)
-    if [ "$launcher_failed" -gt 0 ] || [ "$lost_requests" -gt 0 ]; then
+    if [ "${OBS_TIER2_LAUNCHER-zccache}" = zccache ] && { [ "$launcher_failed" -gt 0 ] || [ "$lost_requests" -gt 0 ]; }; then
       echo "== zccache launcher failures: $launcher_failed exit 125, $lost_requests requests the daemon lost; restarting it and rebuilding once"
       # Keep the original cause: the retry can report only a recovery cooldown.
       cp "$build.build.log" "$build.build-first-failure.log"
@@ -536,5 +548,9 @@ if [ -z "$rust_archives" ] || grep -qv '/release/liblibobs_rust\.a$' <<<"$rust_a
   exit 1
 fi
 
-echo "== zccache"
-zccache status | grep -E "Compilations|Hit rate|Artifacts" || true
+if [ "$tier2_launcher" = zccache ]; then
+  echo "== zccache"
+  zccache status | grep -E "Compilations|Hit rate|Artifacts" || true
+else
+  echo "== zccache stats skipped (Tier 2 launcher: ${tier2_launcher:-none})"
+fi

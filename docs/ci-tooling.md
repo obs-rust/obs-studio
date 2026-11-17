@@ -1019,6 +1019,22 @@ and toolchain prerequisites, not native NixOS commands. An offline PowerEdge
 automatically falls back to hosted CI at selection time. This is a snapshot,
 not a reservation: a host going offline after selection can still delay jobs.
 
+The Tier 2 Linux build mounts `/var/cache/obs-runner` and selects a per-runner
+persistent slot only when `.persistent-cache` exists and `RUNNER_NAME` is set.
+On this Dell path, the build step sets `OBS_TIER2_LAUNCHER` to an empty value
+to compile C/C++ without a launcher; hosted runners keep `zccache`. The
+validation script uses `${OBS_TIER2_LAUNCHER-zccache}`: unset defaults to
+zccache, a nonempty value selects another launcher, and empty omits both
+launcher `-D` arguments and clears old launcher cache entries in a reused
+CMake tree. zccache stats, daemon shutdown and recovery run only when zccache
+is selected; the uncached path reports that stats were skipped.
+
+This bypass follows the measured Dell daemon bottleneck (2.2 active compilers
+with 65.8 waiting clients at 8.6 compiles/s; Refs #4954 and
+[zccache#2209](https://github.com/forge-ci/zccache/issues/2209)). Dell A/B build
+timing is pending while the host is offline for its hardware change. No
+no-launcher speedup has been measured.
+
 On the Linux x64 host chosen by the maintainer, open repository **Settings →
 Actions → Runners → New self-hosted runner**, select Linux/x64, and follow the
 shown download and verification commands. Use the temporary registration token

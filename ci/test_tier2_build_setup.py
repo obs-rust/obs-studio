@@ -33,9 +33,7 @@ class Tier2BuildSetupTest(unittest.TestCase):
         setup = '# Compiler cache:' + setup
         configure = source.split('  cmake -S "$SRC" -B "$build" -G Ninja', 1)[1].split('  # -k 0:', 1)[0]
         configure = 'cmake -S "$SRC" -B "$build" -G Ninja' + configure
-        stats = source[source.index('echo "== zccache"'):]
-        # Include the conditional that guards the final stats, when present.
-        stats = source[source.rfind('\nif ', 0, source.index('echo "== zccache"')) + 1:] if source.rstrip().endswith('fi') else stats
+        stats = re.search(r'(?:^if [^\n]+\n)?[ \t]*echo "== zccache"\n.*', source, re.M | re.S)[0]
         for launcher in (None, '', 'ccache'):
             with self.subTest(launcher=launcher), tempfile.TemporaryDirectory() as directory:
                 env = dict(os.environ, SRC=str(ROOT), build=directory + '/build', BUILD=directory)

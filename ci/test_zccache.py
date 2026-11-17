@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""The Linux C/C++ (CMake) builds cache compiles with zccache, not ccache (#957).
+"""The Linux C/C++ (CMake) builds default to zccache, not ccache (#957).
 
     uv run python -m unittest ci/test_zccache.py
 
@@ -121,8 +121,15 @@ class ZccacheTest(unittest.TestCase):
             TOOLS / "sanitize" / "sanitize.py",
         ):
             text = path.read_text()
-            self.assertIn("-DCMAKE_C_COMPILER_LAUNCHER=zccache", text)
-            self.assertIn("-DCMAKE_CXX_COMPILER_LAUNCHER=zccache", text)
+            launcher = 'zccache'
+            if path.name == 'validate.sh':
+                # Tier 2 keeps the hosted default but permits an empty Dell
+                # override; test_tier2_build_setup exercises both shell paths.
+                self.assertIn('tier2_launcher="${OBS_TIER2_LAUNCHER-zccache}"', text)
+                self.assertIn('"${launcher_args[@]}"', text)
+                launcher = '$tier2_launcher'
+            self.assertIn(f"-DCMAKE_C_COMPILER_LAUNCHER={launcher}", text)
+            self.assertIn(f"-DCMAKE_CXX_COMPILER_LAUNCHER={launcher}", text)
             # The daemon must flush its index before the cache dir is saved
             # (`zccache stop` in the shell, ["zccache", "stop"] in Python).
             self.assertRegex(text, r"""["']?zccache["']?[,\s]+["']?stop""")
