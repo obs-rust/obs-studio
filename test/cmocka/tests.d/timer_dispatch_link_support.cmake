@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Use the real adapter for standalone Rust-static consumers.
 function(_timer_dispatch_link_support)
   get_directory_property(_targets BUILDSYSTEM_TARGETS)

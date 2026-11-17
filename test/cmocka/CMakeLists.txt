@@ -356,7 +356,6 @@ include_directories("${CMAKE_SOURCE_DIR}/plugins/obs-outputs/hosts/$<IF:$<PLATFO
 # tests.d/<test>.cmake instead of appending to this file, so concurrent PRs
 # that add tests do not conflict. Included in this directory's scope, so
 # relative source paths and CMAKE_CURRENT_SOURCE_DIR are test/cmocka.
-include("${CMAKE_CURRENT_SOURCE_DIR}/write-if-different.cmake")
 file(GLOB _cmocka_test_fragments CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tests.d/*.cmake")
 list(SORT _cmocka_test_fragments)
 foreach(_fragment IN LISTS _cmocka_test_fragments)

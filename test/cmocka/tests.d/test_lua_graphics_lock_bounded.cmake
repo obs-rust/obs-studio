@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # #1275 production regression, separate from the preserved characterization.
 set(_lua_bounded_source "${CMAKE_CURRENT_LIST_DIR}/../../../shared/obs-scripting/obs-scripting-lua-source.c.h")
 cmake_path(NORMAL_PATH _lua_bounded_source)

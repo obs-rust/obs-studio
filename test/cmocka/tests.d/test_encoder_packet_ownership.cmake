@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # create_instance is hidden in libobs. Compile its current production C body
 # verbatim under a test-local name. Public ref/release use actual-library symbols.
 set(_packet_ownership_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-packet-ownership.c.h")

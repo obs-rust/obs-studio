@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # The private duplicate helper is hidden: characterize its real C body only.
 set(_encoder_error_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-error-ownership.c.h")
 if(NOT EXISTS "${_encoder_error_source}")

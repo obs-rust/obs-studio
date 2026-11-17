@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Pin the exported legacy image-loader wrapper against both libobs libraries.
 add_executable(test_texture_file_data2 "${CMAKE_CURRENT_SOURCE_DIR}/test_texture_file_data2.c")
 target_link_libraries(test_texture_file_data2 PRIVATE OBS::libobs OBS::native-test-cmocka)

@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Hidden C-source characterization only; the public lifecycle suite tests the swap.
 file(READ "${CMAKE_CURRENT_LIST_DIR}/../../../libobs/obs-service-state.c.h" _service_state_source)
 string(FIND "${_service_state_source}" "void obs_service_set_destroy(" _service_state_start)

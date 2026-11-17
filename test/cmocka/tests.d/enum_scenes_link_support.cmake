@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Link the real private adapter only when a Rust-static consumer needs it.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-enum-scenes-fields.c.h" _enum_scenes_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _enum_scenes_adapter "${_enum_scenes_adapter}")

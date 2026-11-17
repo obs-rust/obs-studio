@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Standalone Rust archive consumers need the real private source-field adapter.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-scene-from-source-fields.c.h" _from_source_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _from_source_adapter "${_from_source_adapter}")

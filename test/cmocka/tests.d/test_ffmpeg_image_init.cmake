@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Public loading paths pin the pre-port FFmpeg initialization behavior.
 add_executable(test_ffmpeg_image_init "${CMAKE_CURRENT_SOURCE_DIR}/test_ffmpeg_image_init.c")
 target_link_libraries(test_ffmpeg_image_init PRIVATE OBS::libobs OBS::native-test-cmocka)

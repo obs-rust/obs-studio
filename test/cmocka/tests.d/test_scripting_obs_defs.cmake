@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 set(HAVE_SCRIPTING_DEFS_TEST_SDK FALSE)
 # Lua and Python scripts can read the constants of libobs/obs-defs.h
 # (obsproject/obs-studio#8936). The test generates the Lua and Python SWIG

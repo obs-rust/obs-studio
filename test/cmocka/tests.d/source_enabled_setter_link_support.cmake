@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Compile the real adapter for standalone Rust-static source-step consumers.
 # Replace only its broad production PCH with the private layout header.
 function(_source_enabled_setter_link_support)

@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Standalone Rust-static graphics consumers use the real private adapter.
 function(_cubetexture_access_link_support)
   set(_source "${CMAKE_SOURCE_DIR}/libobs/obs-cubetexture-access-fields.c.h")

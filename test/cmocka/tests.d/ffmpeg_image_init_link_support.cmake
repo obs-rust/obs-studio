@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Standalone Rust-static consumers need the real private FFmpeg adapter too.
 # Extract only its PCH include, so these tests do not inherit all media-unity
 # dependencies. Every operation below remains the production implementation.

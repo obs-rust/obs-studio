@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Hidden-symbol C-source characterization with controlled dependency results.
 # Extract the unchanged array/function; this does not exercise a Rust swap.
 set(_source_init_context_path "${CMAKE_SOURCE_DIR}/libobs/obs-source-init-context.c.h")

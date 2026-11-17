@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Direct C characterization of the original unit, with deterministic I/O and
 # constructor collaborators. The real exported symbol is covered by the unchanged
 # test_effect_destroy on both implementations; Rust Tier 3 reuses this fixture.

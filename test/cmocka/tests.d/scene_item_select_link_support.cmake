@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Compile the real production adapter, stripping only its broad PCH include.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-scene-item-select-fields.c.h" _select_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _select_adapter "${_select_adapter}")

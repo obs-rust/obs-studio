@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Link the real field adapter and signal builder into legacy Rust-static consumers.
 # Extract verbatim from production, so no placeholder symbols or globals are needed.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-source-push-to-enable-fields.c.h" _push_enable_fields)

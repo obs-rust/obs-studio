@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # C-source characterization only: compile the real bodies with dependency seams.
 set(_encoder_group_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-group-lifecycle.c.h")
 if(NOT EXISTS "${_encoder_group_source}")

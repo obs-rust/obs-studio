@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Standalone Rust-static step consumers resolve the same private adapter as libobs.
 # Keep it in an archive: consumers that never call stencil APIs need no context.
 function(_graphics_stencil_link_support)

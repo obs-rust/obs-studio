@@ -96,6 +96,7 @@ cmake_language(DEFER CALL observe_generated_inputs)
             self.assertEqual(len(edges), 0, dry_run)
             self.assertEqual({path: path.read_bytes() for path in inputs}, contents)
             # A real content change must still regenerate the input and its edge.
+            os.utime(build / "literal.c.observed", ns=(old, old))
             (build / "literal.c").write_text("changed\n")
             run(*configure)
             self.assertEqual((build / "literal.c").read_bytes(), contents[build / "literal.c"])

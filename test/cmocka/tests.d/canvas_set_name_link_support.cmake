@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Keep the real adapter available to standalone Rust-static consumers. An
 # archive prevents unrelated step tests from pulling the canvas/core globals.
 function(_canvas_set_name_link_support)

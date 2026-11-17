@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Real private adapter in a lazy archive: unrelated Rust-static fixtures do not
 # acquire a dependency on a graphics context they never use. Consumers which do
 # call these wrappers supply their actual graphics subsystem as usual.
