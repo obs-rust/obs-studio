@@ -8,9 +8,9 @@ struct SwrContext *obs_audio_resampler_alloc(const struct resample_info *dst, co
 	enum AVSampleFormat input_format = (enum AVSampleFormat)audio_resampler_sample_format(src->format);
 	enum AVSampleFormat output_format = (enum AVSampleFormat)audio_resampler_sample_format(dst->format);
 #if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
-	context = swr_alloc_set_opts(NULL, audio_resampler_layout_mask(dst->speakers), output_format,
+	context = swr_alloc_set_opts(NULL, audio_resampler_layout_mask(dst->speakers), (int)output_format,
 				     (int)dst->samples_per_sec, audio_resampler_layout_mask(src->speakers),
-				     input_format, (int)src->samples_per_sec, 0, NULL);
+				     (int)input_format, (int)src->samples_per_sec, 0, NULL);
 #else
 	AVChannelLayout input_layout, output_layout;
 	av_channel_layout_default(&input_layout, audio_resampler_input_channels(src->speakers));
