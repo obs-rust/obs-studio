@@ -145,11 +145,16 @@ fn characterized_edges() {
     }
 }
 
+/// Generated starting counts, typed as `c_long` so no target needs a conversion
+/// (Windows `c_long` is `i32`, Linux and macOS `i64`).
+const REFS: core::ops::Range<c_long> = -2..32;
+const WEAK: core::ops::Range<c_long> = 0..16;
+
 proptest! {
     #![proptest_config(ProptestConfig { cases: obs_c_oracle::parity::cases(256), failure_persistence: None, ..ProptestConfig::default() })]
     #[test]
-    fn operation_sequences_match_c(refs in -2i32..32, weak in 0i32..16,
+    fn operation_sequences_match_c(refs in REFS, weak in WEAK,
         ops in prop::collection::vec(0u8..4, 0..32)) {
-        check(refs.into(), weak.into(), &ops);
+        check(refs, weak, &ops);
     }
 }

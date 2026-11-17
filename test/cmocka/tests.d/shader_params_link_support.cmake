@@ -1,0 +1,16 @@
+# Generated source wrappers hide the original adapter path in target SOURCES.
+# Read the canonical entries to identify consumers of the opaque context adapter.
+function(_shader_params_link_support)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/build/test-graph.json" _graph)
+  get_directory_property(_targets BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_links ${_target} LINK_LIBRARIES)
+    if("libobs_rust-static" IN_LIST _links)
+      string(JSON _entry ERROR_VARIABLE _error GET "${_graph}" targets "${_target}")
+      if(NOT _error AND _entry MATCHES "graphics-linear-srgb-fields\\.c\\.h")
+        target_sources(${_target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/shader-params-link-support.c")
+      endif()
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL _shader_params_link_support)
