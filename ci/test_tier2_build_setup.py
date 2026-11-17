@@ -151,5 +151,75 @@ runpath_flags=()
         self.assertRegex(soldr, r"\n\s+cargo-registry-cache: true\n")
 
 
+def test_job():
+    text = WORKFLOW.read_text()
+    return re.search(r"^  rust-linux-tier2:\n(.*?)(?=^  [a-z0-9-]+:\n)", text, re.M | re.S)[1]
+
+
+class DellKeptTreeAndHandoffTest(unittest.TestCase):
+    """#4954 P3/P5/P7: persistent setup-soldr, a kept tree, a local handoff."""
+
+    def test_kept_tree_and_handoff_need_host_dirs_and_kept_tree_needs_trust(self):
+        select = step(build_job(), "Select Persistent Cache 🗄️")
+        self.assertIn('if [ -d "$root/trees" ] && [ "$GITHUB_EVENT_NAME" = merge_group ]; then', select)
+        self.assertIn('echo "tree=$root/trees/$RUNNER_NAME/tier2" >> "$GITHUB_OUTPUT"', select)
+        self.assertIn('if [ -d "$root/handoff" ]; then', select)
+        self.assertIn('echo "handoff=$root/handoff" >> "$GITHUB_OUTPUT"', select)
+        # Both live inside the marker branch: a hosted runner never sees them.
+        marker = select.index('if [ -f "$root/.persistent-cache" ]')
+        self.assertLess(marker, select.index("tree="))
+        self.assertLess(select.index("handoff="), select.index('echo "no persistent cache on this runner"'))
+
+    def test_kept_tree_restores_after_zccache_install_and_before_the_build(self):
+        job = build_job()
+        restore = step(job, "Restore Kept Tier 2 Tree 🌲")
+        self.assertIn("if: steps.pcache.outputs.tree != ''", restore)
+        self.assertIn("ci/tier2_kept_tree.py restore", restore)
+        self.assertIn('--kept "${{ steps.pcache.outputs.tree }}"', restore)
+        self.assertIn('--build "$OBS_TIER2_BUILD"', restore)
+        self.assertIn("OBS_TIER2_BUILD: ${{ runner.temp }}/tier2", restore)
+        self.assertLess(job.index("- name: Install zccache 📦"), job.index("- name: Restore Kept Tier 2 Tree 🌲"))
+        self.assertLess(job.index("- name: Restore Kept Tier 2 Tree 🌲"), job.index("- name: Build Tier 2 (libobs"))
+
+    def test_kept_tree_is_saved_last_and_only_after_a_successful_build(self):
+        job = build_job()
+        keep = step(job, "Keep Tier 2 Tree 🌲")
+        self.assertIn("steps.pcache.outputs.tree != ''", keep)
+        self.assertIn("steps.tier2-build.outcome == 'success'", keep)
+        self.assertIn("!cancelled()", keep)
+        self.assertIn("ci/tier2_kept_tree.py save", keep)
+        for earlier in ("- name: Upload Tier 2 Tree 🧾", "- name: Hand Off Tier 2 Tree 🤝", "- name: Record Tier 2 Runtime Packages 📦"):
+            self.assertLess(job.index(earlier), job.index("- name: Keep Tier 2 Tree 🌲"), earlier)
+
+    def test_upload_is_skipped_only_when_the_handoff_pins_this_host(self):
+        job = build_job()
+        handoff = step(job, "Hand Off Tier 2 Tree 🤝")
+        self.assertIn("id: handoff", handoff)
+        self.assertIn("if: steps.pcache.outputs.handoff != ''", handoff)
+        self.assertIn("ci/tier2_kept_tree.py handoff-put", handoff)
+        self.assertIn("${{ inputs.mq-runner-labels }}", handoff)
+        self.assertIn("--key ${{ github.run_id }}", handoff)
+        self.assertIn("/var/cache/obs-runner/.persistent-cache", handoff)
+        upload = step(job, "Upload Tier 2 Tree 🧾")
+        self.assertIn("if: steps.handoff.outputs.local != 'true'", upload)
+        self.assertLess(job.index("- name: Hand Off Tier 2 Tree 🤝"), job.index("- name: Upload Tier 2 Tree 🧾"))
+
+    def test_test_jobs_take_the_handoff_before_downloading(self):
+        job = test_job()
+        take = step(job, "Take Tier 2 Tree Handoff 🤝")
+        self.assertIn("id: handoff", take)
+        self.assertIn("ci/tier2_kept_tree.py handoff-get", take)
+        self.assertIn("--key ${{ github.run_id }}", take)
+        download = re.search(r"- uses: actions/download-artifact@[0-9a-f]{40}.*?(?=\n      - |\Z)", job, re.S)[0]
+        self.assertIn("if: steps.handoff.outputs.hit != 'true'", download)
+        self.assertLess(job.index("- name: Take Tier 2 Tree Handoff 🤝"), job.index("- uses: actions/download-artifact"))
+
+    def test_setup_soldr_has_a_no_commit_kill_switch(self):
+        # setup-soldr's persistent-root auto-detects the Dell's marker; the
+        # SETUP_SOLDR_PROFILE repository variable forces the hosted profile.
+        text = WORKFLOW.read_text()
+        self.assertRegex(text, r"(?m)^env:\n(?:  .*\n)*  SETUP_SOLDR_PROFILE: \$\{\{ vars.SETUP_SOLDR_PROFILE \}\}\n")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -13,11 +13,17 @@ static _Thread_local bool meta_redirect;
 
 void oracle_obs_hotkey_pair_set_names(obs_hotkey_pair_id id, const char *first, const char *second);
 void oracle_obs_hotkey_pair_set_descriptions(obs_hotkey_pair_id id, const char *first, const char *second);
+void obs_hotkey_pair_meta_set_name(obs_hotkey_id id, const char *value);
+void obs_hotkey_pair_meta_set_description(obs_hotkey_id id, const char *value);
 
 #define obs (&meta_core)
 #define obs_hotkey_pair_set_names oracle_obs_hotkey_pair_set_names
 #define obs_hotkey_pair_set_descriptions oracle_obs_hotkey_pair_set_descriptions
+#define obs_hotkey_set_name obs_hotkey_pair_meta_set_name
+#define obs_hotkey_set_description obs_hotkey_pair_meta_set_description
 #include "obs-hotkey-pair-meta.c.h"
+#undef obs_hotkey_set_description
+#undef obs_hotkey_set_name
 #undef obs_hotkey_pair_set_descriptions
 #undef obs_hotkey_pair_set_names
 #undef obs
@@ -33,12 +39,12 @@ static void meta_record(size_t field, obs_hotkey_id id, const char *value)
 		meta_pair.id[1] = 33;
 }
 
-void obs_hotkey_set_name(obs_hotkey_id id, const char *value)
+void obs_hotkey_pair_meta_set_name(obs_hotkey_id id, const char *value)
 {
 	meta_record(0, id, value);
 }
 
-void obs_hotkey_set_description(obs_hotkey_id id, const char *value)
+void obs_hotkey_pair_meta_set_description(obs_hotkey_id id, const char *value)
 {
 	meta_record(1, id, value);
 }

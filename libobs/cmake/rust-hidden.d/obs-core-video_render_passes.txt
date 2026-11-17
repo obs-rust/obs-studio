@@ -1,0 +1,2 @@
+obs_video_draw_mix_texture
+obs_video_render_convert_plane

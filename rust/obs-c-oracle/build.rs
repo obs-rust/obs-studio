@@ -682,6 +682,9 @@ fn main() {
         "graphics-viewport-fields",
         "matrix-entrypoints",
         "matrix-entrypoints-fields",
+        "graphics-shader-params",
+        "graphics-shader-params-checks",
+        "graphics-shader-params-adapter",
     ] {
         let src = libobs.join("graphics").join(format!("{stem}.c.h"));
         std::fs::write(
@@ -776,6 +779,32 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("obs-hotkey-register.c.h")),
     )
     .expect("write original single registration wrappers");
+    for stem in ["obs-video-render-passes", "obs-video-render-passes-adapter"] {
+        let src = libobs.join(format!("{stem}.c.h"));
+        println!("cargo:rerun-if-changed={}", src.display());
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_libobs_pch(&src),
+        )
+        .expect("write video render extract");
+    }
+    let render_test = libobs.join("../test/cmocka/test_video_render_passes.c");
+    println!("cargo:rerun-if-changed={}", render_test.display());
+    let render_mock = std::fs::read_to_string(&render_test).expect("read render characterization");
+    let render_mock = render_mock
+        .split("#include \"video-render-passes-under-test.h\"")
+        .next()
+        .unwrap();
+    let render_mock = render_mock
+        .replace("width", "record_width")
+        .replace("height", "record_height")
+        .replace("passes", "record_passes");
+    let render_mock = render_mock
+        .replace("gs_texture_get_record_width", "gs_texture_get_width")
+        .replace("gs_texture_get_record_height", "gs_texture_get_height");
+    std::fs::write(extract_dir.join("video-render-passes-mocks.inc"),
+        render_mock.replace("#include <cmocka.h>", "#include <stdlib.h>\n#define assert_true(x) do { if (!(x)) abort(); } while (0)\n#define assert_false(x) assert_true(!(x))\n#define assert_int_equal(a,b) assert_true((a)==(b))\n#define assert_ptr_equal(a,b) assert_true((a)==(b))\n#define assert_null(x) assert_true((x)==NULL)\n#define assert_string_equal(a,b) assert_true(strcmp((a),(b))==0)"))
+        .expect("write render recording double");
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
@@ -856,6 +885,15 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("graphics/stencil-state-entrypoints.c.h")),
     )
     .expect("write original stencil dispatch");
+    {
+        let stem = "obs-source-push-hotkeys";
+        let src = libobs.join(format!("{stem}.c.h"));
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_libobs_pch(&src),
+        )
+        .expect("write push-hotkey oracle extract");
+    }
     for stem in [
         "graphics-linear-srgb",
         "graphics-linear-srgb-fields",
@@ -911,6 +949,20 @@ fn main() {
         ),
     )
     .expect("write texture creator extract");
+    for stem in ["audio-resampler-ffmpeg", "audio-resampler-kernel"] {
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_pch(
+                &libobs.join("media-io").join(format!("{stem}.c.h")),
+                if stem == "audio-resampler-kernel" {
+                    "#include \"libobs/build/libobs-media-resampler-kernel.pch.h\""
+                } else {
+                    "#include \"build/libobs-media.pch.h\""
+                },
+            ),
+        )
+        .expect("write resampler extract");
+    }
     // The media-remux adapter the Rust port calls, built over the FFmpeg
     // stand-in (oracle/media_remux_adapter.c).
     std::fs::write(
@@ -950,6 +1002,11 @@ fn main() {
         ),
     )
     .expect("write real scale-effect caller extract");
+    std::fs::write(
+        extract_dir.join("source_audio_active_setter.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-source-audio-active-setter.c.h")),
+    )
+    .expect("write original audio-active setter extract");
     oracle.include(&extract_dir);
 
     oracle
