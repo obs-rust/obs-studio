@@ -9,6 +9,9 @@
  * pthread/os_event/os_set_thread_name come from the real threading-posix.c
  * and blog from the real base-variadic.c already compiled here. */
 #define _GNU_SOURCE
+#define audio_resampler_create oracle_aio_resampler_create
+#define audio_resampler_destroy oracle_aio_resampler_destroy
+#define audio_resampler_resample oracle_aio_resampler_resample
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
