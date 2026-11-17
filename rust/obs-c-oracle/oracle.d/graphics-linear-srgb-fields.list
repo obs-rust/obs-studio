@@ -1,0 +1,1 @@
+graphics-linear-srgb-fields.inc|libobs/graphics/graphics-linear-srgb-fields.c.h|#include "libobs/build/libobs-ported-graphics.pch.h"

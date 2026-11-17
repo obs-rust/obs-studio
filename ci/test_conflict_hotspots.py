@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -43,6 +44,12 @@ def fixture():
 
 
 class GeneratedConflicts(unittest.TestCase):
+    def test_repository_snapshots_are_current(self):
+        fixer = load("native_expectations")
+        for name, text in fixer.rendered(ROOT, GENERATED).items():
+            self.assertEqual((ROOT / name).read_text(), text,
+                             "run uv run ci/native_expectations.py --fix")
+
     def test_fixer_reconstructs_both_corrupt_snapshots_without_changing_graph(self):
         fixer = load("native_expectations")
         with fixture() as (root, graph):
@@ -126,7 +133,12 @@ class OracleFragments(unittest.TestCase):
         self.assertEqual(len(outputs), len(set(outputs)))
         build = (ROOT / "rust/obs-c-oracle/build.rs").read_text()
         self.assertIn("oracle.d", build)
-        self.assertNotIn('extract_dir.join("graphics-stencil.inc")', build)
+        self.assertNotRegex(build, re.compile(
+            r'std::fs::write\(\s*extract_dir.join\("[^"\n]+"\),\s*'
+            r'extract_after_(?:libobs_pch|pch)\(', re.S),
+            "whole-source oracle registrations belong in oracle.d")
+        self.assertIn('cargo:rerun-if-changed=oracle.d', build)
+        self.assertIn('hash_file(&fragment, &mut mix)', build)
 
 
 if __name__ == "__main__":
