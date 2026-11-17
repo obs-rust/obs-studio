@@ -10,6 +10,7 @@ changed; GEN-005 wants that decision out of a multi-line run: step.
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -44,12 +45,17 @@ class SwiftChangesTest(unittest.TestCase):
             subprocess.run(["git", "add", "--", name], cwd=self.repo, check=True)
         self.git("commit", "-q", "-m", "change")
 
-    def run_script(self, base: str | None = None) -> subprocess.CompletedProcess:
+    def run_script(self, base: str | None = None, *, event: dict | None = None) -> subprocess.CompletedProcess:
         self.output.write_text("")
         env = {k: v for k, v in os.environ.items() if k != "BASE"}
         env.update({"GITHUB_OUTPUT": str(self.output)})
         if base is not None:
             env["BASE"] = base
+        env.pop("GITHUB_EVENT_NAME", None)
+        if event is not None:
+            event_path = self.repo / "event.json"
+            event_path.write_text(json.dumps(event))
+            env.update(GITHUB_EVENT_NAME="merge_group", GITHUB_EVENT_PATH=str(event_path))
         return subprocess.run(
             [sys.executable, str(SCRIPT)], cwd=self.repo, capture_output=True, text=True, env=env
         )
@@ -93,6 +99,37 @@ class SwiftChangesTest(unittest.TestCase):
         # cannot end cancelled waiting for a macos-26 runner.
         step = WORKFLOW.read_text().split("- name: Check for Swift Changes 🔎", 1)[1].split("- name:", 1)[0]
         self.assertIn("github.event.before", step)
+
+    def test_queue_checks_swift_from_an_earlier_entry(self) -> None:
+        self.git("checkout", "--detach", self.base)
+        self.git("branch", "-f", "master", self.base)
+        self.git("remote", "add", "origin", str(self.repo))
+        self.commit({"frontend/App.swift": "let x = 1\n"})
+        previous_entry = self.git("rev-parse", "HEAD").stdout.strip()
+        self.commit({"frontend/widget.cpp": "int x;\n"})
+        result = self.run_script(previous_entry, event={"merge_group": {
+            "base_ref": "refs/heads/master", "base_sha": previous_entry,
+            "head_sha": self.git("rev-parse", "HEAD").stdout.strip(),
+        }})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output_value(), "swift=true")
+
+    def test_queue_without_swift_takes_no_macos_runner(self) -> None:
+        self.git("checkout", "--detach", self.base)
+        self.git("branch", "-f", "master", self.base)
+        self.git("remote", "add", "origin", str(self.repo))
+        self.commit({"frontend/widget.cpp": "int x;\n"})
+        result = self.run_script(self.base, event={"merge_group": {
+            "base_ref": "refs/heads/master", "base_sha": self.base,
+            "head_sha": self.git("rev-parse", "HEAD").stdout.strip(),
+        }})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output_value(), "swift=false")
+
+    def test_queue_scope_error_fails_closed(self) -> None:
+        result = self.run_script(self.base, event={"merge_group": {}})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.output_value(), "")
 
     def test_the_workflow_runs_the_script_in_one_line(self) -> None:
         text = WORKFLOW.read_text()
