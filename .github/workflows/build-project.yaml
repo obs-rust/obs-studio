@@ -2094,8 +2094,9 @@ jobs:
       matrix:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
     runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
-    needs: [check-event, ci-mode, rust-tests-linux]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
+    # Independent of Fast Gate: no outputs/artifacts consumed (Refs #4990).
+    needs: [check-event, ci-mode]
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
     defaults:
       run:
         shell: bash
