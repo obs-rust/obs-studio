@@ -5375,6 +5375,9 @@
         }
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5561,6 +5564,9 @@
         "libobs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5689,6 +5695,9 @@
         "OBS::native-test-cmocka"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5769,6 +5778,9 @@
         "OBS::native-test-cmocka"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5881,6 +5893,9 @@
         "libobs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5946,6 +5961,9 @@
         "libobs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -10620,6 +10638,9 @@
         "obs=hotkey_test_obs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -18631,6 +18652,9 @@
         "OBS::native-test-cmocka"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
