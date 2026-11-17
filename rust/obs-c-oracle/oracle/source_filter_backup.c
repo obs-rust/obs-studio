@@ -1,8 +1,17 @@
 /* Original backup loop and real adapter; only obs_save_source is a fixture seam.
- * Tier 2 exercises the unchanged characterization with the real serializer. */
+ * Tier 2 exercises the unchanged characterization with the real serializer.
+ *
+ * The MSVC UCRT headers define snprintf, sprintf and friends inline in every
+ * object that includes them. A COFF link of an unrelated test (the obs-util
+ * lib test) can then take this archive member for snprintf and fail on its
+ * obs_data_* references, depending only on the member order. So this member
+ * neither defines nor calls them: _NO_CRT_STDIO_INLINE turns the inline
+ * definitions into declarations, and the small formatters below cover the
+ * fixture's names and the one %s log message. */
+#define _NO_CRT_STDIO_INLINE
 #include <errno.h>
+#include <stdarg.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #define obs_source_backup_filters oracle_obs_source_backup_filters
@@ -11,6 +20,46 @@
 #include "source_filter_backup_fields.inc"
 
 #define ORACLE_FILTER_BACKUP_NULL_SAVE 254
+
+static void backup_append(char *out, size_t size, size_t *len, const char *text)
+{
+	while (*text && *len + 1 < size)
+		out[(*len)++] = *text++;
+	out[*len] = '\0';
+}
+
+static void backup_name(char *out, size_t size, const char *prefix, unsigned value)
+{
+	char digits[12];
+	size_t n = 0, len = 0;
+	do {
+		digits[n++] = (char)('0' + value % 10);
+		value /= 10;
+	} while (value);
+	backup_append(out, size, &len, prefix);
+	while (n && len + 1 < size)
+		out[len++] = digits[--n];
+	out[len] = '\0';
+}
+
+/* Formats only %s and %%, enough for the null-parameter blog() message. */
+static void backup_format(char *out, size_t size, const char *format, va_list args)
+{
+	size_t len = 0;
+	out[0] = '\0';
+	for (; *format && len + 1 < size; format++) {
+		if (format[0] == '%' && format[1] == 's') {
+			backup_append(out, size, &len, va_arg(args, const char *));
+			format++;
+		} else if (format[0] == '%' && format[1] == '%') {
+			backup_append(out, size, &len, "%");
+			format++;
+		} else {
+			out[len++] = *format;
+			out[len] = '\0';
+		}
+	}
+}
 
 struct backup_fixture;
 struct backup_entry {
@@ -43,8 +92,8 @@ obs_data_t *obs_save_source(obs_source_t *source)
 	if (entry->value == ORACLE_FILTER_BACKUP_NULL_SAVE)
 		return NULL;
 	char name[32], uuid[32];
-	snprintf(name, sizeof(name), "filter-%u", (unsigned)entry->value);
-	snprintf(uuid, sizeof(uuid), "uuid-%u", (unsigned)entry->value);
+	backup_name(name, sizeof(name), "filter-", (unsigned)entry->value);
+	backup_name(uuid, sizeof(uuid), "uuid-", (unsigned)entry->value);
 	obs_data_t *saved = obs_data_create();
 	obs_data_set_string(saved, "name", name);
 	obs_data_set_string(saved, "id", "backup_filter");
@@ -124,7 +173,7 @@ static void backup_capture(int level, const char *format, va_list args, void *pa
 	struct backup_log *log = param;
 	log->count++;
 	log->level = level;
-	vsnprintf(log->message, sizeof(log->message), format, args);
+	backup_format(log->message, sizeof(log->message), format, args);
 }
 
 typedef obs_data_array_t *(*backup_fn)(obs_source_t *);
