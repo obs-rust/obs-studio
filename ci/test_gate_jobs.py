@@ -190,14 +190,17 @@ class GateJobs(unittest.TestCase):
     def test_queue_scope_reads_exact_event_diff(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "event.json"
-            group = {"base_sha": "a" * 40, "head_sha": "b" * 40}
+            group = {"base_sha": "a" * 40, "head_sha": "b" * 40,
+                     "base_ref": "refs/heads/master"}
             path.write_text(json.dumps({"merge_group": group}))
             with (
                 mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(path)}),
                 mock.patch.object(
                     gate_jobs.subprocess,
                     "run",
-                    return_value=done(0, "libobs/obs.c.h\n"),
+                    side_effect=lambda args, **kwargs: done(0, {
+                        "merge-base": "c" * 40, "diff": "libobs/obs.c.h\0",
+                    }.get(args[1], "")),
                 ) as run,
             ):
                 self.assertTrue(gate_jobs.queue_coverage())
@@ -206,8 +209,11 @@ class GateJobs(unittest.TestCase):
                     [
                         "git",
                         "diff",
+                        "--no-ext-diff",
+                        "--no-renames",
                         "--name-only",
-                        group["base_sha"],
+                        "-z",
+                        "c" * 40,
                         group["head_sha"],
                         "--",
                     ],

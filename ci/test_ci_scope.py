@@ -152,14 +152,23 @@ class CiScopeTest(unittest.TestCase):
                     event.write_text(json.dumps(body))
                     with self.assertRaises(ValueError):
                         ci_scope.queue_changed_files()
-                group = {"base_sha": "a" * 40, "head_sha": "b" * 40}
+                group = {"base_sha": "a" * 40, "head_sha": "b" * 40,
+                         "base_ref": "refs/heads/master"}
                 event.write_text(json.dumps({"merge_group": group}))
                 files = ["plugins/win-capture/game-capture.c", "plugins/mac-capture/mac-display-capture.m"]
-                with mock.patch.object(ci_scope.subprocess, "run", return_value=
-                                       subprocess.CompletedProcess([], 0, "\n".join(files))) as run:
+                outputs = {"diff": "\0".join(files) + "\0", "merge-base": "c" * 40}
+
+                def git_result(args, **kwargs):
+                    return subprocess.CompletedProcess(args, 0, outputs.get(args[1], ""))
+
+                with mock.patch.object(ci_scope.subprocess, "run", side_effect=git_result) as run:
                     self.assertEqual(ci_scope.queue_changed_files(), files)
-                self.assertEqual(run.call_args.args[0], ["git", "diff", "--name-only", group["base_sha"], group["head_sha"], "--"])
-                with mock.patch.object(ci_scope.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "")):
+                self.assertEqual(run.call_args.args[0], [
+                    "git", "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z",
+                    "c" * 40, group["head_sha"], "--",
+                ])
+                outputs["diff"] = ""
+                with mock.patch.object(ci_scope.subprocess, "run", side_effect=git_result):
                     self.assertEqual(ci_scope.queue_changed_files(), [])
 
     def test_stacked_queue_diff_includes_earlier_core_entry(self):
@@ -197,19 +206,78 @@ class CiScopeTest(unittest.TestCase):
             git("add", ".")
             git("commit", "-m", "entry B: CI only")
             head_sha = git("rev-parse", "HEAD")
+            # Master may move after the queue group was created. Its unrelated
+            # changes must not be attributed to the group by a two-dot diff.
+            git("switch", "master")
+            (repo / "master-only.txt").write_text("new master\n")
+            git("add", "master-only.txt")
+            git("commit", "-m", "master advances")
+            git("switch", "queue")
+            shallow = repo / "shallow"
+            git("clone", "--depth=1", "--branch", "queue", repo.as_uri(), str(shallow))
             event = repo / "event.json"
             event.write_text(json.dumps({"merge_group": {
                 "base_sha": base_sha, "head_sha": head_sha,
                 "base_ref": "refs/heads/master",
             }}))
             run = subprocess.run
-            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}), \
-                 mock.patch.object(ci_scope.subprocess, "run", side_effect=
-                                   lambda *args, **kwargs: run(*args, cwd=repo, **kwargs)):
-                files = ci_scope.queue_changed_files()
-            selected = scope(files, event="merge_group")
-            self.assertTrue(selected.windows and selected.macos, files)
-            self.assertEqual(set(files), {core, "ci/queue.py"})
+            for checkout in (repo, shallow):
+                with self.subTest(checkout=checkout.name), \
+                     mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}), \
+                     mock.patch.object(ci_scope.subprocess, "run", side_effect=
+                                       lambda *args, **kwargs: run(*args, cwd=checkout, **kwargs)):
+                    files = ci_scope.queue_changed_files()
+                selected = scope(files, event="merge_group")
+                self.assertTrue(selected.windows and selected.macos, files)
+                self.assertEqual(set(files), {core, "ci/queue.py"})
+
+    def test_queue_resolution_errors_select_everything(self):
+        import contextlib
+        import io
+        import json
+        import os
+        import subprocess
+        import tempfile
+        from unittest import mock
+        import ci_scope
+
+        group = {"base_sha": "a" * 40, "head_sha": "b" * 40,
+                 "base_ref": "refs/heads/master"}
+        with tempfile.TemporaryDirectory() as directory:
+            event = Path(directory) / "event.json"
+            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event), "GITHUB_OUTPUT": ""}), \
+                 mock.patch("sys.argv", ["ci_scope.py", "unused", "--event", "merge_group"]):
+                for stage in ("check-ref-format", "rev-parse", "fetch", "cat-file", "merge-base", "diff"):
+                    event.write_text(json.dumps({"merge_group": group}))
+
+                    def git_result(args, **kwargs):
+                        if args[1] == stage:
+                            raise subprocess.CalledProcessError(1, args)
+                        return subprocess.CompletedProcess(args, 0, {"merge-base": "c" * 40}.get(args[1], ""))
+
+                    with self.subTest(stage=stage), \
+                         mock.patch.object(ci_scope.subprocess, "run", side_effect=git_result):
+                        with self.assertRaises(subprocess.CalledProcessError):
+                            ci_scope.queue_changed_files()
+                        output = io.StringIO()
+                        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+                            self.assertEqual(ci_scope.main(), 0)
+                        for lane in ("core", "macos", "windows", "qt", "tier2", "full",
+                                     "qt_sdk", "cross_lint", "windows_link"):
+                            self.assertIn(f"{lane}=true\n", output.getvalue())
+                        self.assertIn("docs_only=false\n", output.getvalue())
+                        self.assertIn("cross_targets=mac-arm64,win-x64\n", output.getvalue())
+
+                for body in ("not JSON", "[]", "{}", *(
+                    json.dumps({"merge_group": {**group, key: value}})
+                    for key, value in (("base_sha", "bad"), ("head_sha", None),
+                                       ("base_ref", None), ("base_ref", "master"))
+                )):
+                    event.write_text(body)
+                    with self.subTest(body=body), self.assertRaises(ValueError):
+                        ci_scope.queue_changed_files()
+                with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": ""}), self.assertRaises(ValueError):
+                    ci_scope.queue_changed_files()
 
     def test_queue_path_fixtures(self):
         # Native platform paths stay narrow; shared/core selects both platforms.

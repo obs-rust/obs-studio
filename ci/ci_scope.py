@@ -607,9 +607,10 @@ def scope(
 
 
 def queue_changed_files() -> list[str]:
-    """Use both immutable event commits, including every PR in a queue group.
+    """Diff the entire queue group from its target branch's merge-base.
 
     A missing/malformed event or unavailable commit must never select less work.
+    base_sha can be the preceding queue entry, not the target branch (#4964).
     """
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     if not event_path:
@@ -620,16 +621,43 @@ def queue_changed_files() -> list[str]:
     group = event.get("merge_group")
     if not isinstance(group, dict):
         raise ValueError("merge_group must be an object")
-    refs = []
     for key in ("base_sha", "head_sha"):
         value = group.get(key)
         if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{40}", value):
             raise ValueError(f"merge_group.{key} must be a full commit SHA")
-        refs.append(value)
-    return subprocess.run(
-        ["git", "diff", "--name-only", *refs, "--"],
+    base_ref = group.get("base_ref")
+    if not isinstance(base_ref, str) or not base_ref.startswith("refs/heads/"):
+        raise ValueError("merge_group.base_ref must be a target branch ref")
+    subprocess.run(["git", "check-ref-format", base_ref], check=True, capture_output=True, text=True)
+    target = "refs/remotes/origin/" + base_ref.removeprefix("refs/heads/")
+    shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
         check=True, capture_output=True, text=True,
-    ).stdout.splitlines()
+    ).stdout.strip()
+    # Event Data/CI Gate normally check out full history. Recover it when a
+    # caller uses a shallow checkout, and refresh the target rather than relying
+    # on a local branch that checkout may not create (or may leave stale).
+    subprocess.run(
+        ["git", "fetch", "--no-tags", *(["--unshallow"] if shallow == "true" else []),
+         "origin", f"+{base_ref}:{target}"],
+        check=True, capture_output=True, text=True, timeout=120,
+    )
+    for key in ("base_sha", "head_sha"):
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{group[key]}^{{commit}}"],
+            check=True, capture_output=True, text=True,
+        )
+    merge_base = subprocess.run(
+        ["git", "merge-base", target, group["head_sha"]],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", merge_base):
+        raise ValueError("merge-group target merge-base must be a full commit SHA")
+    return [path for path in subprocess.run(
+        ["git", "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z",
+         merge_base, group["head_sha"], "--"],
+        check=True, capture_output=True, text=True,
+    ).stdout.split("\0") if path]
 
 
 def changed_files(base: str) -> list[str]:
@@ -674,15 +702,25 @@ def main() -> int:
         "--ref", default="", help="the workflow's ref name (GITHUB_REF_NAME)"
     )
     args = parser.parse_args()
-    files = queue_changed_files() if args.event == "merge_group" else changed_files(args.base)
-    result = scope(
-        files,
-        lambda path: Path(path).is_file(),
-        read_text,
-        cmocka_paths=repo_cmocka_source_paths(Path(".")),
-        event=args.event,
-        ref=args.ref,
-    )
+    try:
+        files = queue_changed_files() if args.event == "merge_group" else changed_files(args.base)
+        result = scope(
+            files,
+            lambda path: Path(path).is_file(),
+            read_text,
+            cmocka_paths=repo_cmocka_source_paths(Path(".")),
+            event=args.event,
+            ref=args.ref,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        if args.event != "merge_group":
+            raise
+        print(f"::warning::Cannot resolve merge-group scope; selecting everything: {error}", file=sys.stderr)
+        result = Scope(
+            core=True, macos=True, windows=True, qt=True, tier2=True, full=True,
+            qt_sdk=True, cross_targets=",".join(sorted(CROSS_ALIASES.values())),
+            cross_lint=True, windows_link=True,
+        )
     lines = [f"{k}={str(v).lower()}" for k, v in vars(result).items()]
     print("\n".join(lines))
     if out := os.environ.get("GITHUB_OUTPUT"):
