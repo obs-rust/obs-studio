@@ -45,11 +45,20 @@ fn reports_who_opened_the_device() {
         .spawn()
         .unwrap();
 
+    // The shell opens the device before it execs `sleep`, and the watcher
+    // scans once per open. A scan that lands in between names the child
+    // `sh` (#4967), so open the device ourselves (the watcher leaves our
+    // own process out) to have it scan again once the exec is done.
     let mut found = None;
     while let Ok(holders) = rx.recv_timeout(Duration::from_secs(5)) {
         if let Some(h) = holders.into_iter().find(|h| h.pid == child.id()) {
+            let execed = h.name == "sleep";
             found = Some(h);
-            break;
+            if execed {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+            drop(File::open(&dev).unwrap());
         }
     }
     let _ = child.kill();
