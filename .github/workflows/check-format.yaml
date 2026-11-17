@@ -2,10 +2,6 @@ name: Check Code Formatting 🛠️
 on:
   workflow_call:
     inputs:
-      mq-runner-labels:
-        description: Online merge-queue runner labels selected by the caller; empty uses hosted runners
-        type: string
-        default: ''
       skip-checks:
         description: Base-owned admission skip-checks
         type: boolean
@@ -41,7 +37,7 @@ jobs:
   checks:
     if: github.event_name != 'pull_request' || !inputs.skip-checks
     timeout-minutes: 20
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     outputs:
       swift: ${{ steps.diff.outputs.swift }}
     steps:

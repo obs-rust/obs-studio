@@ -101,7 +101,7 @@ class CookProfilesTest(unittest.TestCase):
         self.assertNotIn("--release", value)
 
     def test_persistent_root_jobs_cook_every_unit_set_they_compile(self):
-        """On the Dell (a persistent root) each Linux host job cooks one recipe per
+        """On the Dell (a persistent root) each Cross Lint job cooks one recipe per
         unit set it compiles (forge-ci/setup-soldr#675): clippy check units, the
         `-p` test set and every cross triple. Measured before: the Dell Fast
         Gate cooked only the host test profile (14.3 s), then `clippy -p
@@ -114,12 +114,10 @@ class CookProfilesTest(unittest.TestCase):
         renders blank on a hosted runner, which keeps the hosted key unchanged.
         """
         workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
-        guard = "inputs.mq-runner-labels != ''"
+        # Fast Gate is always hosted, even when the heavy jobs select the Dell.
+        self.assertNotIn("prebuild-deps-recipes:", workflow["rust-tests-linux"])
+        guard = "inputs.mq-heavy-labels != ''"
         expected = {
-            "rust-tests-linux": [
-                "'--profile dev -- --tests --check'",
-                "'-p obs-util --profile dev -- --tests'",
-            ],
             "rust-cross-lint": [
                 "format('--profile dev --target {0} -- --tests --check', matrix.target)",
                 "format('--profile dev --target {0} -- --tests', matrix.target)",

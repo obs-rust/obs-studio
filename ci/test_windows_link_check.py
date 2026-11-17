@@ -79,7 +79,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
 
     def test_is_linux_hosted_and_bounded(self):
-        self.assertIn("|| 'ubuntu-26.04' }}", self.block)
+        self.assertIn("runs-on: ubuntu-26.04\n", self.block)
         minutes = int(re.search(r"timeout-minutes: (\d+)", self.block).group(1))
         self.assertLessEqual(minutes, 30)  # far inside the queue's 60-minute response timeout
 

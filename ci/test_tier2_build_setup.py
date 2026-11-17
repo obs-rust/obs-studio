@@ -197,7 +197,7 @@ class DellKeptTreeAndHandoffTest(unittest.TestCase):
         self.assertIn("id: handoff", handoff)
         self.assertIn("if: steps.pcache.outputs.handoff != ''", handoff)
         self.assertIn("ci/tier2_kept_tree.py handoff-put", handoff)
-        self.assertIn("${{ inputs.mq-runner-labels }}", handoff)
+        self.assertIn("${{ inputs.mq-heavy-labels }}", handoff)
         self.assertIn("--key ${{ github.run_id }}", handoff)
         self.assertIn("/var/cache/obs-runner/.persistent-cache", handoff)
         upload = step(job, "Upload Tier 2 Tree 🧾")

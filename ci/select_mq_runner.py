@@ -66,10 +66,8 @@ def online_runners(
 
 
 def required_capacity(min_idle: str, demand: str, mode: str = "") -> int:
-    """Prefer needs one online runner; empty mode retains the idle thresholds."""
-    if mode == "prefer":
-        return 1
-    if mode:
+    """Both modes honor the idle floor and the heavy jobs' per-run demand."""
+    if mode not in ("", "prefer"):
         raise ValueError("unknown runner selection mode")
     minimum = int(min_idle or "1")
     per_run = int(demand or "1")
@@ -91,9 +89,9 @@ def select_labels(
 ) -> str:
     """Return compact label JSON or an empty Actions output (hosted fallback).
 
-    Require spare capacity by default, or any matching online runner in prefer
-    mode. Pagination and each HTTP request stay bounded; runners visible in both
-    scopes count only once. Neither mode reserves runners.
+    Require spare capacity in both threshold and prefer modes. Pagination and
+    each HTTP request stay bounded; runners visible in both scopes count only
+    once. Neither mode reserves runners.
     """
     if event != "merge_group" or not labels:
         return decision("opt-in merge-group runner selection is disabled")
@@ -138,10 +136,9 @@ def select_labels(
         counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
         if unavailable:
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
-        capacity = len(matched) if mode == "prefer" else idle
-        if capacity >= required:
+        if idle >= required:
             reason = (
-                "prefer mode: matching online runner"
+                "prefer mode: sufficient idle capacity"
                 if mode == "prefer"
                 else "sufficient idle capacity"
             )
@@ -150,7 +147,7 @@ def select_labels(
                 json.dumps(requested, separators=(",", ":")),
             )
         reason = (
-            "no matching online runner"
+            "prefer mode: insufficient idle capacity"
             if mode == "prefer"
             else "insufficient idle capacity"
         )
@@ -177,7 +174,7 @@ def main() -> int:
     )
     try:
         with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
-            output.write(f"labels={labels}\n")
+            output.write(f"heavy-labels={labels}\n")
     except Exception as error:
         warning(f"could not publish selection ({type(error).__name__})")
     return 0

@@ -313,46 +313,60 @@ class CiScopeTest(unittest.TestCase):
     def test_queue_runner_selection_preserves_hosted_fallbacks(self):
         import re
 
-        expected = {
+        heavy = {
+            "rust-cross-lint", "rust-cross-lint-release",
+            "rust-linux-tier2-build", "rust-linux-tier2",
+        }
+        light = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-26.04",
                 "tier2-lane-proof": "ubuntu-26.04",
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
-                "rust-cross-lint", "rust-cross-lint-release", "rust-cross-proof", "rust-windows-link",
-                "rust-linux-tier2-build", "rust-linux-tier2", "linux-qt-frontend",
+                "rust-cross-proof", "rust-windows-link", "linux-qt-frontend",
             ), "ubuntu-26.04"),
             "check-format.yaml": {"checks": "ubuntu-latest"},
         }
-        for name, jobs in expected.items():
+        for name, jobs in light.items():
             text = (ROOT / ".github/workflows" / name).read_text()
-            selection = ("needs.select-mq-runner.outputs.labels" if name == "ci.yml"
-                         else "inputs.mq-runner-labels")
             blocks = dict(re.findall(
                 r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
             ))
             for job, fallback in jobs.items():
                 with self.subTest(workflow=name, job=job):
+                    self.assertIn(f"runs-on: {fallback}\n", blocks[job])
+            selected_jobs = set()
+            for job, block in blocks.items():
+                runner = re.search(r"^    runs-on: (.+)$", block, re.MULTILINE)
+                if not runner:
+                    continue
+                selected = "inputs.mq-heavy-labels" in runner[1]
+                self.assertEqual(selected, name == "build-project.yaml" and job in heavy, job)
+                if selected:
+                    selected_jobs.add(job)
                     self.assertIn(
-                        f"runs-on: ${{{{ {selection} != '' && fromJSON({selection})"
-                        f" || '{fallback}' }}}}", blocks[job],
+                        "runs-on: ${{ inputs.mq-heavy-labels != '' && "
+                        "fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}", block,
                     )
-                    if name == "ci.yml":
-                        self.assertRegex(blocks[job], r"needs: .*select-mq-runner")
-            self.assertNotIn("fromJSON(vars.MQ_RUNNER_LABELS)", text)
-            self.assertEqual(text.count(f"fromJSON({selection})"),
-                             len(jobs) + (name == "build-project.yaml"))
-            for runner in re.findall(r"^    runs-on: (.+)$", text, re.MULTILINE):
-                if runner.startswith(("macos-", "windows-")):
-                    self.assertNotIn("MQ_RUNNER_LABELS", runner)
+                else:
+                    self.assertNotIn("mq-", runner[1])
+            self.assertEqual(selected_jobs, heavy if name == "build-project.yaml" else set())
+            self.assertNotIn("mq-runner-labels", text)
             if name == "build-project.yaml":
-                self.assertIn("startsWith(matrix.os, 'ubuntu-')", blocks["ubuntu-build"])
-                self.assertIn(f"fromJSON({selection})", blocks["ubuntu-build"])
-                self.assertIn(" || matrix.os }}", blocks["ubuntu-build"])
-            if name != "ci.yml":
-                self.assertIn("mq-runner-labels:", text)
-                self.assertIn("default: ''", text)
+                self.assertIn("runs-on: ${{ matrix.os }}", blocks["ubuntu-build"])
+
+    def test_queue_heavy_demand_matches_expanded_jobs(self):
+        import re
+        from tier2_matrix import matrix
+
+        build = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        cross = build.split("  rust-cross-lint:\n", 1)[1].split("  rust-cross-proof:\n", 1)[0]
+        targets = re.search(r"target: \[(.*?)\]", cross)[1].split(",")
+        tier2 = matrix("merge_group")
+        demand = 1 + len(tier2["mode"]) * len(tier2["part"]) + len(targets) + 1
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn(f"MQ_RUNNER_DEMAND: '{demand}'", ci)
 
     def test_queue_runner_probe_and_reusable_inputs(self):
         import re
@@ -388,10 +402,10 @@ class CiScopeTest(unittest.TestCase):
             "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
             " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
         )
-        for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE", "MQ_RUNNER_DEMAND"):
+        for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE"):
             self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
         self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
-        self.assertIn("labels: ${{ steps.select.outputs.labels }}", probe)
+        self.assertIn("heavy-labels: ${{ steps.select.outputs.heavy-labels }}", probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
         self.assertEqual(probe.count("continue-on-error: true"), 4)
         for step in ("checkout", "uv"):
@@ -403,7 +417,10 @@ class CiScopeTest(unittest.TestCase):
             self.assertIn("select-mq-runner", blocks[job].split("    if:", 1)[0])
             if job == "check-format":
                 self.assertIn("build-project", blocks[job].split("    if:", 1)[0])
-            self.assertIn("mq-runner-labels: ${{ needs.select-mq-runner.outputs.labels }}", blocks[job])
+            if job == "build-project":
+                self.assertIn("mq-heavy-labels: ${{ needs.select-mq-runner.outputs.heavy-labels }}", blocks[job])
+            else:
+                self.assertNotIn("mq-heavy-labels", blocks[job])
 
     def test_queue_runs_merge_result_tests_and_windows_link(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()

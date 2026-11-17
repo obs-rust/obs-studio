@@ -935,8 +935,8 @@ selected matrix leg and both complete Tier 2 modes must finish successfully.
 Missing, unexpectedly skipped, unfinished, cancelled, failed or runnerless jobs
 reject admission. True out-of-scope jobs may skip. API/scope errors fail closed;
 runner-capacity diagnostics remain errors, including unavailable native runners.
-`CI Gate ✅` remains the sole required context. Existing Linux jobs use selected
-`MQ_RUNNER_LABELS` with hosted fallback; native jobs retain native runners.
+`CI Gate ✅` remains the sole required context. Only cache-heavy Linux jobs use selected
+`MQ_RUNNER_LABELS` with hosted fallback; other jobs retain hosted runners.
 Concurrency cancellation and independent cache maintenance are preserved.
 Sanitizers, security scans, full app builds, packaged/hardware qualification and
 release work retain their existing nightly/manual/release placement.
@@ -972,7 +972,7 @@ checks without claiming an executed hardware pass.
 ### Opt-in merge-queue runner
 
 Set the repository Actions variable `MQ_RUNNER_LABELS` to a JSON array such as
-`["self-hosted","linux","x64","obs-mq"]` to route Linux jobs on `merge_group`
+`["self-hosted","linux","x64","obs-mq"]` to route cache-heavy Linux jobs on `merge_group`
 to online runners matching **all** those labels. The supported credential is the
 GitHub App `obs-rust-mq-runner-probe`, installed on the `obs-rust` organization
 with access to this repository. Give the App repository **Administration: read**
@@ -988,7 +988,7 @@ The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
 selecting labels; matching capacity across the available lists qualifies according
 to `MQ_RUNNER_MODE`.
-It passes the result to the existing Build and Format workflows. An organization API 403/404 (for example,
+The `heavy-labels` output goes only to Build's `mq-heavy-labels` input. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
 If App token creation fails and no legacy token is available, selection falls
@@ -1000,32 +1000,36 @@ probe steps. Outside `merge_group` the selection is empty and no API call runs.
 Pull requests, master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
-The existing Format workflow's Linux Checks job uses the same selection so it
-does not hold the gate waiting for hosted capacity.
+Only Rust Tier 2 Linux build, its OFF/ON test jobs, and the Rust Cross Lint
+jobs (two main targets plus the release-target job) use that selection.
+Build and tests share the selected pool so local handoff remains valid.
+Event Data, CI Mode, Format, Fast Gate, Windows Link Check, Cross Compile,
+Qt, app builds, proof publication, queue cancellation and CI Gate use hosted
+runners. Empty outputs and probe/setup errors keep every heavy job hosted.
 
-Set the repository Actions variable `MQ_RUNNER_MODE=prefer` to prefer the
-self-hosted labels whenever at least one matching runner is **online**, even
-when every matching runner is busy. Jobs can queue behind busy runners instead
-of overflowing to a saturated hosted pool. This mode ignores `MQ_RUNNER_MIN_IDLE`
-and `MQ_RUNNER_DEMAND`; missing tokens, unavailable probes and no matching online
-runners retain the existing hosted fallback (an available scope's match still
-qualifies if the other scope fails). Unknown modes fall back to hosted.
+Both the default threshold mode and `MQ_RUNNER_MODE=prefer` now require
+idle capacity. Prefer remains accepted for existing configurations, but no
+longer queues work on busy runners or bypasses the capacity cap. Unknown modes
+fall back to hosted.
 
-With `MQ_RUNNER_MODE` unset or empty, selection requires at least
-`MQ_RUNNER_MIN_IDLE` matching online, non-busy
-runners (repository Actions variable, default `1`). Optional `MQ_RUNNER_DEMAND`
-(default `1`) raises the required idle count to the larger of these two values;
-set it to the desired per-run concurrency, rather than assuming all roughly 11
-Linux jobs need to start together. Busy runners do not supply idle capacity,
-and runner IDs visible in both scopes count once (a busy observation wins).
-The default admits a run when even one runner is idle, so a six-runner host
-with five busy runners does not strand its remaining capacity. A fully busy or
-offline host still falls back to hosted; explicit higher thresholds are honored.
-Empty threshold variables use their defaults; invalid or nonpositive values
-fall back to hosted. The job summary records the choice, reason, online/busy/idle
-counts and required capacity, plus unavailable scopes. No queued-job API is
-queried. This is a bounded capacity snapshot, not a reservation: simultaneous
-selections can race, and runners may become busy or offline after selection.
+`ci.yml` supplies `MQ_RUNNER_DEMAND=6`: one Tier 2 build, two complete Tier 2
+test jobs, two main Cross Lint legs and one release-target Cross Lint job.
+This conservative per-run bound also applies when path scope skips Tier 2;
+it does not assume all heavy jobs execute simultaneously. The workflow owns
+this value rather than a repository variable; update it with the heavy job
+matrix (checked by `ci/test_ci_scope.py`). `MQ_RUNNER_MIN_IDLE` remains an
+optional repository Actions variable (default `1`); required idle capacity is
+`max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. Thus a six-runner Dell is selected
+only when all six matching runners are idle. Otherwise the entire heavy pool
+falls back to hosted, preserving the build/test handoff agreement.
+
+Busy runners do not supply idle capacity, and runner IDs visible in both
+scopes count once (a busy observation wins). Empty threshold inputs use their
+defaults; invalid or nonpositive values fall back to hosted. The job summary
+records the choice, reason, online/busy/idle counts and required capacity,
+plus unavailable scopes. No queued-job API is queried. This remains a bounded
+capacity snapshot, not a reservation: simultaneous selections can race, and
+runners may become busy or offline after selection.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
 Run the runner and its job processes inside its Ubuntu container image / FHS
