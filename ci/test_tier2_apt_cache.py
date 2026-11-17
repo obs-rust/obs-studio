@@ -105,7 +105,8 @@ class AptCacheTest(unittest.TestCase):
         install = job("rust-linux-tier2-build").split("name: Install Tier 2 Packages", 1)[1]
         install = install.split("\n      - ", 1)[0]
         body = install.split("run: |\n", 1)[1]
-        script = textwrap.dedent(body)
+        # Model /bin/sh dropping Bash functions even where sh is Bash.
+        script = "unset -f sudo\n" + textwrap.dedent(body)
         mock = r'''
 sudo() {
   printf '%s\n' "$*" >> "$TRACE"
@@ -125,10 +126,18 @@ export -f sudo
                 archives = Path(tmp) / "apt archives"
                 archives.mkdir()
                 trace = Path(tmp) / "trace"
+                # Fail closed if the exported function is lost in a child shell:
+                # never fall through to the host's real sudo/package manager.
+                mock_bin = Path(tmp) / "bin"
+                mock_bin.mkdir()
+                sudo = mock_bin / "sudo"
+                sudo.write_text("#!/bin/sh\necho 'sudo mock lost across child shells' >&2\nexit 99\n")
+                sudo.chmod(0o755)
                 result = subprocess.run(
                     ["bash", "-e", "-c", mock + script],
                     cwd=WORKFLOW.parents[2], capture_output=True, text=True,
                     env={**os.environ, "GITHUB_WORKSPACE": str(WORKFLOW.parents[2]),
+                         "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
                          "TIER2_APT_ARCHIVES": str(archives), "TRACE": str(trace),
                          "FAIL_INSTALLS": str(failures), "DPKG_STATUS": str(dpkg_status),
                          "RETRY_ATTEMPTS": "3", "RETRY_DELAY": "0"},
