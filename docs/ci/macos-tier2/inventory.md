@@ -82,19 +82,29 @@ ad-hoc CodeDirectory pages through #5008's verifier and hashes every copied imag
 Universal dependencies may be thinned by selecting the original arm64 bytes;
 no signed load command is edited. `--deps DIR` adds dependency dylibs. The helper
 stores CTest templates and rewrites the build root when preparing on the run
-host, keeping all CTest properties. Build/framework RPATHs use @loader_path and
+host, keeping all CTest properties and resolving CMAKE_COMMAND on the run host.
+Staged bytes are signature-verified again before their hashes are published.
+Build/framework RPATHs use @loader_path and
 install names use @rpath. Source paths remain a **common absolute source-root
 contract** because C fixtures compile paths into binaries. An env var cannot
 relocate those strings. Use an agreed writable path (for example /tmp/obs-tier2-src)
 on both hosts before the production cross-build, with the checkout available
 there. A normal Linux /home checkout cannot simply become a macOS /Users checkout.
+Build paths can also be compiled into fixture images. The manifest records every
+image containing its producer build root and refuses relocation unless that
+common build path resolves to the staged tree (for example, a symlink within the
+common checkout). Rewriting only CTest paths does not fix these binary strings.
 
 The stage helper takes `--verifier PATH` to #5008's `ci/macos_test_artifact.py`
-(commit 62c4f8f0984dd83dc672cb2c07d08ded63c271fc at initial inspection).
+(dependency commit 1d8822d66ee3b38d0754e8da843d4efb03836a4f, merged into
+this branch from ci/macos-run-only-rust-tests).
 It reuses `verify_directory`; it does not copy its page-hash implementation.
 Its envelope reader additionally accepts MH_DYLIB/MH_BUNDLE and zero alignment
 padding found in the blessed dependency signatures. The helper is an explicit
 prerequisite, not silently fetched at runtime. No changes to the sibling branch.
+All 11 signed arm64 dylibs in the libobs non-system closure passed its page-hash
+verifier after extraction. Zero alignment padding in a signature superblob is
+retained and checked; it is not an unsigned or corrupt dependency.
 
 A prototype manifest always has `native_contract_prebuilt: false`; its runner
 refuses to launch it. This prevents accidental compiler execution on macOS.
@@ -113,6 +123,7 @@ been demonstrated on macOS from this prototype.
 | Initial cross registry: 631 tests versus 656 in the supplied native log; 30 native names absent, five newer names added. Missing closures are obs-outputs/RTMP/AMF, happy-eyeballs, media-playback, image-source/slideshow, filters/LUT and text-file owners. | Add the real owner/dependency graphs and compare test names/properties on the same commit with native, not merely counts from different commits. No workflow switch with a partial registry. |
 | Core-module list in the old cross link is empty (`OBS_CORE_MODULE_COUNT=0`), while test_core_module_manifest asserts required output/transition modules. | Generate the canonical enabled-module list from the actual selected plugin graph; do not fabricate a list to satisfy the test. |
 | Qt code generators are Darwin binaries in the target package; first full build failed moc with exit 126. | Use the matching pinned Linux host Qt tools (prototype selects host moc/uic/rcc); keep Darwin Qt link/runtime artifacts and all optional test owners. |
+| Darwin sanitizer runtime missing: a direct `-fsanitize=address,undefined` link fails with `cannot open .../lib/darwin/libclang_rt.asan_osx_dynamic.dylib` and undefined `__asan_init`. The native registry enables per-test sanitizers. | Provision matching Darwin compiler-rt runtimes with soldr's LLVM, sign/stage them, then replay every sanitized fixture. Disabling sanitizers would remove existing coverage. The full prototype build was interrupted after this independent failure was established. |
 | Relocation includes compiled fixture paths, generated data, Qt plugins/frameworks and third-party dylib closure. | Establish a common source root before compiling; rewrite CTest build paths; stage/verify full loader/data closure. Prove selected core with DYLD_PRINT_LIBRARIES after relocation and run all four passes on macOS. |
 | Signing after any install-name/load-command edit invalidates page hashes. | Set final install names/RPATHs at link; keep/thin existing signed arm64 dependencies without byte edits. Verify every executable/dylib/bundle after its final content is fixed. No entitlements are needed for plain loader probes; release signing is outside this prototype. |
 
