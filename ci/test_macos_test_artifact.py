@@ -17,6 +17,22 @@ import macos_test_artifact as artifact
 
 
 class ArtifactTest(unittest.TestCase):
+    def test_build_script_outputs_keep_both_hosts_and_select_target_env(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            host = root / "target/debug/build/example/out"
+            target = root / "target" / artifact.TARGET / "debug/build/example/out"
+            for path in (host, target):
+                path.mkdir(parents=True)
+                (path / "generated").write_text("output")
+            events = [{"reason": "build-script-executed", "package_id": "example-id",
+                       "out_dir": str(path), "env": [["WHERE", str(path)]]} for path in (target, host)]
+            bundle = root / "bundle"
+            scripts = artifact.collect_build_scripts(events, root, bundle, root / "target")
+            self.assertEqual(scripts["example-id"]["out_dir"], str(target))
+            for path in (host, target):
+                self.assertTrue((bundle / path.relative_to(root) / "generated").is_file())
+
     def test_doctest_capture_keeps_arguments_environment_and_signature(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
