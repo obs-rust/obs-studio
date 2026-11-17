@@ -15495,6 +15495,7 @@
       "libraries": [
         "OBS::libobs",
         "OBS::caption",
+        "Uthash::Uthash",
         "OBS::native-test-cmocka"
       ],
       "requires": "OS_LINUX"
