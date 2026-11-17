@@ -233,12 +233,16 @@ static void exercise(const struct plugin_case *c)
 }
 
 /* bnum_allocs() counts the whole process, and libobs's own threads (the
- * audio output among them) allocate and free on their own schedule. Wait up
- * to a second for the count to settle back at the baseline: a buffer the
- * encoder failed to free never comes back, a passing allocation does. */
+ * audio output among them) allocate and free on their own schedule, so a
+ * block or two can still be live after any one run (#4854: one stray block on
+ * the macOS runner). A buffer the encoder fails to free is lost on every run,
+ * so run the case RUNS times and fail only when the count grew by at least
+ * one block per run. Wait up to a second for the count to settle first. */
+#define RUNS 8
+
 static long settled_allocs(long baseline)
 {
-	for (int i = 0; i < 100 && bnum_allocs() != baseline; i++)
+	for (int i = 0; i < 100 && bnum_allocs() > baseline; i++)
 		os_sleep_ms(10);
 	return bnum_allocs();
 }
@@ -248,10 +252,13 @@ static void run_case(const struct plugin_case *c)
 	if (!started)
 		skip();
 	long baseline = bnum_allocs();
-	exercise(c);
+	for (int i = 0; i < RUNS; i++)
+		exercise(c);
 	/* Destroying the encoder freed every buffer it allocated, its
 	 * audio_output_buffer planes included. */
-	assert_int_equal(settled_allocs(baseline), baseline);
+	long left = settled_allocs(baseline) - baseline;
+	if (left >= RUNS)
+		fail_msg("%ld blocks still allocated after %d runs", left, RUNS);
 }
 
 static void planar_stereo(void **state)
