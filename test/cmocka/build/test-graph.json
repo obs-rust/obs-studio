@@ -5361,6 +5361,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5383,6 +5384,9 @@
         }
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5548,6 +5552,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5568,6 +5573,9 @@
         "libobs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5677,6 +5685,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-pair-meta.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -5695,6 +5704,9 @@
         "OBS::native-test-cmocka"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5757,6 +5769,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5774,6 +5787,9 @@
         "OBS::native-test-cmocka"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5865,6 +5881,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5885,6 +5902,9 @@
         "libobs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -5929,6 +5949,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -5949,6 +5970,9 @@
         "libobs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -10584,6 +10608,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -10622,6 +10647,9 @@
         "obs=hotkey_test_obs"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
@@ -18631,6 +18659,7 @@
         "libobs/obs-hotkey-background-query.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
         "libobs/obs-hotkey-save-load.c.h",
@@ -18662,6 +18691,9 @@
         "OBS::native-test-cmocka"
       ],
       "unity_groups": {
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
