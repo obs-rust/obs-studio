@@ -1216,6 +1216,15 @@ the final failed gate and successful compatibility and protocol checks.
 
 ## Tier 2 execution and Fast Gate overlap
 
+The Windows and macOS validators opt into `OBS_BUILD_NATIVE_TIER2` and build
+the single `tier2-native` target. Its dependencies are the unchanged native
+core/reference, cmocka registry and platform graphics/capture targets. Asking
+the Visual Studio generator to build those roots separately starts MSBuild
+once per root and revisits their shared dependencies (Refs #4996). The
+aggregate preserves each existing compile/link recipe and test pass. Separate
+configure/build markers make subsequent native job logs easier to measure;
+macOS still redirects their detailed output to `build_rust.*.log`.
+
 The complete OFF/ON test jobs start after successful Tier 2 compilation and
 scope/proof checks, without waiting for Fast Gate. No artifact from Fast Gate
 is consumed by these jobs. Fast Gate remains a required job in the reusable

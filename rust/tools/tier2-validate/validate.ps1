@@ -99,18 +99,20 @@ function Get-Exports($dll) {
 }
 
 $build = 'build_rust'
-Write-Host '== configure + build (libobs and libobs-c-reference)'
+Write-Host '== configure (libobs and libobs-c-reference)'
 cmake --preset windows-ci-x64 -B $build `
   -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID `
+  -DOBS_BUILD_NATIVE_TIER2=ON `
   -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF `
   -DENABLE_WEBSOCKET=OFF `
   "-DCMAKE_PREFIX_PATH=$CMockaPrefix"
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
 
-# The Visual Studio generator builds one project at a time unless it is told
-# otherwise (#3662).
+# One aggregate avoids repeated MSBuild graph traversals; keep parallelism
+# explicit because the Visual Studio generator otherwise builds serially (#3662).
+Write-Host '== build (complete native Tier 2 graph)'
 cmake --build $build --config RelWithDebInfo --parallel $env:NUMBER_OF_PROCESSORS `
-  --target libobs libobs-c-reference cmocka-tests libobs-d3d11 libobs-opengl
+  --target tier2-native
 if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)" }
 
 # obs.dll twice: libobs (C, what the tests link) and its Rust twin in

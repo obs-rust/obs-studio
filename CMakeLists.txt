@@ -64,4 +64,9 @@ endif()
 
 add_subdirectory(frontend)
 
+option(OBS_BUILD_NATIVE_TIER2 "Build the complete native Tier 2 validation graph" OFF)
+if(OBS_BUILD_NATIVE_TIER2)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/rust/tools/tier2-validate/targets.cmake")
+endif()
+
 message_configuration()

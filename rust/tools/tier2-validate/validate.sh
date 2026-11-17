@@ -81,16 +81,16 @@ cmocka_prefix="$(brew --prefix cmocka)"
 ctest_jobs=(-j "${OBS_CTEST_JOBS:-1}")
 
 build="build_rust"
-echo "== configure + build (libobs and libobs-c-reference)"
+echo "== configure (libobs and libobs-c-reference)"
 cmake --preset macos-ci -B "$build" \
   -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID \
+  -DOBS_BUILD_NATIVE_TIER2=ON \
   -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
   -DENABLE_WEBSOCKET=OFF \
   -DCMAKE_PREFIX_PATH="$cmocka_prefix" \
   >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
-cmake --build "$build" --config RelWithDebInfo \
-  --target libobs libobs-c-reference cmocka-tests libobs-opengl libobs-metal \
-    mac-capture mac-avcapture mac-avcapture-legacy \
+echo "== build (complete native Tier 2 graph)"
+cmake --build "$build" --config RelWithDebInfo --target tier2-native \
   >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
 
 # libobs.framework twice: libobs (C, what the tests link) and its Rust twin
