@@ -117,6 +117,12 @@ env:
   # PR, merge queue and master push run ~10% of each module's cases;
   # schedule, workflow_dispatch, tags and release branches run them all.
   OBS_PARITY_CASES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/master')) && 'reduced' || 'full' }}
+  # setup-soldr's persistent-root (#4954 P3) auto-detects the Dell's
+  # /var/cache/obs-runner/.persistent-cache and keeps the toolchain, CARGO_HOME
+  # and soldr's zccache in the runner's slot with no Actions-cache round trip;
+  # GitHub-hosted runners are unchanged. Kill switch without a commit: set the
+  # repository variable SETUP_SOLDR_PROFILE=hosted.
+  SETUP_SOLDR_PROFILE: ${{ vars.SETUP_SOLDR_PROFILE }}
 jobs:
   check-event:
     timeout-minutes: 10
@@ -470,7 +476,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `command not found: soldr` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1456,7 +1462,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `The term 'soldr' is not recognized` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1746,7 +1752,7 @@ jobs:
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2018,7 +2024,7 @@ jobs:
         run: git submodule update --init --depth 1 deps/libdshowcapture/src
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           verdict-scope: build-project
           version: 0.9.45
@@ -2091,7 +2097,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2168,7 +2174,7 @@ jobs:
           persist-credentials: false
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # Same scope and layer as rust-cross-lint, so it replays master's cache.
           verdict-scope: build-project
@@ -2213,7 +2219,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2266,7 +2272,7 @@ jobs:
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2427,7 +2433,7 @@ jobs:
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2641,6 +2647,16 @@ jobs:
               "$slot"/tier2-zccache/v*/daemon.running-process.json
             echo "zccache=$slot/tier2-zccache" >> "$GITHUB_OUTPUT"
             echo "apt=$root/apt-archives" >> "$GITHUB_OUTPUT"
+            # A kept build tree (#4954 P5) only where the host provides
+            # trees/ (tmpfs outside the slot cap, emptied at boot), and only
+            # for trusted merge-queue runs; PR jobs never read or write it.
+            if [ -d "$root/trees" ] && [ "$GITHUB_EVENT_NAME" = merge_group ]; then
+              echo "tree=$root/trees/$RUNNER_NAME/tier2" >> "$GITHUB_OUTPUT"
+            fi
+            # Local tier2-tree handoff to the test jobs (#4954 P7).
+            if [ -d "$root/handoff" ]; then
+              echo "handoff=$root/handoff" >> "$GITHUB_OUTPUT"
+            fi
             echo "persistent cache: $slot ($(du -sm "$slot" | cut -f1) MiB), host $(cat "$root/.persistent-cache")"
           else
             echo "no persistent cache on this runner"
@@ -2685,8 +2701,13 @@ jobs:
       - name: Install Tier 2 Packages 📦
         run: |
           # Install Git already refreshed these lists in this fresh container.
+          # On the Dell, Tier 2 builds share one archive dir. apt takes its lock
+          # without a timeout ("held by process 0" from another container), so
+          # queue on a blocking flock. An empty archive downloads for minutes
+          # (run 44049453484, #4954); hosted dirs are job-local and never wait.
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
-            xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
+            xargs flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
+              "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''
@@ -2731,7 +2752,7 @@ jobs:
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2796,6 +2817,18 @@ jobs:
       - name: Mark Cache Ledger Start 📒
         run: echo "CACHE_LEDGER_SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
+      # The last trusted run's tree, at the same path, with the source mtimes
+      # of unchanged files replayed (zccache replay), so ninja and cargo
+      # rebuild only what changed (#4954 P5). Trusted only behind its .clean
+      # marker; anything else is discarded and the build starts cold.
+      - name: Restore Kept Tier 2 Tree 🌲
+        if: steps.pcache.outputs.tree != ''
+        env:
+          OBS_TIER2_BUILD: ${{ runner.temp }}/tier2
+        run: >-
+          uv run --no-project ci/tier2_kept_tree.py restore
+          --kept "${{ steps.pcache.outputs.tree }}" --build "$OBS_TIER2_BUILD" --src "$GITHUB_WORKSPACE"
+
       - name: Build Tier 2 (libobs and libobs-c-reference) 🧱
         id: tier2-build
         env:
@@ -2815,7 +2848,22 @@ jobs:
           uv run --no-project python rust/tools/linux-validate/runtime-packages.py
           "$RUNNER_TEMP/tier2/tree" "$RUNNER_TEMP/tier2-pack/runtime-packages.txt"
 
+      # The tree upload took ~193 s at ~1.2 MB/s from the Dell (#4954 P7). When
+      # the test jobs' labels pin this host they read the verified handoff
+      # instead, and the upload is skipped; anywhere else it still runs.
+      - name: Hand Off Tier 2 Tree 🤝
+        id: handoff
+        if: steps.pcache.outputs.handoff != ''
+        env:
+          MQ_RUNNER_LABELS: ${{ inputs.mq-runner-labels }}
+        run: >-
+          uv run --no-project ci/tier2_kept_tree.py handoff-put
+          --root "${{ steps.pcache.outputs.handoff }}" --key ${{ github.run_id }}
+          --pack "$RUNNER_TEMP/tier2-pack" --labels "$MQ_RUNNER_LABELS"
+          --marker /var/cache/obs-runner/.persistent-cache
+
       - name: Upload Tier 2 Tree 🧾
+        if: steps.handoff.outputs.local != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: tier2-tree
@@ -2841,6 +2889,17 @@ jobs:
           mode: save
           path: ${{ github.workspace }}/.tier2-zccache
           key: zccache-tier2-linux-both-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      # Last: snapshot the sources (zccache snapshot), move the tree into the
+      # kept slot, sync, then write .clean (#4954 P5). Only after a build that
+      # succeeded; a cancelled or killed job leaves no marker.
+      - name: Keep Tier 2 Tree 🌲
+        if: always() && !cancelled() && steps.pcache.outputs.tree != '' && steps.tier2-build.outcome == 'success'
+        env:
+          OBS_TIER2_BUILD: ${{ runner.temp }}/tier2
+        run: >-
+          uv run --no-project ci/tier2_kept_tree.py save
+          --kept "${{ steps.pcache.outputs.tree }}" --build "$OBS_TIER2_BUILD" --src "$GITHUB_WORKSPACE"
 
       # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
       - name: Cache ledger 📒
@@ -2898,7 +2957,21 @@ jobs:
           path: ${{ runner.temp }}/apt-archives
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
+      # On the Dell the build job left the pack in the host's handoff dir
+      # (#4954 P7); a missing or unverifiable one falls back to the artifact.
+      - name: Take Tier 2 Tree Handoff 🤝
+        id: handoff
+        run: |
+          root=/var/cache/obs-runner/handoff
+          if [ -d "$root" ]; then
+            uv run --no-project ci/tier2_kept_tree.py handoff-get \
+              --root "$root" --key ${{ github.run_id }} --dest "$RUNNER_TEMP/tier2-pack"
+          else
+            echo "no handoff dir on this runner"
+          fi
+
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.handoff.outputs.hit != 'true'
         with:
           name: tier2-tree
           path: ${{ runner.temp }}/tier2-pack
@@ -3189,7 +3262,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -3354,7 +3427,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).

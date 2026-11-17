@@ -55,8 +55,8 @@ VIA_PREFIXES = {
 # table (and ci.toml) moves the layers from "kept" to "deleted on the next
 # merge-queue run": #3061 pinned this commit on 2026-10-30 and v2 keys stopped
 # being written, while `deps` still resolved to cook-base-v2- (#3166).
-SETUP_SOLDR_PIN = "d01d9bae0d5a42ceed086dab6f8f272a0c876ac2"  # s3 remote cache
-SETUP_SOLDR_COOK_PREFIX = "cook-base-v3-"  # src/lib/cook-cache.ts: COOK_BASE_KEY_PREFIX = "cook-base-v3"
+SETUP_SOLDR_PIN = "735b5e6cc889fd53bfcc74595345a1799b4f68c0"  # persistent-root (#4954)
+SETUP_SOLDR_COOK_PREFIX = "cook-base-v4-"  # src/lib/cook-cache.ts: COOK_BASE_KEY_PREFIX = "cook-base-v4"
 
 
 def load() -> dict:
@@ -423,7 +423,7 @@ class CiTomlTest(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertFalse(any(key.startswith(prefix) for prefix in prefixes),
                                  "Disabled archives must be eligible for unmatched-family cleanup")
-        for key in ("cook-base-v3-linux-x64-current", "setup-soldr-cargoregistry-v1-linux-current",
+        for key in ("cook-base-v4-linux-x64-current", "setup-soldr-cargoregistry-v1-linux-current",
                     "solo-toolchain-v3-linux-current", "zccache-tier2-linux-current",
                     "targets-ccache-linux-current", "targets-apt-current"):
             with self.subTest(key=key):
@@ -460,7 +460,7 @@ class CiTomlTest(unittest.TestCase):
     def test_deps_family_matches_the_pinned_setup_soldr_cook_prefix(self):
         """The cook layers a run leaves behind must match a family (#3166).
 
-        `zackees/setup-soldr` writes `cook-base-v3-…` keys at the pinned
+        `zackees/setup-soldr` writes `cook-base-v4-…` keys at the pinned
         commit, while the pinned linter (a1917ce) resolves
         `via = "setup-soldr:cook"` to `cook-base-v2-`. The janitor deletes
         every cache matching no family, so `deps` declares the prefix itself
