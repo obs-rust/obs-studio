@@ -1,5 +1,5 @@
 /* Test-only link stand-ins: obs_source_get_color_space() and the graphics
- * calls gs_matrix_mul() and gs_ortho()
+ * call gs_ortho()
  * under libobs's own names,
  * for the test binaries that link the obs-source-seam shims without
  * libobs.
@@ -9,11 +9,12 @@
  * obs_transition_video_* functions, whose libobs calls name these. The
  * MSVC, MinGW and macOS linkers want every symbol an object names
  * resolved, used or not, so obs-tests-core needs a definition; libobs has
- * the real ones. The texrender calls, gs_matrix_push(), gs_matrix_pop(),
- * gs_get_color_space(), obs_source_video_render(), obs_source_active()
+ * the real ones. The texrender calls, gs_get_color_space(),
+ * obs_source_video_render(), obs_source_active()
  * (oracle/audio_callback_links.c) and the reference calls already have
- * theirs. Blend-state push/pop, gs_blend_function() and gs_clear() now
- * come from the real obs-graphics shims.
+ * theirs. Blend-state push/pop, gs_blend_function(), gs_clear(),
+ * gs_matrix_push(), gs_matrix_mul() and gs_matrix_pop() now come from the
+ * real obs-graphics shims.
  *
  * The tests never reach these: they run the shims with Calls of their own. */
 
@@ -26,11 +27,6 @@ enum gs_color_space obs_source_get_color_space(obs_source_t *source, size_t coun
 	UNUSED_PARAMETER(count);
 	UNUSED_PARAMETER(preferred_spaces);
 	return GS_CS_SRGB;
-}
-
-void gs_matrix_mul(const struct matrix4 *matrix)
-{
-	UNUSED_PARAMETER(matrix);
 }
 
 void gs_ortho(float left, float right, float top, float bottom, float znear, float zfar)
