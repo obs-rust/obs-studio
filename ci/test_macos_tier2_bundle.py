@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from ci import macos_tier2_bundle as bundle
+import macos_tier2_bundle as bundle
 
 
 class BundleTest(unittest.TestCase):
