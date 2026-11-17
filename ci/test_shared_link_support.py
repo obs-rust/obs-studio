@@ -47,11 +47,18 @@ class SharedLinkSupport(unittest.TestCase):
                 "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)",
                 "add_library(libobs_rust-static INTERFACE)",
                 "add_library(existing_support STATIC archive-link-support.c)",
+                "add_library(context_headers INTERFACE)",
+                "target_include_directories(context_headers INTERFACE first)",
+                'target_include_directories(existing_support INTERFACE "$<TARGET_PROPERTY:context_headers,INTERFACE_INCLUDE_DIRECTORIES>")',
+                'target_sources(existing_support INTERFACE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/first/value.h>")',
                 "foreach(name IN ITEMS same_a same_b define ordered flag wrapped)",
                 "  add_executable(${name} main.c)",
                 "  target_link_libraries(${name} PRIVATE libobs_rust-static existing_support)",
                 "  target_include_directories(${name} PRIVATE first second)",
                 "endforeach()",
+                # CMake removes these duplicate usage requirements before compiling.
+                "target_link_libraries(same_b PRIVATE existing_support)",
+                "target_include_directories(same_b PRIVATE first second)",
                 "target_compile_definitions(define PRIVATE EXTRA=3)",
                 'set_property(TARGET ordered PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/second;${CMAKE_CURRENT_SOURCE_DIR}/first")',
                 "target_compile_options(flag PRIVATE -fno-omit-frame-pointer)",
@@ -102,6 +109,8 @@ class SharedLinkSupport(unittest.TestCase):
                 "int support(void) { return 0; }\n"
             )
             (source / "main.c").write_text("int support(void); int main(void) { return support(); }\n")
+            (source / "ordinary-link-support.c").write_text("int support(void) { return 0; }\n")
+            (source / "interface.c").write_text("int interface_symbol = 7;\n")
             (source / "CMakeLists.txt").write_text(
                 "cmake_minimum_required(VERSION 3.28)\nproject(conditional_context C)\n"
                 "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n"
@@ -112,6 +121,12 @@ class SharedLinkSupport(unittest.TestCase):
                 "  add_executable(${name} main.c context-link-support.c)\n"
                 '  target_link_libraries(${name} PRIVATE libobs_rust-static "$<BUILD_INTERFACE:context>")\n'
                 "endforeach()\n"
+                "add_library(compiled_interface INTERFACE)\n"
+                'target_sources(compiled_interface INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/interface.c")\n'
+                "foreach(name IN ITEMS test_c test_d)\n"
+                "  add_executable(${name} main.c ordinary-link-support.c)\n"
+                "  target_link_libraries(${name} PRIVATE libobs_rust-static compiled_interface)\n"
+                "endforeach()\n"
                 f'include("{HELPER.as_posix()}")\n'
                 "cmake_language(DEFER CALL obs_share_test_link_support)\n"
             )
@@ -119,6 +134,7 @@ class SharedLinkSupport(unittest.TestCase):
             self.run_command(["cmake", "-S", str(source), "-B", str(build)])
             commands = json.loads((build / "compile_commands.json").read_text())
             self.assertEqual(sum(row["file"].endswith("/context-link-support.c") for row in commands), 2)
+            self.assertEqual(sum(row["file"].endswith("/ordinary-link-support.c") for row in commands), 2)
             self.run_command(["cmake", "--build", str(build), "--parallel", "2"])
             self.run_command([str(build / "test_a")])
             self.run_command([str(build / "test_b")])
