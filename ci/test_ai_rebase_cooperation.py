@@ -169,5 +169,256 @@ class CooperationTests(unittest.TestCase):
         self.assertTrue(any(c.args[:3] == ("gh", "pr", "ready") for c in run.call_args_list))
 
 
+def ejection(reason="failed_checks", **changes):
+    return {**removal(reason), "createdAt": "2026-11-16T22:00:00Z", **changes}
+
+
+def queue_job(step="Run tests", **changes):
+    return {"id": 101, "name": "Fast Gate", "conclusion": "failure",
+            "runner_name": "GitHub Actions 1", "labels": ["ubuntu-24.04"],
+            "started_at": "2026-11-16T21:30:00Z",
+            "steps": [{"name": step, "conclusion": "failure"}], **changes}
+
+
+class RequeueTests(unittest.TestCase):
+    def candidate(self, **changes):
+        return pr(autoMergeRequest=None, mergeStateStatus="CLEAN", **changes)
+
+    def invoke(self, *, candidate=None, events=None, verdict="infra", comments=None,
+               refreshed=None, dry_run=False):
+        candidate = self.candidate() if candidate is None else candidate
+        events = [ejection(), commit()] if events is None else events
+        with patch.object(bot, "queue_events", side_effect=lambda _: iter(events)), \
+                patch.object(bot, "queue_failure_kind", return_value=verdict), \
+                patch.object(bot, "requeue_comments", return_value=comments or []), \
+                patch.object(bot, "gh_json", return_value=refreshed or candidate), \
+                patch.object(bot, "run", return_value="") as run:
+            out = bot.requeue_pr(candidate, dry_run, now=NOW)
+        return out, run.call_args_list
+
+    def test_infra_rearms_with_marker_and_exact_head_without_strategy(self):
+        out, calls = self.invoke()
+        self.assertIn("re-armed", out)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("comment", calls[0].args)
+        self.assertIn(bot.requeue_marker(HEAD), calls[0].args[-1])
+        self.assertEqual(calls[1].args, ("gh", "pr", "merge", "1", "--repo", bot.REPO,
+                                      "--auto", "--match-head-commit", HEAD))
+
+    def test_timeout_needs_no_run_evidence(self):
+        with patch.object(bot, "queue_failure_kind") as classify:
+            with patch.object(bot, "queue_events", side_effect=lambda _: iter([ejection("checks_timed_out"), commit()])), \
+                    patch.object(bot, "requeue_comments", return_value=[]), \
+                    patch.object(bot, "gh_json", return_value=self.candidate()), \
+                    patch.object(bot, "run", return_value=""):
+                self.assertIn("re-armed", bot.requeue_pr(self.candidate(), False, now=NOW))
+            classify.assert_not_called()
+
+    def test_real_failure_labels_without_arming(self):
+        out, calls = self.invoke(verdict="code")
+        self.assertIn("queue-failed", out)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].args[-2:], ("--add-label", "queue-failed"))
+
+    def test_real_failure_after_infra_retry_still_gets_label(self):
+        out, calls = self.invoke(verdict="code", comments=[{"body": bot.requeue_marker(HEAD)}])
+        self.assertIn("queue-failed", out)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].args[-2:], ("--add-label", "queue-failed"))
+
+    def test_unknown_evidence_does_nothing(self):
+        out, calls = self.invoke(verdict="unknown")
+        self.assertIn("skipped", out)
+        self.assertEqual(calls, [])
+
+    def test_cap_is_per_head_and_survives_later_ejections(self):
+        for sha, allowed in [(HEAD, False), ("c" * 40, True)]:
+            out, calls = self.invoke(comments=[{"body": bot.requeue_marker(sha)}])
+            self.assertEqual("re-armed" in out, allowed)
+            self.assertEqual(bool(calls), allowed)
+
+    def test_holds_drafts_workers_auto_merge_and_conflicts(self):
+        cases = [{"isDraft": True}, {"body": "Hold until review"},
+                 {"labels": [{"name": "do not enqueue"}]},
+                 {"labels": [{"name": "queue-failed"}]},
+                 {"labels": [{"name": "draft"}]},
+                 {"labels": [{"name": "pool-active"}]},
+                 {"updatedAt": "2999-01-01T00:00:00Z"},
+                 {"reviewDecision": "CHANGES_REQUESTED"},
+                 {"autoMergeRequest": {"enabledAt": "now"}},
+                 {"mergeStateStatus": "DIRTY"}, {"state": "CLOSED"}]
+        for changes in cases:
+            with self.subTest(changes=changes):
+                candidate = {**self.candidate(), **changes}
+                out, calls = self.invoke(candidate=candidate)
+                self.assertIn("skipped", out)
+                self.assertEqual(calls, [])
+
+    def test_latest_transition_freshness_and_unchanged_head(self):
+        cases = [[ejection("conflicts"), commit()], [ejection("manual"), commit()],
+                 [{"__typename": "AddedToMergeQueueEvent"}, ejection(), commit()],
+                 [{"__typename": "AutoMergeDisabledEvent"}, ejection(), commit()],
+                 [commit(), ejection(), commit()],
+                 [ejection(), commit("c" * 40)], [ejection()],
+                 [ejection(createdAt="2026-11-16T19:59:59Z"), commit()],
+                 [ejection(createdAt="2026-11-17T00:00:00Z"), commit()]]
+        for events in cases:
+            with self.subTest(events=events):
+                out, calls = self.invoke(events=events)
+                self.assertIn("skipped", out)
+                self.assertEqual(calls, [])
+
+    def test_refresh_rechecks_ownership_holds_head_and_new_ejection(self):
+        for changes in [{"headRefOid": "new"}, {"body": "hold"},
+                        {"autoMergeRequest": {"enabledAt": "now"}},
+                        {"labels": [{"name": "pool-active"}]}]:
+            with self.subTest(changes=changes):
+                out, calls = self.invoke(refreshed={**self.candidate(), **changes})
+                self.assertIn("skipped", out)
+                self.assertEqual(calls, [])
+
+    def test_dry_run_has_no_mutations(self):
+        for verdict in ["infra", "code"]:
+            out, calls = self.invoke(verdict=verdict, dry_run=True)
+            self.assertIn("dry-run", out)
+            self.assertEqual(calls, [])
+
+    def test_new_manual_removal_during_classification_prevents_retry(self):
+        with patch.object(bot, "queue_events", side_effect=[iter([ejection(), commit()]),
+                                                           iter([ejection("manual"), commit()])]), \
+                patch.object(bot, "queue_failure_kind", return_value="infra"), \
+                patch.object(bot, "requeue_comments", return_value=[]), \
+                patch.object(bot, "gh_json", return_value=self.candidate()), \
+                patch.object(bot, "run") as run:
+            self.assertIn("skipped", bot.requeue_pr(self.candidate(), False, now=NOW))
+            run.assert_not_called()
+
+    def test_marker_failure_prevents_arm_and_arm_failure_consumes_cap(self):
+        for failed_command in ["comment", "merge"]:
+            commands = []
+            def fail(*args, **kwargs):
+                commands.append(args)
+                if args[2] == failed_command:
+                    raise RuntimeError("API failed")
+                return ""
+            with self.subTest(command=failed_command), \
+                    patch.object(bot, "queue_events", side_effect=lambda _: iter([ejection(), commit()])), \
+                    patch.object(bot, "queue_failure_kind", return_value="infra"), \
+                    patch.object(bot, "requeue_comments", return_value=[]), \
+                    patch.object(bot, "gh_json", return_value=self.candidate()), \
+                    patch.object(bot, "run", side_effect=fail):
+                with self.assertRaises(RuntimeError):
+                    bot.requeue_pr(self.candidate(), False, now=NOW)
+            self.assertEqual(len(commands), 1 if failed_command == "comment" else 2)
+
+    def test_failed_job_classification(self):
+        cases = [("Run actions/checkout@pin", "", "infra"),
+                 ("Set Up soldr 🦀", "", "infra"),
+                 ("Restore compiler cache", "", "infra"),
+                 ("Run tests", "The runner has lost communication with the server.", "infra"),
+                 ("Build", "fatal: Could not resolve host: github.com", "infra"),
+                 ("Build", "error: failed to download from crates.io\nCaused by: Temporary failure in name resolution", "infra"),
+                 ("Build", "Error: The request failed with HTTP 503", "infra"),
+                 ("Run tests", "assertion failed: wrong value", "code"),
+                 ("Build", "error[E0425]: cannot find value", "code"),
+                 ("Build", "foo.c:10:5: error: invalid conversion\nHTTP 503", "code"),
+                 ("Run tests", "assertion failed: network is unreachable", "code"),
+                 ("Something else", "unrecognized failure", "unknown")]
+        for step, log, expected in cases:
+            with self.subTest(step=step, log=log), patch.object(bot, "run", return_value=log), \
+                    patch.object(bot, "passed_elsewhere", return_value=False):
+                self.assertEqual(bot.failed_job_kind({"id": 1}, queue_job(step)), expected)
+
+    def test_self_hosted_control_is_same_job_other_runner_within_hour(self):
+        failed = queue_job(labels=["self-hosted"], runner_name="dell-4")
+        candidate_run = {"id": 2, "workflow_id": 7}
+        original_run = {"id": 1, "workflow_id": 7}
+        cases = [({}, True), ({"runner_name": "dell-4"}, False),
+                 ({"name": "Other tests"}, False), ({"conclusion": "failure"}, False),
+                 ({"started_at": "2026-11-16T20:29:59Z"}, False)]
+        for changes, expected in cases:
+            success = {**queue_job(conclusion="success", runner_name="dell-1"), **changes}
+            with self.subTest(changes=changes), patch.object(bot, "requeue_api_items", return_value=[candidate_run]), \
+                    patch.object(bot, "run_jobs", return_value=[success]):
+                self.assertEqual(bot.passed_elsewhere(original_run, failed), expected)
+
+    def test_control_search_includes_runs_created_before_runner_backlog(self):
+        failed = queue_job(labels=["self-hosted"], runner_name="dell-4")
+        with patch.object(bot, "requeue_api_items", return_value=[]) as api:
+            bot.passed_elsewhere({"id": 1, "workflow_id": 7}, failed)
+        self.assertIn("actions/workflows/7/runs", api.call_args.args[0])
+        # Failed job starts Nov 16 21:30; a control created at 18:00 and
+        # queued for three hours must still be discoverable.
+        self.assertIn("2026-11-15T21%3A30", api.call_args.args[0])
+
+    def test_truncated_actions_search_is_not_accepted_as_complete(self):
+        with patch.object(bot, "gh_json", return_value=[{"total_count": 1001, "workflow_runs": []}]):
+            with self.assertRaisesRegex(RuntimeError, "incomplete"):
+                bot.requeue_api_items("runs", "workflow_runs")
+
+    def test_group_classification_checks_all_failures_and_ignores_only_dependent_gate(self):
+        group = {"id": 1, "head_sha": "b" * 40, "event": "merge_group", "conclusion": "failure"}
+        for conclusions, kinds, expected in [(["cancelled"], [], "infra"),
+                (["failure"], ["infra"], "infra"),
+                (["failure", "failure"], ["infra", "code"], "code"),
+                (["failure"], ["unknown"], "unknown")]:
+            jobs = [queue_job(id=i, name=f"job {i}", conclusion=c) for i, c in enumerate(conclusions)]
+            jobs.append(queue_job(name="CI Gate ✅"))
+            with self.subTest(kinds=kinds), patch.object(bot, "requeue_api_items", return_value=[group]), \
+                    patch.object(bot, "run_jobs", return_value=jobs), \
+                    patch.object(bot, "failed_job_kind", side_effect=kinds):
+                self.assertEqual(bot.queue_failure_kind(ejection()), expected)
+
+    def test_empty_or_wrong_group_evidence_is_unknown(self):
+        for runs in [[], [{"id": 1, "head_sha": "wrong", "event": "merge_group", "conclusion": "cancelled"}]]:
+            with self.subTest(runs=runs), patch.object(bot, "requeue_api_items", return_value=runs):
+                self.assertEqual(bot.queue_failure_kind(ejection()), "unknown")
+
+    def test_runner_loss_without_uploaded_logs_uses_annotations(self):
+        job = queue_job(steps=[], check_run_url=f"https://api.github.com/repos/{bot.REPO}/check-runs/5")
+        with patch.object(bot, "run", side_effect=RuntimeError("logs not found")), \
+                patch.object(bot, "passed_elsewhere", return_value=False), \
+                patch.object(bot, "requeue_api_items", return_value=[{
+                    "message": "The runner has lost communication with the server."}]):
+            self.assertEqual(bot.failed_job_kind({"id": 1}, job), "infra")
+
+    def test_paged_comments_find_old_marker(self):
+        with patch.object(bot, "gh_json", return_value=[[{"body": bot.requeue_marker(HEAD)}],
+                                                        [{"body": "new comment"}]]) as api:
+            self.assertEqual(len(bot.requeue_comments(1)), 2)
+        self.assertIn("--paginate", api.call_args.args)
+        self.assertIn("--slurp", api.call_args.args)
+
+    def test_fixture_timeline_pages_back_to_head_and_queries_ejection_commit(self):
+        pages = [history([ejection()], previous=True, cursor="older"), history([commit()])]
+        with patch.object(bot, "gh_json", side_effect=pages) as api:
+            self.assertEqual(list(bot.queue_events(self.candidate())), [ejection(), commit()])
+        self.assertIn("before=older", api.call_args.args)
+        self.assertIn("beforeCommit{oid}", api.call_args.args[3])
+
+    def test_cancelled_workflow_does_not_hide_real_failure(self):
+        workflow = {"id": 1, "head_sha": "b" * 40, "event": "merge_group", "conclusion": "cancelled"}
+        with patch.object(bot, "requeue_api_items", return_value=[workflow]), \
+                patch.object(bot, "run_jobs", return_value=[queue_job()]), \
+                patch.object(bot, "failed_job_kind", return_value="code"):
+            self.assertEqual(bot.queue_failure_kind(ejection()), "code")
+
+    def test_bulk_limit_skips_holds_without_spending_actions(self):
+        with patch.object(bot, "gh_json", return_value=[self.candidate(number=i) for i in range(5)]), \
+                patch.object(bot, "requeue_pr", side_effect=["skipped: hold", "re-armed", "re-armed"]) as retry, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(bot.requeue_ejected([], False, 2), 0)
+            self.assertEqual(retry.call_count, 3)
+
+    def test_mode_does_not_checkout_fetch_push_or_call_model(self):
+        with patch.object(bot.sys, "argv", ["ai_rebase.py", "--requeue-ejected"]), \
+                patch.object(bot, "requeue_ejected", return_value=0) as requeue, \
+                patch.object(bot, "run") as run, patch.object(bot, "ask_model") as model:
+            self.assertEqual(bot.main(), 0)
+            requeue.assert_called_once()
+            run.assert_not_called()
+            model.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
