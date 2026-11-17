@@ -1176,6 +1176,22 @@ failed qualification: Windows profiles were cold, and successful macOS app
 builds lacked installed-binary freshness proof. Its retained evidence includes
 the final failed gate and successful compatibility and protocol checks.
 
+## Dell compression policy
+
+The persistent Tier 2 runner selects plain tar for a handoff whose consumer
+labels pin the same host, and `zstd -1 -T0` for a pack that needs upload.
+Hosted runners keep their default zstd level. The established
+`tier2-tree.tar.zst` name is retained for artifact compatibility; readers use
+`tar -xf` to detect either stream format. Kept build trees remain unpacked,
+and `zccache snapshot` records source metadata rather than a compressed tree.
+The cache wrapper selects level 1 with all threads for self-hosted uploads;
+artifact ZIP compression is disabled on Dell-routed jobs, preserving hosted
+levels. setup-soldr's persistent-root profile keeps its stores in place and
+skips remote archive creation. The manual setup-image probe stays hosted with
+its existing `zstd -T2 -3` policy.
+Failed local handoffs are compressed before fallback upload. The Qt and touched
+target ccache stores disable per-object compression on self-hosted runners.
+
 ## Tier 2 execution and Fast Gate overlap
 
 The complete OFF/ON test jobs start after successful Tier 2 compilation and

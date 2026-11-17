@@ -46,6 +46,11 @@ runs:
       id: save
       if: inputs.mode == 'save'
       uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      # These archives leave the host. Hosted runners retain zstd's defaults
+      # (and any caller override); the Dell spends less CPU compressing them.
+      env:
+        ZSTD_CLEVEL: ${{ runner.environment == 'self-hosted' && '1' || env.ZSTD_CLEVEL }}
+        ZSTD_NBTHREADS: ${{ runner.environment == 'self-hosted' && '0' || env.ZSTD_NBTHREADS }}
       with:
         path: ${{ inputs.path }}
         key: ${{ inputs.key }}
