@@ -2325,10 +2325,16 @@ jobs:
         if: github.event_name == 'merge_group' || needs.check-event.outputs.deferred != 'true'
         run: soldr cargo test --workspace --locked
 
+      # The cumulative queue scope requires Fast Gate formatting and the
+      # macOS arm64 cross leg's all-target Clippy, including tests/oracle
+      # (#4999). CI Gate rejects a missing/skipped/failed replacement job.
+      # Keep native analysis for other events, unknown scope and measurements.
       - name: Run Clippy 📎
+        if: ${{ github.event_name != 'merge_group' || needs.check-event.outputs.cross_lint != 'true' || inputs.flatpak-measurement-only || inputs.native-cache-measurement-only }}
         run: soldr cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Check Formatting 🎨
+        if: ${{ github.event_name != 'merge_group' || needs.check-event.outputs.cross_lint != 'true' || inputs.flatpak-measurement-only || inputs.native-cache-measurement-only }}
         run: soldr cargo fmt --all --check
 
       # rust/obs-build's Qt SDK resolver against the published obs-studio-libs

@@ -214,8 +214,9 @@ class CrossTargetsTest(unittest.TestCase):
                 self.assertEqual(local_gate.main(), 0)
             add.assert_called_once_with(target)
             scope = ["--workspace", "--exclude", "obs-c-oracle", "--lib", "--bins"]
+            clippy_scope = ["--workspace", "--all-targets"] if target == "aarch64-apple-darwin" else scope
             self.assertEqual(cargo.call_args_list, [
-                mock.call(["clippy", *scope, "--locked", "--target", target, "--", "-D", "warnings"]),
+                mock.call(["clippy", *clippy_scope, "--locked", "--target", target, "--", "-D", "warnings"]),
                 mock.call(["test", "--workspace", "--no-run", "--locked", "--target", target]),
             ])
             dylint.assert_called_once_with(["--all", "--", *scope, "--target", target])
