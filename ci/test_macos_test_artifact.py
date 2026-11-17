@@ -6,6 +6,8 @@ import json
 import os
 import re
 import subprocess
+import hashlib
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,11 +100,50 @@ class ArtifactTest(unittest.TestCase):
                     artifact.execute(manifest, root)
 
 
+class SignatureTest(unittest.TestCase):
+    @staticmethod
+    def signed_image():
+        image = bytearray(4096)
+        struct.pack_into("<8I", image, 0, 0xFEEDFACF, 0x100000C, 0, 2, 1, 16, 0, 0)
+        directory_length = 44 + 32
+        signature_length = 20 + directory_length
+        struct.pack_into("<4I", image, 32, 0x1D, 16, len(image), signature_length)
+        directory = bytearray(directory_length)
+        struct.pack_into(">9I", directory, 0, 0xFADE0C02, directory_length, 0x20400, 2, 44, 0, 0, 1, len(image))
+        struct.pack_into("4B", directory, 36, 32, 2, 0, 12)
+        directory[44:] = hashlib.sha256(image).digest()
+        return image + struct.pack(">5I", 0xFADE0CC0, signature_length, 1, 0, 20) + directory
+
+    def test_signature_requires_arm64_execute_and_valid_page_hashes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "test"
+            data = self.signed_image()
+            path.write_bytes(data)
+            artifact.verify_macho(path)
+            data[100] ^= 1
+            path.write_bytes(data)
+            with self.assertRaisesRegex(ValueError, "invalid code signature page"):
+                artifact.verify_macho(path)
+            struct.pack_into("<I", data, 4, 0x1000007)
+            path.write_bytes(data)
+            with self.assertRaisesRegex(ValueError, "not an arm64"):
+                artifact.verify_macho(path)
+
+    def test_unsigned_image_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "test"
+            data = self.signed_image()
+            struct.pack_into("<I", data, 16, 0)
+            path.write_bytes(data)
+            with self.assertRaisesRegex(ValueError, "missing arm64 code signature"):
+                artifact.verify_macho(path)
+
+
 class WorkflowTest(unittest.TestCase):
     def test_native_job_depends_on_artifact_build_and_never_compiles(self):
         workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/build-project.yaml").read_text()
         job = re.search(r"^  rust-tests-macos:\n(.*?)(?=^  [a-z0-9-]+:)", workflow, re.S | re.M).group(1)
-        self.assertIn("rust-tests-macos-build", job)
+        self.assertTrue("rust-tests-macos-build" in job, "macOS job has no Linux artifact producer dependency")
         self.assertIn("actions/download-artifact@", job)
         self.assertIn("ci/macos_test_artifact.py run", job)
         self.assertNotIn("soldr cargo", job)
