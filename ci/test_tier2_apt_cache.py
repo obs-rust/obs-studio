@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import os
 import re
+import select
+import shutil
+import signal
 import subprocess
 import tempfile
 import textwrap
@@ -27,6 +30,12 @@ def job(name: str) -> str:
     m = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)", text, re.S | re.M)
     assert m, f"no job {name}"
     return m.group(1)
+
+
+def install_script() -> str:
+    step = job("rust-linux-tier2-build").split("name: Install Tier 2 Packages", 1)[1]
+    step = step.split("\n      - ", 1)[0]
+    return textwrap.dedent(step.split("run: |\n", 1)[1])
 
 
 class AptCacheTest(unittest.TestCase):
@@ -90,6 +99,135 @@ class AptCacheTest(unittest.TestCase):
         install = install.split("\n      - ", 1)[0]
         self.assertIn("sudo eatmydata apt-get install", install)
 
+    def test_shared_archive_is_explicitly_selected(self):
+        step = job("rust-linux-tier2-build").split("name: Install Tier 2 Packages", 1)[1]
+        step = step.split("\n      - ", 1)[0]
+        self.assertIn("TIER2_APT_SHARED: ${{ steps.pcache.outputs.apt != '' }}", step)
+        self.assertNotIn("Debug::NoLocking", step)
+
+    @unittest.skipUnless(os.name == "posix" and shutil.which("flock"), "requires POSIX flock")
+    def test_shared_downloads_unlock_before_concurrent_private_installs(self):
+        # Execute the workflow, with real flock and mocked apt/dpkg. Hold the
+        # first installer at a FIFO barrier: the second must finish while it
+        # is still blocked. No timing-based sleeps or actual package changes.
+        mock = r'''#!/bin/sh
+set -eu
+case "$*" in
+  'apt-get install --download-only '*) phase=download ;;
+  'eatmydata dpkg --configure -a') phase=configure ;;
+  'eatmydata apt-get -f install '*) phase=repair ;;
+  'eatmydata apt-get install '*) phase=install ;;
+  *) exit 99 ;;
+esac
+cache=
+for arg do
+  case "$arg" in Dir::Cache::archives=*) cache=${arg#*=} ;; esac
+done
+if flock -n "$SHARED_ARCHIVES/.tier2-install.lock" true; then
+  locked=no
+else
+  locked=yes
+fi
+printf '%s\t%s\t%s\n' "$phase" "$locked" "$cache" >> "$TRACE"
+printf '%s\n' "$@" > "$TRACE.$phase.args"
+if [ "$phase" = download ]; then
+  [ "$locked" = yes ] && [ "$cache" = "$SHARED_ARCHIVES" ]
+  count=$(grep -c '^download' "$TRACE")
+  [ "$count" -gt "$FAIL_DOWNLOADS" ] || exit 42
+  printf 'complete package\n' > "$cache/fixture.deb"
+else
+  [ "$locked" = no ]
+  if [ "$phase" != configure ]; then
+    [ "$cache" != "$SHARED_ARCHIVES" ]
+    [ "$(cat "$cache/fixture.deb")" = 'complete package' ]
+    [ ! -e "$cache/partial/shared-partial" ]
+    mkdir -p "$cache/partial"
+    printf 'private lock\n' > "$cache/lock"
+  fi
+  if [ "$phase" = install ]; then
+    printf 'private mutation\n' > "$cache/fixture.deb"
+    if [ "$BLOCK_INSTALL" = yes ]; then
+      printf 'install-ready\n' > "$READY_FIFO"
+      read -r release < "$RELEASE_FIFO"
+    fi
+  fi
+fi
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archives = root / "shared archives"
+            archives.mkdir()
+            (archives / "partial").mkdir()
+            (archives / "partial/shared-partial").write_text("unfinished")
+            (archives / "lock").write_text("shared lock")
+            mock_bin = root / "bin"
+            mock_bin.mkdir()
+            sudo = mock_bin / "sudo"
+            sudo.write_text(mock)
+            sudo.chmod(0o755)
+            ready, release = root / "ready", root / "release"
+            os.mkfifo(ready)
+            os.mkfifo(release)
+            # O_RDWR prevents opening either end from blocking the test driver.
+            ready_fd = os.open(ready, os.O_RDWR | os.O_NONBLOCK)
+            release_fd = os.open(release, os.O_RDWR | os.O_NONBLOCK)
+            env = {**os.environ, "GITHUB_WORKSPACE": str(WORKFLOW.parents[2]),
+                   "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
+                   "TIER2_APT_ARCHIVES": str(archives), "SHARED_ARCHIVES": str(archives),
+                   "TIER2_APT_SHARED": "true", "RETRY_ATTEMPTS": "1", "RETRY_DELAY": "0",
+                   "READY_FIFO": str(ready), "RELEASE_FIFO": str(release)}
+            command = ["bash", "-e", "-c", install_script()]
+            first_temp, second_temp = root / "job one", root / "job two"
+            first_temp.mkdir()
+            second_temp.mkdir()
+            first = subprocess.Popen(
+                command, cwd=WORKFLOW.parents[2], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, start_new_session=True,
+                env={**env, "RUNNER_TEMP": str(first_temp), "TRACE": str(root / "first.trace"),
+                     "BLOCK_INSTALL": "yes", "FAIL_DOWNLOADS": "1", "RETRY_ATTEMPTS": "3"},
+            )
+            try:
+                self.assertTrue(select.select([ready_fd], [], [], 5)[0],
+                                "first job never reached an unlocked private install")
+                self.assertEqual(os.read(ready_fd, 128), b"install-ready\n")
+                second = subprocess.run(
+                    command, cwd=WORKFLOW.parents[2], capture_output=True, text=True, timeout=5,
+                    env={**env, "RUNNER_TEMP": str(second_temp), "TRACE": str(root / "second.trace"),
+                         "BLOCK_INSTALL": "no", "FAIL_DOWNLOADS": "0"},
+                )
+                self.assertEqual(second.returncode, 0, second.stderr)
+                self.assertIsNone(first.poll(), "first install must remain blocked until released")
+                os.write(release_fd, b"release\n")
+                _, stderr = first.communicate(timeout=5)
+                self.assertEqual(first.returncode, 0, stderr)
+                for name, private_root in (("first", first_temp), ("second", second_temp)):
+                    calls = [line.split("\t") for line in (root / f"{name}.trace").read_text().splitlines()]
+                    self.assertEqual([call[:2] for call in calls],
+                                     [["download", "yes"]] * (2 if name == "first" else 1) +
+                                     [["configure", "no"],
+                                      ["repair", "no"], ["install", "no"]])
+                    download_args = (root / f"{name}.trace.download.args").read_text().splitlines()
+                    install_args = (root / f"{name}.trace.install.args").read_text().splitlines()
+                    self.assertEqual(download_args[:4], ["apt-get", "install", "--download-only", "-o"])
+                    self.assertEqual(download_args[5:], install_args[5:])
+                    self.assertTrue(download_args[5:7] == ["-y", "--no-install-recommends"])
+                    self.assertEqual(calls[0][2], str(archives))
+                    cache = Path(calls[-1][2])
+                    self.assertTrue(cache.is_relative_to(private_root), cache)
+                    self.assertEqual(calls[-2][2], str(cache))
+                    self.assertNotEqual((cache / "fixture.deb").stat().st_ino,
+                                        (archives / "fixture.deb").stat().st_ino)
+                self.assertEqual((archives / "fixture.deb").read_text(), "complete package\n")
+                self.assertEqual((archives / "lock").read_text(), "shared lock")
+                self.assertEqual((archives / "partial/shared-partial").read_text(), "unfinished")
+            finally:
+                os.write(release_fd, b"release\n")
+                if first.poll() is None:
+                    os.killpg(first.pid, signal.SIGKILL)
+                first.communicate(timeout=5)
+                os.close(ready_fd)
+                os.close(release_fd)
+
     def test_eatmydata_is_installed_before_tier2_packages(self):
         j = job("rust-linux-tier2-build")
         bootstrap = j.index("name: Install Git")
@@ -102,11 +240,8 @@ class AptCacheTest(unittest.TestCase):
         # Job 134123589625 was interrupted mid-unpack; retrying apt alone
         # then failed on unmet dependencies. Execute the real step/retry helper
         # with mocked sudo so recovery ordering is checked across attempts.
-        install = job("rust-linux-tier2-build").split("name: Install Tier 2 Packages", 1)[1]
-        install = install.split("\n      - ", 1)[0]
-        body = install.split("run: |\n", 1)[1]
         # Model /bin/sh dropping Bash functions even where sh is Bash.
-        script = "unset -f sudo\n" + textwrap.dedent(body)
+        script = "unset -f sudo\n" + install_script()
         # The retry helper uses /bin/sh, which can discard exported Bash
         # functions. A PATH executable survives that boundary on hosted Ubuntu.
         mock = r'''#!/bin/sh
@@ -136,6 +271,7 @@ esac
                     env={**os.environ, "GITHUB_WORKSPACE": str(WORKFLOW.parents[2]),
                          "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
                          "TIER2_APT_ARCHIVES": str(archives), "TRACE": str(trace),
+                         "TIER2_APT_SHARED": "false", "RUNNER_TEMP": tmp,
                          "FAIL_INSTALLS": str(failures), "DPKG_STATUS": str(dpkg_status),
                          "RETRY_ATTEMPTS": "3", "RETRY_DELAY": "0"},
                     timeout=10,
