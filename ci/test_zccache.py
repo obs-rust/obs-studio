@@ -115,7 +115,8 @@ class ZccacheTest(unittest.TestCase):
         for path in LINUX_BUILD_FILES:
             with self.subTest(path=path.relative_to(ROOT)):
                 text = path.read_text()
-                self.assertNotRegex(text, r"(?i)(?<!z)ccache", "still uses ccache")
+                # The optional job-local front cache still invokes zccache on misses.
+                self.assertNotRegex(text.replace("CCACHE_PREFIX", "PREFIX"), r"(?i)(?<!z)ccache", "still uses ccache")
         for path in (
             TOOLS / "linux-validate" / "validate.sh",
             TOOLS / "sanitize" / "sanitize.py",
