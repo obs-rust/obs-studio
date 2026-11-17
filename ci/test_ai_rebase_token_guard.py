@@ -7,8 +7,8 @@
 every master push while the repository had no AI_REBASE_TOKEN secret, so an
 optional workflow showed a red run. GitHub does not allow the `secrets`
 context in `jobs.<id>.if` (actionlint error; #4730 tried it and was closed),
-so the job exposes whether the token is set through its `env` and every step
-is guarded on that variable: with no token the run only prints a notice.
+so push/resolution steps check a job `env` flag. Read-only checkout, uv and
+the GITHUB_TOKEN-only requeue mode also run without the push token.
 """
 
 from __future__ import annotations
@@ -71,6 +71,10 @@ def problems(text: str) -> list[str]:
             continue
         for step in steps(job):
             cond = step_if(step)
+            if (("uses: actions/checkout@" in step and "secrets.AI_REBASE_TOKEN || github.token" in step)
+                    or "uses: astral-sh/setup-uv@" in step
+                    or ("--requeue-ejected" in step and "GH_TOKEN: ${{ github.token }}" in step)):
+                continue  # these steps need no push credential
             if not re.search(r"\benv\." + flag + r" *[!=]= *'true'", cond):
                 first = step.splitlines()[0].strip()
                 found.append(f"{name}: step `{first}` is not guarded on env.{flag}")
