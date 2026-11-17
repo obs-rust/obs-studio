@@ -255,6 +255,65 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 - **No `win-arm64`:** `util/threading-windows.h` uses MSVC-only ARM64 intrinsics that clang lacks.
 - **Cost, measured 2026-10-31:** a cold cross build *with* the link — a fresh build tree, `ZCCACHE_DISABLE=1`, including that alias's `libobs-rust` staticlib — took `win-x64` 32 s / 41 s, `mac-arm64` 117 s / 32 s and `mac-x64` 134 s / 26 s (two samples each, `-j 4` on a 16-thread host shared with other worker checkouts; the slower sample in each pair is the one that also rebuilt 14–18 workspace crates, and the rest of the spread is co-tenant load). The native `Build OBS-Studio-Rust` steps it stands in for are 12m25 (Windows x64), 8m01 (macOS arm64) and 7m50 (macOS x86_64) in release run 41007587429; signing and packaging stay native.
 
+#### macOS Rust execution artifacts (staged, #5008)
+
+The maintainer chose **STRICT** on 2026-11-17: nothing compiles on hosted
+macOS runners. The intended producer runs on Linux with soldr's LLVM and Apple
+SDK targeting `aarch64-apple-darwin`; macOS loads and runs its artifacts. This
+also applies to obs-build's native-build and Qt integration contracts. Compiler
+discovery assertions apply to the Linux-hosted cross toolchain targeting Darwin;
+their load and execution assertions still run on macOS. Keep every assertion,
+including profile switches, source/flag mutations and unity/PCH rebuild decisions.
+
+The first infrastructure slice is `ci/macos_test_artifact.py`:
+
+```sh
+uv run --no-project ci/macos_test_artifact.py build --output build_macos_tests
+# PR selection, identical to local_gate.test_diff's affected-crate selection:
+uv run --no-project ci/macos_test_artifact.py build --output build_macos_tests --base BASE
+# Extract the complete bundle into the consumer checkout root first:
+uv run --no-project ci/macos_test_artifact.py run --manifest build_macos_tests/manifest.json
+```
+
+The producer links the category tests and helpers with `soldr cargo test
+--no-run`, verifies arm64 Mach-O executable headers and every ad-hoc SHA256
+CodeDirectory page, and retains build-script output. It then compiles the same
+selected crates' doctests with `soldr cargo test --doc --target
+aarch64-apple-darwin`. Stable rustdoc `--test-runtool` copies each temporary
+executable before cleanup. The SDK-aware linker comes from `soldr cc --target
+aarch64-apple-darwin --print-linker`: Cargo's target rustflags alone do not
+configure rustdoc's test linker. No nightly flags or `RUSTC_BOOTSTRAP` are needed.
+The producer disables verdict replay so a previous doctest verdict cannot hide
+missing runtime artifacts.
+
+Rustdoc checks `compile_fail` and `no_run` cases on Linux. The retained 2024
+merged harness checks runnable cases, including `should_panic`, on macOS. A
+standalone `should_panic` case that rustdoc cannot merge fails preparation rather
+than silently passing without execution. The manifest marks doctests complete
+only after the entire compilation command succeeds. A producer success proves
+compilation and compile-fail assertions; execution is proven only by the consumer.
+
+Build and execution require **the same absolute, real checkout root**, including
+the target directory. For workflow activation, place both checkouts at a common
+path such as `/tmp/obs-ci/src` before building (a symlink whose resolved paths
+differ is insufficient). Rust embeds `CARGO_MANIFEST_DIR` and `CARGO_BIN_EXE_*`;
+changing environment variables after compilation cannot relocate them. The runner
+rejects a mismatched root. The manifest retains package cwd, Cargo package/build
+environment, test arguments and helper permissions, and hashes all transported
+files. Missing artifacts, corrupt files, incomplete doctests and failed test
+exits fail the consumer. Preparation requires an empty output directory.
+
+**The workflow switch is not active in this slice.** The existing required
+`Rust Tests 🦀 (macos-26)` job and its coverage remain in place while the remaining
+preparation work is built. First prebuild every native fixture variant and its
+rebuild-decision record, then the four Qt integration contracts against a Darwin
+Qt SDK on Linux. Adapt obs-build's `BUILD_HOST`/`BUILD_TARGET` expectations to that
+split. Only then add the Dell-eligible Linux producer with hosted fallback and
+make the existing macOS job download/run its full bundle, retaining CI Gate and
+PR changed-crate scope. The workflow regression enforces an atomic switch and
+tests the run-only dependency/command contract separately during staging.
+Tier 2 macOS is tracked separately by #5009.
+
 ### setup-soldr: soldr in GitHub Actions
 
 [zackees/setup-soldr](https://github.com/zackees/setup-soldr) is the action

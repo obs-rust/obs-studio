@@ -15,10 +15,12 @@ import argparse
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import struct
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 from rust_scope import affected
@@ -116,6 +118,69 @@ def package_environment(package: dict, target_name: str, cwd: str, manifest: str
     return env
 
 
+def capture_doctest(binary: Path, args: list[str], root: Path, bundle: Path,
+                    cwd: Path, env: dict[str, str]) -> dict:
+    """Stable rustdoc runtool: retain the binary before rustdoc removes it.
+
+    This acknowledges compilation only. The manifest runner must execute the
+    retained harness, including its should_panic cases, on macOS. Compile-fail
+    and no_run cases are checked by rustdoc on the producer as usual.
+    """
+    verify_macho(binary)
+    identity = uuid.uuid4().hex
+    relative = f"target/macos-doctests/{identity}/rust_out"
+    destination = within(bundle, relative)
+    destination.parent.mkdir(parents=True)
+    shutil.copy2(binary, destination)
+    cargo_env = {key: value.replace(str(binary), "{root}/" + relative).replace(str(root), "{root}")
+                 for key, value in env.items()
+                 if key.startswith(("CARGO_PKG_", "CARGO_BIN_EXE_", "RUSTDOC_DOCTEST_"))
+                 or key in ("CARGO_MANIFEST_DIR", "CARGO_MANIFEST_PATH", "CARGO_CRATE_NAME", "OUT_DIR")}
+    entry = {"package": env["CARGO_PKG_NAME"], "binary": relative,
+             "cwd": str(cwd.relative_to(root)), "env": cargo_env, "args": args, "kind": "doctest"}
+    records = bundle / "doctest-records"
+    records.mkdir(exist_ok=True)
+    (records / f"{identity}.json").write_text(json.dumps(entry) + "\n")
+    return entry
+
+
+def doctest_environment(root: Path, bundle: Path, env: dict[str, str]) -> dict[str, str]:
+    # soldr's Cargo target rustflags do not reach rustdoc's test linker. Ask
+    # soldr for its SDK-aware driver rather than using a system clang.
+    linker = subprocess.run(["soldr", "cc", "--target", TARGET, "--print-linker"],
+                            cwd=root, env=env, capture_output=True, text=True, check=True).stdout.strip()
+    if not linker:
+        raise ValueError("soldr did not provide the Darwin linker")
+    runtool = ["uv", "run", "--no-project", "--script", str(root / "ci/macos_test_artifact.py"), "capture-doctest"]
+    flags = ["-C", f"linker={linker}", "--test-runtool", runtool[0]]
+    for argument in runtool[1:]:
+        flags.extend(["--test-runtool-arg", argument])
+    return env | {"RUSTDOCFLAGS": shlex.join(flags), "OBS_MACOS_DOCTEST_ROOT": str(root),
+                  "OBS_MACOS_DOCTEST_BUNDLE": str(bundle)}
+
+
+def finalize(bundle: Path, manifest: dict) -> None:
+    manifest["files"] = {str(path.relative_to(bundle)): hashlib.sha256(path.read_bytes()).hexdigest()
+                         for path in sorted(bundle.rglob("*")) if path.is_file() and path != bundle / "manifest.json"}
+    manifest["executables"] = [name for name in manifest["files"] if os.access(bundle / name, os.X_OK)]
+    (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+def copy_artifact(root: Path, bundle: Path, path: str) -> str:
+    rel = str(Path(path).relative_to(root))
+    source = within(root, rel)
+    destination = within(bundle, rel)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if source.is_dir():
+        # Validate descendants too; copytree follows file/directory symlinks.
+        for child in source.rglob("*"):
+            within(root, str(child.relative_to(root)))
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+    else:
+        shutil.copy2(source, destination)
+    return rel
+
+
 def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: list[str]) -> dict:
     if not events or events[-1] != {"reason": "build-finished", "success": True}:
         raise ValueError("Cargo did not report a complete successful build")
@@ -129,23 +194,15 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: 
     def portable(value: str) -> str:
         return value.replace(str(root), "{root}")
 
-    def copy(path: str) -> str:
-        rel = relative(path)
-        source = within(root, rel)
-        destination = within(bundle, rel)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if source.is_dir():
-            shutil.copytree(source, destination, dirs_exist_ok=True)
-        else:
-            shutil.copy2(source, destination)
-        return rel
-
+    for script in scripts.values():
+        if script.get("out_dir"):
+            copy_artifact(root, bundle, script["out_dir"])
     for event in events:
         if event.get("reason") != "compiler-artifact" or not event.get("executable"):
             continue
         executable = event["executable"]
         verify_macho(Path(executable))
-        binary = copy(executable)
+        binary = copy_artifact(root, bundle, executable)
         if not event["profile"]["test"]:
             continue  # helper executable used by CARGO_BIN_EXE, still transported
         package = packages[event["package_id"]]
@@ -154,7 +211,7 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: 
         script = scripts.get(event["package_id"], {})
         env.update({key: portable(value) for key, value in script.get("env", [])})
         if script.get("out_dir"):
-            env["OUT_DIR"] = "{root}/" + copy(script["out_dir"])
+            env["OUT_DIR"] = "{root}/" + relative(script["out_dir"])
         tests.append({"package": package["name"], "binary": binary, "cwd": cwd, "env": env, "args": args})
     result = {"version": 1, "target": TARGET, "build_root": str(root), "tests": tests}
     bundle.mkdir(parents=True, exist_ok=True)
@@ -162,14 +219,44 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: 
     return result
 
 
+def check_test_inventory(metadata: dict, events: list[dict], packages: list[str]) -> bool:
+    """Match Cargo's successful result to every selected default test target."""
+    selected = set(metadata["workspace_members"]) if packages == ["--workspace"] else {
+        package["id"] for package in metadata["packages"] if package["name"] in packages[1::2]}
+    expected = {(package["id"], target["name"]) for package in metadata["packages"] if package["id"] in selected
+                for target in package["targets"] if target["test"] and "bench" not in target["kind"]}
+    actual = {(event["package_id"], event["target"]["name"]) for event in events
+              if event.get("reason") == "compiler-artifact" and event["profile"]["test"] and event.get("executable")}
+    if actual != expected:
+        raise ValueError(f"test target inventory mismatch: missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
+    return bool(expected)
+
+
+def validate_inventory(data: dict, root: Path) -> None:
+    if not data.get("doctests_complete"):
+        raise ValueError("doctest compilation was not completed")
+    for name, digest in data["files"].items():
+        path = within(root, name)
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise ValueError(f"artifact checksum mismatch: {path}")
+    for name in data.get("executables", []):
+        path = within(root, name)
+        if name not in data["files"]:
+            raise ValueError(f"executable missing from artifact inventory: {path}")
+        path.chmod(path.stat().st_mode | 0o111)
+
+
 def execute(manifest: Path, root: Path) -> int:
     data = json.loads(manifest.read_text())
     if data["version"] != 1 or data["target"] != TARGET or data["build_root"] != str(root):
         raise ValueError("artifact target/version/source root mismatch (compiled paths cannot be relocated)")
-    if not data["tests"] and not data.get("scope_skipped", False):
+    if not data["tests"] and not (data.get("scope_skipped", False) or data.get("scope_no_tests", False)):
         raise ValueError("empty test manifest without an explicit scope skip")
+    validate_inventory(data, root)
     for entry in data["tests"]:
         binary = within(root, entry["binary"])
+        if entry["binary"] not in data["files"]:
+            raise ValueError(f"test missing from artifact inventory: {binary}")
         if not binary.is_file():
             raise FileNotFoundError(binary)
         cwd = within(root, entry["cwd"])
@@ -188,7 +275,9 @@ def execute(manifest: Path, root: Path) -> int:
 def build(output: Path, base: str | None) -> int:
     import local_gate
 
-    env = local_gate.soldr_env({"SOLDR_PORCELAIN": "0"})
+    if output.exists() and any(output.iterdir()):
+        raise ValueError("build output must be empty (stale artifacts cannot prove coverage)")
+    env = local_gate.soldr_env({"SOLDR_PORCELAIN": "0", "SOLDR_VERDICTS": "off"})
     meta = json.loads(subprocess.run(["soldr", "cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"],
                                      cwd=ROOT, env=env, capture_output=True, text=True, check=True).stdout)
     files = None if base is None else subprocess.run(
@@ -196,8 +285,8 @@ def build(output: Path, base: str | None) -> int:
     packages = packages_for(files, meta)
     if not packages:
         output.mkdir(parents=True, exist_ok=True)
-        (output / "manifest.json").write_text(json.dumps({"version": 1, "target": TARGET, "build_root": str(ROOT),
-                                                        "tests": [], "scope_skipped": True}) + "\n")
+        finalize(output, {"version": 1, "target": TARGET, "build_root": str(ROOT),
+                          "tests": [], "scope_skipped": True, "doctests_complete": True})
         return 0
     local_gate.add_target(TARGET)
     command = ["soldr", "cargo", "test", "--no-run", "--target", TARGET, *packages, "--locked", "--message-format=json"]
@@ -205,7 +294,19 @@ def build(output: Path, base: str | None) -> int:
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True)
     sys.stderr.write(result.stderr)
     result.check_returncode()
-    collect(meta, [json.loads(line) for line in result.stdout.splitlines()], ROOT, output, [])
+    events = [json.loads(line) for line in result.stdout.splitlines()]
+    has_tests = check_test_inventory(meta, events, packages)
+    manifest = collect(meta, events, ROOT, output, [])
+    manifest["scope_no_tests"] = not has_tests
+    # Stable cross doctests use rustdoc's runtool to capture merged 2024
+    # harnesses before temporary cleanup. A standalone should_panic case that
+    # cannot be merged fails rustdoc rather than silently losing its assertion.
+    result = subprocess.run(["soldr", "cargo", "test", "--doc", "--target", TARGET, *packages, "--locked"],
+                            cwd=ROOT, env=doctest_environment(ROOT, output, env))
+    result.check_returncode()
+    manifest["tests"].extend(json.loads(path.read_text()) for path in sorted((output / "doctest-records").glob("*.json")))
+    manifest["doctests_complete"] = True
+    finalize(output, manifest)
     return 0
 
 
@@ -218,9 +319,16 @@ def main() -> int:
     runner = sub.add_parser("run")
     runner.add_argument("--manifest", type=Path, required=True)
     runner.add_argument("--root", type=Path, default=ROOT)
+    capture = sub.add_parser("capture-doctest")
+    capture.add_argument("binary", type=Path)
+    capture.add_argument("args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.command == "build":
         return build(args.output.resolve(), args.base)
+    if args.command == "capture-doctest":
+        capture_doctest(args.binary, args.args, Path(os.environ["OBS_MACOS_DOCTEST_ROOT"]),
+                        Path(os.environ["OBS_MACOS_DOCTEST_BUNDLE"]), Path.cwd(), dict(os.environ))
+        return 0
     return execute(args.manifest, args.root.resolve())
 
 
