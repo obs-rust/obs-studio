@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83308,
-      "libobs": 95312,
+      "libobs": 95571,
       "plugins": 148640,
       "shared": 15968
     },
-    "percent": 16.39,
-    "ported_lines": 56264,
-    "total_lines": 343228
+    "percent": 16.46,
+    "ported_lines": 56542,
+    "total_lines": 343487
   },
-  "commit": "94fa7ce",
-  "date": "2026-11-16",
+  "commit": "21d62fe",
+  "date": "2026-11-17",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 49.32,
-          "ported_lines": 31586,
-          "total_lines": 64038
+          "percent": 49.43,
+          "ported_lines": 31700,
+          "total_lines": 64126
         },
         "graphics": {
-          "percent": 69.85,
-          "ported_lines": 10117,
-          "total_lines": 14484
+          "percent": 70.15,
+          "ported_lines": 10281,
+          "total_lines": 14655
         },
         "media-io": {
           "percent": 78.57,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 723,
-      "hybrid_lines": 39048,
-      "percent": 59.03,
-      "ported_lines": 56264,
-      "total_lines": 95312
+      "files": 743,
+      "hybrid_lines": 39029,
+      "percent": 59.16,
+      "ported_lines": 56542,
+      "total_lines": 95571
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 51.2,
-            "ported_lines": 30233,
-            "total_lines": 59049
+            "percent": 51.32,
+            "ported_lines": 30347,
+            "total_lines": 59137
           },
           "graphics": {
-            "percent": 70.38,
-            "ported_lines": 10057,
-            "total_lines": 14290
+            "percent": 70.68,
+            "ported_lines": 10221,
+            "total_lines": 14461
           },
           "media-io": {
             "percent": 78.57,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 688,
-        "hybrid_lines": 34729,
-        "percent": 59.99,
+        "files": 708,
+        "hybrid_lines": 34710,
+        "percent": 60.13,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -109,6 +109,7 @@
           "graphics/graphics-ffmpeg-decode.c.h",
           "graphics/graphics-ffmpeg-init.c.h",
           "graphics/graphics-ffmpeg-orient.c.h",
+          "graphics/graphics-ffmpeg-orientation.c.h",
           "graphics/graphics-ffmpeg-rgba64.c.h",
           "graphics/graphics-ffmpeg-route.c.h",
           "graphics/graphics-immediate-arguments.c.h",
@@ -119,6 +120,7 @@
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
           "graphics/indexbuffer-create.c.h",
@@ -144,6 +146,7 @@
           "graphics/state-blend-entrypoints.c.h",
           "graphics/state-blend-setters.c.h",
           "graphics/state-depth-entrypoints.c.h",
+          "graphics/stencil-state-entrypoints.c.h",
           "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
           "graphics/texture-file-data2.c.h",
@@ -180,6 +183,7 @@
           "obs-canvas-channel-getter.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-flags-getter.c.h",
+          "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
           "obs-canvas-removed.c.h",
@@ -243,6 +247,7 @@
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
           "obs-find-modules.c.h",
+          "obs-get-audio.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-output-source.c.h",
           "obs-hevc.c.h",
@@ -447,6 +452,7 @@
           "obs-source-icon-type-getter.c.h",
           "obs-source-identity-getters.c.h",
           "obs-source-info-lookup.c.h",
+          "obs-source-interaction.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
           "obs-source-media-getters.c.h",
@@ -478,6 +484,7 @@
           "obs-source-transition-video.c.h",
           "obs-source-transition.c.h",
           "obs-source-type-data.c.h",
+          "obs-source-type-enum.c.h",
           "obs-source-type-id-getters.c.h",
           "obs-source-type-info.c.h",
           "obs-source-video-tick.c.h",
@@ -533,20 +540,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 52078,
-        "total_lines": 86807
+        "ported_lines": 52356,
+        "total_lines": 87066
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 50.29,
-            "ported_lines": 26715,
-            "total_lines": 53123
+            "percent": 50.42,
+            "ported_lines": 26829,
+            "total_lines": 53211
           },
           "graphics": {
-            "percent": 70.38,
-            "ported_lines": 10057,
-            "total_lines": 14290
+            "percent": 70.68,
+            "ported_lines": 10221,
+            "total_lines": 14461
           },
           "media-io": {
             "percent": 78.57,
@@ -559,9 +566,9 @@
             "total_lines": 9978
           }
         },
-        "files": 668,
-        "hybrid_lines": 32321,
-        "percent": 60.0,
+        "files": 688,
+        "hybrid_lines": 32302,
+        "percent": 60.15,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -588,6 +595,7 @@
           "graphics/graphics-ffmpeg-decode.c.h",
           "graphics/graphics-ffmpeg-init.c.h",
           "graphics/graphics-ffmpeg-orient.c.h",
+          "graphics/graphics-ffmpeg-orientation.c.h",
           "graphics/graphics-ffmpeg-rgba64.c.h",
           "graphics/graphics-ffmpeg-route.c.h",
           "graphics/graphics-immediate-arguments.c.h",
@@ -598,6 +606,7 @@
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
           "graphics/indexbuffer-create.c.h",
@@ -623,6 +632,7 @@
           "graphics/state-blend-entrypoints.c.h",
           "graphics/state-blend-setters.c.h",
           "graphics/state-depth-entrypoints.c.h",
+          "graphics/stencil-state-entrypoints.c.h",
           "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
           "graphics/texture-file-data2.c.h",
@@ -659,6 +669,7 @@
           "obs-canvas-channel-getter.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-flags-getter.c.h",
+          "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
           "obs-canvas-removed.c.h",
@@ -723,6 +734,7 @@
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
           "obs-find-modules.c.h",
+          "obs-get-audio.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-output-source.c.h",
           "obs-hevc.c.h",
@@ -914,6 +926,7 @@
           "obs-source-icon-type-getter.c.h",
           "obs-source-identity-getters.c.h",
           "obs-source-info-lookup.c.h",
+          "obs-source-interaction.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
           "obs-source-media-getters.c.h",
@@ -945,6 +958,7 @@
           "obs-source-transition-video.c.h",
           "obs-source-transition.c.h",
           "obs-source-type-data.c.h",
+          "obs-source-type-enum.c.h",
           "obs-source-type-id-getters.c.h",
           "obs-source-type-info.c.h",
           "obs-source-video-tick.c.h",
@@ -998,20 +1012,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 48481,
-        "total_lines": 80802
+        "ported_lines": 48759,
+        "total_lines": 81061
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 50.51,
-            "ported_lines": 27656,
-            "total_lines": 54754
+            "percent": 50.64,
+            "ported_lines": 27770,
+            "total_lines": 54842
           },
           "graphics": {
-            "percent": 69.92,
-            "ported_lines": 10117,
-            "total_lines": 14469
+            "percent": 70.23,
+            "ported_lines": 10281,
+            "total_lines": 14640
           },
           "media-io": {
             "percent": 78.57,
@@ -1024,9 +1038,9 @@
             "total_lines": 10704
           }
         },
-        "files": 679,
-        "hybrid_lines": 33679,
-        "percent": 59.59,
+        "files": 699,
+        "hybrid_lines": 33660,
+        "percent": 59.74,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1056,6 +1070,7 @@
           "graphics/graphics-ffmpeg-host-wic-checks.c.h",
           "graphics/graphics-ffmpeg-init.c.h",
           "graphics/graphics-ffmpeg-orient.c.h",
+          "graphics/graphics-ffmpeg-orientation.c.h",
           "graphics/graphics-ffmpeg-rgba64.c.h",
           "graphics/graphics-ffmpeg-route.c.h",
           "graphics/graphics-immediate-arguments.c.h",
@@ -1066,6 +1081,7 @@
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
           "graphics/indexbuffer-create.c.h",
@@ -1091,6 +1107,7 @@
           "graphics/state-blend-entrypoints.c.h",
           "graphics/state-blend-setters.c.h",
           "graphics/state-depth-entrypoints.c.h",
+          "graphics/stencil-state-entrypoints.c.h",
           "graphics/texture-creators.c.h",
           "graphics/texture-cube-access.c.h",
           "graphics/texture-file-data2.c.h",
@@ -1127,6 +1144,7 @@
           "obs-canvas-channel-getter.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-flags-getter.c.h",
+          "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
           "obs-canvas-removed.c.h",
@@ -1190,6 +1208,7 @@
           "obs-enum-modules.c.h",
           "obs-enum-scenes.c.h",
           "obs-find-modules.c.h",
+          "obs-get-audio.c.h",
           "obs-get-main-canvas.c.h",
           "obs-get-output-source.c.h",
           "obs-hevc.c.h",
@@ -1381,6 +1400,7 @@
           "obs-source-icon-type-getter.c.h",
           "obs-source-identity-getters.c.h",
           "obs-source-info-lookup.c.h",
+          "obs-source-interaction.c.h",
           "obs-source-load.c.h",
           "obs-source-media-admission.c.h",
           "obs-source-media-getters.c.h",
@@ -1412,6 +1432,7 @@
           "obs-source-transition-video.c.h",
           "obs-source-transition.c.h",
           "obs-source-type-data.c.h",
+          "obs-source-type-enum.c.h",
           "obs-source-type-id-getters.c.h",
           "obs-source-type-info.c.h",
           "obs-source-video-tick.c.h",
@@ -1470,12 +1491,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 49659,
-        "total_lines": 83338
+        "ported_lines": 49937,
+        "total_lines": 83597
       }
     }
   },
   "rust": {
-    "lines": 214764
+    "lines": 215618
   }
 }
