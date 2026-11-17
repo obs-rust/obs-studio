@@ -422,3 +422,6 @@ if(OS_MACOS)
 endif()
 obs_native_test_graph("${CMAKE_CURRENT_SOURCE_DIR}/build/test-graph.json" "${CMAKE_SOURCE_DIR}")
 include("${CMAKE_CURRENT_SOURCE_DIR}/parallel-environment.cmake")
+# Enqueue last: link-support fragments above add their sources through DEFER.
+include("${CMAKE_CURRENT_SOURCE_DIR}/shared-link-support.cmake")
+cmake_language(DEFER CALL obs_share_test_link_support)
