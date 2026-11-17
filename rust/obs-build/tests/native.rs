@@ -1,4 +1,6 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
+#[path = "native/prebuilt.rs"]
+mod prebuilt;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/canonical_graphics_device_load_is_registered.rs"]
