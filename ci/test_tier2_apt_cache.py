@@ -76,7 +76,23 @@ class AptCacheTest(unittest.TestCase):
         lock = 'flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock"'
         self.assertIn(lock, install)
         command = install[install.index("xargs "):]
-        self.assertLess(command.index(lock), command.index("sudo apt-get install"))
+        self.assertLess(command.index(lock), command.index("sudo eatmydata apt-get install"))
+
+    def test_tier2_install_uses_eatmydata(self):
+        # force-unsafe-io still syncs dpkg's database for every package. On
+        # Dell's HDD mirror the same install took 468 s plain, 47 s wrapped.
+        j = job("rust-linux-tier2-build")
+        install = j[j.index("name: Install Tier 2 Packages"):]
+        install = install.split("\n      - ", 1)[0]
+        self.assertIn("sudo eatmydata apt-get install", install)
+
+    def test_eatmydata_is_installed_before_tier2_packages(self):
+        j = job("rust-linux-tier2-build")
+        bootstrap = j.index("name: Install Git")
+        tier2 = j.index("name: Install Tier 2 Packages")
+        self.assertLess(bootstrap, tier2)
+        install_git = j[bootstrap:].split("\n      - ", 1)[0]
+        self.assertRegex(install_git, r"apt-get install[^\n]*\beatmydata\b")
 
     def test_build_job_dpkg_skips_fsync_and_docs(self):
         # #2072: dpkg spent 29 s unpacking with the .debs already restored.
