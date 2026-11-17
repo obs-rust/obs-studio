@@ -65,8 +65,12 @@ def online_runners(
     return matched
 
 
-def required_capacity(min_idle: str, demand: str) -> int:
-    """Empty Actions variables use defaults; malformed thresholds fail to hosted."""
+def required_capacity(min_idle: str, demand: str, mode: str = "") -> int:
+    """Prefer needs one online runner; empty mode retains the idle thresholds."""
+    if mode == "prefer":
+        return 1
+    if mode:
+        raise ValueError("unknown runner selection mode")
     minimum = int(min_idle or "1")
     per_run = int(demand or "1")
     if minimum < 1 or per_run < 1:
@@ -83,11 +87,13 @@ def select_labels(
     *,
     min_idle: str = "1",
     demand: str = "1",
+    mode: str = "",
 ) -> str:
     """Return compact label JSON or an empty Actions output (hosted fallback).
 
-    Require spare capacity, without reserving runners. Pagination and each HTTP
-    request stay bounded; runners visible in both scopes count only once.
+    Require spare capacity by default, or any matching online runner in prefer
+    mode. Pagination and each HTTP request stay bounded; runners visible in both
+    scopes count only once. Neither mode reserves runners.
     """
     if event != "merge_group" or not labels:
         return decision("opt-in merge-group runner selection is disabled")
@@ -101,7 +107,7 @@ def select_labels(
             )
         ):
             raise ValueError("labels must be a nonempty string array")
-        required = required_capacity(min_idle, demand)
+        required = required_capacity(min_idle, demand, mode)
         if not token:
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
             return decision("runner probe token is missing")
@@ -132,12 +138,23 @@ def select_labels(
         counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
         if unavailable:
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
-        if idle >= required:
+        capacity = len(matched) if mode == "prefer" else idle
+        if capacity >= required:
+            reason = (
+                "prefer mode: matching online runner"
+                if mode == "prefer"
+                else "sufficient idle capacity"
+            )
             return decision(
-                f"sufficient idle capacity ({counts})",
+                f"{reason} ({counts})",
                 json.dumps(requested, separators=(",", ":")),
             )
-        reason = f"insufficient idle capacity within the probe limit ({counts})"
+        reason = (
+            "no matching online runner"
+            if mode == "prefer"
+            else "insufficient idle capacity"
+        )
+        reason = f"{reason} within the probe limit ({counts})"
         warning(reason)
         return decision(reason)
     except Exception as error:
@@ -156,6 +173,7 @@ def main() -> int:
         os.environ.get("GITHUB_API_URL", "https://api.github.com"),
         min_idle=os.environ.get("MQ_RUNNER_MIN_IDLE", ""),
         demand=os.environ.get("MQ_RUNNER_DEMAND", ""),
+        mode=os.environ.get("MQ_RUNNER_MODE", ""),
     )
     try:
         with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:

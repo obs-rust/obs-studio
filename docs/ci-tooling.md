@@ -981,7 +981,8 @@ to fail; an absent App token falls back to the optional legacy
 Both repository-level and organization-level runners are supported.
 The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
-selecting labels; matching idle capacity across the available lists qualifies.
+selecting labels; matching capacity across the available lists qualifies according
+to `MQ_RUNNER_MODE`.
 It passes the result to the existing Build and Format workflows. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
@@ -997,7 +998,16 @@ retain their matrix and hosted fallback. Required job/check names are unchanged.
 The existing Format workflow's Linux Checks job uses the same selection so it
 does not hold the gate waiting for hosted capacity.
 
-Selection requires at least `MQ_RUNNER_MIN_IDLE` matching online, non-busy
+Set the repository Actions variable `MQ_RUNNER_MODE=prefer` to prefer the
+self-hosted labels whenever at least one matching runner is **online**, even
+when every matching runner is busy. Jobs can queue behind busy runners instead
+of overflowing to a saturated hosted pool. This mode ignores `MQ_RUNNER_MIN_IDLE`
+and `MQ_RUNNER_DEMAND`; missing tokens, unavailable probes and no matching online
+runners retain the existing hosted fallback (an available scope's match still
+qualifies if the other scope fails). Unknown modes fall back to hosted.
+
+With `MQ_RUNNER_MODE` unset or empty, selection requires at least
+`MQ_RUNNER_MIN_IDLE` matching online, non-busy
 runners (repository Actions variable, default `1`). Optional `MQ_RUNNER_DEMAND`
 (default `1`) raises the required idle count to the larger of these two values;
 set it to the desired per-run concurrency, rather than assuming all roughly 11

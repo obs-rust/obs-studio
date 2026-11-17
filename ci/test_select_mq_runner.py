@@ -43,6 +43,7 @@ class SelectMqRunnerTest(unittest.TestCase):
         org_error=None,
         min_idle=None,
         demand=None,
+        mode=None,
     ):
         def respond(request, **kwargs):
             is_org = "/orgs/" in request.full_url
@@ -63,6 +64,8 @@ class SelectMqRunnerTest(unittest.TestCase):
                     options["min_idle"] = min_idle
                 if demand is not None:
                     options["demand"] = demand
+                if mode is not None:
+                    options["mode"] = mode
                 result = selector.select_labels(
                     event, labels, token, "obs-rust/obs-studio", **options
                 )
@@ -86,6 +89,52 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(result, "")
         self.assertIn("idle=0", output)
         self.assertIn("busy=6", output)
+
+    def test_prefer_uses_all_busy_online_runners(self):
+        entries = [runner(busy=True) for _ in range(6)]
+        for scope in ("repository", "organization"):
+            with self.subTest(scope=scope):
+                options = {"runners" if scope == "repository" else "org_runners": entries}
+                self.assertEqual(self.select(mode="prefer", **options)[0], LABELS)
+
+    def test_prefer_all_offline_uses_hosted(self):
+        result, _, output = self.select([runner("offline", busy=True)], mode="prefer")
+        self.assertEqual(result, "")
+        self.assertIn("online=0", output)
+
+    def test_prefer_probe_failure_uses_hosted(self):
+        error = URLError("fake-token")
+        result, _, output = self.select(mode="prefer", error=error, org_error=error)
+        self.assertEqual(result, "")
+        self.assertIn("availability probe failed", output)
+        self.assertNotIn("fake-token", output)
+
+    def test_prefer_preserves_available_scope_on_probe_failure(self):
+        self.assertEqual(
+            self.select([runner(busy=True)], mode="prefer", org_error=URLError("down"))[0],
+            LABELS,
+        )
+
+    def test_prefer_missing_token_uses_hosted_without_api(self):
+        result, http, _ = self.select([runner(busy=True)], mode="prefer", token="")
+        self.assertEqual(result, "")
+        http.assert_not_called()
+
+    def test_empty_mode_keeps_idle_threshold_behavior(self):
+        self.assertEqual(self.select([runner(busy=True)], mode="")[0], "")
+        self.assertEqual(self.select([runner()], mode="")[0], LABELS)
+        self.assertEqual(self.select([runner()], mode="", min_idle="2")[0], "")
+
+    def test_prefer_ignores_idle_thresholds(self):
+        self.assertEqual(
+            self.select([runner(busy=True)], mode="prefer", min_idle="0", demand="bad")[0],
+            LABELS,
+        )
+
+    def test_unknown_mode_uses_hosted_without_api(self):
+        result, http, _ = self.select([runner()], mode="typo")
+        self.assertEqual(result, "")
+        http.assert_not_called()
 
     def test_default_requires_one_idle_runner(self):
         self.assertEqual(self.select([runner()])[0], LABELS)
@@ -433,6 +482,14 @@ class SelectMqRunnerTest(unittest.TestCase):
 
     def test_main_summary_and_environment_thresholds(self):
         cases = [
+            (
+                [runner(busy=True) for _ in range(6)],
+                {"MQ_RUNNER_MODE": "prefer"},
+                LABELS,
+                "online=6, busy=6, idle=0",
+                None,
+            ),
+            ([runner(busy=True)], {"MQ_RUNNER_MODE": ""}, "", "idle=0", None),
             (
                 [runner(busy=True) for _ in range(6)],
                 {},
