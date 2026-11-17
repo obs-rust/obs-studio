@@ -17,6 +17,44 @@ import macos_test_artifact as artifact
 
 
 class ArtifactTest(unittest.TestCase):
+    def test_doctest_capture_keeps_arguments_environment_and_signature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "temporary/rust_out"
+            binary.parent.mkdir()
+            binary.write_bytes(SignatureTest.signed_image())
+            package = root / "rust/example"
+            package.mkdir(parents=True)
+            env = {"CARGO_PKG_NAME": "example", "CARGO_MANIFEST_DIR": str(package)}
+            bundle = root / "bundle"
+            entry = artifact.capture_doctest(binary, ["--test-threads=2"], root, bundle, package, env)
+            self.assertEqual(entry["cwd"], "rust/example")
+            self.assertEqual(entry["args"], ["--test-threads=2"])
+            self.assertEqual(entry["env"]["CARGO_MANIFEST_DIR"], "{root}/rust/example")
+            self.assertEqual((bundle / entry["binary"]).read_bytes(), binary.read_bytes())
+            binary.write_bytes(b"unsigned")
+            with self.assertRaises((ValueError, struct.error)):
+                artifact.capture_doctest(binary, [], root, bundle, package, env)
+
+    def test_doctest_command_uses_stable_runtool_and_soldr_darwin_linker(self):
+        with mock.patch.object(artifact.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "/soldr/darwin-clang\n")) as run:
+            env = artifact.doctest_environment(Path("/src"), Path("/bundle"), {})
+        self.assertEqual(run.call_args.args[0], ["soldr", "cc", "--target", artifact.TARGET, "--print-linker"])
+        flags = env["RUSTDOCFLAGS"]
+        self.assertIn("linker=/soldr/darwin-clang", flags)
+        self.assertIn("--test-runtool", flags)
+        self.assertIn("capture-doctest", flags)
+        self.assertNotIn("unstable", flags)
+
+    def test_compiled_root_mismatch_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / "manifest.json"
+            manifest.write_text(json.dumps({"version": 1, "target": artifact.TARGET,
+                                           "build_root": "/another/checkout", "tests": []}))
+            with self.assertRaisesRegex(ValueError, "source root mismatch"):
+                artifact.execute(manifest, root)
+
     def test_manifest_keeps_package_cwd_env_out_dir_and_helper(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
