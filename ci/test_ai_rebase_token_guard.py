@@ -130,6 +130,17 @@ jobs:
 
 
 class TokenGuardTest(unittest.TestCase):
+    def test_requeue_runs_without_push_token_with_minimal_permissions(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertRegex(text, r"permissions:\n  contents: read\n  pull-requests: write")
+        shared = steps(jobs(text)["rebase"])
+        requeue = next(s for s in shared if "--requeue-ejected" in s)
+        self.assertEqual(step_if(requeue), "")
+        self.assertIn("GH_TOKEN: ${{ github.token }}", requeue)
+        checkout = next(s for s in shared if "uses: actions/checkout@" in s)
+        self.assertEqual(step_if(checkout), "")
+        self.assertIn("secrets.AI_REBASE_TOKEN || github.token", checkout)
+
     def test_checker_catches_unguarded_steps(self) -> None:
         self.assertEqual(
             problems(UNGUARDED),
