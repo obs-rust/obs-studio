@@ -628,8 +628,18 @@ When stamping amends an already-published HEAD, `./push` uses an exact
 `--force-with-lease=<branch>:<pre-stamp-sha>` only if the push destination
 still names that pre-stamp commit and the amended commit preserves its tree
 and parents. A concurrent remote update rejects the lease. New branches and
-ordinary fast-forward updates use a plain push; divergent history is never
-force-pushed. The publication message reports which case applies.
+ordinary fast-forward updates use a plain push; divergent history is refused
+by default. The publication message reports which case applies.
+
+To publish intentionally rewritten history (for example, a rebase or a stacked
+draft reset onto master), use `./push --replace-remote-head <old-sha>`, naming
+the exact full SHA of the remote commit you intend to replace. Review the
+commits being replaced first. `./push` still runs its proofs and signs the final
+HEAD, then checks the actual `origin` push destination, including `pushurl`.
+It refuses if that branch is absent or its head differs from `<old-sha>`.
+Only a match enables `--force-with-lease=refs/heads/<branch>:<old-sha>`;
+Git also rejects a concurrent update after the check. Abbreviated SHAs and
+symbolic refs are rejected. No unconditional force option is supported.
 
 1. Claim the issue and check open PRs ([coordination.md](rust-port/coordination.md)).
 2. Commit RED, then GREEN.

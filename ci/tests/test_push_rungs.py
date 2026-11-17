@@ -365,7 +365,12 @@ class RestampPublication(unittest.TestCase):
         self.git("reset", "--hard", self.before)
         return rival
 
-    def publish(self, stamp=None, race=None):
+    def rewrite(self):
+        self.git("reset", "--hard", "HEAD^")
+        self.git("commit", "--allow-empty", "-m", "new master")
+        self.git("cherry-pick", self.before)
+
+    def publish(self, stamp=None, race=None, argv=None):
         original_run = push.run
 
         def command(args, **kwargs):
@@ -385,7 +390,7 @@ class RestampPublication(unittest.TestCase):
                 mock.patch.object(push, "ensure_pr", return_value=0), \
                 mock.patch.object(push, "run", side_effect=command):
             try:
-                result = push.main([])
+                result = push.main(argv or [])
             except subprocess.CalledProcessError as exc:
                 result = exc.returncode
         return result, output.getvalue()
@@ -430,11 +435,68 @@ class RestampPublication(unittest.TestCase):
 
     def test_diverged_history_is_refused(self):
         self.seed()
-        self.git("commit", "--amend", "-m", "divergent local history")
+        self.rewrite()
         result, output = self.publish()
         self.assertNotEqual(result, 0, output)
         self.assertEqual(self.remote_head(), self.before)
         self.assertFalse(any(a.startswith("--force") for c in self.pushes for a in c))
+
+    def test_rewrite_with_matching_remote_head_uses_exact_lease(self):
+        self.seed()
+        self.rewrite()
+        result, output = self.publish(argv=["--replace-remote-head", self.before])
+        self.assertEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+        self.assertEqual(self.pushes, [[
+            "git", "push", "-u", "origin", self.BRANCH,
+            f"--force-with-lease=refs/heads/{self.BRANCH}:{self.before}",
+        ]])
+
+    def test_rewrite_with_mismatched_remote_head_is_refused_before_push(self):
+        self.seed()
+        self.rewrite()
+        result, output = self.publish(argv=["--replace-remote-head", "0" * 40])
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.before)
+        self.assertEqual(self.pushes, [])
+        self.assertIn("remote head does not match", output)
+
+    def test_explicit_replacement_refuses_a_missing_remote_branch(self):
+        result, output = self.publish(argv=["--replace-remote-head", self.before])
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.pushes, [])
+        self.assertIn("remote head does not match", output)
+
+    def test_rewrite_lease_protects_concurrent_remote_update(self):
+        self.seed()
+        rival = self.advance_remote()
+        self.rewrite()
+        result, output = self.publish(
+            argv=["--replace-remote-head", self.before],
+            race=lambda: self.git("--git-dir", str(self.remote), "update-ref",
+                                  f"refs/heads/{self.BRANCH}", rival),
+        )
+        self.assertNotEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), rival)
+        self.assertIn(f"--force-with-lease=refs/heads/{self.BRANCH}:{self.before}", self.pushes[0])
+
+    def test_explicit_replacement_checks_actual_push_destination(self):
+        self.seed()
+        self.rewrite()
+        self.git("remote", "set-url", "origin", str(self.local / "missing-fetch-remote"))
+        self.git("remote", "set-url", "--push", "origin", str(self.remote))
+        result, output = self.publish(argv=["--replace-remote-head", self.before])
+        self.assertEqual(result, 0, output)
+        self.assertEqual(self.remote_head(), self.git("rev-parse", "HEAD"))
+        self.assertIn(f"--force-with-lease=refs/heads/{self.BRANCH}:{self.before}", self.pushes[0])
+
+    def test_replacement_requires_a_full_sha_before_attesting(self):
+        for value in ("HEAD", self.before[:12], "", "g" * 40):
+            with self.subTest(value=value), mock.patch.object(push, "attest") as attest:
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as failure:
+                    push.main(["--replace-remote-head", value])
+                self.assertEqual(failure.exception.code, 2)
+                attest.assert_not_called()
 
     def test_content_amendment_is_not_a_restamp(self):
         self.seed()
