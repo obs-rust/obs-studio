@@ -302,6 +302,12 @@ PR changed-crate scope. The workflow regression enforces an atomic switch and
 tests the run-only dependency/command contract separately during staging.
 Tier 2 macOS is tracked separately by #5009.
 
+The Qt infrastructure slice adds `ci/macos_qt_artifact.py`: matching published
+Darwin Qt libraries and Linux moc/uic/rcc tools, both original native/CMake
+contract consumers, signed arm64 output, and runtime entries in the same bundle.
+See [the Qt contract inventory and producer command](ci-macos-qt-artifacts.md).
+Preparation success leaves runtime pending; macOS must execute those entries.
+
 ### setup-soldr: soldr in GitHub Actions
 
 [zackees/setup-soldr](https://github.com/zackees/setup-soldr) is the action
