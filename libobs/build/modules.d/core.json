@@ -7,7 +7,7 @@
     "core-hotkey-pair-register",
     "core-output",
     "core-output-weak-lifetime",
-    "core-private-data",
+    "core-private-data-fields",
     "core-scene-lookup",
     "core-source",
     "core-source-type-enum",

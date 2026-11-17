@@ -850,6 +850,9 @@ extern char *const *obs_core_global_locale_field(void);
 extern signal_handler_t *const *obs_core_global_signals_field(void);
 extern proc_handler_t *const *obs_core_global_procs_field(void);
 
+/* Private-data storage remains core-owned; requires an initialized core. */
+extern obs_data_t *const *obs_core_private_data_field(void);
+
 struct obs_graphics_context {
 	uint64_t last_time;
 	uint64_t interval;
