@@ -32,6 +32,8 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  actions: write
+  checks: read
 
 concurrency:
   group: ai-rebase
@@ -58,6 +60,13 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Retry merge-queue hosted runner acquisition failures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          # shellcheck disable=SC2086 # DRY is an optional argument
+          uv run --no-project --script ci/mq_acquire_retry.py $DRY
       - name: Re-arm infrastructure-ejected PRs
         env:
           GH_TOKEN: ${{ github.token }}

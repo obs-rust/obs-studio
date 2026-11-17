@@ -428,7 +428,13 @@ the paths that select them, so a change only triggers the tests it can affect.
   Missing event fields, unavailable commits and failed scope selection fail
   closed with named diagnostics. Cancelled jobs with no assigned runner and
   no steps are reported as runner-capacity conditions and still fail the gate;
-  there is no automatic retry or conversion to success.
+   they are never converted to success. The existing AI rebase maintenance
+   workflow runs `ci/mq_acquire_retry.py` on its push, dispatch and :17/:47
+   schedule with `github.token` (`actions: write`, `checks: read`), independently
+   of `AI_REBASE_TOKEN`. It retries failed jobs only for current queue heads,
+   below attempt 3, when every unsuccessful job is an exact hosted-runner
+   acquisition cancellation or CI Gate with only those capacity diagnostics.
+   Missing evidence, real failures and departed heads are logged and left alone.
   Scope-policy edits (`ci/ci_scope.py`) also select Windows on PRs to exercise
   the routing on hosted CI. A failed or runnerless selected Windows job still
   blocks that PR. Selected queue jobs must also execute successfully; missing,

@@ -73,7 +73,8 @@ def problems(text: str) -> list[str]:
             cond = step_if(step)
             if (("uses: actions/checkout@" in step and "secrets.AI_REBASE_TOKEN || github.token" in step)
                     or "uses: astral-sh/setup-uv@" in step
-                    or ("--requeue-ejected" in step and "GH_TOKEN: ${{ github.token }}" in step)):
+                    or (("--requeue-ejected" in step or "ci/mq_acquire_retry.py" in step)
+                        and "GH_TOKEN: ${{ github.token }}" in step)):
                 continue  # these steps need no push credential
             if not re.search(r"\benv\." + flag + r" *[!=]= *'true'", cond):
                 first = step.splitlines()[0].strip()

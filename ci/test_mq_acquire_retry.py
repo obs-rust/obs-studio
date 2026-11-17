@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import io
 import json
 import subprocess
@@ -15,10 +16,18 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from ci import mq_acquire_retry as retry
-
 REPO = "obs-rust/obs-studio"
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def load_ci(name):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "ci" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+retry = load_ci("mq_acquire_retry")
 
 
 class RecordedApi:
@@ -34,6 +43,7 @@ class RecordedApi:
         self.leave_before_post = False
         self.advance_before_post = False
         self.fail_annotations = False
+        self.queue_total_offset = 0
 
     def command(self, argv, **kwargs):
         self.reads.append(argv)
@@ -41,7 +51,8 @@ class RecordedApi:
             self.queue_reads += 1
             heads = [] if self.leave_before_post and self.queue_reads > 1 else self.heads
             value = {"data": {"repository": {"mergeQueue": {"entries": {
-                "totalCount": len(heads), "nodes": [{"headCommit": {"oid": head}} for head in heads],
+                "totalCount": len(heads) + self.queue_total_offset,
+                "nodes": [{"headCommit": {"oid": head}} for head in heads],
                 "pageInfo": {"hasNextPage": False, "endCursor": None},
             }}}}}
             self.assert_graphql(argv)
@@ -99,6 +110,41 @@ class RetryTest(unittest.TestCase):
 
     def test_attempt_three_is_never_retried(self):
         self.api.run["run_attempt"] = 3
+        self.run_bot()
+        self.assertEqual(self.api.mutations, [])
+
+    def test_attempt_two_can_retry_to_attempt_three(self):
+        self.api.run["run_attempt"] = 2
+        self.run_bot()
+        self.assertEqual(len(self.api.mutations), 1)
+
+    def test_incomplete_queue_inventory_never_retries(self):
+        self.api.queue_total_offset = 1
+        self.assertEqual(self.run_bot()[0], 1)
+        self.assertEqual(self.api.mutations, [])
+
+    def test_incomplete_jobs_inventory_never_retries(self):
+        self.api.fixture["jobs"]["total_count"] += 1
+        self.assertEqual(self.run_bot()[0], 1)
+        self.assertEqual(self.api.mutations, [])
+
+    def test_gate_failure_without_capacity_diagnostics_never_retries(self):
+        gate = next(j for j in self.api.fixture["jobs"]["jobs"] if j["name"] == "CI Gate ✅")
+        self.api.fixture["annotations"][str(gate["id"])] = []
+        self.run_bot()
+        self.assertEqual(self.api.mutations, [])
+
+    def test_cancellation_after_start_is_not_runner_acquisition(self):
+        cancelled = next(j for j in self.api.fixture["jobs"]["jobs"] if j["conclusion"] == "cancelled")
+        cancelled["runner_name"] = "GitHub Actions 123"
+        cancelled["runner_id"] = 123
+        self.run_bot()
+        self.assertEqual(self.api.mutations, [])
+
+    def test_lone_gate_failure_does_not_retry(self):
+        for job in self.api.fixture["jobs"]["jobs"]:
+            if job["conclusion"] == "cancelled":
+                job["conclusion"] = "success"
         self.run_bot()
         self.assertEqual(self.api.mutations, [])
 
@@ -171,11 +217,11 @@ class RetryTest(unittest.TestCase):
 
 class WorkflowTest(unittest.TestCase):
     def test_retry_uses_github_token_before_ejection_handler(self):
-        from ci.test_ai_rebase_token_guard import jobs, steps, step_if
+        guard = load_ci("test_ai_rebase_token_guard")
         workflow = (ROOT / ".github/workflows/ai-rebase.yaml").read_text()
-        shared = steps(jobs(workflow)["rebase"])
+        shared = guard.steps(guard.jobs(workflow)["rebase"])
         step = next(s for s in shared if "ci/mq_acquire_retry.py" in s)
-        self.assertEqual(step_if(step), "")
+        self.assertEqual(guard.step_if(step), "")
         self.assertIn("GH_TOKEN: ${{ github.token }}", step)
         self.assertIn("inputs.dry_run", step)
         self.assertIn("actions: write", workflow.split("\njobs:")[0])
