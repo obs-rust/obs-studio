@@ -513,6 +513,18 @@ runner cost in the broader #1581 study before claiming a workflow speedup.
 
 Unchanged lanes are cached by the gate, so a re-run after a small fix is fast.
 
+Queue formatting starts after runner selection, alongside the Build reusable
+workflow, rather than waiting for every heavy lane to finish (#4983). Queue
+checks accept no client skips. Swift selection uses the whole group's diff
+from its target-branch merge-base, including earlier entries; scope errors fail
+the formatting job. The mutually exclusive PR call still waits for Build's
+immutable-base admission outputs, preserving skips before runner allocation.
+Both calls retain the executed `Format 🔍 / checks` and Swift check names,
+and CI Gate waits for formatting as well as every selected build lane.
+The measured baseline added 103–286 seconds of formatting execution after
+heavy work in successful queue samples. Overlap can remove that tail, subject
+to runner contention; hosted after-change timing remains to be measured.
+
 ### Lane proofs: historical diagnostics
 
 Hosted input-key lane proofs and old `Local-Gate:` trailers remain readable

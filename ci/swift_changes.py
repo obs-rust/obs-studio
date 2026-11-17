@@ -3,7 +3,8 @@
 
 swift-format needs a macOS runner, one of the five the plan allows, so it
 runs only when a Swift file changed. A pull request and a merge-queue run
-compare with their base and a push with its previous head. The check runs when
+compare with their base (the target merge-base for a whole queue group) and a
+push with its previous head. The check runs when
 there is nothing to compare with: a manual run, a push that creates the ref
 (an all-zero base), or a base a force push left unreachable.
 
@@ -45,7 +46,14 @@ def comparable(base: str) -> bool:
 
 def main() -> int:
     base = os.environ.get("BASE", "")
-    needed = not comparable(base) or swift_changed(base)
+    if os.environ.get("GITHUB_EVENT_NAME") == "merge_group":
+        from ci_scope import queue_changed_files
+
+        # base_sha may be the preceding entry: retain its Swift changes too.
+        # Invalid/unavailable queue scope must fail, never publish a false skip.
+        needed = any(path.endswith(".swift") for path in queue_changed_files())
+    else:
+        needed = not comparable(base) or swift_changed(base)
     if output := os.environ.get("GITHUB_OUTPUT"):
         with Path(output).open("a", encoding="utf-8") as handle:
             handle.write(f"swift={str(needed).lower()}\n")
