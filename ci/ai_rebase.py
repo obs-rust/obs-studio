@@ -28,6 +28,7 @@ wins. Dequeuing clears auto-merge, so the script re-arms it when it was armed.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -53,6 +54,9 @@ def run(*cmd: str, check: bool = True, input: str | None = None) -> str:
 
 
 def gh_json(*args: str):
+    if args[:2] == ("api", "graphql"):
+        return json.loads(run("uv", "run", "--no-project", "--script",
+                              str(Path(__file__).with_name("gh_graphql.py")), *args[2:]))
     return json.loads(run("gh", *args) or "null")
 
 
@@ -276,17 +280,26 @@ def publish(n: int, pr: dict, stack: tuple[int, str, str] | None, new: str) -> s
     if go and PREFLIGHT:
         go, why = preflight()
     if go:
-        run("gh", "pr", "merge", str(n), "--repo", REPO, "--auto", "--squash",
-            "--match-head-commit", new, check=False)
+        try:
+            run("gh", "pr", "merge", str(n), "--repo", REPO, "--auto",
+                "--match-head-commit", new)
+        except RuntimeError as e:
+            return f"failed to arm auto-merge: {e}"
+    if why == "failed in the merge queue":
+        return f"left out: {why}"
     return "auto-merge armed" if go else f"left out of the queue: {why}"
 
 
 def rebase_pr(n: int, dry_run: bool) -> str:
     pr = gh_json("pr", "view", str(n), "--repo", REPO, "--json",
                  "headRefName,headRefOid,isCrossRepository,autoMergeRequest,id,state,isDraft,body,"
-                 "labels,statusCheckRollup,reviewDecision")
+                 "number,labels,statusCheckRollup,reviewDecision,updatedAt")
     if pr["state"] != "OPEN" or pr["isCrossRepository"]:
         return "skipped: not an open same-repo PR"
+    if worker_active(pr):
+        return "skipped: worker active"
+    # Snapshot the old head's queue outcome before the rebase changes it.
+    pr["failedInQueue"] = failed_in_queue(pr)
     br, old = pr["headRefName"], pr["headRefOid"]
     run("git", "fetch", "-q", "origin", "master", f"+refs/heads/{br}:refs/ai-rebase/{br}")
     run("git", "checkout", "-q", "--detach", f"refs/ai-rebase/{br}")
@@ -335,6 +348,89 @@ def live_holds(text: str, merged_parent: int | None) -> bool:
     return bool(lines)
 
 
+def worker_active(pr: dict, *, now: dt.datetime | None = None) -> bool:
+    """Cheap, conservative ownership signal shared by bulk and explicit PRs.
+
+    GitHub's commit pushedDate is often null. PR updatedAt advances on pushes,
+    including an old authored commit, and may also grant extra quiet time after
+    a comment/label edit. Prefer that false positive to interrupting a worker.
+    """
+    if any(l["name"] == "pool-active" for l in pr.get("labels") or []):
+        return True
+    updated = pr.get("updatedAt")
+    if not updated:
+        return True  # unavailable activity data must not expose a live worker
+    stamp = dt.datetime.fromisoformat(updated.replace("Z", "+00:00"))
+    return (now or dt.datetime.now(dt.timezone.utc)) - stamp < dt.timedelta(minutes=30)
+
+
+def queue_events(pr: dict):
+    """Read the head's relevant timeline backwards through the shared ghd wrapper."""
+    query = """query($number:Int!,$before:String){
+      repository(owner:"obs-rust",name:"obs-studio"){
+        pullRequest(number:$number){headRefOid
+          timelineItems(last:100,before:$before,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT,
+              PULL_REQUEST_COMMIT,HEAD_REF_FORCE_PUSHED_EVENT]){
+            pageInfo{hasPreviousPage startCursor}
+            nodes{__typename
+              ...on RemovedFromMergeQueueEvent{reason}
+              ...on PullRequestCommit{commit{oid}}
+              ...on HeadRefForcePushedEvent{afterCommit{oid}}
+            }
+          }
+        }
+      }
+    }"""
+    cursor = None
+    while True:
+        args = ["-f", f"query={query}", "-F", f"number={pr['number']}"]
+        if cursor:
+            args += ["-f", f"before={cursor}"]
+        data = gh_json("api", "graphql", *args)
+        if data.get("errors"):
+            raise RuntimeError(f"cannot read queue removal: {data['errors']}")
+        current = data["data"]["repository"]["pullRequest"]
+        if current["headRefOid"] != pr["headRefOid"]:
+            raise RuntimeError("head moved while reading queue removal")
+        timeline = current["timelineItems"]
+        yield from reversed(timeline["nodes"])
+        page = timeline["pageInfo"]
+        if not page["hasPreviousPage"]:
+            return
+        next_cursor = page["startCursor"]
+        if not next_cursor or next_cursor == cursor:
+            raise RuntimeError("incomplete queue removal timeline")
+        cursor = next_cursor
+
+
+def failed_in_queue(pr: dict) -> bool:
+    """Bind the latest failed ejection to the PR head that preceded it.
+
+    beforeCommit is the synthetic queue commit, NOT the PR head. Ignore newer
+    head arrivals until the latest removal, then compare its preceding head to
+    the current one. Restoring an identical failed head must preserve failure.
+    """
+    if any(l["name"] == "queue-failed" for l in pr.get("labels") or []):
+        return True
+    if not pr.get("number"):
+        return False
+    failed = False
+    for event in queue_events(pr):
+        kind = event["__typename"]
+        if kind == "RemovedFromMergeQueueEvent" and not failed:
+            if event["reason"] != "failed_checks":
+                return False
+            failed = True
+        elif failed and kind in ("PullRequestCommit", "HeadRefForcePushedEvent"):
+            head = (event.get("commit") or event.get("afterCommit") or {}).get("oid")
+            if not head:
+                raise RuntimeError("cannot establish the head of the failed queue removal")
+            return head == pr["headRefOid"]
+    if failed:
+        raise RuntimeError("cannot establish the head of the failed queue removal")
+    return False
+
+
 def should_enqueue(pr: dict, merged_parent: int | None = None) -> tuple[bool, str]:
     """Put the rebased PR back in the merge queue unless something says not to.
 
@@ -344,6 +440,8 @@ def should_enqueue(pr: dict, merged_parent: int | None = None) -> tuple[bool, st
     for a reason other than the conflict on the old head. The queue itself
     applies back pressure, so admission is not re-decided here.
     """
+    if (pr["failedInQueue"] if "failedInQueue" in pr else failed_in_queue(pr)):
+        return False, "failed in the merge queue"
     if pr.get("isDraft"):
         return False, "draft"
     labels = " ".join(l["name"] for l in pr.get("labels") or [])
@@ -362,12 +460,18 @@ def should_enqueue(pr: dict, merged_parent: int | None = None) -> tuple[bool, st
 
 def dirty_prs(limit: int) -> list[int]:
     prs = gh_json("pr", "list", "--repo", REPO, "--state", "open", "--limit", "300",
-                  "--json", "number,isDraft,mergeStateStatus,createdAt,body")
+                  "--json", "number,isDraft,mergeStateStatus,createdAt,body,labels,updatedAt")
     # Drafts are someone's hold, except a stacked draft, which waits only for
     # its parent; rebase_pr skips it while the parent is unmerged.
-    dirty = sorted((p for p in prs if p["mergeStateStatus"] == "DIRTY"
-                    and (not p["isDraft"] or STACKED.search(p.get("body") or ""))),
-                   key=lambda p: p["createdAt"])  # oldest first: FIFO fairness
+    dirty = []
+    for p in prs:
+        if p["mergeStateStatus"] != "DIRTY" or (p["isDraft"] and not STACKED.search(p.get("body") or "")):
+            continue
+        if worker_active(p):
+            print(f"#{p['number']} skipped: worker active")
+            continue
+        dirty.append(p)
+    dirty.sort(key=lambda p: p["createdAt"])  # oldest first: FIFO fairness
     return [p["number"] for p in dirty[:limit]]
 
 
@@ -400,7 +504,7 @@ def main() -> int:
         if a.comment and not out.startswith("skipped"):
             run("gh", "pr", "comment", str(n), "--repo", REPO, "--body",
                 f"ai-rebase ({MODEL}): {out}", check=False)
-        rc |= 0 if out.startswith(("pushed", "dry-run", "skipped")) else 1
+        rc |= 0 if out.startswith(("pushed", "dry-run", "skipped")) and "failed to arm" not in out else 1
         run("git", "checkout", "-q", "--detach", start, check=False)
     return rc
 
