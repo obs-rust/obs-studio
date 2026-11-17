@@ -72,8 +72,7 @@ class Tree:
 
     def run(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(
-            ["uv", "run", "--no-project", "python", str(SCRIPT), "--build", str(self.build),
-             "--src", str(self.src), *args],
+            [sys.executable, str(SCRIPT), "--build", str(self.build), "--src", str(self.src), *args],
             env=self.env, capture_output=True, text=True, check=False,
         )
 
@@ -83,19 +82,24 @@ HYBRID = "libobs/CMakeFiles/libobs.dir"
 
 
 class PortedProofTest(unittest.TestCase):
+    def tree(self, inputs: dict[str, list[str]]) -> Tree:
+        tree = Tree(inputs)
+        self.addCleanup(tree.tmp.cleanup)
+        return tree
+
     def test_object_in_reference_only_passes(self):
-        t = Tree({"libobs": [f"{HYBRID}/obs.c.o"], "libobs-c-reference": [f"{C_REF}/util/bmem.c.o"]})
+        t = self.tree({"libobs": [f"{HYBRID}/obs.c.o"], "libobs-c-reference": [f"{C_REF}/util/bmem.c.o"]})
         r = t.run("ported", "util/bmem.c.o")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_object_compiled_into_hybrid_libobs_fails(self):
-        t = Tree({"libobs": [f"{HYBRID}/util/bmem.c.o"], "libobs-c-reference": [f"{C_REF}/util/bmem.c.o"]})
+        t = self.tree({"libobs": [f"{HYBRID}/util/bmem.c.o"], "libobs-c-reference": [f"{C_REF}/util/bmem.c.o"]})
         r = t.run("ported", "util/bmem.c.o")
         self.assertEqual(r.returncode, 1)
         self.assertIn("FAIL: util/bmem.c.o was compiled into hybrid libobs", r.stdout)
 
     def test_object_missing_from_reference_fails(self):
-        t = Tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/obs.c.o"]})
+        t = self.tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/obs.c.o"]})
         r = t.run("ported", "util/bmem.c.o")
         self.assertEqual(r.returncode, 1)
         self.assertIn("FAIL: util/bmem.c.o was not compiled into libobs-c-reference", r.stdout)
@@ -103,39 +107,39 @@ class PortedProofTest(unittest.TestCase):
     def test_unity_group_including_the_source_counts(self):
         # libobs/build/<group>+.h.c includes the source by its path below the source tree.
         group = "build/util-core+.h.c"
-        t = Tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/{group}.o"]})
+        t = self.tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/{group}.o"]})
         t.group(group, ["libobs/util/bmem.c"])
         self.assertEqual(t.run("ported", "util/bmem.c.o").returncode, 0)
-        t2 = Tree({"libobs": [f"{HYBRID}/{group}.o"], "libobs-c-reference": [f"{C_REF}/{group}.o"]})
+        t2 = self.tree({"libobs": [f"{HYBRID}/{group}.o"], "libobs-c-reference": [f"{C_REF}/{group}.o"]})
         t2.group(group, ["libobs/util/bmem.c"])
         r = t2.run("ported", "util/bmem.c.o")
         self.assertIn("compiled into hybrid libobs", r.stdout)
 
     def test_group_needs_the_exact_quoted_path(self):
         group = "build/util-core+.h.c"
-        t = Tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/{group}.o"]})
+        t = self.tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/{group}.o"]})
         t.group(group, ["libobs/util/bmem.c.h", "other/libobs/util/bmem.cc"])
         self.assertEqual(t.run("ported", "util/bmem.c.o").returncode, 1)
 
     def test_cmake_unity_batch_counts(self):
-        t = Tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/Unity/unity_0_c.c.o"]})
+        t = self.tree({"libobs": [], "libobs-c-reference": [f"{C_REF}/Unity/unity_0_c.c.o"]})
         t.unity("libobs-c-reference", ["/abs/src/libobs/util/bmem.c"])
         self.assertEqual(t.run("ported", "util/bmem.c.o").returncode, 0)
 
     def test_every_object_is_checked_and_the_first_failure_is_reported(self):
-        t = Tree({"libobs": [f"{HYBRID}/util/b.c.o"],
+        t = self.tree({"libobs": [f"{HYBRID}/util/b.c.o"],
                   "libobs-c-reference": [f"{C_REF}/util/a.c.o", f"{C_REF}/util/b.c.o"]})
         r = t.run("ported", "util/a.c.o", "util/b.c.o")
         self.assertEqual(r.returncode, 1)
         self.assertIn("util/b.c.o was compiled into hybrid libobs", r.stdout)
 
     def test_unknown_target_reads_as_empty(self):
-        t = Tree({"libobs-c-reference": [f"{C_REF}/util/bmem.c.o"]})
+        t = self.tree({"libobs-c-reference": [f"{C_REF}/util/bmem.c.o"]})
         self.assertEqual(t.run("ported", "util/bmem.c.o").returncode, 0)
 
     def test_compiles_answers_by_exit_code(self):
         obj = "build/obs-nvenc.cuda-load-rust+.h.c.o"
-        t = Tree({"obs-nvenc": [f"plugins/obs-nvenc/CMakeFiles/obs-nvenc.dir/{obj}"]})
+        t = self.tree({"obs-nvenc": [f"plugins/obs-nvenc/CMakeFiles/obs-nvenc.dir/{obj}"]})
         self.assertEqual(t.run("compiles", "obs-nvenc", "-", obj).returncode, 0)
         self.assertEqual(
             t.run("compiles", "obs-nvenc", "-", "build/obs-nvenc.cuda-load+.h.c.o").returncode, 1)
