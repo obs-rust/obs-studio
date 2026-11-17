@@ -71,15 +71,18 @@ def verify_directory(path: Path, directory: bytes, data: bytes, signature_start:
 
 
 def verify_macho(path: Path, allowed_filetypes: tuple[int, ...] = (2,)) -> None:
-    """Verify arm64 MH_EXECUTE and its ad-hoc SHA256 CodeDirectory pages.
+    """Verify arm64 Mach-O and every ad-hoc SHA256 CodeDirectory page.
 
     ld64.lld signs arm64 by default. Inspect the load command and actual page
     hashes, rather than treating an arbitrary LC_CODE_SIGNATURE as proof.
+    Execute-only by default; dependency callers explicitly allow dylibs/bundles.
     """
     data = path.read_bytes()
     signature, signature_start = macho_signature(path, data, allowed_filetypes)
     magic, length, count = struct.unpack_from(">3I", signature)
-    if magic != 0xFADE0CC0 or length != len(signature):
+    # Apple's linker aligns LC_CODE_SIGNATURE with zero padding; ld64.lld
+    # normally uses the exact blob size. Padding is outside the signed blob.
+    if magic != 0xFADE0CC0 or length > len(signature) or any(signature[length:]):
         raise ValueError(f"invalid signature superblob: {path}")
     for index in range(count):
         slot, start = struct.unpack_from(">2I", signature, 12 + index * 8)
@@ -297,8 +300,14 @@ def execute(manifest: Path, root: Path) -> int:
         binary.chmod(binary.stat().st_mode | 0o111)
         env = dict(os.environ)
         env.update({key: value.replace("{root}", str(root)) for key, value in entry["env"].items()})
+        for key, values in entry.get("env_path_prepend", {}).items():
+            paths = [value.replace("{root}", str(root)) for value in values]
+            if env.get(key):
+                paths.append(env[key])
+            env[key] = os.pathsep.join(paths)
         print(f"Running {entry['package']}: {binary}", flush=True)
-        status = subprocess.run([str(binary), *entry["args"]], cwd=cwd, env=env).returncode
+        arguments = [value.replace("{root}", str(root)) for value in entry["args"]]
+        status = subprocess.run([str(binary), *arguments], cwd=cwd, env=env, timeout=entry.get("timeout")).returncode
         if status:
             return status if status > 0 else 128 - status
     return 0

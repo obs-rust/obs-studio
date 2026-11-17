@@ -17,6 +17,9 @@ mod canonical_websocket_helpers_is_registered;
 mod graph_host_configurations;
 #[path = "native/prebuilt.rs"]
 mod prebuilt;
+#[cfg(feature = "libobs-integration")]
+#[path = "native/qt_contract_artifacts.rs"]
+mod qt_contract_artifacts;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
@@ -819,7 +822,7 @@ fn cargo_native_profile_uses_effective_optimization_and_symbols() {
 fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let directory = tempfile::tempdir().unwrap();
+    let directory = qt_contract_artifacts::directory();
     let raw: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
@@ -835,11 +838,11 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     let graph = Graph::parse(&selected.to_string()).unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: qt_contract_artifacts::target(),
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
-    let interfaces = [
+    let mut interfaces = [
         (
             "OBS::native-test-cmocka".into(),
             Dependency::package(&build.target, "cmocka").unwrap(),
@@ -854,15 +857,16 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
         ),
     ]
     .into();
+    qt_contract_artifacts::relocatable(&mut interfaces);
     let facts = obs_build::validation::native_test_facts(&build.target, false, false);
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), 2);
     for (name, test) in &graph.tests {
-        let result = test
-            .command(&root, &build.output, &artifacts[&test.target])
-            .unwrap()
-            .output()
-            .unwrap();
+        let result = qt_contract_artifacts::output(
+            test.command(&root, &build.output, &artifacts[&test.target])
+                .unwrap(),
+        )
+        .unwrap();
         assert!(
             result.status.success(),
             "Cargo {name}\n{}\n{}",
@@ -908,7 +912,7 @@ fn canonical_frontend_product_and_meter_tests_run_unchanged() {
     ] {
         let mut command = std::process::Command::new(program);
         command.args(arguments);
-        let result = command.output().unwrap();
+        let result = qt_contract_artifacts::output(command).unwrap();
         assert!(
             result.status.success(),
             "{program}\n{}\n{}",
@@ -975,10 +979,10 @@ fn native_test_graph_rejects_colliding_qt_ui_outputs() {
 fn canonical_remux_queue_runs_unchanged() {
     use obs_build::validation::{self, graph::Dependency};
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let directory = tempfile::tempdir().unwrap();
+    let directory = qt_contract_artifacts::directory();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: qt_contract_artifacts::target(),
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
@@ -1021,11 +1025,26 @@ fn canonical_remux_queue_runs_unchanged() {
             "Backtab not selected: Qt Test is absent from the selected SDK; original optional guard retained"
         );
     }
+    qt_contract_artifacts::relocatable(&mut interfaces);
     let graph: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
     // Compare the evaluated inventory, including optional Qt Test selection.
-    let facts = qt_replay_facts(&build.target, qt_test_available);
+    let mut facts = qt_replay_facts(&build.target, qt_test_available);
+    // build_qt_tests discovers these source-only owners even without libobs.
+    // Include them in the exact inventory assertion rather than dropping them.
+    facts.extend([
+        (
+            "HAVE_WS_IMAGE_MIME_TEST_OWNER".into(),
+            root.join("plugins/obs-websocket/src/utils/ImageFormat.cpp")
+                .is_file(),
+        ),
+        (
+            "HAVE_WS_SESSION_DURATION_TEST_OWNER".into(),
+            root.join("plugins/obs-websocket/src/forms/SessionDuration.h")
+                .is_file(),
+        ),
+    ]);
     let linux = facts["OS_LINUX"];
     let mut expected = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     expected.retain_suite("qt");
@@ -1078,11 +1097,8 @@ fn canonical_remux_queue_runs_unchanged() {
         linux
     );
     for test in tests {
-        let result = test
-            .command(&root, &build.output)
-            .unwrap()
-            .output()
-            .unwrap();
+        let result =
+            qt_contract_artifacts::output(test.command(&root, &build.output).unwrap()).unwrap();
         assert!(
             result.status.success(),
             "{}\n{}",
@@ -1162,10 +1178,9 @@ fn canonical_remux_queue_runs_unchanged() {
             ],
         ),
     ] {
-        let result = std::process::Command::new(program)
-            .args(arguments)
-            .output()
-            .unwrap();
+        let mut command = std::process::Command::new(program);
+        command.args(arguments);
+        let result = qt_contract_artifacts::output(command).unwrap();
         assert!(
             result.status.success(),
             "{}\n{}",
@@ -1407,7 +1422,7 @@ fn native_test_graph_prepends_runtime_paths_in_order() {
     reason = "one block per generated CMake target"
 )]
 fn native_test_graph_generates_qt_metaobjects() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = qt_contract_artifacts::directory();
     let root = directory.path();
     fs::write(root.join("answer.hpp"), "#pragma once\n#include <QObject>\nclass Answer : public QObject {\n Q_OBJECT\n public: using QObject::QObject; Q_INVOKABLE int value() const { return 42; } };\n").unwrap();
     fs::write(
@@ -1443,11 +1458,11 @@ fn native_test_graph_generates_qt_metaobjects() {
     let parsed = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: qt_contract_artifacts::target(),
         output: root.join("cargo-output"),
         profile: Default::default(),
     };
-    let interfaces = [
+    let mut interfaces = [
         (
             "Qt6::Core".into(),
             obs_build::validation::graph::Dependency::package(&build.target, "Qt6Core").unwrap(),
@@ -1458,13 +1473,18 @@ fn native_test_graph_generates_qt_metaobjects() {
         ),
     ]
     .into();
+    qt_contract_artifacts::relocatable(&mut interfaces);
     let artifacts = parsed
         .compile(&build, root, &Default::default(), &interfaces)
         .unwrap();
     let mut answer = std::process::Command::new(&artifacts["answer"]);
     // minimal, not offscreen: the published Windows SDK ships no qoffscreen.
     answer.env("QT_QPA_PLATFORM", "minimal");
-    let output = bounded(answer);
+    let output = if qt_contract_artifacts::preparing() {
+        qt_contract_artifacts::output(answer).unwrap()
+    } else {
+        bounded(answer)
+    };
     assert!(
         output.status.success(),
         "{:?}\n{}",
@@ -1500,10 +1520,9 @@ fn native_test_graph_generates_qt_metaobjects() {
             ],
         ),
     ] {
-        let result = std::process::Command::new(program)
-            .args(arguments)
-            .output()
-            .unwrap();
+        let mut command = std::process::Command::new(program);
+        command.args(arguments);
+        let result = qt_contract_artifacts::output(command).unwrap();
         assert!(
             result.status.success(),
             "{}\n{}",
@@ -4561,7 +4580,7 @@ fn standalone_core_header_fixture(
 fn run_standalone_configuration_contract(names: &[&str]) {
     use obs_build::validation::graph::{Dependency, Graph};
     let root = dunce::canonicalize(Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")).unwrap();
-    let directory = tempfile::tempdir().unwrap();
+    let directory = qt_contract_artifacts::directory();
     let raw: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
             .unwrap();
@@ -4577,7 +4596,7 @@ fn run_standalone_configuration_contract(names: &[&str]) {
     let graph = Graph::parse(&selected.to_string()).unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: qt_contract_artifacts::target(),
         output: directory.path().join("cargo-output"),
         profile: Default::default(),
     };
@@ -4612,15 +4631,16 @@ fn run_standalone_configuration_contract(names: &[&str]) {
         &selection,
         &mut interfaces,
     );
+    qt_contract_artifacts::relocatable(&mut interfaces);
     let artifacts = graph.compile(&build, &root, &facts, &interfaces).unwrap();
     assert_eq!(artifacts.len(), selection.targets.len());
     assert_eq!(artifacts.len(), selection.tests.len());
     for (name, test) in &selection.tests {
-        let result = test
-            .command(&root, &build.output, &artifacts[&test.target])
-            .unwrap()
-            .output()
-            .unwrap();
+        let result = qt_contract_artifacts::output(
+            test.command(&root, &build.output, &artifacts[&test.target])
+                .unwrap(),
+        )
+        .unwrap();
         assert!(
             result.status.success(),
             "Cargo {name}\n{}\n{}",
@@ -4679,7 +4699,7 @@ fn run_standalone_configuration_contract(names: &[&str]) {
     ] {
         let mut command = std::process::Command::new(program);
         command.args(arguments);
-        let result = command.output().unwrap();
+        let result = qt_contract_artifacts::output(command).unwrap();
         assert!(
             result.status.success(),
             "{program}\n{}\n{}",
