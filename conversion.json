@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83308,
-      "libobs": 95571,
+      "libobs": 96248,
       "plugins": 148640,
       "shared": 15968
     },
-    "percent": 16.46,
-    "ported_lines": 56542,
-    "total_lines": 343487
+    "percent": 16.74,
+    "ported_lines": 57610,
+    "total_lines": 344164
   },
-  "commit": "21d62fe",
+  "commit": "0c01cf1",
   "date": "2026-11-17",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,19 +29,19 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 49.43,
-          "ported_lines": 31700,
-          "total_lines": 64126
+          "percent": 49.91,
+          "ported_lines": 32230,
+          "total_lines": 64576
         },
         "graphics": {
-          "percent": 70.15,
-          "ported_lines": 10281,
-          "total_lines": 14655
+          "percent": 71.55,
+          "ported_lines": 10607,
+          "total_lines": 14824
         },
         "media-io": {
-          "percent": 78.57,
-          "ported_lines": 2680,
-          "total_lines": 3411
+          "percent": 83.37,
+          "ported_lines": 2892,
+          "total_lines": 3469
         },
         "util": {
           "percent": 88.8,
@@ -49,29 +49,29 @@
           "total_lines": 13379
         }
       },
-      "files": 743,
-      "hybrid_lines": 39029,
-      "percent": 59.16,
-      "ported_lines": 56542,
-      "total_lines": 95571
+      "files": 769,
+      "hybrid_lines": 38638,
+      "percent": 59.86,
+      "ported_lines": 57610,
+      "total_lines": 96248
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 51.32,
-            "ported_lines": 30347,
-            "total_lines": 59137
+            "percent": 51.82,
+            "ported_lines": 30877,
+            "total_lines": 59587
           },
           "graphics": {
-            "percent": 70.68,
-            "ported_lines": 10221,
-            "total_lines": 14461
+            "percent": 72.09,
+            "ported_lines": 10547,
+            "total_lines": 14630
           },
           "media-io": {
-            "percent": 78.57,
-            "ported_lines": 2680,
-            "total_lines": 3411
+            "percent": 83.37,
+            "ported_lines": 2892,
+            "total_lines": 3469
           },
           "util": {
             "percent": 90.56,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 708,
-        "hybrid_lines": 34710,
-        "percent": 60.13,
+        "files": 734,
+        "hybrid_lines": 34319,
+        "percent": 60.89,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -118,6 +118,8 @@
           "graphics/graphics-linear-srgb.c.h",
           "graphics/graphics-perspective.c.h",
           "graphics/graphics-set-linear-srgb.c.h",
+          "graphics/graphics-shader-params-checks.c.h",
+          "graphics/graphics-shader-params.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
           "graphics/graphics-viewport.c.h",
@@ -129,6 +131,7 @@
           "graphics/libnsgif/gif.c.h",
           "graphics/libnsgif/lzw.c.h",
           "graphics/math-extra.c.h",
+          "graphics/matrix-entrypoints.c.h",
           "graphics/matrix3.c.h",
           "graphics/matrix4.c.h",
           "graphics/plane.c.h",
@@ -159,10 +162,12 @@
           "graphics/vec3.c.h",
           "graphics/vec4.c.h",
           "graphics/vertexbuffer-access.c.h",
+          "graphics/vertexbuffer-create.c.h",
           "graphics/vertexbuffer-destroy.c.h",
           "graphics/voltexture-metadata.c.h",
           "media-io/audio-io.c.h",
           "media-io/audio-resampler-drift.c.h",
+          "media-io/audio-resampler-ffmpeg.c.h",
           "media-io/audio-resampler-plan.c.h",
           "media-io/format-conversion.c.h",
           "media-io/media-remux.c.h",
@@ -186,11 +191,13 @@
           "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
+          "obs-canvas-release.c.h",
           "obs-canvas-removed.c.h",
           "obs-canvas-render.c.h",
           "obs-canvas-rules.c.h",
           "obs-canvas-scene.c.h",
           "obs-canvas-set-name.c.h",
+          "obs-canvas-signals.c.h",
           "obs-canvas-video-getter.c.h",
           "obs-canvas-video-info-getter.c.h",
           "obs-context-names.c.h",
@@ -259,12 +266,14 @@
           "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
           "obs-hotkey-identity-getters.c.h",
+          "obs-hotkey-identity-setters.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
           "obs-hotkey-owned-translations.c.h",
           "obs-hotkey-pair-meta.c.h",
           "obs-hotkey-pair.c.h",
           "obs-hotkey-press.c.h",
+          "obs-hotkey-register.c.h",
           "obs-hotkey-routed-callback.c.h",
           "obs-hotkey-routing-controls.c.h",
           "obs-hotkey-save-load.c.h",
@@ -335,6 +344,7 @@
           "obs-output-protocols.c.h",
           "obs-output-raw-audio-trim.c.h",
           "obs-output-raw-audio.c.h",
+          "obs-output-reconnect-callback.c.h",
           "obs-output-reconnect-settings.c.h",
           "obs-output-reconnect.c.h",
           "obs-output-reconnecting.c.h",
@@ -354,6 +364,7 @@
           "obs-output-type-info.c.h",
           "obs-output-video-checks.c.h",
           "obs-output-video-encoder-getter.c.h",
+          "obs-output-weak-lifetime.c.h",
           "obs-properties.c.h",
           "obs-scene-atomic-update.c.h",
           "obs-scene-audio-actions.c.h",
@@ -379,6 +390,8 @@
           "obs-scene-item-crop-setter.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
+          "obs-scene-item-hotkeys-reference.c.h",
+          "obs-scene-item-hotkeys.c.h",
           "obs-scene-item-id.c.h",
           "obs-scene-item-locked-reference-signal.c.h",
           "obs-scene-item-locked-setter.c.h",
@@ -391,6 +404,7 @@
           "obs-scene-item-select-reference-signal.c.h",
           "obs-scene-item-select.c.h",
           "obs-scene-item-set-id.c.h",
+          "obs-scene-item-set-visibility.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
           "obs-scene-item-transform.c.h",
@@ -420,6 +434,7 @@
           "obs-source-async-pacing.c.h",
           "obs-source-async-rotation.c.h",
           "obs-source-async-upload.c.h",
+          "obs-source-audio-active-setter.c.h",
           "obs-source-audio-active.c.h",
           "obs-source-audio-input-path.c.h",
           "obs-source-audio-input.c.h",
@@ -460,6 +475,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-private-settings.c.h",
           "obs-source-ptm-gate.c.h",
+          "obs-source-push-hotkeys.c.h",
           "obs-source-push-queries.c.h",
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
@@ -498,11 +514,14 @@
           "obs-video-pacing.c.h",
           "obs-video-plan.c.h",
           "obs-video-render-size-reference.c.h",
+          "obs-video-scale-effects-dispatch.c.h",
+          "obs-video-scale-effects.c.h",
           "obs-video-stop-requested-reference.c.h",
           "obs-view-api.c.h",
           "obs-weak-encoder-identity.c.h",
           "obs-weak-object-expired.c.h",
           "obs-weak-object-identity.c.h",
+          "obs-weak-object-refs.c.h",
           "util/array-serializer.c.h",
           "util/base.c.h",
           "util/bitstream.c.h",
@@ -540,25 +559,25 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 52356,
-        "total_lines": 87066
+        "ported_lines": 53424,
+        "total_lines": 87743
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 50.42,
-            "ported_lines": 26829,
-            "total_lines": 53211
+            "percent": 50.98,
+            "ported_lines": 27359,
+            "total_lines": 53661
           },
           "graphics": {
-            "percent": 70.68,
-            "ported_lines": 10221,
-            "total_lines": 14461
+            "percent": 72.09,
+            "ported_lines": 10547,
+            "total_lines": 14630
           },
           "media-io": {
-            "percent": 78.57,
-            "ported_lines": 2680,
-            "total_lines": 3411
+            "percent": 83.37,
+            "ported_lines": 2892,
+            "total_lines": 3469
           },
           "util": {
             "percent": 90.49,
@@ -566,9 +585,9 @@
             "total_lines": 9978
           }
         },
-        "files": 688,
-        "hybrid_lines": 32302,
-        "percent": 60.15,
+        "files": 714,
+        "hybrid_lines": 31911,
+        "percent": 60.96,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -604,6 +623,8 @@
           "graphics/graphics-linear-srgb.c.h",
           "graphics/graphics-perspective.c.h",
           "graphics/graphics-set-linear-srgb.c.h",
+          "graphics/graphics-shader-params-checks.c.h",
+          "graphics/graphics-shader-params.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
           "graphics/graphics-viewport.c.h",
@@ -615,6 +636,7 @@
           "graphics/libnsgif/gif.c.h",
           "graphics/libnsgif/lzw.c.h",
           "graphics/math-extra.c.h",
+          "graphics/matrix-entrypoints.c.h",
           "graphics/matrix3.c.h",
           "graphics/matrix4.c.h",
           "graphics/plane.c.h",
@@ -645,10 +667,12 @@
           "graphics/vec3.c.h",
           "graphics/vec4.c.h",
           "graphics/vertexbuffer-access.c.h",
+          "graphics/vertexbuffer-create.c.h",
           "graphics/vertexbuffer-destroy.c.h",
           "graphics/voltexture-metadata.c.h",
           "media-io/audio-io.c.h",
           "media-io/audio-resampler-drift.c.h",
+          "media-io/audio-resampler-ffmpeg.c.h",
           "media-io/audio-resampler-plan.c.h",
           "media-io/format-conversion.c.h",
           "media-io/media-remux.c.h",
@@ -672,11 +696,13 @@
           "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
+          "obs-canvas-release.c.h",
           "obs-canvas-removed.c.h",
           "obs-canvas-render.c.h",
           "obs-canvas-rules.c.h",
           "obs-canvas-scene.c.h",
           "obs-canvas-set-name.c.h",
+          "obs-canvas-signals.c.h",
           "obs-canvas-video-getter.c.h",
           "obs-canvas-video-info-getter.c.h",
           "obs-cocoa-keys.c.h",
@@ -746,12 +772,14 @@
           "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
           "obs-hotkey-identity-getters.c.h",
+          "obs-hotkey-identity-setters.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
           "obs-hotkey-owned-translations.c.h",
           "obs-hotkey-pair-meta.c.h",
           "obs-hotkey-pair.c.h",
           "obs-hotkey-press.c.h",
+          "obs-hotkey-register.c.h",
           "obs-hotkey-routed-callback.c.h",
           "obs-hotkey-routing-controls.c.h",
           "obs-hotkey-save-load.c.h",
@@ -809,6 +837,7 @@
           "obs-output-protocols.c.h",
           "obs-output-raw-audio-trim.c.h",
           "obs-output-raw-audio.c.h",
+          "obs-output-reconnect-callback.c.h",
           "obs-output-reconnect-settings.c.h",
           "obs-output-reconnect.c.h",
           "obs-output-reconnecting.c.h",
@@ -828,6 +857,7 @@
           "obs-output-type-info.c.h",
           "obs-output-video-checks.c.h",
           "obs-output-video-encoder-getter.c.h",
+          "obs-output-weak-lifetime.c.h",
           "obs-properties.c.h",
           "obs-scene-atomic-update.c.h",
           "obs-scene-audio-actions.c.h",
@@ -853,6 +883,8 @@
           "obs-scene-item-crop-setter.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
+          "obs-scene-item-hotkeys-reference.c.h",
+          "obs-scene-item-hotkeys.c.h",
           "obs-scene-item-id.c.h",
           "obs-scene-item-locked-reference-signal.c.h",
           "obs-scene-item-locked-setter.c.h",
@@ -865,6 +897,7 @@
           "obs-scene-item-select-reference-signal.c.h",
           "obs-scene-item-select.c.h",
           "obs-scene-item-set-id.c.h",
+          "obs-scene-item-set-visibility.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
           "obs-scene-item-transform.c.h",
@@ -894,6 +927,7 @@
           "obs-source-async-pacing.c.h",
           "obs-source-async-rotation.c.h",
           "obs-source-async-upload.c.h",
+          "obs-source-audio-active-setter.c.h",
           "obs-source-audio-active.c.h",
           "obs-source-audio-input-path.c.h",
           "obs-source-audio-input.c.h",
@@ -934,6 +968,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-private-settings.c.h",
           "obs-source-ptm-gate.c.h",
+          "obs-source-push-hotkeys.c.h",
           "obs-source-push-queries.c.h",
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
@@ -972,11 +1007,14 @@
           "obs-video-pacing.c.h",
           "obs-video-plan.c.h",
           "obs-video-render-size-reference.c.h",
+          "obs-video-scale-effects-dispatch.c.h",
+          "obs-video-scale-effects.c.h",
           "obs-video-stop-requested-reference.c.h",
           "obs-view-api.c.h",
           "obs-weak-encoder-identity.c.h",
           "obs-weak-object-expired.c.h",
           "obs-weak-object-identity.c.h",
+          "obs-weak-object-refs.c.h",
           "util/array-serializer.c.h",
           "util/base.c.h",
           "util/bitstream.c.h",
@@ -1012,25 +1050,25 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 48759,
-        "total_lines": 81061
+        "ported_lines": 49827,
+        "total_lines": 81738
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 50.64,
-            "ported_lines": 27770,
-            "total_lines": 54842
+            "percent": 51.18,
+            "ported_lines": 28300,
+            "total_lines": 55292
           },
           "graphics": {
-            "percent": 70.23,
-            "ported_lines": 10281,
-            "total_lines": 14640
+            "percent": 71.63,
+            "ported_lines": 10607,
+            "total_lines": 14809
           },
           "media-io": {
-            "percent": 78.57,
-            "ported_lines": 2680,
-            "total_lines": 3411
+            "percent": 83.37,
+            "ported_lines": 2892,
+            "total_lines": 3469
           },
           "util": {
             "percent": 86.01,
@@ -1038,9 +1076,9 @@
             "total_lines": 10704
           }
         },
-        "files": 699,
-        "hybrid_lines": 33660,
-        "percent": 59.74,
+        "files": 725,
+        "hybrid_lines": 33269,
+        "percent": 60.52,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1079,6 +1117,8 @@
           "graphics/graphics-linear-srgb.c.h",
           "graphics/graphics-perspective.c.h",
           "graphics/graphics-set-linear-srgb.c.h",
+          "graphics/graphics-shader-params-checks.c.h",
+          "graphics/graphics-shader-params.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
           "graphics/graphics-viewport.c.h",
@@ -1090,6 +1130,7 @@
           "graphics/libnsgif/gif.c.h",
           "graphics/libnsgif/lzw.c.h",
           "graphics/math-extra.c.h",
+          "graphics/matrix-entrypoints.c.h",
           "graphics/matrix3.c.h",
           "graphics/matrix4.c.h",
           "graphics/plane.c.h",
@@ -1120,10 +1161,12 @@
           "graphics/vec3.c.h",
           "graphics/vec4.c.h",
           "graphics/vertexbuffer-access.c.h",
+          "graphics/vertexbuffer-create.c.h",
           "graphics/vertexbuffer-destroy.c.h",
           "graphics/voltexture-metadata.c.h",
           "media-io/audio-io.c.h",
           "media-io/audio-resampler-drift.c.h",
+          "media-io/audio-resampler-ffmpeg.c.h",
           "media-io/audio-resampler-plan.c.h",
           "media-io/format-conversion.c.h",
           "media-io/media-remux.c.h",
@@ -1147,11 +1190,13 @@
           "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
+          "obs-canvas-release.c.h",
           "obs-canvas-removed.c.h",
           "obs-canvas-render.c.h",
           "obs-canvas-rules.c.h",
           "obs-canvas-scene.c.h",
           "obs-canvas-set-name.c.h",
+          "obs-canvas-signals.c.h",
           "obs-canvas-video-getter.c.h",
           "obs-canvas-video-info-getter.c.h",
           "obs-context-names.c.h",
@@ -1220,12 +1265,14 @@
           "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
           "obs-hotkey-identity-getters.c.h",
+          "obs-hotkey-identity-setters.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
           "obs-hotkey-owned-translations.c.h",
           "obs-hotkey-pair-meta.c.h",
           "obs-hotkey-pair.c.h",
           "obs-hotkey-press.c.h",
+          "obs-hotkey-register.c.h",
           "obs-hotkey-routed-callback.c.h",
           "obs-hotkey-routing-controls.c.h",
           "obs-hotkey-save-load.c.h",
@@ -1283,6 +1330,7 @@
           "obs-output-protocols.c.h",
           "obs-output-raw-audio-trim.c.h",
           "obs-output-raw-audio.c.h",
+          "obs-output-reconnect-callback.c.h",
           "obs-output-reconnect-settings.c.h",
           "obs-output-reconnect.c.h",
           "obs-output-reconnecting.c.h",
@@ -1302,6 +1350,7 @@
           "obs-output-type-info.c.h",
           "obs-output-video-checks.c.h",
           "obs-output-video-encoder-getter.c.h",
+          "obs-output-weak-lifetime.c.h",
           "obs-properties.c.h",
           "obs-scene-atomic-update.c.h",
           "obs-scene-audio-actions.c.h",
@@ -1327,6 +1376,8 @@
           "obs-scene-item-crop-setter.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
+          "obs-scene-item-hotkeys-reference.c.h",
+          "obs-scene-item-hotkeys.c.h",
           "obs-scene-item-id.c.h",
           "obs-scene-item-locked-reference-signal.c.h",
           "obs-scene-item-locked-setter.c.h",
@@ -1339,6 +1390,7 @@
           "obs-scene-item-select-reference-signal.c.h",
           "obs-scene-item-select.c.h",
           "obs-scene-item-set-id.c.h",
+          "obs-scene-item-set-visibility.c.h",
           "obs-scene-item-state-getters.c.h",
           "obs-scene-item-transform-fields.c.h",
           "obs-scene-item-transform.c.h",
@@ -1368,6 +1420,7 @@
           "obs-source-async-pacing.c.h",
           "obs-source-async-rotation.c.h",
           "obs-source-async-upload.c.h",
+          "obs-source-audio-active-setter.c.h",
           "obs-source-audio-active.c.h",
           "obs-source-audio-input-path.c.h",
           "obs-source-audio-input.c.h",
@@ -1408,6 +1461,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-private-settings.c.h",
           "obs-source-ptm-gate.c.h",
+          "obs-source-push-hotkeys.c.h",
           "obs-source-push-queries.c.h",
           "obs-source-push-to-delay.c.h",
           "obs-source-push-to-enable.c.h",
@@ -1446,11 +1500,14 @@
           "obs-video-pacing.c.h",
           "obs-video-plan.c.h",
           "obs-video-render-size-reference.c.h",
+          "obs-video-scale-effects-dispatch.c.h",
+          "obs-video-scale-effects.c.h",
           "obs-video-stop-requested-reference.c.h",
           "obs-view-api.c.h",
           "obs-weak-encoder-identity.c.h",
           "obs-weak-object-expired.c.h",
           "obs-weak-object-identity.c.h",
+          "obs-weak-object-refs.c.h",
           "obs-win-crash-report.c.h",
           "obs-windows-keys.c.h",
           "obs-windows-symbol-paths.c.h",
@@ -1491,12 +1548,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 49937,
-        "total_lines": 83597
+        "ported_lines": 51005,
+        "total_lines": 84274
       }
     }
   },
   "rust": {
-    "lines": 215618
+    "lines": 218698
   }
 }
