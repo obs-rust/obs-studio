@@ -87,9 +87,18 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertIn("idle=0", output)
         self.assertIn("busy=6", output)
 
-    def test_default_requires_two_idle_runners(self):
-        self.assertEqual(self.select([runner()])[0], "")
+    def test_default_requires_one_idle_runner(self):
+        self.assertEqual(self.select([runner()])[0], LABELS)
         self.assertEqual(self.select([runner(), runner()])[0], LABELS)
+
+    def test_five_busy_runners_do_not_strand_the_last_idle_runner(self):
+        entries = [runner(busy=True) for _ in range(5)]
+        self.assertEqual(self.select([*entries, runner()])[0], LABELS)
+        self.assertEqual(self.select([*entries, runner("offline")])[0], "")
+        self.assertEqual(self.select([*entries, runner()], demand="2")[0], "")
+
+    def test_empty_actions_thresholds_use_one_idle_runner(self):
+        self.assertEqual(self.select([runner()], min_idle="", demand="")[0], LABELS)
 
     def test_busy_offline_and_nonmatching_do_not_supply_idle_capacity(self):
         entries = [
@@ -98,8 +107,8 @@ class SelectMqRunnerTest(unittest.TestCase):
             runner("offline"),
             runner(labels=["x64"]),
         ]
-        self.assertEqual(self.select(entries)[0], "")
-        self.assertEqual(self.select([*entries, runner()])[0], LABELS)
+        self.assertEqual(self.select(entries, min_idle="2")[0], "")
+        self.assertEqual(self.select([*entries, runner()], min_idle="2")[0], LABELS)
 
     def test_configurable_min_idle_and_demand(self):
         entries = [runner(), runner(), runner()]
@@ -126,13 +135,17 @@ class SelectMqRunnerTest(unittest.TestCase):
 
     def test_same_runner_in_both_scopes_counts_once(self):
         same = runner()
-        self.assertEqual(self.select([same], org_runners=[same])[0], "")
-        self.assertEqual(self.select([same], org_runners=[same, runner()])[0], LABELS)
+        self.assertEqual(self.select([same], org_runners=[same], min_idle="2")[0], "")
+        self.assertEqual(
+            self.select([same], org_runners=[same, runner()], min_idle="2")[0], LABELS
+        )
 
     def test_disagreeing_busy_state_is_conservative(self):
         same = runner()
         self.assertEqual(
-            self.select([same, runner()], org_runners=[{**same, "busy": True}])[0], ""
+            self.select(
+                [same, runner()], org_runners=[{**same, "busy": True}], min_idle="2"
+            )[0], ""
         )
 
     def test_unknown_busy_state_is_not_idle(self):
@@ -424,10 +437,11 @@ class SelectMqRunnerTest(unittest.TestCase):
                 [runner(busy=True) for _ in range(6)],
                 {},
                 "",
-                "busy=6, idle=0, required=2",
+                "busy=6, idle=0, required=1",
                 None,
             ),
-            ([runner(), runner()], {}, LABELS, "busy=0, idle=2, required=2", None),
+            ([runner(), runner()], {}, LABELS, "busy=0, idle=2, required=1", None),
+            ([runner()], {}, LABELS, "busy=0, idle=1, required=1", None),
             ([runner("offline"), runner("offline")], {}, "", "online=0", None),
             ([runner(), runner()], {"MQ_RUNNER_MIN_IDLE": "3"}, "", "required=3", None),
             ([runner(), runner()], {"MQ_RUNNER_DEMAND": "11"}, "", "required=11", None),
