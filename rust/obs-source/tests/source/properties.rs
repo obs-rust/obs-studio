@@ -11,12 +11,17 @@ struct Model {
     seen_data: Option<u32>,
     seen_type: Option<u32>,
     value: i64,
+    applied_calls: usize,
 }
 impl Host for Model {
     type Properties = Option<&'static str>;
     type Settings = i64;
-    fn modern(&self) -> bool { self.modern }
-    fn legacy(&self) -> bool { self.legacy }
+    fn modern(&self) -> bool {
+        self.modern
+    }
+    fn legacy(&self) -> bool {
+        self.legacy
+    }
     fn defaults(&mut self) -> i64 {
         self.events.push("defaults");
         if self.modern { 29 } else { 17 }
@@ -29,34 +34,61 @@ impl Host for Model {
     }
     fn apply(&mut self, props: &Self::Properties, defaults: Option<&i64>) {
         self.events.push("apply");
-        if props.is_some() { self.value = defaults.copied().unwrap_or(83); }
+        if props.is_some() {
+            self.applied_calls += 1;
+            self.value = defaults.copied().unwrap_or(83);
+        }
     }
-    fn release(&mut self, _: i64) { self.events.push("release"); }
+    fn release(&mut self, _: i64) {
+        self.events.push("release");
+    }
 }
 
 #[test]
 fn test_type_properties() {
     for (legacy, modern) in [(true, false), (true, true), (false, true)] {
-        let mut h = Model { legacy, modern, ..Model::default() };
-        assert_eq!(construct(&mut h, true), Some("value"));
+        let mut h = Model {
+            legacy,
+            modern,
+            ..Model::default()
+        };
+        assert_eq!(construct(Some(&mut h), true), Some("value"));
         assert_eq!(h.seen_data, None);
         assert_eq!(h.seen_type, modern.then_some(42));
         assert_eq!(h.value, if modern { 29 } else { 17 });
-        assert_eq!(h.events, ["defaults", if modern { "modern" } else { "legacy" }, "apply", "release"]);
+        assert_eq!(h.applied_calls, 1);
+        assert_eq!(
+            h.events,
+            [
+                "defaults",
+                if modern { "modern" } else { "legacy" },
+                "apply",
+                "release"
+            ]
+        );
     }
 }
 
 #[test]
 fn test_instance_properties() {
     for (legacy, modern) in [(true, false), (true, true), (false, true), (false, false)] {
-        let mut h = Model { legacy, modern, instance: true, ..Model::default() };
-        let props = construct(&mut h, false);
+        let mut h = Model {
+            legacy,
+            modern,
+            instance: true,
+            ..Model::default()
+        };
+        let props = construct(Some(&mut h), false);
         if legacy || modern {
             assert_eq!(props, Some("value"));
             assert_eq!(h.seen_data, Some(83));
             assert_eq!(h.seen_type, modern.then_some(42));
             assert_eq!(h.value, 83);
-            assert_eq!(h.events, [if modern { "modern" } else { "legacy" }, "apply"]);
+            assert_eq!(h.applied_calls, 1);
+            assert_eq!(
+                h.events,
+                [if modern { "modern" } else { "legacy" }, "apply"]
+            );
         } else {
             assert_eq!(props, None);
             assert!(h.events.is_empty());
@@ -67,8 +99,9 @@ fn test_instance_properties() {
 #[test]
 fn test_absent_properties() {
     for type_query in [false, true] {
+        assert_eq!(construct::<Model>(None, type_query), None);
         let mut h = Model::default();
-        assert_eq!(construct(&mut h, type_query), None);
+        assert_eq!(construct(Some(&mut h), type_query), None);
         assert!(h.events.is_empty());
     }
 }
@@ -77,13 +110,26 @@ fn test_absent_properties() {
 fn test_null_callback_result() {
     for modern in [false, true] {
         for type_query in [false, true] {
-            let mut h = Model { legacy: true, modern, instance: !type_query, null_result: true, ..Model::default() };
-            assert_eq!(construct(&mut h, type_query), None);
+            let mut h = Model {
+                legacy: true,
+                modern,
+                instance: !type_query,
+                null_result: true,
+                ..Model::default()
+            };
+            assert_eq!(construct(Some(&mut h), type_query), None);
             assert_eq!(h.value, 0);
+            assert_eq!(h.applied_calls, 0);
             assert_eq!(h.seen_data, (!type_query).then_some(83));
             assert_eq!(h.seen_type, modern.then_some(42));
-            assert_eq!(h.events.iter().filter(|e| **e == "defaults").count(), usize::from(type_query));
-            assert_eq!(h.events.iter().filter(|e| **e == "release").count(), usize::from(type_query));
+            assert_eq!(
+                h.events.iter().filter(|e| **e == "defaults").count(),
+                usize::from(type_query)
+            );
+            assert_eq!(
+                h.events.iter().filter(|e| **e == "release").count(),
+                usize::from(type_query)
+            );
             assert_eq!(h.events.iter().filter(|e| **e == "apply").count(), 1);
         }
     }

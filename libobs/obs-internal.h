@@ -1538,6 +1538,19 @@ extern long *obs_source_async_rotation_fields(obs_source_t *source);
 extern obs_source_t *const *obs_source_filter_index_lock(obs_source_t *source, size_t *count);
 extern void obs_source_filter_index_unlock(obs_source_t *source);
 
+/* Callback values and borrowed settings address. Callers reject NULL first. */
+struct obs_source_properties_fields {
+	obs_properties_t *(*legacy)(void *data);
+	obs_properties_t *(*modern)(void *data, void *type_data);
+	void (*defaults)(obs_data_t *settings);
+	void (*defaults2)(void *type_data, obs_data_t *settings);
+	void *type_data;
+	void *data;
+	obs_data_t *const *settings;
+};
+struct obs_source_properties_fields obs_source_properties_info_fields(const struct obs_source_info *info);
+struct obs_source_properties_fields obs_source_properties_instance_fields(const obs_source_t *source);
+
 struct obs_source_handler_getters_fields {
 	proc_handler_t *const *proc;
 };
