@@ -232,14 +232,26 @@ static void exercise(const struct plugin_case *c)
 	obs_encoder_release(encoder);
 }
 
+/* bnum_allocs() counts the whole process, and libobs's own threads (the
+ * audio output among them) allocate and free on their own schedule. Wait up
+ * to a second for the count to settle back at the baseline: a buffer the
+ * encoder failed to free never comes back, a passing allocation does. */
+static long settled_allocs(long baseline)
+{
+	for (int i = 0; i < 100 && bnum_allocs() != baseline; i++)
+		os_sleep_ms(10);
+	return bnum_allocs();
+}
+
 static void run_case(const struct plugin_case *c)
 {
 	if (!started)
 		skip();
 	long baseline = bnum_allocs();
 	exercise(c);
-	/* Destroying the encoder freed every buffer it allocated. */
-	assert_int_equal(bnum_allocs(), baseline);
+	/* Destroying the encoder freed every buffer it allocated, its
+	 * audio_output_buffer planes included. */
+	assert_int_equal(settled_allocs(baseline), baseline);
 }
 
 static void planar_stereo(void **state)
