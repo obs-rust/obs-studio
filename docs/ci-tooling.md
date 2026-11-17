@@ -272,7 +272,7 @@ uv run --no-project ci/macos_test_artifact.py build --output build_macos_tests
 # PR selection, identical to local_gate.test_diff's affected-crate selection:
 uv run --no-project ci/macos_test_artifact.py build --output build_macos_tests --base BASE
 # Extract the complete bundle into the consumer checkout root first:
-uv run --no-project ci/macos_test_artifact.py run --manifest build_macos_tests/manifest.json
+uv run --no-project ci/macos_test_artifact.py run --manifest manifest.json
 ```
 
 The producer links the category tests and helpers with `soldr cargo test
