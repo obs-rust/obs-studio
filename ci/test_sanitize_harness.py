@@ -132,6 +132,7 @@ ZCCACHE_RESET = (
 # ctest RESOURCE_LOCK "timing", so the asan pool runs them alone after the
 # others; in Tier 2, ctest only keeps them from overlapping each other.
 TIMING_TESTS_D = (
+    "test_pulse_default_follow",
     "test_slideshow_mem_cap",
 )
 TIMING_TESTS_GRAPH = ("test_media_cover_art_monitor", "test_media_sync_offset_restart", "test_async_delay_audio", "test_dock_proportions", "test_dock_state_restart", "test_deinterlace_mode_load", "test_source_deinterlace", "test_hotkey_capture_mnemonic", "test_volume_meter_ticker", "test_source_transition_video")
