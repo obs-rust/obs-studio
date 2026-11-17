@@ -51,6 +51,7 @@ mod encoder_properties;
 mod encoder_properties_parity;
 mod encoder_registry_queries;
 mod encoder_reroute;
+mod encoder_reroute_parity;
 mod encoder_roi;
 mod encoder_roi_parity;
 mod encoder_roi_state;
