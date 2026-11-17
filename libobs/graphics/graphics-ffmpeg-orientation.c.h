@@ -34,3 +34,9 @@ static int ffmpeg_image_get_orientation(const AVFrame *frame)
 	return display_matrix_to_orientation(matrix);
 #endif
 }
+
+/* C-reference entry point for the private FFI boundary. */
+int gs_ffmpeg_image_get_orientation(const void *frame)
+{
+	return ffmpeg_image_get_orientation(frame);
+}

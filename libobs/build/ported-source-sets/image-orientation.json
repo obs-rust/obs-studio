@@ -1,0 +1,4 @@
+{
+  "LIBOBS_PORTED_SOURCES": ["build/libobs.ported-image-orientation+.h.c"],
+  "headers": ["graphics/graphics-ffmpeg-orientation.h"]
+}

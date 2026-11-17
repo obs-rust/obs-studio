@@ -21,6 +21,8 @@ mod image_init;
 mod image_init_parity;
 mod image_orient;
 mod image_orient_parity;
+mod image_orientation;
+mod image_orientation_parity;
 mod image_pq_scrgb;
 mod image_pq_scrgb_parity;
 mod image_rgba64;
