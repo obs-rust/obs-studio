@@ -49,6 +49,11 @@ static void push_append(struct obs_source *source, const struct audio_action *ac
 }
 #define UNUSED_PARAMETER(x) (void)(x)
 #define os_gettime_ns push_clock
+/* Preserve the Windows GNU oracle's command-line pthread symbol renames. */
+#pragma push_macro("pthread_mutex_lock")
+#pragma push_macro("pthread_mutex_unlock")
+#undef pthread_mutex_lock
+#undef pthread_mutex_unlock
 #define pthread_mutex_lock push_lock
 #define pthread_mutex_unlock push_unlock
 #define da_push_back(queue, action) push_append(source, action)
@@ -61,6 +66,8 @@ void oracle_push_hotkey_dispatch(void *source, bool talk, bool pressed, uint64_t
 #undef da_push_back
 #undef pthread_mutex_unlock
 #undef pthread_mutex_lock
+#pragma pop_macro("pthread_mutex_unlock")
+#pragma pop_macro("pthread_mutex_lock")
 #undef os_gettime_ns
 #undef UNUSED_PARAMETER
 
