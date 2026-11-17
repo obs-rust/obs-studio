@@ -590,6 +590,18 @@ Gate and main cross jobs also own native compilation/linking, so partial client
 evidence conservatively runs them in full. Cross lint never proves native tests,
 Tier 2 runtime or ABI/hardware/package behavior.
 
+On merge groups with explicit cumulative `cross_lint` scope, the macOS Rust
+Tests job leaves formatting to Fast Gate and Clippy to the required macOS
+arm64 cross leg (#4999). That linked cross leg lints `--workspace --all-targets`,
+including the category tests and C oracle; its Dylint scope stays unchanged.
+CI Gate requires both replacement jobs to execute successfully on the merge
+result. Missing/false scope, measurement-only modes and other events keep the
+native analysis steps. Native Rust tests, documentation tests and every Tier 2
+pass still execute on macOS. The two inspected jobs spent 155–162 seconds in
+native Clippy plus 8–11 seconds in formatting; this is the expected native
+runner saving, pending hosted validation, with extra test/oracle analysis on
+the existing Linux cross runner.
+
 Outsiders need no client tools. `./push` warns and falls back if local tools or
 signing are unavailable; `PUSH_REQUIRE_ATTESTATION=1` is the opt-in strict mode.
 A complete stamp is required for this fast path, never for contributing RED PRs.

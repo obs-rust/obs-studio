@@ -782,7 +782,12 @@ def cross_lint(targets: tuple[str, ...], link: bool) -> None:
     print(f"Cross targets: {targets}; build volume free at start: {free:.2f} GiB", flush=True)
     for target in targets:
         add_target(target)
-        soldr_cargo(["clippy", *scope, "--locked", "--target", target, "--", "-D", "warnings"])
+        # The linked macOS leg replaces native queue Clippy (#4999), so it
+        # must also lint the category tests and oracle. Its existing test-link
+        # command already builds these with the same cross SDK. Keep Dylint
+        # and the client/release lint-only contract on their existing scope.
+        clippy_scope = ["--workspace", "--all-targets"] if link and target == "aarch64-apple-darwin" else scope
+        soldr_cargo(["clippy", *clippy_scope, "--locked", "--target", target, "--", "-D", "warnings"])
         print(f"== client {target}: clippy passed", flush=True)
         soldr_dylint(["--all", "--", *scope, "--target", target])
         print(f"== client {target}: dylint passed", flush=True)
