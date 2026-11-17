@@ -55,6 +55,44 @@ class ArtifactTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "source root mismatch"):
                 artifact.execute(manifest, root)
 
+    def test_incomplete_doctests_and_tampered_helper_fail_before_execution(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "suite"
+            binary.write_bytes(b"suite")
+            helper = root / "helper"
+            helper.write_bytes(b"helper")
+            data = {"version": 1, "target": artifact.TARGET, "build_root": str(root),
+                    "tests": [{"package": "example", "binary": "suite", "cwd": ".", "env": {}, "args": []}]}
+            artifact.finalize(root, data)
+            with mock.patch.object(artifact.subprocess, "run") as run:
+                with self.assertRaisesRegex(ValueError, "doctest compilation"):
+                    artifact.execute(root / "manifest.json", root)
+                data["doctests_complete"] = True
+                artifact.finalize(root, data)
+                helper.write_bytes(b"corrupted helper")
+                with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                    artifact.execute(root / "manifest.json", root)
+                run.assert_not_called()
+
+    def test_preexisting_bundle_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "stale").write_bytes(b"old doctest")
+            with self.assertRaisesRegex(ValueError, "stale artifacts"):
+                artifact.build(root, None)
+
+    def test_inventory_rejects_missing_category_and_accepts_scoped_no_harness(self):
+        meta = {"workspace_members": ["id"], "packages": [
+            {"id": "id", "name": "example", "targets": [{"name": "suite", "kind": ["test"], "test": True}]},
+            {"id": "empty", "name": "adapter", "targets": [{"name": "adapter", "kind": ["lib"], "test": False}]}]}
+        with self.assertRaisesRegex(ValueError, "test target inventory"):
+            artifact.check_test_inventory(meta, [], ["--workspace"])
+        events = [{"reason": "compiler-artifact", "package_id": "id", "target": {"name": "suite"},
+                   "profile": {"test": True}, "executable": "/src/suite"}]
+        self.assertTrue(artifact.check_test_inventory(meta, events, ["--workspace"]))
+        self.assertFalse(artifact.check_test_inventory(meta, [], ["-p", "adapter"]))
+
     def test_manifest_keeps_package_cwd_env_out_dir_and_helper(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -115,7 +153,8 @@ class ArtifactTest(unittest.TestCase):
             binary.write_text("executable")
             manifest = root / "manifest.json"
             manifest.write_text(json.dumps({"version": 1, "target": artifact.TARGET, "build_root": str(root), "tests": [
-                {"package": "example", "binary": "target/test-example", "cwd": "rust/example", "env": {"CARGO_MANIFEST_DIR": "{root}/rust/example", "CUSTOM": "expected"}, "args": ["filter", "--exact"]}]}))
+                {"package": "example", "binary": "target/test-example", "cwd": "rust/example", "env": {"CARGO_MANIFEST_DIR": "{root}/rust/example", "CUSTOM": "expected"}, "args": ["filter", "--exact"]}],
+                "doctests_complete": True, "files": {"target/test-example": hashlib.sha256(binary.read_bytes()).hexdigest()}}))
             with mock.patch.object(artifact.subprocess, "run", return_value=subprocess.CompletedProcess([], 19)) as run:
                 self.assertEqual(artifact.execute(manifest, root), 19)
             args, kwargs = run.call_args
@@ -133,7 +172,8 @@ class ArtifactTest(unittest.TestCase):
             manifest = root / "manifest.json"
             for binary in ("../escape", "target/missing"):
                 manifest.write_text(json.dumps({"version": 1, "target": artifact.TARGET, "build_root": str(root), "tests": [
-                    {"package": "example", "binary": binary, "cwd": ".", "env": {}, "args": []}]}))
+                    {"package": "example", "binary": binary, "cwd": ".", "env": {}, "args": []}],
+                    "doctests_complete": True, "files": {binary: "unused"}}))
                 with self.subTest(binary=binary), self.assertRaises((ValueError, FileNotFoundError)):
                     artifact.execute(manifest, root)
 
@@ -178,14 +218,32 @@ class SignatureTest(unittest.TestCase):
 
 
 class WorkflowTest(unittest.TestCase):
-    def test_native_job_depends_on_artifact_build_and_never_compiles(self):
-        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/build-project.yaml").read_text()
-        job = re.search(r"^  rust-tests-macos:\n(.*?)(?=^  [a-z0-9-]+:)", workflow, re.S | re.M).group(1)
+    def assert_run_only_job(self, job):
         self.assertTrue("rust-tests-macos-build" in job, "macOS job has no Linux artifact producer dependency")
         self.assertIn("actions/download-artifact@", job)
         self.assertIn("ci/macos_test_artifact.py run", job)
         self.assertNotIn("soldr cargo", job)
         self.assertNotIn("setup-soldr@", job)
+
+    def test_run_only_contract_rejects_missing_dependency_or_compilation(self):
+        job = "needs: [rust-tests-macos-build]\nactions/download-artifact@pin\nci/macos_test_artifact.py run"
+        self.assert_run_only_job(job)
+        for invalid in (job.replace("rust-tests-macos-build", "other"), job + "\nsoldr cargo test",
+                        job + "\nsetup-soldr@pin", job.replace("actions/download-artifact@", ""),
+                        job.replace("ci/macos_test_artifact.py run", "")):
+            with self.subTest(job=invalid), self.assertRaises(AssertionError):
+                self.assert_run_only_job(invalid)
+
+    def test_workflow_activation_is_atomic(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/build-project.yaml").read_text()
+        job = re.search(r"^  rust-tests-macos:\n(.*?)(?=^  [a-z0-9-]+:)", workflow, re.S | re.M).group(1)
+        if re.search(r"^  rust-tests-macos-build:", workflow, re.M):
+            self.assert_run_only_job(job)
+        else:
+            # Infrastructure-only slice: activating just the executable runner
+            # would lose native-build/Qt fixtures. Keep the switch together.
+            self.assertNotIn("ci/macos_test_artifact.py run", job)
+            self.assertNotIn("rust-tests-macos-build", job)
 
 
 if __name__ == "__main__":
