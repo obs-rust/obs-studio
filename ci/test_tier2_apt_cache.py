@@ -11,7 +11,11 @@ job-local archive directory, keyed on the package list and the image digest.
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
+import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -93,6 +97,53 @@ class AptCacheTest(unittest.TestCase):
         self.assertLess(bootstrap, tier2)
         install_git = j[bootstrap:].split("\n      - ", 1)[0]
         self.assertRegex(install_git, r"apt-get install[^\n]*\beatmydata\b")
+
+    def test_tier2_install_recovers_dpkg_before_each_retry(self):
+        # Job 134123589625 was interrupted mid-unpack; retrying apt alone
+        # then failed on unmet dependencies. Execute the real step/retry helper
+        # with mocked sudo so recovery ordering is checked across attempts.
+        install = job("rust-linux-tier2-build").split("name: Install Tier 2 Packages", 1)[1]
+        install = install.split("\n      - ", 1)[0]
+        body = install.split("run: |\n", 1)[1]
+        script = textwrap.dedent(body)
+        mock = r'''
+sudo() {
+  printf '%s\n' "$*" >> "$TRACE"
+  case "$*" in
+    'eatmydata dpkg --configure -a') return "$DPKG_STATUS" ;;
+    'eatmydata apt-get -f install -y '*) return 0 ;;
+    'eatmydata apt-get install '*)
+      count=$(grep -c '^eatmydata apt-get install ' "$TRACE")
+      [ "$count" -gt "$FAIL_INSTALLS" ] ;;
+    *) return 99 ;;
+  esac
+}
+export -f sudo
+'''
+        for failures, dpkg_status in ((0, 0), (2, 0), (2, 1), (3, 0)):
+            with self.subTest(failures=failures, dpkg_status=dpkg_status), tempfile.TemporaryDirectory() as tmp:
+                archives = Path(tmp) / "apt archives"
+                archives.mkdir()
+                trace = Path(tmp) / "trace"
+                result = subprocess.run(
+                    ["bash", "-e", "-c", mock + script],
+                    cwd=WORKFLOW.parents[2], capture_output=True, text=True,
+                    env={**os.environ, "GITHUB_WORKSPACE": str(WORKFLOW.parents[2]),
+                         "TIER2_APT_ARCHIVES": str(archives), "TRACE": str(trace),
+                         "FAIL_INSTALLS": str(failures), "DPKG_STATUS": str(dpkg_status),
+                         "RETRY_ATTEMPTS": "3", "RETRY_DELAY": "0"},
+                    timeout=10,
+                )
+                self.assertEqual(result.returncode == 0, failures < 3, result.stderr)
+                calls = trace.read_text().splitlines()
+                attempts = min(failures + 1, 3)
+                self.assertEqual(len(calls), attempts * 3, calls)
+                for attempt in range(attempts):
+                    configure, repair, install_call = calls[attempt * 3:attempt * 3 + 3]
+                    self.assertEqual(configure, "eatmydata dpkg --configure -a")
+                    self.assertEqual(repair, f"eatmydata apt-get -f install -y -o Dir::Cache::archives={archives}")
+                    self.assertTrue(install_call.startswith(
+                        f"eatmydata apt-get install -o Dir::Cache::archives={archives} -y --no-install-recommends "), install_call)
 
     def test_build_job_dpkg_skips_fsync_and_docs(self):
         # #2072: dpkg spent 29 s unpacking with the .debs already restored.
