@@ -867,6 +867,7 @@ fn main() {
         .join("cmocka/video-scale-effects-caller.c");
     let roots = [
         manifest.join("oracle"),
+        manifest.join("legacy"),
         manifest.join("vendor"),
         libobs.clone(),
         libobs.with_file_name("deps").join("w32-pthreads"),
