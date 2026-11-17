@@ -14,6 +14,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -21,6 +22,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 TOKEN = "@OBS_TIER2_BUILD@"
+CMAKE_TOKEN = "@OBS_TIER2_CMAKE@"
 
 
 def contained(root: Path, path: Path) -> Path:
@@ -65,6 +67,13 @@ def signature(data: bytes) -> tuple[bytes, int]:
     raise ValueError("unsigned arm64 image")
 
 
+def embedded_paths(output: Path, files: dict, build: Path) -> list[str]:
+    needle = str(build).encode()
+    return [
+        relative for relative in files if needle in (output / relative).read_bytes()
+    ]
+
+
 def verifier(helper: Path) -> Callable[[Path], None]:
     spec = importlib.util.spec_from_file_location("macos_test_artifact", helper)
     if spec is None or spec.loader is None:
@@ -103,9 +112,21 @@ def stage(
 ) -> dict:
     build, source, output = build.absolute(), source.absolute(), output.absolute()
     templates = {}
+    cache = build / "CMakeCache.txt"
+    command = (
+        re.search(r"^CMAKE_COMMAND:INTERNAL=(.+)$", cache.read_text(), re.M)
+        if cache.exists()
+        else None
+    )
+    producer_cmake = command[1] if command else shutil.which("cmake")
     for registry in build.rglob("CTestTestfile.cmake"):
         relative = contained(build, registry)
-        templates[str(relative)] = registry.read_text().replace(str(build), TOKEN)
+        template = registry.read_text().replace(str(build), TOKEN)
+        templates[str(relative)] = (
+            template.replace(producer_cmake, CMAKE_TOKEN)
+            if producer_cmake
+            else template
+        )
     if not templates or not artifacts:
         raise ValueError("missing CTest registry or runtime inventory")
     images = {str(Path("build") / contained(build, path)): path for path in artifacts}
@@ -123,11 +144,14 @@ def stage(
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(arm64_slice(path.read_bytes()))
         shutil.copymode(path, destination)
+        verify(destination)
         files[str(relative)] = digest(destination)
     manifest = {
         "schema": 1,
         "target": "aarch64-apple-darwin",
         "source_root": str(source),
+        "build_root": str(build),
+        "embedded_build_paths": embedded_paths(output, files, build),
         "native_contract_prebuilt": False,
         "files": files,
         "ctest_templates": templates,
@@ -143,6 +167,13 @@ def prepare(bundle: Path, source: Path) -> dict:
         raise ValueError("unsupported Tier 2 artifact manifest")
     if source.absolute() != Path(manifest["source_root"]):
         raise ValueError("unchanged fixtures require the same absolute source root")
+    if (
+        manifest["embedded_build_paths"]
+        and Path(manifest["build_root"]).resolve() != (bundle / "build").resolve()
+    ):
+        raise ValueError(
+            "fixtures embed the build root; bind the common build path to the staged build tree"
+        )
     for relative, expected in manifest["files"].items():
         path = bundle / relative
         contained(bundle, path)
@@ -152,7 +183,14 @@ def prepare(bundle: Path, source: Path) -> dict:
         path = bundle / "build" / relative
         contained(bundle / "build", path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(template.replace(TOKEN, str(bundle.absolute() / "build")))
+        cmake = shutil.which("cmake")
+        if CMAKE_TOKEN in template and not cmake:
+            raise ValueError("run host needs CMake/CTest, without a compiler")
+        path.write_text(
+            template.replace(TOKEN, str(bundle.absolute() / "build")).replace(
+                CMAKE_TOKEN, cmake or "cmake"
+            )
+        )
     return manifest
 
 

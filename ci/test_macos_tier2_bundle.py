@@ -132,7 +132,11 @@ class BundleTest(unittest.TestCase):
             run.assert_not_called()
 
     def test_actual_ctest_failure_is_propagated_after_relocation(self):
-        self.registry.write_text("add_test(probe cmake -E false)\n")
+        producer_cmake = self.root / "producer-only/bin/cmake"
+        (self.build / "CMakeCache.txt").write_text(
+            f"CMAKE_COMMAND:INTERNAL={producer_cmake}\n"
+        )
+        self.registry.write_text(f'add_test(probe "{producer_cmake}" -E false)\n')
         self.stage()
         self.complete_fixture()
         self.assertEqual(bundle.run(self.output, self.source, "reference", 1), 8)
@@ -154,6 +158,15 @@ class BundleTest(unittest.TestCase):
         self.assertEqual(bundle.arm64_slice(arm64), arm64)
         with self.assertRaises(ValueError):
             bundle.arm64_slice(header)
+
+    def test_embedded_build_paths_require_a_common_runtime_binding(self):
+        self.binary.write_bytes(str(self.build).encode())
+        self.stage()
+        with self.assertRaisesRegex(ValueError, "fixtures embed the build root"):
+            bundle.prepare(self.output, self.source)
+        self.build.rename(self.root / "original-build")
+        self.build.symlink_to(self.output / "build", target_is_directory=True)
+        bundle.prepare(self.output, self.source)
 
 
 if __name__ == "__main__":

@@ -116,6 +116,8 @@ function(_obs_cross_tier2_tests)
   endforeach()
   find_package(Uthash REQUIRED)
   find_package(SIMDe REQUIRED)
+  find_package(Threads REQUIRED)
+  target_link_libraries(libobs-cross-shared INTERFACE SIMDe::SIMDe Threads::Threads)
   find_package(jansson REQUIRED)
   find_package(ZLIB REQUIRED)
   # The run host must not compile cmocka. Build the pinned source for Darwin.

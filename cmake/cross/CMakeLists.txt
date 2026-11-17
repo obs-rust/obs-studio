@@ -15,6 +15,10 @@
 
 cmake_minimum_required(VERSION 3.28...3.30)
 
+if(NOT OBS_CROSS_TARGET AND DEFINED ENV{OBS_CROSS_TARGET})
+  set(OBS_CROSS_TARGET "$ENV{OBS_CROSS_TARGET}" CACHE STRING "Cross target alias" FORCE)
+endif()
+
 option(OBS_CROSS_TIER2 "Build the macOS Tier 2 runtime prototype" OFF)
 if(OBS_CROSS_TIER2)
   if(NOT OBS_CROSS_TARGET STREQUAL "mac-arm64")
@@ -37,9 +41,6 @@ include(soldr)
 set(OBS_CROSS_TARGET "" CACHE STRING "Cross target alias: win-x64, mac-arm64 or mac-x64")
 # Also from the environment: when the toolchain changes the compiler, CMake
 # resets the cache and reconfigures without the -D options it was given.
-if(NOT OBS_CROSS_TARGET AND DEFINED ENV{OBS_CROSS_TARGET})
-  set(OBS_CROSS_TARGET "$ENV{OBS_CROSS_TARGET}" CACHE STRING "Cross target alias" FORCE)
-endif()
 if(NOT OBS_CROSS_TARGET)
   string(REPLACE ";" ", " _aliases "${OBS_CROSS_ALIASES}")
   message(FATAL_ERROR "Set -DOBS_CROSS_TARGET=<alias> (${_aliases})")
