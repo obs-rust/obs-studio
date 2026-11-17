@@ -67,7 +67,7 @@ def online_runners(
 
 def required_capacity(min_idle: str, demand: str) -> int:
     """Empty Actions variables use defaults; malformed thresholds fail to hosted."""
-    minimum = int(min_idle or "2")
+    minimum = int(min_idle or "1")
     per_run = int(demand or "1")
     if minimum < 1 or per_run < 1:
         raise ValueError("capacity thresholds must be positive")
@@ -81,7 +81,7 @@ def select_labels(
     repo: str,
     api_url: str = "https://api.github.com",
     *,
-    min_idle: str = "2",
+    min_idle: str = "1",
     demand: str = "1",
 ) -> str:
     """Return compact label JSON or an empty Actions output (hosted fallback).

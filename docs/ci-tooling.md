@@ -988,11 +988,14 @@ The existing Format workflow's Linux Checks job uses the same selection so it
 does not hold the gate waiting for hosted capacity.
 
 Selection requires at least `MQ_RUNNER_MIN_IDLE` matching online, non-busy
-runners (repository Actions variable, default `2`). Optional `MQ_RUNNER_DEMAND`
+runners (repository Actions variable, default `1`). Optional `MQ_RUNNER_DEMAND`
 (default `1`) raises the required idle count to the larger of these two values;
 set it to the desired per-run concurrency, rather than assuming all roughly 11
 Linux jobs need to start together. Busy runners do not supply idle capacity,
 and runner IDs visible in both scopes count once (a busy observation wins).
+The default admits a run when even one runner is idle, so a six-runner host
+with five busy runners does not strand its remaining capacity. A fully busy or
+offline host still falls back to hosted; explicit higher thresholds are honored.
 Empty threshold variables use their defaults; invalid or nonpositive values
 fall back to hosted. The job summary records the choice, reason, online/busy/idle
 counts and required capacity, plus unavailable scopes. No queued-job API is
