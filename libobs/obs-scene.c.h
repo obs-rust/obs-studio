@@ -3187,17 +3187,6 @@ obs_sceneitem_t *obs_sceneitem_get_group(obs_scene_t *scene, obs_sceneitem_t *gr
 	return group;
 }
 
-void obs_sceneitem_group_enum_items(obs_sceneitem_t *group, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),
-				    void *param)
-{
-	if (!group || !group->is_group)
-		return;
-
-	obs_scene_t *scene = group->source->context.data;
-	if (scene)
-		obs_scene_enum_items(scene, callback, param);
-}
-
 void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)
 {
 	if (!item)
