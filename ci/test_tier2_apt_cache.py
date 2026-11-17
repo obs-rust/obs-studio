@@ -107,34 +107,31 @@ class AptCacheTest(unittest.TestCase):
         body = install.split("run: |\n", 1)[1]
         # Model /bin/sh dropping Bash functions even where sh is Bash.
         script = "unset -f sudo\n" + textwrap.dedent(body)
-        mock = r'''
-sudo() {
-  printf '%s\n' "$*" >> "$TRACE"
-  case "$*" in
-    'eatmydata dpkg --configure -a') return "$DPKG_STATUS" ;;
-    'eatmydata apt-get -f install -y '*) return 0 ;;
-    'eatmydata apt-get install '*)
-      count=$(grep -c '^eatmydata apt-get install ' "$TRACE")
-      [ "$count" -gt "$FAIL_INSTALLS" ] ;;
-    *) return 99 ;;
-  esac
-}
-export -f sudo
+        # The retry helper uses /bin/sh, which can discard exported Bash
+        # functions. A PATH executable survives that boundary on hosted Ubuntu.
+        mock = r'''#!/bin/sh
+printf '%s\n' "$*" >> "$TRACE"
+case "$*" in
+  'eatmydata dpkg --configure -a') exit "$DPKG_STATUS" ;;
+  'eatmydata apt-get -f install -y '*) exit 0 ;;
+  'eatmydata apt-get install '*)
+    count=$(grep -c '^eatmydata apt-get install ' "$TRACE")
+    [ "$count" -gt "$FAIL_INSTALLS" ] ;;
+  *) exit 99 ;;
+esac
 '''
         for failures, dpkg_status in ((0, 0), (2, 0), (2, 1), (3, 0)):
             with self.subTest(failures=failures, dpkg_status=dpkg_status), tempfile.TemporaryDirectory() as tmp:
                 archives = Path(tmp) / "apt archives"
                 archives.mkdir()
                 trace = Path(tmp) / "trace"
-                # Fail closed if the exported function is lost in a child shell:
-                # never fall through to the host's real sudo/package manager.
                 mock_bin = Path(tmp) / "bin"
                 mock_bin.mkdir()
                 sudo = mock_bin / "sudo"
-                sudo.write_text("#!/bin/sh\necho 'sudo mock lost across child shells' >&2\nexit 99\n")
+                sudo.write_text(mock)
                 sudo.chmod(0o755)
                 result = subprocess.run(
-                    ["bash", "-e", "-c", mock + script],
+                    ["bash", "-e", "-c", script],
                     cwd=WORKFLOW.parents[2], capture_output=True, text=True,
                     env={**os.environ, "GITHUB_WORKSPACE": str(WORKFLOW.parents[2]),
                          "PATH": str(mock_bin) + os.pathsep + os.environ["PATH"],
