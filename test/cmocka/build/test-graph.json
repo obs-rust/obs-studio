@@ -5798,6 +5798,16 @@
         }
       ]
     },
+    "test_hotkey_identity_setters": {
+      "sources": [
+        "test/cmocka/test_hotkey_identity_setters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_hotkey_load": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -19854,16 +19864,6 @@
         "OBS::libobs",
         "OBS::native-test-cmocka"
       ]
-    },
-    "test_hotkey_identity_setters": {
-      "sources": [
-        "test/cmocka/test_hotkey_identity_setters.c"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::caption",
-        "OBS::native-test-cmocka"
-      ]
     }
   },
   "tests": {
@@ -21940,6 +21940,13 @@
     },
     "test_hotkey_identity_getters": {
       "target": "test_hotkey_identity_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
+    },
+    "test_hotkey_identity_setters": {
+      "target": "test_hotkey_identity_setters",
       "command": [
         "${target}"
       ],
@@ -26758,13 +26765,6 @@
       "command": [
         "${target}"
       ]
-    },
-    "test_hotkey_identity_setters": {
-      "target": "test_hotkey_identity_setters",
-      "command": [
-        "${target}"
-      ],
-      "suite": "core"
     }
   }
 }
