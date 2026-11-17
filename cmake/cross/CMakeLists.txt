@@ -15,6 +15,14 @@
 
 cmake_minimum_required(VERSION 3.28...3.30)
 
+option(OBS_CROSS_TIER2 "Build the macOS Tier 2 runtime prototype" OFF)
+if(OBS_CROSS_TIER2)
+  if(NOT OBS_CROSS_TARGET STREQUAL "mac-arm64")
+    message(FATAL_ERROR "OBS_CROSS_TIER2 requires mac-arm64")
+  endif()
+  set(OBS_CROSS_LINK ON CACHE BOOL "Tier 2 needs linked artifacts" FORCE)
+endif()
+
 # The Linux-side xwin SDK ships only the release CRT (there is no msvcrtd.lib),
 # so a link needs the release configuration while CMake's default here is
 # Debug. Set before project() so the configuration flags are computed for it.
@@ -235,15 +243,16 @@ function(_obs_cross_shared_libobs name)
     set(_rust_triple "x86_64-apple-darwin")
     set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/liblibobs_rust.a")
   endif()
-  add_custom_command(
-    OUTPUT "${_rust_archive}"
-    COMMAND soldr cargo build --release --target "${_rust_triple}" -p libobs-rust
+  # Let Cargo decide freshness on every invocation: depending only on the root
+  # manifests leaves a stale archive after a port changes a workspace source.
+  add_custom_target(
+    ${name}-rust
+    BYPRODUCTS "${_rust_archive}"
+    COMMAND soldr cargo build --locked --release --target "${_rust_triple}" -p libobs-rust
     WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
     COMMENT "Building libobs-rust staticlib for ${_rust_triple}"
-    DEPENDS "${OBS_SOURCE_ROOT}/Cargo.toml" "${OBS_SOURCE_ROOT}/Cargo.lock"
     USES_TERMINAL
   )
-  add_custom_target(${name}-rust DEPENDS "${_rust_archive}")
   add_dependencies(${name} ${name}-rust)
   # Whole archive: libobs itself does not call every shim (plugins do), and the
   # DLL's export set must keep them.
@@ -1029,4 +1038,8 @@ if(_host STREQUAL WINDOWS)
     file(WRITE "${CMAKE_BINARY_DIR}/aja-case/${_header}.h" "#include <${_lower}.h>\n")
   endforeach()
   target_include_directories(aja-cross PRIVATE "${CMAKE_BINARY_DIR}/aja-case")
+endif()
+
+if(OBS_CROSS_TIER2)
+  include("${CMAKE_CURRENT_LIST_DIR}/macos-tier2.cmake")
 endif()

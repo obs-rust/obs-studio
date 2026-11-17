@@ -1,5 +1,10 @@
 project(obs-cmocka)
 
+# cmake/cross embeds this unchanged registry under its own top-level project.
+if(OBS_CROSS_TIER2)
+  set(CMAKE_SOURCE_DIR "${OBS_SOURCE_ROOT}")
+endif()
+
 # 1.1: Debian 13 and Ubuntu 24.04 ship 1.1.7. cmocka-compat.h maps the 2.x
 # names that the tests use (#2197).
 find_package(CMocka 1.1 CONFIG REQUIRED)
