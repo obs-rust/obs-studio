@@ -63,6 +63,21 @@ class AptCacheTest(unittest.TestCase):
         self.assertIn('-o "Dir::Cache::archives=$TIER2_APT_ARCHIVES"',
                       job("rust-linux-tier2-build"))
 
+    def test_build_job_waits_for_the_shared_archive_lock(self):
+        # On the Dell every Tier 2 build shares /var/cache/obs-runner/apt-archives.
+        # apt takes that directory's fcntl lock without a timeout
+        # (DPkg::Lock::Timeout covers only dpkg's lock), and another container
+        # holding it shows as "held by process 0". Three retries 15 s and 30 s
+        # apart then failed run 44049453484 (#4954). Queue on our own flock
+        # instead, long enough for a cold archive to download.
+        j = job("rust-linux-tier2-build")
+        install = j[j.index("name: Install Tier 2 Packages"):]
+        install = install[:install.index("\n      - ")]
+        lock = 'flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock"'
+        self.assertIn(lock, install)
+        command = install[install.index("xargs "):]
+        self.assertLess(command.index(lock), command.index("sudo apt-get install"))
+
     def test_build_job_dpkg_skips_fsync_and_docs(self):
         # #2072: dpkg spent 29 s unpacking with the .debs already restored.
         j = job("rust-linux-tier2-build")
