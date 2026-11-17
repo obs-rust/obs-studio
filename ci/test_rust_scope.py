@@ -105,19 +105,18 @@ class FastGateWorkflowTest(unittest.TestCase):
     def test_costly_lanes_overlap_the_fast_gate(self):
         # Tier 2 compilation, the independent Qt lane and the macOS/Windows
         # Rust lanes overlap Fast Gate; their run-level failures are still
-        # caught by CI Gate (ci/test_platform_lane_overlap.py). The cross lint
-        # lane stays serialized: it runs on the gate's own Linux pool, so
-        # starting it early saves no wall time.
+        # caught by CI Gate (ci/test_platform_lane_overlap.py). Cross lint
+        # consumes only scope/admission outputs and overlaps on Linux too.
         def needs_of(name):
             match = re.search(r"^    needs: \[([^]]+)\]", self.job(name), re.M)
             self.assertIsNotNone(match, name)
             assert match is not None
             return [n.strip() for n in match[1].split(",")]
 
-        for name in ("rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows"):
+        for name in ("rust-tests-macos", "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows",
+                     "rust-cross-lint", "rust-cross-lint-release"):
             self.assertNotIn("rust-tests-linux", needs_of(name), name)
-        self.assertIn("rust-tests-linux", needs_of("rust-cross-lint"))
-        self.assertIn("needs.rust-tests-linux.result != 'failure'", self.job("rust-cross-lint"))
+            self.assertNotIn("needs.rust-tests-linux", self.job(name))
 
     def test_fast_gate_builds_only_touched_linux_targets(self):
         j = self.job("rust-tests-linux")

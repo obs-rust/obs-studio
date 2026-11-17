@@ -299,6 +299,18 @@ class GateJobs(unittest.TestCase):
             blocking([j for j in RUN_39677084695 if j["conclusion"] != "cancelled"]), []
         )
 
+    def test_failed_fast_gate_blocks_even_when_overlapping_cross_lanes_pass(self):
+        from ci_scope import scope
+
+        expected = gate_jobs.expected_jobs(scope(["ci/test_rust_scope.py"], event="merge_group"))
+        fast_gate = "Build 🧱 / Fast Gate ⚡"
+        self.assertIn(fast_gate, expected)
+        self.assertEqual(sum("Rust Cross Lint" in name for name in expected), 3)
+        for conclusion in ("failure", "cancelled"):
+            with self.subTest(conclusion=conclusion):
+                records = [job(name, conclusion if name == fast_gate else "success") for name in expected]
+                self.assertEqual(blocking(records, expected=expected), [fast_gate])
+
     def test_every_unsuccessful_conclusion_blocks(self):
         for conclusion in (
             "failure",
