@@ -120,9 +120,10 @@ function(_obs_cross_tier2_tests)
   target_link_libraries(libobs-cross-shared INTERFACE SIMDe::SIMDe Threads::Threads)
   find_package(jansson REQUIRED)
   find_package(ZLIB REQUIRED)
+  target_link_libraries(libobs-cross-reference PRIVATE ZLIB::ZLIB)
   # The run host must not compile cmocka. Build the pinned source for Darwin.
   include(FetchContent)
-  set(WITH_STATIC_LIB ON CACHE BOOL "" FORCE)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build cmocka into the test executables" FORCE)
   set(WITH_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(UNIT_TESTING OFF CACHE BOOL "" FORCE)
   FetchContent_Declare(
@@ -133,7 +134,7 @@ function(_obs_cross_tier2_tests)
   )
   FetchContent_MakeAvailable(cmocka)
   set(CMOCKA_INCLUDE_DIR "${cmocka_SOURCE_DIR}/include")
-  set(CMOCKA_LIBRARIES cmocka-static)
+  set(CMOCKA_LIBRARIES cmocka)
   # find_package in the unchanged registry consumes this build-tree config.
   file(WRITE "${CMAKE_BINARY_DIR}/cmocka-config/cmocka-config.cmake" "set(CMocka_FOUND TRUE)\n")
   file(
