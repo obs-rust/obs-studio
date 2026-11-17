@@ -67,7 +67,7 @@
 #include "libobs/obs-source-icon-type-fields.c.h"
 #include "libobs/obs-source-identity-getter-fields.c.h"
 #include "libobs/obs-source-info-lookup-fields.c.h"
-#include "libobs/obs-source-init-context.c.h"
+#include "libobs/obs-source-init-context-fields.c.h"
 #include "libobs/obs-source-interaction-fields.c.h"
 #include "libobs/obs-source-media-getter-fields.c.h"
 #include "libobs/obs-source-module-fields.c.h"

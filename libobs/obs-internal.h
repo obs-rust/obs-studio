@@ -1630,6 +1630,10 @@ extern size_t obs_source_info_lookup_count(void);
 extern struct obs_source_info *obs_source_info_lookup_entry(size_t index);
 extern const char *obs_source_info_lookup_id(const struct obs_source_info *info);
 extern struct obs_source_info *get_source_info2(const char *unversioned_id, uint32_t ver);
+extern bool obs_source_context_initialize(obs_source_t *source, obs_data_t *settings, const char *name,
+					  const char *uuid, obs_data_t *hotkeys, bool private);
+extern bool obs_source_context_register(obs_source_t *source, const char **signals);
+
 extern bool obs_source_init_context(struct obs_source *source, obs_data_t *settings, const char *name, const char *uuid,
 				    obs_data_t *hotkey_data, bool private);
 
