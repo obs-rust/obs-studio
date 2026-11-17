@@ -54,6 +54,9 @@
 //! `dup_group()` in `libobs/obs-scene.c` (the route of a duplicate, the
 //! filter numbers, the flags and item routes of a scene copy and the reuse
 //! of a repeated source);
+//! `libobs/obs-source-filter-backup.c.h`, the filter backup of
+//! `obs_source_backup_filters()` (each filter saved in list order under
+//! the filter lock; the lock and list reads stay in a C fields adapter);
 //! `libobs/obs-source-filter-chain.c.h`, the filter chain rules of
 //! `filter_compatible()`, `obs_source_filter_add()`,
 //! `obs_source_filter_remove_refless()`, `move_filter_dir()` and
@@ -164,7 +167,7 @@
 //! [`audio_output`], [`audio_place`],
 //! [`audio_render_plan`], [`audio_timing`],
 //! [`color_space`], [`conversion_plan`], [`deinterlace`], [`deinterlace_draw`],
-//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
+//! [`deinterlace_pacing`], [`deinterlace_select`], [`draw_plan`], [`filter_backup`], [`frame_copy`], [`media_admission`], [`monitoring`], [`own_clock_drift`] (new code with no C original, #4182), [`ptm_gate`], [`render_route`], [`set_name`], [`size_route`], [`source_duplicate`], [`source_filter_chain`],
 //! [`transition_access`], [`transition_audio`], [`transition_clock`], [`transition_load`], [`transition_render`],
 //! [`transition_sample_time`], [`transition_settings`], [`transition_size`],
 //! [`transition_slots`],
@@ -185,6 +188,7 @@ pub mod async_pacing;
 pub mod async_rotation;
 pub mod async_upload;
 pub mod audio_active;
+pub mod audio_active_setter;
 pub mod audio_input;
 pub mod audio_input_path;
 pub mod audio_output;
@@ -205,6 +209,7 @@ pub mod deinterlace_texture;
 pub mod draw_plan;
 pub mod draw_technique;
 pub mod enabled_setter;
+pub mod filter_backup;
 pub mod filter_count;
 pub mod filter_index;
 pub mod filter_relationship_getters;
@@ -219,6 +224,7 @@ pub mod own_clock_drift;
 pub mod private_settings;
 pub mod ptm_gate;
 pub mod push_delay;
+pub mod push_hotkeys;
 pub mod push_queries;
 pub mod push_to_enable;
 pub mod render_route;

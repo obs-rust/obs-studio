@@ -2942,6 +2942,10 @@ area.
   call is ignored with a debug line, as the other output calls do. *All*,
   2026-11-12. Issue
   [#4754](https://github.com/obs-rust/obs-studio/issues/4754).
+- A plugin or script that sets a scene item's bounds size with no size
+  (NULL) no longer crashes OBS while holding the scene's lock; the call is
+  ignored and logged, as the crop setter does. *All*, 2026-11-14. Issue
+  [#4392](https://github.com/obs-rust/obs-studio/issues/4392).
 
 ### Security hardening
 

@@ -15,6 +15,9 @@
 #define _UNICODE
 #endif
 #define WIN32_LEAN_AND_MEAN
+#define audio_resampler_create oracle_aio_resampler_create
+#define audio_resampler_destroy oracle_aio_resampler_destroy
+#define audio_resampler_resample oracle_aio_resampler_resample
 #include <windows.h>
 #include <stddef.h>
 #include <stdint.h>

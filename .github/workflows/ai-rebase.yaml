@@ -31,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: ai-rebase
@@ -42,8 +43,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # GitHub does not allow `secrets` in a job `if:`, so whether the token is
-    # set comes through env and every step checks it (#4461). Without it the
-    # run only prints a notice instead of failing in actions/checkout.
+    # set comes through env. Only push/resolution steps need it (#4461).
+    # Requeue performs public Actions reads and PR writes with GITHUB_TOKEN.
     env:
       HAS_TOKEN: ${{ secrets.AI_REBASE_TOKEN != '' }}
     steps:
@@ -51,16 +52,21 @@ jobs:
         if: env.HAS_TOKEN != 'true'
         run: echo "::notice::AI_REBASE_TOKEN is not set, so this run rebases nothing."
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        if: env.HAS_TOKEN == 'true'
         with:
           fetch-depth: 0
-          token: ${{ secrets.AI_REBASE_TOKEN }}
+          token: ${{ secrets.AI_REBASE_TOKEN || github.token }}
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        if: env.HAS_TOKEN == 'true'
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Re-arm infrastructure-ejected PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          # shellcheck disable=SC2086 # DRY is an optional argument
+          uv run --no-project --script ci/ai_rebase.py --requeue-ejected --limit 10 $DRY
       # rustfmt for resolved Rust files (the agent runs `soldr cargo fmt`).
-      - uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+      - uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         if: env.HAS_TOKEN == 'true'
         with:
           build-cache: false

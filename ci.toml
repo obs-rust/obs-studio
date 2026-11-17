@@ -100,8 +100,9 @@ registry = { via = "setup-soldr:cargo-registry", max = "60MB", per = "platform" 
 # (9337570) writes cook-base-v3- keys, which the janitor then deleted as an
 # undeclared family on every merge-queue run, so a cook layer survived only
 # until the next run ended (#3166; sizes measured 2026-10-31: Linux 1.29-1.51
-# GB, macOS 0.72 GB, Windows 0.80-0.84 GB).
-deps = { prefix = "cook-base-v3-", max = "900MB", evict = "lru", shapes = { linux = { max = "1.4GB" }, macos = { max = "900MB" }, windows = { max = "1.1GB" } } }
+# GB, macOS 0.72 GB, Windows 0.80-0.84 GB). setup-soldr 735b5e6 (#4954) writes
+# cook-base-v4- keys (forge-ci/setup-soldr#513 cook capture boundary).
+deps = { prefix = "cook-base-v4-", max = "900MB", evict = "lru", shapes = { linux = { max = "1.4GB" }, macos = { max = "900MB" }, windows = { max = "1.1GB" } } }
 # Embedded compiler-store transport is disabled at every setup-soldr callsite.
 # No family: legacy setup-soldr-buildcache-v2-* entries may be reclaimed.
 toolchain = { via = "setup-soldr:solo-toolchain", max = "190MB", per = "platform" }

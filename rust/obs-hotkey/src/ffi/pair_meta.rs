@@ -7,8 +7,8 @@ use crate::pair_meta::{self, Field};
 unsafe extern "C" {
     fn obs_hotkey_seam_find_pair(id: usize) -> *mut obs_hotkey_pair;
     fn obs_hotkey_seam_pair_id(pair: *const obs_hotkey_pair, half: usize) -> usize;
-    fn obs_hotkey_set_name(id: usize, value: *const c_char);
-    fn obs_hotkey_set_description(id: usize, value: *const c_char);
+    fn obs_hotkey_pair_meta_set_name(id: usize, value: *const c_char);
+    fn obs_hotkey_pair_meta_set_description(id: usize, value: *const c_char);
 }
 
 struct Registry;
@@ -29,8 +29,8 @@ impl pair_meta::Registry for Registry {
         // under the same registry lifetime requirements as the C entry point.
         unsafe {
             match field {
-                Field::Name => obs_hotkey_set_name(id, value),
-                Field::Description => obs_hotkey_set_description(id, value),
+                Field::Name => obs_hotkey_pair_meta_set_name(id, value),
+                Field::Description => obs_hotkey_pair_meta_set_description(id, value),
             }
         }
     }

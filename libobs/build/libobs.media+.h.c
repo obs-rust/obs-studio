@@ -6,6 +6,5 @@
 #include "libobs/graphics/graphics-ffmpeg-orientation-adapter.c.h"
 #include "libobs/graphics/graphics-ffmpeg-orientation-fields.c.h"
 #include "libobs/graphics/graphics-ffmpeg.c.h"
-#include "libobs/media-io/audio-resampler-ffmpeg.c.h"
 #include "libobs/media-io/media-remux-ffmpeg.c.h"
 #include "libobs/media-io/video-scaler-ffmpeg.c.h"

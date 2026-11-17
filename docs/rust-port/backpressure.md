@@ -52,7 +52,7 @@ The bot owns mechanical rebases of DIRTY PRs and landing stacked drafts after th
 | label | owner and contract |
 |---|---|
 | `pool-active` | A pool worker adds it before working on an existing PR and removes it when retiring. The bot reports `skipped: worker active` and does not fetch, check out, rebase or push that PR. |
-| `queue-failed` | The manager adds it after a real queue test failure, dequeues and disarms the PR, and stops its watcher. The bot reports `left out: failed in the merge queue` and leaves it disarmed. Remove it only after a worker fixes and verifies the failure; a human/coordinator decides when to requeue an infrastructure failure. Watchers must honor the label too. |
+| `queue-failed` | The manager or requeue bot adds it after a real queue test/build failure; the manager dequeues and disarms the PR and stops its watcher. The rebase bot reports `left out: failed in the merge queue` and leaves it disarmed. Remove it only after a worker fixes and verifies the failure. Watchers must honor the label too. |
 
 The bot also grants at least 30 minutes of quiet time after a head push, reporting `skipped: worker active`. GitHub often returns null for commit `pushedDate`, so the cheap signal is PR `updatedAt`: pushes advance it even when the commit was authored earlier. Comments or label changes can conservatively extend that quiet time. Missing activity data also skips the PR. Skipped workers consume no bulk headroom; the remaining candidates keep their original oldest-first order.
 
@@ -60,7 +60,17 @@ Even without `queue-failed`, the bot checks the most recent `removed_from_merge_
 
 Stacked drafts keep the first line `Stacked on #P: review only the commits after <sha>.` Once P merges, the bot replays only commits after that SHA, replaces the stacking note and marks the PR ready, subject to the same ownership, holds and queue-failure guards. Lease pushes, FIFO ordering and back-pressure headroom remain in force. Bot pushes carry no client attestation, so the rebased PR runs fallback CI.
 
-As of 2026-11-16, the bot is disabled because `AI_REBASE_TOKEN` has been missing since 11-10. These cooperation guards make re-enabling safer; they do not set the token or enable the bot. Refs #4896.
+### Automatic infrastructure re-arm
+
+`uv run --no-project --script ci/ai_rebase.py --requeue-ejected` runs before the rebase steps in the same workflow at :17 and :47 (also on master pushes and manual dispatch). It uses `GITHUB_TOKEN` with `contents: read` and `pull-requests: write`; Actions evidence is public read-only data. It needs neither `AI_REBASE_TOKEN` nor the model key, performs no checkout changes or pushes, and leaves merge strategy to the queue. Missing `AI_REBASE_TOKEN` disables only rebasing. Refs #4896.
+
+The latest queue/head transition must be a removal within three hours, bound by preceding commit/force-push events to the unchanged PR head. The PR must be open, disarmed, out of draft, without a hold, `draft`, `pool-active` or `queue-failed` label or requested changes. The worker quiet period applies. Conflicts stay with the rebase path; manual removals are never retried. Immediately before mutation the bot refreshes the PR and queue transition.
+
+- `checks_timed_out` is retried directly. Otherwise the bot reads the exact synthetic `beforeCommit`'s merge-group runs and their latest-attempt jobs, including failed jobs inside cancelled runs.
+- Cancellation, runner-loss diagnostics, checkout/setup-soldr/cache-restore failures and explicit network errors qualify as infrastructure. Compiler/assertion failures take precedence over network text. A self-hosted failure also qualifies when the same workflow and exact matrix job passed on a different runner within one hour.
+- Every substantive failed job must qualify. The downstream `CI Gate ✅` failure is ignored only with supporting failed/cancelled job evidence. Real test/build failures get `queue-failed` and remain disarmed; missing, unreadable or ambiguous evidence leaves the PR untouched.
+
+One automatic attempt is allowed per PR per head SHA, across schedules and further ejections. Before `gh pr merge N --auto --match-head-commit SHA` (without `--squash`), the bot posts `<!-- ai-rebase:requeue-ejected:SHA -->` in a hidden comment. It pages through comments when checking this marker; restoring an identical SHA cannot reset the cap. The marker reserves the attempt before arming, so a rejected arm consumes the attempt and is reported as a failure. Workflow concurrency serializes these reservations. A run performs at most ten actions by default (`--limit`); `--dry-run` classifies without comments, labels or arming. Explicit PR numbers can narrow a manual script run.
 
 `.github/workflows/ai-rebase.yaml` runs the script on every master push, every 30 minutes, and on manual dispatch with explicit PR numbers.
 

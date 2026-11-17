@@ -6,6 +6,7 @@
 
     uv run --no-project --script ci/ai_rebase.py 4438            # one PR
     uv run --no-project --script ci/ai_rebase.py --dirty         # every DIRTY PR, within backpressure headroom
+    uv run --no-project --script ci/ai_rebase.py --requeue-ejected # retry infrastructure ejections, no push token
     uv run --no-project --script ci/ai_rebase.py 4438 --dry-run  # resolve locally, don't push
 
 Run inside a clean checkout of the repo. Needs OPENROUTER_API_KEY. The model
@@ -29,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import functools
 import importlib.util
 import json
 import os
@@ -37,6 +39,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 REPO = "obs-rust/obs-studio"
@@ -370,10 +373,11 @@ def queue_events(pr: dict):
       repository(owner:"obs-rust",name:"obs-studio"){
         pullRequest(number:$number){headRefOid
           timelineItems(last:100,before:$before,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT,
+              ADDED_TO_MERGE_QUEUE_EVENT,AUTO_MERGE_DISABLED_EVENT,AUTO_MERGE_ENABLED_EVENT,
               PULL_REQUEST_COMMIT,HEAD_REF_FORCE_PUSHED_EVENT]){
             pageInfo{hasPreviousPage startCursor}
             nodes{__typename
-              ...on RemovedFromMergeQueueEvent{reason}
+              ...on RemovedFromMergeQueueEvent{id createdAt reason beforeCommit{oid}}
               ...on PullRequestCommit{commit{oid}}
               ...on HeadRefForcePushedEvent{afterCommit{oid}}
             }
@@ -475,13 +479,222 @@ def dirty_prs(limit: int) -> list[int]:
     return [p["number"] for p in dirty[:limit]]
 
 
+REQUEUE_FIELDS = ("number,headRefOid,state,isDraft,autoMergeRequest,body,labels,"
+                  "mergeStateStatus,reviewDecision,updatedAt")
+BAD_CONCLUSIONS = {"failure", "timed_out", "startup_failure", "action_required", "stale"}
+SETUP_STEP = re.compile(r"^(?:Run actions/checkout@|(?:Post )?Set[ -]?up[ -]+(?:soldr|job|runner)\b|"
+                        r"(?:Run )?[^ ]*/setup-soldr@|Restore\b.*cache|Cache\b.*restore)", re.I)
+RUNNER_LOST = re.compile(r"runner (?:has )?lost communication|runner.*(?:disconnected|shutdown)|"
+                         r"runner.*stopped communicating", re.I)
+NETWORK_ERROR = re.compile(r"could not resolve host|temporary failure in name resolution|"
+                           r"failed to connect to|connection reset by peer|network is unreachable|"
+                           r"(?:HTTP|status code)[: /]*(?:502|503|504)\b", re.I)
+CODE_ERROR = re.compile(r"assertion.*failed|test result: FAILED|\bFAIL(?:ED|URE)[: ]+.*test|"
+                        r"error\[E\d+\]|error C\d+|undefined reference|undefined symbol|"
+                        r":\d+(?::\d+)?: (?:fatal )?error:|"
+                        r"fatal error:.*(?:No such file|file not found|cannot open)", re.I)
+
+
+def timestamp(value: str) -> dt.datetime:
+    return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def requeue_api_items(endpoint: str, key: str | None = None) -> list[dict]:
+    """Public Actions reads and PR comments; never silently truncate a page."""
+    pages = gh_json("api", "--paginate", "--slurp", endpoint)
+    items = [item for page in pages for item in (page[key] if key else page)]
+    if key and pages and pages[0].get("total_count", len(items)) > len(items):
+        raise RuntimeError("incomplete Actions evidence inventory")
+    return items
+
+
+@functools.lru_cache(maxsize=256)
+def run_jobs(run_id: int) -> list[dict]:
+    return requeue_api_items(f"repos/{REPO}/actions/runs/{run_id}/jobs?filter=latest&per_page=100", "jobs")
+
+
+def passed_elsewhere(workflow: dict, job: dict) -> bool:
+    """A control is the same workflow and matrix job, on a different runner, ±1h."""
+    if "self-hosted" not in job.get("labels", []) or not job.get("runner_name"):
+        return False
+    start = timestamp(job["started_at"])
+    # Run creation can precede job start by hours of runner queueing. Search
+    # a full day of this workflow; qualify controls by their actual job times.
+    lo, hi = start - dt.timedelta(hours=24), start + dt.timedelta(hours=1)
+    window = urllib.parse.quote(f"{lo.isoformat()}..{hi.isoformat()}")
+    runs = requeue_api_items(f"repos/{REPO}/actions/workflows/{workflow['workflow_id']}/runs"
+                            f"?event=merge_group&created={window}&per_page=100",
+                            "workflow_runs")
+    for other in runs:
+        if other["id"] == workflow["id"] or other["workflow_id"] != workflow["workflow_id"]:
+            continue
+        for control in run_jobs(other["id"]):
+            if (control["name"] == job["name"] and control["conclusion"] == "success"
+                    and control.get("runner_name") and control["runner_name"] != job["runner_name"]
+                    and control.get("started_at")
+                    and abs(timestamp(control["started_at"]) - start) <= dt.timedelta(hours=1)):
+                return True
+    return False
+
+
+def failed_job_kind(workflow: dict, job: dict) -> str:
+    failed = [s["name"] for s in job.get("steps", []) if s.get("conclusion") in BAD_CONCLUSIONS]
+    if failed and all(SETUP_STEP.search(name) for name in failed):
+        return "infra"
+    if passed_elsewhere(workflow, job):
+        return "infra"
+    try:
+        log = run("gh", "run", "view", str(workflow["id"]), "--repo", REPO,
+                  "--job", str(job["id"]), "--log-failed")
+    except RuntimeError:
+        # A lost runner may never upload logs. Check-run annotations carry
+        # GitHub's runner-loss diagnostic even for a job with no steps.
+        check_url = job.get("check_run_url")
+        if not check_url or not check_url.startswith(f"https://api.github.com/repos/{REPO}/check-runs/"):
+            return "unknown"
+        annotations = requeue_api_items(check_url + "/annotations?per_page=100")
+        log = "\n".join(a.get("message") or "" for a in annotations)
+    if len(log) > 2_000_000:
+        return "unknown"
+    # Explicit compiler/assertion failures take precedence over network text in
+    # a test name or diagnostic. A matching healthy runner is independent proof.
+    if CODE_ERROR.search(log):
+        return "code"
+    if RUNNER_LOST.search(log) or NETWORK_ERROR.search(log):
+        return "infra"
+    if failed and any(re.search(r"\btest|\bbuild|\bcompile|\blint|\blink", name, re.I) for name in failed):
+        return "code"
+    return "unknown"
+
+
+def queue_failure_kind(event: dict) -> str:
+    sha = (event.get("beforeCommit") or {}).get("oid")
+    if not sha:
+        return "unknown"
+    runs = requeue_api_items(f"repos/{REPO}/actions/runs?event=merge_group&head_sha={sha}&per_page=100",
+                            "workflow_runs")
+    kinds = []
+    for workflow in runs:
+        if workflow.get("event") != "merge_group" or workflow.get("head_sha") != sha:
+            continue
+        # A cancelled workflow can contain a real failure that caused the
+        # cancellation. Inspect every failed job before treating it as infra.
+        jobs = run_jobs(workflow["id"])
+        failed = [j for j in jobs if j.get("conclusion") in BAD_CONCLUSIONS]
+        substantive = [j for j in failed if j["name"].split(" / ")[-1] != "CI Gate ✅"]
+        kinds.extend(failed_job_kind(workflow, j) for j in substantive)
+        cancelled = any(j.get("conclusion") == "cancelled" for j in jobs) or workflow.get("conclusion") == "cancelled"
+        if failed and not substantive and not cancelled:
+            kinds.append("unknown")  # a lone gate failure is not proven infra
+        if cancelled:
+            kinds.append("infra")
+        elif workflow.get("conclusion") in BAD_CONCLUSIONS and not failed:
+            kinds.append("unknown")
+        if workflow.get("conclusion") is None:
+            kinds.append("unknown")
+    return "code" if "code" in kinds else "unknown" if not kinds or "unknown" in kinds else "infra"
+
+
+def requeue_marker(head: str) -> str:
+    return f"<!-- ai-rebase:requeue-ejected:{head} -->"
+
+
+def requeue_comments(number: int) -> list[dict]:
+    return requeue_api_items(f"repos/{REPO}/issues/{number}/comments?per_page=100")
+
+
+def requeue_hold(pr: dict, now: dt.datetime) -> bool:
+    labels = [l["name"] for l in pr.get("labels") or []]
+    return (pr["state"] != "OPEN" or pr.get("isDraft") or pr.get("autoMergeRequest") is not None
+            or pr.get("mergeStateStatus") in ("DIRTY", "UNKNOWN")
+            or bool({"queue-failed", "draft"}.intersection(labels)) or worker_active(pr, now=now)
+            or live_holds(pr.get("body") or "", None) or bool(HOLD.search(" ".join(labels)))
+            or pr.get("reviewDecision") == "CHANGES_REQUESTED")
+
+
+def retry_ejection(pr: dict, now: dt.datetime) -> dict | None:
+    """Bind a recent, latest removal to the same PR head, never the queue SHA."""
+    events = iter(queue_events(pr))
+    event = next(events, None)
+    if not event or event["__typename"] != "RemovedFromMergeQueueEvent":
+        return None
+    if event.get("reason") not in ("failed_checks", "checks_timed_out"):
+        return None
+    age = now - timestamp(event["createdAt"])
+    if not dt.timedelta() <= age <= dt.timedelta(hours=3):
+        return None
+    head = next(((p.get("commit") or p.get("afterCommit") or {}).get("oid") for p in events
+                 if p["__typename"] in ("PullRequestCommit", "HeadRefForcePushedEvent")), None)
+    return event if head == pr["headRefOid"] else None
+
+
+def requeue_pr(pr: dict, dry_run: bool, *, now: dt.datetime | None = None) -> str:
+    now = now or dt.datetime.now(dt.timezone.utc)
+    if requeue_hold(pr, now):
+        return "skipped: held, active, armed or conflicting"
+    event = retry_ejection(pr, now)
+    if event is None:
+        return "skipped: no recent latest ejection on the unchanged head"
+    head = pr["headRefOid"]
+    marker = requeue_marker(head)
+    kind = "infra" if event["reason"] == "checks_timed_out" else queue_failure_kind(event)
+    if kind == "unknown":
+        return "skipped: incomplete or unrecognized merge-group evidence"
+    if kind == "infra" and any(marker in (c.get("body") or "") for c in requeue_comments(pr["number"])):
+        return "skipped: automatic retry already spent for this head"
+    if dry_run:
+        return f"dry-run: {'re-arm' if kind == 'infra' else 'label queue-failed'} {head}"
+    fresh = gh_json("pr", "view", str(pr["number"]), "--repo", REPO, "--json", REQUEUE_FIELDS)
+    if fresh["headRefOid"] != head or requeue_hold(fresh, now):
+        return "skipped: PR changed during classification"
+    if next(iter(queue_events(fresh)), None) != event:
+        return "skipped: queue transition changed during classification"
+    if kind == "code":
+        run("gh", "pr", "edit", str(pr["number"]), "--repo", REPO, "--add-label", "queue-failed")
+        return "left out: real test/build failure; labelled queue-failed"
+    if any(marker in (c.get("body") or "") for c in requeue_comments(pr["number"])):
+        return "skipped: automatic retry already spent for this head"
+    # Reserve the attempt BEFORE arming. If the API fails, prefer consuming an
+    # attempt to an endless retry loop. Workflow concurrency serializes runs.
+    run("gh", "pr", "comment", str(pr["number"]), "--repo", REPO, "--body",
+        f"{marker}\nai-rebase: one automatic infrastructure retry for `{head}` "
+        f"after {event['reason']} at {event['createdAt']}.")
+    run("gh", "pr", "merge", str(pr["number"]), "--repo", REPO, "--auto", "--match-head-commit", head)
+    return f"re-armed: infrastructure ejection on {head}"
+
+
+def requeue_ejected(prs: list[int], dry_run: bool, limit: int) -> int:
+    candidates = [gh_json("pr", "view", str(n), "--repo", REPO, "--json", REQUEUE_FIELDS) for n in prs] if prs else gh_json(
+        "pr", "list", "--repo", REPO, "--state", "open", "--limit", "1000", "--json", REQUEUE_FIELDS)
+    if len(candidates) >= 1000:
+        raise RuntimeError("incomplete open PR inventory")
+    mutations, rc = 0, 0
+    for pr in candidates:
+        if mutations >= limit:
+            break
+        try:
+            out = requeue_pr(pr, dry_run)
+            mutations += not out.startswith("skipped")
+        except Exception as e:
+            out, rc = f"failed: {e}", 1
+            mutations += 1  # a partially completed attempt also spends headroom
+        print(f"#{pr['number']} {out}")
+    return rc
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("prs", nargs="*", type=int)
     ap.add_argument("--dirty", action="store_true")
+    ap.add_argument("--requeue-ejected", action="store_true", help="retry infrastructure ejections without rebasing")
+    ap.add_argument("--limit", type=int, default=10, help="maximum requeue actions per run")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--comment", action="store_true", help="post the outcome on the PR")
     a = ap.parse_args()
+    if a.requeue_ejected:
+        if a.dirty or a.limit < 1:
+            ap.error("--requeue-ejected needs a positive --limit and cannot be combined with --dirty")
+        return requeue_ejected(a.prs, a.dry_run, a.limit)
     prs = list(a.prs)
     if a.dirty:
         spec = importlib.util.spec_from_file_location(
