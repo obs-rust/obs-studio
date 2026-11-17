@@ -151,6 +151,8 @@ mod video_plan;
 mod video_plan_parity;
 mod video_render_size;
 mod video_render_size_parity;
+mod video_scale_effects;
+mod video_scale_effects_parity;
 mod video_stop_requested;
 mod video_stop_requested_parity;
 mod view;
