@@ -1764,12 +1764,6 @@ jobs:
           # it compiles in: a `--release` cook on core runs left that build
           # rebuilding from scratch (1m09s-1m37s, #2661).
           prebuild-deps-flags: --profile dev -- --tests
-          # Dell only (persistent root, local cook store): one cook recipe per
-          # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
-          # hosted runners, so the shared hosted key is unchanged (#2661).
-          prebuild-deps-recipes: |
-            ${{ inputs.mq-runner-labels != '' && '--profile dev -- --tests --check' || '' }}
-            ${{ inputs.mq-runner-labels != '' && '-p obs-util --profile dev -- --tests' || '' }}
           # Host/container archive paths have different Actions-cache versions.
           # Explicit identities stop the janitor treating them as duplicates.
           cache-key-suffix: linux-host-v3
@@ -2117,8 +2111,8 @@ jobs:
           # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
           # hosted runners, so the shared hosted key is unchanged (#2661).
           prebuild-deps-recipes: |
-            ${{ inputs.mq-runner-labels != '' && format('--profile dev --target {0} -- --tests --check', matrix.target) || '' }}
-            ${{ inputs.mq-runner-labels != '' && format('--profile dev --target {0} -- --tests', matrix.target) || '' }}
+            ${{ inputs.mq-heavy-labels != '' && format('--profile dev --target {0} -- --tests --check', matrix.target) || '' }}
+            ${{ inputs.mq-heavy-labels != '' && format('--profile dev --target {0} -- --tests', matrix.target) || '' }}
           cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The cross lane adds targets mid-job (see the Rust Tests job, #969).
@@ -2245,9 +2239,9 @@ jobs:
           # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
           # hosted runners, so the shared hosted key is unchanged (#2661).
           prebuild-deps-recipes: |
-            ${{ inputs.mq-runner-labels != '' && '--profile dev --target aarch64-pc-windows-msvc -- --tests --check' || '' }}
-            ${{ inputs.mq-runner-labels != '' && '--profile dev --target x86_64-apple-darwin -- --tests --check' || '' }}
-            ${{ inputs.mq-runner-labels != '' && '--profile dev --target aarch64-unknown-linux-gnu -- --tests --check' || '' }}
+            ${{ inputs.mq-heavy-labels != '' && '--profile dev --target aarch64-pc-windows-msvc -- --tests --check' || '' }}
+            ${{ inputs.mq-heavy-labels != '' && '--profile dev --target x86_64-apple-darwin -- --tests --check' || '' }}
+            ${{ inputs.mq-heavy-labels != '' && '--profile dev --target aarch64-unknown-linux-gnu -- --tests --check' || '' }}
           cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # cross-release installs target std libraries after setup (#507/#969).
