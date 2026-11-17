@@ -24,6 +24,9 @@ jobs verify it and use it instead of downloading the artifact. The upload is
 skipped only when the test jobs' runner labels name this host (the marker
 file's content), so they cannot land anywhere without the handoff. Entries
 older than a day, or beyond a total byte budget, are pruned on every put.
+All handoff mutations hold `<root>/.lock` exclusively. Readers hold it shared
+through verification and copying; pruning skips a busy directory and is always
+best effort. The lock file is permanent so every runner locks the same inode.
 
 Every subcommand prints one summary line, writes `key=value` outputs to
 $GITHUB_OUTPUT, and exits 0 on its own failures: a cache must never fail a
@@ -33,6 +36,7 @@ job. Tested by ci/test_tier2_kept_tree.py.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -40,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable
 
@@ -179,19 +184,51 @@ def _tree_bytes(path: Path) -> int:
     return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
 
 
+@contextmanager
+def _handoff_lock(root: Path, *, shared: bool = False, blocking: bool = True):
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / ".lock").open("a") as lock:
+        operation = fcntl.LOCK_SH if shared else fcntl.LOCK_EX
+        try:
+            fcntl.flock(lock, operation | (0 if blocking else fcntl.LOCK_NB))
+        except BlockingIOError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def prune(root: Path, max_age_s: int = HANDOFF_MAX_AGE_S, max_bytes: int = HANDOFF_MAX_BYTES, now: float | None = None) -> None:
+    """Best-effort cleanup; never block an active reader/writer or fail a job."""
+    try:
+        with _handoff_lock(root, blocking=False) as acquired:
+            if acquired:
+                _prune_locked(root, max_age_s, max_bytes, now)
+    except OSError as err:
+        print(f"tier2-kept-tree prune skipped: {err}", file=sys.stderr)
+
+
+def _prune_locked(root: Path, max_age_s: int, max_bytes: int, now: float | None) -> None:
     now = time.time() if now is None else now
     entries = []
     for entry in root.iterdir():
-        age = now - entry.stat().st_mtime
-        if entry.name.startswith("."):
-            if age > 3600:
-                _remove(entry)  # an interrupted put
+        if entry.name == ".lock":
             continue
-        if age > max_age_s:
-            _remove(entry)
-        else:
-            entries.append((entry.stat().st_mtime, entry, _tree_bytes(entry)))
+        try:
+            mtime = entry.stat().st_mtime
+            age = now - mtime
+            if entry.name.startswith("."):
+                if age > 3600:
+                    _remove(entry)  # an interrupted put
+                continue
+            if age > max_age_s:
+                _remove(entry)
+            else:
+                entries.append((mtime, entry, _tree_bytes(entry)))
+        except FileNotFoundError:
+            continue  # tolerate entries removed by external cleanup
     total = sum(size for _, _, size in entries)
     for _, entry, size in sorted(entries, key=lambda e: e[0]):
         if total <= max_bytes:
@@ -202,19 +239,20 @@ def prune(root: Path, max_age_s: int = HANDOFF_MAX_AGE_S, max_bytes: int = HANDO
 
 def handoff_put(root: Path, key: str, pack: Path, labels: str, marker: Path) -> dict:
     """Publish PACK under ROOT/KEY; local=True when the test jobs must land on this host."""
-    tmp = root / f".{key}.{os.getpid()}.tmp"
-    _remove(tmp)
-    tmp.mkdir(parents=True)
-    sums = []
-    for f in sorted(pack.iterdir()):
-        if f.is_file():
-            shutil.copy2(f, tmp / f.name)
-            sums.append(f"{_sha256(tmp / f.name)}  {f.name}\n")
-    (tmp / SUMS).write_text("".join(sums))
-    dest = root / key
-    _remove(dest)
-    os.replace(tmp, dest)
-    os.utime(dest)
+    with _handoff_lock(root):
+        tmp = root / f".{key}.{os.getpid()}.tmp"
+        _remove(tmp)
+        tmp.mkdir(parents=True)
+        sums = []
+        for f in sorted(pack.iterdir()):
+            if f.is_file():
+                shutil.copy2(f, tmp / f.name)
+                sums.append(f"{_sha256(tmp / f.name)}  {f.name}\n")
+        (tmp / SUMS).write_text("".join(sums))
+        dest = root / key
+        _remove(dest)
+        os.replace(tmp, dest)
+        os.utime(dest)
     prune(root)
     host = _host(marker)
     local = bool(host) and host in _labels(labels)
@@ -223,6 +261,11 @@ def handoff_put(root: Path, key: str, pack: Path, labels: str, marker: Path) -> 
 
 def handoff_get(root: Path, key: str, dest: Path) -> dict:
     """Copy a verified handoff to DEST; hit=False means download the artifact."""
+    with _handoff_lock(root, shared=True):
+        return _handoff_get_locked(root, key, dest)
+
+
+def _handoff_get_locked(root: Path, key: str, dest: Path) -> dict:
     entry = root / key
     sums = entry / SUMS
     if not sums.is_file():
