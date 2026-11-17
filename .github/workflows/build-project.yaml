@@ -1865,6 +1865,7 @@ jobs:
           packages=("$APT_ARCHIVES"/*.deb)
           echo "apt archive retained packages: ${#packages[@]}"
           if [ "${#packages[@]}" -gt 0 ]; then du -ch "${packages[@]}" | tail -1; fi
+          ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"
           ccache --max-size=250M
           ccache --zero-stats
           cmake -S . -B "${RUNNER_TEMP}/targets" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -2979,7 +2980,7 @@ jobs:
       - name: Unpack Tier 2 Tree 📂
         run: |
           mkdir -p "$RUNNER_TEMP/tier2"
-          tar --zstd -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$RUNNER_TEMP/tier2"
+          tar -xf "$RUNNER_TEMP/tier2-pack/tier2-tree.tar.zst" -C "$RUNNER_TEMP/tier2"
 
       # ctest starts the longest tests first only when it has their past
       # times; with none, the 59 s and 35 s tests started last and one shard
@@ -3193,6 +3194,7 @@ jobs:
         id: qt-cache-epoch
         run: |
           echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"
           ccache --max-size="$CCACHE_MAXSIZE"
           ccache --zero-stats
           ccache --version | head -1
