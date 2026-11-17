@@ -1,4 +1,4 @@
-"""Dell packs favour CPU time; hosted archives retain their existing policy."""
+"""Dell-reachable zstd policy belongs to setup-soldr and caller environment."""
 import importlib
 import os
 from pathlib import Path
@@ -15,134 +15,96 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class DellCompressionTest(unittest.TestCase):
-    def test_tier2_workflow_passes_runner_and_handoff_selection(self):
-        workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
-        build = workflow.split('      - name: Build Tier 2 (libobs and libobs-c-reference)', 1)[1].split('        run:', 1)[0]
-        for setting in ('OBS_TIER2_PERSISTENT: ${{ steps.pcache.outputs.zccache }}',
-                        'OBS_TIER2_HANDOFF: ${{ steps.pcache.outputs.handoff }}',
-                        'MQ_RUNNER_LABELS: ${{ inputs.mq-runner-labels }}'):
-            self.assertIn(setting, build)
-        self.assertIn('ci/tier2_pack.py', (ROOT / 'rust/tools/linux-validate/validate.sh').read_text())
+    def test_dell_reachable_pack_has_no_explicit_zstd_level(self):
+        text = (ROOT / 'ci/tier2_pack.py').read_text()
+        self.assertNotRegex(text, r"zstd\s+-(?:\d|I)|['\"]-\d+['\"]|--zstd-level|--fast=")
+        self.assertIn("'--zstd'", text)
+        self.assertNotIn('OBS_TIER2_PERSISTENT', text)
 
-    def test_both_tier2_readers_autodetect_old_and_new_packs(self):
+    def test_workflows_and_cache_wrapper_do_not_select_runner_levels(self):
+        for name in ('.github/actions/cache/action.yml', '.github/workflows/build-project.yaml', '.github/workflows/ci.yml'):
+            text = (ROOT / name).read_text()
+            with self.subTest(path=name):
+                self.assertNotRegex(text, r"runner\.environment == 'self-hosted'.*(?:compression-level|&& '(?:0|1)')")
+                self.assertNotIn('ZSTD_CLEVEL:', text)
+                self.assertNotIn('ZSTD_NBTHREADS:', text)
+                self.assertNotIn('--zstd-level', text)
+        cache = (ROOT / '.github/actions/cache/action.yml').read_text()
+        self.assertNotIn('ZSTD_CLEVEL:', cache)
+        self.assertNotIn('ZSTD_NBTHREADS:', cache)
+
+    def test_pack_and_dell_cache_saves_follow_setup_soldr(self):
         workflow = (ROOT / '.github/workflows/build-project.yaml').read_text()
-        unpack = workflow.split('      - name: Unpack Tier 2 Tree', 1)[1].split('\n      - ', 1)[0]
+        for job_name in ('rust-tests-linux', 'rust-linux-tier2-build'):
+            job = re.search(rf'^  {job_name}:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)', workflow, re.M | re.S)[1]
+            setup = job.index('uses: zackees/setup-soldr@')
+            for step in re.split(r'(?m)^      - ', job)[1:]:
+                if 'uses: ./.github/actions/cache' in step and 'mode: save' in step:
+                    self.assertLess(setup, job.index(step))
+            if job_name == 'rust-linux-tier2-build':
+                self.assertLess(setup, job.index('- name: Build Tier 2 (libobs'))
+                self.assertNotIn('Prepare Tier 2 Upload', job)
+                self.assertNotIn('OBS_TIER2_PERSISTENT', job)
+
+    def test_library_backed_ccache_routes_zstd_environment_with_current_fallback(self):
+        text = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        for name in ('Build Touched Linux Targets 🧱', 'Set Qt Cache Limit 🗄️'):
+            step = text.split(f'      - name: {name}', 1)[1].split('\n      - ', 1)[0]
+            with self.subTest(step=name):
+                self.assertIn('ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"', step)
+                self.assertNotIn('compression=false', step)
+
+    def test_setup_bundle_remains_hosted_and_retains_its_existing_level(self):
+        text = (ROOT / '.github/workflows/ci.yml').read_text()
+        producer = text.split('  tier2-setup-producer:', 1)[1].split('  tier2-setup-consumer:', 1)[0]
+        self.assertIn('runs-on: ubuntu-26.04', producer)
+        self.assertIn("'zstd', '-T2', '-3'", (ROOT / 'ci/tier2_setup_probe.py').read_text())
+
+    def test_readers_keep_accepting_compressed_and_plain_tar(self):
+        text = (ROOT / '.github/workflows/build-project.yaml').read_text()
+        unpack = text.split('      - name: Unpack Tier 2 Tree', 1)[1].split('\n      - ', 1)[0]
         self.assertIn('tar -xf', unpack)
         prepared = (ROOT / 'ci/ci_gate_steps.py').read_text().split('def validate_prepared_suites()', 1)[1]
         self.assertNotIn("'--zstd'", prepared)
 
-    def test_actions_cache_upload_is_level_one_and_multithreaded_only_on_dell(self):
-        action = (ROOT / '.github/actions/cache/action.yml').read_text()
-        save = action.split('    - name: Save cache', 1)[1]
-        self.assertIn("ZSTD_CLEVEL: ${{ runner.environment == 'self-hosted' && '1' || env.ZSTD_CLEVEL }}", save)
-        self.assertIn("ZSTD_NBTHREADS: ${{ runner.environment == 'self-hosted' && '0' || env.ZSTD_NBTHREADS }}", save)
-
-    def test_ccache_local_stores_disable_compression_only_on_dell(self):
-        text = (ROOT / '.github/workflows/build-project.yaml').read_text()
-        for name in ('Build Touched Linux Targets 🧱', 'Set Qt Cache Limit 🗄️'):
-            step = text.split(f'      - name: {name}', 1)[1].split('\n      - ', 1)[0]
-            self.assertIn('if [ "${RUNNER_ENVIRONMENT:-}" = self-hosted ]; then ccache --set-config=compression=false; fi', step)
-
-    def test_failed_handoff_gets_compressed_before_upload_only_on_dell(self):
-        text = (ROOT / '.github/workflows/build-project.yaml').read_text()
-        prepare = text.split('      - name: Prepare Tier 2 Upload', 1)[1].split('\n      - ', 1)[0]
-        self.assertIn("steps.pcache.outputs.zccache != '' && steps.handoff.outputs.local != 'true'", prepare)
-        self.assertIn('ci/tier2_pack.py --upload', prepare)
-        self.assertLess(text.index('- name: Hand Off Tier 2 Tree'), text.index('- name: Prepare Tier 2 Upload'))
-        self.assertLess(text.index('- name: Prepare Tier 2 Upload'), text.index('- name: Upload Tier 2 Tree'))
-
-    def test_setup_bundle_is_still_hosted_level_three_two_threads(self):
-        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        producer = workflow.split('  tier2-setup-producer:', 1)[1].split('  tier2-setup-consumer:', 1)[0]
-        self.assertIn('runs-on: ubuntu-26.04', producer)
-        probe = (ROOT / 'ci/tier2_setup_probe.py').read_text()
-        self.assertIn("'zstd', '-T2', '-3'", probe)
-        self.assertIn('compression-level: 0', producer)
-
-    def test_dell_routed_artifact_steps_skip_zip_compression_hosted_keeps_six(self):
-        # No YAML dependency: job headers and pinned upload callsites are enough.
-        for filename in ('build-project.yaml', 'ci.yml', 'check-format.yaml'):
-            text = (ROOT / '.github/workflows' / filename).read_text()
-            for job in re.split(r'(?m)^  [a-z0-9-]+:\n', text)[1:]:
-                runner = re.search(r'(?m)^    runs-on: (.*)', job)
-                if not runner or 'mq-runner' not in runner[1]:
-                    continue
-                for step in re.split(r'(?m)^      - ', job)[1:]:
-                    if 'uses: actions/upload-artifact@' not in step:
-                        continue
-                    with self.subTest(workflow=filename, step=step.splitlines()[0]):
-                        self.assertRegex(step, r"compression-level: (?:0|\$\{\{ runner.environment == 'self-hosted' && '0' \|\| '6' \}\})\n")
-
     @unittest.skipUnless(is_linux() and shutil.which('zstd'), 'Linux pack requires GNU tar and zstd')
-    def test_pack_commands_and_roundtrip(self):
+    def test_actual_pack_inherits_default_and_overridden_cli_levels(self):
         pack = importlib.import_module('tier2_pack')
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            build = root / 'build'
-            (build / 'tree/cargo').mkdir(parents=True)
-            (build / 'tree/test').write_text('real payload\n' * 20)
-            (build / 'tree/excluded.o').write_text('object')
-            (build / 'tree/cargo/excluded').write_text('cargo')
-            (build / 'tree/link').symlink_to('test')
-            marker = root / 'marker'
-            marker.write_text('dell-fsx3mn2\n')
-            for persistent, handoff, labels, options in (
-                ('', '', '', ['--zstd']),
-                ('cache', '', '["self-hosted","dell-fsx3mn2"]', ['-I', 'zstd -1 -T0']),
-                ('cache', 'handoff', '["self-hosted","other"]', ['-I', 'zstd -1 -T0']),
-                ('cache', 'handoff', 'invalid', ['-I', 'zstd -1 -T0']),
-                ('cache', 'handoff', '["self-hosted","dell-fsx3mn2"]', []),
-            ):
-                with self.subTest(persistent=persistent, handoff=handoff, labels=labels):
-                    env = {'OBS_TIER2_PERSISTENT': persistent, 'OBS_TIER2_HANDOFF': handoff, 'MQ_RUNNER_LABELS': labels}
-                    output = root / f'pack-{len(list(root.glob("pack-*")))}'
-                    with patch.dict(os.environ, env), patch.object(pack.subprocess, 'run', wraps=subprocess.run) as run:
-                        pack.pack(build, output, marker)
-                    self.assertEqual(run.call_args.args[0][1:1 + len(options)], options)
-                    archive = output / 'tier2-tree.tar.zst'
-                    compressed = archive.read_bytes()[:4] == bytes.fromhex('28b52ffd')
-                    self.assertEqual(compressed, bool(options))
+            (root / 'tree/cargo').mkdir(parents=True)
+            (root / 'tree/test').write_text('payload\n' * 1000)
+            (root / 'tree/test.o').write_text('excluded object')
+            (root / 'tree/cargo/excluded').write_text('excluded Rust output')
+            (root / 'tree/link').symlink_to('test')
+            for label, level in (('hosted-default', None), ('dell-auto', '1'), ('override', '8')):
+                env = {k: v for k, v in os.environ.items() if k not in ('ZSTD_CLEVEL', 'ZSTD_NBTHREADS')}
+                if level:
+                    env.update(ZSTD_CLEVEL=level, ZSTD_NBTHREADS='0')
+                output = root / label
+                with self.subTest(level=level), patch.dict(os.environ, env, clear=True):
+                    with patch.object(pack.subprocess, 'run', wraps=subprocess.run) as run:
+                        pack.pack(root, output)
+                    argv = run.call_args.args[0]
+                    self.assertEqual(argv[:2], ['tar', '--zstd'])
+                    self.assertFalse(any(re.fullmatch(r'-\d+|--zstd-level|--fast=.*', arg) for arg in argv))
+                    actual = output / 'tier2-tree.tar.zst'
+                    expected = output / 'expected.tar.zst'
+                    # Compare bytes to an independent explicit-level compression
+                    # of the same tar. This fails if the implementation shadows
+                    # the caller's ZSTD_CLEVEL, even if roundtrip still succeeds.
+                    reference_env = {k: v for k, v in env.items() if k != 'ZSTD_CLEVEL'}
+                    reference = [arg if arg != str(actual) else str(expected) for arg in argv]
+                    reference[1:2] = ['-I', f'zstd -{level or "3"}']
+                    subprocess.run(reference, check=True, env=reference_env)
+                    self.assertEqual(actual.read_bytes(), expected.read_bytes())
                     dest = output / 'extract'
                     dest.mkdir()
-                    subprocess.run(['tar', '-xf', str(archive), '-C', str(dest)], check=True)
-                    self.assertEqual((dest / 'tree/test').read_bytes(), (build / 'tree/test').read_bytes())
+                    subprocess.run(['tar', '-xf', str(actual), '-C', str(dest)], check=True)
+                    self.assertEqual((dest / 'tree/test').read_bytes(), (root / 'tree/test').read_bytes())
                     self.assertTrue((dest / 'tree/link').is_symlink())
-                    self.assertFalse((dest / 'tree/excluded.o').exists())
+                    self.assertFalse((dest / 'tree/test.o').exists())
                     self.assertFalse((dest / 'tree/cargo').exists())
-
-    @unittest.skipUnless(is_linux() and shutil.which('zstd'), 'Linux pack requires GNU tar and zstd')
-    def test_handoff_oserror_fallback_is_zstd_and_already_compressed_upload_is_unchanged(self):
-        pack = importlib.import_module('tier2_pack')
-        kept = importlib.import_module('tier2_kept_tree')
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / 'tree').mkdir()
-            (root / 'tree/test').write_text('test payload')
-            output = root / 'pack'
-            marker = root / 'marker'
-            marker.write_text('dell-fsx3mn2')
-            env = {'OBS_TIER2_PERSISTENT': 'cache', 'OBS_TIER2_HANDOFF': 'handoff',
-                   'MQ_RUNNER_LABELS': '["dell-fsx3mn2"]', 'GITHUB_OUTPUT': str(root / 'outputs')}
-            with patch.dict(os.environ, env):
-                pack.pack(root, output, marker)
-                with patch.object(kept, 'handoff_put', side_effect=OSError('host store full')):
-                    self.assertEqual(kept.main(['handoff-put', '--root', tmp, '--key', '1', '--pack', str(output),
-                                                '--labels', env['MQ_RUNNER_LABELS'], '--marker', str(marker)]), 0)
-                self.assertIn('local=false', (root / 'outputs').read_text())
-                with patch.object(pack.subprocess, 'run', wraps=subprocess.run) as run:
-                    pack.prepare_upload(output)
-                self.assertEqual(run.call_args.args[0][:3], ['zstd', '-1', '-T0'])
-                archive = output / 'tier2-tree.tar.zst'
-                before = archive.read_bytes()
-                self.assertEqual(before[:4], bytes.fromhex('28b52ffd'))
-                with patch.object(pack.subprocess, 'run') as run:
-                    pack.prepare_upload(output)
-                run.assert_not_called()
-                self.assertEqual(archive.read_bytes(), before)
-                dest = root / 'extract'
-                dest.mkdir()
-                subprocess.run(['tar', '-xf', str(archive), '-C', str(dest)], check=True)
-                self.assertEqual((dest / 'tree/test').read_text(), 'test payload')
 
 
 if __name__ == '__main__':
