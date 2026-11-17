@@ -36,6 +36,7 @@ use obs_c_oracle as _; // blog
 use obs_util as _; // base log handler
 
 pub mod background_app_id;
+pub mod background_control;
 pub mod background_enum;
 pub mod background_error;
 pub mod background_query;
