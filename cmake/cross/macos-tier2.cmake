@@ -101,7 +101,10 @@ function(_obs_cross_tier2_tests)
   )
   add_dependencies(libobs_rust-static libobs-cross-shared-rust)
   add_custom_target(cargo-build_libobs_rust DEPENDS libobs-cross-shared-rust)
-  target_link_libraries(libobs_rust-static INTERFACE "-framework CoreFoundation" "-framework Security" iconv)
+  target_link_libraries(
+    libobs_rust-static
+    INTERFACE "-framework CoreFoundation" "-framework Foundation" "-framework IOKit" "-framework Security" iconv
+  )
   foreach(
     _component
     IN
