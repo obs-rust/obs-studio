@@ -257,8 +257,10 @@ static void run_case(const struct plugin_case *c)
 	/* Destroying the encoder freed every buffer it allocated, its
 	 * audio_output_buffer planes included. */
 	long left = settled_allocs(baseline) - baseline;
-	if (left >= RUNS)
-		fail_msg("%ld blocks still allocated after %d runs", left, RUNS);
+	if (left >= RUNS) {
+		fprintf(stderr, "%ld blocks still allocated after %d runs\n", left, RUNS);
+		fail();
+	}
 }
 
 static void planar_stereo(void **state)
