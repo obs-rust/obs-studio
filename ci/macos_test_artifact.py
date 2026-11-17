@@ -181,11 +181,27 @@ def copy_artifact(root: Path, bundle: Path, path: str) -> str:
     return rel
 
 
+def collect_build_scripts(events: list[dict], root: Path, bundle: Path, target_directory: Path) -> dict:
+    scripts = {}
+    for event in events:
+        if event.get("reason") != "build-script-executed":
+            continue
+        output = event.get("out_dir")
+        if output:
+            copy_artifact(root, bundle, output)
+        # A build dependency can execute the same package's build script for
+        # both hosts. Retain both outputs, but use Darwin's env regardless of
+        # Cargo event ordering. Pure host dependencies have no target event.
+        if event["package_id"] not in scripts or (output and Path(output).is_relative_to(target_directory / TARGET)):
+            scripts[event["package_id"]] = event
+    return scripts
+
+
 def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: list[str]) -> dict:
     if not events or events[-1] != {"reason": "build-finished", "success": True}:
         raise ValueError("Cargo did not report a complete successful build")
     packages = {p["id"]: p for p in metadata["packages"]}
-    scripts = {e["package_id"]: e for e in events if e.get("reason") == "build-script-executed"}
+    scripts = collect_build_scripts(events, root, bundle, Path(metadata.get("target_directory", root / "target")))
     tests = []
 
     def relative(path: str) -> str:
@@ -194,9 +210,6 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: 
     def portable(value: str) -> str:
         return value.replace(str(root), "{root}")
 
-    for script in scripts.values():
-        if script.get("out_dir"):
-            copy_artifact(root, bundle, script["out_dir"])
     for event in events:
         if event.get("reason") != "compiler-artifact" or not event.get("executable"):
             continue
