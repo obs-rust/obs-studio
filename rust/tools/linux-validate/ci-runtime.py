@@ -101,16 +101,39 @@ def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> l
     return result
 
 
+def install_packages(ident: str, variant: str, requirements: str, changed: list[str]) -> None:
+    # Prebaked confirms exact installed versions; stock/prepared retain their installs.
+    packages = changed
+    if variant == 'prebaked':
+        packages = requirements.splitlines()
+    if variant == 'stock':
+        packages = [*requirements.splitlines(), 'git', 'ca-certificates', 'curl', 'sudo', 'zstd']
+    elif changed:
+        print('Runtime selection: prepared plus ' + ' '.join(changed), flush=True)
+    if packages:
+        command('docker', 'exec', ident, 'sh', '-c',
+                'if test -f /etc/apt/apt.conf.d/docker-clean; then '
+                'mv /etc/apt/apt.conf.d/docker-clean /tmp/docker-clean.disabled; fi')
+        if variant != 'prebaked':
+            command('docker', 'exec', ident, 'apt-get', 'update', '-qq')
+        command('docker', 'exec', ident, 'apt-get', 'install', '-y', '--no-install-recommends', *packages)
+
+
 def execute(args: argparse.Namespace) -> None:
     started = time.monotonic()
     requirements = args.packages.read_text()
     selection.records(requirements, '=')
-    descriptor = json.loads(args.descriptor.read_text())
+    prebaked = getattr(args, 'prebaked_image', '')
+    if prebaked and not re.fullmatch(r'ghcr\.io/obs-rust/tier2-linux@sha256:[0-9a-f]{64}', prebaked):
+        raise ValueError('Invalid prebaked Tier 2 digest')
+    descriptor = {} if prebaked else json.loads(args.descriptor.read_text())
     args.state.mkdir(parents=True, exist_ok=True)
     args.cost.mkdir(parents=True, exist_ok=True)
-    image = prepared_image(descriptor, requirements, args.state)
-    variant = 'prepared' if image else 'stock'
-    changed = selection.delta(requirements, descriptor['inventory']) if image else []
+    image = prebaked or prepared_image(descriptor, requirements, args.state)
+    variant = 'prebaked' if prebaked else ('prepared' if image else 'stock')
+    changed = selection.delta(requirements, descriptor['inventory']) if variant == 'prepared' else []
+    if prebaked:
+        command('docker', 'pull', prebaked)
     if image is None:
         command('docker', 'pull', BASE)
     ident = command('docker', 'create', '--platform', 'linux/amd64', '--cpus', '4',
@@ -121,18 +144,7 @@ def execute(args: argparse.Namespace) -> None:
         raise ValueError('Invalid runtime container identity')
     try:
         command('docker', 'start', ident)
-        # Stock installs the whole closure; prepared only what changed since.
-        packages = changed
-        if variant == 'stock':
-            packages = [*requirements.splitlines(), 'git', 'ca-certificates', 'curl', 'sudo', 'zstd']
-        elif changed:
-            print('Runtime selection: prepared plus ' + ' '.join(changed), flush=True)
-        if packages:
-            command('docker', 'exec', ident, 'sh', '-c',
-                    'if test -f /etc/apt/apt.conf.d/docker-clean; then '
-                    'mv /etc/apt/apt.conf.d/docker-clean /tmp/docker-clean.disabled; fi')
-            command('docker', 'exec', ident, 'apt-get', 'update', '-qq')
-            command('docker', 'exec', ident, 'apt-get', 'install', '-y', '--no-install-recommends', *packages)
+        install_packages(ident, variant, requirements, changed)
         inventory = command('docker', 'exec', ident, 'dpkg-query', '-W', '-f=${binary:Package}\t${Version}\n')
         if not selection.satisfies(requirements, inventory):
             raise ValueError('Runtime does not satisfy the current artifact package closure')
@@ -158,6 +170,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('descriptor', 'packages', 'source', 'build', 'cost', 'uv', 'archives', 'state'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--prebaked-image', default='', help='Selected public Dell image, pinned by digest')
     parser.add_argument('--mode', choices=('OFF', 'ON'), required=True)
     parser.add_argument('--part', required=True, help='all, suite, serial or serial-<i>-of-<n>')
     args = parser.parse_args()

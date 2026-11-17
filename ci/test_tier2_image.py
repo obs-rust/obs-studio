@@ -12,8 +12,8 @@ import unittest
 from unittest.mock import patch
 import urllib.error
 
-from ci.test_ci_pre import jobs, needs, upstream
-from ci.test_workflow_duplicate_keys import duplicate_keys, truncated_scalars
+from test_ci_pre import jobs, needs, upstream
+from test_workflow_duplicate_keys import duplicate_keys, truncated_scalars
 
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = ROOT / 'ci/tier2_image.py'
@@ -65,7 +65,7 @@ class ImageTest(unittest.TestCase):
         for result in (None, '', 'latest', 'sha256:bad'):
             with self.subTest(result=result), patch.object(self.image, 'manifest_digest', return_value=result):
                 self.assertEqual(self.image.select_image('["self-hosted"]', ROOT), self.image.base_image(ROOT))
-        for error in (urllib.error.URLError('offline'), TimeoutError(), ValueError('bad response'), OSError('offline')):
+        for error in (urllib.error.URLError('offline'), TimeoutError(), ValueError('bad response'), OSError('offline'), RuntimeError('protocol failure')):
             with self.subTest(error=error), patch.object(self.image, 'manifest_digest', side_effect=error):
                 self.assertEqual(self.image.select_image('["self-hosted"]', ROOT), self.image.base_image(ROOT))
 
@@ -108,6 +108,21 @@ class ImageTest(unittest.TestCase):
             self.image.publish(ROOT)
             run.assert_not_called()
 
+    def test_missing_tag_builds_and_pushes_the_shared_identity(self):
+        image = self.image
+        env = {'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/master',
+               'GITHUB_REPOSITORY': 'obs-rust/obs-studio', 'GITHUB_ACTOR': 'builder',
+               'GITHUB_TOKEN': 'test-only'}
+        with patch.dict(os.environ, env), patch.object(image, 'manifest_digest', return_value=None), \
+                patch.object(image.subprocess, 'run') as run:
+            image.publish(ROOT)
+            calls = run.call_args_list
+            self.assertIn('--password-stdin', calls[0].args[0])
+            self.assertEqual(calls[0].kwargs['input'], 'test-only')
+            self.assertEqual(calls[1].args[0], ['docker', 'build', '--platform', 'linux/amd64',
+                '--tag', image.identity(ROOT), '--file', str(ROOT / image.DOCKERFILE), str(ROOT / image.CONTEXT)])
+            self.assertEqual(calls[2].args[0], ['docker', 'push', image.identity(ROOT)])
+
     def test_probe_error_does_not_overwrite_an_unknown_tag(self):
         env = {'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/master',
                'GITHUB_REPOSITORY': 'obs-rust/obs-studio'}
@@ -138,7 +153,7 @@ class WorkflowTest(unittest.TestCase):
         all_jobs = jobs(BUILD.read_text())
         selector = all_jobs['check-event']
         self.assertIn('tier2_image: ${{ steps.tier2-image.outputs.image }}', selector)
-        self.assertIn('MQ_RUNNER_LABELS: ${{ inputs.mq-runner-labels }}', selector)
+        self.assertIn('MQ_RUNNER_LABELS: ${{ inputs.mq-heavy-labels }}', selector)
         self.assertIn('uv run --no-project ci/tier2_image.py select', selector)
         build, tests = all_jobs['rust-linux-tier2-build'], all_jobs['rust-linux-tier2']
         self.assertIn('image: ${{ needs.check-event.outputs.tier2_image }}', build)
@@ -158,7 +173,10 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('/var/lib/apt/lists/*', dockerfile)
         bootstrap = (ROOT / image.BOOTSTRAP).read_text().split()
         build = jobs(BUILD.read_text())['rust-linux-tier2-build']
-        self.assertIn(' '.join(bootstrap), build)
+        installs = re.findall(r'apt-get install[^\n]*--fix-missing ([^\n]+)', build)
+        self.assertEqual(len(installs), 2)
+        for packages in installs:
+            self.assertEqual(packages.split(' &&', 1)[0].split(), bootstrap)
         self.assertIn('apt-packages.txt', dockerfile)
 
     def test_workflows_parse_and_all_needs_and_output_references_resolve(self):

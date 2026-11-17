@@ -1071,6 +1071,18 @@ by the runner account; the Tier 2 build and Flatpak jobs use `container:`, thoug
 they are not selected on the trimmed queue path. This change neither registers
 nor configures a runner. Clear the variable to return to hosted Linux runners.
 
+### Prebaked Dell Tier 2 packages
+
+The independent master-push `tier2-image` job publishes the content-addressed
+public GHCR package described in
+[`rust/tools/linux-validate/tier2-image/README.md`](../rust/tools/linux-validate/tier2-image/README.md).
+The first master push after merge seeds it; Dell selection switches to its
+immutable digest once the public manifest exists. Hosted runners keep their
+current image paths. Probe errors fall back, and the required gate does not wait
+for publication. Baked package versions are frozen until an image input changes;
+stock installs resolve current Ubuntu archive versions. Tests continue checking
+the exact runtime package closure from their build artifact.
+
 ### Host Ubuntu package acquisition (#1269)
 
 The existing Fast Gate, Qt frontend, full Ubuntu app and both Flatpak

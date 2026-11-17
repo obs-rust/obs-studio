@@ -146,6 +146,8 @@ jobs:
       qt: ${{ steps.native.outputs.qt }}
       tier2: ${{ steps.native.outputs.tier2 }}
       tier2_matrix: ${{ steps.tier2-matrix.outputs.matrix }}
+      tier2_image: ${{ steps.tier2-image.outputs.image }}
+      tier2_prebaked: ${{ steps.tier2-image.outputs.prebaked }}
       linux_targets: ${{ steps.native.outputs.linux_targets }}
       qt_sdk: ${{ steps.native.outputs.qt_sdk }}
       docs_only: ${{ steps.native.outputs.docs_only }}
@@ -185,6 +187,12 @@ jobs:
           fi
           echo "swift=$swift" >> "$GITHUB_OUTPUT"
           echo "data=$data" >> "$GITHUB_OUTPUT"
+
+      - name: Select Tier 2 Container Image
+        id: tier2-image
+        env:
+          MQ_RUNNER_LABELS: ${{ inputs.mq-heavy-labels }}
+        run: uv run --no-project ci/tier2_image.py select
 
       - name: Select Tier 2 Scheduling
         id: tier2-matrix
@@ -2592,11 +2600,11 @@ jobs:
   rust-linux-tier2-build:
     name: Rust Tier 2 Linux 🐧 (build)
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
-    # A stock image, no Dockerfile or image build (#966): run directly on the
-    # runner, two group tests failed while passing in a container with the
-    # same libraries, compiler, flags and CPU (#982). Packages install below.
+    # Maintainer-approved revisit of #966: prebake packages for Dell only.
+    # Same base, root user and install commands; keep #982 runtime coverage.
+    # GHCR must be public; anonymous probe errors retain stock Ubuntu.
     container:
-      image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
+      image: ${{ needs.check-event.outputs.tier2_image }}
       # Dell host cache; hosted runners mount an empty directory without the marker.
       volumes:
         - /var/cache/obs-runner:/var/cache/obs-runner
@@ -2611,6 +2619,8 @@ jobs:
     # publishes the proof after the gate, not on its critical path (#3018).
     outputs:
       tier2-linux-proof: ${{ needs.ci-mode.outputs.tier2-linux_name }}
+    env:
+      TIER2_PREBAKED: ${{ needs.check-event.outputs.tier2_prebaked }}
     defaults:
       run:
         shell: bash
@@ -2622,6 +2632,11 @@ jobs:
       # restricted and multiverse (17 -> 9 downloads, ~8% fewer bytes).
       - name: Install Git 📦
         run: |
+          # No index refresh/upgrade: the content-addressed image freezes versions.
+          if [ "$TIER2_PREBAKED" = true ]; then
+            apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata
+            exit 0
+          fi
           src=/etc/apt/sources.list.d/ubuntu.sources
           sed -i -e 's/^Suites: resolute resolute-updates resolute-backports$/Suites: resolute resolute-updates/' \
             -e 's/^Components: main universe restricted multiverse$/Components: main universe/' "$src"
@@ -2703,7 +2718,7 @@ jobs:
             > /etc/dpkg/dpkg.cfg.d/ci-tier2-fast
       - uses: ./.github/actions/cache
         id: apt-cache
-        if: steps.pcache.outputs.apt == ''
+        if: steps.pcache.outputs.apt == '' && needs.check-event.outputs.tier2_prebaked != 'true'
         with:
           mode: restore
           path: ${{ runner.temp }}/apt-archives
@@ -2732,7 +2747,7 @@ jobs:
               ' tier2-apt
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == '' && needs.check-event.outputs.tier2_prebaked != 'true'
         uses: ./.github/actions/cache
         with:
           mode: save
@@ -2976,6 +2991,7 @@ jobs:
           chmod a+rwx "$RUNNER_TEMP/apt-archives"
       - uses: ./.github/actions/cache
         id: apt-cache
+        if: needs.check-event.outputs.tier2_prebaked != 'true'
         with:
           mode: restore
           path: ${{ runner.temp }}/apt-archives
@@ -3020,6 +3036,7 @@ jobs:
         run: |
           uv run --no-project rust/tools/linux-validate/ci-runtime.py \
             --descriptor rust/tools/linux-validate/prepared-runtime.json \
+            --prebaked-image "${{ needs.check-event.outputs.tier2_prebaked == 'true' && needs.check-event.outputs.tier2_image || '' }}" \
             --packages "$RUNNER_TEMP/tier2-pack/runtime-packages.txt" \
             --source "$GITHUB_WORKSPACE" --build "$RUNNER_TEMP/tier2" \
             --cost "$GITHUB_WORKSPACE/.tier2-cost" --uv "$(command -v uv)" \

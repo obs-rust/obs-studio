@@ -108,10 +108,13 @@ class WorkflowTest(unittest.TestCase):
 
 
 class ContainerTest(unittest.TestCase):
-    def test_runs_in_a_digest_pinned_stock_image(self):
-        """No Dockerfile or image build, but the container environment the
-        tests pass in (#982)."""
-        self.assertRegex(tier2_job(), r"container:\n\s+image: ubuntu:26\.04@sha256:[0-9a-f]{64}")
+    def test_runs_in_selected_image_with_the_same_pinned_stock_base(self):
+        """The approved #966 revisit preserves #982's base and job environment."""
+        self.assertIn('image: ${{ needs.check-event.outputs.tier2_image }}', tier2_job())
+        dockerfile = (HERE / 'tier2-image/Dockerfile').read_text()
+        self.assertRegex(dockerfile, r'^FROM ubuntu:26\.04@sha256:[0-9a-f]{64}\n')
+        self.assertNotRegex(dockerfile, r'(?m)^USER ')
+        self.assertIn('base_image(root)', (ROOT / 'ci/tier2_image.py').read_text())
 
 
 class GitOwnershipTest(unittest.TestCase):

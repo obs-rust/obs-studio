@@ -86,10 +86,6 @@ class RuntimeTest(unittest.TestCase):
                 self.assertEqual(report['variant'], 'prepared')
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class PrebakedRuntimeTest(unittest.TestCase):
     def test_prebaked_runtime_keeps_exact_install_and_inventory_check_without_update(self):
         for matching in (True, False):
@@ -124,3 +120,7 @@ class PrebakedRuntimeTest(unittest.TestCase):
                     self.assertFalse(any('update' in call for call in calls))
                     self.assertTrue(any('install' in call and 'a=1' in call for call in calls))
                     self.assertEqual(calls[-1], ('docker', 'stop', '--timeout', '1', 'd' * 64))
+
+
+if __name__ == '__main__':
+    unittest.main()
