@@ -1,4 +1,4 @@
-"""Verify the macOS/Windows Rust lanes start with Fast Gate (#2985).
+"""Verify independent platform and cross-lint lanes start with Fast Gate.
 
 Fast Gate is a full lint plus Rust-test lane on Linux, measured at 1.8-8.6 min
 on a merge-queue run and 10.4-11.2 min on the PR run that #2593 recorded. The
@@ -32,9 +32,9 @@ PLATFORM_LANES = (
     "rust-tier2-macos",
     "rust-tier2-windows",
 )
-# Kept serial: it runs on the same cheap Linux pool as Fast Gate, so starting it
-# early saves no wall time and would spend a runner on a diff the gate rejects.
-STILL_GATED = ("rust-cross-lint",)
+# Cross lint consumes no Fast Gate output. The November baseline shows that
+# serializing even the same hosted Linux pool adds 4.5-5.3 min to CI-only PRs.
+CROSS_LANES = ("rust-cross-lint", "rust-cross-lint-release")
 
 
 def job(name):
@@ -62,7 +62,7 @@ def ancestors(name):
 
 class PlatformLaneOverlapTest(unittest.TestCase):
     def test_platform_lanes_have_no_fast_gate_ancestor(self):
-        for name in PLATFORM_LANES:
+        for name in PLATFORM_LANES + CROSS_LANES:
             with self.subTest(lane=name):
                 self.assertNotIn("rust-tests-linux", ancestors(name))
                 self.assertIn("check-event", dependencies(name))
@@ -71,14 +71,14 @@ class PlatformLaneOverlapTest(unittest.TestCase):
     def test_platform_lanes_do_not_reference_the_gate_result(self):
         # A `needs.<job>.result` left behind would be the same serialization,
         # and it would be a dangling reference once the need is gone.
-        for name in PLATFORM_LANES:
+        for name in PLATFORM_LANES + CROSS_LANES:
             with self.subTest(lane=name):
                 self.assertNotIn("needs.rust-tests-linux", header(name))
 
     def test_platform_lanes_keep_their_scope_and_skip_guards(self):
         # Overlapping the gate must not turn into running on every event: the
         # diff scope (#436) and the ci-mode skip flags still decide.
-        for name in PLATFORM_LANES:
+        for name in PLATFORM_LANES + ("rust-cross-lint",):
             with self.subTest(lane=name):
                 head = header(name)
                 self.assertIn("always()", head)
@@ -86,11 +86,11 @@ class PlatformLaneOverlapTest(unittest.TestCase):
                 self.assertIn("needs.check-event.outputs.", head)
                 self.assertIn("needs.ci-mode.outputs.skip_", head)
 
-    def test_cheap_same_pool_lane_still_waits_for_the_gate(self):
-        for name in STILL_GATED:
+    def test_cross_lane_output_providers_remain_dependencies(self):
+        for name in CROSS_LANES:
             with self.subTest(lane=name):
-                self.assertIn("rust-tests-linux", dependencies(name))
-                self.assertIn("needs.rust-tests-linux.result != 'failure'", header(name))
+                referenced = set(re.findall(r"needs\.([a-z0-9-]+)\.", job(name)))
+                self.assertLessEqual(referenced, set(dependencies(name)))
 
     def test_a_failed_fast_gate_still_fails_the_run(self):
         # The platform lanes no longer gate on the Fast Gate result, so the
