@@ -3717,6 +3717,24 @@
         }
       ]
     },
+    "test_encoder_reroute": {
+      "sources": [
+        "test/cmocka/test_encoder_reroute.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_roi": {
       "sources": [
         "test/cmocka/test_encoder_roi.c"
@@ -21295,6 +21313,13 @@
         "${target}"
       ],
       "timeout_seconds": 10
+    },
+    "test_encoder_reroute": {
+      "target": "test_encoder_reroute",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_encoder_roi": {
       "target": "test_encoder_roi",
