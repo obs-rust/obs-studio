@@ -55,7 +55,7 @@ VIA_PREFIXES = {
 # table (and ci.toml) moves the layers from "kept" to "deleted on the next
 # merge-queue run": #3061 pinned this commit on 2026-10-30 and v2 keys stopped
 # being written, while `deps` still resolved to cook-base-v2- (#3166).
-SETUP_SOLDR_PIN = "e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0"  # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
+SETUP_SOLDR_PIN = "db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1"  # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
 SETUP_SOLDR_COOK_PREFIX = "cook-base-v4-"  # src/lib/cook-cache.ts: COOK_BASE_KEY_PREFIX = "cook-base-v4"
 
 
