@@ -68,6 +68,12 @@ class SupersededTest(unittest.TestCase):
         runs = [self.current, run(11, f"{Q}970-e5f6a7", "queued", "2026-10-16T04:09:00Z")]
         self.assertEqual(self.cs.superseded(runs, self.current), [])
 
+    def test_acquisition_rerun_keeps_the_current_run_id_and_creation_time(self):
+        retried = dict(self.current, run_attempt=2)
+        self.assertEqual(self.cs.superseded([retried], retried), [])
+        newer = run(11, f"{Q}970-e5f6a7", "in_progress", "2026-10-16T04:09:00Z")
+        self.assertEqual(self.cs.superseded([retried, newer], newer), [retried["id"]])
+
     def test_ignores_finished_runs_and_pr_branches(self):
         runs = [
             self.current,
