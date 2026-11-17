@@ -306,49 +306,12 @@ else
 
   # Query the current Ninja build graph, not the filesystem: the /build volume
   # persists across runs, so a stale .o from an older checkout would linger.
-  # compiles <target> <source> <object>: <source> (a path below the source
-  # tree) is compiled into <target>, as its own <object> (the path Ninja
-  # names it by below <target>.dir) or, with ENABLE_UNITY_BUILD,
-  # inside one of the target's unity batches (<target>.dir/Unity/unity_N_c.c
-  # includes it). Queries the current Ninja graph and generated batches, not
-  # stale objects on the persistent /build volume.
-  # A unity group (BUILD.md) counts when <target> compiles a group whose file
-  # includes <source>.
-  # Each target's inputs, groups and Unity includes are read once into a
-  # fresh dir: loading the graph per object took 59 s for 176 objects (#3046).
-  proof_dir=$(mktemp -d)
-  target_lists() {
-    local target=$1 unity
-    [ -e "$proof_dir/$target.inputs" ] && return 0
-    ninja -C "$build" -t inputs "$target" >"$proof_dir/$target.inputs" 2>/dev/null || true
-    sed -n "s|.*CMakeFiles/$target\.dir/\(build/.*+\.h\.[cm]\)\.o\$|\1|p" \
-      "$proof_dir/$target.inputs" >"$proof_dir/$target.groups"
-    unity=$(find "$build" -type d -path "*/CMakeFiles/$target.dir/Unity" | head -1)
-    : >"$proof_dir/$target.unity"
-    if [ -n "$unity" ]; then
-      sed -n 's/^#include "\(.*\)"$/\1/p' "$unity"/*.c >"$proof_dir/$target.unity" 2>/dev/null || true
-    fi
-  }
-  compiles() {
-    local target=$1 src=$2 object=$3 group
-    target_lists "$target"
-    grep -qF "$target.dir/$object" "$proof_dir/$target.inputs" && return 0
-    while read -r group; do
-      grep -qF "\"$src\"" "$SRC/libobs/$group" 2>/dev/null && return 0
-    done <"$proof_dir/$target.groups"
-    grep -q "/$src\$" "$proof_dir/$target.unity"
-  }
-  for obj in $ported_objs; do
-    src="libobs/${obj%.o}"
-    if compiles libobs "$src" "$obj"; then
-      echo "FAIL: $obj was compiled into hybrid libobs"
-      exit 1
-    fi
-    if ! compiles libobs-c-reference "$src" "$obj"; then
-      echo "FAIL: $obj was not compiled into libobs-c-reference"
-      exit 1
-    fi
-  done
+  # ported_proof.py holds the predicate (own object, unity group, or CMake
+  # Unity batch) and reads each target's lists once. Its shell predecessor
+  # spawned a grep per object per group: 176 s for 469 objects on the Dell
+  # (#4954), after loading the graph per object had cost 59 s for 176 (#3046).
+  # shellcheck disable=SC2086 # one object per word
+  uv run --no-project python "$SRC/rust/tools/linux-validate/ported_proof.py" --build "$build" --src "$SRC" ported $ported_objs
   plugin=$(find "$build" -name 'decklink.so' | head -1)
   echo "== decklink.so imports:"
   nm -D --undefined-only "$plugin" | grep bitstream_reader
@@ -358,7 +321,8 @@ else
   for target in obs-nvenc obs-nvenc-c-reference; do
     # Each loader is a unity group of its own (BUILD.md).
     if [ "$target" = obs-nvenc ]; then want=cuda-load-rust not=cuda-load; else want=cuda-load not=cuda-load-rust; fi
-    if ! compiles "$target" - "build/obs-nvenc.$want+.h.c.o" || compiles "$target" - "build/obs-nvenc.$not+.h.c.o"; then
+    if ! uv run --no-project python "$SRC/rust/tools/linux-validate/ported_proof.py" --build "$build" --src "$SRC" compiles "$target" - "build/obs-nvenc.$want+.h.c.o" ||
+      uv run --no-project python "$SRC/rust/tools/linux-validate/ported_proof.py" --build "$build" --src "$SRC" compiles "$target" - "build/obs-nvenc.$not+.h.c.o"; then
       echo "FAIL: $target must compile $want and not $not"
       exit 1
     fi
