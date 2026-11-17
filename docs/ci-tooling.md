@@ -416,14 +416,15 @@ the paths that select them, so a change only triggers the tests it can affect.
   defers (Linux Tier 2, Qt, the workspace tests) and runs macOS/Windows
   Rust tests and Tier 2 for paths that select them **and for core code**
   (`libobs/`, `rust/`, Cargo files). This retains coverage for native core
-  regressions (#2916, #2910). Merge groups execute selected heavy checks on the immutable base/head diff,
+  regressions (#2916, #2910). Merge groups execute selected heavy checks on the cumulative diff
+  from the target branch's merge-base to the event head,
   including both native Rust/Tier 2 hosts for core/shared changes, selected
   platform paths, Linux Tier 2 OFF/ON, Qt and C/C++ cross work. Every non-docs
   group also runs Windows MSVC test linking and all-six-target clippy/Dylint:
   host, the two linked cross targets and three lint-only targets. Native app
   builds remain on nightly/manual/release events.
   CI Gate resolves the queue's full scope directly from the merge-group
-  event's base/head git diff, independently of reusable-workflow outputs.
+  event's target-branch merge-base/head git diff, independently of reusable-workflow outputs.
   Missing event fields, unavailable commits and failed scope selection fail
   closed with named diagnostics. Cancelled jobs with no assigned runner and
   no steps are reported as runner-capacity conditions and still fail the gate;
@@ -908,8 +909,12 @@ PR and merge-group scope still use their own bases.
 ## Merge queue admission policy
 
 The merge queue is the heavy gate (#4747, maintainer direction in #4743).
-`ci/ci_scope.py` selects lanes from the immutable event `base_sha`/`head_sha`
-diff of the combined merge group. It runs Fast Gate merge-result Rust tests,
+`ci/ci_scope.py` selects lanes from the merge-base of the event's target
+`base_ref` and immutable `head_sha`, diffed against `head_sha`. The target is
+fetched from origin, recovering full history for shallow checkouts. This includes
+earlier queue entries even when `base_sha` names the preceding entry's head
+(#4964). Unknown scope selects all work; CI Gate still rejects unresolved scope.
+It runs Fast Gate merge-result Rust tests,
 host formatting/clippy/Dylint and touched Linux targets, selected C/C++ cross
 compilation, complete Linux Tier 2 OFF and ON suites, Qt, and selected native
 Windows/macOS Rust tests and Tier 2. Shared/core changes select both native
