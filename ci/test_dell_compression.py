@@ -26,8 +26,7 @@ class DellCompressionTest(unittest.TestCase):
             text = (ROOT / name).read_text()
             with self.subTest(path=name):
                 self.assertNotRegex(text, r"runner\.environment == 'self-hosted'.*(?:compression-level|&& '(?:0|1)')")
-                self.assertNotIn('ZSTD_CLEVEL:', text)
-                self.assertNotIn('ZSTD_NBTHREADS:', text)
+                self.assertIsNone(re.search(r'^\s+ZSTD_(?:CLEVEL|NBTHREADS):', text, re.M), name)
                 self.assertNotIn('--zstd-level', text)
         cache = (ROOT / '.github/actions/cache/action.yml').read_text()
         self.assertNotIn('ZSTD_CLEVEL:', cache)
@@ -40,7 +39,12 @@ class DellCompressionTest(unittest.TestCase):
             setup = job.index('uses: zackees/setup-soldr@')
             for step in re.split(r'(?m)^      - ', job)[1:]:
                 if 'uses: ./.github/actions/cache' in step and 'mode: save' in step:
-                    self.assertLess(setup, job.index(step))
+                    if job.index(step) < setup:
+                        # Dell routing is merge_group-only. This early apt save
+                        # is a hosted master push, not a Dell compression site.
+                        self.assertIn("github.ref == 'refs/heads/master'", step)
+                    else:
+                        self.assertLess(setup, job.index(step))
             if job_name == 'rust-linux-tier2-build':
                 self.assertLess(setup, job.index('- name: Build Tier 2 (libobs'))
                 self.assertNotIn('Prepare Tier 2 Upload', job)
@@ -53,6 +57,18 @@ class DellCompressionTest(unittest.TestCase):
             with self.subTest(step=name):
                 self.assertIn('ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"', step)
                 self.assertNotIn('compression=false', step)
+
+    @unittest.skipUnless(is_linux(), 'Qt cache workflow shell runs on Linux')
+    def test_ccache_config_command_uses_caller_level_and_unset_default(self):
+        fixture = importlib.import_module('test_qt_cache_budget').QtCacheBudgetTest()
+        fixture.setUp()
+        for level in (None, '8'):
+            env = {k: v for k, v in os.environ.items() if k != 'ZSTD_CLEVEL'}
+            if level:
+                env['ZSTD_CLEVEL'] = level
+            with self.subTest(level=level), patch.dict(os.environ, env, clear=True):
+                _, calls = fixture.run_cache_steps()
+            self.assertIn(f'--set-config=compression_level={level or "1"}', calls)
 
     def test_setup_bundle_remains_hosted_and_retains_its_existing_level(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()

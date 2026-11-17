@@ -1,42 +1,21 @@
 #!/usr/bin/env -S uv run --script
-"""Pack Tier 2 for a local handoff or GitHub, preserving hosted compression."""
-import os
+"""Pack Tier 2 with setup-soldr's (or the caller's) zstd environment."""
 from pathlib import Path
 import subprocess
 import sys
 
-from tier2_kept_tree import handoff_is_local
 
-
-def prepare_upload(output: Path) -> None:
-    """A failed local handoff must still upload level-one multithreaded zstd."""
-    archive = output / 'tier2-tree.tar.zst'
-    with archive.open('rb') as stream:
-        if stream.read(4) == bytes.fromhex('28b52ffd'):
-            return
-    compressed = output / 'tier2-upload.tmp'
-    subprocess.run(['zstd', '-1', '-T0', '-f', str(archive), '-o', str(compressed)], check=True)
-    os.replace(compressed, archive)
-
-
-def pack(build: Path, output: Path, marker: Path = Path('/var/cache/obs-runner/.persistent-cache')) -> None:
-    compression = ['--zstd']
-    if os.environ.get('OBS_TIER2_PERSISTENT'):
-        compression = ['-I', 'zstd -1 -T0']
-        if os.environ.get('OBS_TIER2_HANDOFF') and handoff_is_local(os.environ.get('MQ_RUNNER_LABELS', ''), marker):
-            compression = []
+def pack(build: Path, output: Path) -> None:
     output.mkdir(parents=True, exist_ok=True)
-    # Keep the established artifact name; tar -xf detects the stream's magic,
-    # accepting both plain Dell tar and existing hosted zstd packs.
     archive = output / 'tier2-tree.tar.zst'
-    subprocess.run(['tar', *compression, '-cf', str(archive), '-C', str(build),
+    # No explicit level or thread count: tar's zstd process inherits
+    # ZSTD_CLEVEL/ZSTD_NBTHREADS, exported by setup-soldr when it selects a
+    # policy. An unset environment preserves the hosted zstd defaults.
+    subprocess.run(['tar', '--zstd', '-cf', str(archive), '-C', str(build),
                     '--exclude=*.o', '--exclude=*.a', '--exclude=*.rlib', '--exclude=*.rmeta',
                     '--exclude=tree/cargo', 'tree'], check=True)
-    print(f'== packed {archive.stat().st_size} bytes ({" ".join(compression) or "plain tar"})')
+    print(f'== packed {archive.stat().st_size} bytes')
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == '--upload':
-        prepare_upload(Path(sys.argv[2]))
-    else:
-        pack(Path(sys.argv[1]), Path(sys.argv[2]))
+    pack(Path(sys.argv[1]), Path(sys.argv[2]))
