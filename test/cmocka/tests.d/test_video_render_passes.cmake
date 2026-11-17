@@ -49,7 +49,14 @@ foreach(_variant IN LISTS _video_passes_variants)
       target_link_libraries(${_target} PRIVATE Rpcrt4 winmm)
     endif()
     if(TARGET libobs_rust-static)
-      target_link_libraries(${_target} PRIVATE libobs_rust-static)
+      # MSVC retains the obs-util archive member containing filename formatting.
+      # Keep its unused video-info provider separate so fixture definitions win.
+      add_library(
+        video_render_passes_platform_link_support
+        STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/source-enabled-setter-video-link-stub.c"
+      )
+      target_link_libraries(${_target} PRIVATE libobs_rust-static video_render_passes_platform_link_support)
     endif()
     # Drop unrelated Rust archive sections, whose private C adapters belong to
     # other consumers. The render entry points have only callback dependencies.
