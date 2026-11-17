@@ -29,7 +29,25 @@ foreach(_variant IN LISTS _video_passes_variants)
   if(_variant STREQUAL rust)
     # Deferred Rust-static link support includes private libobs headers, which
     # consume the generated obsconfig.h in the full Tier 2 build.
-    target_include_directories(${_target} PRIVATE "${CMAKE_BINARY_DIR}/config")
+    target_include_directories(
+      ${_target}
+      PRIVATE "${CMAKE_BINARY_DIR}/config" "${_video_passes_root}" "${_video_passes_root}/libobs"
+    )
+    # The deferred FFmpeg adapter also needs blog on MSVC, where its unused
+    # warning function is retained. Supply the real variadic logging half.
+    target_sources(${_target} PRIVATE "${_video_passes_root}/libobs/util/base-variadic.c.h")
+    target_link_libraries(${_target} PRIVATE Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>")
+    if(TARGET gio::gio)
+      find_package(PkgConfig REQUIRED)
+      pkg_check_modules(_video_passes_gio REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gobject-2.0)
+      target_link_libraries(${_target} PRIVATE PkgConfig::_video_passes_gio)
+    endif()
+    if(TARGET LibUUID::LibUUID)
+      target_link_libraries(${_target} PRIVATE LibUUID::LibUUID)
+    endif()
+    if(WIN32)
+      target_link_libraries(${_target} PRIVATE Rpcrt4 winmm)
+    endif()
     if(TARGET libobs_rust-static)
       target_link_libraries(${_target} PRIVATE libobs_rust-static)
     endif()
