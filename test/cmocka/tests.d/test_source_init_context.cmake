@@ -1,7 +1,8 @@
 include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Controlled dependencies exercise both the original C unit and the private Rust
 # shim in separate executables. Both compile the unchanged characterization test.
-set(_source_init_context_path "${CMAKE_SOURCE_DIR}/libobs/obs-source-init-context.c.h")
+set(_source_init_context_path "${CMAKE_CURRENT_LIST_DIR}/../../../libobs/obs-source-init-context.c.h")
+cmake_path(NORMAL_PATH _source_init_context_path)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_source_init_context_path}")
 file(READ "${_source_init_context_path}" _source_init_context_text)
 string(FIND "${_source_init_context_text}" "static const char *source_signals[]" _source_init_context_start)
