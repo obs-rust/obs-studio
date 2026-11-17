@@ -1,3 +1,5 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
+
 # Both executables keep the C assertions unchanged. The reference compiles the
 # retained C orchestration; _rust reaches the actual Rust ABI via the real adapter.
 set(_video_passes_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -22,7 +24,7 @@ foreach(_variant IN LISTS _video_passes_variants)
   endif()
   set(_include_dir "${CMAKE_CURRENT_BINARY_DIR}/video-render-passes-${_variant}")
   file(MAKE_DIRECTORY "${_include_dir}")
-  file(WRITE "${_include_dir}/video-render-passes-under-test.h" "${_bodies}\n${_video_passes_adapter_text}")
+  obs_test_write_file("${_include_dir}/video-render-passes-under-test.h" "${_bodies}\n${_video_passes_adapter_text}")
   add_executable(${_target} "${CMAKE_CURRENT_LIST_DIR}/../test_video_render_passes.c")
   target_include_directories(${_target} PRIVATE "${_include_dir}" ${CMOCKA_INCLUDE_DIR})
   target_link_libraries(${_target} PRIVATE ${CMOCKA_LIBRARIES})

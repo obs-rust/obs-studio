@@ -1,8 +1,7 @@
 # Real constructor adapters, lazily linked for standalone Rust-static consumers.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-scene-create-fields.c.h" _scene_create_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _scene_create_adapter "${_scene_create_adapter}")
-file(
-  WRITE "${CMAKE_CURRENT_BINARY_DIR}/scene-create-fields.c"
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/scene-create-fields.c"
   "#include \"obs-internal.h\"\n#include \"obs-scene.h\"\n${_scene_create_adapter}"
 )
 function(_scene_create_link_support)

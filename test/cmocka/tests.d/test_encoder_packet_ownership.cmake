@@ -24,7 +24,7 @@ string(
   _packet_ownership_body
   "${_packet_ownership_body}"
 )
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/encoder-packet-create-under-test.h" "static ${_packet_ownership_body}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/encoder-packet-create-under-test.h" "static ${_packet_ownership_body}")
 
 add_executable(test_encoder_packet_ownership test_encoder_packet_ownership.c)
 target_include_directories(test_encoder_packet_ownership PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")

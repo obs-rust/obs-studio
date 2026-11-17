@@ -15,5 +15,5 @@ string(
   ${_source_init_context_length}
   _source_init_context_body
 )
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/source-init-context-characterization.inc" "${_source_init_context_body}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/source-init-context-characterization.inc" "${_source_init_context_body}")
 include("${CMAKE_CURRENT_LIST_DIR}/../characterization-headers.cmake")

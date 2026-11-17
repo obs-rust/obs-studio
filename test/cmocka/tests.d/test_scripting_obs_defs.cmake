@@ -17,7 +17,7 @@ if(OS_LINUX OR OS_FREEBSD OR OS_OPENBSD)
 
     # obspython.i includes the obspython.h that obspython/CMakeLists.txt
     # generates; only its PYTHON_LIB name is in it, which the test does not use.
-    file(WRITE "${_obs_defs_dir}/obspython.h" "#pragma once\n\n#define PYTHON_LIB \"\"\n")
+    obs_test_write_file("${_obs_defs_dir}/obspython.h" "#pragma once\n\n#define PYTHON_LIB \"\"\n")
 
     set_source_files_properties(
       "${_obs_defs_scripting}/obslua/obslua.i"

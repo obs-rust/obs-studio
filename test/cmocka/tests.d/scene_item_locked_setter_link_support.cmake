@@ -1,8 +1,7 @@
 # Compile the real production adapter, stripping only its broad PCH include.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-scene-item-locked-fields.c.h" _locked_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _locked_adapter "${_locked_adapter}")
-file(
-  WRITE "${CMAKE_CURRENT_BINARY_DIR}/scene-item-locked-fields.c"
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/scene-item-locked-fields.c"
   "#include \"obs-internal.h\"\n#include \"obs-scene.h\"\n${_locked_adapter}"
 )
 function(_scene_item_locked_setter_link_support)

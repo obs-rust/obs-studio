@@ -11,7 +11,7 @@ function(_canvas_set_name_link_support)
         file(READ "${_adapter}" _source)
         string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "#include \"obs-internal.h\"" _source "${_source}")
         set(_generated "${CMAKE_CURRENT_BINARY_DIR}/canvas-set-name-link-support.c")
-        file(WRITE "${_generated}" "${_source}")
+        obs_test_write_file("${_generated}" "${_source}")
         add_library(canvas_set_name_link_support STATIC EXCLUDE_FROM_ALL "${_generated}")
         target_include_directories(
           canvas_set_name_link_support

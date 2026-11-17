@@ -11,7 +11,7 @@ function(_shader_param_introspection_link_support)
     "${_adapter_text}"
   )
   set(_adapter "${CMAKE_CURRENT_BINARY_DIR}/shader-param-introspection-link-support.c")
-  file(WRITE "${_adapter}" "${_adapter_text}")
+  obs_test_write_file("${_adapter}" "${_adapter_text}")
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
   foreach(_target IN LISTS _targets)
     get_target_property(_links ${_target} LINK_LIBRARIES)

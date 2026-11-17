@@ -5,8 +5,7 @@ function(_timer_range_dispatch_link_support)
     get_target_property(_links ${_target} LINK_LIBRARIES)
     if("libobs_rust-static" IN_LIST _links)
       if(NOT TARGET timer_range_dispatch_link_support)
-        file(
-          WRITE "${CMAKE_CURRENT_BINARY_DIR}/timer-range-dispatch-link-support.c"
+        obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/timer-range-dispatch-link-support.c"
           "#include \"libobs/obs-timer-range-dispatch-fields.c.h\"\n"
         )
         add_library(

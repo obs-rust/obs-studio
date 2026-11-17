@@ -30,7 +30,7 @@ foreach(
   string(SUBSTRING "${_encoder_group_tail}" 0 ${_encoder_group_length} _encoder_group_body)
   string(APPEND _encoder_group_header "static ${_encoder_group_body}\n")
 endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/encoder-group-lifecycle-under-test.h" "${_encoder_group_header}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/encoder-group-lifecycle-under-test.h" "${_encoder_group_header}")
 add_executable(test_encoder_group_lifecycle test_encoder_group_lifecycle.c)
 target_include_directories(test_encoder_group_lifecycle PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(

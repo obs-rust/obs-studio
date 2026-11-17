@@ -7,7 +7,7 @@ function(_graphics_stencil_link_support)
     if(_target MATCHES "_steps_rust$" AND "libobs_rust-static" IN_LIST _links)
       if(NOT TARGET graphics-stencil-link-support)
         set(_wrapper "${CMAKE_CURRENT_BINARY_DIR}/graphics-stencil-link-support.c")
-        file(WRITE "${_wrapper}" "#include \"libobs/graphics/graphics-stencil-adapter.c.h\"\n")
+        obs_test_write_file("${_wrapper}" "#include \"libobs/graphics/graphics-stencil-adapter.c.h\"\n")
         add_library(graphics-stencil-link-support STATIC "${_wrapper}")
         target_include_directories(
           graphics-stencil-link-support

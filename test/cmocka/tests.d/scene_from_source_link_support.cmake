@@ -1,8 +1,7 @@
 # Standalone Rust archive consumers need the real private source-field adapter.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-scene-from-source-fields.c.h" _from_source_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _from_source_adapter "${_from_source_adapter}")
-file(
-  WRITE "${CMAKE_CURRENT_BINARY_DIR}/scene-from-source-fields.c"
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/scene-from-source-fields.c"
   "#include \"obs-internal.h\"\n${_from_source_adapter}"
 )
 function(_scene_from_source_link_support)

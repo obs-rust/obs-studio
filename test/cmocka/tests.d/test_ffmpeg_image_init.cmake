@@ -7,6 +7,6 @@ target_compile_definitions(
     FFMPEG_IMAGE_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
     FFMPEG_IMAGE_CORRUPT="${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-image-init-corrupt.png"
 )
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-image-init-corrupt.png" "corrupt image, not a PNG\n")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-image-init-corrupt.png" "corrupt image, not a PNG\n")
 add_test(NAME test_ffmpeg_image_init COMMAND test_ffmpeg_image_init)
 add_dependencies(cmocka-tests test_ffmpeg_image_init)

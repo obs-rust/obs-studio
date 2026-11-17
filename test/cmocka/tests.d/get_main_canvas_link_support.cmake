@@ -1,8 +1,7 @@
 # Link the real private adapter only when a Rust-static consumer needs it.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-get-main-canvas-fields.c.h" _get_main_canvas_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _get_main_canvas_adapter "${_get_main_canvas_adapter}")
-file(
-  WRITE "${CMAKE_CURRENT_BINARY_DIR}/get-main-canvas-fields.c"
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/get-main-canvas-fields.c"
   "#include \"obs-internal.h\"\n${_get_main_canvas_adapter}"
 )
 function(_get_main_canvas_link_support)

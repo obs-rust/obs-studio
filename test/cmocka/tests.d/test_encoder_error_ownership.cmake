@@ -17,7 +17,7 @@ endif()
 math(EXPR _encoder_error_length "${_encoder_error_end} + 3")
 string(SUBSTRING "${_encoder_error_tail}" 0 ${_encoder_error_length} _encoder_error_body)
 string(REPLACE "obs_encoder_dup_last_error" "encoder_error_ownership_dup" _encoder_error_body "${_encoder_error_body}")
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/encoder-error-ownership-dup.h" "static ${_encoder_error_body}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/encoder-error-ownership-dup.h" "static ${_encoder_error_body}")
 add_executable(test_encoder_error_ownership test_encoder_error_ownership.c)
 target_include_directories(test_encoder_error_ownership PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(
