@@ -224,3 +224,5 @@ pub mod output_size_getters;
 pub mod output_preferred_size;
 
 pub mod output_conversion_callbacks;
+
+pub mod output_weak_lifetime;

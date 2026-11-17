@@ -1,4 +1,4 @@
-/* Unity group (BUILD.md): output weak-handle lifetime. */
+/* Unity group (BUILD.md): private output control and shared atomic primitives. */
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-output-weak-lifetime.c.h"
+#include "libobs/obs-output-weak-lifetime-fields.c.h"
