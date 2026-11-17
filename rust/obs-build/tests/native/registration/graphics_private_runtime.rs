@@ -182,7 +182,8 @@ include("{}/test/cmocka/tests.d/test_windows_keys_steps.cmake")
     } else if family == "private-source" {
         interfaces.insert(
             "OBS::source-init-context-rust-headers".into(),
-            obs_build::validation::headless::prepare_source_context_rust_headers(build, root).unwrap(),
+            obs_build::validation::headless::prepare_source_context_rust_headers(build, root)
+                .unwrap(),
         );
         format!(
             "include(\"{}/test/cmocka/tests.d/test_source_init_context.cmake\")\n",
