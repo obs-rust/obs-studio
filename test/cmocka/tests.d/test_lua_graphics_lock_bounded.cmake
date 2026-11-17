@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # #1275 production regression, separate from the preserved characterization.
 set(_lua_bounded_source "${CMAKE_CURRENT_LIST_DIR}/../../../shared/obs-scripting/obs-scripting-lua-source.c.h")
 cmake_path(NORMAL_PATH _lua_bounded_source)
@@ -10,7 +11,7 @@ if(_lua_bounded_start LESS 0 OR _lua_bounded_end LESS_EQUAL _lua_bounded_start)
 endif()
 math(EXPR _lua_bounded_length "${_lua_bounded_end} - ${_lua_bounded_start}")
 string(SUBSTRING "${_lua_bounded_text}" ${_lua_bounded_start} ${_lua_bounded_length} _lua_bounded_function)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/lua-graphics-lock-bounded-under-test.h" "${_lua_bounded_function}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/lua-graphics-lock-bounded-under-test.h" "${_lua_bounded_function}")
 
 # Generated include interface used by ../build/test-graph.json.
 include("${CMAKE_CURRENT_LIST_DIR}/../characterization-headers.cmake")

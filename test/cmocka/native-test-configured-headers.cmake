@@ -49,9 +49,9 @@ function(_obs_test_graph_configured_header json name root output)
   endif()
   set(directory "${CMAKE_CURRENT_BINARY_DIR}/native-tests/${name}/configured")
   file(MAKE_DIRECTORY "${directory}")
-  # configure_file COPYONLY avoids changing the header's mtime on a no-op configure.
-  file(WRITE "${directory}/${output}.tmp" "${text}")
-  configure_file("${directory}/${output}.tmp" "${directory}/${output}" COPYONLY)
+  # Substitute once so literal template-looking data stays literal. No temporary
+  # configure_file input: rewriting it would itself request another configure.
+  file(CONFIGURE OUTPUT "${directory}/${output}" CONTENT "@text@" @ONLY)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${root}/${input}")
   target_include_directories(${name} PRIVATE "${directory}")
 endfunction()

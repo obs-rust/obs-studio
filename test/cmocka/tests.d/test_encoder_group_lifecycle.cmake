@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # C-source characterization only: compile the real bodies with dependency seams.
 set(_encoder_group_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-group-lifecycle.c.h")
 if(NOT EXISTS "${_encoder_group_source}")
@@ -30,7 +31,7 @@ foreach(
   string(SUBSTRING "${_encoder_group_tail}" 0 ${_encoder_group_length} _encoder_group_body)
   string(APPEND _encoder_group_header "static ${_encoder_group_body}\n")
 endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/encoder-group-lifecycle-under-test.h" "${_encoder_group_header}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/encoder-group-lifecycle-under-test.h" "${_encoder_group_header}")
 add_executable(test_encoder_group_lifecycle test_encoder_group_lifecycle.c)
 target_include_directories(test_encoder_group_lifecycle PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(

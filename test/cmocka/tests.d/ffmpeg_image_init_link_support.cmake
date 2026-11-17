@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Standalone Rust-static consumers need the real private FFmpeg adapter too.
 # Extract only its PCH include, so these tests do not inherit all media-unity
 # dependencies. Every operation below remains the production implementation.
@@ -7,8 +8,7 @@ function(_ffmpeg_image_init_link_support)
   file(READ "${_source}" _body)
   string(REPLACE "#include \"build/libobs-media.pch.h\"" "" _body "${_body}")
   set(_adapter "${CMAKE_CURRENT_BINARY_DIR}/ffmpeg-image-init-link-support.c")
-  file(
-    WRITE "${_adapter}"
+  obs_test_write_file("${_adapter}"
     "#include <errno.h>\n#include <inttypes.h>\n#include <string.h>\n#include \"util/base.h\"\n#include <libavcodec/avcodec.h>\n#include <libavformat/avformat.h>\n#include \"graphics/graphics.h\"\n#include \"graphics/graphics-ffmpeg-orient.h\"\n#include \"graphics/graphics-ffmpeg-init-private.h\"\n${_body}"
   )
   # Keep this as a lazy archive member. Adding the object directly to every

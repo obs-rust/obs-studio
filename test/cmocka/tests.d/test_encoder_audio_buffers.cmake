@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Characterizes static C source only, in both Tier 2 modes. This deliberately
 # extracts the real bodies rather than copying them into a stand-in encoder.
 set(_encoder_buffers_source "${CMAKE_SOURCE_DIR}/libobs/obs-encoder-audio-buffers.c.h")
@@ -21,7 +22,7 @@ foreach(_encoder_buffers_name IN ITEMS free_audio_buffers reset_audio_buffers in
   string(SUBSTRING "${_encoder_buffers_tail}" 0 ${_encoder_buffers_length} _encoder_buffers_body)
   string(APPEND _encoder_buffers_header "static ${_encoder_buffers_body}\n")
 endforeach()
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/encoder-audio-buffers-under-test.h" "${_encoder_buffers_header}")
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/encoder-audio-buffers-under-test.h" "${_encoder_buffers_header}")
 
 add_executable(test_encoder_audio_buffers test_encoder_audio_buffers.c)
 target_include_directories(test_encoder_audio_buffers PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")

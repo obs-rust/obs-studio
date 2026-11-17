@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Real private adapter in a lazy archive: unrelated Rust-static fixtures do not
 # acquire a dependency on a graphics context they never use. Consumers which do
 # call these wrappers supply their actual graphics subsystem as usual.
@@ -9,7 +10,7 @@ function(_vertexbuffer_access_link_support)
     if("libobs_rust-static" IN_LIST _links)
       if(NOT TARGET ${_adapter_target})
         set(_source "${CMAKE_CURRENT_BINARY_DIR}/vertexbuffer-access-link-support.c")
-        file(WRITE "${_source}" "#include \"libobs/obs-vertexbuffer-access-fields.c.h\"\n")
+        obs_test_write_file("${_source}" "#include \"libobs/obs-vertexbuffer-access-fields.c.h\"\n")
         add_library(${_adapter_target} STATIC EXCLUDE_FROM_ALL "${_source}")
         target_include_directories(${_adapter_target} PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
         target_link_libraries(${_adapter_target} PRIVATE SIMDe::SIMDe "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>")

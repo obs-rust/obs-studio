@@ -1,9 +1,9 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Unchanged characterization of the reachable private render-size bridge.
 add_executable(test_video_render_size ../cmocka/test_video_render_size.c)
 # The private bridge is not dynamically exported. Compile the real C reference
 # implementation into this executable; the Rust variant links the archive.
-file(
-  WRITE "${CMAKE_CURRENT_BINARY_DIR}/video-render-size-reference.c"
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/video-render-size-reference.c"
   [=[
 #include "libobs/obs-video-render-size-reference.c.h"
 ]=]

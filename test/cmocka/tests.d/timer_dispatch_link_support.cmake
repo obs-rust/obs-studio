@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Use the real adapter for standalone Rust-static consumers.
 function(_timer_dispatch_link_support)
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
@@ -5,8 +6,7 @@ function(_timer_dispatch_link_support)
     get_target_property(_links ${_target} LINK_LIBRARIES)
     if("libobs_rust-static" IN_LIST _links)
       if(NOT TARGET timer_dispatch_link_support)
-        file(
-          WRITE "${CMAKE_CURRENT_BINARY_DIR}/timer-dispatch-link-support.c"
+        obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/timer-dispatch-link-support.c"
           "#include \"libobs/obs-timer-dispatch-fields.c.h\"\n"
         )
         add_library(timer_dispatch_link_support STATIC "${CMAKE_CURRENT_BINARY_DIR}/timer-dispatch-link-support.c")

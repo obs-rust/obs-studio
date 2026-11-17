@@ -1,8 +1,8 @@
+include("${CMAKE_CURRENT_LIST_DIR}/../write-if-different.cmake")
 # Link the real private adapter only when a Rust-static consumer needs it.
 file(READ "${CMAKE_SOURCE_DIR}/libobs/obs-set-output-source-fields.c.h" _set_output_source_adapter)
 string(REPLACE "#include \"libobs/build/libobs.pch.h\"" "" _set_output_source_adapter "${_set_output_source_adapter}")
-file(
-  WRITE "${CMAKE_CURRENT_BINARY_DIR}/set-output-source-fields.c"
+obs_test_write_file("${CMAKE_CURRENT_BINARY_DIR}/set-output-source-fields.c"
   "#include \"obs-internal.h\"\n${_set_output_source_adapter}"
 )
 function(_set_output_source_link_support)
