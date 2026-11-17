@@ -2637,7 +2637,7 @@ jobs:
           # refuse a connection (run 42755735949): refetch the index and retry.
           for attempt in 1 2 3; do
             apt-get update -qq &&
-              apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd && break
+              apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata && break
             [ "$attempt" = 3 ] && exit 1
             echo "apt attempt $attempt failed; retrying in $((attempt * 10)) s"; sleep $((attempt * 10))
           done
@@ -2724,9 +2724,11 @@ jobs:
           # without a timeout ("held by process 0" from another container), so
           # queue on a blocking flock. An empty archive downloads for minutes
           # (run 44049453484, #4954); hosted dirs are job-local and never wait.
+          # force-unsafe-io still syncs dpkg's database per package. eatmydata
+          # cuts this throwaway container's HDD install from 468 s to 47 s.
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
             xargs flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
-              "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
+              "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''
