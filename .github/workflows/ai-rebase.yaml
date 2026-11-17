@@ -66,7 +66,7 @@ jobs:
           # shellcheck disable=SC2086 # DRY is an optional argument
           uv run --no-project --script ci/ai_rebase.py --requeue-ejected --limit 10 $DRY
       # rustfmt for resolved Rust files (the agent runs `soldr cargo fmt`).
-      - uses: zackees/setup-soldr@d01d9bae0d5a42ceed086dab6f8f272a0c876ac2 # s3 remote cache
+      - uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
         if: env.HAS_TOKEN == 'true'
         with:
           build-cache: false
