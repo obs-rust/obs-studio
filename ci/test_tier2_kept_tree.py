@@ -16,11 +16,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest.mock import patch
 
 import tier2_kept_tree as kt
 
@@ -176,9 +180,111 @@ class HandoffTest(unittest.TestCase):
             kt.handoff_put(self.root, key, self.pack, "[]", self.marker)
             os.utime(self.root / key, (now - age, now - age))
         kt.prune(self.root, max_age_s=86400, max_bytes=10_000_000, now=now)
-        self.assertEqual(sorted(p.name for p in self.root.iterdir()), ["mid", "new"])
+        self.assertEqual(sorted(p.name for p in self.root.iterdir() if not p.name.startswith(".")), ["mid", "new"])
         kt.prune(self.root, max_age_s=86400, max_bytes=5000, now=now)
-        self.assertEqual(sorted(p.name for p in self.root.iterdir()), ["new"])
+        self.assertEqual(sorted(p.name for p in self.root.iterdir() if not p.name.startswith(".")), ["new"])
+
+    def while_copy_paused(self, operation, concurrent):
+        """Run a competitor inside a real copy, with bounded waits and no sleeps."""
+        copying = threading.Event()
+        resume = threading.Event()
+        copy = shutil.copy2
+
+        def paused_copy(src, dest, *args, **kwargs):
+            copying.set()
+            if not resume.wait(5):
+                raise TimeoutError("copy was not resumed")
+            return copy(src, dest, *args, **kwargs)
+
+        with patch.object(kt.shutil, "copy2", side_effect=paused_copy), ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(operation)
+            try:
+                self.assertTrue(copying.wait(5), "operation did not reach its copy")
+                concurrent()
+            finally:
+                resume.set()
+            return future.result(timeout=5)
+
+    def test_prune_skips_an_in_progress_write(self):
+        def prune_stale_temporary_entry():
+            # An old temporary entry is eligible for cleanup even before rename.
+            tmp = next(self.root.glob(".42.*.tmp"))
+            os.utime(tmp, (0, 0))
+            kt.prune(self.root, max_bytes=0)
+            self.assertTrue(tmp.is_dir(), "prune removed the active writer's temporary entry")
+
+        put = self.while_copy_paused(
+            lambda: kt.handoff_put(self.root, "42", self.pack, '["dell-fsx3mn2"]', self.marker),
+            prune_stale_temporary_entry,
+        )
+        self.assertTrue(put["local"])
+        self.assertTrue(kt.handoff_get(self.root, "42", self.tmp / "dest")["hit"])
+
+    def test_prune_skips_a_reader_until_its_copy_finishes(self):
+        kt.handoff_put(self.root, "42", self.pack, "[]", self.marker)
+
+        def prune_during_copy():
+            kt.prune(self.root, max_bytes=0)
+            self.assertTrue((self.root / "42").is_dir(), "prune deleted an entry during its copy")
+
+        got = self.while_copy_paused(
+            lambda: kt.handoff_get(self.root, "42", self.tmp / "dest"), prune_during_copy,
+        )
+        self.assertTrue(got["hit"])
+        self.assertEqual((self.tmp / "dest" / "tier2-tree.tar.zst").read_bytes(), b"tree" * 1000)
+        kt.prune(self.root, max_bytes=0)
+        self.assertFalse((self.root / "42").exists(), "reader must release its lock after copying")
+
+    def test_concurrent_prune_skips_the_busy_round(self):
+        kt.handoff_put(self.root, "42", self.pack, "[]", self.marker)
+        scanning = threading.Event()
+        resume = threading.Event()
+        tree_bytes = kt._tree_bytes
+
+        def paused_size(entry):
+            size = tree_bytes(entry)
+            if threading.current_thread() is not threading.main_thread():
+                scanning.set()
+                if not resume.wait(5):
+                    raise TimeoutError("prune was not resumed")
+            return size
+
+        with patch.object(kt, "_tree_bytes", side_effect=paused_size), ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(kt.prune, self.root)
+            try:
+                self.assertTrue(scanning.wait(5), "prune did not reach its scan")
+                kt.prune(self.root, max_bytes=0)
+                self.assertTrue((self.root / "42").exists(), "a second prune ran while the first held the lock")
+            finally:
+                resume.set()
+            future.result(timeout=5)
+
+    def test_prune_tolerates_an_entry_vanishing_during_stat(self):
+        gone = self.root / "gone"
+        gone.mkdir()
+        stat = Path.stat
+
+        def vanished(path, *args, **kwargs):
+            if path == gone:
+                raise FileNotFoundError(path)
+            return stat(path, *args, **kwargs)
+
+        with patch.object(Path, "stat", new=vanished):
+            kt.prune(self.root)
+
+    def test_prune_io_error_does_not_undo_a_successful_publication(self):
+        with patch.object(kt, "_tree_bytes", side_effect=OSError("cache scan failed")):
+            put = kt.handoff_put(self.root, "42", self.pack, '["dell-fsx3mn2"]', self.marker)
+        self.assertTrue(put["local"])
+        self.assertTrue(kt.handoff_get(self.root, "42", self.tmp / "dest")["hit"])
+
+    def test_prune_never_removes_the_lock_file(self):
+        lock = self.root / ".lock"
+        lock.touch()
+        os.utime(lock, (0, 0))
+        inode = lock.stat().st_ino
+        kt.prune(self.root, max_bytes=0)
+        self.assertEqual(lock.stat().st_ino, inode, "replacing the lock inode splits mutual exclusion")
 
 
 if __name__ == "__main__":
