@@ -859,6 +859,15 @@ fn main() {
         extract_after_libobs_pch(&libobs.join("graphics/stencil-state-entrypoints.c.h")),
     )
     .expect("write original stencil dispatch");
+    {
+        let stem = "obs-source-push-hotkeys";
+        let src = libobs.join(format!("{stem}.c.h"));
+        std::fs::write(
+            extract_dir.join(format!("{stem}.inc")),
+            extract_after_libobs_pch(&src),
+        )
+        .expect("write push-hotkey oracle extract");
+    }
     for stem in [
         "graphics-linear-srgb",
         "graphics-linear-srgb-fields",

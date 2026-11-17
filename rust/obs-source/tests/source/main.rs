@@ -77,6 +77,8 @@ mod ptm_gate;
 mod ptm_gate_parity;
 mod push_delay;
 mod push_delay_parity;
+mod push_hotkeys;
+mod push_hotkeys_parity;
 mod push_queries;
 mod push_queries_parity;
 mod push_to_enable;
