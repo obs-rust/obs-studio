@@ -255,3 +255,5 @@ pub mod output_weak_lifetime;
 pub mod output_encoder_getters;
 
 pub mod output_update;
+
+pub mod service_handler_getters;

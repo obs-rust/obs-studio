@@ -242,3 +242,5 @@ mod output_encoder_getters_parity;
 
 mod output_update;
 mod output_update_parity;
+
+mod service_handler_getters;
