@@ -819,7 +819,6 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: native-cache-ubuntu-${{ matrix.rust }}-${{ github.run_id }}
           path: ${{ runner.temp }}/native-cache-${{ matrix.rust }}.json
           retention-days: 2
@@ -846,7 +845,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: obs-studio-${{ matrix.os }}${{ matrix.rust == 'ON' && '-rust' || '' }}-sources-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/build_ubuntu/obs-studio-*-sources.*
 
@@ -854,7 +852,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: obs-studio-${{ matrix.os }}${{ matrix.rust == 'ON' && '-rust' || '' }}-x86_64-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/build_ubuntu/obs-studio-*-x86_64-ubuntu-gnu.*
 
@@ -862,7 +859,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ fromJSON(needs.check-event.outputs.package) }}
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: obs-studio-${{ matrix.os }}${{ matrix.rust == 'ON' && '-rust' || '' }}-x86_64-${{ needs.check-event.outputs.commitHash }}-dbgsym
           path: ${{ github.workspace }}/build_ubuntu/obs-studio-*-x86_64-ubuntu-gnu-dbgsym.ddeb
 
@@ -1887,7 +1883,6 @@ jobs:
         if: github.event_name != 'merge_group' && steps.local-gate.outputs.name != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: ${{ steps.local-gate.outputs.name }}
           path: ${{ runner.temp }}/dylint-lane-proof
           retention-days: 3
@@ -1953,8 +1948,8 @@ jobs:
           packages=("$APT_ARCHIVES"/*.deb)
           echo "apt archive retained packages: ${#packages[@]}"
           if [ "${#packages[@]}" -gt 0 ]; then du -ch "${packages[@]}" | tail -1; fi
+          ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"
           ccache --max-size=250M
-          if [ "${RUNNER_ENVIRONMENT:-}" = self-hosted ]; then ccache --set-config=compression=false; fi
           ccache --zero-stats
           cmake -S . -B "${RUNNER_TEMP}/targets" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -2017,7 +2012,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success() && needs.check-event.outputs.deferred != 'true' && needs.ci-mode.outputs.rust-test_name != '' && needs.ci-mode.outputs.rust-test_hit != 'true'
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: ${{ needs.ci-mode.outputs.rust-test_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
@@ -2047,7 +2041,6 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: proptest-regressions-${{ runner.os }}
           path: rust/*/tests/proptest-regressions/
           if-no-files-found: ignore
@@ -2257,7 +2250,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: success() && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true'
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: ${{ needs.ci-mode.outputs.cross_name }}
           path: ${{ runner.temp }}/lane-proof
           retention-days: 3
@@ -3184,9 +3176,6 @@ jobs:
           OBS_TIER2_PACK: ${{ runner.temp }}/tier2-pack
           # Only the Dell's marker-backed persistent slot bypasses zccache.
           OBS_TIER2_LAUNCHER: ${{ steps.pcache.outputs.zccache == '' && 'zccache' || '' }}
-          OBS_TIER2_PERSISTENT: ${{ steps.pcache.outputs.zccache }}
-          OBS_TIER2_HANDOFF: ${{ steps.pcache.outputs.handoff }}
-          MQ_RUNNER_LABELS: ${{ inputs.mq-runner-labels }}
           ZCCACHE_CACHE_DIR: ${{ steps.pcache.outputs.zccache || format('{0}/.tier2-zccache', github.workspace) }}
           # A kept tree outperforms the module cache (0/7 Dell hits); avoid its second configure.
           OBS_LIBOBS_MODULE_CACHE_DIR: ${{ steps.pcache.outputs.tree == '' && format('{0}/.tier2-modcache', github.workspace) || '' }}
@@ -3215,12 +3204,6 @@ jobs:
           --root "${{ steps.pcache.outputs.handoff }}" --key ${{ github.run_id }}
           --pack "$RUNNER_TEMP/tier2-pack" --labels "$MQ_RUNNER_LABELS"
           --marker /var/cache/obs-runner/.persistent-cache
-
-      # Handoff publication can fail open (full/unavailable host store). Ensure
-      # that fallback uploads still get fast zstd, never a multi-GB plain tar.
-      - name: Prepare Tier 2 Upload 📦
-        if: steps.pcache.outputs.zccache != '' && steps.handoff.outputs.local != 'true'
-        run: uv run --no-project ci/tier2_pack.py --upload "$RUNNER_TEMP/tier2-pack"
 
       - name: Upload Tier 2 Tree 🧾
         if: steps.handoff.outputs.local != 'true'
@@ -3413,7 +3396,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: tier2-runtime-${{ matrix.mode }}-${{ matrix.part }}
           path: ${{ runner.temp }}/tier2-runtime/runtime-measurement.json
           retention-days: 1
@@ -3422,7 +3404,6 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always() && github.event_name == 'push' && github.ref == 'refs/heads/master'
         with:
-          compression-level: ${{ runner.environment == 'self-hosted' && '0' || '6' }}
           name: tier2-cost-${{ matrix.mode }}-${{ matrix.part }}
           path: .tier2-cost/ctest-cost-${{ matrix.mode }}.txt
           include-hidden-files: true
@@ -3618,8 +3599,8 @@ jobs:
         id: qt-cache-epoch
         run: |
           echo "epoch=$(date +%s)" >> "$GITHUB_OUTPUT"
+          ccache --set-config=compression_level="${ZSTD_CLEVEL:-1}"
           ccache --max-size="$CCACHE_MAXSIZE"
-          if [ "${RUNNER_ENVIRONMENT:-}" = self-hosted ]; then ccache --set-config=compression=false; fi
           ccache --zero-stats
           ccache --version | head -1
           du -sh "$CCACHE_DIR"
