@@ -244,3 +244,5 @@ mod output_update;
 mod output_update_parity;
 
 mod service_handler_getters;
+
+mod service_handler_getters_parity;

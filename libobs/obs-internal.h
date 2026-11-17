@@ -2691,6 +2691,13 @@ struct obs_service {
 
 extern const struct obs_service_info *find_service(const char *id);
 
+/* Borrowed handler field addresses; callers must reject NULL before access. */
+struct obs_service_handler_getters_fields {
+	signal_handler_t *const *signal;
+	proc_handler_t *const *proc;
+};
+extern struct obs_service_handler_getters_fields obs_service_handler_getters_fields(const obs_service_t *service);
+
 /* Private field view for the #3840 Rust state accessors. No ownership transfer. */
 struct obs_service_state_fields {
 	bool *active;

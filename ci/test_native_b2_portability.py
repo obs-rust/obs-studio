@@ -75,7 +75,28 @@ test_video_scaler_direct
 """.split())
 
 
+def stubbed_archive_consumers(graph):
+    # These old support tables describe no-call fixtures with an aborting blog.
+    # Live getter characterization links the real logger instead, so it must not
+    # receive those stubs. Its real adapter and logging are checked separately.
+    return {name for name, target in graph["targets"].items()
+            if "libobs_rust-static" in target.get("libraries", [])
+            and "OBS::libobs" not in target.get("libraries", [])
+            and "libobs/util/base-variadic.c.h" not in target.get("sources", [])}
+
+
 class NativeB2Portability(unittest.TestCase):
+    def test_service_handler_getters_use_real_adapter_and_logging(self):
+        graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
+        name = "test_service_handler_getters_rust"
+        target = graph["targets"][name]
+        self.assertIn("libobs_rust-static", target["libraries"])
+        self.assertIn("OBS_SERVICE_HANDLER_GETTERS_RUST", target["definitions"])
+        self.assertIn("libobs/util/base-variadic.c.h", target["sources"])
+        self.assertIn("test/cmocka/service-handler-getters-link-support.c", target["sources"])
+        self.assertFalse(any("stub" in source for source in target["sources"]))
+        self.assertNotIn(name, stubbed_archive_consumers(graph))
+
     def test_scene_lock_adapter_supplies_platform_link_services(self):
         # Evaluate the real deferred registration for the three Windows failures,
         # then link its crash/log/video providers without any libobs dependency.
@@ -187,9 +208,7 @@ int main(void) {
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/core-texture-activity.json"
         support = json.loads(entry.read_text())
-        names = {name for name, target in graph["targets"].items()
-                 if "libobs_rust-static" in target.get("libraries", [])
-                 and "OBS::libobs" not in target.get("libraries", [])}
+        names = stubbed_archive_consumers(graph)
         self.assertEqual(set(support), names)
         stub = "test/cmocka/core-texture-activity-link-stubs.c"
         for name in names:
@@ -201,9 +220,7 @@ int main(void) {
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-service-getter.json"
         support = json.loads(entry.read_text())
-        names = {name for name, target in graph["targets"].items()
-                 if "libobs_rust-static" in target.get("libraries", [])
-                 and "OBS::libobs" not in target.get("libraries", [])}
+        names = stubbed_archive_consumers(graph)
         self.assertEqual(set(support), names)
         stub = "test/cmocka/output-service-getter-link-stub.c"
         for name in names:
@@ -216,9 +233,7 @@ int main(void) {
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/weak-object-identity.json"
         support = json.loads(entry.read_text())
-        names = {name for name, target in graph["targets"].items()
-                 if "libobs_rust-static" in target.get("libraries", [])
-                 and "OBS::libobs" not in target.get("libraries", [])}
+        names = stubbed_archive_consumers(graph)
         self.assertEqual(set(support), names)
         stub = "test/cmocka/weak-object-identity-link-stub.c"
         for name in names:
@@ -230,9 +245,7 @@ int main(void) {
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-handler-getters.json"
         support = json.loads(entry.read_text())
-        names = {name for name, target in graph["targets"].items()
-                 if "libobs_rust-static" in target.get("libraries", [])
-                 and "OBS::libobs" not in target.get("libraries", [])}
+        names = stubbed_archive_consumers(graph)
         self.assertEqual(set(support), names)
         stub = "test/cmocka/output-handler-getter-link-stubs.c"
         providers = ("test/cmocka/source-getter-log-link-stub.c",
@@ -250,9 +263,7 @@ int main(void) {
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/source-handler-getters.json"
         support = json.loads(entry.read_text())
-        names = {name for name, target in graph["targets"].items()
-                 if "libobs_rust-static" in target.get("libraries", [])
-                 and "OBS::libobs" not in target.get("libraries", [])}
+        names = stubbed_archive_consumers(graph)
         self.assertEqual(set(support), names)
         adapter = "test/cmocka/source-handler-getter-link-support.c"
         providers = ("test/cmocka/source-getter-log-link-stub.c",
@@ -305,9 +316,7 @@ int main(void) {
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         entry = ROOT / "rust/obs-build/tests/native/registration/rust-static/support/output-pause-queries.json"
         support = json.loads(entry.read_text())
-        names = {name for name, target in graph["targets"].items()
-                 if "libobs_rust-static" in target.get("libraries", [])
-                 and "OBS::libobs" not in target.get("libraries", [])}
+        names = stubbed_archive_consumers(graph)
         self.assertEqual(set(support), names)
         stub = "test/cmocka/output-pause-query-link-stubs.c"
         providers = ("test/cmocka/source-getter-log-link-stub.c",

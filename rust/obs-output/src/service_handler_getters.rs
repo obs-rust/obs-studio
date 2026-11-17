@@ -8,15 +8,24 @@ pub struct Handlers<T> {
 }
 
 pub fn signal<T: Copy + Default>(
-    _service: Option<Handlers<T>>,
-    _log: impl FnOnce(&'static CStr),
+    service: Option<Handlers<T>>,
+    log: impl FnOnce(&'static CStr),
 ) -> T {
-    todo!("#5002 signal handler")
+    match service {
+        Some(fields) => fields.signal,
+        None => {
+            log(c"obs_service_get_signal_handler");
+            T::default()
+        }
+    }
 }
 
-pub fn proc<T: Copy + Default>(
-    _service: Option<Handlers<T>>,
-    _log: impl FnOnce(&'static CStr),
-) -> T {
-    todo!("#5002 procedure handler")
+pub fn proc<T: Copy + Default>(service: Option<Handlers<T>>, log: impl FnOnce(&'static CStr)) -> T {
+    match service {
+        Some(fields) => fields.proc,
+        None => {
+            log(c"obs_service_get_proc_handler");
+            T::default()
+        }
+    }
 }
