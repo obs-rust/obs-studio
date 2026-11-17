@@ -1929,6 +1929,22 @@ runner-minutes. All four failed Fast Gates used Dell runners, so full matrix
 execution at that median would add about 36.83 runner-minutes across the
 sample (1.23 per run), before cancellation savings. Successful runs add no work.
 
+## Dell compression policy
+
+The persistent Tier 2 runner selects plain tar for a handoff whose consumer
+labels pin the same host, and `zstd -1 -T0` for a pack that needs upload.
+Hosted runners keep their default zstd level. The established
+`tier2-tree.tar.zst` name is retained for artifact compatibility; readers use
+`tar -xf` to detect either stream format. Kept build trees remain unpacked,
+and `zccache snapshot` records source metadata rather than a compressed tree.
+The cache wrapper selects level 1 with all threads for self-hosted uploads;
+artifact ZIP compression is disabled on Dell-routed jobs, preserving hosted
+levels. setup-soldr's persistent-root profile keeps its stores in place and
+skips remote archive creation. The manual setup-image probe stays hosted with
+its existing `zstd -T2 -3` policy.
+Failed local handoffs are compressed before fallback upload. The Qt and touched
+target ccache stores disable per-object compression on self-hosted runners.
+
 ## Tier 2 execution and Fast Gate overlap
 
 The Windows and macOS validators opt into `OBS_BUILD_NATIVE_TIER2` and build

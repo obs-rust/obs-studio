@@ -180,6 +180,12 @@ def _labels(raw: str) -> list[str]:
     return [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
 
 
+def handoff_is_local(labels: str, marker: Path) -> bool:
+    """True only when the consumer labels pin this persistent-cache host."""
+    host = _host(marker)
+    return bool(host) and host in _labels(labels)
+
+
 def _tree_bytes(path: Path) -> int:
     return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
 
@@ -255,7 +261,7 @@ def handoff_put(root: Path, key: str, pack: Path, labels: str, marker: Path) -> 
         os.utime(dest)
     prune(root)
     host = _host(marker)
-    local = bool(host) and host in _labels(labels)
+    local = handoff_is_local(labels, marker)
     return {"local": local, "reason": f"host {host or '?'} {'in' if local else 'not in'} the test jobs' labels"}
 
 
