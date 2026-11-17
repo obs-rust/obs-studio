@@ -42,6 +42,7 @@
 #include "libobs/obs-output-connect-time-fields.c.h"
 #include "libobs/obs-output-conversion-callbacks-fields.c.h"
 #include "libobs/obs-output-encoder-getters-fields.c.h"
+#include "libobs/obs-output-enum-types-with-protocol.c.h"
 #include "libobs/obs-output-flags-fields.c.h"
 #include "libobs/obs-output-frames-dropped-fields.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
