@@ -43,7 +43,7 @@ class AptCacheTest(unittest.TestCase):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
             self.assertRegex(j, r"uses: astral-sh/setup-uv@[0-9a-f]{40}", name)
-            self.assertLess(j.index("astral-sh/setup-uv@"), j.index("run: bash rust/tools/linux-validate/validate.sh" if name.endswith("-build") else "uv run --no-project rust/tools/linux-validate/ci-runtime.py"), name)
+            self.assertLess(j.index("astral-sh/setup-uv@"), j.index("rust/tools/linux-validate/validate.sh" if name.endswith("-build") else "uv run --no-project rust/tools/linux-validate/ci-runtime.py"), name)
 
     def test_every_tier2_linux_job_caches_apt_archives(self):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
