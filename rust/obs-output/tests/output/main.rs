@@ -99,6 +99,8 @@ mod output_pause_queries_parity;
 mod output_protocols;
 mod output_protocols_parity;
 mod output_reconnect;
+mod output_reconnect_callback;
+mod output_reconnect_callback_parity;
 mod output_reconnect_parity;
 mod output_reconnect_settings;
 mod output_reconnect_settings_parity;
@@ -219,6 +221,7 @@ mod output_size_getters_parity;
 mod output_preferred_size;
 mod output_preferred_size_parity;
 
+mod output_callback_null;
 mod output_conversion_callbacks;
 
 mod output_conversion_callbacks_parity;
