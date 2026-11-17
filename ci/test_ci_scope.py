@@ -162,6 +162,55 @@ class CiScopeTest(unittest.TestCase):
                 with mock.patch.object(ci_scope.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "")):
                     self.assertEqual(ci_scope.queue_changed_files(), [])
 
+    def test_stacked_queue_diff_includes_earlier_core_entry(self):
+        import json
+        import os
+        import subprocess
+        import tempfile
+        from unittest import mock
+        import ci_scope
+
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", *args], cwd=repo, check=True, capture_output=True, text=True
+                ).stdout.strip()
+
+            git("init", "-b", "master")
+            git("config", "user.email", "scope@example.invalid")
+            git("config", "user.name", "Scope regression")
+            (repo / "README.md").write_text("base\n")
+            git("add", ".")
+            git("commit", "-m", "master")
+            git("remote", "add", "origin", str(repo))
+            git("switch", "-c", "queue")
+            core = "rust/obs-core/tests/core/weak_refs.rs"
+            (repo / core).parent.mkdir(parents=True)
+            (repo / core).write_text("entry A\n")
+            git("add", ".")
+            git("commit", "-m", "entry A: core tests")
+            base_sha = git("rev-parse", "HEAD")
+            (repo / "ci").mkdir()
+            (repo / "ci/queue.py").write_text("# entry B\n")
+            git("add", ".")
+            git("commit", "-m", "entry B: CI only")
+            head_sha = git("rev-parse", "HEAD")
+            event = repo / "event.json"
+            event.write_text(json.dumps({"merge_group": {
+                "base_sha": base_sha, "head_sha": head_sha,
+                "base_ref": "refs/heads/master",
+            }}))
+            run = subprocess.run
+            with mock.patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}), \
+                 mock.patch.object(ci_scope.subprocess, "run", side_effect=
+                                   lambda *args, **kwargs: run(*args, cwd=repo, **kwargs)):
+                files = ci_scope.queue_changed_files()
+            selected = scope(files, event="merge_group")
+            self.assertTrue(selected.windows and selected.macos, files)
+            self.assertEqual(set(files), {core, "ci/queue.py"})
+
     def test_queue_path_fixtures(self):
         # Native platform paths stay narrow; shared/core selects both platforms.
         fixtures = (
