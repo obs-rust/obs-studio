@@ -2685,8 +2685,13 @@ jobs:
       - name: Install Tier 2 Packages 📦
         run: |
           # Install Git already refreshed these lists in this fresh container.
+          # On the Dell, Tier 2 builds share one archive dir. apt takes its lock
+          # without a timeout ("held by process 0" from another container), so
+          # queue on a blocking flock. An empty archive downloads for minutes
+          # (run 44049453484, #4954); hosted dirs are job-local and never wait.
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
-            xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
+            xargs flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
+              "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''
