@@ -1,10 +1,14 @@
 """Tier 2 Linux build setup: a bounded zccache and no unused cook (#3026, #3027)."""
 from pathlib import Path
+import os
 import re
+import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github/workflows/build-project.yaml"
+VALIDATE = ROOT / "rust/tools/linux-validate/validate.sh"
 
 
 def build_job():
@@ -17,6 +21,54 @@ def step(job, name):
 
 
 class Tier2BuildSetupTest(unittest.TestCase):
+    def test_only_persistent_host_disables_the_launcher(self):
+        build = step(build_job(), "Build Tier 2 (libobs and libobs-c-reference) 🧱")
+        # An empty true branch in `condition && '' || 'zccache'` always falls
+        # through. Put the nonempty hosted value first instead.
+        self.assertIn("OBS_TIER2_LAUNCHER: ${{ steps.pcache.outputs.zccache == '' && 'zccache' || '' }}", build)
+
+    def test_launcher_default_override_and_empty(self):
+        source = VALIDATE.read_text()
+        setup = source.split('# Compiler cache:', 1)[1].split('# Read the same canonical', 1)[0]
+        setup = '# Compiler cache:' + setup
+        configure = source.split('  cmake -S "$SRC" -B "$build" -G Ninja', 1)[1].split('  # -k 0:', 1)[0]
+        configure = 'cmake -S "$SRC" -B "$build" -G Ninja' + configure
+        stats = source[source.index('echo "== zccache"'):]
+        # Include the conditional that guards the final stats, when present.
+        stats = source[source.rfind('\nif ', 0, source.index('echo "== zccache"')) + 1:] if source.rstrip().endswith('fi') else stats
+        for launcher in (None, '', 'ccache'):
+            with self.subTest(launcher=launcher), tempfile.TemporaryDirectory() as directory:
+                env = dict(os.environ, SRC=str(ROOT), build=directory + '/build', BUILD=directory)
+                env.pop('OBS_TIER2_LAUNCHER', None)
+                if launcher is not None:
+                    env['OBS_TIER2_LAUNCHER'] = launcher
+                result = subprocess.run(['bash', '-euo', 'pipefail', '-c', '''
+cmake() { printf '%s\\n' "$@" > "$build.args"; }
+zccache() { echo "$*" >> "$build.zccache"; }
+build_number=()
+runpath_flags=()
+''' + setup + configure + stats], env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                args = Path(env['build'] + '.args').read_text().splitlines()
+                expected = 'zccache' if launcher is None else launcher
+                for language in ('C', 'CXX'):
+                    flag = f'-DCMAKE_{language}_COMPILER_LAUNCHER='
+                    self.assertEqual([arg for arg in args if arg.startswith(flag)],
+                                     [flag + expected] if expected else [])
+                calls = Path(env['build'] + '.zccache')
+                self.assertEqual(calls.read_text().splitlines() if calls.exists() else [],
+                                 ['status', 'stop'] if expected == 'zccache' else [])
+                if not expected:
+                    # A kept local build tree must not retain yesterday's launcher.
+                    fixture = Path(directory, 'src')
+                    fixture.mkdir()
+                    (fixture / 'CMakeLists.txt').write_text('cmake_minimum_required(VERSION 3.24)\nproject(launcher NONE)\n')
+                    cached = Path(directory, 'cached')
+                    for flags in (['-DCMAKE_C_COMPILER_LAUNCHER=zccache', '-DCMAKE_CXX_COMPILER_LAUNCHER=zccache'],
+                                  [arg for arg in args if arg.startswith(('-U', '-DCMAKE_C_COMPILER_LAUNCHER', '-DCMAKE_CXX_COMPILER_LAUNCHER'))]):
+                        subprocess.run(['cmake', '-S', str(fixture), '-B', str(cached), *flags], check=True, capture_output=True)
+                    self.assertNotIn('COMPILER_LAUNCHER:', (cached / 'CMakeCache.txt').read_text())
+
     def test_persistent_cache_requires_marker_and_runner_slot(self):
         job = build_job()
         self.assertIn("- /var/cache/obs-runner:/var/cache/obs-runner", job)
