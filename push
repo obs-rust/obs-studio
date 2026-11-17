@@ -22,6 +22,7 @@ evidence under PUSH_REQUIRE_ATTESTATION).
 from __future__ import annotations
 
 import os
+import argparse
 import json
 import re
 import shutil
@@ -364,8 +365,8 @@ def ensure_pr(branch: str, base: dict, destination: dict) -> int:
     return 0
 
 
-def publish_branch(branch: str, before: str) -> int:
-    """Lease only a message/signature amendment of the exact published HEAD."""
+def publish_branch(branch: str, before: str, replace_remote_head: str | None = None) -> int:
+    """Publish normally, or lease an explicitly authorized remote-head replacement."""
     # origin may fetch upstream but push to a fork. Query the actual push URL,
     # without echoing it: URLs can contain credentials (as in pr_repositories).
     urls = git("remote", "get-url", "--push", "--all", "origin", capture=True).stdout.splitlines()
@@ -380,10 +381,18 @@ def publish_branch(branch: str, before: str) -> int:
         print("./push: cannot read the push destination's branch; refusing to push", file=sys.stderr)
         return 3
     args = ["git", "push", "-u", "origin", branch]
-    if remote.returncode == 2:
+    remote_head = remote.stdout.split()[0] if remote.returncode == 0 else None
+    if replace_remote_head is not None:
+        if remote_head != replace_remote_head:
+            print("./push: remote head does not match --replace-remote-head; refusing to push",
+                  file=sys.stderr)
+            return 3
+        print(f"./push: explicit replacement of remote HEAD {replace_remote_head}; exact force-with-lease",
+              flush=True)
+        args.append(f"--force-with-lease=refs/heads/{branch}:{replace_remote_head}")
+    elif remote.returncode == 2:
         print("./push: new remote branch; plain push", flush=True)
     else:
-        remote_head = remote.stdout.split()[0]
         after = git("rev-parse", "HEAD", capture=True).stdout.strip()
         if remote_head == before and after != before:
             # prooft and final signing may amend more than once. Comparing tree
@@ -403,6 +412,13 @@ def publish_branch(branch: str, before: str) -> int:
 
 
 def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--replace-remote-head", metavar="OLD_SHA",
+                        help="replace rewritten history only if the push destination still has this full SHA")
+    options = parser.parse_args(argv)
+    if options.replace_remote_head is not None and not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", options.replace_remote_head):
+        parser.error("--replace-remote-head requires the exact full remote commit SHA")
+
     branch = git("rev-parse", "--abbrev-ref", "HEAD", capture=True).stdout.strip()
     if branch in {"master", "HEAD"}:
         print("./push: refusing to push from %s; make a branch first" % branch, file=sys.stderr)
@@ -439,7 +455,7 @@ def main(argv: list[str]) -> int:
         )
         return 3
 
-    result = publish_branch(branch, before)
+    result = publish_branch(branch, before, options.replace_remote_head)
     if result:
         return result
 
