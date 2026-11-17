@@ -131,3 +131,23 @@ No ObjC or Apple framework link failure has yet been established for libobs:
 its first cross-link succeeded. Swift availability, runtime compilation and graph
 completeness are distinct blockers; they should not be described as ld64.lld
 failing to link Metal without an actual Swift artifact and linker diagnostic.
+
+## Observed prototype results
+
+The representative CMake command built both frameworks, unchanged test_bitstream
+and standalone test_async_conversion_plan_rust on Linux. All four images passed
+CodeDirectory page verification. Both cores export exactly 1,904 symbols, with
+zero differences. The probe bundle contains these four images, 11 signed/thinned
+non-system dependency dylibs and six CTest templates; both test executables embed
+the producer build root, which the relocation guard correctly records.
+LLVM's loader audit found only system absolute paths in the 15 staged images.
+
+The native-contract Application category was independently cross-linked with
+`--features libobs-integration --test obs-tests-app --no-run`, then collected
+using #5008's package/cwd/build-script manifest helper. Its 20,219,600-byte arm64
+executable passed signature verification. This proves prebuilding the executable,
+not that executing its existing compile-at-runtime body is allowed on macOS.
+
+Local tooling was soldr 0.9.53 with LLVM 21.1.5 and SDK 14.5; the CI-pinned soldr
+0.9.45 and hosted execution were not replayed for these CMake artifacts. The full
+selected Tier 2 target remains blocked by the listed runtime/toolchain gaps.
