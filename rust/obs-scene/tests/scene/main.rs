@@ -31,6 +31,8 @@ mod item_parent_getter;
 mod item_parent_getter_parity;
 mod item_private_settings;
 mod item_private_settings_parity;
+mod item_set_visibility;
+mod item_set_visibility_parity;
 mod item_transform;
 mod item_transform_parity;
 mod kind;

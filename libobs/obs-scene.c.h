@@ -1016,8 +1016,8 @@ static void scene_video_render(void *data, gs_effect_t *effect)
 static obs_sceneitem_t *obs_scene_add_internal(obs_scene_t *scene, obs_source_t *source, obs_sceneitem_t *insert_after,
 					       int64_t id);
 
-/* Private immediate reconciliation; definition is a separate unity member. */
-static void set_visibility(struct obs_scene_item *item, bool vis);
+/* Private immediate reconciliation; supplied by the C reference or Rust. */
+void obs_sceneitem_set_visibility(struct obs_scene_item *item, bool vis);
 
 static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 {
@@ -1101,7 +1101,7 @@ static void scene_load_item(struct obs_scene *scene, obs_data_t *item_data)
 	if (!item->private_settings)
 		item->private_settings = obs_data_create();
 
-	set_visibility(item, visible);
+	obs_sceneitem_set_visibility(item, visible);
 	obs_sceneitem_set_locked(item, lock);
 
 	item->bounds_type = valid_bounds_type(obs_data_get_int(item_data, "bounds_type"));
@@ -1623,7 +1623,7 @@ static inline void duplicate_item_data(struct obs_scene_item *dst, struct obs_sc
 	struct obs_scene *dst_scene = dst->parent;
 
 	if (!os_atomic_load_bool(&src->user_visible))
-		set_visibility(dst, false);
+		obs_sceneitem_set_visibility(dst, false);
 
 	dst->selected = src->selected;
 	dst->pos = src->pos;
@@ -2068,7 +2068,7 @@ static void obs_sceneitem_remove_internal(obs_sceneitem_t *item)
 	item->removed = true;
 
 	obs_sceneitem_select(item, false);
-	set_visibility(item, false);
+	obs_sceneitem_set_visibility(item, false);
 
 	detach_sceneitem(item);
 	signal_item_remove(parent, item);
@@ -2489,7 +2489,7 @@ bool obs_sceneitem_set_visible(obs_sceneitem_t *item, bool visible)
 		da_push_back(item->audio_actions, &action);
 		pthread_mutex_unlock(&item->actions_mutex);
 	} else {
-		set_visibility(item, visible);
+		obs_sceneitem_set_visibility(item, visible);
 	}
 	return true;
 }

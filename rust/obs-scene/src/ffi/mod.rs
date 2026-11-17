@@ -8,6 +8,7 @@ pub mod item_audio_actions;
 pub mod item_id;
 pub mod item_parent_getter;
 pub mod item_private_settings;
+pub mod item_set_visibility;
 pub mod kind;
 
 pub mod scene_audio_actions;

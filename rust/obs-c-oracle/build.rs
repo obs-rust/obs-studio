@@ -831,6 +831,11 @@ fn main() {
     )
     .expect("write original scene item audio actions extract");
     std::fs::write(
+        extract_dir.join("scene_item_set_visibility.inc"),
+        extract_after_libobs_pch(&libobs.join("obs-scene-item-set-visibility.c.h")),
+    )
+    .expect("write original immediate visibility extract");
+    std::fs::write(
         extract_dir.join("vertexbuffer-access.inc"),
         extract_after_libobs_pch(&libobs.join("graphics/vertexbuffer-access.c.h")),
     )

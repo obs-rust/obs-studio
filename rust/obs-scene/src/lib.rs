@@ -56,6 +56,7 @@ pub mod item_names;
 pub mod item_order;
 pub mod item_parent_getter;
 pub mod item_private_settings;
+pub mod item_set_visibility;
 pub mod item_transform;
 pub mod kind;
 mod platform;

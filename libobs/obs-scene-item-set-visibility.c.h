@@ -1,6 +1,8 @@
 #include "libobs/build/libobs.pch.h"
 
-static void set_visibility(struct obs_scene_item *item, bool vis)
+void obs_sceneitem_set_visibility(struct obs_scene_item *item, bool vis);
+
+void obs_sceneitem_set_visibility(struct obs_scene_item *item, bool vis)
 {
 	pthread_mutex_lock(&item->actions_mutex);
 
