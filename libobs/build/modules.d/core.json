@@ -8,7 +8,6 @@
     "core-output-weak-lifetime",
     "core-private-data",
     "core-scene-lookup",
-    "core-scene-transform-states",
     "core-source",
     "core-source-type-enum",
     "null-audio",
