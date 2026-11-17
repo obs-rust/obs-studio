@@ -476,7 +476,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `command not found: soldr` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1462,7 +1462,7 @@ jobs:
       # step below to `soldr rustup` without adding this, and both app builds
       # then died with `The term 'soldr' is not recognized` (#2699).
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1752,7 +1752,7 @@ jobs:
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -1764,6 +1764,12 @@ jobs:
           # it compiles in: a `--release` cook on core runs left that build
           # rebuilding from scratch (1m09s-1m37s, #2661).
           prebuild-deps-flags: --profile dev -- --tests
+          # Dell only (persistent root, local cook store): one cook recipe per
+          # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
+          # hosted runners, so the shared hosted key is unchanged (#2661).
+          prebuild-deps-recipes: |
+            ${{ inputs.mq-runner-labels != '' && '--profile dev -- --tests --check' || '' }}
+            ${{ inputs.mq-runner-labels != '' && '-p obs-util --profile dev -- --tests' || '' }}
           # Host/container archive paths have different Actions-cache versions.
           # Explicit identities stop the janitor treating them as duplicates.
           cache-key-suffix: linux-host-v3
@@ -2024,7 +2030,7 @@ jobs:
         run: git submodule update --init --depth 1 deps/libdshowcapture/src
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           verdict-scope: build-project
           version: 0.9.45
@@ -2097,7 +2103,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2107,6 +2113,12 @@ jobs:
           # One Linux layer with Fast Gate: a second profile is a second 1.2 GB
           # entry of the `deps` family (#2661).
           prebuild-deps-flags: --profile dev -- --tests
+          # Dell only (persistent root, local cook store): one cook recipe per
+          # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
+          # hosted runners, so the shared hosted key is unchanged (#2661).
+          prebuild-deps-recipes: |
+            ${{ inputs.mq-runner-labels != '' && format('--profile dev --target {0} -- --tests --check', matrix.target) || '' }}
+            ${{ inputs.mq-runner-labels != '' && format('--profile dev --target {0} -- --tests', matrix.target) || '' }}
           cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The cross lane adds targets mid-job (see the Rust Tests job, #969).
@@ -2174,7 +2186,7 @@ jobs:
           persist-credentials: false
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # Same scope and layer as rust-cross-lint, so it replays master's cache.
           verdict-scope: build-project
@@ -2219,7 +2231,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2229,6 +2241,13 @@ jobs:
           # One Linux layer with Fast Gate: a second profile is a second 1.2 GB
           # entry of the `deps` family (#2661).
           prebuild-deps-flags: --profile dev -- --tests
+          # Dell only (persistent root, local cook store): one cook recipe per
+          # unit set this job compiles (forge-ci/setup-soldr#675). Blank on
+          # hosted runners, so the shared hosted key is unchanged (#2661).
+          prebuild-deps-recipes: |
+            ${{ inputs.mq-runner-labels != '' && '--profile dev --target aarch64-pc-windows-msvc -- --tests --check' || '' }}
+            ${{ inputs.mq-runner-labels != '' && '--profile dev --target x86_64-apple-darwin -- --tests --check' || '' }}
+            ${{ inputs.mq-runner-labels != '' && '--profile dev --target aarch64-unknown-linux-gnu -- --tests --check' || '' }}
           cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # cross-release installs target std libraries after setup (#507/#969).
@@ -2272,7 +2291,7 @@ jobs:
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2433,7 +2452,7 @@ jobs:
       # merge-group runs restore. Local act/act2 saves stay enabled.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -2752,7 +2771,7 @@ jobs:
       # the shims put soldr's cargo/rustc (rust-toolchain.toml) on PATH.
       - name: Set Up soldr 🦀
         id: setup-soldr
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -3264,7 +3283,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
@@ -3429,7 +3448,7 @@ jobs:
       # Production hybrid libobs builds Rust ports through Corrosion; shims select
       # pinned soldr. Native C/C++ caches remain separate from the Rust bypass.
       - name: Set Up soldr 🦀
-        uses: zackees/setup-soldr@735b5e6cc889fd53bfcc74595345a1799b4f68c0 # persistent-root (#4954)
+        uses: zackees/setup-soldr@e797e605ffbbed1bc02e33e8a2f5dd1704ba93f0 # persistent-root cook store and recipes (forge-ci/setup-soldr#675)
         with:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).

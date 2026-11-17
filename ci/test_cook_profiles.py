@@ -100,6 +100,43 @@ class CookProfilesTest(unittest.TestCase):
         self.assertNotIn("core", value, "The test profile does not depend on the run's event")
         self.assertNotIn("--release", value)
 
+    def test_persistent_root_jobs_cook_every_unit_set_they_compile(self):
+        """On the Dell (a persistent root) each Linux host job cooks one recipe per
+        unit set it compiles (forge-ci/setup-soldr#675): clippy check units, the
+        `-p` test set and every cross triple. Measured before: the Dell Fast
+        Gate cooked only the host test profile (14.3 s), then `clippy -p
+        obs-util` rebuilt getrandom and zerocopy (15.6 s), and Cross Lint
+        cooked the host triple only, so every cross-triple dependency was
+        rebuilt per job. A persistent root keeps its cook closure in its local
+        store and never uploads it, so the extra recipes must stay off on
+        hosted runners: there they would add ~1.2 GB keys to `deps` (#2661).
+        Every recipe line is therefore guarded by the MQ runner labels and
+        renders blank on a hosted runner, which keeps the hosted key unchanged.
+        """
+        workflow = jobs(ROOT / ".github/workflows/build-project.yaml")
+        guard = "inputs.mq-runner-labels != ''"
+        expected = {
+            "rust-tests-linux": [
+                "'--profile dev -- --tests --check'",
+                "'-p obs-util --profile dev -- --tests'",
+            ],
+            "rust-cross-lint": [
+                "format('--profile dev --target {0} -- --tests --check', matrix.target)",
+                "format('--profile dev --target {0} -- --tests', matrix.target)",
+            ],
+            "rust-cross-lint-release": [
+                f"'--profile dev --target {target} -- --tests --check'"
+                for target in ("aarch64-pc-windows-msvc", "x86_64-apple-darwin", "aarch64-unknown-linux-gnu")
+            ],
+        }
+        for name, recipes in expected.items():
+            with self.subTest(job=name):
+                block = re.search(r"^(\s+)prebuild-deps-recipes: \|\n((?:\1  .*\n)+)", workflow[name], re.M)
+                self.assertIsNotNone(block, f"{name} must declare prebuild-deps-recipes")
+                assert block is not None
+                lines = [line.strip() for line in block[2].splitlines() if line.strip()]
+                self.assertEqual(lines, [f"${{{{ {guard} && {recipe} || '' }}}}" for recipe in recipes])
+
     def test_release_static_library_uses_release_cook(self):
         found = 0
         for name, job in jobs(ROOT / ".github/workflows/release-rust.yaml").items():
