@@ -7,7 +7,14 @@
 #include <setjmp.h>
 #include <string.h>
 #include <cmocka.h>
+#include "obs-internal.h"
+#ifndef OBS_SERVICE_HANDLER_GETTERS_RUST
 #include "../../libobs/obs-service-handler-getters.c.h"
+#else
+/* The later Rust-static registration selects this without editing this test. */
+signal_handler_t *obs_service_get_signal_handler(const obs_service_t *service);
+proc_handler_t *obs_service_get_proc_handler(const obs_service_t *service);
+#endif
 
 struct log_capture {
 	unsigned count;
