@@ -25,12 +25,14 @@ class ArtifactTest(unittest.TestCase):
             binary.write_bytes(SignatureTest.signed_image())
             package = root / "rust/example"
             package.mkdir(parents=True)
-            env = {"CARGO_PKG_NAME": "example", "CARGO_MANIFEST_DIR": str(package)}
+            env = {"CARGO_PKG_NAME": "example", "CARGO_MANIFEST_DIR": str(package),
+                   "RUSTDOC_DOCTEST_BIN_PATH": str(binary)}
             bundle = root / "bundle"
             entry = artifact.capture_doctest(binary, ["--test-threads=2"], root, bundle, package, env)
             self.assertEqual(entry["cwd"], "rust/example")
             self.assertEqual(entry["args"], ["--test-threads=2"])
             self.assertEqual(entry["env"]["CARGO_MANIFEST_DIR"], "{root}/rust/example")
+            self.assertEqual(entry["env"]["RUSTDOC_DOCTEST_BIN_PATH"], "{root}/" + entry["binary"])
             self.assertEqual((bundle / entry["binary"]).read_bytes(), binary.read_bytes())
             binary.write_bytes(b"unsigned")
             with self.assertRaises((ValueError, struct.error)):
