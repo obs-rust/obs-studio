@@ -24,16 +24,19 @@ class SharedLinkSupport(unittest.TestCase):
             (source / "probe-link-support.c").write_text(
                 '#include "value.h"\n'
                 "#ifndef EXTRA\n#define EXTRA 0\n#endif\n"
-                "int eager_symbol = 7;\n"
                 "int support_value(void) { return HEADER_VALUE + EXTRA; }\n"
             )
             (source / "main.c").write_text(
                 '#include "value.h"\n'
                 "#ifndef EXTRA\n#define EXTRA 0\n#endif\n"
                 "#ifndef EXPECTED\n#define EXPECTED (HEADER_VALUE + EXTRA)\n#endif\n"
-                "extern int support_value(void);\nextern int eager_symbol;\n"
+                "extern int support_value(void);\nint eager_effect;\n"
                 "int __wrap_support_value(void) { return 99; }\n"
-                "int main(void) { return eager_symbol != 7 || support_value() != EXPECTED; }\n"
+                "int main(void) { return eager_effect != 7 || support_value() != EXPECTED; }\n"
+            )
+            (source / "eager-link-support.c").write_text(
+                "extern int eager_effect;\n"
+                "__attribute__((constructor)) static void eager_init(void) { eager_effect = 7; }\n"
             )
             (source / "archive-link-support.c").write_text(
                 "extern int unavailable_host(void);\n"
@@ -56,7 +59,7 @@ class SharedLinkSupport(unittest.TestCase):
                 "target_link_options(wrapped PRIVATE -Wl,--wrap=support_value)",
                 "function(add_deferred_support)",
                 "  foreach(name IN ITEMS same_a same_b define ordered flag wrapped)",
-                "    target_sources(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/probe-link-support.c)",
+                "    target_sources(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/probe-link-support.c ${CMAKE_CURRENT_SOURCE_DIR}/eager-link-support.c)",
                 "  endforeach()",
                 "endfunction()", "cmake_language(DEFER CALL add_deferred_support)",
                 # Existing builds are the RED baseline; this also tests the shared rule's integration.
@@ -90,6 +93,35 @@ class SharedLinkSupport(unittest.TestCase):
             # A changed header must rebuild the shared object for both consumers.
             (source / "first/value.h").write_text("#define HEADER_VALUE 11\n/* changed */\n")
             self.run_command(["cmake", "--build", str(build), "--parallel", "2"])
+
+    def test_conditional_dependency_keeps_consumer_sensitive_definitions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            (source / "context-link-support.c").write_text(
+                "#ifndef EXECUTABLE_CONTEXT\n#error lost consumer context\n#endif\n"
+                "int support(void) { return 0; }\n"
+            )
+            (source / "main.c").write_text("int support(void); int main(void) { return support(); }\n")
+            (source / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.28)\nproject(conditional_context C)\n"
+                "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n"
+                "add_library(libobs_rust-static INTERFACE)\n"
+                "add_library(context INTERFACE)\n"
+                'target_compile_definitions(context INTERFACE "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:EXECUTABLE_CONTEXT>")\n'
+                "foreach(name IN ITEMS test_a test_b)\n"
+                "  add_executable(${name} main.c context-link-support.c)\n"
+                '  target_link_libraries(${name} PRIVATE libobs_rust-static "$<BUILD_INTERFACE:context>")\n'
+                "endforeach()\n"
+                f'include("{HELPER.as_posix()}")\n'
+                "cmake_language(DEFER CALL obs_share_test_link_support)\n"
+            )
+            build = source / "build"
+            self.run_command(["cmake", "-S", str(source), "-B", str(build)])
+            commands = json.loads((build / "compile_commands.json").read_text())
+            self.assertEqual(sum(row["file"].endswith("/context-link-support.c") for row in commands), 2)
+            self.run_command(["cmake", "--build", str(build), "--parallel", "2"])
+            self.run_command([str(build / "test_a")])
+            self.run_command([str(build / "test_b")])
 
     def run_command(self, command):
         result = subprocess.run(command, capture_output=True, text=True, check=False, timeout=60)
