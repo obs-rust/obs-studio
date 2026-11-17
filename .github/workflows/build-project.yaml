@@ -2726,9 +2726,16 @@ jobs:
           # (run 44049453484, #4954); hosted dirs are job-local and never wait.
           # force-unsafe-io still syncs dpkg's database per package. eatmydata
           # cuts this throwaway container's HDD install from 468 s to 47 s.
+          # An interrupted unpack leaves dpkg half-configured (job 134123589625).
+          # Recover inside each attempt, under the same archive lock. Configure
+          # may fail on missing dependencies; let apt's repair install fix them.
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
             xargs flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
-              "${GITHUB_WORKSPACE}/.github/scripts/retry" sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
+              "${GITHUB_WORKSPACE}/.github/scripts/retry" bash -ec '
+                sudo eatmydata dpkg --configure -a || true
+                sudo eatmydata apt-get -f install -y -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES"
+                sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends "$@"
+              ' tier2-apt
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''
