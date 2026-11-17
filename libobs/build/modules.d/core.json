@@ -4,6 +4,7 @@
     "core",
     "core-canvas-move-fields",
     "core-encoder-priming-samples",
+    "core-hotkey-pair-register",
     "core-output",
     "core-output-weak-lifetime",
     "core-private-data",
