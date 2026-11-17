@@ -35,10 +35,13 @@ if(OS_LINUX AND TARGET OBS::pulseaudio)
       ${_pulse_display} uv run --script "${CMAKE_CURRENT_SOURCE_DIR}/test_pulse_monitor_device.py"
       $<TARGET_FILE:test_pulse_default_follow>
   )
+  # The unchanged C test measures live audio in 300 ms windows and gives a
+  # default-device change five seconds. Keep both private-daemon variants out
+  # of competing timing tests (Refs #4944; docs/knowledge/timing-tests.md).
   set_tests_properties(
     test_pulse_default_follow
     test_pulse_default_follow_pipewire
-    PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120
+    PROPERTIES RESOURCE_LOCK timing SKIP_RETURN_CODE 77 TIMEOUT 120
   )
   unset(_pulse_display)
 endif()
