@@ -1012,16 +1012,23 @@ idle capacity. Prefer remains accepted for existing configurations, but no
 longer queues work on busy runners or bypasses the capacity cap. Unknown modes
 fall back to hosted.
 
-`ci.yml` supplies `MQ_RUNNER_DEMAND=6`: one Tier 2 build, two complete Tier 2
-test jobs, two main Cross Lint legs and one release-target Cross Lint job.
-This conservative per-run bound also applies when path scope skips Tier 2;
-it does not assume all heavy jobs execute simultaneously. The workflow owns
-this value rather than a repository variable; update it with the heavy job
-matrix (checked by `ci/test_ci_scope.py`). `MQ_RUNNER_MIN_IDLE` remains an
-optional repository Actions variable (default `1`); required idle capacity is
-`max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. Thus a six-runner Dell is selected
-only when all six matching runners are idle. Otherwise the entire heavy pool
-falls back to hosted, preserving the build/test handoff agreement.
+Set the optional repository Actions variable `MQ_RUNNER_DEMAND` to tune the
+per-run idle-capacity requirement without a workflow change. Unset or empty
+uses the unchanged conservative default `6` (checked by `ci/test_ci_scope.py`).
+Since #4980's per-job routing, the Dell-routed heavy work in
+`build-project.yaml` is one Tier 2 Linux build, two complete Tier 2 test jobs
+(OFF/ON), two main Cross Lint legs and one release-target Cross Lint job.
+These are six jobs in total, with a **peak of five concurrent heavy jobs**:
+the two Tier 2 tests wait for the build and can overlap all three Cross Lint
+jobs. The release-target job runs its three targets within one job. Set
+`MQ_RUNNER_DEMAND=5` to match that peak; keep `6` for the conservative total-job
+bound. The same requirement applies when path scope skips Tier 2.
+`MQ_RUNNER_MIN_IDLE` is an optional repository Actions variable (default `1`);
+required idle capacity is `max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. With the
+default demand, a six-runner Dell is selected only when all six matching
+runners are idle; demand `5` allows selection with five idle when the minimum
+is no higher. Otherwise the entire heavy pool falls back to hosted,
+preserving the build/test handoff agreement.
 
 Busy runners do not supply idle capacity, and runner IDs visible in both
 scopes count once (a busy observation wins). Empty threshold inputs use their
