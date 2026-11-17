@@ -2,8 +2,8 @@ name: Build Project
 on:
   workflow_call:
     inputs:
-      mq-runner-labels:
-        description: Online merge-queue runner labels selected by the caller; empty uses hosted runners
+      mq-heavy-labels:
+        description: Capacity-checked merge-queue labels for Tier 2 Linux and Cross Lint only; empty uses hosted runners
         type: string
         default: ''
       native-cache-measurement-only:
@@ -127,7 +127,7 @@ jobs:
   check-event:
     timeout-minutes: 10
     name: Event Data 🔎
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     defaults:
       run:
         shell: bash
@@ -669,7 +669,7 @@ jobs:
         # One production application: hybrid libobs, with OBS-Studio-Rust identity.
         # C reference coverage remains in the explicit Tier 2 jobs.
         rust: ['ON']
-    runs-on: ${{ (startsWith(matrix.os, 'ubuntu-') && inputs.mq-runner-labels != '') && fromJSON(inputs.mq-runner-labels) || matrix.os }}
+    runs-on: ${{ matrix.os }}
     needs: check-event
     # The full OBS app build is release-gating, not dev-cycle CI: it runs in
     # the release gate (release-rust.yaml), tags, schedule, dispatch and
@@ -1647,7 +1647,7 @@ jobs:
   # zackees/ci.yml GATE-008/010: single immutable-base verifier. Unknown/old output contracts run real CI.
   ci-mode:
     name: CI Mode 🛂
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       rust-test_hit: 'false'
@@ -1709,7 +1709,7 @@ jobs:
     # letting it hold the queue for an hour (#2593 A).
     timeout-minutes: 20
     name: Fast Gate ⚡
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     needs: [check-event, ci-mode]
     # A docs-only PR or queue run changes no Rust, C or CMake: skipped, and
     # passing CI Gate; the Format job still runs the ci/ self-tests (#2079).
@@ -2016,7 +2016,7 @@ jobs:
   cross-compile:
     timeout-minutes: 45
     name: Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     needs: [check-event, ci-mode]
     if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && needs.check-event.outputs.cross_targets != '' }}
     defaults:
@@ -2093,7 +2093,7 @@ jobs:
       fail-fast: false
       matrix:
         target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode, rust-tests-linux]
     if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && needs.rust-tests-linux.result != 'failure' && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
     defaults:
@@ -2145,7 +2145,7 @@ jobs:
   # A proof represents BOTH targets. Never publish it from a single matrix leg.
   rust-cross-proof:
     name: Rust Cross Lane Proof 🧾
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     needs: [ci-mode, rust-cross-lint]
     if: ${{ success() && needs.rust-cross-lint.result == 'success' && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true' }}
@@ -2172,7 +2172,7 @@ jobs:
   rust-windows-link:
     timeout-minutes: 30
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     needs: [check-event, ci-mode]
     # Every fallback non-docs PR runs the link check without proof/attestation skips.
     # Complete member PRs defer it; every selected queue group links again.
@@ -2221,7 +2221,7 @@ jobs:
     name: Rust Cross Lint 🦀 (release targets)
     # Queue and release lint-only targets: Windows arm64, macOS x64 and Linux
     # arm64. The main cross matrix retains its independent test-link legs.
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || needs.check-event.outputs.full == 'true' || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true')) }}
     defaults:
@@ -2597,7 +2597,7 @@ jobs:
   # lane proof.
   rust-linux-tier2-build:
     name: Rust Tier 2 Linux 🐧 (build)
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # A stock image, no Dockerfile or image build (#966): run directly on the
     # runner, two group tests failed while passing in a container with the
     # same libraries, compiler, flags and CPU (#982). Packages install below.
@@ -2876,7 +2876,7 @@ jobs:
         id: handoff
         if: steps.pcache.outputs.handoff != ''
         env:
-          MQ_RUNNER_LABELS: ${{ inputs.mq-runner-labels }}
+          MQ_RUNNER_LABELS: ${{ inputs.mq-heavy-labels }}
         run: >-
           uv run --no-project ci/tier2_kept_tree.py handoff-put
           --root "${{ steps.pcache.outputs.handoff }}" --key ${{ github.run_id }}
@@ -2934,7 +2934,7 @@ jobs:
 
   rust-linux-tier2:
     name: Rust Tier 2 Linux 🐧 (tests ${{ matrix.mode }}${{ matrix.part != 'suite' && format(', {0}', matrix.part) || '' }})
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # Load a verified prepared runtime, or install the exact closure in the
     # same pinned stock base. The helper retains original artifact paths.
     timeout-minutes: 30
@@ -3105,7 +3105,7 @@ jobs:
   # otherwise.
   linux-qt-frontend:
     name: Qt Frontend Linux 🐧
-    runs-on: ${{ inputs.mq-runner-labels != '' && fromJSON(inputs.mq-runner-labels) || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     # Independent runner: overlap frontend compilation/tests with Fast Gate.
     # The reusable workflow still fails if either selected job fails; this
     # can spend extra Qt runner time when Fast Gate fails (#1581).

@@ -336,6 +336,7 @@ class CiScopeTest(unittest.TestCase):
             for job, fallback in jobs.items():
                 with self.subTest(workflow=name, job=job):
                     self.assertIn(f"runs-on: {fallback}\n", blocks[job])
+            selected_jobs = set()
             for job, block in blocks.items():
                 runner = re.search(r"^    runs-on: (.+)$", block, re.MULTILINE)
                 if not runner:
@@ -343,26 +344,25 @@ class CiScopeTest(unittest.TestCase):
                 selected = "inputs.mq-heavy-labels" in runner[1]
                 self.assertEqual(selected, name == "build-project.yaml" and job in heavy, job)
                 if selected:
+                    selected_jobs.add(job)
                     self.assertIn(
                         "runs-on: ${{ inputs.mq-heavy-labels != '' && "
                         "fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}", block,
                     )
                 else:
                     self.assertNotIn("mq-", runner[1])
+            self.assertEqual(selected_jobs, heavy if name == "build-project.yaml" else set())
             self.assertNotIn("mq-runner-labels", text)
             if name == "build-project.yaml":
                 self.assertIn("runs-on: ${{ matrix.os }}", blocks["ubuntu-build"])
 
     def test_queue_heavy_demand_matches_expanded_jobs(self):
-        import ast
         import re
         from tier2_matrix import matrix
 
         build = (ROOT / ".github/workflows/build-project.yaml").read_text()
         cross = build.split("  rust-cross-lint:\n", 1)[1].split("  rust-cross-proof:\n", 1)[0]
-        targets = ast.literal_eval("[" + ",".join(
-            repr(t.strip()) for t in re.search(r"target: \[(.*?)\]", cross)[1].split(",")
-        ) + "]")
+        targets = re.search(r"target: \[(.*?)\]", cross)[1].split(",")
         tier2 = matrix("merge_group")
         demand = 1 + len(tier2["mode"]) * len(tier2["part"]) + len(targets) + 1
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
