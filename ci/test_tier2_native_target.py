@@ -32,7 +32,9 @@ class NativeTier2Target(unittest.TestCase):
         for name in sorted(names - {omit}):
             action = "false" if fail and name == "future-test" else f"touch {root.as_posix()}/{name}.built"
             commands.append(f"add_custom_target({name} COMMAND ${{CMAKE_COMMAND}} -E {action})")
+        (root / "count.cmake").write_text('file(APPEND "${LOG}" "visit\\n")', encoding="utf-8")
         commands += [
+            f'add_custom_command(TARGET shared-core POST_BUILD COMMAND ${{CMAKE_COMMAND}} "-DLOG={root.as_posix()}/visits.txt" -P "{root.as_posix()}/count.cmake")',
             "add_dependencies(cmocka-tests future-test shared-core)",
             "add_dependencies(libobs shared-core)",
             "add_dependencies(libobs-c-reference shared-core)",
@@ -51,8 +53,16 @@ class NativeTier2Target(unittest.TestCase):
                 self.assertEqual(configured.returncode, 0, configured.stdout + configured.stderr)
                 deps = set((root / "build/dependencies.txt").read_text().split(";"))
                 self.assertEqual(deps, COMMON | PLATFORM[host])
+                # Model the separate MSBuild invocations observed in the logs,
+                # regardless of this probe's locally available CMake generator.
+                for target in sorted(deps):
+                    baseline = subprocess.run(["cmake", "--build", str(root / "build"), "--target", target], capture_output=True, text=True, timeout=30)
+                    self.assertEqual(baseline.returncode, 0, baseline.stdout + baseline.stderr)
+                self.assertGreater(len((root / "visits.txt").read_text().splitlines()), 1)
+                (root / "visits.txt").write_text("", encoding="utf-8")
                 built = subprocess.run(["cmake", "--build", str(root / "build"), "--target", "tier2-native", "--parallel", "2"], capture_output=True, text=True, timeout=30)
                 self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+                self.assertEqual((root / "visits.txt").read_text().splitlines(), ["visit"])
                 self.assertEqual({p.stem for p in root.glob("*.built")}, COMMON | PLATFORM[host] | {"future-test", "shared-core"})
 
     def test_missing_required_module_fails_configuration(self) -> None:
@@ -76,7 +86,7 @@ class NativeTier2Target(unittest.TestCase):
                 self.assertIn("-DOBS_BUILD_NATIVE_TIER2=ON", text)
                 command = re.search(r"^cmake --build .*?(?=\n[^ \t]|\Z)", text, re.M | re.S)
                 self.assertIsNotNone(command)
-                self.assertRegex(command.group(0), r"--target tier2-native\s*(?:[>`\n]|$)")
+                self.assertRegex(command.group(0), r"--target tier2-native\s*(?:[\\>`\n]|$)")
         root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
         self.assertRegex(root, r"if\(OBS_BUILD_NATIVE_TIER2\)\s+include\([^\n]*tier2-validate/targets.cmake")
 
