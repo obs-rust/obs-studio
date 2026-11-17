@@ -1,0 +1,1 @@
+graphics-ffmpeg-init-adapter.inc|libobs/graphics/graphics-ffmpeg-init-adapter.c.h|#include "build/libobs-media.pch.h"

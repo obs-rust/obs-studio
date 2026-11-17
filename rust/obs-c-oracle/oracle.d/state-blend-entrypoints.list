@@ -1,0 +1,1 @@
+state-blend-entrypoints.inc|libobs/graphics/state-blend-entrypoints.c.h|#include "libobs/build/libobs-ported-blend-entrypoints.pch.h"

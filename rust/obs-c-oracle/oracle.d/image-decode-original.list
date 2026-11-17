@@ -1,0 +1,1 @@
+image-decode-original.inc|libobs/graphics/graphics-ffmpeg-decode.c.h|#include "libobs/build/libobs-ported-graphics-ffmpeg-decode.pch.h"

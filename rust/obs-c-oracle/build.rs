@@ -1,3 +1,5 @@
+mod oracle_fragments;
+
 use std::path::{Path, PathBuf};
 
 /// FNV-1a 64-bit over the bytes that change what the oracle archive contains:
@@ -32,6 +34,22 @@ fn oracle_input_hash(roots: &[PathBuf], flags: &[&str]) -> u64 {
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("legacy/obs-video-render-size.inc"),
         &mut mix,
     );
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    hash_file(&manifest.join("oracle_fragments.rs"), &mut mix);
+    for fragment in oracle_fragments::paths(&manifest.join("oracle.d")) {
+        hash_file(&fragment, &mut mix);
+    }
+    for entry in oracle_fragments::load(&manifest.join("oracle.d")) {
+        hash_file(
+            &manifest
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join(entry.source),
+            &mut mix,
+        );
+    }
     let mut hash_inputs: Vec<PathBuf> = Vec::new();
     for root in roots {
         if root.is_file() {
@@ -638,93 +656,7 @@ fn main() {
     ] {
         std::fs::write(extract_dir.join(name), extract_c(src, start, end)).expect("write extract");
     }
-    std::fs::write(
-        extract_dir.join("obs-module-load-locale.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-module-load-locale.c.h")),
-    )
-    .expect("write module load locale extract");
-    std::fs::write(
-        extract_dir.join("source_theme_icon.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-source-theme-icon.c.h")),
-    )
-    .expect("write original source theme icon extract");
-    for stem in [
-        "effect-parser-lifecycle",
-        "effect-parser-lifecycle-adapter",
-        "graphics-immediate-arguments",
-        "graphics-immediate-scalars",
-        "obs-graphics-adapter",
-        "graphics-set-linear-srgb",
-        "shader-file",
-        "shader-param-introspection",
-        "stagesurface-getters",
-        "texture-planar-creators",
-        "texture-metadata",
-        "texture-cube-access",
-        "texture-file-data2",
-        "state-depth-entrypoints",
-        "timer-dispatch",
-        "timer-range-dispatch",
-        "voltexture-metadata",
-        "vertexbuffer-destroy",
-        "vertexbuffer-create",
-        "vertexbuffer-create-fields",
-        "blend-entrypoints-fields",
-        "indexbuffer-create",
-        "indexbuffer-create-fields",
-        "present-entrypoints",
-        "present-entrypoints-fields",
-        "raster-state-entrypoints",
-        "raster-state-entrypoints-fields",
-        "graphics-perspective",
-        "perspective-fields",
-        "graphics-viewport",
-        "graphics-viewport-fields",
-        "matrix-entrypoints",
-        "matrix-entrypoints-fields",
-        "graphics-shader-params",
-        "graphics-shader-params-checks",
-        "graphics-shader-params-adapter",
-    ] {
-        let src = libobs.join("graphics").join(format!("{stem}.c.h"));
-        std::fs::write(
-            extract_dir.join(format!("{stem}.inc")),
-            extract_after_libobs_pch(&src),
-        )
-        .expect("write lifecycle extract");
-    }
-    std::fs::write(
-        extract_dir.join("module-init.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-module-init.c.h")),
-    )
-    .expect("write original module initializer");
     println!("cargo:rerun-if-changed=legacy/obs-video-render-size.inc");
-    std::fs::write(
-        extract_dir.join("obs-video-render-size.inc"),
-        extract_after_libobs_pch(&manifest.join("legacy/obs-video-render-size.inc")),
-    )
-    .expect("write render size extract");
-    std::fs::write(
-        extract_dir.join("state-blend-entrypoints.inc"),
-        extract_after_pch(
-            &libobs.join("graphics/state-blend-entrypoints.c.h"),
-            "#include \"libobs/build/libobs-ported-blend-entrypoints.pch.h\"",
-        ),
-    )
-    .expect("write original blend entry points");
-    std::fs::write(
-        extract_dir.join("state-blend-setters.inc"),
-        extract_after_pch(
-            &libobs.join("graphics/state-blend-setters.c.h"),
-            "#include \"libobs/build/libobs-ported-blend-entrypoints.pch.h\"",
-        ),
-    )
-    .expect("write original blend setters");
-    std::fs::write(
-        extract_dir.join("graphics_effect_file.inc"),
-        extract_after_libobs_pch(&libobs.join("graphics/graphics_effect_file.c.h")),
-    )
-    .expect("write effect file extract");
     std::fs::write(
         extract_dir.join("scene-ref-source.inc"),
         [
@@ -766,28 +698,6 @@ fn main() {
             .expect("selector precedes reference entry point"),
     )
     .expect("write image orientation extract");
-    std::fs::write(
-        extract_dir.join("image-orientation-fields.inc"),
-        extract_after_pch(
-            &libobs.join("graphics/graphics-ffmpeg-orientation-fields.c.h"),
-            "#include \"libobs/build/libobs-media.pch.h\"",
-        ),
-    )
-    .expect("write orientation fields extract");
-    std::fs::write(
-        extract_dir.join("hotkey_register.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-hotkey-register.c.h")),
-    )
-    .expect("write original single registration wrappers");
-    for stem in ["obs-video-render-passes", "obs-video-render-passes-adapter"] {
-        let src = libobs.join(format!("{stem}.c.h"));
-        println!("cargo:rerun-if-changed={}", src.display());
-        std::fs::write(
-            extract_dir.join(format!("{stem}.inc")),
-            extract_after_libobs_pch(&src),
-        )
-        .expect("write video render extract");
-    }
     let render_test = libobs.join("../test/cmocka/test_video_render_passes.c");
     println!("cargo:rerun-if-changed={}", render_test.display());
     let render_mock = std::fs::read_to_string(&render_test).expect("read render characterization");
@@ -808,18 +718,8 @@ fn main() {
     // Reuse production field adapters over the real private layouts, without
     // the broad production PCH; each getter oracle supplies its own headers.
     write_field_adapter_extracts(&libobs, &extract_dir, &manifest.join("oracle"));
-    std::fs::write(
-        extract_dir.join("obs-source-deinterlace-texture.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-source-deinterlace-texture.c.h")),
-    )
-    .expect("write original deinterlace texture allocation");
     // The push-to port keeps the signal builder in obs-source.c.h. Compile the
     // same real builder and forwarding seam in the oracle, not a model signal.
-    std::fs::write(
-        extract_dir.join("source-push-to-enable.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-source-push-to-enable.c.h")),
-    )
-    .expect("write original push-to setters");
     let source = libobs.join("obs-source.c.h");
     let mut push_signal = extract_c(&source, "uint32_t obs_source_get_output_flags(", "}");
     push_signal.push_str(&extract_c(
@@ -860,139 +760,21 @@ fn main() {
         .concat(),
     )
     .expect("write original generic weak reference helpers");
-    std::fs::write(
-        extract_dir.join("scene_lookup.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-scene-lookup.c.h")),
-    )
-    .expect("write original scene lookup extract");
-    std::fs::write(
-        extract_dir.join("scene_item_audio_actions.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-scene-item-audio-actions.c.h")),
-    )
-    .expect("write original scene item audio actions extract");
-    std::fs::write(
-        extract_dir.join("scene_item_set_visibility.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-scene-item-set-visibility.c.h")),
-    )
-    .expect("write original immediate visibility extract");
-    std::fs::write(
-        extract_dir.join("vertexbuffer-access.inc"),
-        extract_after_libobs_pch(&libobs.join("graphics/vertexbuffer-access.c.h")),
-    )
-    .expect("write vertex-buffer access extract");
-    std::fs::write(
-        extract_dir.join("graphics-stencil.inc"),
-        extract_after_libobs_pch(&libobs.join("graphics/stencil-state-entrypoints.c.h")),
-    )
-    .expect("write original stencil dispatch");
-    {
-        let stem = "obs-source-push-hotkeys";
-        let src = libobs.join(format!("{stem}.c.h"));
-        std::fs::write(
-            extract_dir.join(format!("{stem}.inc")),
-            extract_after_libobs_pch(&src),
-        )
-        .expect("write push-hotkey oracle extract");
+    // Each new oracle extract owns a fragment, never another build.rs block.
+    for entry in oracle_fragments::load(&manifest.join("oracle.d")) {
+        let src = libobs
+            .parent()
+            .expect("libobs has a repo root")
+            .join(entry.source);
+        println!("cargo:rerun-if-changed={}", src.display());
+        let text = if entry.pch == "auto" {
+            extract_after_libobs_pch(&src)
+        } else {
+            extract_after_pch(&src, &entry.pch)
+        };
+        std::fs::write(extract_dir.join(entry.output), text)
+            .expect("write oracle fragment extract");
     }
-    for stem in [
-        "graphics-linear-srgb",
-        "graphics-linear-srgb-fields",
-        "graphics-stencil-adapter",
-        "texture-creators-fields",
-    ] {
-        let src = libobs.join("graphics").join(format!("{stem}.c.h"));
-        std::fs::write(
-            extract_dir.join(format!("{stem}.inc")),
-            extract_after_pch(
-                &src,
-                "#include \"libobs/build/libobs-ported-graphics.pch.h\"",
-            ),
-        )
-        .expect("write linear-sRGB extract");
-    }
-    for (source, output, pch) in [
-        (
-            "graphics-ffmpeg-decode",
-            "image-decode-original",
-            "libobs-ported-graphics-ffmpeg-decode",
-        ),
-        (
-            "graphics-ffmpeg-decode-adapter",
-            "image-decode-adapter",
-            "libobs-image-decode-adapter",
-        ),
-    ] {
-        std::fs::write(
-            extract_dir.join(format!("{output}.inc")),
-            extract_after_pch(
-                &libobs.join("graphics").join(format!("{source}.c.h")),
-                &format!("#include \"libobs/build/{pch}.pch.h\""),
-            ),
-        )
-        .expect("write still-image decode extract");
-    }
-    for stem in ["graphics-ffmpeg-init", "graphics-ffmpeg-init-adapter"] {
-        std::fs::write(
-            extract_dir.join(format!("{stem}.inc")),
-            extract_after_pch(
-                &libobs.join("graphics").join(format!("{stem}.c.h")),
-                "#include \"build/libobs-media.pch.h\"",
-            ),
-        )
-        .expect("write image lifecycle extract");
-    }
-    std::fs::write(
-        extract_dir.join("texture-creators.inc"),
-        extract_after_pch(
-            &libobs.join("graphics/texture-creators.c.h"),
-            "#include \"libobs/build/libobs-ported-texture-creators.pch.h\"",
-        ),
-    )
-    .expect("write texture creator extract");
-    for stem in ["audio-resampler-ffmpeg", "audio-resampler-kernel"] {
-        std::fs::write(
-            extract_dir.join(format!("{stem}.inc")),
-            extract_after_pch(
-                &libobs.join("media-io").join(format!("{stem}.c.h")),
-                if stem == "audio-resampler-kernel" {
-                    "#include \"libobs/build/libobs-media-resampler-kernel.pch.h\""
-                } else {
-                    "#include \"build/libobs-media.pch.h\""
-                },
-            ),
-        )
-        .expect("write resampler extract");
-    }
-    // The media-remux adapter the Rust port calls, built over the FFmpeg
-    // stand-in (oracle/media_remux_adapter.c).
-    std::fs::write(
-        extract_dir.join("media-remux-ffmpeg.inc"),
-        extract_after_pch(
-            &libobs.join("media-io").join("media-remux-ffmpeg.c.h"),
-            "#include \"build/libobs-media.pch.h\"",
-        ),
-    )
-    .expect("write media-remux adapter extract");
-    std::fs::write(
-        extract_dir.join("obs-core-global-getters.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-core-global-getters.c.h")),
-    )
-    .expect("write global getter extract");
-    std::fs::write(
-        extract_dir.join("canvas-set-name.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-canvas-set-name.c.h")),
-    )
-    .expect("write canvas setter extract");
-    std::fs::write(
-        extract_dir.join("source-set-name.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-source-set-name.c.h")),
-    )
-    .expect("write source rename extract");
-    std::fs::write(
-        extract_dir.join("canvas-signals.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-canvas-signals.c.h")),
-    )
-    .expect("write canvas signal extract");
     std::fs::write(
         extract_dir.join("video-scale-effects-caller.inc"),
         extract_c(
@@ -1002,11 +784,6 @@ fn main() {
         ),
     )
     .expect("write real scale-effect caller extract");
-    std::fs::write(
-        extract_dir.join("source_audio_active_setter.inc"),
-        extract_after_libobs_pch(&libobs.join("obs-source-audio-active-setter.c.h")),
-    )
-    .expect("write original audio-active setter extract");
     oracle.include(&extract_dir);
 
     oracle
@@ -1210,6 +987,7 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", scale_effect_caller.display());
     println!("cargo:rerun-if-changed=oracle");
+    println!("cargo:rerun-if-changed=oracle.d");
     println!("cargo:rerun-if-changed=vendor");
     // Cargo scans a watched directory recursively, so any libobs source or
     // header an oracle includes reruns this script.

@@ -13,6 +13,9 @@ Do exactly this:
    keep sorted lists sorted. When both sides changed the same line, combine
    their intent; master's changes stay.
 2. Remove every conflict marker, then `git add` each resolved file.
+The driver excludes the headless_characterizations and portal_output expected
+JSON snapshots from this list. Do not hand-merge or stage those snapshots: the
+driver regenerates them from the resolved graph after checking your resolution.
 3. For `test-graph.json`, run `uv run ci/test_test_graph_sorted.py --fix`. For
    Rust files, run `soldr cargo fmt --all`. `git add` what they change.
 4. Stop. Do NOT run `git rebase --continue`, `--skip` or `--abort`, do not

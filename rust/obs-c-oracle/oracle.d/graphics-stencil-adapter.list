@@ -1,0 +1,1 @@
+graphics-stencil-adapter.inc|libobs/graphics/graphics-stencil-adapter.c.h|#include "libobs/build/libobs-ported-graphics.pch.h"

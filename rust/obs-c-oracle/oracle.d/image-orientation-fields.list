@@ -1,0 +1,1 @@
+image-orientation-fields.inc|libobs/graphics/graphics-ffmpeg-orientation-fields.c.h|#include "libobs/build/libobs-media.pch.h"
