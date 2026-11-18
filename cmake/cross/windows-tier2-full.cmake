@@ -2,6 +2,9 @@
 # Missing owners remain missing; the inventory auditor reports every omitted
 # native record. No empty owner target may turn an optional guard on.
 include(CMakePackageConfigHelpers)
+# Prebuilt Windows archives name MSVCRT/OLDNAMES in .drectve sections. Their
+# existing case aliases must be visible to every canonical owner/test link.
+link_directories("${CMAKE_BINARY_DIR}/cross-case-libs")
 set(_cmocka_config "${CMAKE_BINARY_DIR}/tier2-cmocka-config")
 file(MAKE_DIRECTORY "${_cmocka_config}")
 file(
