@@ -22,11 +22,14 @@ fn callback_receives_exact_data_once() {
             let calls = Cell::new(0);
             let sentinel = Cell::new(0);
             let seen = Cell::new(Some(&sentinel));
-            assert_eq!(get_priming_samples(Some(|| {
-                calls.set(calls.get() + 1);
-                seen.set(data);
+            assert_eq!(
+                get_priming_samples(Some(|| {
+                    calls.set(calls.get() + 1);
+                    seen.set(data);
+                    result
+                })),
                 result
-            })), result);
+            );
             assert_eq!(calls.get(), 1);
             assert!(match (seen.get(), data) {
                 (Some(actual), Some(expected)) => std::ptr::eq(actual, expected),
