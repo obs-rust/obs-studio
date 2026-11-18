@@ -212,12 +212,12 @@ function(_obs_cross_tier2_tests)
   add_custom_target(
     tier2-cross-metal
     COMMAND
-      "${CMAKE_COMMAND}" -S "${OBS_SOURCE_ROOT}/cmake/cross/metal" -B "${CMAKE_BINARY_DIR}/libobs-metal" -G Ninja
-      "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}" "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+      "${CMAKE_COMMAND}" -S "${OBS_SOURCE_ROOT}/cmake/cross/metal" -B "${CMAKE_BINARY_DIR}/libobs-metal-managed" -G
+      Ninja "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}" "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
       "-DOBS_SOURCE_ROOT=${OBS_SOURCE_ROOT}" "-DOBS_TIER2_CORE=$<TARGET_FILE:libobs>"
       "-DOBS_TIER2_CONFIG=${CMAKE_BINARY_DIR}/config" "-DOBS_TIER2_DEPS=${OBS_CROSS_DEPS}"
-    COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}/libobs-metal" --target libobs-metal
-    BYPRODUCTS "${CMAKE_BINARY_DIR}/libobs-metal/libobs-metal.0.dylib"
+    COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}/libobs-metal-managed" --target libobs-metal
+    BYPRODUCTS "${CMAKE_BINARY_DIR}/libobs-metal-managed/libobs-metal.0.dylib"
     DEPENDS libobs
     COMMENT "Cross-build the canonical Swift Metal recipe on Linux"
   )
@@ -291,7 +291,7 @@ function(_obs_cross_runtime_targets directory)
 endfunction()
 _obs_cross_runtime_targets("${CMAKE_SOURCE_DIR}")
 get_property(_runtime_targets GLOBAL PROPERTY OBS_TIER2_RUNTIME_TARGETS)
-set(_runtime_paths "${CMAKE_BINARY_DIR}/libobs-metal/libobs-metal.0.dylib\n")
+set(_runtime_paths "${CMAKE_BINARY_DIR}/libobs-metal-managed/libobs-metal.0.dylib\n")
 foreach(_target IN LISTS _runtime_targets)
   string(APPEND _runtime_paths "$<TARGET_FILE:${_target}>\n")
 endforeach()
