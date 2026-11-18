@@ -139,6 +139,13 @@ def stage(
     dependencies: list[Path] | None = None,
 ) -> dict:
     build, source, output = build.absolute(), source.absolute(), output.absolute()
+    if output.resolve().is_relative_to(build.resolve()):
+        raise ValueError("bundle output must be outside the producer build root")
+    directories = [
+        (Path("build") / contained(build, path)).as_posix()
+        for path in sorted(build.rglob("*"))
+        if path.is_dir()
+    ]
     templates = {}
     cache = build / "CMakeCache.txt"
     command = (
@@ -183,6 +190,7 @@ def stage(
         "embedded_build_paths": embedded_paths(output, files, build),
         "native_contract_prebuilt": False,
         "files": files,
+        "directories": directories,
         "ctest_templates": templates,
     }
     output.mkdir(parents=True, exist_ok=True)
@@ -196,6 +204,10 @@ def prepare(bundle: Path, source: Path) -> dict:
         raise ValueError("unsupported Tier 2 artifact manifest")
     if source.absolute() != Path(manifest["source_root"]):
         raise ValueError("unchanged fixtures require the same absolute source root")
+    for relative in manifest["directories"]:
+        path = bundle / relative
+        contained(bundle, path)
+        path.mkdir(parents=True, exist_ok=True)
     if (
         manifest["embedded_build_paths"]
         and Path(manifest["build_root"]).resolve() != (bundle / "build").resolve()
