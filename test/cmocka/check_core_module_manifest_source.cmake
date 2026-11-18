@@ -118,7 +118,10 @@ if(NOT _build_result EQUAL 0)
 endif()
 if(TEST_PREPARE_ONLY)
   file(SHA256 "${OBS_CORE_MODULES_CMAKE}" _module_sha)
-  file(WRITE "${_evidence}" "set(_configure_result 0)\nset(_build_result 0)\nset(_prepared_module_sha ${_module_sha})\n")
+  file(
+    WRITE "${_evidence}"
+    "set(_configure_result 0)\nset(_build_result 0)\nset(_prepared_module_sha ${_module_sha})\n"
+  )
   file(GLOB_RECURSE _prepared_files RELATIVE "${TEST_FIXTURE_ROOT}" "${TEST_FIXTURE_ROOT}/*")
   list(REMOVE_ITEM _prepared_files evidence.cmake)
   # Hash source, generated source, build graph and products. Relative names

@@ -32,6 +32,7 @@ impl Artifacts {
             paths,
         };
         if !read_only {
+            std::fs::create_dir_all(output).unwrap();
             artifacts.save(false);
         }
         artifacts
@@ -107,5 +108,14 @@ fn assertions_never_call_builders() {
         }))
         .is_err()
     );
+    std::fs::remove_dir_all(output).unwrap();
+}
+
+#[test]
+fn incomplete_preparation_cannot_be_replayed() {
+    let output = std::env::temp_dir().join(format!("obs-macos-incomplete-{}", std::process::id()));
+    let prepare = Artifacts::new(&output, false);
+    prepare.finish();
+    assert!(std::panic::catch_unwind(|| Artifacts::new(&output, true)).is_err());
     std::fs::remove_dir_all(output).unwrap();
 }
