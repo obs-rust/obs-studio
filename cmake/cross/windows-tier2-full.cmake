@@ -29,6 +29,7 @@ add_library(libobs-cross-core-modules OBJECT "${CMAKE_BINARY_DIR}/config/obs-cor
 add_library(OBS::libobs-core-modules ALIAS libobs-cross-core-modules)
 target_include_directories(libobs-cross-core-modules PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
 set(HAVE_LIBOBS_RUST_STATIC TRUE)
+set(LIBOBS_SHARED_TARGETS libobs-cross-shared libobs-cross-reference)
 add_library(libobs-objects ALIAS libobs-cross-shared-objects)
 list(PREPEND CMAKE_PREFIX_PATH "${OBS_CROSS_QT}")
 # All imported packages must describe the Windows target, never the Linux host.
@@ -125,6 +126,10 @@ function(_obs_windows_tier2_full_test_headers)
         PRIVATE "${OBS_SOURCE_ROOT}/deps/w32-pthreads" "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config"
       )
       target_include_directories(${_target} SYSTEM PRIVATE "${OBS_CROSS_DEPS}/include")
+      get_target_property(_libraries ${_target} LINK_LIBRARIES)
+      if(NOT _libraries MATCHES "libobs_rust-static" AND NOT _kind STREQUAL "OBJECT_LIBRARY")
+        target_link_libraries(${_target} PRIVATE "${_tier2_builtins}")
+      endif()
     endif()
   endforeach()
 endfunction()
@@ -149,6 +154,8 @@ function(_obs_windows_tier2_full_registry)
 endfunction()
 enable_testing()
 _obs_windows_tier2_full_registry()
+include("${CMAKE_CURRENT_LIST_DIR}/windows-tier2-options.cmake")
+obs_windows_tier2_driver_options("${CMAKE_CURRENT_SOURCE_DIR}")
 add_custom_target(
   tier2-cross-full
   DEPENDS libobs-cross-shared libobs-cross-reference cmocka-tests libobs-d3d11 libobs-opengl
@@ -165,3 +172,5 @@ foreach(_target IN LISTS _test_targets)
   endif()
 endforeach()
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/tier2-runtime.txt" CONTENT "${_runtime}")
+
+obs_windows_tier2_native_layout()

@@ -565,10 +565,18 @@ function(obs_native_test_graph path root)
         endif()
         if(MSVC)
           set(import_library "${CMAKE_CURRENT_BINARY_DIR}/${import_output}")
+          set(import_librarian "${CMAKE_AR}")
+          if(CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "GNU" AND CMAKE_C_SIMULATE_ID STREQUAL "MSVC")
+            # The GNU driver uses llvm-ar for ordinary archives. DEF import
+            # libraries require the separately provisioned MSVC librarian API.
+            get_filename_component(llvm_bin "${CMAKE_AR}" DIRECTORY)
+            find_program(import_librarian_msvc llvm-lib HINTS "${llvm_bin}" NO_DEFAULT_PATH REQUIRED)
+            set(import_librarian "${import_librarian_msvc}")
+          endif()
           add_custom_command(
             OUTPUT "${import_library}"
             COMMAND
-              "${CMAKE_AR}" /nologo "/def:${root}/${import_definition}" "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}"
+              "${import_librarian}" /nologo "/def:${root}/${import_definition}" "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}"
               "/out:${import_library}"
             DEPENDS "${root}/${import_definition}"
             VERBATIM

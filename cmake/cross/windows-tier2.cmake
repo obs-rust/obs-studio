@@ -1,3 +1,4 @@
+set(_tier2_xwin "${CMAKE_FIND_ROOT_PATH}")
 # Opt-in producer probe: canonical C source sets and a small unchanged registry.
 # Full native registry/renderer coverage is required before any workflow switch.
 # CMake's Windows-GNU-clang link rule uses -nostdlib. Ask clang to resolve the
@@ -12,6 +13,14 @@ execute_process(
 )
 if(NOT _builtins_result EQUAL 0 OR NOT EXISTS "${_tier2_builtins}")
   message(FATAL_ERROR "clang did not resolve the provisioned Windows compiler-rt")
+endif()
+# soldr's case-insensitive VFS is a compiler-header overlay. lld-link still
+# searches physical library names; keep the one mixed-case consumer alias local.
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cross-case-libs")
+file(CREATE_LINK "${_tier2_xwin}/sdk/lib/um/x86_64/rpcrt4.lib"
+     "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib" SYMBOLIC RESULT _rpc_alias)
+if(NOT _rpc_alias STREQUAL "0")
+  message(FATAL_ERROR "Cannot create cross-only Rpcrt4.lib alias: ${_rpc_alias}")
 endif()
 add_library(libobs-cross-reference SHARED)
 target_link_libraries(

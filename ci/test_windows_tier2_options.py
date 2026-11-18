@@ -54,7 +54,7 @@ class DriverOptionsTests(unittest.TestCase):
                 'cmake_minimum_required(VERSION 3.30)\nproject(layout C)\n'
                 f'list(PREPEND CMAKE_MODULE_PATH "{ROOT}/cmake/common")\n'
                 'set(OBS_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")\n'
-                'include(pch)\n'
+                'include(pch)\ninclude(groups)\n'
                 f'include("{ROOT}/cmake/cross/windows-tier2-options.cmake")\n'
                 'add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" tests)\n'
                 'obs_windows_tier2_native_layout()\n'

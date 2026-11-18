@@ -9,6 +9,46 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import struct
+import tempfile
+
+
+def extensionless_commands(build: Path, tests: list[dict]) -> list[dict]:
+    """Resolve only proven, contained AMD64 EXEs; leave absent files unbuilt."""
+    with tempfile.TemporaryDirectory() as directory:
+        output = Path(directory) / "commands.json"
+        subprocess.run(
+            ["cmake", f"-DBUILD={build}", f"-DOUTPUT={output}", "-P",
+             str(Path(__file__).with_name("windows_tier2_commands.cmake"))],
+            check=True, capture_output=True, text=True,
+        )
+        commands = json.loads(output.read_text())
+    resolutions = []
+    for test in tests:
+        if test.get("command"):
+            continue
+        command = commands.get(test["name"], [])
+        if not command or Path(command[0]).suffix:
+            continue
+        candidate = Path(command[0] + ".exe")
+        if not candidate.is_file():
+            continue
+        if not candidate.resolve().is_relative_to(build.resolve()):
+            raise ValueError(f"extensionless command outside build: {candidate}")
+        data = candidate.read_bytes()
+        try:
+            offset = struct.unpack_from("<I", data, 0x3C)[0]
+            valid = (data[:2] == b"MZ" and data[offset:offset + 4] == b"PE\0\0"
+                     and struct.unpack_from("<H", data, offset + 4)[0] == 0x8664
+                     and struct.unpack_from("<H", data, offset + 24)[0] == 0x20B)
+        except struct.error:
+            valid = False
+        if not valid:
+            raise ValueError(f"extensionless command requires AMD64 PE32+: {candidate}")
+        test["command"] = [str(candidate), *command[1:]]
+        resolutions.append({"name": test["name"], "original": command,
+                            "resolved": test["command"]})
+    return resolutions
 
 
 def inventory(build: Path, native: dict) -> dict:
@@ -24,6 +64,7 @@ def inventory(build: Path, native: dict) -> dict:
         text=True,
     )
     tests = json.loads(output)["tests"]
+    resolutions = extensionless_commands(build, tests)
     names = {test["name"] for test in tests}
     baseline = set(native["names"])
     return {
@@ -42,6 +83,7 @@ def inventory(build: Path, native: dict) -> dict:
             if t.get("command") and Path(t["command"][0]).suffix.lower() != ".exe"
         ],
         "tests": tests,
+        "command_resolutions": resolutions,
         "qualification_blockers": [
             "independent same-commit native commands/properties",
             "Cargo core/native contract Linux preparation",
