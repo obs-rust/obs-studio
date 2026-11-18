@@ -15372,6 +15372,21 @@
         }
       ]
     },
+    "test_source_canvas_getter": {
+      "sources": [
+        "test/cmocka/test_source_canvas_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_color_space_steps": {
       "sources": [
         "test/cmocka/test_source_color_space_steps.c",
@@ -26188,6 +26203,22 @@
       "target": "test_source_boolean_queries",
       "command": [
         "${target}"
+      ]
+    },
+    "test_source_canvas_getter": {
+      "target": "test_source_canvas_getter",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "skip_return_code": 77,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_source_color_space_steps": {
