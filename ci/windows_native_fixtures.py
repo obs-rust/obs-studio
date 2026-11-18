@@ -7,7 +7,7 @@ import platform
 import shlex
 import shutil
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import macos_native_fixtures as shared
 from windows_test_artifact import TARGET, pe_imports
@@ -44,6 +44,22 @@ def fixture_images(directory: Path) -> dict[str, list[str]]:
             for name, is_dll in sorted(images.items())}
 
 
+def validate_directories(manifest: dict) -> None:
+    """Windows replays Linux paths: keep empty directories and reject escapes."""
+    roots = manifest.get("directories", [])
+    if not roots:
+        raise ValueError("missing Windows fixture directory inventory")
+    for event in manifest["events"]:
+        paths = event.get("directories")
+        if not isinstance(paths, list):
+            raise ValueError("missing Windows fixture event directory inventory")
+        for name in [*roots, *paths]:
+            path = PurePosixPath(name)
+            if (not path.is_absolute() or ".." in path.parts or "\\" in name or ":" in name
+                    or not any(path.is_relative_to(PurePosixPath(root)) for root in roots)):
+                raise ValueError("escaping Windows fixture directory inventory")
+
+
 def validate(root: Path) -> None:
     directory = root / "native-fixtures"
     index = json.loads((directory / "index.json").read_text())
@@ -56,6 +72,7 @@ def validate(root: Path) -> None:
         if (manifest.get("complete") is not True or manifest.get("target") != TARGET
                 or "linux" not in manifest.get("host", "") or not manifest.get("events")):
             raise ValueError(f"incompatible Windows fixture evidence: {name}")
+        validate_directories(manifest)
     if fixture_images(directory) != index.get("images"):
         raise ValueError("Windows native PE/import inventory mismatch")
 
