@@ -2605,6 +2605,15 @@ struct obs_encoder_preferred_range_fields {
 };
 struct obs_encoder_preferred_range_fields obs_encoder_preferred_range_fields(const obs_encoder_t *encoder);
 
+/* Borrowed defaults callbacks; the original C helper below remains available. */
+struct obs_encoder_defaults_fields {
+	void (*legacy)(obs_data_t *settings);
+	void (*modern)(obs_data_t *settings, void *type_data);
+	void *type_data;
+};
+struct obs_encoder_defaults_fields obs_encoder_defaults_type_fields(const struct obs_encoder_info *info);
+struct obs_encoder_defaults_fields obs_encoder_defaults_instance_fields(const obs_encoder_t *encoder);
+
 /* Shared by the C defaults API and C-reference property constructors. */
 static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *info)
 {

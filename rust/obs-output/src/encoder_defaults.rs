@@ -14,5 +14,16 @@ pub trait Host {
 
 /// Unknown types return no settings; missing instances also emit their diagnostic.
 pub fn query<H: Host>(host: Option<&H>, null_instance: impl FnOnce()) -> Option<H::Settings> {
-    todo!()
+    let Some(host) = host else {
+        null_instance();
+        return None;
+    };
+    let settings = host.create_settings();
+    if host.has_legacy() {
+        host.legacy(&settings);
+    }
+    if host.has_modern() {
+        host.modern(&settings, host.type_data());
+    }
+    Some(settings)
 }
