@@ -30,7 +30,7 @@ class CostDataTest(unittest.TestCase):
         self.text = VALIDATE.read_text(encoding="utf-8")
         start = self.text.index('echo "== [$mode] ctest')
         self.around_ctest = self.text[start - 1500 : start + 1500]
-        invocation = re.search(r'^\s*"\$\{mode_env\[@\]\}" xvfb-run [^\n]+ ctest --test-dir',
+        invocation = re.search(r'^\s*"\$\{known_flaky\[@\]\}" "\$\{mode_env\[@\]\}" xvfb-run [^\n]+ ctest --test-dir',
                                self.text, re.M)
         self.assertIsNotNone(invocation, "validate.sh must invoke CTest under the shared display")
         self.ctest = invocation.start()
