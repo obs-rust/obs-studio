@@ -57,6 +57,31 @@ class NativeFixtureTest(unittest.TestCase):
 
 
 class FixtureInventoryTest(unittest.TestCase):
+    def test_swift_tools_provision_dsymutil_without_ambient_host_tool(self):
+        import macos_native_fixtures as fixtures
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            llvm = root / "llvm"
+            llvm.mkdir()
+            (llvm / "ld64.lld").write_text("linker")
+            dsymutil = root / "managed-dsymutil"
+            dsymutil.write_text("managed debug tool")
+            with patch.object(fixtures.shutil, "which", return_value=None), \
+                    patch.object(fixtures, "provision_dsymutil", return_value=dsymutil) as provision:
+                tools = fixtures.swift_tools(root, llvm, {})
+            self.assertEqual((tools / "dsymutil").resolve(), dsymutil)
+            self.assertEqual((tools / "ld64.lld").resolve(), llvm / "ld64.lld")
+            provision.assert_called_once_with(root)
+
+    def test_missing_dsymutil_cannot_silently_defer_failure_to_swift(self):
+        import macos_native_fixtures as fixtures
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(fixtures.shutil, "which", return_value=None), \
+                    patch.object(fixtures, "provision_dsymutil", side_effect=FileNotFoundError("dsymutil")):
+                with self.assertRaisesRegex(FileNotFoundError, "dsymutil"):
+                    fixtures.swift_tools(root, root, {})
+
     def test_preparation_rejects_macos_before_starting_any_tool(self):
         import macos_native_fixtures as fixtures
         with patch.object(fixtures.platform, "system", return_value="Darwin"), patch.object(fixtures.subprocess, "run") as run:
