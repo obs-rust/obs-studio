@@ -1,5 +1,6 @@
 """The test-enabled CMake libraries use the same fixture set as obs-build."""
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -16,6 +17,9 @@ class SetLocaleRegistrationTest(unittest.TestCase):
         expected = sorted((ROOT / 'libobs' / source).resolve()
                           for source in json.loads(MANIFEST.read_text()))
         self.assertIn(ROOT / 'test/cmocka/core_set_locale_fixture.c', expected)
+        if plan := os.environ.get('OBS_BUILD_NATIVE_FIXTURE_PLAN'):
+            native = sorted(Path(source).resolve() for source in json.loads(Path(plan).read_text()))
+            self.assertEqual(native, expected, 'Cargo and CMake must select identical fixture inputs')
         fragment = ROOT / 'test/cmocka/tests.d/test_set_locale.cmake'
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)

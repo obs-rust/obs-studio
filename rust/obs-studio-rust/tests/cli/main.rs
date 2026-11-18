@@ -2,6 +2,9 @@
 
 mod cli_json;
 mod ipv6;
+#[cfg(target_os = "linux")]
+#[path = "../../../obs-build/tests/locale_manifest_contract.rs"]
+mod locale_manifest_contract;
 #[cfg(feature = "bundled-native")]
 mod mcp_stdio;
 mod protocol;
