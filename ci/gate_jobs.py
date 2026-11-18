@@ -150,8 +150,11 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
         expected.update(f"Build 🧱 / Rust Tier 2 Linux 🐧 (tests {mode}, all)" for mode in ("OFF", "ON"))
     if selected.qt:
         expected.add("Build 🧱 / Qt Frontend Linux 🐧")
-    for enabled, runner in ((selected.macos, "macos-26"), (selected.windows, "windows-2025-vs2026")):
+    for enabled, runner, artifacts in (
+            (selected.macos, "macos-26", {"Build 🧱 / macOS Rust Artifacts 🐧"}),
+            (selected.windows, "windows-2025-vs2026", set())):
         if enabled:
+            expected.update(artifacts)
             expected.add(f"Build 🧱 / Rust Tests 🦀 ({runner})")
             expected.add(f"Build 🧱 / Rust Tier 2 ({runner})")
     if any(path.endswith(".swift") for path in files):

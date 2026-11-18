@@ -255,17 +255,17 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 - **No `win-arm64`:** `util/threading-windows.h` uses MSVC-only ARM64 intrinsics that clang lacks.
 - **Cost, measured 2026-10-31:** a cold cross build *with* the link — a fresh build tree, `ZCCACHE_DISABLE=1`, including that alias's `libobs-rust` staticlib — took `win-x64` 32 s / 41 s, `mac-arm64` 117 s / 32 s and `mac-x64` 134 s / 26 s (two samples each, `-j 4` on a 16-thread host shared with other worker checkouts; the slower sample in each pair is the one that also rebuilt 14–18 workspace crates, and the rest of the spread is co-tenant load). The native `Build OBS-Studio-Rust` steps it stands in for are 12m25 (Windows x64), 8m01 (macOS arm64) and 7m50 (macOS x86_64) in release run 41007587429; signing and packaging stay native.
 
-#### macOS Rust execution artifacts (staged, #5008)
+#### macOS Rust execution artifacts (#5008)
 
 The maintainer chose **STRICT** on 2026-11-17: nothing compiles on hosted
-macOS runners. The intended producer runs on Linux with soldr's LLVM and Apple
+macOS runners. The Rust-test producer runs on Linux with soldr's LLVM and Apple
 SDK targeting `aarch64-apple-darwin`; macOS loads and runs its artifacts. This
 also applies to obs-build's native-build and Qt integration contracts. Compiler
 discovery assertions apply to the Linux-hosted cross toolchain targeting Darwin;
 their load and execution assertions still run on macOS. Keep every assertion,
 including profile switches, source/flag mutations and unity/PCH rebuild decisions.
 
-The first infrastructure slice is `ci/macos_test_artifact.py`:
+The Rust-test bundle is prepared by `ci/macos_test_artifact.py`:
 
 ```sh
 uv run --no-project ci/macos_test_artifact.py build --output build_macos_tests
@@ -294,9 +294,13 @@ only after the entire compilation command succeeds. A producer success proves
 compilation and compile-fail assertions; execution is proven only by the consumer.
 
 Build and execution require **the same absolute, real checkout root**, including
-the target directory. For workflow activation, place both checkouts at a common
-path such as `/tmp/obs-ci/src` before building (a symlink whose resolved paths
-differ is insufficient). Rust embeds `CARGO_MANIFEST_DIR` and `CARGO_BIN_EXE_*`;
+the target directory. `ci/macos_test_workspace.py place` moves both real checkouts
+to `/opt/obs-ci-<run-id>-<attempt>/src` before setup or execution, leaving the
+original Actions workspace as an alias. `/opt` resolves identically on both hosts;
+Darwin's `/tmp` resolves through `/private/tmp`. Placement supports separate runner
+mounts and rejects a symlinked destination parent. The always-run restore step
+returns the checkout before action post steps, retaining caches without leaving
+large relocated trees on the Dell. Rust embeds `CARGO_MANIFEST_DIR` and `CARGO_BIN_EXE_*`;
 changing environment variables after compilation cannot relocate them. The runner
 rejects a mismatched root. The manifest retains package cwd, Cargo package/build
 environment, test arguments and helper permissions, and hashes all transported
@@ -312,8 +316,8 @@ manual groups, all unity/PCH combinations, transitive headers, source/flag chang
 Swift bridge/modules/headers and the independent CMake graph consumers. The
 Windows resource/MSVC contracts and Linux-only runtime modules keep their existing
 platform gates. Configuration-only fixtures use `project(... NONE)` or explicitly
-disable compiler probing; they still run on macOS. Qt integration contracts remain
-the next slice.
+disable compiler probing; they still run on macOS. Qt integration contracts use
+the preparation helper below.
 
 Preparation discovers soldr's Darwin C/C++ drivers, archiver, LLVM linker and Apple
 SDK on Linux. Swift uses an explicit `SWIFTC` override or the SHA256-pinned Linux
@@ -337,15 +341,28 @@ compilation path. `OBS_NATIVE_FIXTURES_PREPARE` is the producer-only counterpart
 do not set both variables. Native manifests and signed arm64 dylibs, bundles and
 executables are included in slice (a)'s final checksummed bundle.
 
-**The workflow switch is not active in this slice.** The existing required
-`Rust Tests 🦀 (macos-26)` job and its coverage remain in place while the remaining
-preparation work is built. The native fixture and rebuild-decision records are
-prepared by the infrastructure above; the four Qt integration contracts still
-need a Darwin Qt SDK on Linux. Only then add the Dell-eligible Linux producer with hosted fallback and
-make the existing macOS job download/run its full bundle, retaining CI Gate and
-PR changed-crate scope. The workflow regression enforces an atomic switch and
-tests the run-only dependency/command contract separately during staging.
-Tier 2 macOS is tracked separately by #5009.
+`rust-tests-macos-build` in the existing build workflow prepares the full bundle
+on Linux. It uses the existing per-job `mq-heavy-labels` routing with
+`ubuntu-26.04` fallback. Both hosted and Dell producers upload the same gzip
+archive and SHA256 sidecar; neither uses local runner handoff. The archive keeps
+hidden build-script files and permissions. The consumer verifies the archive
+before extracting, then verifies all manifest file checksums before any test.
+PRs retain `rust_scope.affected` selection through `--base`; merge groups and
+nondeferred events build the workspace. Qt preparation and `--require-qt` replay
+share the existing `qt_sdk` scope. A missing Qt payload fails before execution.
+
+The existing `Rust Tests 🦀 (macos-26)` check needs a successful producer and only
+runs the bundle. Its setup consists of checkout for source/fixture assertions
+and uv's prebuilt Python 3.14 for verification/helpers. CMake and CTest from the
+runner image configure language-free projects and run existing tests. There is
+no soldr setup, dependency cook, Qt SDK installation, compiler discovery or
+compilation on this consumer. The published-SDK resolver and the four original
+Qt graph/CMake contracts run on Linux against the Darwin SDK, recording their
+target executions for macOS. Analysis outside #4999's queue replacement runs on
+the Linux producer against the Darwin target. CI Gate requires the selected
+producer and the unchanged macOS check; failed/missing/corrupt artifacts or failed
+entries cannot satisfy it. Graph self-tests enforce these dependencies and the
+absence of compile steps. Tier 2 macOS remains separate work in #5009.
 
 The Qt infrastructure slice adds `ci/macos_qt_artifact.py`: matching published
 Darwin Qt libraries and Linux moc/uic/rcc tools, both original native/CMake
@@ -723,8 +740,8 @@ Tests job leaves formatting to Fast Gate and Clippy to the required macOS
 arm64 cross leg (#4999). That linked cross leg lints `--workspace --all-targets`,
 including the category tests and C oracle; its Dylint scope stays unchanged.
 CI Gate requires both replacement jobs to execute successfully on the merge
-result. Missing/false scope, measurement-only modes and other events keep the
-native analysis steps. Native Rust tests, documentation tests and every Tier 2
+result. Missing/false scope, measurement-only modes and other events keep Darwin
+analysis on the Linux artifact producer (#5008). Rust tests, runnable doctests and every Tier 2
 pass still execute on macOS. The two inspected jobs spent 155–162 seconds in
 native Clippy plus 8–11 seconds in formatting; this is the expected native
 runner saving, pending hosted validation, with extra test/oracle analysis on

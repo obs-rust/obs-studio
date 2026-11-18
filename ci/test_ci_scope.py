@@ -314,7 +314,7 @@ class CiScopeTest(unittest.TestCase):
         import re
 
         heavy = {
-            "rust-cross-lint", "rust-cross-lint-release",
+            "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
             "rust-linux-tier2-build", "rust-linux-tier2",
         }
         light = {

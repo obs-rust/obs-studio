@@ -281,12 +281,33 @@ def validate_inventory(data: dict, root: Path) -> None:
         validate_native_fixtures(root)
 
 
-def execute(manifest: Path, root: Path) -> int:
+def validate_qt_inventory(data: dict) -> None:
+    from macos_qt_artifact import CONTRACTS
+
+    actual = {entry["package"].removeprefix("Qt/") for entry in data["tests"] if entry.get("kind") == "qt-contract"}
+    if data.get("qt_contracts_complete") != list(CONTRACTS) or actual != set(CONTRACTS):
+        raise ValueError("required Qt contract payload is incomplete")
+
+
+def entry_environment(entry: dict, root: Path) -> dict[str, str]:
+    env = dict(os.environ)
+    env.update({key: value.replace("{root}", str(root)) for key, value in entry["env"].items()})
+    for key, values in entry.get("env_path_prepend", {}).items():
+        paths = [value.replace("{root}", str(root)) for value in values]
+        if env.get(key):
+            paths.append(env[key])
+        env[key] = os.pathsep.join(paths)
+    return env
+
+
+def execute(manifest: Path, root: Path, *, require_qt: bool = False) -> int:
     data = json.loads(manifest.read_text())
     if data["version"] != 1 or data["target"] != TARGET or data["build_root"] != str(root):
         raise ValueError("artifact target/version/source root mismatch (compiled paths cannot be relocated)")
     if not data["tests"] and not (data.get("scope_skipped", False) or data.get("scope_no_tests", False)):
         raise ValueError("empty test manifest without an explicit scope skip")
+    if require_qt:
+        validate_qt_inventory(data)
     validate_inventory(data, root)
     for entry in data["tests"]:
         binary = within(root, entry["binary"])
@@ -298,13 +319,7 @@ def execute(manifest: Path, root: Path) -> int:
         if not cwd.is_dir():
             raise FileNotFoundError(cwd)
         binary.chmod(binary.stat().st_mode | 0o111)
-        env = dict(os.environ)
-        env.update({key: value.replace("{root}", str(root)) for key, value in entry["env"].items()})
-        for key, values in entry.get("env_path_prepend", {}).items():
-            paths = [value.replace("{root}", str(root)) for value in values]
-            if env.get(key):
-                paths.append(env[key])
-            env[key] = os.pathsep.join(paths)
+        env = entry_environment(entry, root)
         print(f"Running {entry['package']}: {binary}", flush=True)
         arguments = [value.replace("{root}", str(root)) for value in entry["args"]]
         status = subprocess.run([str(binary), *arguments], cwd=cwd, env=env, timeout=entry.get("timeout")).returncode
@@ -368,6 +383,7 @@ def main() -> int:
     runner = sub.add_parser("run")
     runner.add_argument("--manifest", type=Path, required=True)
     runner.add_argument("--root", type=Path, default=ROOT)
+    runner.add_argument("--require-qt", action="store_true")
     capture = sub.add_parser("capture-doctest")
     capture.add_argument("binary", type=Path)
     capture.add_argument("args", nargs=argparse.REMAINDER)
@@ -378,7 +394,7 @@ def main() -> int:
         capture_doctest(args.binary, args.args, Path(os.environ["OBS_MACOS_DOCTEST_ROOT"]),
                         Path(os.environ["OBS_MACOS_DOCTEST_BUNDLE"]), Path.cwd(), dict(os.environ))
         return 0
-    return execute(args.manifest, args.root.resolve())
+    return execute(args.manifest, args.root.resolve(), require_qt=args.require_qt)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       mq-heavy-labels:
-        description: Capacity-checked merge-queue labels for Tier 2 Linux and Cross Lint only; empty uses hosted runners
+        description: Capacity-checked merge-queue labels for Linux heavy jobs; empty uses hosted runners
         type: string
         default: ''
       native-cache-measurement-only:
@@ -2274,38 +2274,44 @@ jobs:
       - name: Local Gate (cross-release) 🧪
         run: uv run --no-project ci/local_gate.py --lane cross-release
 
-  rust-tests-macos:
-    # 2x the 9-14.3 min the lane runs on macos-26 (#2593 A).
-    timeout-minutes: 25
-    name: Rust Tests 🦀 (macos-26)
-    # Only the platforms the change touches (#436); Linux is rust-tests-linux.
-    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
-    runs-on: macos-26
-    # Starts with Fast Gate (#2985): the lane consumes none of its output, and
-    # a failing gate still fails the run through CI Gate (ci/gate_jobs.py).
+  # All Darwin compilation, including runtime native/Qt fixtures, happens on
+  # Linux. Per-job heavy routing retains the Dell opt-in and hosted fallback.
+  rust-tests-macos-build:
+    timeout-minutes: 45
+    name: macOS Rust Artifacts 🐧
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
+    if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
+    env:
+      COMMON_PARENT: /opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # Same soldr-wrapped commands as docs/rust-port/testing-policy.md.
-      # setup-soldr provisions the toolchain (with the clippy/rustfmt
-      # components) from rust-toolchain.toml and restores its dependency cook
-      # cache and cargo registry. Remote saves only warm master; PR and
-      # merge-group runs restore. Local act/act2 saves stay enabled.
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      # /opt resolves identically on Linux and macOS (/tmp does not). Move the
+      # real checkout before setup/cook; leave Actions' workspace as an alias.
+      - name: Place common checkout
+        id: workspace
+        run: |
+          sudo mkdir -p "${COMMON_PARENT}"
+          sudo chown "$(id -u):$(id -g)" "${COMMON_PARENT}"
+          uv run --no-project ci/macos_test_workspace.py place --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
       - name: Set Up soldr 🦀
-        id: setup-soldr
         uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         with:
-          # One scope for every caller (push.yaml, ci.yml), so PRs replay
-          # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
           version: 0.9.45
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
+          cache-key-suffix: linux-host-v3
+          solo-toolchain-cache: false
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
-          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
-          # enforced only on the merge_group singleton. No bucket/creds = feature off.
           s3-bucket: forge-ci
           s3-endpoint: nyc3.digitaloceanspaces.com
           s3-region: nyc3
@@ -2314,84 +2320,99 @@ jobs:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
-      - name: Set Up uv 🐍
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-
-      # The OS lane runs the tests of the crates the diff touches on a PR
-      # (ci/rust_scope.py selects the feature, ci_scope.py the OS); the
-      # workspace on master (#992).
-      - name: Run Rust Tests (changed crates) 🧪
-        if: github.event_name != 'merge_group' && needs.check-event.outputs.deferred == 'true'
-        env:
-          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+      - name: Install Linux preparation dependencies
         run: |
-          git fetch -q --depth=1 origin "${BASE}"
-          uv run --no-project ci/local_gate.py --test-diff "${BASE}"
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
+          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y --no-install-recommends cmake ninja-build pkg-config libglib2.0-dev libssl-dev libxml2 libedit2 libsqlite3-0 libcurl4 libtinfo6 libz3-4
 
-      - name: Run Rust Tests 🧪
-        if: github.event_name == 'merge_group' || needs.check-event.outputs.deferred != 'true'
-        run: soldr cargo test --workspace --locked
-
-      # The cumulative queue scope requires Fast Gate formatting and the
-      # macOS arm64 cross leg's all-target Clippy, including tests/oracle
-      # (#4999). CI Gate rejects a missing/skipped/failed replacement job.
-      # Keep native analysis for other events, unknown scope and measurements.
+      # Preserve #4999: the required queue cross leg already owns this analysis.
+      # Other events still analyze the Darwin target, now on Linux.
       - name: Run Clippy 📎
         if: ${{ github.event_name != 'merge_group' || needs.check-event.outputs.cross_lint != 'true' || inputs.flatpak-measurement-only || inputs.native-cache-measurement-only }}
-        run: soldr cargo clippy --locked --workspace --all-targets -- -D warnings
+        run: soldr cargo clippy --locked --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
 
       - name: Check Formatting 🎨
         if: ${{ github.event_name != 'merge_group' || needs.check-event.outputs.cross_lint != 'true' || inputs.flatpak-measurement-only || inputs.native-cache-measurement-only }}
         run: soldr cargo fmt --all --check
 
-      # rust/obs-build's Qt SDK resolver against the published obs-studio-libs
-      # SDK for this runner's OS (#1878). Only Qt SDK paths and full runs
-      # select it; no Actions cache: the Windows SDK alone is 163 MB packed,
-      # over ci.toml's libs-qt budget.
-      - name: Check Published Qt SDK 🧩
-        if: needs.check-event.outputs.qt_sdk == 'true'
-        # A Qt test app that cannot start can wait on a dialog; bound it.
-        timeout-minutes: 15
+      # Same changed-crate selector as the former PR consumer; queue/master
+      # select the workspace. Build includes doctests and all native variants.
+      - name: Prepare selected Darwin tests and fixtures
+        if: github.event_name != 'merge_group' && needs.check-event.outputs.deferred == 'true'
         env:
-          QT_TAG: qt6-6.11.1
+          BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
-          : Check Published Qt SDK 🧩
-          if [[ "${RUNNER_OS}" == Windows ]]; then
-            asset=qt6-6.11.1-windows-x86_64-relwithdebinfo.tar.zst
-            sha=b05c17386d2a1b0564b00755bc1fba152a18eaac34e512d9315922990715b751
-            variable=OBS_QT_TEST_WINDOWS_PREFIX
-          else
-            asset=qt6-6.11.1-darwin-universal2-11.0-release.tar.zst
-            sha=85093eae764f83d167f8850c5b057c0ff5d2f928ad7d49fe2544ce0ca20074b0
-            variable=OBS_QT_TEST_MACOS_PREFIX
-          fi
-          start=${SECONDS}
-          uv run --no-project ci/fetch_libs_asset.py "${QT_TAG}" "${asset}" "${sha}" "${RUNNER_TEMP}/qt"
-          echo "fetched ${asset} in $((SECONDS - start)) s"
-          export "${variable}=${RUNNER_TEMP}/qt"
-          soldr cargo test -p obs-studio-rust --locked --test obs-tests-app -- --exact qt_sdk::qt_sdk_resolves_published_sdks --show-output 2>&1 | tee "${RUNNER_TEMP}/qt-sdk.log"
-          grep -q ": Qt 6\." "${RUNNER_TEMP}/qt-sdk.log"
-          # The Qt native test graph (moc, uic, rcc, link, run) against the
-          # same SDK; Windows loads the Qt DLLs and the minimal platform plugin
-          # from the SDK.
-          export OBS_QT_TARGET_PREFIX="${RUNNER_TEMP}/qt" CMAKE_PREFIX_PATH="${RUNNER_TEMP}/qt" QT_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins"
-          if [[ "${RUNNER_OS}" == Windows ]]; then
-            export PATH="${RUNNER_TEMP}/qt/bin:${PATH}"
-          fi
-          # The unchanged remux queue test needs cmocka: brew on macOS; on
-          # Windows vcpkg's (as Tier 2) and its pkgconf for the pkg-config crate.
-          if [[ "${RUNNER_OS}" == Windows ]]; then
-            vcpkg="$(cygpath -u "${VCPKG_INSTALLATION_ROOT}")/installed/x64-windows"
-            "${GITHUB_WORKSPACE}/.github/scripts/retry" vcpkg install cmocka:x64-windows pkgconf:x64-windows
-            export PKG_CONFIG="${vcpkg}/tools/pkgconf/pkgconf.exe" PKG_CONFIG_PATH="${vcpkg}/lib/pkgconfig"
-            export PATH="${vcpkg}/bin:${PATH}"
-          else
-            "${GITHUB_WORKSPACE}/.github/scripts/retry" brew install cmocka
-          fi
-          export QT_QPA_PLATFORM_PLUGIN_PATH="${RUNNER_TEMP}/qt/plugins/platforms"
-          soldr cargo test -p obs-studio-rust --locked --features libobs-integration --test obs-tests-app -- --exact native_build::native_test_graph_generates_qt_metaobjects native_build::canonical_remux_queue_runs_unchanged native_build::canonical_frontend_product_and_meter_tests_run_unchanged native_build::canonical_frontend_utility_tests_run_unchanged --show-output
+          git fetch -q --depth=1 origin "${BASE}"
+          uv run --no-project ci/macos_test_artifact.py build --output "${RUNNER_TEMP}/macos-bundle" --base "${BASE}"
+
+      - name: Prepare workspace Darwin tests and fixtures
+        if: github.event_name == 'merge_group' || needs.check-event.outputs.deferred != 'true'
+        run: uv run --no-project ci/macos_test_artifact.py build --output "${RUNNER_TEMP}/macos-bundle"
+
+      - name: Prepare published Qt SDK contracts
+        if: needs.check-event.outputs.qt_sdk == 'true'
+        run: uv run --no-project ci/macos_qt_artifact.py build --work "${RUNNER_TEMP}/macos-qt" --bundle "${RUNNER_TEMP}/macos-bundle"
+
+      - name: Pack complete Darwin bundle
+        run: uv run --no-project ci/macos_test_workspace.py pack --bundle "${RUNNER_TEMP}/macos-bundle" --archive "${RUNNER_TEMP}/macos-tests.tar.gz"
+
+      - name: Upload Darwin bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-rust-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/macos-tests.tar.gz
+            ${{ runner.temp }}/macos-tests.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      # Restore before Actions' checkout/cache post steps and leave no large
+      # relocated checkout behind on a persistent Dell runner.
+      - name: Restore checkout
+        if: always() && steps.workspace.outcome == 'success'
+        run: uv run --no-project ci/macos_test_workspace.py restore --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
+  rust-tests-macos:
+    timeout-minutes: 25
+    name: Rust Tests 🦀 (macos-26)
+    if: ${{ always() && !cancelled() && needs.rust-tests-macos-build.result == 'success' && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
+    runs-on: macos-26
+    needs: [check-event, ci-mode, rust-tests-macos-build]
+    env:
+      COMMON_PARENT: /opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      # Source is runtime test data, including source-inventory assertions.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # uv supplies a prebuilt Python for manifest checks and the test helpers.
+      # CMake/CTest are already in the runner image; replay only configures
+      # language-free projects and executes existing CTest entries.
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Place common checkout
+        id: workspace
+        run: |
+          sudo mkdir -p "${COMMON_PARENT}"
+          sudo chown "$(id -u):$(id -g)" "${COMMON_PARENT}"
+          uv run --no-project ci/macos_test_workspace.py place --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
+
+      - name: Download Darwin bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-rust-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/macos-download
+
+      - name: Verify and unpack Darwin bundle
+        run: uv run --no-project ci/macos_test_workspace.py unpack --archive "${RUNNER_TEMP}/macos-download/macos-tests.tar.gz"
+
+      - name: Run prebuilt Darwin tests
+        run: uv run --no-project ci/macos_test_artifact.py run --manifest manifest.json ${{ needs.check-event.outputs.qt_sdk == 'true' && '--require-qt' || '' }}
 
       # proptest writes a failing case to rust/<crate>/tests/proptest-regressions/<test>.txt
       # on the runner; a lane that does not keep the directory loses the only copy
@@ -2422,13 +2443,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      # Per-lane cache ledger; ci/cache_baseline.py rolls these up. Fail-open.
-      - name: Cache ledger 📒
-        if: always() && hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''
-        uses: ./.github/actions/job-cache-ledger
-        with:
-          lane: rust-tests-macos
-          setup-phase-summary: ${{ steps.setup-soldr.outputs.setup-phase-summary }}
+      - name: Restore checkout
+        if: always() && steps.workspace.outcome == 'success'
+        run: uv run --no-project ci/macos_test_workspace.py restore --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
 
   # Tier 2 Linux builds once and fans the tests out (#937, #1065): the build
   # job explicitly builds hybrid libobs and the C reference in one tree, runs the checks

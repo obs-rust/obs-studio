@@ -22,7 +22,7 @@ class CookProfilesTest(unittest.TestCase):
             self.assertIsNotNone(match, name)
             return match[1]
 
-        host = {namespace(name) for name in ("rust-tests-linux", "rust-cross-lint", "rust-cross-lint-release")}
+        host = {namespace(name) for name in ("rust-tests-linux", "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build")}
         self.assertEqual(len(host), 1, "Compatible host jobs must share the same namespace")
         self.assertNotIn(namespace("rust-linux-tier2-build"), host,
                          "Different archive-path versions must not share janitor identity")
@@ -35,7 +35,7 @@ class CookProfilesTest(unittest.TestCase):
             "rust-tests-linux": "--profile dev -- --tests",
             "rust-cross-lint": "--profile dev -- --tests",
             "rust-cross-lint-release": "--profile dev -- --tests",
-            "rust-tests-macos": "--profile dev -- --tests",
+            "rust-tests-macos-build": "--profile dev -- --tests",
             "rust-tests-windows": "--profile dev -- --tests",
             # Corrosion-only build, its own target dir: no cook (#3027).
             "rust-linux-tier2-build": None,

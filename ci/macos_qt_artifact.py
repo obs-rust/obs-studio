@@ -253,6 +253,7 @@ def build(work: Path, bundle: Path) -> None:
     prefix = cmocka(work, toolchain_file)
     env = local_gate.soldr_env({"SOLDR_PORCELAIN": "0", "SOLDR_VERDICTS": "off"})
     env.update({"OBS_MACOS_QT_PREPARE": str(contracts), "OBS_QT_TARGET_PREFIX": str(qt),
+                "OBS_QT_TEST_MACOS_PREFIX": str(qt),
                 "OBS_QT_HOST_PREFIX": str(host), "HOST": "x86_64-unknown-linux-gnu", "TARGET": TARGET,
                 "PKG_CONFIG_LIBDIR": str(prefix / "lib/pkgconfig"), "PKG_CONFIG_PATH": str(prefix / "lib/pkgconfig"),
                 "PKG_CONFIG_ALLOW_CROSS": "1", "CMAKE_TOOLCHAIN_FILE": str(toolchain_file),
@@ -262,7 +263,8 @@ def build(work: Path, bundle: Path) -> None:
                 "CXX_aarch64_apple_darwin": subprocess.run(["soldr", "cc", "--target", TARGET, "--print-cxx"],
                                                          capture_output=True, text=True, check=True).stdout.strip()})
     subprocess.run(["soldr", "cargo", "test", "-p", "obs-studio-rust", "--locked", "--features", "libobs-integration",
-                    "--test", "obs-tests-app", "--", "--exact", *CONTRACTS, "--show-output", "--test-threads=1"],
+                    "--test", "obs-tests-app", "--", "--exact", "qt_sdk::qt_sdk_resolves_published_sdks",
+                    *CONTRACTS, "--show-output", "--test-threads=1"],
                    cwd=ROOT, env=env, check=True)
     append_bundle(bundle, work, qt)
 
