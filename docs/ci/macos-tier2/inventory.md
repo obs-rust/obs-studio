@@ -178,7 +178,7 @@ match, stale build tree or snapshot from another commit cannot pass.
 | 4. Native runtime compiler | Separate preparation/complete receipts and assertion-only consumer implemented; shared loader/data/registration controls retained. Full preparation/execution waits on the toolchain rows below. |
 | 5. Missing owners and registry parity | Real canonical owners configured; all original 30 missing names present. Same-commit name/property comparator implemented. Independent native snapshot/property comparison still required before activation. |
 | 6. Empty core-module list | Replaced by the actual enabled canonical plugin graph (23 observed names); both CMake cores use its generated manifest. |
-| Darwin compiler-rt | `soldr toolchain darwin` supplies ASan/UBSan dylibs and `libclang_rt.osx.a`, including `__isPlatformVersionAtLeast`. Missing runtime files fail provisioning. |
+| Darwin compiler-rt | The managed closure supplies all link inputs, including `__isPlatformVersionAtLeast`, but the current ASan/UBSan dylibs carry absolute Conan build-directory install names. New executables inherit those loads and fail the closure audit. The upstream compiler-rt package must provide relocatable, freshly signed runtimes before activation. |
 | Swift/Metal and SDK 26.5 | The same managed receipt supplies Linux Swift 6.3.2, Darwin overlays, SDK 26.5, LLVM linker and dsymutil. Both CMake and Cargo-native preparation use it. |
 | Full staged closure and macOS execution | Still requires all signed frameworks/dependencies, resources and generated data at the common paths, and successful execution of all four full passes plus contracts on macOS. |
 
@@ -206,6 +206,25 @@ registry/property comparison, a complete signed runtime/data/dependency packet,
 and hosted execution of all four full suites plus the exact native contract and
 every negative control. Hosted macOS only verifies and runs; all compilation,
 including Swift/Metal, debug symbols, probes and sanitized fixtures, is Linux work.
+
+The source-built API at the commit above was exercised against compiler-rt unit
+`bcf66e74b80500ed606891f12996b0af6c8a2f52d32237dd8e3ddc50c7b5db2e`.
+Both `libclang_rt.asan_osx_dynamic.dylib` and
+`libclang_rt.ubsan_osx_dynamic.dylib` have signed arm64 slices, but their
+`LC_ID_DYLIB` is `/work/.conan-home/p/b/compid4110e650ac77/b/rt-build/lib/darwin/`
+followed by the filename. The independent sanitized availability probe inherits
+that absolute `LC_LOAD_DYLIB`. `ci/macos_tier2_audit.py` correctly rejects it.
+Request an upstream compiler-rt rebuild with `@rpath/<filename>` identities,
+fresh signatures and a new verified catalogue digest; then rebuild and re-audit
+the sanitized fixtures. Do not rewrite installed toolchain files or permit these
+producer paths in the run-host closure.
+
+The aggregate builds the same native Tier 2 roots, including every cmocka test
+and helper. Configuring canonical owners does not imply building unrelated app
+plugins. Bundle inventory follows Ninja's actual transitive graph. All Qt host
+executable configurations, including RelWithDebInfo and the automoc parser, bind
+to the pinned Linux SDK and require ELF headers; Darwin library targets remain
+unchanged.
 
 The representative CMake command built both frameworks, unchanged test_bitstream
 and standalone test_async_conversion_plan_rust on Linux. All four images passed
