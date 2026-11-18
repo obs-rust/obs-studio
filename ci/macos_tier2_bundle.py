@@ -25,6 +25,24 @@ TOKEN = "@OBS_TIER2_BUILD@"
 CMAKE_TOKEN = "@OBS_TIER2_CMAKE@"
 
 
+def selected_runtime(build: Path, artifacts: list[Path]) -> list[Path]:
+    """Use Ninja's actual transitive graph, including generated fixture helpers.
+
+    Configuring canonical plugin owners determines registry membership; building
+    every plugin would expand Tier 2 into unrelated app/virtual-camera products.
+    """
+    graph = subprocess.run(
+        ["ninja", "-C", str(build), "-t", "graph", "tier2-cross"],
+        check=True, capture_output=True, text=True,
+    ).stdout
+    labels = re.findall(r'^"[^"\n]+" \[label="((?:[^"\\]|\\.)*)"', graph, re.M)
+    paths = {(build / json.loads('"' + label + '"')).resolve() for label in labels}
+    selected = [path for path in artifacts if path.resolve() in paths]
+    if not selected:
+        raise ValueError("Tier 2 Ninja graph contains no recorded runtime artifacts")
+    return selected
+
+
 def contained(root: Path, path: Path) -> Path:
     if not path.resolve().is_relative_to(root.resolve()):
         raise ValueError(f"path escapes artifact root: {path}")
@@ -287,6 +305,7 @@ def main() -> int:
         Path(line)
         for line in (args.build / "tier2-runtime.txt").read_text().splitlines()
     ]
+    artifacts = selected_runtime(args.build, artifacts)
     dependencies = list(args.deps.glob("*.dylib")) if args.deps else []
     stage(
         args.build,

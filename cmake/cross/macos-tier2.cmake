@@ -260,7 +260,16 @@ add_custom_target(libobs-cross-shared DEPENDS libobs)
 add_custom_target(libobs-cross-reference DEPENDS libobs-c-reference)
 add_custom_target(
   tier2-cross
-  DEPENDS libobs libobs-c-reference cmocka-tests tier2-cross-manifest-fixture tier2-cross-metal
+  DEPENDS
+    libobs
+    libobs-c-reference
+    cmocka-tests
+    libobs-opengl
+    tier2-cross-manifest-fixture
+    tier2-cross-metal
+    mac-capture
+    mac-avcapture
+    mac-avcapture-legacy
 )
 
 # Export actual runtime targets, including generated/loadable fixture libraries.
@@ -285,4 +294,3 @@ foreach(_target IN LISTS _runtime_targets)
   string(APPEND _runtime_paths "$<TARGET_FILE:${_target}>\n")
 endforeach()
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/tier2-runtime.txt" CONTENT "${_runtime_paths}")
-add_dependencies(tier2-cross ${_runtime_targets})
