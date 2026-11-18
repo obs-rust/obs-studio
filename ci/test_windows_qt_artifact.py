@@ -11,6 +11,7 @@ from unittest import mock
 import macos_qt_artifact as shared
 import windows_qt_artifact as qt
 import windows_test_artifact as artifact
+import windows_native_fixtures as native
 from test_windows_test_artifact import executable
 
 
@@ -34,6 +35,26 @@ def delayed_executable(name):
 
 
 class WindowsQtTest(unittest.TestCase):
+    def test_cross_cpp_driver_preserves_msvc_exception_support(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sdk = root / "sdk"
+            sdk.mkdir()
+            (sdk / "soldr-case-overlay-test.yaml").write_text("overlay")
+            tools = root / "tools"
+            tools.mkdir()
+            for directory in ("crt/lib/x86_64", "sdk/lib/um/x86_64", "sdk/lib/ucrt/x86_64"):
+                (sdk / directory).mkdir(parents=True)
+
+            def tool(option, *args, **kwargs):
+                return str(sdk) if option == "--print-sysroot" else "/managed/driver"
+
+            with mock.patch.object(native.shared, "tool", side_effect=tool), \
+                    mock.patch.object(native.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "/managed/clang")):
+                native.configure_tools(root, tools, {})
+            self.assertIn("/EHsc", (tools / "cxx-clang-cl").read_text())
+            self.assertNotIn("/EHsc", (tools / "cc-clang-cl").read_text())
+
     def test_matches_current_windows_job_and_linux_generators(self):
         workflow = (qt.ROOT / ".github/workflows/build-project.yaml").read_text()
         self.assertIn(qt.TARGET_ASSET, workflow)
