@@ -28,6 +28,11 @@ These compiler support gaps belong in soldr-toolchain. No new in-repository
 intrinsic shim, Rust-linked C reference, sanitizer disablement or native compiler
 fallback is added. This is a diagnostic prototype, not a completed first slice.
 
+cmocka uses real target link probes with the release CRT configuration. The
+compile-only cross toolchain's static probes otherwise falsely report POSIX
+functions such as `siglongjmp` as available. Its Windows DLL builds successfully
+with these probes; dependency source files remain unchanged.
+
 Soldr currently exposes the target's GNU-style clang driver. Registry requirement
 facts select the Windows MSVC ABI in a local function, following obs-build's
 target facts. This does not turn the compiler into clang-cl: the actual frontend
