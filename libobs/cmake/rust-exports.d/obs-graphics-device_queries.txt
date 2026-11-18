@@ -1,0 +1,2 @@
+gs_get_adapter_count
+gs_get_device_type

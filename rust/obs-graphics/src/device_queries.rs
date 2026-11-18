@@ -33,11 +33,23 @@ pub trait Host {
 }
 
 /// `None` means no context; `Some(-1)` is an actual backend result.
-pub fn get_device_type<H: Host>(_host: &mut H) -> Option<i32> {
-    todo!("#5070: device type")
+pub fn get_device_type<H: Host>(host: &mut H) -> Option<i32> {
+    if !host.has_context() {
+        host.debug(Entry::DeviceType);
+        return None;
+    }
+    Some(host.device_type())
 }
 
 /// `None` means no context; a missing optional callback yields `Some(0)`.
-pub fn get_adapter_count<H: Host>(_host: &mut H) -> Option<u32> {
-    todo!("#5070: adapter count")
+pub fn get_adapter_count<H: Host>(host: &mut H) -> Option<u32> {
+    if !host.has_context() {
+        host.debug(Entry::AdapterCount);
+        return None;
+    }
+    Some(if host.has_adapter_count() {
+        host.adapter_count()
+    } else {
+        0
+    })
 }
