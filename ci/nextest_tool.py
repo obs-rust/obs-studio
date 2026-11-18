@@ -6,6 +6,7 @@ No remote cache is published; the local archive is verified before every use.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import platform
@@ -16,7 +17,8 @@ import tarfile
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
+from urllib.parse import urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 import host_platform as host
 
@@ -30,6 +32,11 @@ ARCHIVES = {
 ATTEMPTS = 5
 BACKOFF = 5.0
 TIMEOUT = 30
+# With a workflow token the asset comes through the REST API: GitHub can
+# answer anonymous release downloads with 504 for hours while authenticated
+# requests work (2026-11-09, #4209). Local runs have no token and keep the
+# anonymous URL.
+RELEASES_API = 'https://api.github.com/repos/nextest-rs/nextest/releases'
 
 
 def unpack_checked(archive: Path, output: Path, digest: str) -> None:
@@ -84,12 +91,57 @@ def transient(error: BaseException) -> bool:
     return isinstance(error, (TimeoutError, ConnectionError, URLError))
 
 
+class SameHostAuthRedirect(HTTPRedirectHandler):
+    """Follow redirects, but keep the token on the host it was meant for.
+
+    The API answers an asset request with a redirect to a signed URL on
+    another host, which needs no token and must not receive it. urllib
+    copies every header to the redirected request otherwise.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and urlsplit(newurl).netloc != urlsplit(req.full_url).netloc:
+            new.remove_header('Authorization')
+        return new
+
+
+def authenticated_open(request: Request, timeout: float):
+    return build_opener(SameHostAuthRedirect()).open(request, timeout=timeout)
+
+
+def github_token() -> str | None:
+    for name in ('GITHUB_TOKEN', 'GH_TOKEN'):
+        value = os.environ.get(name, '').strip()
+        if value:
+            return value
+    return None
+
+
+def open_asset(name: str, url: str):
+    """The release asset: anonymous without a token, else through the REST API."""
+    token = github_token()
+    if token is None:
+        return urlopen(url, timeout=TIMEOUT)
+    headers = {'Authorization': f'Bearer {token}', 'X-GitHub-Api-Version': '2022-11-28',
+               'User-Agent': f'obs-rust-ci-nextest/{VERSION}'}
+    tag = f'{RELEASES_API}/tags/cargo-nextest-{VERSION}'
+    with authenticated_open(Request(tag, headers={**headers, 'Accept': 'application/vnd.github+json'}),
+                            timeout=TIMEOUT) as response:
+        release = json.load(response)
+    asset = next((item for item in release.get('assets', []) if item.get('name') == name), None)
+    if asset is None:
+        raise ValueError(f'nextest release cargo-nextest-{VERSION} has no asset {name}')
+    return authenticated_open(Request(asset['url'], headers={**headers, 'Accept': 'application/octet-stream'}),
+                              timeout=TIMEOUT)
+
+
 def download(url: str, staged: Path) -> None:
     """Fetch url into staged, retrying only transient failures with jittered backoff."""
     failures: list[str] = []
     for attempt in range(1, ATTEMPTS + 1):
         try:
-            with urlopen(url, timeout=TIMEOUT) as response, staged.open('wb') as destination:
+            with open_asset(staged.name, url) as response, staged.open('wb') as destination:
                 shutil.copyfileobj(response, destination)
             return
         except (HTTPError, URLError, TimeoutError, ConnectionError) as error:
@@ -106,8 +158,9 @@ def download(url: str, staged: Path) -> None:
                 print(f'+ nextest download attempt {attempt}/{ATTEMPTS} failed ({reason}); retry in {delay:.0f} s',
                       flush=True)
                 time.sleep(delay)
+    source = url if github_token() is None else f'{url} (through the REST API with the job token)'
     raise RuntimeError(
-        f'nextest {VERSION} download failed after {len(failures)} of {ATTEMPTS} attempts from {url}: '
+        f'nextest {VERSION} download failed after {len(failures)} of {ATTEMPTS} attempts from {source}: '
         f'{"; ".join(failures)}. Rust tests were NOT run. Recovery: re-run the job (GitHub release CDN '
         f'failures are usually transient), or install the pinned binary with '
         f'`soldr cargo install cargo-nextest --version {VERSION} --locked` so it is found on PATH or in '
