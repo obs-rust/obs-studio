@@ -252,6 +252,9 @@ def build(work: Path, bundle: Path) -> None:
     toolchain_file = toolchain(work)
     prefix = cmocka(work, toolchain_file)
     env = local_gate.soldr_env({"SOLDR_PORCELAIN": "0", "SOLDR_VERDICTS": "off"})
+    # Leave tool preparation to soldr, then force Ninja for Cargo's children:
+    # GNU Make treats the Rust selectors' '::' in fixture paths as rule syntax.
+    env.pop("CMAKE_GENERATOR", None)
     env.update({"OBS_MACOS_QT_PREPARE": str(contracts), "OBS_QT_TARGET_PREFIX": str(qt),
                 "OBS_QT_TEST_MACOS_PREFIX": str(qt),
                 "OBS_QT_HOST_PREFIX": str(host), "HOST": "x86_64-unknown-linux-gnu", "TARGET": TARGET,
@@ -262,7 +265,9 @@ def build(work: Path, bundle: Path) -> None:
                                                         capture_output=True, text=True, check=True).stdout.strip(),
                 "CXX_aarch64_apple_darwin": subprocess.run(["soldr", "cc", "--target", TARGET, "--print-cxx"],
                                                          capture_output=True, text=True, check=True).stdout.strip()})
-    subprocess.run(["soldr", "cargo", "test", "-p", "obs-studio-rust", "--locked", "--features", "libobs-integration",
+    subprocess.run(["soldr", "cargo", "test", "-p", "obs-studio-rust", "--locked",
+                    "--config", 'env.CMAKE_GENERATOR.value="Ninja"', "--config", "env.CMAKE_GENERATOR.force=true",
+                    "--features", "libobs-integration",
                     "--test", "obs-tests-app", "--", "--exact", "qt_sdk::qt_sdk_resolves_published_sdks",
                     *CONTRACTS, "--show-output", "--test-threads=1"],
                    cwd=ROOT, env=env, check=True)
