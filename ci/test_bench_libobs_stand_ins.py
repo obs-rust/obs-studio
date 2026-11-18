@@ -45,7 +45,6 @@ SYMBOLS = (
     "obs_hotkey_seam_context_count",
     "obs_hotkey_seam_encoder_context",
     "obs_hotkey_seam_enum_bindings",
-    "obs_hotkey_seam_enum_context",
     "obs_hotkey_seam_find",
     "obs_hotkey_seam_find_pair",
     "obs_hotkey_seam_lock",

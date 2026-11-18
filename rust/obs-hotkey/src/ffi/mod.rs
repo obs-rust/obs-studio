@@ -9,6 +9,7 @@ pub mod binding_getters;
 pub mod binding_press;
 pub mod bindings;
 pub mod cocoa_keys;
+pub mod enumeration;
 pub mod hotkey_name_map;
 pub mod identity_getters;
 pub mod identity_setters;

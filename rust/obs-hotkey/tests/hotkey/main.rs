@@ -18,6 +18,8 @@ mod bindings;
 mod bindings_parity;
 mod cocoa_keys;
 mod cocoa_keys_parity;
+mod enumeration;
+mod enumeration_parity;
 mod hotkey_name_map;
 mod identity_getters;
 mod identity_getters_parity;

@@ -123,6 +123,9 @@ fn object(which: usize) -> *mut c_void {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_hotkey_seam_lock() -> bool {
+    if let Some(locked) = super::enumeration_parity::lock() {
+        return locked;
+    }
     if let Some(locked) = super::update_atomic_parity::lock() {
         return locked;
     }
@@ -132,6 +135,9 @@ pub extern "C" fn obs_hotkey_seam_lock() -> bool {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_hotkey_seam_unlock() {
+    if super::enumeration_parity::unlock() {
+        return;
+    }
     if super::update_atomic_parity::unlock() {
         return;
     }
@@ -140,6 +146,9 @@ pub extern "C" fn obs_hotkey_seam_unlock() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn obs_hotkey_seam_find(id: usize) -> *mut obs_hotkey_t {
+    if let Some(key) = super::enumeration_parity::find(id) {
+        return key.cast();
+    }
     log(format!("find {id}"));
     REGISTRY.with_borrow_mut(|r| {
         r.hotkeys
@@ -236,6 +245,19 @@ pub unsafe extern "C" fn obs_hotkey_seam_enum_bindings(
     func: unsafe extern "C" fn(*mut c_void, usize, *mut obs_hotkey_binding) -> bool,
     data: *mut c_void,
 ) {
+    // SAFETY: same synchronous callback/data contract; only an active enum
+    // fixture handles this request. The opaque binding pointer ABI is identical.
+    if unsafe {
+        super::enumeration_parity::bindings(
+            Some(std::mem::transmute::<
+                unsafe extern "C" fn(*mut c_void, usize, *mut obs_hotkey_binding) -> bool,
+                unsafe extern "C" fn(*mut c_void, usize, *mut c_void) -> bool,
+            >(func)),
+            data,
+        )
+    } {
+        return;
+    }
     log("enum_bindings".into());
     // The bindings do not change during a save, so the boxes stay live.
     let bindings: Vec<*mut FakeBinding> =
@@ -250,31 +272,26 @@ pub unsafe extern "C" fn obs_hotkey_seam_enum_bindings(
 
 /// # Safety
 ///
-/// `context` is a [`FakeContext`] of this thread's registry; `func` takes `data`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_hotkey_seam_enum_context(
-    context: *mut c_void,
-    func: unsafe extern "C" fn(*mut c_void, *mut obs_hotkey_t) -> bool,
-    data: *mut c_void,
-) {
+/// `context` is a [`FakeContext`] of this thread's registry.
+pub unsafe fn enum_context_fields(context: *mut c_void) -> *const obs_util::ffi::darray::darray {
     log("enum_context".into());
-    // SAFETY: per the caller.
-    let ids = unsafe { (*context.cast::<FakeContext>()).ids.clone() };
-    for id in ids {
-        let hotkey: *mut obs_hotkey_t = REGISTRY.with_borrow_mut(|r| {
-            r.hotkeys
-                .iter_mut()
-                .find(|h| h.id == id)
-                .map_or(std::ptr::null_mut(), |h| (&raw mut **h).cast())
-        });
-        if hotkey.is_null() {
-            continue;
-        }
-        // SAFETY: per the caller; a live box.
-        if !unsafe { func(data, hotkey) } {
-            break;
-        }
+    use obs_util::ffi::darray::darray;
+    thread_local! {
+        static HEADER: RefCell<darray> = const { RefCell::new(darray {
+            array: std::ptr::null_mut(), num: 0, capacity: 0,
+        }) };
     }
+    // SAFETY: the caller owns this context; the IDs remain alive across the
+    // enumeration. Rust snapshots this header before a callback can reenter.
+    let ids = unsafe { &mut (*context.cast::<FakeContext>()).ids };
+    HEADER.with(|header| {
+        *header.borrow_mut() = darray {
+            array: ids.as_mut_ptr().cast(),
+            num: ids.len(),
+            capacity: ids.capacity(),
+        };
+        header.as_ptr().cast_const()
+    })
 }
 
 /// # Safety
