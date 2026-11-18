@@ -105,14 +105,14 @@ static void *hold_thread(void *arg)
 			break;
 		}
 	}
-	pthread_mutex_unlock(&h->state_lock);
-
-	pthread_mutex_unlock(h->target);
-
-	pthread_mutex_lock(&h->state_lock);
+	/* Clear holding before letting go of the target. A reset that waits
+	 * for the target can take it the moment it is free and return; it must
+	 * not then see holding still true and test a lock nobody holds. */
 	h->holding = false;
 	pthread_cond_broadcast(&h->state_cond);
 	pthread_mutex_unlock(&h->state_lock);
+
+	pthread_mutex_unlock(h->target);
 	return NULL;
 }
 
