@@ -3405,7 +3405,7 @@ bool obs_in_task_thread(enum obs_task_type type)
 	case OBS_CORE_SETUP_RULES_TASK_AUDIO:
 		return is_audio_thread;
 	case OBS_CORE_SETUP_RULES_TASK_UI:
-		return is_ui_thread;
+		return obs_core_is_ui_thread();
 	case OBS_CORE_SETUP_RULES_TASK_DESTROY:
 		return os_task_queue_inside(obs->destruction_task_thread);
 	}

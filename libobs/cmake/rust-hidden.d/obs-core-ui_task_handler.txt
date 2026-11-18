@@ -1,0 +1,1 @@
+obs_core_is_ui_thread
