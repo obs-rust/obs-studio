@@ -1,11 +1,11 @@
 #!/usr/bin/env -S uv run --script
-"""Prepare the Windows Rust executable slice on Linux; no workflow activation.
+"""Prepare Windows Rust tests, doctests and native fixtures on Linux.
 
     uv run --no-project ci/windows_test_artifact.py build --output build_windows_tests
     uv run --no-project ci/windows_test_artifact.py verify --manifest build_windows_tests/manifest.json
 
-This is a partial bundle: doctests, runtime native/Qt fixtures and the Windows
-source-path handoff are follow-up slices. It cannot replace the Windows job.
+Qt contracts and the Windows source-path handoff remain follow-up slices.
+This branch infrastructure cannot yet replace the Windows job.
 The shared Darwin collector preserves Cargo's cwd, environment, helpers and
 OUT_DIR; its checksummed transport is reused without changing Darwin policy.
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 import struct
 import subprocess
 import sys
@@ -26,6 +27,7 @@ from windows_zip_check import VC_RUNTIME, imports
 TARGET = windows_link_check.TARGET
 ROOT = Path(__file__).resolve().parents[1]
 COVERAGE = "rust-test-executables"
+PREPARED_COVERAGE = "rust-tests-doctests-native-fixtures"
 # Runtime libraries supplied by the supported Windows runner, not by xwin's
 # import-library SDK. Record VC dependencies separately for later consumer setup.
 SYSTEM_DLLS = frozenset({
@@ -41,7 +43,7 @@ VC_DLLS = frozenset({"vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll",
                      "msvcp140_1.dll", "msvcp140_2.dll", "concrt140.dll"})
 
 
-def verify_pe_header(data: bytes) -> None:
+def verify_pe_header(data: bytes, *, allow_dll: bool = False) -> None:
     """Validate AMD64 console headers, file-backed sections and entry point."""
     if data[:2] != b"MZ":
         raise ValueError("missing DOS header")
@@ -51,8 +53,10 @@ def verify_pe_header(data: bytes) -> None:
     magic = struct.unpack_from("<H", data, pe + 24)[0]
     entry = struct.unpack_from("<I", data, pe + 40)[0]
     subsystem = struct.unpack_from("<H", data, pe + 92)[0]
+    is_dll = bool(flags & 0x2000)
     if (data[pe:pe + 4] != b"PE\0\0" or machine != 0x8664 or magic != 0x20B
-            or not flags & 2 or flags & 0x2000 or not entry or subsystem != 3
+            or not flags & 2 or (is_dll and not allow_dll) or not entry
+            or subsystem not in ((2, 3) if is_dll and allow_dll else (3,))
             or size < 240 or not sections or pe + 24 + size + sections * 40 > len(data)):
         raise ValueError("not an x86_64 PE32+ console executable")
     executable_entry = False
@@ -68,21 +72,21 @@ def verify_pe_header(data: bytes) -> None:
         raise ValueError("PE entry point has no executable section")
 
 
-def pe_imports(data: bytes) -> list[str]:
+def pe_imports(data: bytes, *, allow_dll: bool = False, staged_dlls: set[str] = frozenset()) -> list[str]:
     """Require an AMD64 PE32+ console executable and known runtime dependencies.
 
     PE import parsing (including delay-loads) is shared with the Windows zip
     check. This is format/dependency evidence, not a Windows execution result.
     """
     try:
-        verify_pe_header(data)
+        verify_pe_header(data, allow_dll=allow_dll)
         dependencies = sorted(set(imports(data)))
         if not dependencies:
             raise ValueError("missing Windows runtime imports")
     except (struct.error, IndexError) as error:
         raise ValueError("truncated PE executable") from error
     for name in dependencies:
-        if (name not in SYSTEM_DLLS and name not in VC_DLLS
+        if (name not in SYSTEM_DLLS and name not in VC_DLLS and name not in staged_dlls
                 and not (name.startswith(("api-ms-win-", "ext-ms-win-")) and name.endswith(".dll")
                          and "/" not in name and "\\" not in name)):
             raise ValueError(f"unsupported Windows runtime dependency: {name}")
@@ -106,12 +110,27 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, packag
     return data
 
 
+def validate_coverage(data: dict, root: Path) -> None:
+    if (data.get("version") != 1 or data.get("target") != TARGET
+            or data.get("coverage") not in (COVERAGE, PREPARED_COVERAGE)):
+        raise ValueError("not a Windows Rust executable slice")
+    if data["coverage"] == COVERAGE and ("doctests_complete" in data or data.get("native_fixtures")):
+        raise ValueError("partial coverage cannot include prepared claims")
+    if data["coverage"] == PREPARED_COVERAGE:
+        if data.get("doctests_complete") is not True:
+            raise ValueError("incomplete Windows doctests")
+        if any(e["package"] == "obs-studio-rust" for e in data["tests"]):
+            if data.get("native_fixtures") is not True:
+                raise ValueError("missing Windows native fixtures")
+            from windows_native_fixtures import validate
+
+            validate(root)
+
+
 def verify(manifest: Path) -> dict:
     data = json.loads(manifest.read_text())
     root = manifest.parent
-    if (data.get("version") != 1 or data.get("target") != TARGET or data.get("coverage") != COVERAGE
-            or "doctests_complete" in data or data.get("native_fixtures")):
-        raise ValueError("not a Windows Rust executable slice")
+    validate_coverage(data, root)
     if not data["tests"] and not (data.get("scope_skipped") or data.get("scope_no_tests")):
         raise ValueError("empty test inventory")
     shared.validate_files(data, root)
@@ -138,6 +157,15 @@ def build_command(packages: list[str]) -> list[str]:
     return ["soldr", "cargo", *arguments, "--message-format=json"]
 
 
+def replay_doctests(manifest: Path, root: Path) -> int:
+    """Replay captured harnesses through the shared runner on native Windows."""
+    if platform.system() != "Windows":
+        raise ValueError("doctest execution requires native Windows")
+    verify(manifest)
+    return shared.execute(manifest, root, target=TARGET, kinds={"doctest"},
+                          validate=lambda data, directory: shared.validate_inventory(data, directory))
+
+
 def build(output: Path, base: str | None) -> int:
     if output.exists() and any(output.iterdir()):
         raise ValueError("build output must be empty")
@@ -159,7 +187,20 @@ def build(output: Path, base: str | None) -> int:
         sys.stderr.write(result.stderr)
         result.check_returncode()
         events = [json.loads(line) for line in result.stdout.splitlines()]
-        collect(metadata, events, ROOT, output, packages)
+        data = collect(metadata, events, ROOT, output, packages)
+        shared.compile_doctests(ROOT, output, env, packages, data, target=TARGET)
+        if any(entry["package"] == "obs-studio-rust" for entry in data["tests"]):
+            from windows_native_fixtures import prepare
+
+            prepare(ROOT, output, env)
+            data["native_fixtures"] = True
+            for entry in data["tests"]:
+                if entry["package"] == "obs-studio-rust":
+                    entry["env"]["OBS_NATIVE_FIXTURES"] = "{root}/native-fixtures"
+        data["coverage"] = PREPARED_COVERAGE
+        data["images"] = {str(p.relative_to(output)): pe_imports(p.read_bytes()) for p in sorted(output.rglob("*.exe"))}
+        data["runtime_dlls"] = sorted({dll for deps in data["images"].values() for dll in deps if VC_RUNTIME.match(dll)})
+        shared.finalize(output, data)
     data = verify(output / "manifest.json")
     print(f"Verified {len(data['tests'])} harnesses, {len(data['images'])} PE executables; VC runtime: {data['runtime_dlls']}")
     return 0
@@ -173,9 +214,14 @@ def main() -> int:
     producer.add_argument("--base")
     verifier = sub.add_parser("verify")
     verifier.add_argument("--manifest", type=Path, required=True)
+    replay = sub.add_parser("run-doctests")
+    replay.add_argument("--manifest", type=Path, required=True)
+    replay.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
     if args.command == "build":
         return build(args.output.resolve(), args.base)
+    if args.command == "run-doctests":
+        return replay_doctests(args.manifest.resolve(), args.root.resolve())
     verify(args.manifest.resolve())
     return 0
 

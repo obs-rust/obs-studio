@@ -1,5 +1,5 @@
 //! Native fixture transport. Compiler assertions run on the Linux cross host;
-//! the same tests replay that evidence and execute every load/run on Darwin.
+//! the same tests replay that evidence and execute every load/run on the target.
 use super::*;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -74,7 +74,7 @@ impl Scope {
                 "linux",
                 "native fixture preparation requires a Linux executable"
             );
-            json!({"version": 1, "host": obs_build::BUILD_HOST, "target": TARGET,
+            json!({"version": 1, "host": obs_build::BUILD_HOST, "target": target(),
                 "complete": false, "events": [], "directories": [],
                 "host_cmake": std::env::var("OBS_NATIVE_HOST_CMAKE").unwrap_or_default()})
         };
@@ -127,16 +127,25 @@ impl Drop for Scope {
 }
 
 pub fn target() -> &'static str {
-    if std::env::var_os(PREPARE).is_some() || std::env::var_os(PREBUILT).is_some() {
-        TARGET
+    if std::env::var_os(PREPARE).is_some() {
+        match std::env::var("OBS_NATIVE_FIXTURE_TARGET").as_deref() {
+            Ok("x86_64-pc-windows-msvc") => "x86_64-pc-windows-msvc",
+            Ok(TARGET) | Err(_) => TARGET,
+            Ok(other) => panic!("unsupported native fixture target: {other}"),
+        }
     } else {
         obs_build::BUILD_TARGET
     }
 }
 
 pub fn validate_manifest(manifest: &Value) -> Result<(), String> {
+    let expected = target();
+    validate_manifest_for_target(manifest, expected)
+}
+fn validate_manifest_for_target(manifest: &Value, expected: &str) -> Result<(), String> {
     if manifest["version"] != 1
-        || manifest["target"] != TARGET
+        || manifest["target"] != expected
+        || ![TARGET, "x86_64-pc-windows-msvc"].contains(&expected)
         || !manifest["host"]
             .as_str()
             .is_some_and(|host| host.contains("linux"))
@@ -186,7 +195,7 @@ pub fn tempdir() -> Result<Directory, std::io::Error> {
                 .map(|byte| format!("{byte:02x}"))
                 .collect::<String>();
             let path = repository
-                .join("target/macos-native-fixture-work")
+                .join("target/cross-native-fixture-work")
                 .join(run)
                 .join(&state.name)
                 .join(index.to_string());
@@ -593,7 +602,7 @@ fn build_request(build: &NativeBuild, kind: &str, identity: &str, recipe: String
                     .flat_map(|root| files(Path::new(root.as_str().unwrap())))
                     .filter(|p| {
                         p.extension().is_some_and(|s| {
-                            ["c", "cpp", "h", "hpp", "m", "mm", "swift", "in"]
+                            ["c", "cpp", "h", "hpp", "m", "mm", "swift", "in", "rc"]
                                 .iter()
                                 .any(|e| s == *e)
                         })

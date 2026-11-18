@@ -9,6 +9,7 @@ import shlex
 import shutil
 import struct
 import subprocess
+import sys
 import tarfile
 import urllib.request
 from pathlib import Path
@@ -46,8 +47,8 @@ TESTS = (
 )
 
 
-def tool(option: str, root: Path, env: dict) -> str:
-    return subprocess.run(["soldr", "cc", "--target", TARGET, option], cwd=root,
+def tool(option: str, root: Path, env: dict, *, target: str = TARGET) -> str:
+    return subprocess.run(["soldr", "cc", "--target", target, option], cwd=root,
                           env=env, text=True, capture_output=True, check=True).stdout.strip()
 
 
@@ -73,8 +74,8 @@ def swift_compiler(root: Path, env: dict) -> Path:
     return compiler
 
 
-def target_setting(env: dict, name: str, value: str) -> None:
-    for triple in (TARGET, TARGET.replace("-", "_")):
+def target_setting(env: dict, name: str, value: str, *, target: str = TARGET) -> None:
+    for triple in (target, target.replace("-", "_")):
         env[f"{name}_{triple}"] = value
 
 
@@ -193,23 +194,30 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
         "CMAKE_C_COMPILER": cc, "CMAKE_CXX_COMPILER": cxx, "CMAKE_AR": ar,
     }.items()) + "\n")
     environment["CMAKE_TOOLCHAIN_FILE"] = str(toolchain)
+    prepare_tests(root, directory, environment, env, TESTS)
+    signed = signed_fixtures(directory)
+    (directory / "index.json").write_text(json.dumps({"version": 1, "target": TARGET,
+        "tests": ["native_build::" + name for name in TESTS], "signed": signed, "complete": True}, indent=2) + "\n")
+
+
+def prepare_tests(root: Path, directory: Path, environment: dict, env: dict, tests: tuple[str, ...]) -> None:
+    """Use the existing host Application category to record compiler histories."""
     result = subprocess.run(["soldr", "cargo", "test", "-p", "obs-studio-rust", "--test", "obs-tests-app",
                              "--no-run", "--locked", "--message-format=json"], cwd=root, env=env,
-                            capture_output=True, text=True, check=True)
+                            capture_output=True, text=True)
+    sys.stderr.write(result.stderr)
+    result.check_returncode()
     events = [json.loads(line) for line in result.stdout.splitlines()]
     binaries = [e["executable"] for e in events if e.get("reason") == "compiler-artifact"
                 and e.get("target", {}).get("name") == "obs-tests-app" and e.get("executable")]
     if len(binaries) != 1:
         raise ValueError("missing unique host Application category binary")
-    names = ["native_build::" + name for name in TESTS]
+    names = ["native_build::" + name for name in tests]
     for name in names:
         subprocess.run([binaries[0], "--exact", name, "--nocapture"], cwd=root, env=environment, check=True)
         manifest = json.loads((directory / name.replace("::", "--") / "manifest.json").read_text())
         if manifest.get("complete") is not True:
             raise ValueError(f"incomplete native fixture: {name}")
-    signed = signed_fixtures(directory)
-    (directory / "index.json").write_text(json.dumps({"version": 1, "target": TARGET,
-        "tests": names, "signed": signed, "complete": True}, indent=2) + "\n")
 
 
 def main() -> None:

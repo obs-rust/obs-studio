@@ -3468,12 +3468,13 @@ const EXPORT: &str = "\n#if defined(_WIN32)\n__declspec(dllexport)\n#endif\n";
 
 #[test]
 fn windows_resource_payload_tracks_headers_definitions_and_unity() {
-    let requested = std::env::var("OBS_NATIVE_WINDOWS_TARGET")
-        .unwrap_or_else(|_| obs_build::BUILD_TARGET.into());
+    let requested =
+        std::env::var("OBS_NATIVE_WINDOWS_TARGET").unwrap_or_else(|_| prebuilt::target().into());
     if !requested.contains("windows-msvc") {
         return;
     }
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     let source = root.join("resource-probe.c");
     let script = root.join("payload.rc");
@@ -3522,20 +3523,20 @@ int main(void) { return obs_fixture_resource() == HEADER_VALUE + RESOURCE_VALUE 
         // RC must receive resource options, not C-only compiler options.
         library.c_compile_options.push("/std:c17".into());
         library.resource_compile_options.push("/c65001".into());
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         assert_windows_resource(&artifact, 42, [2, 40], &requested);
         fs::write(&header, "#define HEADER_VALUE 10\n").unwrap();
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         assert_windows_resource(&artifact, 50, [10, 40], &requested);
         library.definitions[0].1 = Some("50".into());
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         assert_windows_resource(&artifact, 60, [10, 50], &requested);
         library.name = "fixture-resource-app".into();
-        let executable = build.executable(&library).unwrap();
+        let executable = build.fixture_executable(&library).unwrap();
         assert_windows_resource(&executable, 60, [10, 50], &requested);
         assert!(
             build
-                .static_library(&library)
+                .fixture_static_library(&library)
                 .unwrap_err()
                 .contains("resources")
         );
@@ -3543,17 +3544,15 @@ int main(void) { return obs_fixture_resource() == HEADER_VALUE + RESOURCE_VALUE 
 }
 
 fn assert_windows_resource(library: &Path, expected: i32, words: [u16; 2], target: &str) {
-    if target == obs_build::BUILD_TARGET {
+    if !prebuilt::preparing() && target == obs_build::BUILD_TARGET {
         if library
             .extension()
             .is_some_and(|extension| extension == "exe")
         {
-            assert!(
-                std::process::Command::new(library)
-                    .status()
-                    .unwrap()
-                    .success()
-            );
+            prebuilt::assert_runtime(&mut std::process::Command::new(library), None, &[]);
+            return;
+        }
+        if prebuilt::defer_answer(library, "obs_fixture_resource", expected) {
             return;
         }
         // SAFETY: the fixture exports this no-argument C ABI function, and the
@@ -3593,16 +3592,28 @@ fn assert_windows_resource(library: &Path, expected: i32, words: [u16; 2], targe
             "{output}"
         );
     }
+    if prebuilt::preparing() {
+        if library.extension().is_some_and(|e| e == "exe") {
+            prebuilt::assert_runtime(&mut std::process::Command::new(library), None, &[]);
+        } else {
+            assert!(prebuilt::defer_answer(
+                library,
+                "obs_fixture_resource",
+                expected
+            ));
+        }
+    }
 }
 
 #[test]
 fn msvc_pch_links_its_object_and_preserves_language_header_and_flag_changes() {
-    let requested = std::env::var("OBS_NATIVE_WINDOWS_TARGET")
-        .unwrap_or_else(|_| obs_build::BUILD_TARGET.into());
+    let requested =
+        std::env::var("OBS_NATIVE_WINDOWS_TARGET").unwrap_or_else(|_| prebuilt::target().into());
     if !requested.contains("windows-msvc") {
         return;
     }
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     let header = root.join("common.h");
     let c = root.join("part.c");
@@ -3665,12 +3676,12 @@ __declspec(selectany) int fixture_c_storage = HEADER_VALUE;
             write_header(value);
             library.c_compile_options[1] = format!("/DFIXTURE_C={c_flag}");
             library.cpp_compile_options[1] = format!("/DFIXTURE_CPP={cpp_flag}");
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_windows_function(&artifact, "obs_fixture_msvc_pch", expected, &requested);
         }
-        let archive = build.static_library(&library).unwrap();
+        let archive = build.fixture_static_library(&library).unwrap();
         let artifact = build
-            .shared_library(&target("fixture-archive-pch", &wrapper, vec![archive]))
+            .fixture_shared_library(&target("fixture-archive-pch", &wrapper, vec![archive]))
             .unwrap();
         assert_windows_function(&artifact, "obs_fixture_archive_probe", 84, &requested);
         let pch: Vec<_> = fs::read_dir(build.output.join("pch"))
@@ -3693,7 +3704,10 @@ __declspec(selectany) int fixture_c_storage = HEADER_VALUE;
 }
 
 fn assert_windows_function(library: &Path, symbol: &str, expected: i32, target: &str) {
-    if target == obs_build::BUILD_TARGET {
+    if !prebuilt::preparing() && target == obs_build::BUILD_TARGET {
+        if prebuilt::defer_answer(library, symbol, expected) {
+            return;
+        }
         // SAFETY: both owning fixtures define no-argument C ABI functions;
         // answer keeps each library loaded throughout the call.
         assert_eq!(unsafe { answer(library, symbol.as_bytes(), &[]) }, expected);
@@ -3716,6 +3730,9 @@ fn assert_windows_function(library: &Path, symbol: &str, expected: i32, target: 
                 .lines()
                 .any(|line| line.trim() == name)
         );
+    }
+    if prebuilt::preparing() {
+        assert!(prebuilt::defer_answer(library, symbol, expected));
     }
 }
 

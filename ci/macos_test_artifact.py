@@ -123,16 +123,18 @@ def package_environment(package: dict, target_name: str, cwd: str, manifest: str
 
 
 def capture_doctest(binary: Path, args: list[str], root: Path, bundle: Path,
-                    cwd: Path, env: dict[str, str]) -> dict:
+                    cwd: Path, env: dict[str, str], *, target: str = TARGET,
+                    verify_executable: Callable[[Path], None] | None = None) -> dict:
     """Stable rustdoc runtool: retain the binary before rustdoc removes it.
 
     This acknowledges compilation only. The manifest runner must execute the
     retained harness, including its should_panic cases, on macOS. Compile-fail
     and no_run cases are checked by rustdoc on the producer as usual.
     """
-    verify_macho(binary)
+    (verify_executable or verify_macho)(binary)
     identity = uuid.uuid4().hex
-    relative = f"target/macos-doctests/{identity}/rust_out"
+    windows = target == "x86_64-pc-windows-msvc"
+    relative = f"target/{'windows' if windows else 'macos'}-doctests/{identity}/rust_out{'.exe' if windows else ''}"
     destination = within(bundle, relative)
     destination.parent.mkdir(parents=True)
     shutil.copy2(binary, destination)
@@ -148,19 +150,32 @@ def capture_doctest(binary: Path, args: list[str], root: Path, bundle: Path,
     return entry
 
 
-def doctest_environment(root: Path, bundle: Path, env: dict[str, str]) -> dict[str, str]:
+def doctest_environment(root: Path, bundle: Path, env: dict[str, str], *, target: str = TARGET) -> dict[str, str]:
     # soldr's Cargo target rustflags do not reach rustdoc's test linker. Ask
     # soldr for its SDK-aware driver rather than using a system clang.
-    linker = subprocess.run(["soldr", "cc", "--target", TARGET, "--print-linker"],
+    linker = subprocess.run(["soldr", "cc", "--target", target, "--print-linker"],
                             cwd=root, env=env, capture_output=True, text=True, check=True).stdout.strip()
     if not linker:
-        raise ValueError("soldr did not provide the Darwin linker")
+        raise ValueError(f"soldr did not provide the {target} linker")
+    if target == "x86_64-pc-windows-msvc":
+        from windows_cross_tools import linker_driver
+
+        linker = linker_driver(linker, root, bundle, env)
     runtool = ["uv", "run", "--no-project", "--script", str(root / "ci/macos_test_artifact.py"), "capture-doctest"]
     flags = ["-C", f"linker={linker}", "--test-runtool", runtool[0]]
     for argument in runtool[1:]:
         flags.extend(["--test-runtool-arg", argument])
     return env | {"RUSTDOCFLAGS": shlex.join(flags), "OBS_MACOS_DOCTEST_ROOT": str(root),
-                  "OBS_MACOS_DOCTEST_BUNDLE": str(bundle)}
+                   "OBS_MACOS_DOCTEST_BUNDLE": str(bundle), "OBS_CROSS_DOCTEST_TARGET": target}
+
+
+def compile_doctests(root: Path, output: Path, env: dict, packages: list[str], manifest: dict,
+                     *, target: str = TARGET) -> None:
+    result = subprocess.run(["soldr", "cargo", "test", "--doc", "--target", target, *packages, "--locked"],
+                            cwd=root, env=doctest_environment(root, output, env, target=target))
+    result.check_returncode()
+    manifest["tests"].extend(json.loads(path.read_text()) for path in sorted((output / "doctest-records").glob("*.json")))
+    manifest["doctests_complete"] = True
 
 
 def finalize(bundle: Path, manifest: dict) -> None:
@@ -285,7 +300,7 @@ def validate_files(data: dict, root: Path) -> None:
         if name not in data["files"]:
             raise ValueError(f"executable missing from artifact inventory: {path}")
         path.chmod(path.stat().st_mode | 0o111)
-    if data.get("native_fixtures"):
+    if data.get("native_fixtures") and data["target"] == TARGET:
         validate_native_fixtures(root)
 
 
@@ -308,16 +323,20 @@ def entry_environment(entry: dict, root: Path) -> dict[str, str]:
     return env
 
 
-def execute(manifest: Path, root: Path, *, require_qt: bool = False) -> int:
+def execute(manifest: Path, root: Path, *, require_qt: bool = False, target: str = TARGET,
+            validate: Callable[[dict, Path], None] | None = None,
+            kinds: set[str] | None = None) -> int:
     data = json.loads(manifest.read_text())
-    if data["version"] != 1 or data["target"] != TARGET or data["build_root"] != str(root):
+    if data["version"] != 1 or data["target"] != target or data["build_root"] != str(root):
         raise ValueError("artifact target/version/source root mismatch (compiled paths cannot be relocated)")
     if not data["tests"] and not (data.get("scope_skipped", False) or data.get("scope_no_tests", False)):
         raise ValueError("empty test manifest without an explicit scope skip")
     if require_qt:
         validate_qt_inventory(data)
-    validate_inventory(data, root)
+    (validate or validate_inventory)(data, root)
     for entry in data["tests"]:
+        if kinds is not None and entry.get("kind") not in kinds:
+            continue
         binary = within(root, entry["binary"])
         if entry["binary"] not in data["files"]:
             raise ValueError(f"test missing from artifact inventory: {binary}")
@@ -365,11 +384,7 @@ def build(output: Path, base: str | None) -> int:
     # Stable cross doctests use rustdoc's runtool to capture merged 2024
     # harnesses before temporary cleanup. A standalone should_panic case that
     # cannot be merged fails rustdoc rather than silently losing its assertion.
-    result = subprocess.run(["soldr", "cargo", "test", "--doc", "--target", TARGET, *packages, "--locked"],
-                            cwd=ROOT, env=doctest_environment(ROOT, output, env))
-    result.check_returncode()
-    manifest["tests"].extend(json.loads(path.read_text()) for path in sorted((output / "doctest-records").glob("*.json")))
-    manifest["doctests_complete"] = True
+    compile_doctests(ROOT, output, env, packages, manifest)
     if any(entry["package"] == "obs-studio-rust" for entry in manifest["tests"]):
         from macos_native_fixtures import prepare
 
@@ -405,8 +420,17 @@ def main() -> int:
     if args.command == "build":
         return build(args.output.resolve(), args.base)
     if args.command == "capture-doctest":
+        target = os.environ.get("OBS_CROSS_DOCTEST_TARGET", TARGET)
+        verifier = None
+        if target == "x86_64-pc-windows-msvc":
+            from windows_test_artifact import verify_pe
+
+            verifier = verify_pe
+        elif target != TARGET:
+            raise ValueError(f"unsupported cross-doctest target: {target}")
         capture_doctest(args.binary, args.args, Path(os.environ["OBS_MACOS_DOCTEST_ROOT"]),
-                        Path(os.environ["OBS_MACOS_DOCTEST_BUNDLE"]), Path.cwd(), dict(os.environ))
+                        Path(os.environ["OBS_MACOS_DOCTEST_BUNDLE"]), Path.cwd(), dict(os.environ),
+                        target=target, verify_executable=verifier)
         return 0
     return execute(args.manifest, args.root.resolve(), require_qt=args.require_qt)
 
