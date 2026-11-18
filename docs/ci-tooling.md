@@ -291,12 +291,45 @@ environment, test arguments and helper permissions, and hashes all transported
 files. Missing artifacts, corrupt files, incomplete doctests and failed test
 exits fail the consumer. Preparation requires an empty output directory.
 
+The native-fixture slice adds `ci/macos_native_fixtures.py`. The producer calls
+it whenever the Application category is selected; it uses that category's existing
+Linux executable to prepare 17 Darwin fixture contracts. It covers profile and
+assertion switches, shared-core/plugin dependencies, static archives and executable
+links, explicit groups, independent C/C++ flags, Objective-C/Objective-C++ ARC and
+manual groups, all unity/PCH combinations, transitive headers, source/flag changes,
+Swift bridge/modules/headers and the independent CMake graph consumers. The
+Windows resource/MSVC contracts and Linux-only runtime modules keep their existing
+platform gates. Configuration-only fixtures use `project(... NONE)` or explicitly
+disable compiler probing; they still run on macOS. Qt integration contracts remain
+the next slice.
+
+Preparation discovers soldr's Darwin C/C++ drivers, archiver, LLVM linker and Apple
+SDK on Linux. Swift uses an explicit `SWIFTC` override or the SHA256-pinned Linux
+Swift 6.1.2 distribution, with soldr's LLVM tools for linking. Its Darwin bridge
+still uses the same Apple SDK. Compiler-discovery assertions therefore describe
+the Linux-hosted Darwin toolchain. Every successful test writes a completed
+manifest with `BUILD_HOST` (Linux), `BUILD_TARGET` (`aarch64-apple-darwin`), the
+compiler recipes, input hashes, target-specific rebuild decisions, checksummed
+snapshots of every intermediate variant and deferred runtime expectations.
+Snapshot blobs are deduplicated by SHA256. A failed preparation never writes a
+completed manifest or bundle index.
+
+`OBS_NATIVE_FIXTURES` selects replay. The same test bodies assert the recorded
+compiler results, restore the corresponding variant and really load or execute it
+on macOS, including fresh-process loader probes and CTest's environment/working
+directory checks. They reject missing/corrupt files, changed recipes, incompatible
+host/target evidence and unconsumed events. Only compiler commands are replayed;
+load/run assertions remain pending until the consumer succeeds. With neither
+fixture environment variable set, local and Linux tests retain their native
+compilation path. `OBS_NATIVE_FIXTURES_PREPARE` is the producer-only counterpart;
+do not set both variables. Native manifests and signed arm64 dylibs, bundles and
+executables are included in slice (a)'s final checksummed bundle.
+
 **The workflow switch is not active in this slice.** The existing required
 `Rust Tests 🦀 (macos-26)` job and its coverage remain in place while the remaining
-preparation work is built. First prebuild every native fixture variant and its
-rebuild-decision record, then the four Qt integration contracts against a Darwin
-Qt SDK on Linux. Adapt obs-build's `BUILD_HOST`/`BUILD_TARGET` expectations to that
-split. Only then add the Dell-eligible Linux producer with hosted fallback and
+preparation work is built. The native fixture and rebuild-decision records are
+prepared by the infrastructure above; the four Qt integration contracts still
+need a Darwin Qt SDK on Linux. Only then add the Dell-eligible Linux producer with hosted fallback and
 make the existing macOS job download/run its full bundle, retaining CI Gate and
 PR changed-crate scope. The workflow regression enforces an atomic switch and
 tests the run-only dependency/command contract separately during staging.

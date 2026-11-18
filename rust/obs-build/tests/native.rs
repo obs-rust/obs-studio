@@ -1,6 +1,4 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
-#[path = "native/prebuilt.rs"]
-mod prebuilt;
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
 #[path = "native/registration/canonical_gs_perspective_is_registered.rs"]
@@ -15,6 +13,8 @@ mod canonical_rust_static_windows_keys_are_registered;
 mod canonical_websocket_helpers_is_registered;
 #[path = "native/graph_host_configurations.rs"]
 mod graph_host_configurations;
+#[path = "native/prebuilt.rs"]
+mod prebuilt;
 #[path = "native/registration/rust_static_entries.rs"]
 mod rust_static_entries;
 
@@ -76,6 +76,7 @@ mod canonical_wayland_sdk_is_registered;
 #[path = "native/registration/canonical_xcomposite_error_fixture_is_registered.rs"]
 mod canonical_xcomposite_error_fixture_is_registered;
 use obs_build::{NativeBuild, SharedLibrary};
+use prebuilt::{FixtureBuild as _, FixtureGraph as _};
 use std::{fs, path::Path};
 
 fn qt_replay_facts(target: &str, qt_test: bool) -> std::collections::BTreeMap<String, bool> {
@@ -638,8 +639,9 @@ fn assert_group_lifecycle_runtime(
 /// #3671: a disabled wrapper stays disabled even when its program exists.
 #[test]
 fn native_test_graph_conditional_prefixes_match_consumers() {
+    let _fixtures = prebuilt::Scope::enter();
     use obs_build::validation::graph::Graph;
-    let root = tempfile::tempdir().unwrap();
+    let root = prebuilt::tempdir().unwrap();
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let graph = serde_json::json!({
         "schema": 1,
@@ -678,37 +680,40 @@ fn native_test_graph_conditional_prefixes_match_consumers() {
             assert_eq!(command.get_program(), target.as_os_str());
         }
         let output = root.path().join(if enabled { "wrapped" } else { "direct" });
-        let configured = std::process::Command::new("cmake")
-            .arg("-S")
-            .arg(root.path())
-            .arg("-B")
-            .arg(&output)
-            .arg(format!("-DOS_LINUX={}", if enabled { "ON" } else { "OFF" }))
-            .output()
-            .unwrap();
+        let configured = prebuilt::compiler_output(
+            std::process::Command::new("cmake")
+                .arg("-S")
+                .arg(root.path())
+                .arg("-B")
+                .arg(&output)
+                .arg(format!("-DOS_LINUX={}", if enabled { "ON" } else { "OFF" })),
+        )
+        .unwrap();
         assert!(
             configured.status.success(),
             "{}",
             String::from_utf8_lossy(&configured.stderr)
         );
-        let built = std::process::Command::new("cmake")
-            .arg("--build")
-            .arg(&output)
-            .arg("--config")
-            .arg("Debug")
-            .output()
-            .unwrap();
+        let built = prebuilt::compiler_output(
+            std::process::Command::new("cmake")
+                .arg("--build")
+                .arg(&output)
+                .arg("--config")
+                .arg("Debug"),
+        )
+        .unwrap();
         assert!(
             built.status.success(),
             "{}",
             String::from_utf8_lossy(&built.stderr)
         );
-        let inventory = std::process::Command::new("ctest")
-            .arg("--test-dir")
-            .arg(&output)
-            .args(["-C", "Debug", "--show-only=json-v1"])
-            .output()
-            .unwrap();
+        let inventory = prebuilt::compiler_output(
+            std::process::Command::new("ctest")
+                .arg("--test-dir")
+                .arg(&output)
+                .args(["-C", "Debug", "--show-only=json-v1"]),
+        )
+        .unwrap();
         assert!(inventory.status.success());
         let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
         let arguments = inventory["tests"][0]["command"].as_array().unwrap();
@@ -1344,7 +1349,8 @@ fn native_test_graph_preserves_remux_queue_requirements() {
 
 #[test]
 fn native_test_graph_prepends_runtime_paths_in_order() {
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     fs::write(root.join("answer.c"), "int main(void) { return 0; }\n").unwrap();
     let graph = serde_json::json!({
@@ -1374,28 +1380,21 @@ fn native_test_graph_prepends_runtime_paths_in_order() {
         "cmake_minimum_required(VERSION 3.28)\nproject(paths C)\nenable_testing()\ninclude(\"{}\")\nobs_native_test_graph(\"${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json\" \"${{CMAKE_CURRENT_SOURCE_DIR}}\")\n", consumer.to_string_lossy().replace('\\', "/")
     )).unwrap();
     let output = root.join("cmake-output");
-    let result = std::process::Command::new("cmake")
-        .args(["-S", root.to_str().unwrap(), "-B", output.to_str().unwrap()])
-        .output()
-        .unwrap();
+    let result = prebuilt::compiler_output(std::process::Command::new("cmake").args([
+        "-S",
+        root.to_str().unwrap(),
+        "-B",
+        output.to_str().unwrap(),
+    ]))
+    .unwrap();
     assert!(
         result.status.success(),
         "{}",
         String::from_utf8_lossy(&result.stderr)
     );
-    let result = std::process::Command::new("ctest")
-        .args(["--test-dir", output.to_str().unwrap(), "-V"])
-        .output()
-        .unwrap();
-    assert!(
-        result.status.success(),
-        "{}",
-        String::from_utf8_lossy(&result.stdout)
-    );
-    assert!(
-        String::from_utf8_lossy(&result.stdout)
-            .lines()
-            .any(|line| line.ends_with(&format!("1: {assignment}")))
+    prebuilt::assert_runtime_suffix(
+        std::process::Command::new("ctest").args(["--test-dir", output.to_str().unwrap(), "-V"]),
+        &format!("1: {assignment}"),
     );
 }
 
@@ -1514,7 +1513,8 @@ fn native_test_graph_generates_qt_metaobjects() {
 
 #[test]
 fn native_test_graph_preserves_include_precedence() {
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     fs::create_dir_all(root.join("stubs")).unwrap();
     fs::create_dir_all(root.join("sources")).unwrap();
@@ -1540,18 +1540,17 @@ fn native_test_graph_preserves_include_precedence() {
     let parsed = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: root.join("cargo-output"),
         profile: Default::default(),
     };
     let artifacts = parsed
-        .compile(&build, root, &Default::default(), &Default::default())
+        .fixture_compile(&build, root, &Default::default(), &Default::default())
         .unwrap();
-    assert!(
-        std::process::Command::new(&artifacts["answer"])
-            .status()
-            .unwrap()
-            .success()
+    prebuilt::assert_runtime(
+        &mut std::process::Command::new(&artifacts["answer"]),
+        None,
+        &[],
     );
     fs::write(root.join("graph.json"), graph.to_string()).unwrap();
     let consumer =
@@ -1561,42 +1560,13 @@ fn native_test_graph_preserves_include_precedence() {
         consumer.to_string_lossy().replace('\\', "/")
     )).unwrap();
     let output = root.join("cmake-output");
-    for (program, arguments) in [
-        (
-            "cmake",
-            vec!["-S", root.to_str().unwrap(), "-B", output.to_str().unwrap()],
-        ),
-        (
-            "cmake",
-            vec!["--build", output.to_str().unwrap(), "--config", "Release"],
-        ),
-        (
-            "ctest",
-            vec![
-                "--test-dir",
-                output.to_str().unwrap(),
-                "-C",
-                "Release",
-                "--output-on-failure",
-            ],
-        ),
-    ] {
-        let result = std::process::Command::new(program)
-            .args(arguments)
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "{}\n{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
-    }
+    prebuilt::assert_cmake_build_and_run(root, &output);
 }
 
 #[test]
 fn native_test_graph_preserves_cpp_standard_without_changing_c_compilation() {
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     fs::write(
         root.join("answer.c"),
@@ -1616,18 +1586,17 @@ fn native_test_graph_preserves_cpp_standard_without_changing_c_compilation() {
     let parsed = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: root.join("cargo-output"),
         profile: Default::default(),
     };
     let artifacts = parsed
-        .compile(&build, root, &Default::default(), &Default::default())
+        .fixture_compile(&build, root, &Default::default(), &Default::default())
         .unwrap();
-    assert!(
-        std::process::Command::new(&artifacts["answer"])
-            .status()
-            .unwrap()
-            .success()
+    prebuilt::assert_runtime(
+        &mut std::process::Command::new(&artifacts["answer"]),
+        None,
+        &[],
     );
     fs::write(root.join("graph.json"), graph.to_string()).unwrap();
     let consumer =
@@ -1641,37 +1610,7 @@ fn native_test_graph_preserves_cpp_standard_without_changing_c_compilation() {
     )
     .unwrap();
     let output = root.join("cmake-output");
-    for (program, arguments) in [
-        (
-            "cmake",
-            vec!["-S", root.to_str().unwrap(), "-B", output.to_str().unwrap()],
-        ),
-        (
-            "cmake",
-            vec!["--build", output.to_str().unwrap(), "--config", "Release"],
-        ),
-        (
-            "ctest",
-            vec![
-                "--test-dir",
-                output.to_str().unwrap(),
-                "-C",
-                "Release",
-                "--output-on-failure",
-            ],
-        ),
-    ] {
-        let result = std::process::Command::new(program)
-            .args(arguments)
-            .output()
-            .unwrap();
-        assert!(
-            result.status.success(),
-            "{}\n{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
-    }
+    prebuilt::assert_cmake_build_and_run(root, &output);
     for value in [
         serde_json::json!(17),
         serde_json::json!(""),
@@ -1682,10 +1621,13 @@ fn native_test_graph_preserves_cpp_standard_without_changing_c_compilation() {
         invalid["targets"]["answer"]["cpp_standard"] = value;
         assert!(obs_build::validation::graph::Graph::parse(&invalid.to_string()).is_err());
         fs::write(root.join("graph.json"), invalid.to_string()).unwrap();
-        let result = std::process::Command::new("cmake")
-            .args(["-S", root.to_str().unwrap(), "-B", output.to_str().unwrap()])
-            .output()
-            .unwrap();
+        let result = prebuilt::compiler_output(std::process::Command::new("cmake").args([
+            "-S",
+            root.to_str().unwrap(),
+            "-B",
+            output.to_str().unwrap(),
+        ]))
+        .unwrap();
         assert!(!result.status.success());
         assert!(String::from_utf8_lossy(&result.stderr).contains("cpp_standard"));
     }
@@ -1743,7 +1685,8 @@ fn native_test_graph_preserves_cpp_helper_build_requirements() {
     reason = "scenario table: one block per ported step"
 )]
 fn native_test_graph_cmake_builds_and_runs_selected_contract() {
-    let fixture = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let fixture = prebuilt::tempdir().unwrap();
     let root = fixture.path();
     let output = root.join("output");
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -1849,10 +1792,8 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
             "Release".into(),
         ],
     ] {
-        let result = std::process::Command::new("cmake")
-            .args(arguments)
-            .output()
-            .unwrap();
+        let result =
+            prebuilt::compiler_output(std::process::Command::new("cmake").args(arguments)).unwrap();
         assert!(
             result.status.success(),
             "{}\n{}",
@@ -1864,16 +1805,14 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
     for input in ["dependency-include", "fixture-module.c"] {
         assert!(registered_inputs.contains(&root.join(input).to_string_lossy().replace('\\', "/")));
     }
-    let inventory = std::process::Command::new("ctest")
-        .args([
-            "--test-dir",
-            output.to_str().unwrap(),
-            "-C",
-            "Release",
-            "--show-only=json-v1",
-        ])
-        .output()
-        .unwrap();
+    let inventory = prebuilt::compiler_output(std::process::Command::new("ctest").args([
+        "--test-dir",
+        output.to_str().unwrap(),
+        "-C",
+        "Release",
+        "--show-only=json-v1",
+    ]))
+    .unwrap();
     assert!(inventory.status.success());
     let inventory: serde_json::Value = serde_json::from_slice(&inventory.stdout).unwrap();
     let tests = inventory["tests"].as_array().unwrap();
@@ -1903,27 +1842,21 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
             "missing {name}: {tests:?}"
         );
     }
-    let result = std::process::Command::new("ctest")
-        .args([
+    prebuilt::assert_runtime(
+        std::process::Command::new("ctest").args([
             "--test-dir",
             output.to_str().unwrap(),
             "-C",
             "Release",
             "--output-on-failure",
-        ])
-        .output()
-        .unwrap();
-    assert!(
-        result.status.success(),
-        "{}\n{}",
-        String::from_utf8_lossy(&result.stdout),
-        String::from_utf8_lossy(&result.stderr)
+        ]),
+        None,
+        &[output.join("runtime root/Release/marker.txt")],
     );
-    assert!(output.join("runtime root/Release/marker.txt").is_file());
     let rust_graph = obs_build::validation::graph::Graph::parse(&graph.to_string()).unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: root.join("cargo-output"),
         profile: Default::default(),
     };
@@ -1936,7 +1869,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
         ..build.clone()
     };
     let module = module_build
-        .shared_library(&SharedLibrary {
+        .fixture_shared_library(&SharedLibrary {
             name: "fixture-module".into(),
             sources: vec![root.join("fixture-module.c")],
             ..Default::default()
@@ -1971,7 +1904,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
         ),
     ]);
     let artifacts = rust_graph
-        .compile(&build, root, &facts, &dependencies)
+        .fixture_compile(&build, root, &facts, &dependencies)
         .unwrap();
     assert_eq!(artifacts.len(), 1);
     let selected = rust_graph.select(&facts).unwrap();
@@ -2010,13 +1943,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
         .command_in(root, &build.output, &runtime)
         .unwrap();
     assert_eq!(command.get_current_dir(), Some(runtime.as_path()));
-    let result = command.output().unwrap();
-    assert!(
-        result.status.success(),
-        "{}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(runtime.join("marker.txt").is_file());
+    prebuilt::assert_runtime(&mut command, None, &[runtime.join("marker.txt")]);
     for (pointer, value, message) in [
         ("/schema", serde_json::json!(2), "schema"),
         (
@@ -2134,16 +2061,19 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
         let mut invalid = graph.clone();
         *invalid.pointer_mut(pointer).unwrap() = value;
         let rust_result = obs_build::validation::graph::Graph::parse(&invalid.to_string())
-            .and_then(|graph| graph.compile(&build, root, &facts, &dependencies));
+            .and_then(|graph| graph.fixture_compile(&build, root, &facts, &dependencies));
         assert!(
             rust_result.is_err(),
             "Cargo accepted invalid graph at {pointer}"
         );
         fs::write(root.join("graph.json"), invalid.to_string()).unwrap();
-        let result = std::process::Command::new("cmake")
-            .args(["-S", root.to_str().unwrap(), "-B", output.to_str().unwrap()])
-            .output()
-            .unwrap();
+        let result = prebuilt::compiler_output(std::process::Command::new("cmake").args([
+            "-S",
+            root.to_str().unwrap(),
+            "-B",
+            output.to_str().unwrap(),
+        ]))
+        .unwrap();
         assert!(
             !result.status.success(),
             "CMake accepted invalid graph at {pointer}"
@@ -2157,10 +2087,13 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/watched-inputs.txt" "${graph_inputs}")
     let mut invalid = graph;
     invalid["targets"]["answer"]["sorces"] = serde_json::json!(["typo.c"]);
     fs::write(root.join("graph.json"), invalid.to_string()).unwrap();
-    let result = std::process::Command::new("cmake")
-        .args(["-S", root.to_str().unwrap(), "-B", output.to_str().unwrap()])
-        .output()
-        .unwrap();
+    let result = prebuilt::compiler_output(std::process::Command::new("cmake").args([
+        "-S",
+        root.to_str().unwrap(),
+        "-B",
+        output.to_str().unwrap(),
+    ]))
+    .unwrap();
     assert!(!result.status.success());
     assert!(String::from_utf8_lossy(&result.stderr).contains("sorces"));
 }
@@ -2780,16 +2713,25 @@ unsafe fn answer(library: &Path, symbol: &[u8], dependencies: &[&Path]) -> i32 {
     }
 }
 
+fn assert_fixture_answer(library: &Path, symbol: &[u8], dependencies: &[&Path], expected: i32) {
+    if prebuilt::defer_answer(library, std::str::from_utf8(symbol).unwrap(), expected) {
+        return;
+    }
+    // SAFETY: these fixtures define the asserted no-argument C ABI function.
+    assert_eq!(unsafe { answer(library, symbol, dependencies) }, expected);
+}
+
 #[test]
 fn native_profile_switch_rebuilds_assertion_policy() {
     if native_answer_probe() {
         return;
     }
+    let _fixtures = prebuilt::Scope::enter();
     let selector = format!(
         "{}::native_profile_switch_rebuilds_assertion_policy",
         module_path!().split_once("::").unwrap().1
     );
-    let directory = tempfile::tempdir().unwrap();
+    let directory = prebuilt::tempdir().unwrap();
     let source = directory.path().join("profile.c");
     fs::write(
         &source,
@@ -2801,7 +2743,7 @@ fn native_profile_switch_rebuilds_assertion_policy() {
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: directory.path().join("artifacts"),
     };
     use obs_build::NativeProfile::{Debug, MinSizeRel, RelWithDebInfo, Release};
@@ -2834,7 +2776,7 @@ fn native_profile_switch_rebuilds_assertion_policy() {
     ] {
         let artifact = build
             .with_profile(profile)
-            .shared_library(&target("fixture-profile", &source, vec![]))
+            .fixture_shared_library(&target("fixture-profile", &source, vec![]))
             .unwrap();
         assert_native_answer_fresh(&artifact, "obs_fixture_profile", expected, &selector);
     }
@@ -3179,25 +3121,26 @@ fn swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds() {
     if native_answer_probe() {
         return;
     }
-    if !obs_build::BUILD_TARGET.contains("apple-darwin") {
+    let _fixtures = prebuilt::Scope::enter();
+    if !prebuilt::target().contains("apple-darwin") {
         return;
     }
     let selector = format!(
         "{}::swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds",
         module_path!().split_once("::").unwrap().1
     );
-    let dir = tempfile::tempdir().unwrap();
+    let dir = prebuilt::tempdir().unwrap();
     let root = dir.path();
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: root.join("artifacts"),
     };
     let base = root.join("base.c");
     fs::write(&base, "int base_value(void) { return 1; }\n").unwrap();
     let native = build
-        .shared_library(&target("fixture-swift-base", &base, vec![]))
+        .fixture_shared_library(&target("fixture-swift-base", &base, vec![]))
         .unwrap();
     let header = root.join("value.h");
     fs::write(&header, "#define HEADER_VALUE 38\n").unwrap();
@@ -3220,7 +3163,7 @@ fn swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds() {
         compile_options: vec!["-swift-version".into(), "6".into()],
         link_options: vec![],
     };
-    let artifact = build.swift_shared_library(&library).unwrap();
+    let artifact = build.fixture_swift_shared_library(&library).unwrap();
     assert!(
         artifact
             .parent()
@@ -3237,17 +3180,17 @@ fn swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds() {
     );
     assert_native_answer_fresh(&artifact, "obs_fixture_swift", 42, &selector);
     fs::write(&header, "#define HEADER_VALUE 48\n").unwrap();
-    let artifact = build.swift_shared_library(&library).unwrap();
+    let artifact = build.fixture_swift_shared_library(&library).unwrap();
     assert_native_answer_fresh(&artifact, "obs_fixture_swift", 52, &selector);
     library.definitions[0].1 = Some("5".into());
-    let artifact = build.swift_shared_library(&library).unwrap();
+    let artifact = build.fixture_swift_shared_library(&library).unwrap();
     assert_native_answer_fresh(&artifact, "obs_fixture_swift", 54, &selector);
     fs::write(&source, text.replace("+ build_flag", "+ build_flag + 2")).unwrap();
-    let artifact = build.swift_shared_library(&library).unwrap();
+    let artifact = build.fixture_swift_shared_library(&library).unwrap();
     assert_native_answer_fresh(&artifact, "obs_fixture_swift", 56, &selector);
     fs::write(&base, "int base_value(void) { return 3; }\n").unwrap();
     build
-        .shared_library(&target("fixture-swift-base", &base, vec![]))
+        .fixture_shared_library(&target("fixture-swift-base", &base, vec![]))
         .unwrap();
     // The unchanged Swift dylib must observe the rebuilt shared dependency.
     assert_native_answer_fresh(&artifact, "obs_fixture_swift", 58, &selector);
@@ -3261,7 +3204,7 @@ fn swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds() {
         .unwrap();
         let artifact = build
             .with_profile(profile)
-            .swift_shared_library(&library)
+            .fixture_swift_shared_library(&library)
             .unwrap();
         assert_native_answer_fresh(
             &artifact,
@@ -3274,7 +3217,8 @@ fn swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds() {
 
 #[test]
 fn native_plugin_links_shared_core_and_observes_rebuilt_dependency() {
-    let dir = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let dir = prebuilt::tempdir().unwrap();
     let core_source = dir.path().join("core.c");
     let plugin_source = dir.path().join("plugin.c");
     fs::write(
@@ -3287,44 +3231,39 @@ fn native_plugin_links_shared_core_and_observes_rebuilt_dependency() {
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: dir.path().join("artifacts"),
     };
     let core = build
-        .shared_library(&target("fixture-core", &core_source, vec![]))
+        .fixture_shared_library(&target("fixture-core", &core_source, vec![]))
         .unwrap();
     let mut plugin_target = target("fixture-plugin", &plugin_source, vec![core.clone()]);
     plugin_target.kind = obs_build::LibraryKind::Module;
-    let plugin = build.shared_library(&plugin_target).unwrap();
-    if obs_build::BUILD_TARGET.contains("apple-darwin") {
+    let plugin = build.fixture_shared_library(&plugin_target).unwrap();
+    if prebuilt::target().contains("apple-darwin") {
         let bytes = fs::read(&plugin).unwrap();
         assert_eq!(u32::from_le_bytes(bytes[12..16].try_into().unwrap()), 8);
         let bytes = fs::read(&core).unwrap();
         assert_eq!(u32::from_le_bytes(bytes[12..16].try_into().unwrap()), 6);
     }
     // SAFETY: both sources above define the expected no-argument C functions.
-    assert_eq!(
-        unsafe { answer(&plugin, b"obs_fixture_plugin", &[&core]) },
-        43
-    );
+    assert_fixture_answer(&plugin, b"obs_fixture_plugin", &[&core], 43);
     fs::write(
         &core_source,
         format!("{EXPORT} int obs_fixture_answer(void) {{ return 84; }}"),
     )
     .unwrap();
     build
-        .shared_library(&target("fixture-core", &core_source, vec![]))
+        .fixture_shared_library(&target("fixture-core", &core_source, vec![]))
         .unwrap();
     // SAFETY: the rebuilt core preserves the function ABI; it changes its result.
-    assert_eq!(
-        unsafe { answer(&plugin, b"obs_fixture_plugin", &[&core]) },
-        85
-    );
+    assert_fixture_answer(&plugin, b"obs_fixture_plugin", &[&core], 85);
 }
 
 #[test]
 fn unity_toggle_preserves_exports_and_explicit_generated_source_wins() {
-    let dir = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let dir = prebuilt::tempdir().unwrap();
     let source_dir = dir.path().join("source");
     let generated_dir = dir.path().join("generated");
     fs::create_dir_all(&source_dir).unwrap();
@@ -3346,22 +3285,23 @@ fn unity_toggle_preserves_exports_and_explicit_generated_source_wins() {
         let build = NativeBuild {
             profile: Default::default(),
             host: obs_build::BUILD_HOST.into(),
-            target: obs_build::BUILD_TARGET.into(),
+            target: prebuilt::target().into(),
             output: dir.path().join(format!("output-{unity}")),
         };
         let mut library = target("fixture-manifest", &generated, vec![]);
         library.sources.push(extra.clone());
         library.include_dirs.push(source_dir.clone());
         library.unity = unity;
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         // SAFETY: the generated fixture defines this no-argument C function.
-        assert_eq!(unsafe { answer(&artifact, b"obs_fixture_count", &[]) }, 17);
+        assert_fixture_answer(&artifact, b"obs_fixture_count", &[], 17);
     }
 }
 
 #[test]
 fn executable_runs_against_its_shared_core_dependency() {
-    let dir = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let dir = prebuilt::tempdir().unwrap();
     let core_source = dir.path().join("core.c");
     let executable_source = dir.path().join("main.c");
     let helper_source = dir.path().join("helper.c");
@@ -3383,17 +3323,17 @@ fn executable_runs_against_its_shared_core_dependency() {
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: dir.path().join("artifacts"),
     };
     let helper = build
-        .static_library(&target("fixture-helper", &helper_source, vec![]))
+        .fixture_static_library(&target("fixture-helper", &helper_source, vec![]))
         .unwrap();
     let core = build
-        .shared_library(&target("fixture-core", &core_source, vec![helper]))
+        .fixture_shared_library(&target("fixture-core", &core_source, vec![helper]))
         .unwrap();
     let executable = build
-        .executable(&target(
+        .fixture_executable(&target(
             "fixture-app",
             &executable_source,
             vec![core.clone()],
@@ -3405,12 +3345,10 @@ fn executable_runs_against_its_shared_core_dependency() {
             .chain(std::env::split_paths(&old_path)),
     )
     .unwrap();
-    assert!(
-        std::process::Command::new(executable)
-            .env("PATH", search)
-            .status()
-            .unwrap()
-            .success()
+    prebuilt::assert_runtime(
+        std::process::Command::new(executable).env("PATH", search),
+        None,
+        &[],
     );
 }
 
@@ -3756,11 +3694,12 @@ fn assert_windows_function(library: &Path, symbol: &str, expected: i32, target: 
 
 #[test]
 fn pch_preserves_mixed_languages_unity_and_header_flag_invalidation() {
-    if !obs_build::BUILD_TARGET.contains("linux") && !obs_build::BUILD_TARGET.contains("apple") {
+    let _fixtures = prebuilt::Scope::enter();
+    if !prebuilt::target().contains("linux") && !prebuilt::target().contains("apple") {
         eprintln!("compiled PCH integration covers Linux GCC/Clang and Apple Clang");
         return;
     }
-    let directory = tempfile::tempdir().unwrap();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     let header = root.join("common.h");
     let transitive = root.join("value.h");
@@ -3777,7 +3716,7 @@ fn pch_preserves_mixed_languages_unity_and_header_flag_invalidation() {
         let build = NativeBuild {
             profile: Default::default(),
             host: obs_build::BUILD_HOST.into(),
-            target: obs_build::BUILD_TARGET.into(),
+            target: prebuilt::target().into(),
             output: root.join(format!("output-{unity}")),
         };
         let mut library = target("fixture-pch", &c, vec![]);
@@ -3792,27 +3731,28 @@ fn pch_preserves_mixed_languages_unity_and_header_flag_invalidation() {
                 header: header.clone(),
                 sources: vec![c.clone(), cpp.clone()],
             });
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         // SAFETY: the fixture defines this no-argument C ABI function.
-        assert_eq!(unsafe { answer(&artifact, b"obs_fixture_pch", &[]) }, 42);
+        assert_fixture_answer(&artifact, b"obs_fixture_pch", &[], 42);
         write_header(37);
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         // SAFETY: the edited header preserves the function ABI.
-        assert_eq!(unsafe { answer(&artifact, b"obs_fixture_pch", &[]) }, 82);
+        assert_fixture_answer(&artifact, b"obs_fixture_pch", &[], 82);
         fs::write(&transitive, "#define TRANSITIVE_VALUE 11\n").unwrap();
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         // SAFETY: the edited transitive header preserves the function ABI.
-        assert_eq!(unsafe { answer(&artifact, b"obs_fixture_pch", &[]) }, 104);
+        assert_fixture_answer(&artifact, b"obs_fixture_pch", &[], 104);
         library.c_compile_options = vec!["-DFIXTURE_C=7".into()];
-        let artifact = build.shared_library(&library).unwrap();
+        let artifact = build.fixture_shared_library(&library).unwrap();
         // SAFETY: changing the compiler macro preserves the function ABI.
-        assert_eq!(unsafe { answer(&artifact, b"obs_fixture_pch", &[]) }, 108);
+        assert_fixture_answer(&artifact, b"obs_fixture_pch", &[], 108);
     }
 }
 
 #[test]
 fn explicit_groups_compile_as_individual_sources_and_observe_member_edits() {
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     fs::create_dir(root.join("build")).unwrap();
     fs::write(root.join("build/fixture.pch.h"), "#define VALUE 17\n").unwrap();
@@ -3828,7 +3768,7 @@ fn explicit_groups_compile_as_individual_sources_and_observe_member_edits() {
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: root.join("artifacts"),
     };
     let mut library = target("fixture-separate", &group, vec![]);
@@ -3839,24 +3779,18 @@ fn explicit_groups_compile_as_individual_sources_and_observe_member_edits() {
         .unwrap();
     assert_eq!(library.sources.len(), 2);
     assert!(!library.sources.contains(&group));
-    let artifact = build.shared_library(&library).unwrap();
+    let artifact = build.fixture_shared_library(&library).unwrap();
     // SAFETY: the fixture defines this no-argument C function.
-    assert_eq!(
-        unsafe { answer(&artifact, b"obs_fixture_separate", &[]) },
-        34
-    );
+    assert_fixture_answer(&artifact, b"obs_fixture_separate", &[], 34);
     fs::write(
         &first,
         "#include \"build/fixture.pch.h\"\nint first(void) { return VALUE + 1; }\n",
     )
     .unwrap();
     fs::write(root.join("build/fixture.pch.h"), "#define VALUE 21\n").unwrap();
-    let artifact = build.shared_library(&library).unwrap();
+    let artifact = build.fixture_shared_library(&library).unwrap();
     // SAFETY: the rebuilt fixture preserves its function ABI.
-    assert_eq!(
-        unsafe { answer(&artifact, b"obs_fixture_separate", &[]) },
-        43
-    );
+    assert_fixture_answer(&artifact, b"obs_fixture_separate", &[], 43);
 }
 
 #[test]
@@ -3898,7 +3832,8 @@ fn deploying_mux_helper_in_place_preserves_its_contents() {
 
 #[test]
 fn mixed_c_and_cpp_use_independent_flags_and_the_cpp_linker() {
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let c_source = directory.path().join("helper.c");
     let cpp_source = directory.path().join("main.cpp");
     std::fs::write(&c_source, "#if !defined(C_ONLY) || defined(CPP_ONLY)\n#error wrong C flags\n#endif\nint helper(void) { return 42; }\n").unwrap();
@@ -3913,16 +3848,11 @@ fn mixed_c_and_cpp_use_independent_flags_and_the_cpp_linker() {
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: directory.path().join("out"),
     };
-    let artifact = build.executable(&target).unwrap();
-    assert!(
-        std::process::Command::new(artifact)
-            .status()
-            .unwrap()
-            .success()
-    );
+    let artifact = build.fixture_executable(&target).unwrap();
+    prebuilt::assert_runtime(&mut std::process::Command::new(artifact), None, &[]);
 }
 
 #[test]
@@ -4034,7 +3964,7 @@ fn mixed_objective_languages_compile_load_and_rebuild_with_unity_and_pch() {
     if native_answer_probe() {
         return;
     }
-    if !obs_build::BUILD_TARGET.contains("linux") && !obs_build::BUILD_TARGET.contains("apple") {
+    if !prebuilt::target().contains("linux") && !prebuilt::target().contains("apple") {
         return; // The fixture requires an Objective-C-capable Clang toolchain.
     }
     let selector = format!(
@@ -4058,7 +3988,8 @@ fn mixed_objective_languages_compile_load_and_rebuild_with_unity_and_pch() {
         assert!(String::from_utf8_lossy(&result.stdout).contains("1 passed"));
         return;
     }
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     let header = root.join("fixture.pch.h");
     let write_header = |value| {
@@ -4079,7 +4010,7 @@ fn mixed_objective_languages_compile_load_and_rebuild_with_unity_and_pch() {
             let build = NativeBuild {
                 profile: Default::default(),
                 host: obs_build::BUILD_HOST.into(),
-                target: obs_build::BUILD_TARGET.into(),
+                target: prebuilt::target().into(),
                 output: root.join(format!("output-{unity}-{pch}")),
             };
             let mut library = target("fixture-languages", &c, vec![]);
@@ -4109,16 +4040,16 @@ fn mixed_objective_languages_compile_load_and_rebuild_with_unity_and_pch() {
                         sources: library.sources.clone(),
                     });
             }
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_native_answer_fresh(&artifact, "obs_fixture_languages", 15, &selector);
             write_header(2);
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_native_answer_fresh(&artifact, "obs_fixture_languages", 30, &selector);
             library.objc_compile_options[2] = "-DOBJC_ONLY=2".into();
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_native_answer_fresh(&artifact, "obs_fixture_languages", 38, &selector);
             library.objcpp_compile_options[2] = "-DOBJCPP_ONLY=2".into();
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_native_answer_fresh(&artifact, "obs_fixture_languages", 54, &selector);
         }
     }
@@ -4129,7 +4060,7 @@ fn arc_and_manual_groups_keep_source_flags_through_expansion_and_pch() {
     if native_answer_probe() {
         return;
     }
-    if !obs_build::BUILD_TARGET.contains("linux") && !obs_build::BUILD_TARGET.contains("apple") {
+    if !prebuilt::target().contains("linux") && !prebuilt::target().contains("apple") {
         return;
     }
     let selector = format!(
@@ -4153,7 +4084,8 @@ fn arc_and_manual_groups_keep_source_flags_through_expansion_and_pch() {
         assert!(String::from_utf8_lossy(&result.stdout).contains("1 passed"));
         return;
     }
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     let header = root.join("fixture.pch.h");
     fs::write(&header, "#pragma once\n#ifndef SOURCE_VALUE\n#error source flags missing from PCH\n#endif\n#define HEADER_ARC __has_feature(objc_arc)\n").unwrap();
@@ -4174,7 +4106,7 @@ fn arc_and_manual_groups_keep_source_flags_through_expansion_and_pch() {
             let build = NativeBuild {
                 profile: Default::default(),
                 host: obs_build::BUILD_HOST.into(),
-                target: obs_build::BUILD_TARGET.into(),
+                target: prebuilt::target().into(),
                 output: root.join(format!("output-{separate}-{pch}")),
             };
             let mut library = target("fixture-source-flags", &arc, vec![]);
@@ -4203,10 +4135,10 @@ fn arc_and_manual_groups_keep_source_flags_through_expansion_and_pch() {
             if separate {
                 build.separate_target_sources(root, &mut library).unwrap();
             }
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_native_answer_fresh(&artifact, "obs_fixture_source_flags", 42, &selector);
             library.source_compile_options[0].options[1] = "-DSOURCE_VALUE=35".into();
-            let artifact = build.shared_library(&library).unwrap();
+            let artifact = build.fixture_shared_library(&library).unwrap();
             assert_native_answer_fresh(&artifact, "obs_fixture_source_flags", 60, &selector);
         }
     }
@@ -4214,7 +4146,8 @@ fn arc_and_manual_groups_keep_source_flags_through_expansion_and_pch() {
 
 #[test]
 fn native_source_options_reject_ambiguous_or_orphan_assignments() {
-    let dir = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let dir = prebuilt::tempdir().unwrap();
     let source = dir.path().join("source.c");
     let other = dir.path().join("other.c");
     fs::write(&source, "int fixture(void) { return 1; }\n").unwrap();
@@ -4222,7 +4155,7 @@ fn native_source_options_reject_ambiguous_or_orphan_assignments() {
     let build = NativeBuild {
         profile: Default::default(),
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: dir.path().join("artifacts"),
     };
     let mut library = target("fixture-options", &source, vec![]);
@@ -4233,7 +4166,7 @@ fn native_source_options_reject_ambiguous_or_orphan_assignments() {
     library.source_compile_options = vec![entry.clone(), entry];
     assert!(
         build
-            .shared_library(&library)
+            .fixture_shared_library(&library)
             .unwrap_err()
             .contains("duplicate compiler options")
     );
@@ -4243,7 +4176,7 @@ fn native_source_options_reject_ambiguous_or_orphan_assignments() {
     }];
     assert!(
         build
-            .shared_library(&library)
+            .fixture_shared_library(&library)
             .unwrap_err()
             .contains("outside this target")
     );
@@ -4282,6 +4215,9 @@ fn native_answer_probe() -> bool {
 }
 
 fn assert_native_answer_fresh(library: &Path, symbol: &str, expected: i32, selector: &str) {
+    if prebuilt::defer_answer(library, symbol, expected) {
+        return;
+    }
     let result = std::process::Command::new(std::env::current_exe().unwrap())
         .args(["--exact", selector, "--nocapture"])
         .env("OBS_NATIVE_ANSWER_LIBRARY", library)
