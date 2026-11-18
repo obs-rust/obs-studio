@@ -211,8 +211,15 @@ def execute(args: argparse.Namespace) -> None:
         command('docker', 'pull', prebaked)
     if image is None:
         command('docker', 'pull', BASE)
+    summary_args = []
+    if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
+        summary_path = Path(summary).resolve()
+        summary_path.touch(exist_ok=True)
+        summary_args = ['--mount', f'type=bind,src={summary_path},dst=/tier2-step-summary',
+                        '--env', 'GITHUB_STEP_SUMMARY=/tier2-step-summary']
     ident = command('docker', 'create', '--platform', 'linux/amd64', '--cpus', '4',
                     '--env', 'DEBIAN_FRONTEND=noninteractive',
+                    *summary_args,
                     *mounts(args.source, args.build, args.cost, args.uv, args.archives),
                     image or BASE, 'sleep', 'infinity')
     if not re.fullmatch(r'[0-9a-f]{64}', ident):

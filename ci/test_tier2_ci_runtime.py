@@ -56,6 +56,38 @@ class RuntimeTest(unittest.TestCase):
         self.assertIn('type=bind,src=/host/build,dst=/__w/_temp/tier2', mounts)
         self.assertIn('type=bind,src=/host/cost,dst=/__w/_temp/tier2-cost', mounts)
 
+    def test_step_summary_reaches_hosted_and_dell_runtime_variants(self):
+        for variant in ('stock', 'prepared', 'prebaked'):
+            for mode in ('OFF', 'ON'):
+                with self.subTest(variant=variant, mode=mode), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    (root / 'descriptor.json').write_text(json.dumps(self.descriptor()))
+                    (root / 'packages.txt').write_text('a=1\n')
+                    summary = root / 'summary.md'
+                    args = argparse.Namespace(packages=root / 'packages.txt', descriptor=root / 'descriptor.json',
+                        state=root / 'state', cost=root / 'cost', source=root, build=root,
+                        uv=root / 'uv', archives=root, mode=mode, part='all',
+                        prebaked_image=('ghcr.io/obs-rust/tier2-linux@sha256:' + 'c' * 64
+                                        if variant == 'prebaked' else ''))
+
+                    def command(*argv):
+                        if argv[:2] == ('docker', 'create'):
+                            return 'b' * 64
+                        return 'a\t1' if 'dpkg-query' in argv else ''
+
+                    with patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': str(summary)}), \
+                            patch.object(runtime, 'prepared_image', return_value=(
+                                self.descriptor()['image_id'] if variant == 'prepared' else None)), \
+                            patch.object(runtime, 'command', side_effect=command) as commands, \
+                            patch.object(runtime.subprocess, 'run') as run:
+                        runtime.execute(args)
+                        create = next(call.args for call in commands.call_args_list
+                                      if call.args[:2] == ('docker', 'create'))
+                        self.assertIn(f'type=bind,src={summary},dst=/tier2-step-summary', create)
+                        self.assertIn('GITHUB_STEP_SUMMARY=/tier2-step-summary', create)
+                        self.assertTrue(summary.is_file())
+                        self.assertIn(f'OBS_TIER2_MODES={mode}', run.call_args.args[0])
+
     def test_complete_suite_failure_propagates_and_container_stops(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -435,6 +435,8 @@ if [ "$stage" != build ]; then
     xvfb_args=(-a '--server-args=-screen 0 1280x1024x24 -noreset')
     ctest_status=0
     serial_status=0
+    known_flaky=(uv run --no-project "$SRC/rust/tools/linux-validate/known_flaky.py"
+      --registry "$SRC/test/cmocka/known-flaky.txt" --build "$build" --mode "$mode" --)
     if [ -n "$serial_cpus" ]; then
       # Both parts at the same time, each on its own CPUs (#2773): the suite
       # part pinned to what OBS_TIER2_SERIAL_CPUS leaves, the RUN_SERIAL tests
@@ -450,7 +452,7 @@ if [ "$stage" != build ]; then
         serial_env_args+=(--env "$name_value")
       done
       echo "== [$mode] ctest (suite on CPUs $suite_cpu_list) beside the RUN_SERIAL part (CPUs $serial_cpus)"
-      uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py pin --cpus "$suite_cpu_list" \
+      "${known_flaky[@]}" uv run --no-project "$SRC"/rust/tools/linux-validate/serial-runner.py pin --cpus "$suite_cpu_list" \
         "${serial_env_args[@]}" -- \
         xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" \
         -E "$serial_regex" >"$build.ctest-$mode.log" 2>&1 &
@@ -466,7 +468,7 @@ if [ "$stage" != build ]; then
       wait "$serial_pid" || serial_status=$?
       [ "$serial_status" -eq 0 ] || echo "FAIL: [$mode] the RUN_SERIAL part failed, see $build.serial-$mode.log"
     else
-      "${mode_env[@]}" xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" "${mode_shard_args[@]}" 2>&1 | tee "$build.ctest-$mode.log" ||
+      "${known_flaky[@]}" "${mode_env[@]}" xvfb-run "${xvfb_args[@]}" ctest --test-dir "$build" --output-on-failure -j "${OBS_CTEST_JOBS:-1}" "${mode_shard_args[@]}" 2>&1 | tee "$build.ctest-$mode.log" ||
         ctest_status=$?
     fi
     # Keep the timings even when a test failed: they are still right.

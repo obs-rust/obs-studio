@@ -1,0 +1,3 @@
+# <ctest name regex> #<open issue number> <one-line reason>
+# Full-name matches only. Remove entries when their tracking issue is resolved.
+^test_pulse_default_follow_pipewire$ #4944 default_output_unplugged still flakes after private-daemon serialization

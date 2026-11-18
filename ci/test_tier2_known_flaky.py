@@ -33,8 +33,13 @@ if '--output-junit' in sys.argv and not result.get('missing_report'):
     suite = ET.Element('testsuite')
     for name, status in result['tests'].items():
         case = ET.SubElement(suite, 'testcase', name=name, status=status)
-        if status != 'run':
-            ET.SubElement(case, 'skipped' if status == 'notrun' else 'failure')
+        if status not in ('run', 'disabled'):
+            if status in ('notrun', 'skip'):
+                case.set('status', 'notrun')
+                ET.SubElement(case, 'skipped', message=(
+                    'SKIP_RETURN_CODE=77' if status == 'skip' else 'Unable to find executable'))
+            else:
+                ET.SubElement(case, 'failure')
     ET.ElementTree(suite).write(path)
 print('fake ctest run', call + 1, flush=True)
 sys.exit(result['status'])
@@ -97,6 +102,21 @@ class KnownFlakyTest(unittest.TestCase):
         self.assertEqual(state["calls"], 1)
         self.assertFalse(self.summary.exists())
 
+    def test_mixed_not_run_error_does_not_retry(self):
+        result, state = self.invoke([{"status": 8, "tests": {FLAKE: "fail", "missing": "notrun"}}])
+        self.assertEqual(result.returncode, 8)
+        self.assertEqual(state["calls"], 1)
+
+    def test_explicit_skip_does_not_prevent_registered_failure_retry(self):
+        for optional_status in ('skip', 'disabled'):
+            with self.subTest(optional_status=optional_status):
+                result, state = self.invoke([
+                    {"status": 8, "tests": {FLAKE: "fail", "optional": optional_status}},
+                    {"status": 0, "tests": {FLAKE: "run"}},
+                ])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(state["calls"], 2)
+
     def test_malformed_registry_is_error_before_ctest(self):
         for line in (f"{FLAKE} missing issue", f"{FLAKE} #0 reason",
                      f"{FLAKE} #4944", "[ #4944 invalid regex"):
@@ -114,9 +134,29 @@ class KnownFlakyTest(unittest.TestCase):
         self.assertFalse(self.summary.exists())
 
     def test_regex_must_match_whole_test_name(self):
+        self.registry.write_text(f"{FLAKE} #4944 default output race\n")
         result, state = self.invoke([{"status": 8, "tests": {FLAKE + "_other": "fail"}}])
         self.assertEqual(result.returncode, 8)
         self.assertEqual(state["calls"], 1)
+
+    def test_multiple_registered_failures_retry_together(self):
+        self.registry.write_text("# tracked tests\n\nfixture_[ab] #4944 fixture race\n")
+        result, state = self.invoke([
+            {"status": 8, "tests": {"fixture_a": "fail", "fixture_b": "fail"}},
+            {"status": 0, "tests": {"fixture_a": "run", "fixture_b": "run"}},
+        ])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(state["calls"], 2)
+        self.assertEqual(result.stdout.count("::warning::"), 2)
+
+    def test_validate_wraps_normal_suites_but_not_determinism_repeat(self):
+        text = (TOOLS / "validate.sh").read_text()
+        self.assertIn('"$SRC/test/cmocka/known-flaky.txt"', text)
+        self.assertIn('--mode "$mode" --)', text)
+        self.assertIn('"${known_flaky[@]}" "${mode_env[@]}" xvfb-run', text)
+        self.assertIn('"${known_flaky[@]}" uv run --no-project', text)
+        repeat = text.split('if [ "$repeat" -gt 0 ]; then', 1)[1]
+        self.assertNotIn('known_flaky', repeat)
 
     def test_missing_report_or_ctest_error_does_not_retry(self):
         for run in ({"status": 8, "tests": {}, "missing_report": True},

@@ -290,6 +290,15 @@ Tier 2 checks.
   `rust/tools/linux-validate/run.py --repeat 100 --tests 'test_threading|test_task'`
   (`tier2-validate/validate.sh` takes the same options on macOS;
   `validate.ps1 -Repeat 100 -Tests '...'` on Windows).
+- Linux Tier 2's [known-flaky registry](../../test/cmocka/known-flaky.txt)
+  is a merge-queue shield for tracked flakes, not an exemption from that
+  100-run determinism rule for new threading tests. Every entry requires a
+  test-name regex, an open issue number and a reason. The normal OFF/ON run
+  retries its failed tests once only when every failure is registered;
+  recovery emits a warning and step-summary line naming the test and issue.
+  An unregistered failure or a second failure still fails the job. Remove
+  entries when their tracking issues are resolved. Explicit `--repeat`
+  determinism runs retain their first-failure behavior and never retry.
 - Tier 3 parity for I/O code runs the oracle and the Rust shim against
   separate temp directories and compares the resulting files byte for byte,
   plus the return values.
