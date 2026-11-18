@@ -1,0 +1,2 @@
+gs_samplerstate_create
+gs_samplerstate_destroy

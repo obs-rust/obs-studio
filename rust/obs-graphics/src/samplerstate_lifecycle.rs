@@ -42,9 +42,25 @@ pub trait Host {
     fn create(&mut self, info: Self::Info) -> Option<Self::Sampler>;
     fn destroy(&mut self, sampler: Self::Sampler);
 }
-pub fn create<H: Host>(_host: &mut H, _info: Option<H::Info>) -> Option<H::Sampler> {
-    todo!()
+pub fn create<H: Host>(host: &mut H, info: Option<H::Info>) -> Option<H::Sampler> {
+    if !host.has_context() {
+        host.debug(Entry::Create, Rejection::Context);
+        return None;
+    }
+    match info {
+        Some(info) => host.create(info),
+        None => {
+            host.debug(Entry::Create, Rejection::Info);
+            None
+        }
+    }
 }
-pub fn destroy<H: Host>(_host: &mut H, _sampler: Option<H::Sampler>) {
-    todo!()
+pub fn destroy<H: Host>(host: &mut H, sampler: Option<H::Sampler>) {
+    if !host.has_context() {
+        host.debug(Entry::Destroy, Rejection::Context);
+        return;
+    }
+    if let Some(sampler) = sampler {
+        host.destroy(sampler);
+    }
 }

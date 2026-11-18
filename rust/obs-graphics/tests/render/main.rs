@@ -58,6 +58,7 @@ mod raster_entrypoints_parity;
 mod render_target_setters;
 mod render_target_setters_parity;
 mod samplerstate_lifecycle;
+mod samplerstate_lifecycle_parity;
 mod sprite;
 mod sprite_parity;
 mod state_stacks;

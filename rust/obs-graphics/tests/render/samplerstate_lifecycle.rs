@@ -101,8 +101,8 @@ fn test_samplerstate_lifecycle_null_arguments_in_context() {
 #[test]
 fn test_samplerstate_lifecycle_creation_forwards_info_and_result() {
     let infos = [
-        Settings([0, 2, 0, 1, i64::from(i32::MIN), 0]),
-        Settings([8, 3, 4, 2, i64::from(i32::MAX), i64::from(u32::MAX)]),
+        Settings([0, 0, 1, 2, i64::from(i32::MIN), 0]),
+        Settings([2, 3, 4, 0, i64::from(i32::MAX), i64::from(u32::MAX)]),
     ];
     let before = infos;
     let mut f = Fixture {

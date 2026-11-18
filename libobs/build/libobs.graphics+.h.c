@@ -10,7 +10,7 @@
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics-indexbuffer-maintenance-fields.c.h"
 #include "libobs/graphics/graphics-render-target-setters-fields.c.h"
-#include "libobs/graphics/graphics-samplerstate-lifecycle.c.h"
+#include "libobs/graphics/graphics-samplerstate-lifecycle-fields.c.h"
 #include "libobs/graphics/graphics-shader-params-adapter.c.h"
 #include "libobs/graphics/graphics-target-size-fields.c.h"
 #include "libobs/graphics/graphics-texture-copy-fields.c.h"
