@@ -18842,6 +18842,37 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
+    "test_video_unmap_last_surface": {
+      "sources": [
+        "test/cmocka/test_video_unmap_last_surface.c"
+      ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "Threads::Threads",
+          "requires": {
+            "not": "MSVC"
+          }
+        }
+      ]
+    },
     "test_view": {
       "sources": [
         "test/cmocka/test_view.c"
@@ -26874,6 +26905,12 @@
     "test_video_stop_requested_rust": {
       "target": "test_video_stop_requested_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_video_unmap_last_surface": {
+      "target": "test_video_unmap_last_surface",
       "command": [
         "${target}"
       ]

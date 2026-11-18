@@ -79,5 +79,6 @@
 #include "libobs/obs-video-render-size.c.h"
 #include "libobs/obs-video-scale-effects-fields.c.h"
 #include "libobs/obs-video-stop-requested.c.h"
+#include "libobs/obs-video-unmap-last-surface.c.h"
 #include "libobs/obs-video.c.h"
 #include "libobs/obs-weak-encoder-identity-fields.c.h"
