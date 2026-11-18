@@ -5,6 +5,7 @@
 #include "libobs/graphics/blend-entrypoints-fields.c.h"
 #include "libobs/graphics/effect-parser-lifecycle-adapter.c.h"
 #include "libobs/graphics/effect-parser.c.h"
+#include "libobs/graphics/graphics-device-load.c.h"
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics-shader-params-adapter.c.h"
 #include "libobs/graphics/graphics-viewport-fields.c.h"
