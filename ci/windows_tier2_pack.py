@@ -90,7 +90,8 @@ def tokens(build: Path, source: Path) -> dict[str, str]:
             cache.read_text(),
             re.M,
         ):
-            result[value] = f"@OBS_TIER2_TOOL_{key}@"
+            identity = "CMAKE" if key == "CMAKE_COMMAND" else key.removeprefix("CMAKE_")
+            result[value] = f"@OBS_TIER2_TOOL_{identity}@"
     # Resolve the PATH identity rather than assuming an installation prefix.
     for name in ("cmake", "ctest"):
         executable = shutil.which(name)
@@ -178,8 +179,17 @@ def normalize_tests(tests: list[dict], build: Path, source: Path) -> list[dict]:
                 prefix = f"-DTEST_{key}="
                 if value.startswith(prefix) and value[len(prefix) :]:
                     replacements[value[len(prefix) :]] = f"@OBS_TIER2_TOOL_{key}@"
+    resolved = []
+    for test in tests:
+        command = list(test["command"])
+        if command[0] in {"cmake", "ctest"}:
+            executable = shutil.which(command[0])
+            if executable is None:
+                raise ValueError(f"missing producer tool: {command[0]}")
+            command[0] = executable
+        resolved.append({**test, "command": command})
     return consumer.normalized(
-        tests,
+        resolved,
         dict(sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True)),
     )
 
@@ -213,7 +223,8 @@ def prepare_fixture(
 
 def release_image(path: Path) -> bool:
     return not any(
-        name == "ucrtbased.dll" or re.fullmatch(r"(?:msvcp|vcruntime|concrt).*d\.dll", name)
+        name == "ucrtbased.dll"
+        or re.fullmatch(r"(?:msvcp|vcruntime|concrt).*d\.dll", name)
         for name in probe.image(path.read_bytes())
     )
 
@@ -353,7 +364,37 @@ def verify(root: Path) -> dict:
     if files != manifest["files"]:
         raise ValueError("changed/missing runtime files")
     consumer.verify_files(root, manifest)
+    verify_tests(root.absolute(), manifest)
     return manifest
+
+
+def verify_tests(root: Path, manifest: dict) -> None:
+    tests = consumer.normalized(
+        manifest["tests"],
+        {
+            probe.BUILD: (root / "build").as_posix(),
+            probe.SOURCE: (root / "source").as_posix(),
+        },
+    )
+    for test in tests:
+        command = test["command"]
+        if test["name"] == "test_core_module_manifest_source":
+            name = manifest["fixture_receipts"][test["name"]]
+            if name not in manifest["files"]:
+                raise ValueError("unhashed Linux fixture receipt")
+        else:
+            consumer.runtime_command(command, root, {})
+            name = probe.contained(root, Path(command[0])).as_posix()
+            if name not in manifest["files"]:
+                raise ValueError(f"unstaged CTest executable: {test['name']}")
+        for prop in test.get("properties", []):
+            if prop["name"] == "WORKING_DIRECTORY":
+                name = probe.contained(root, Path(prop["value"])).as_posix()
+                if name not in manifest["directories"]:
+                    raise ValueError(
+                        f"unstaged CTest working directory: {test['name']}"
+                    )
+    consumer.check_shadowing(root / "build", tests)
 
 
 def archive(root: Path, destination: Path) -> dict:

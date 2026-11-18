@@ -225,6 +225,35 @@ class CMakePackTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 h.verify(root / "bundle")
 
+    def test_ctest_executable_must_be_in_the_sealed_payload(self):
+        h = self.helper()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = self.stage(root)
+            manifest["tests"][0]["command"][0] = "@OBS_TIER2_BUILD@/missing.exe"
+            (root / "bundle/manifest.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "unstaged CTest executable"):
+                h.verify(root / "bundle")
+
+    def test_path_resolved_cmake_identity_is_portable(self):
+        h = self.helper()
+        tests = [
+            {
+                "name": "fixture",
+                "command": ["cmake", "-E", "echo", "ok"],
+                "properties": [],
+            }
+        ]
+        with patch.object(
+            h.shutil, "which", side_effect=lambda name: f"/nonstandard/bin/{name}"
+        ):
+            normalized = h.normalize_tests(
+                tests, Path("/producer/build"), Path("/producer/source")
+            )
+        self.assertEqual(
+            ["@OBS_TIER2_TOOL_CMAKE@", "-E", "echo", "ok"], normalized[0]["command"]
+        )
+
     @unittest.skipUnless(shutil.which("clang"), "requires clang")
     def test_compile_time_relocation_preserves_runtime_reads(self):
         with tempfile.TemporaryDirectory() as directory:
