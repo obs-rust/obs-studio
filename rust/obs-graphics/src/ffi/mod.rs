@@ -55,6 +55,7 @@ pub mod sprite;
 pub mod stagesurface_getters;
 pub mod state_stacks;
 pub mod stencil;
+pub mod target_size;
 pub mod texture_copy;
 pub mod texture_creators;
 pub mod texture_file_data2;
