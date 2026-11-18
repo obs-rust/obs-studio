@@ -82,6 +82,21 @@ class FixtureInventoryTest(unittest.TestCase):
                 with self.assertRaisesRegex(FileNotFoundError, "dsymutil"):
                     fixtures.swift_tools(root, root, {})
 
+    def test_dsymutil_rejects_corrupt_download_before_extracting(self):
+        import macos_native_fixtures as fixtures
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / "target/macos-native-toolchains/llvm-tools-20.1.7"
+            cache.mkdir(parents=True)
+            (cache / "bundle.tar.zst").write_bytes(b"corrupt archive")
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(Path, "home", return_value=root), \
+                    patch.object(fixtures.tarfile, "open") as extract:
+                with self.assertRaisesRegex(ValueError, "archive checksum mismatch"):
+                    fixtures.provision_dsymutil(root)
+                extract.assert_not_called()
+
     def test_preparation_rejects_macos_before_starting_any_tool(self):
         import macos_native_fixtures as fixtures
         with patch.object(fixtures.platform, "system", return_value="Darwin"), patch.object(fixtures.subprocess, "run") as run:

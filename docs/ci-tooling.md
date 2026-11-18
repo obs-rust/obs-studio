@@ -322,7 +322,14 @@ the preparation helper below.
 Preparation discovers soldr's Darwin C/C++ drivers, archiver, LLVM linker and Apple
 SDK on Linux. Swift uses an explicit `SWIFTC` override or the SHA256-pinned Linux
 Swift 6.1.2 distribution, with soldr's LLVM tools for linking. Its Darwin bridge
-still uses the same Apple SDK. Compiler-discovery assertions therefore describe
+still uses the same Apple SDK. A private tools directory also supplies `dsymutil`,
+which Swift needs for debug builds and soldr's primary LLVM bundle omits. It uses
+`DSYMUTIL`, an existing LLVM/host tool, or the checksum-pinned dsymutil from soldr's
+LLVM-tools 20.1.7 payload. The fallback reuses soldr's verified installed tool or
+downloads the pinned 474,401,547-byte archive and extracts only dsymutil; this is
+producer setup cost, not consumer payload. Python 3.14 supplies zstd extraction.
+Missing tools or invalid checksums fail preparation; no Swift assertion is skipped.
+Compiler-discovery assertions therefore describe
 the Linux-hosted Darwin toolchain. Every successful test writes a completed
 manifest with `BUILD_HOST` (Linux), `BUILD_TARGET` (`aarch64-apple-darwin`), the
 compiler recipes, input hashes, target-specific rebuild decisions, checksummed

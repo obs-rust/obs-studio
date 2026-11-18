@@ -17,6 +17,12 @@ TARGET = "aarch64-apple-darwin"
 SWIFT_RELEASE = "swift-6.1.2-RELEASE-ubuntu22.04"
 SWIFT_URL = f"https://download.swift.org/swift-6.1.2-release/ubuntu2204/swift-6.1.2-RELEASE/{SWIFT_RELEASE}.tar.gz"
 SWIFT_SHA256 = "ed40901b5bccf9022ff5d41425e2316f8e710a7e0c99717ba62080744e81fd66"
+# soldr's LLVM-tools catalogue bundle includes dsymutil; its primary LLVM
+# cross-link bundle omits it. Pin both the immutable archive and extracted tool.
+# LFS media remains under zackees after the forge-ci repository transfer.
+LLVM_TOOLS_URL = "https://media.githubusercontent.com/media/zackees/soldr-toolchain/c84b2d6ed993c4fa6106145c90c4654520051cd5/llvm-tools/20.1.7/linux-x64-gnu/bundle.tar.zst"
+LLVM_TOOLS_SHA256 = "a359fdba95ab7529a03c3e72410e2bb5aab523c21c1816a96daa2c6fff82d44a"
+DSYMUTIL_SHA256 = "61722bc1457bb9a7e630276e17f4c31474bb797fc9518ba915a30f8df4da1e6b"
 # All default-enabled Darwin runtime compilation contracts, including CMake's
 # independent consumer and Swift. Qt/libobs feature contracts are another slice.
 TESTS = (
@@ -72,6 +78,64 @@ def target_setting(env: dict, name: str, value: str) -> None:
         env[f"{name}_{triple}"] = value
 
 
+def provision_dsymutil(root: Path) -> Path:
+    """Use the same checksummed LLVM-tools payload soldr provisions on Linux."""
+    if platform.system() != "Linux" or platform.machine() != "x86_64":
+        raise ValueError("supply DSYMUTIL for this Linux host architecture")
+    cache = root / "target/macos-native-toolchains/llvm-tools-20.1.7"
+    relative = Path("package/bin/dsymutil")
+    tool = cache / relative
+    managed = Path.home() / ".soldr/bin/syslib/llvm-tools/20.1.7/linux-x64-gnu" / relative
+    for candidate in (tool, managed):
+        if candidate.is_file():
+            with candidate.open("rb") as stream:
+                if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
+                    raise ValueError("managed dsymutil checksum mismatch")
+            return candidate
+    cache.mkdir(parents=True, exist_ok=True)
+    archive = cache / "bundle.tar.zst"
+    if not archive.is_file():
+        urllib.request.urlretrieve(LLVM_TOOLS_URL, archive)
+    with archive.open("rb") as stream:
+        if hashlib.file_digest(stream, "sha256").hexdigest() != LLVM_TOOLS_SHA256:
+            raise ValueError("LLVM-tools archive checksum mismatch")
+    # CI installs Python 3.14, whose tarfile supports zstd. Extract only the
+    # needed regular executable, preserving the archive's executable mode.
+    with tarfile.open(archive) as tar:
+        member = tar.getmember("./" + str(relative))
+        if not member.isfile():
+            raise ValueError("LLVM-tools dsymutil is not a regular file")
+        tar.extract(member, cache, filter="data")
+    with tool.open("rb") as stream:
+        if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
+            raise ValueError("extracted dsymutil checksum mismatch")
+    return tool
+
+
+def swift_tools(root: Path, llvm: Path, env: dict) -> Path:
+    """Private aliases add dsymutil without changing soldr's shared tool tree."""
+    explicit = env.get("DSYMUTIL")
+    dsymutil = Path(explicit) if explicit else next(
+        (path for path in (llvm / "dsymutil", llvm / "llvm-dsymutil") if path.is_file()), None)
+    if dsymutil is None:
+        ambient = shutil.which("dsymutil", path=env.get("PATH"))
+        dsymutil = Path(ambient) if ambient else provision_dsymutil(root)
+    if not dsymutil.is_file():
+        raise FileNotFoundError(dsymutil)
+    identity = hashlib.sha256(f"{llvm}\n{dsymutil}".encode()).hexdigest()[:16]
+    tools = root / "target/macos-native-toolchains/swift-tools" / identity
+    tools.mkdir(parents=True, exist_ok=True)
+    sources = {source.name: source for source in llvm.iterdir() if source.is_file()}
+    sources["dsymutil"] = dsymutil
+    for name, source in sources.items():
+        alias = tools / name
+        if not alias.exists():
+            alias.symlink_to(source.resolve())
+        if alias.resolve() != source.resolve():
+            raise ValueError(f"stale Swift tool alias: {alias}")
+    return tools
+
+
 def configure_swift(root: Path, env: dict) -> None:
     compiler = swift_compiler(root, env)
     version = subprocess.run([str(compiler), "--version"], cwd=root, env=env,
@@ -83,6 +147,7 @@ def configure_swift(root: Path, env: dict) -> None:
     tools = Path(clang).parent
     if not (tools / "ld64.lld").is_file():
         raise FileNotFoundError(tools / "ld64.lld")
+    tools = swift_tools(root, tools, env)
     wrapper = root / "target/macos-native-toolchains/swiftc-darwin"
     wrapper.parent.mkdir(parents=True, exist_ok=True)
     wrapper.write_text(f"#!/bin/sh\nexec {shlex.quote(str(compiler))} -tools-directory {shlex.quote(str(tools))} -use-ld=lld \"$@\"\n")
