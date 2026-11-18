@@ -114,6 +114,8 @@ target_link_libraries(
   PRIVATE d3d9 d3d11 d3dcompiler dxgi shcore
 )
 target_link_libraries(libobs-opengl PRIVATE OBS::glad)
+include("${CMAKE_CURRENT_LIST_DIR}/windows-tier2-owners.cmake")
+obs_windows_tier2_owners()
 # Native fragments expect the top-level OBS roots. Scope these compatibility
 # facts to the canonical directory; the actual compiler stays GNU-style Clang.
 function(_obs_windows_tier2_full_test_headers)
@@ -159,11 +161,17 @@ obs_windows_tier2_driver_options("${CMAKE_CURRENT_SOURCE_DIR}")
 add_custom_target(
   tier2-cross-full
   DEPENDS libobs-cross-shared libobs-cross-reference cmocka-tests libobs-d3d11 libobs-opengl
+    obs-outputs obs-filters image-source obs-transitions text-freetype2 win-capture
+    graphics-hook get-graphics-offsets inject-helper libobs-winrt
 )
+foreach(_owner IN ITEMS obs-outputs obs-filters image-source obs-transitions text-freetype2 win-capture
+                        graphics-hook get-graphics-offsets inject-helper libobs-winrt)
+  string(APPEND _owner_runtime "$<TARGET_FILE:${_owner}>\n")
+endforeach()
 get_property(_test_targets DIRECTORY "${OBS_SOURCE_ROOT}/test/cmocka" PROPERTY BUILDSYSTEM_TARGETS)
 set(
   _runtime
-  "$<TARGET_FILE:libobs-cross-shared>\n$<TARGET_FILE:libobs-cross-reference>\n$<TARGET_FILE:libobs-d3d11>\n$<TARGET_FILE:libobs-opengl>\n"
+  "${_owner_runtime}$<TARGET_FILE:libobs-cross-shared>\n$<TARGET_FILE:libobs-cross-reference>\n$<TARGET_FILE:libobs-d3d11>\n$<TARGET_FILE:libobs-opengl>\n"
 )
 foreach(_target IN LISTS _test_targets)
   get_target_property(_kind "${_target}" TYPE)

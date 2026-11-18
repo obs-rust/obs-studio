@@ -138,7 +138,7 @@ set_target_properties(
 )
 add_dependencies(libobs_rust-static libobs-cross-shared-rust)
 target_link_directories(libobs_rust-static INTERFACE "${CMAKE_BINARY_DIR}/cross-case-libs")
-target_link_libraries(libobs_rust-static INTERFACE ws2_32 ntdll bcrypt userenv)
+target_link_libraries(libobs_rust-static INTERFACE ws2_32 ntdll bcrypt userenv legacy_stdio_definitions)
 foreach(_component IN ITEMS avcodec avformat avutil)
   add_library(FFmpeg::${_component} UNKNOWN IMPORTED GLOBAL)
   set_target_properties(
