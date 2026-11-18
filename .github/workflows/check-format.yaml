@@ -89,7 +89,7 @@ jobs:
     timeout-minutes: 20
     runs-on: macos-26
     needs: checks
-    if: ${{ always() && !cancelled() && ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && inputs.swift && (github.event_name != 'pull_request' || !inputs.skip-swift) || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.checks.outputs.swift == 'true')) }}
+    if: ${{ always() && !cancelled() && ((github.event_name == 'pull_request' && inputs.swift && !inputs.skip-swift) || (github.event_name == 'merge_group' && needs.checks.outputs.swift == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.checks.outputs.swift == 'true')) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

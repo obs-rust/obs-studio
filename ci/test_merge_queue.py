@@ -42,6 +42,24 @@ def top_level_jobs(text: str) -> list[str]:
 
 
 class MergeQueue(unittest.TestCase):
+    def test_queue_formatting_overlaps_the_entire_build_call(self):
+        queue = job_block(PULL, "check-format-queue")
+        self.assertIn("name: Format 🔍", queue)
+        self.assertIn("needs: select-mq-runner", queue)
+        self.assertNotIn("needs: [select-mq-runner, build-project]", queue)
+        self.assertIn("github.event_name == 'merge_group'", queue)
+        self.assertIn("!cancelled()", queue)
+        self.assertIn("uses: ./.github/workflows/check-format.yaml", queue)
+        self.assertNotIn("needs.build-project", queue)
+        self.assertIn("check-format-queue", job_block(PULL, "ci-gate"))
+        # Keep PR skips bound to the immutable-base admission decision.
+        pr = job_block(PULL, "check-format")
+        self.assertIn("github.event_name != 'merge_group'", pr)
+        self.assertIn("needs.build-project.outputs.skip_checks", pr)
+        formatting = (ROOT / ".github/workflows/check-format.yaml").read_text()
+        swift = job_block(formatting, "swift-format")
+        self.assertIn("github.event_name == 'merge_group' && needs.checks.outputs.swift == 'true'", swift)
+
     def test_pr_does_not_allocate_queue_runner_probe(self):
         probe = job_block(PULL, "select-mq-runner").split("    steps:", 1)[0]
         self.assertIn("if: github.event_name != 'pull_request'", probe)

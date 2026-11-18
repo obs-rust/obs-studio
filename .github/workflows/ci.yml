@@ -153,12 +153,23 @@ jobs:
   check-format:
     name: Format 🔍
     needs: [select-mq-runner, build-project]
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && github.event_name != 'merge_group' }}
     uses: ./.github/workflows/check-format.yaml
     with:
       skip-checks: ${{ needs.build-project.outputs.skip_checks == 'true' }}
       skip-swift: ${{ needs.build-project.outputs.skip_swift-format == 'true' }}
       swift: ${{ needs.build-project.outputs.swift != 'false' }}
+    permissions:
+      contents: read
+
+  # Queue checks never accept client skips. Start them without waiting for
+  # the entire Build call to publish its PR admission outputs (Refs #4983).
+  # The two calls are mutually exclusive and keep the executed check names.
+  check-format-queue:
+    name: Format 🔍
+    needs: select-mq-runner
+    if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+    uses: ./.github/workflows/check-format.yaml
     permissions:
       contents: read
 
@@ -477,7 +488,7 @@ jobs:
     timeout-minutes: 10
     name: CI Gate ✅
     if: always()
-    needs: [select-mq-runner, cancel-superseded, check-format, build-project, validate-data, update-documentation, tier2-setup-producer, tier2-setup-consumer, native-cache-consumer, flatpak-runtime-reuse]
+    needs: [select-mq-runner, cancel-superseded, check-format, check-format-queue, build-project, validate-data, update-documentation, tier2-setup-producer, tier2-setup-consumer, native-cache-consumer, flatpak-runtime-reuse]
     runs-on: ubuntu-26.04
     permissions:
       actions: read
