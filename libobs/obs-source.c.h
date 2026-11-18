@@ -830,12 +830,6 @@ void obs_source_replace_missing_file(obs_missing_file_cb cb, obs_source_t *sourc
 	cb(source->context.data, new_path, data);
 }
 
-bool obs_source_configurable(const obs_source_t *source)
-{
-	return data_valid(source, "obs_source_configurable") &&
-	       (source->info.get_properties || source->info.get_properties2);
-}
-
 uint32_t obs_source_get_output_flags(const obs_source_t *source)
 {
 	return obs_source_valid(source, "obs_source_get_output_flags") ? source->info.output_flags : 0;
