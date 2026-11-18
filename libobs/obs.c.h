@@ -19,8 +19,6 @@
 
 struct obs_core *obs = NULL;
 
-static THREAD_LOCAL bool is_ui_thread = false;
-
 extern char *find_libobs_data_file(const char *file);
 
 static void obs_free_render_textures(struct obs_core_video_mix *video);
@@ -3518,19 +3516,6 @@ bool obs_wait_for_destroy_queue(void)
 
 	/* wait for destroy task queue */
 	return os_task_queue_wait(obs->destruction_task_thread);
-}
-
-static void set_ui_thread(void *unused)
-{
-	is_ui_thread = true;
-	UNUSED_PARAMETER(unused);
-}
-
-void obs_set_ui_task_handler(obs_task_handler_t handler)
-{
-	/* RED: deliberately dispatch before installing the handler. */
-	obs_queue_task(OBS_TASK_UI, set_ui_thread, NULL, false);
-	obs->ui_task_handler = handler;
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */

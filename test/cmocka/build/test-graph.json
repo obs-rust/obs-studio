@@ -26212,7 +26212,15 @@
       "command": [
         "${target}"
       ],
-      "timeout_seconds": 30
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_unclean_launch": {
       "target": "test_unclean_launch",
