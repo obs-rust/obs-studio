@@ -1048,14 +1048,29 @@ fall back to hosted.
 Set the optional repository Actions variable `MQ_RUNNER_DEMAND` to tune the
 per-run idle-capacity requirement without a workflow change. Unset or empty
 uses the unchanged conservative default `6` (checked by `ci/test_ci_scope.py`).
-Since #4980's per-job routing, the Dell-routed heavy work in
+In #4980's per-job routing, the Dell-routed heavy work in
 `build-project.yaml` is one Tier 2 Linux build, two complete Tier 2 test jobs
 (OFF/ON), two main Cross Lint legs and one release-target Cross Lint job.
 These are six jobs in total, with a **peak of five concurrent heavy jobs**:
 the two Tier 2 tests wait for the build and can overlap all three Cross Lint
-jobs. The release-target job runs its three targets within one job. Set
-`MQ_RUNNER_DEMAND=5` to match that peak; keep `6` for the conservative total-job
-bound. The same requirement applies when path scope skips Tier 2.
+jobs. The release-target job runs its three targets within one job. That
+topology permits demand `5` for the concurrent peak or `6` for the total-job
+bound. These counts describe that topology, not a fixed admission constant.
+
+**Revisit `MQ_RUNNER_DEMAND` whenever heavy jobs are added or their dependencies
+change.** Inventory every job using `mq-heavy-labels` in
+`.github/workflows/build-project.yaml`, expand its matrix, and account for
+`needs` dependencies when estimating concurrent demand. A job count alone is
+not the peak: Tier 2 build and tests run in successive stages. For example,
+[PR #5019](https://github.com/obs-rust/obs-studio/pull/5019) adds the Linux macOS
+test-bundle producer to this pool, bringing the total to seven heavy jobs and
+the possible concurrent peak to about six. Once that topology lands, revisit
+the repository variable; `5` no longer covers its peak, while `6` covers that
+peak and `7` is the conservative total-job bound. A demand above the Dell's
+online capacity intentionally selects hosted. The selector uses the configured
+demand and actual queued-job labels; it does not hard-code a five-job peak or
+automatically infer future jobs before they appear in the API. The same
+configured requirement applies when path scope skips some heavy jobs.
 `MQ_RUNNER_MIN_IDLE` is an optional repository Actions variable (default `1`);
 required idle capacity is `max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. With the
 default demand, a six-runner Dell is selected only when all six matching
