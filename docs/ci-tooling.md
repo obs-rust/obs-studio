@@ -365,6 +365,19 @@ producer and the unchanged macOS check; failed/missing/corrupt artifacts or fail
 entries cannot satisfy it. Graph self-tests enforce these dependencies and the
 absence of compile steps. Tier 2 macOS remains separate work in #5009.
 
+The supplied hosted baseline spent 288–294 seconds compiling/linking Rust tests
+and 42–61 seconds setting up soldr: **5.5–5.9 macOS minutes avoided per selected
+job before transport overhead**, without double-counting #4999's analysis saving.
+This excludes unmeasured native-fixture/Qt compilation savings. The 2026-11-17
+integration run on shared Linux took 520.71 seconds for Rust/doctests/native
+fixtures and 154.95 seconds for Qt preparation, **11.26 Linux minutes total**
+before archive/upload/setup overhead. That run used existing caches but rebuilt
+changed test harnesses and downloaded Qt SDKs; earlier slice timings (8.66 seconds
+for warm Rust/doctests and 58.59 seconds for warm Qt contracts) describe different
+cache states. These are local costs, not a hosted speedup or critical-path claim.
+Only this PR's CI can prove the real common-root handoff, hosted macOS execution,
+runner-image dependencies and net runner time on hosted and Dell routes.
+
 The Qt infrastructure slice adds `ci/macos_qt_artifact.py`: matching published
 Darwin Qt libraries and Linux moc/uic/rcc tools, both original native/CMake
 contract consumers, signed arm64 output, and runtime entries in the same bundle.
