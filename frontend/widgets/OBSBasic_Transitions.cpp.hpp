@@ -324,13 +324,14 @@ void OBSBasic::TransitionToScene(OBSSource source, bool force, bool quickTransit
 	}
 
 	if (usingPreviewProgram) {
-		OBSSource program = OBSGetStrongRef(programScene);
+		OBSSource programSource = OBSGetStrongRef(programScene);
 		OBSSource lastProgram = OBSGetStrongRef(lastProgramScene);
 		OBSSource swap = OBSGetStrongRef(swapScene);
 		OBSSource swapPreview = OBSGetStrongRef(swapPreviewScene);
 		OBSSource preview = GetCurrentSceneSource();
 
-		struct studio_mode_program state = {program.Get(), lastProgram.Get(), swap.Get(), swapPreview.Get()};
+		struct studio_mode_program state = {programSource.Get(), lastProgram.Get(), swap.Get(),
+						    swapPreview.Get()};
 		enum studio_mode_program_step step =
 			studio_mode_program_switch(&state, source.Get(), preview.Get(), tBarActive, !force && !black,
 						   sceneDuplicationMode, swapScenesMode, stillTransitioning);
