@@ -149,7 +149,21 @@ function(_obs_cross_tier2_tests)
 endfunction()
 enable_testing()
 _obs_cross_tier2_tests()
-add_custom_target(tier2-cross DEPENDS libobs-cross-shared libobs-cross-reference cmocka-tests)
+add_custom_target(
+  tier2-cross-manifest-fixture
+  COMMAND
+    "${CMAKE_COMMAND}" "-DOBS_CORE_MODULES_CMAKE=${OBS_SOURCE_ROOT}/libobs/cmake/obs-core-modules.cmake"
+    "-DTEST_FIXTURE_ROOT=${CMAKE_BINARY_DIR}/test/cmocka/core_module_manifest_source"
+    "-DTEST_GENERATOR=${CMAKE_GENERATOR}" "-DTEST_C_COMPILER=${CMAKE_C_COMPILER}"
+    "-DTEST_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}" "-DTEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
+    "-DTEST_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}" -DTEST_PREPARE_ONLY=ON -P
+    "${OBS_SOURCE_ROOT}/test/cmocka/check_core_module_manifest_source.cmake"
+  COMMENT "Prepare stale core-manifest fixture on the Linux producer"
+)
+add_custom_target(
+  tier2-cross
+  DEPENDS libobs-cross-shared libobs-cross-reference cmocka-tests tier2-cross-manifest-fixture
+)
 
 # Export actual runtime targets, including generated/loadable fixture libraries.
 # Never derive this list from executable-looking filenames in a build directory.

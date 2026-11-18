@@ -2,6 +2,37 @@ if(NOT OBS_CORE_MODULES_CMAKE OR NOT TEST_FIXTURE_ROOT)
   message(FATAL_ERROR "OBS_CORE_MODULES_CMAKE and TEST_FIXTURE_ROOT are required")
 endif()
 
+set(_evidence "${TEST_FIXTURE_ROOT}/evidence.cmake")
+if("$ENV{OBS_TIER2_FIXTURE_PREPARED}" STREQUAL "1")
+  if(NOT EXISTS "${_evidence}")
+    message(FATAL_ERROR "missing prepared fixture: ${_evidence}")
+  endif()
+  include("${_evidence}")
+  if(NOT _configure_result EQUAL 0 OR NOT _build_result EQUAL 0)
+    message(FATAL_ERROR "prepared fixture configure/build failed")
+  endif()
+  foreach(_path IN LISTS _prepared_files)
+    if(NOT EXISTS "${TEST_FIXTURE_ROOT}/${_path}")
+      message(FATAL_ERROR "missing prepared fixture: ${_path}")
+    endif()
+    file(SHA256 "${TEST_FIXTURE_ROOT}/${_path}" _actual)
+    if(NOT _actual STREQUAL "${_sha_${_path}}")
+      message(FATAL_ERROR "changed prepared fixture: ${_path}")
+    endif()
+  endforeach()
+  # The stale source must remain poisoned; the successful build of the
+  # generated binary-tree definition is the original regression assertion.
+  file(READ "${TEST_FIXTURE_ROOT}/source/obs-core-modules.c" _stale)
+  if(NOT _stale MATCHES "#error stale source-tree")
+    message(FATAL_ERROR "changed prepared fixture: stale source is no longer poisoned")
+  endif()
+  file(SHA256 "${OBS_CORE_MODULES_CMAKE}" _module_sha)
+  if(NOT _module_sha STREQUAL _prepared_module_sha)
+    message(FATAL_ERROR "changed prepared fixture: core-module build recipe")
+  endif()
+  return()
+endif()
+
 file(REMOVE_RECURSE "${TEST_FIXTURE_ROOT}")
 set(_fixture_source_dir "${TEST_FIXTURE_ROOT}/source")
 set(_fixture_binary_dir "${TEST_FIXTURE_ROOT}/build")
@@ -79,10 +110,23 @@ execute_process(
   OUTPUT_VARIABLE _build_stdout
   ERROR_VARIABLE _build_stderr
 )
-file(REMOVE_RECURSE "${TEST_FIXTURE_ROOT}")
 if(NOT _build_result EQUAL 0)
   message(
     FATAL_ERROR
     "The core-module target did not compile the generated binary-tree manifest when a stale source-tree copy exists:\n${_build_stdout}${_build_stderr}"
   )
+endif()
+if(TEST_PREPARE_ONLY)
+  file(SHA256 "${OBS_CORE_MODULES_CMAKE}" _module_sha)
+  file(WRITE "${_evidence}" "set(_configure_result 0)\nset(_build_result 0)\nset(_prepared_module_sha ${_module_sha})\n")
+  file(GLOB_RECURSE _prepared_files RELATIVE "${TEST_FIXTURE_ROOT}" "${TEST_FIXTURE_ROOT}/*")
+  list(REMOVE_ITEM _prepared_files evidence.cmake)
+  # Hash source, generated source, build graph and products. Relative names
+  # allow a common build-root binding without rewriting the evidence.
+  foreach(_path IN LISTS _prepared_files)
+    file(SHA256 "${TEST_FIXTURE_ROOT}/${_path}" _sha)
+    file(APPEND "${_evidence}" "list(APPEND _prepared_files [==[${_path}]==])\nset([==[_sha_${_path}]==] ${_sha})\n")
+  endforeach()
+else()
+  file(REMOVE_RECURSE "${TEST_FIXTURE_ROOT}")
 endif()
