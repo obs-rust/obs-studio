@@ -84,26 +84,30 @@ def toolchain(soldr: str, output: Path) -> tuple[dict, dict]:
 def run(command: list[str], source: Path, output: Path, env: dict, name: str) -> dict:
     """Keep full diagnostics and the real status; no pipe can hide failure."""
     started = time.monotonic()
+    timed_out = False
     with (output / f"{name}.log").open("w") as log:
-        result = subprocess.run(
-            command,
-            cwd=source,
-            env=env,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            timeout=3600,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                command,
+                cwd=source,
+                env=env,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=3600,
+                check=False,
+            )
+            status = result.returncode
+        except subprocess.TimeoutExpired:
+            status, timed_out = 124, True
     receipt = {
         "command": command,
-        "exit_code": result.returncode,
+        "exit_code": status,
+        "timed_out": timed_out,
         "seconds": time.monotonic() - started,
     }
     (output / f"{name}.json").write_text(json.dumps(receipt, indent=2) + "\n")
-    if result.returncode:
-        raise RuntimeError(
-            f"{name} failed ({result.returncode}); see {output / f'{name}.log'}"
-        )
+    if status:
+        raise RuntimeError(f"{name} failed ({status}); see {output / f'{name}.log'}")
     return receipt
 
 
@@ -111,6 +115,8 @@ def produce(source: Path, build: Path, output: Path, dependencies: Path) -> dict
     source, build, output, dependencies = (
         p.resolve() for p in (source, build, output, dependencies)
     )
+    if (output / "cargo-receipt.json").exists():
+        raise ValueError("refusing to reuse a completed Cargo preparation receipt")
     selected, tools = toolchain(
         os.environ.get("OBS_TIER2_SOLDR", "soldr"), output / "toolchain"
     )

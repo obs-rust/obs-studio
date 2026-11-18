@@ -5,12 +5,33 @@ import importlib
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 
 
 class CargoProducerTests(unittest.TestCase):
+    def test_timeout_is_recorded_and_old_success_is_not_reused(self):
+        producer = importlib.import_module("windows_tier2_cargo")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with (
+                patch.object(
+                    producer.subprocess,
+                    "run",
+                    side_effect=subprocess.TimeoutExpired("probe", 3600),
+                ),
+                self.assertRaisesRegex(RuntimeError, "124"),
+            ):
+                producer.run(["probe"], root, root, {}, "timeout")
+            receipt = json.loads((root / "timeout.json").read_text())
+            self.assertEqual(124, receipt["exit_code"])
+            self.assertTrue(receipt["timed_out"])
+            (root / "cargo-receipt.json").write_text('{"passed": true}')
+            with self.assertRaisesRegex(ValueError, "refusing to reuse"):
+                producer.produce(root, root, root, root)
+
     def test_failed_preparation_records_status_and_stops(self):
         producer = importlib.import_module("windows_tier2_cargo")
         cmake = shutil.which("cmake")
