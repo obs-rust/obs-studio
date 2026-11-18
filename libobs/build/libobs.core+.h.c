@@ -40,7 +40,6 @@
 #include "libobs/obs-module-type-query-fields.c.h"
 #include "libobs/obs-module.c.h"
 #include "libobs/obs-object-ref-fields.c.h"
-#include "libobs/obs-raw-audio-remove.c.h"
 #include "libobs/obs-set-output-source-fields.c.h"
 #include "libobs/obs-shutdown-detach.c.h"
 #include "libobs/obs-weak-object-expired-fields.c.h"
