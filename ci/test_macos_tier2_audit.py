@@ -11,6 +11,24 @@ import macos_tier2_audit as audit
 
 
 class ClosureTest(unittest.TestCase):
+    def test_explicit_dyld_library_path_resolves_a_signed_absolute_install_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable = root / "probe"
+            runtime = root / "runtimes/libclang_rt.asan_osx_dynamic.dylib"
+            runtime.parent.mkdir()
+            executable.touch()
+            runtime.touch()
+            install_name = "/producer/conan/libclang_rt.asan_osx_dynamic.dylib"
+            commands = {executable: [(0xC, install_name)], runtime: []}
+            with patch.object(audit, "loads", side_effect=lambda image: commands[image]):
+                with self.assertRaisesRegex(ValueError, "unresolved Darwin load"):
+                    audit.closure([executable], [root], lambda _: None)
+                verified = []
+                result = audit.closure([executable], [root], verified.append, library_path=[runtime.parent])
+                self.assertIn(runtime, verified)
+                self.assertEqual(result[str(executable)][0]["path"], str(runtime))
+
     def test_executable_path_stays_anchored_to_the_entry_binary(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
