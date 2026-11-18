@@ -24,7 +24,7 @@ class DriverOptionsTests(unittest.TestCase):
                 f'include("{ROOT}/cmake/cross/windows-tier2-options.cmake")\n'
                 'add_executable(probe test.c)\n'
                 'target_compile_options(probe PRIVATE /O1 /fp:strict /std:c11 '
-                '/experimental:c11atomics /clang:-fcommon "$<$<CONFIG:Release>:/O1>")\n'
+                '/experimental:c11atomics /clang:-fcommon /Dprobe=1 "$<$<CONFIG:Release>:/O1>")\n'
                 'target_link_options(probe PRIVATE /FORCE:MULTIPLE /INCREMENTAL:NO)\n'
                 'obs_windows_tier2_driver_options("${CMAKE_CURRENT_SOURCE_DIR}")\n'
                 'file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/link.txt" '
@@ -40,9 +40,37 @@ class DriverOptionsTests(unittest.TestCase):
             command = json.loads((root / "build/compile_commands.json").read_text())[0]["command"]
             return command, (root / "build/link.txt").read_text()
 
+    def test_native_layout_keeps_unchanged_tests_out_of_generic_unity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cross = root / "cmake/cross"
+            tests = root / "test/cmocka"
+            cross.mkdir(parents=True)
+            tests.mkdir(parents=True)
+            for name in ("first", "second"):
+                (tests / f"{name}.c").write_text("static int collision; int " + name + "(void) { return collision; }\n")
+            (tests / "CMakeLists.txt").write_text("add_library(characterization OBJECT first.c second.c)\n")
+            (cross / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 3.30)\nproject(layout C)\n'
+                f'list(PREPEND CMAKE_MODULE_PATH "{ROOT}/cmake/common")\n'
+                'set(OBS_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")\n'
+                'include(pch)\n'
+                f'include("{ROOT}/cmake/cross/windows-tier2-options.cmake")\n'
+                'add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" tests)\n'
+                'obs_windows_tier2_native_layout()\n'
+            )
+            result = subprocess.run(
+                ["cmake", "-S", str(cross), "-B", str(root / "build"), "-G", "Ninja",
+                 "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"], capture_output=True, text=True,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            commands = json.loads((root / "build/compile_commands.json").read_text())
+            self.assertEqual({"first.c", "second.c"}, {Path(c["file"]).name for c in commands})
+            subprocess.run(["cmake", "--build", str(root / "build")], check=True, capture_output=True)
+
     def test_gnu_frontend_receives_equivalent_options(self):
         command, link = self.commands("GNU")
-        for option in ("-Os", "-ffp-model=strict", "-std=c11", "-fcommon"):
+        for option in ("-Os", "-ffp-model=strict", "-std=c11", "-fcommon", "-Dprobe=1"):
             self.assertIn(option, command)
         for option in ("/O1", "/fp:", "/std:", "/experimental:", "/clang:"):
             self.assertNotIn(option, command)
@@ -50,7 +78,7 @@ class DriverOptionsTests(unittest.TestCase):
 
     def test_msvc_frontend_retains_original_options(self):
         command, link = self.commands("MSVC")
-        for option in ("/O1", "/fp:strict", "/std:c11", "/experimental:c11atomics", "/clang:-fcommon"):
+        for option in ("/O1", "/fp:strict", "/std:c11", "/experimental:c11atomics", "/clang:-fcommon", "/Dprobe=1"):
             self.assertIn(option, command)
         self.assertNotIn("-ffp-model", command)
         self.assertEqual("/FORCE:MULTIPLE;/INCREMENTAL:NO", link)
