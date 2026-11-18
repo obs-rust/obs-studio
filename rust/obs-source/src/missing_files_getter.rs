@@ -11,5 +11,13 @@ pub fn get<D, R, F: FnOnce(D) -> R>(
     create: impl FnOnce() -> R,
     log: impl FnOnce(&'static CStr),
 ) -> R {
-    todo!()
+    match source {
+        None => log(c"obs_source_get_missing_files"),
+        Some(Source {
+            data: Some(data),
+            callback: Some(callback),
+        }) => return callback(data),
+        Some(_) => {}
+    }
+    create()
 }

@@ -1553,6 +1553,13 @@ extern long *obs_source_async_rotation_fields(obs_source_t *source);
 extern obs_source_t *const *obs_source_filter_index_lock(obs_source_t *source, size_t *count);
 extern void obs_source_filter_index_unlock(obs_source_t *source);
 
+/* Read-only missing-files dispatch snapshot; caller rejects NULL first. */
+struct obs_source_missing_files_getter_fields {
+	void *data;
+	obs_missing_files_t *(*callback)(void *data);
+};
+extern struct obs_source_missing_files_getter_fields obs_source_missing_files_getter_fields(const obs_source_t *source);
+
 /* Callback values and borrowed settings address. Callers reject NULL first. */
 struct obs_source_properties_fields {
 	obs_properties_t *(*legacy)(void *data);
