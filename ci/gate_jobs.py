@@ -44,6 +44,12 @@ UNSUCCESSFUL = {
 }
 # Maintenance outside the gate (ci/test_merge_queue.py), and the gate itself.
 EXEMPT_PREFIXES = ("CI Pre 🧹", "Cache Janitor 🧹", "CI Gate ✅")
+# Manual, disabled-by-default qualification cannot provide admission evidence.
+# Match exact names; required Windows jobs remain independently mandatory.
+OPTIONAL_WINDOWS_PROOFS = frozenset({
+    "Build 🧱 / Windows Run-only Proof Producer (optional)",
+    "Build 🧱 / Windows Run-only Hosted Proof (optional)",
+})
 # The jobs listing is one API call; three attempts cover a 5xx blip or a
 # momentary rate-limit without holding the gate's 30 s budget.
 ATTEMPTS = 3
@@ -70,6 +76,7 @@ def blocking(
         if j.get("status") == "completed"
         and j.get("conclusion") in UNSUCCESSFUL
         and not j["name"].startswith(EXEMPT_PREFIXES)
+        and j["name"] not in OPTIONAL_WINDOWS_PROOFS
     ]
     required = set(expected or ())
     if require_scope:

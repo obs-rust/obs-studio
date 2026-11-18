@@ -49,6 +49,13 @@ def validate_runtime_root(logical: str, root: Path) -> None:
     check_root(logical, str(root.resolve()), str(Path.cwd()))
 
 
+def execution_environment(root: str, inherited: dict[str, str]) -> dict[str, str]:
+    # Hosted checkout/TEMP normally live on D:. Rooted embedded /opt paths
+    # resolve against the child's current drive, including CTest re-execs.
+    # Keep every tempfile on the explicitly owned C: drive as well.
+    return dict(inherited, TEMP=root + "/target/windows-proof-temp", TMP=root + "/target/windows-proof-temp")
+
+
 def relative_path(name: str) -> None:
     path = PurePosixPath(name)
     parts = name.split("/")
@@ -202,6 +209,8 @@ def consume(packet: Path, root: Path, stage: Path, digest: str, expected: dict, 
         raise ValueError("stale installed manifest")
     shutil.copytree(stage, root, dirs_exist_ok=True)
     if execute:
+        (root / "target/windows-proof-temp").mkdir(parents=True)
+        os.environ.update(execution_environment(root.as_posix(), dict(os.environ)))
         qualify_compiled_root(data, root)
     return run_verified(root / "manifest.json", root) if execute else 0
 

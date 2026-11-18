@@ -2476,7 +2476,7 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-26.04
     needs: [check-event]
-    if: ${{ vars.WINDOWS_RUN_ONLY_PROOF_REF != '' && vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref && github.event_name != 'merge_group' && needs.check-event.outputs.windows_link == 'true' && needs.check-event.outputs.docs_only != 'true' }}
+    if: ${{ vars.WINDOWS_RUN_ONLY_PROOF_REF != '' && vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref && github.event_name == 'workflow_dispatch' && github.event_name != 'merge_group' && needs.check-event.outputs.windows_link == 'true' && needs.check-event.outputs.docs_only != 'true' }}
     outputs:
       artifact-id: ${{ steps.bundle.outputs.artifact-id }}
       archive-sha: ${{ steps.seal.outputs.archive-sha }}
@@ -2548,7 +2548,7 @@ jobs:
     continue-on-error: true
     runs-on: windows-2025-vs2026
     needs: [check-event, windows-run-only-proof-build]
-    if: ${{ always() && !cancelled() && vars.WINDOWS_RUN_ONLY_PROOF_REF != '' && vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref && github.event_name != 'merge_group' && needs.check-event.outputs.windows_link == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.windows-run-only-proof-build.result == 'success' && needs.windows-run-only-proof-build.outputs.artifact-id != '' }}
+    if: ${{ always() && !cancelled() && vars.WINDOWS_RUN_ONLY_PROOF_REF != '' && vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref && github.event_name == 'workflow_dispatch' && github.event_name != 'merge_group' && needs.check-event.outputs.windows_link == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.windows-run-only-proof-build.result == 'success' && needs.windows-run-only-proof-build.outputs.artifact-id != '' }}
     defaults:
       run:
         shell: pwsh
