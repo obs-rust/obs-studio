@@ -13017,6 +13017,19 @@
         ]
       }
     },
+    "test_samplerstate_lifecycle": {
+      "sources": [
+        "test/cmocka/test_samplerstate_lifecycle.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_saved_transition": {
       "sources": [
         "test/cmocka/test_saved_transition.c",
@@ -25299,6 +25312,12 @@
         ]
       },
       "suite": "graphics"
+    },
+    "test_samplerstate_lifecycle": {
+      "target": "test_samplerstate_lifecycle",
+      "command": [
+        "${target}"
+      ]
     },
     "test_saved_transition": {
       "target": "test_saved_transition"

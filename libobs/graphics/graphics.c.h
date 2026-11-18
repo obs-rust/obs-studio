@@ -960,16 +960,6 @@ gs_stagesurf_t *gs_stagesurface_create(uint32_t width, uint32_t height, enum gs_
 	return graphics->exports.device_stagesurface_create(graphics->device, width, height, color_format);
 }
 
-gs_samplerstate_t *gs_samplerstate_create(const struct gs_sampler_info *info)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_samplerstate_create", info))
-		return NULL;
-
-	return graphics->exports.device_samplerstate_create(graphics->device, info);
-}
-
 gs_shader_t *gs_vertexshader_create(const char *shader, const char *file, char **error_string)
 {
 	graphics_t *graphics = thread_graphics;
@@ -1321,16 +1311,6 @@ void gs_zstencil_destroy(gs_zstencil_t *zstencil)
 		return;
 
 	thread_graphics->exports.gs_zstencil_destroy(zstencil);
-}
-
-void gs_samplerstate_destroy(gs_samplerstate_t *samplerstate)
-{
-	if (!gs_valid("gs_samplerstate_destroy"))
-		return;
-	if (!samplerstate)
-		return;
-
-	thread_graphics->exports.gs_samplerstate_destroy(samplerstate);
 }
 
 void gs_vertexbuffer_flush_direct(gs_vertbuffer_t *vertbuffer, const struct gs_vb_data *data)
