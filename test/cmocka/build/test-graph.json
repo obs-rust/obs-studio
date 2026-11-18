@@ -16852,6 +16852,21 @@
         "libobs/data"
       ]
     },
+    "test_source_update_properties": {
+      "sources": [
+        "test/cmocka/test_source_update_properties.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_video_tick_steps": {
       "sources": [
         "test/cmocka/test_source_video_tick_steps.c",
@@ -26697,6 +26712,13 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_source_update_properties": {
+      "target": "test_source_update_properties",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_video_tick_steps": {
       "target": "test_source_video_tick_steps",
