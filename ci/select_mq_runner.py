@@ -173,6 +173,8 @@ def probe_error(error: Exception) -> str:
 
 def decision(reason: str, labels: str = "") -> str:
     """Publish only fixed diagnostics and counts, never API text or credentials."""
+    if labels:
+        print(f"Merge-queue runner: {reason}.")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         try:
@@ -207,13 +209,26 @@ def online_runners(path: str, wanted: set[str], probe: Probe) -> dict[int, bool]
     return matched
 
 
+def selector_hosted_fallback(jobs: list[dict]) -> bool:
+    """Without heavy-job labels, only a skipped selector proves hosted routing."""
+    for job in jobs:
+        if job["name"] != "Select Merge Queue Runner":
+            continue
+        if job.get("conclusion") == "skipped":
+            return True  # A skipped selector cannot publish Dell labels.
+        if job["status"] == "completed" or job.get("conclusion") is not None:
+            # REST jobs do not expose outputs. A successful selector alone
+            # proves neither route. Fail closed during the visibility gap,
+            # rather than treating a decided run as an undecided reservation.
+            raise ValueError("completed selector has no visible heavy-pool decision")
+    return False
+
+
 def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool]:
-    """Read the common heavy-pool choice from labels, including queued work."""
+    """Retain routing evidence after jobs finish; count only live queued work."""
     queued = 0
     dell = hosted = False
     for job in jobs:
-        if job.get("status") == "completed" or job.get("conclusion") is not None:
-            continue
         raw_labels = job["labels"]
         if (
             not isinstance(raw_labels, list)
@@ -233,13 +248,24 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
         labels = {label.casefold() for label in raw_labels}
         if wanted.issubset(labels):
             dell = True
-            if job["status"] in ("queued", "waiting", "pending", "requested"):
+            if job.get("conclusion") is None and job["status"] in (
+                "queued",
+                "waiting",
+                "pending",
+                "requested",
+            ):
                 queued += 1
         elif labels and any(
             name in job["name"]
-            for name in ("Rust Cross Lint 🦀 (", "Rust Tier 2 Linux 🐧 (")
+            for name in (
+                "Rust Cross Lint 🦀 (",
+                "Rust Tier 2 Linux 🐧 (",
+                "macOS Rust Artifacts 🐧",
+            )
         ):
             hosted = True
+    if not dell and not hosted:
+        hosted = selector_hosted_fallback(jobs)
     return queued, dell, hosted
 
 
@@ -286,9 +312,10 @@ def inflight_commitments(
 ) -> tuple[int, int]:
     """Count queued Dell jobs and active Dell/older undecided runs.
 
-    Outputs aren't exposed by the jobs API. A routed heavy job's labels prove
-    the choice; before those jobs appear, older runs reserve a run slot. This
-    gives identical empty-pool snapshots the same deterministic winners.
+    Outputs aren't exposed by the jobs API. Heavy-job labels prove the choice,
+    including completed jobs. Inspect queued workflows too: their selector may
+    already have finished. Older genuinely undecided runs reserve a slot, giving
+    identical empty-pool snapshots the same deterministic winners.
     """
     current_id = int(os.environ["GITHUB_RUN_ID"])
     token = os.environ["GITHUB_TOKEN"]
@@ -298,12 +325,8 @@ def inflight_commitments(
     current = runs[current_id]  # An incomplete/eventually consistent list is unsafe.
     queued = committed = unprobed = 0
     current = current[0]
-    for run_id, (priority, status) in sorted(runs.items(), key=lambda item: item[1][0]):
+    for run_id, (priority, _) in sorted(runs.items(), key=lambda item: item[1][0]):
         if run_id == current_id:
-            continue
-        if status == "queued":
-            # A queued workflow has not started its selector or heavy jobs.
-            committed += priority < current
             continue
         try:
             jobs = probe.entries(
@@ -338,9 +361,16 @@ def admission_available(
     if idle < required:
         return False, ""
     queued, committed = inflight_commitments(repo, wanted, probe, required)
+    idle_slots = (idle - queued) // required
+    # The total cap includes runs whose running jobs already reduce idle. Using
+    # idle for this cap would charge those busy runners twice. Idle slots below
+    # independently limit how much new work this snapshot can admit.
     limit = online // required
-    counts = f"; queued={queued}, committed={committed}, run_limit={limit}"
-    return idle - queued >= required and committed < limit, counts
+    counts = (
+        f"; queued={queued}, committed={committed}, run_limit={limit}"
+        f", idle_run_slots={max(0, idle_slots)}"
+    )
+    return idle_slots >= 1 and committed < limit, counts
 
 
 def required_capacity(min_idle: str, demand: str, mode: str = "") -> int:
