@@ -49,9 +49,41 @@ pub trait Host {
     fn load_default_samplerstate(&mut self, b_3d: bool, unit: i32);
 }
 
-// RED: no-op stubs let both safe and ABI tests report assertion failures.
-pub fn load_vertexbuffer<H: Host>(_host: &mut H, _buffer: H::Vertexbuffer) {}
-pub fn load_indexbuffer<H: Host>(_host: &mut H, _buffer: H::Indexbuffer) {}
-pub fn load_texture<H: Host>(_host: &mut H, _texture: H::Texture, _unit: i32) {}
-pub fn load_samplerstate<H: Host>(_host: &mut H, _sampler: H::Samplerstate, _unit: i32) {}
-pub fn load_default_samplerstate(_host: &mut impl Host, _b_3d: bool, _unit: i32) {}
+/// Check before the host can access any device fields.
+fn valid(host: &mut impl Host, entry: Entry) -> bool {
+    if host.has_context() {
+        return true;
+    }
+    host.debug(entry);
+    false
+}
+
+pub fn load_vertexbuffer<H: Host>(host: &mut H, buffer: H::Vertexbuffer) {
+    if valid(host, Entry::Vertexbuffer) {
+        host.load_vertexbuffer(buffer);
+    }
+}
+
+pub fn load_indexbuffer<H: Host>(host: &mut H, buffer: H::Indexbuffer) {
+    if valid(host, Entry::Indexbuffer) {
+        host.load_indexbuffer(buffer);
+    }
+}
+
+pub fn load_texture<H: Host>(host: &mut H, texture: H::Texture, unit: i32) {
+    if valid(host, Entry::Texture) {
+        host.load_texture(texture, unit);
+    }
+}
+
+pub fn load_samplerstate<H: Host>(host: &mut H, sampler: H::Samplerstate, unit: i32) {
+    if valid(host, Entry::Samplerstate) {
+        host.load_samplerstate(sampler, unit);
+    }
+}
+
+pub fn load_default_samplerstate(host: &mut impl Host, b_3d: bool, unit: i32) {
+    if valid(host, Entry::DefaultSamplerstate) {
+        host.load_default_samplerstate(b_3d, unit);
+    }
+}
