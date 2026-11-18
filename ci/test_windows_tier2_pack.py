@@ -117,6 +117,25 @@ class CMakePackTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "producer path"):
                         h.audit(root, ["/producer/root"])
 
+    def test_nested_capture_helpers_are_in_the_module_data_directory(self):
+        h = self.helper()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, build, _, _ = self.fixture(root)
+            data = source / "plugins/win-capture/data"
+            data.mkdir(parents=True)
+            (data / "locale.ini").write_text("Name=Capture")
+            products = []
+            for name in ("win-capture.dll", "graphics-hook/graphics-hook64.dll", "inject-helper/inject-helper64.exe", "get-graphics-offsets/get-graphics-offsets64.exe"):
+                path = build / "plugins/win-capture" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(pe([]))
+                products.append(path)
+            h.stage_data(build, source, root / "bundle", products)
+            for product in products[1:]:
+                for base in ("build/core/win-capture/data", "source/plugins/win-capture/data"):
+                    self.assertEqual(product.read_bytes(), (root / "bundle" / base / product.name).read_bytes())
+
     def test_missing_transitive_dependency_and_case_collision_fail(self):
         h = self.helper()
         with tempfile.TemporaryDirectory() as directory:
