@@ -2,6 +2,7 @@
 """The cross-build proof must account for every non-system Mach-O load."""
 
 import tempfile
+import struct
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -19,11 +20,19 @@ class ClosureTest(unittest.TestCase):
             for path in (executable, library, decoy):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
+            executable.write_bytes(struct.pack("<4I", 0xFEEDFACF, 0x100000C, 0, 2))
             commands = {executable: [(0xC, "@rpath/main.dylib")],
                         library: [(0xC, "@executable_path/private/dep.dylib")], decoy: []}
             with patch.object(audit, "loads", side_effect=lambda image: commands[image]):
                 with self.assertRaisesRegex(ValueError, "executable_path"):
                     audit.closure([executable], [root / "lib"], lambda _: None)
+                actual = root / "bin/private/dep.dylib"
+                actual.parent.mkdir()
+                actual.touch()
+                commands[actual] = []
+                result = audit.closure([executable], [root / "lib", actual.parent], lambda _: None)
+                self.assertIn(str(actual), result)
+                self.assertNotIn(str(decoy), result)
 
     def test_transitive_runtime_is_verified_and_missing_runtime_is_fatal(self):
         with tempfile.TemporaryDirectory() as directory:
