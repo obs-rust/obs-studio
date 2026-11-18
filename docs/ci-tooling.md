@@ -1288,25 +1288,49 @@ queued/in-progress `ci.yml` merge-group runs and their latest-attempt jobs:
 - Subtract jobs queued for **all** the Dell labels from idle capacity. Running
   jobs are already represented by busy runner state and are not subtracted again.
 - Cap unfinished Dell-routed runs at `floor(online / required)`, without another
-  variable. With six online runners and required capacity three, two runs fit.
-  A routed heavy job's labels establish Dell or hosted selection. Before heavy
-  jobs appear, older unresolved runs reserve a slot, ordered by creation time
-  then run ID; a visible hosted choice releases that reservation. Thus the same
-  four-run idle snapshot admits the oldest two, regardless of probe order.
+  variable, and require at least one `idle_run_slots = floor((idle - queued) /
+  required)` for a new admission. Both counts are computed and logged for hosted
+  and Dell decisions. With six idle runners and required capacity three, two
+  runs fit. The total run cap uses online capacity because running Dell jobs
+  already reduce idle; using idle for that cap would charge busy runners twice.
+  For example, three busy and three idle runners can admit a second run alongside
+  one running Dell group. A routed heavy job's labels establish Dell or hosted
+  selection, including the macOS Rust artifact producer and completed heavy jobs.
+  Inspect latest-attempt jobs even for workflows reporting `queued`: that status
+  does not prove their selector has yet to run. Before heavy jobs appear, older
+  unresolved runs reserve a slot, ordered by creation time then run ID; a visible
+  hosted choice releases that reservation regardless of workflow status. Thus
+  the same four-run idle snapshot admits the oldest two, regardless of probe order.
   Known Dell commitments count even when newer than the probing run.
 
 The run cap covers the gap between selection and heavy-job creation; queued-job
 subtraction also protects against a run queuing more work than its configured
-demand. Unknown older choices conservatively hold slots until their heavy jobs
-appear or their runs finish. Completed/cancelled runs and jobs with a conclusion
-do not commit capacity. Queued workflows reserve older slots without jobs calls.
+demand. Unknown older choices conservatively hold slots while their selector has
+not completed. The existing jobs read is the cheapest routing evidence: REST
+does not expose job outputs, so no extra log/artifact read is needed. A completed
+selector with no visible heavy-job routing fails closed during the API visibility
+gap; success alone cannot distinguish an empty hosted output from Dell labels.
+A skipped selector has no output and releases its reservation. Completed/cancelled
+runs release reservations. Terminal jobs never add queued capacity, but their
+labels retain the route of an active run, including a Dell run between its build
+and test stages. A hosted backlog therefore cannot retain undecided reservations.
 Actions API errors, missing identity/token and incomplete lists select hosted;
 jobs-budget exhaustion uses the conservative reservations above. Capacity-driven
 hosted decisions are identified explicitly in the log and job summary for later
 measurement. This is a bounded snapshot, not an
 atomic reservation: API visibility lag or runners becoming busy/offline after
 selection can still affect capacity. Fixtures reproduce the recorded four-run
-burst; improved hosted timing and utilization still require measurement.
+burst and the hosted backlog in `ci/fixtures/mq-hosted-backlog.json`.
+Report 15 measured 168 idle Dell minutes (six idle runners, required three),
+while 78 Dell-routable hosted jobs waited over five minutes (803 job-minutes),
+and only 3 of 19 queue runs used the Dell. Read-only selector logs for
+[44359171975](https://github.com/obs-rust/obs-studio/actions/runs/44359171975/job/134995483499)
+and [44367435932](https://github.com/obs-rust/obs-studio/actions/runs/44367435932/job/135024874840)
+show committed counts five and three despite six idle runners. Run
+[44367448224](https://github.com/obs-rust/obs-studio/actions/runs/44367448224/job/135024915358)
+instead fell back on an incomplete queued-runs collection; that fail-closed
+behavior is preserved. Improved hosted timing and utilization still require
+measurement after deployment.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
 Run the runner and its job processes inside its Ubuntu container image / FHS

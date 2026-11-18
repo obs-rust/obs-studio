@@ -288,7 +288,7 @@ class SelectMqRunnerTest(unittest.TestCase):
         )
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
         self.assertEqual(http.call_args.kwargs["timeout"], 10)
-        self.assertEqual(output, "")
+        self.assertIn("sufficient idle capacity", output)
 
     def test_org_forbidden_or_missing_preserves_repo_result(self):
         for status in (403, 404):
@@ -830,7 +830,15 @@ class InflightAdmissionTest(unittest.TestCase):
         )
 
     def select(
-        self, run_id, *, api_error=None, busy=0, transform=None, environment=None
+        self,
+        run_id,
+        *,
+        api_error=None,
+        busy=0,
+        capacity=6,
+        demand="3",
+        transform=None,
+        environment=None,
     ):
         def respond(request, **kwargs):
             url = urlparse(request.full_url)
@@ -839,7 +847,7 @@ class InflightAdmissionTest(unittest.TestCase):
                 entries = (
                     [
                         runner(busy=index < busy, labels=json.loads(self.labels))
-                        for index in range(6)
+                        for index in range(capacity)
                     ]
                     if "/orgs/" in url.path
                     else []
@@ -882,8 +890,8 @@ class InflightAdmissionTest(unittest.TestCase):
                 self.labels,
                 "runner-token",
                 "obs-rust/obs-studio",
-                min_idle="3",
-                demand="3",
+                min_idle=demand,
+                demand=demand,
             )
         self.output = output.getvalue()
         self.http = http
@@ -954,6 +962,89 @@ class InflightAdmissionTest(unittest.TestCase):
         ]
         self.assertTrue(self.select(self.runs[2]["id"]))
 
+    def test_recorded_hosted_backlog_releases_queued_run_reservations(self):
+        fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-hosted-backlog.json").read_text()
+        )
+        current = dict(self.runs[-1], created_at="2026-11-18T18:15:00Z")
+        self.runs = [record["run"] for record in fixture["records"]] + [current]
+        for record in fixture["records"]:
+            self.jobs[record["run"]["id"]] = [record["selector_job"]] + [
+                dict(job, status="queued", conclusion=None, runner_name="")
+                for job in record["heavy_jobs"]
+            ]
+        self.assertTrue(self.select(current["id"]))
+
+    def test_recorded_completed_hosted_jobs_release_older_reservations(self):
+        fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-hosted-backlog.json").read_text()
+        )
+        current = dict(self.runs[-1], created_at="2026-11-18T18:15:00Z")
+        self.runs = [
+            dict(record["run"], status="in_progress") for record in fixture["records"]
+        ] + [current]
+        for record in fixture["records"]:
+            self.jobs[record["run"]["id"]] = [record["selector_job"]] + record[
+                "heavy_jobs"
+            ]
+        self.assertTrue(self.select(current["id"]))
+
+    def test_hosted_artifact_producer_alone_establishes_route(self):
+        for run in self.runs[:-1]:
+            self.jobs[run["id"]] = [
+                dict(
+                    self.fixture["queued_jobs"][0],
+                    name="Build 🧱 / macOS Rust Artifacts 🐧",
+                    labels=["ubuntu-26.04"],
+                    status="completed",
+                    conclusion="success",
+                )
+            ]
+        self.assertTrue(self.select(self.runs[-1]["id"]))
+
+    def test_completed_selector_without_route_fails_closed(self):
+        for conclusion in ("success", "failure", "cancelled"):
+            with self.subTest(conclusion=conclusion):
+                self.jobs[self.runs[0]["id"]] = [
+                    {
+                        "name": "Select Merge Queue Runner",
+                        "status": "completed",
+                        "conclusion": conclusion,
+                        "labels": ["ubuntu-latest"],
+                    }
+                ]
+                self.assertEqual(self.select(self.runs[1]["id"]), "")
+                self.assertIn("completed selector has no visible", self.output)
+
+    def test_skipped_selectors_release_reservations(self):
+        for run in self.runs[:-1]:
+            self.jobs[run["id"]] = [
+                {
+                    "name": "Select Merge Queue Runner",
+                    "status": "completed",
+                    "conclusion": "skipped",
+                    "labels": [],
+                }
+            ]
+        self.assertTrue(self.select(self.runs[-1]["id"]))
+
+    def test_queued_workflow_with_newer_dell_route_reserves_slot(self):
+        for run in self.runs[1:3]:
+            run["status"] = "queued"
+            self.jobs[run["id"]] = [self.fixture["queued_jobs"][0]]
+        self.assertEqual(self.select(self.runs[0]["id"]), "")
+        self.assertIn("committed=2", self.output)
+
+    def test_capacity_slots_are_computed_from_census_and_requirement(self):
+        for capacity, demand, admitted in ((6, "3", 2), (9, "3", 3), (6, "6", 1)):
+            with self.subTest(capacity=capacity, demand=demand):
+                actual = [
+                    bool(self.select(run["id"], capacity=capacity, demand=demand))
+                    for run in self.runs
+                ]
+                self.assertEqual(sum(actual), admitted)
+                self.assertIn(f"run_limit={admitted}", self.output)
+
     def test_running_jobs_are_not_subtracted_twice(self):
         self.runs = self.runs[:2]
         self.jobs[self.runs[0]["id"]] = [
@@ -961,6 +1052,8 @@ class InflightAdmissionTest(unittest.TestCase):
             for index, job in enumerate(self.fixture["queued_jobs"][:3])
         ]
         self.assertTrue(self.select(self.runs[1]["id"], busy=3))
+        self.assertIn("idle=3, required=3", self.output)
+        self.assertIn("run_limit=2, idle_run_slots=1", self.output)
 
     def test_equal_timestamps_use_run_id(self):
         for run in self.runs:
@@ -1020,11 +1113,11 @@ class InflightAdmissionTest(unittest.TestCase):
         self.assertIn("request budget exhausted", self.output)
         self.assertNotIn("probe failed", self.output)
 
-    def test_queued_runs_reserve_capacity_without_jobs_calls(self):
+    def test_queued_undecided_runs_reserve_capacity_after_jobs_probe(self):
         self.runs[0]["status"] = "queued"
         self.assertEqual(self.select(self.runs[2]["id"]), "")
         urls = [call.args[0].full_url for call in self.http.call_args_list]
-        self.assertFalse(any(f"/runs/{self.runs[0]['id']}/jobs" in url for url in urls))
+        self.assertTrue(any(f"/runs/{self.runs[0]['id']}/jobs" in url for url in urls))
 
     def test_retry_budget_exhaustion_reserves_all_unprobed_runs(self):
         def timeout_jobs(path, payload):
@@ -1075,7 +1168,7 @@ class InflightAdmissionTest(unittest.TestCase):
                 self.assertTrue(self.select(current, transform=finish_runs))
                 self.assertEqual(self.http.call_count, 4)
 
-    def test_terminal_jobs_do_not_commit_capacity(self):
+    def test_terminal_dell_jobs_retain_route_without_queued_capacity(self):
         for terminal in (
             {"status": "completed"},
             {"status": "queued", "conclusion": "cancelled"},
@@ -1086,7 +1179,8 @@ class InflightAdmissionTest(unittest.TestCase):
                     dict(job, **terminal) for job in self.fixture["queued_jobs"]
                 ]
             with self.subTest(terminal=terminal):
-                self.assertTrue(self.select(self.runs[0]["id"]))
+                self.assertEqual(self.select(self.runs[0]["id"]), "")
+                self.assertIn("queued=0, committed=3", self.output)
 
     def test_warning_names_probe_step_and_value_error(self):
         def incomplete_jobs(path, payload):
