@@ -1,0 +1,3 @@
+obs_sceneitem_get_bounds
+obs_sceneitem_get_info2
+obs_sceneitem_get_pos

@@ -13499,6 +13499,25 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_scene_item_info_getters": {
+      "sources": [
+        "test/cmocka/test_scene_item_info_getters.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_scene_item_names_steps": {
       "sources": [
         "test/cmocka/test_scene_item_names_steps.c",
@@ -25293,6 +25312,14 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_scene_item_info_getters": {
+      "target": "test_scene_item_info_getters",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_scene_item_names_steps": {
       "target": "test_scene_item_names_steps",
