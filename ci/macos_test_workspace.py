@@ -42,10 +42,25 @@ def checksum(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def pack(bundle: Path, archive: Path) -> None:
+def pack(bundle: Path, archive: Path, *, compression: str = "gz") -> None:
     if not (bundle / "manifest.json").is_file() or archive.exists():
         raise ValueError("complete manifest and new archive required")
-    with tarfile.open(archive, "w:gz") as tar:
+    options = {}
+    if compression == "zst":
+        try:
+            from compression.zstd import CompressionParameter
+        except ImportError as error:
+            raise ValueError("zstd transport requires Python 3.14 or newer") from error
+        # A 128 MiB window shares repeated Rust code and native PCH snapshots
+        # across tar members, retaining every file within the Windows budget.
+        options = {"options": {
+            CompressionParameter.compression_level: 8,
+            CompressionParameter.window_log: 27,
+            CompressionParameter.enable_long_distance_matching: 1,
+        }}
+    elif compression != "gz":
+        raise ValueError(f"unsupported bundle compression: {compression}")
+    with tarfile.open(archive, f"w:{compression}", **options) as tar:
         tar.add(bundle, arcname=".")  # Includes hidden build-script files and permissions.
     archive.with_suffix(archive.suffix + ".sha256").write_text(checksum(archive) + "\n")
 
@@ -69,6 +84,7 @@ def main() -> None:
     command = sub.add_parser("pack")
     command.add_argument("--bundle", type=Path, required=True)
     command.add_argument("--archive", type=Path, required=True)
+    command.add_argument("--compression", choices=("gz", "zst"), default="gz")
     command = sub.add_parser("unpack")
     command.add_argument("--archive", type=Path, required=True)
     args = parser.parse_args()
@@ -78,7 +94,7 @@ def main() -> None:
             with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
                 output.write(f"common-parent={args.destination.parent}\n")
     elif args.action == "pack":
-        pack(args.bundle, args.archive)
+        pack(args.bundle, args.archive, compression=args.compression)
     else:
         unpack(args.archive, Path(__file__).resolve().parents[1])
 

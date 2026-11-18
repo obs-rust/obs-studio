@@ -13,6 +13,20 @@ from test_windows_test_artifact import executable
 
 
 class WindowsRunOnlyTest(unittest.TestCase):
+    def test_shared_transport_rejects_missing_zstd_support_and_unknown_formats(self):
+        import macos_test_workspace as transport
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "manifest.json").write_text('{"tests": []}')
+            archive = root / "bundle.tar.zst"
+            with patch.dict(sys.modules, {"compression.zstd": None}):
+                with self.assertRaisesRegex(ValueError, "Python 3.14"):
+                    transport.pack(root, archive, compression="zst")
+            with self.assertRaisesRegex(ValueError, "unsupported bundle compression"):
+                transport.pack(root, archive, compression="unknown")
+            self.assertFalse(archive.exists())
+
     @unittest.skipUnless(sys.version_info >= (3, 14), "zstd transport uses Python 3.14")
     def test_shared_zstd_transport_keeps_all_files_and_rejects_corruption(self):
         import macos_test_workspace as transport
