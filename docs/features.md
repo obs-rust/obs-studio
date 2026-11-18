@@ -1818,6 +1818,12 @@ area.
   [#314](https://github.com/obs-rust/obs-studio/issues/314), PR
   [#315](https://github.com/obs-rust/obs-studio/pull/315), upstream
   [obsproject/obs-studio#8346](https://github.com/obsproject/obs-studio/issues/8346).
+- A VLC Video Source no longer shows subtitles while "Enable subtitles" is
+  off, also when the file has a default subtitle track or a subtitle file
+  beside it. *All*, 2026-11-18. Issue
+  [#5102](https://github.com/obs-rust/obs-studio/issues/5102), PR
+  [#5105](https://github.com/obs-rust/obs-studio/pull/5105), upstream
+  [obsproject/obs-studio#14199](https://github.com/obsproject/obs-studio/issues/14199).
 - Yadif 2x deinterlacing shows bottom-field-first video in the correct
   order. *All*, 2026-10-12. Issue
   [#316](https://github.com/obs-rust/obs-studio/issues/316), PR
