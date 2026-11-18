@@ -42,6 +42,7 @@ HOST_SHA = "f0edfc3432bd57058bbb9a2cf18aacceb55a2564b018346778c34eb0e3369dbf"
 CMOCKA_URL = "https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz"
 CMOCKA_SHA = "810570eb0b8d64804331f82b29ff47c790ce9cd6b163e98d47a4807047ecad82"
 RELATIVE = "target/macos-qt"
+PLATFORM_PLUGINS = ("minimal", "offscreen")
 
 
 def ctest_entries(inventory: dict) -> list[dict]:
@@ -194,11 +195,14 @@ def stage_qt(qt: Path, destination: Path) -> None:
         library.write_bytes(arm64_image((qt / "lib" / (name + ".framework/Versions/A") / name).read_bytes()))
         library.chmod(0o755)
         artifact.verify_macho(library, allowed_filetypes=(6,))
-    plugin = destination / "plugins/platforms/libqminimal.dylib"
-    plugin.parent.mkdir(parents=True, exist_ok=True)
-    plugin.write_bytes(arm64_image((qt / "plugins/platforms/libqminimal.dylib").read_bytes()))
-    plugin.chmod(0o755)
-    artifact.verify_macho(plugin, allowed_filetypes=(6, 8))
+    # The synthetic generator contract requests minimal. The unchanged Darwin
+    # cmocka tests select offscreen themselves with qputenv before QApplication.
+    for name in PLATFORM_PLUGINS:
+        plugin = destination / f"plugins/platforms/libq{name}.dylib"
+        plugin.parent.mkdir(parents=True, exist_ok=True)
+        plugin.write_bytes(arm64_image((qt / f"plugins/platforms/libq{name}.dylib").read_bytes()))
+        plugin.chmod(0o755)
+        artifact.verify_macho(plugin, allowed_filetypes=(6, 8))
     for library in destination.rglob("*"):
         if library.is_file():
             audit_linkage(library, destination)

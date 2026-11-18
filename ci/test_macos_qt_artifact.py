@@ -15,6 +15,23 @@ import test_macos_test_artifact as artifact_tests
 
 
 class QtArtifactTest(unittest.TestCase):
+    def test_runtime_stages_minimal_and_offscreen_for_unchanged_darwin_tests(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, destination = Path(temporary) / "sdk", Path(temporary) / "runtime"
+            names = [f"lib/Qt{module}.framework/Versions/A/Qt{module}" for module in ("Core", "Gui", "Widgets")]
+            names += ["plugins/platforms/libqminimal.dylib", "plugins/platforms/libqoffscreen.dylib"]
+            for name in names:
+                path = source / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(artifact_tests.SignatureTest.signed_image())
+            with mock.patch.object(qt.artifact, "verify_macho") as verify, mock.patch.object(qt, "audit_linkage") as audit:
+                qt.stage_qt(source, destination)
+            self.assertEqual(verify.call_count, 5)
+            self.assertEqual(audit.call_count, 5)
+            for name in names:
+                self.assertEqual((destination / name).read_bytes(), (source / name).read_bytes())
+                self.assertTrue(os.access(destination / name, os.X_OK))
+
     def test_apple_linker_zero_padding_and_dylib_signatures(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "QtCore"
