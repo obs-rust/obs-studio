@@ -194,6 +194,7 @@ def verify(root: Path, source_sha: str, source: Path | None = None) -> dict:
     verify_files(root, manifest)
     verify_cores(root, manifest)
     verify_contract(manifest, source_sha)
+    verify_renderer_exports(root, manifest)
     return prepare_ctest(root, manifest, source)
 
 
@@ -255,6 +256,16 @@ def verify_contract(manifest: dict, source_sha: str) -> None:
         for name in contract["renderers"][owner].values():
             if name not in files:
                 raise ValueError("unhashed renderer")
+
+
+def verify_renderer_exports(root: Path, manifest: dict) -> None:
+    renderers = manifest["native_contract"]["renderers"]
+    for renderer in ("D3D11", "OPENGL"):
+        reference = coff_exports(root / relative(renderers["cmake"][renderer]))
+        cargo = coff_exports(root / relative(renderers["cargo"][renderer]))
+        if not {"device_create", "device_destroy"} <= cargo:
+            raise ValueError(f"{renderer} lacks required device API exports")
+        probe.parity(reference, cargo)
 
 
 def prepare_ctest(root: Path, manifest: dict, source: Path | None) -> dict:

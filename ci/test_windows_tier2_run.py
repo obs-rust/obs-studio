@@ -326,6 +326,7 @@ class RunOnlyTests(unittest.TestCase):
             path.write_text(json.dumps(manifest))
             with (
                 patch.object(h, "coff_exports", return_value={"api"}),
+                patch.object(h, "verify_renderer_exports"),
                 patch.object(h, "write_registry"),
                 patch.object(
                     h.subprocess,
@@ -346,6 +347,27 @@ class RunOnlyTests(unittest.TestCase):
                 (root / "build/test.exe").write_bytes(pe(["missing.dll"]))
                 with self.assertRaisesRegex(ValueError, "changed artifact"):
                     h.verify(root, "a" * 40)
+
+    def test_renderer_exports_keep_native_contract_assertions(self):
+        h = self.helper()
+        manifest = {
+            "native_contract": {
+                "renderers": {
+                    owner: {
+                        renderer: f"{owner}/{renderer}.dll"
+                        for renderer in ("D3D11", "OPENGL")
+                    }
+                    for owner in ("cmake", "cargo")
+                }
+            }
+        }
+        api = {"device_create", "device_destroy"}
+        with patch.object(h, "coff_exports", return_value=api):
+            h.verify_renderer_exports(Path("bundle"), manifest)
+        for exports in [[api, {"device_create"}], [api | {"missing"}, api]]:
+            with patch.object(h, "coff_exports", side_effect=exports):
+                with self.assertRaises(ValueError):
+                    h.verify_renderer_exports(Path("bundle"), manifest)
 
 
 if __name__ == "__main__":

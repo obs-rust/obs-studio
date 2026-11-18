@@ -115,12 +115,23 @@ target_link_libraries(
 target_link_libraries(libobs-opengl PRIVATE OBS::glad)
 # Native fragments expect the top-level OBS roots. Scope these compatibility
 # facts to the canonical directory; the actual compiler stays GNU-style Clang.
+function(_obs_windows_tier2_full_test_headers)
+  get_property(_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+  foreach(_target IN LISTS _targets)
+    get_target_property(_kind "${_target}" TYPE)
+    if(_kind MATCHES "^(EXECUTABLE|STATIC_LIBRARY|SHARED_LIBRARY|MODULE_LIBRARY|OBJECT_LIBRARY)$")
+      target_include_directories(
+        ${_target}
+        PRIVATE "${OBS_SOURCE_ROOT}/deps/w32-pthreads" "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config"
+      )
+      target_include_directories(${_target} SYSTEM PRIVATE "${OBS_CROSS_DEPS}/include")
+    endif()
+  endforeach()
+endfunction()
 function(_obs_windows_tier2_full_registry)
   set(CMAKE_SOURCE_DIR "${OBS_SOURCE_ROOT}")
   set(PROJECT_SOURCE_DIR "${OBS_SOURCE_ROOT}")
   set(MSVC TRUE)
-  include_directories("${OBS_SOURCE_ROOT}/deps/w32-pthreads" "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
-  include_directories(SYSTEM "${OBS_CROSS_DEPS}/include")
   # The unchanged stale-manifest fixture starts a single-config nested build.
   # Match the hosted job's RelWithDebInfo instead of requesting xwin's absent
   # debug CRT through CMake's default Windows-GNU Debug configuration.
@@ -131,7 +142,7 @@ function(_obs_windows_tier2_full_registry)
   set(CMAKE_TOOLCHAIN_FILE "${CMAKE_BINARY_DIR}/tier2-fixture-toolchain.cmake")
   file(
     WRITE "${CMAKE_BINARY_DIR}/tier2-cmocka-context.cmake"
-    "set(CMAKE_SOURCE_DIR \"${OBS_SOURCE_ROOT}\")\nset(PROJECT_SOURCE_DIR \"${OBS_SOURCE_ROOT}\")\nset(MSVC TRUE)\n"
+    "set(CMAKE_SOURCE_DIR \"${OBS_SOURCE_ROOT}\")\nset(PROJECT_SOURCE_DIR \"${OBS_SOURCE_ROOT}\")\nset(MSVC TRUE)\ncmake_language(DEFER CALL _obs_windows_tier2_full_test_headers)\n"
   )
   set(CMAKE_PROJECT_obs-cmocka_INCLUDE "${CMAKE_BINARY_DIR}/tier2-cmocka-context.cmake")
   add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
