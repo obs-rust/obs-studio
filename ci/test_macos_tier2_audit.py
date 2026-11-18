@@ -26,6 +26,8 @@ class ClosureTest(unittest.TestCase):
             with patch.object(audit, "loads", side_effect=lambda image: commands[image]):
                 with self.assertRaisesRegex(ValueError, "executable_path"):
                     audit.closure([executable], [root / "lib"], lambda _: None)
+                with self.assertRaisesRegex(ValueError, "executable_path"):
+                    audit.closure([executable], [root / "lib"], lambda _: None, root / "lib")
                 actual = root / "bin/private/dep.dylib"
                 actual.parent.mkdir()
                 actual.touch()
