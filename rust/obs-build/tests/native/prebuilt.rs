@@ -218,6 +218,26 @@ fn fixture_paths(root: &Path) -> Vec<PathBuf> {
     result.sort();
     result
 }
+fn portable_path(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+#[test]
+fn fixture_inventory_paths_have_one_portable_separator_form() {
+    let expected = "C:/runner/work/output/runtime root/Release";
+    for spelling in [
+        r"C:\runner\work\output/runtime root/Release",
+        r"C:\runner\work\output\runtime root\Release",
+        expected,
+    ] {
+        assert_eq!(portable_path(Path::new(spelling)), expected);
+    }
+    assert_eq!(
+        portable_path(Path::new("/opt/obs-ci-42-1/src/output/runtime root/Release")),
+        "/opt/obs-ci-42-1/src/output/runtime root/Release"
+    );
+}
+
 fn snapshot(state: &State) -> Value {
     let mut snapshots = Vec::new();
     let mut directories = Vec::new();
