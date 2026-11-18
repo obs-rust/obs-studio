@@ -60,6 +60,30 @@ class RegistryTest(unittest.TestCase):
         ]:
             self.assertIn(owner, text)
 
+    def test_plugin_registration_order_matches_native(self):
+        from pathlib import Path
+        source = (Path(__file__).resolve().parents[1] / 'cmake/cross/macos-tier2.cmake').read_text()
+        self.assertIn('_obs_cross_tier2_tests()\nenable_testing()', source)
+
+    def test_ctest_omits_plugin_tests_registered_before_testing_is_enabled(self):
+        import json
+        import subprocess
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'plugin').mkdir()
+            (root / 'plugin/CMakeLists.txt').write_text('add_test(NAME plugin-probe COMMAND "${CMAKE_COMMAND}" -E true)\n')
+            names = []
+            for before in (False, True):
+                (root / 'CMakeLists.txt').write_text('cmake_minimum_required(VERSION 3.28)\nproject(order NONE)\n'
+                    + ('enable_testing()\n' if before else '') + 'add_subdirectory(plugin)\nenable_testing()\n')
+                build = root / str(before)
+                subprocess.run(['cmake', '-S', str(root), '-B', str(build)], check=True, capture_output=True)
+                result = subprocess.run(['ctest', '--test-dir', str(build), '--show-only=json-v1'], check=True, capture_output=True, text=True)
+                names.append([t['name'] for t in json.loads(result.stdout)['tests']])
+            self.assertEqual(names, [[], ['plugin-probe']])
+
 
 if __name__ == "__main__":
     unittest.main()
