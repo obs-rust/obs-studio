@@ -15237,6 +15237,21 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_source_configurable": {
+      "sources": [
+        "test/cmocka/test_source_configurable.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_create_state": {
       "sources": [
         "test/cmocka/test_source_create_state.c"
@@ -25890,6 +25905,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_configurable": {
+      "target": "test_source_configurable",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core"
     },
     "test_source_create_state": {
       "target": "test_source_create_state",
