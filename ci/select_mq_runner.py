@@ -5,28 +5,92 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import signal
+import time
+from contextlib import contextmanager
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 MAX_PAGES = 5
-API_TIMEOUT = 3
+API_TIMEOUT = 10
+SELECTION_TIMEOUT = 45
+MAX_RETRIES = 2
+MAX_RETRY_AFTER = 5
 MAX_REQUESTS = 2 * MAX_PAGES
+
+
+class SelectionDeadline(TimeoutError):
+    """The shared selection deadline has expired; no scope can admit this run."""
+
+
+@contextmanager
+def wall_deadline():
+    """Interrupt even DNS or trickling body reads on the Linux selector job."""
+    if not hasattr(signal, "setitimer"):
+        # The selector runs on Ubuntu; keep its helpers usable on other hosts.
+        yield
+        return
+
+    timed_out = False
+
+    def expired(signum, frame):
+        nonlocal timed_out
+        timed_out = True
+        raise SelectionDeadline("selection deadline exhausted")
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_timer = signal.getitimer(signal.ITIMER_REAL)
+    started = time.monotonic()
+    signal.signal(signal.SIGALRM, expired)
+    try:
+        signal.setitimer(signal.ITIMER_REAL, SELECTION_TIMEOUT)
+        yield
+        if timed_out:
+            raise SelectionDeadline("selection deadline exhausted")
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_timer[0]:
+            remaining = max(0.001, previous_timer[0] - (time.monotonic() - started))
+            signal.setitimer(signal.ITIMER_REAL, remaining, previous_timer[1])
 
 
 class Probe:
     """Share the original ten-request budget between census and commitments."""
 
-    def __init__(self, token: str, api_url: str):
+    def __init__(self, token: str, api_url: str, *, clock=None, sleep=None):
         self.token = token
         self.api_url = api_url.rstrip("/")
         self.remaining = MAX_REQUESTS
+        self.clock = clock or time.monotonic
+        self.sleep = sleep or time.sleep
+        self.deadline = self.clock() + SELECTION_TIMEOUT
+
+    def time_left(self) -> float:
+        remaining = self.deadline - self.clock()
+        if remaining <= 0:
+            raise SelectionDeadline("selection deadline exhausted")
+        return remaining
+
+    def retry_delay(self, error: Exception, attempt: int) -> float:
+        delay = random.uniform(0.25, 0.75) * 2**attempt
+        if isinstance(error, HTTPError) and error.headers:
+            value = error.headers.get("Retry-After")
+            if value:
+                try:
+                    delay = float(value)
+                except ValueError:
+                    try:
+                        delay = parsedate_to_datetime(value).timestamp() - time.time()
+                    except (ValueError, TypeError, OverflowError):
+                        pass
+        return min(MAX_RETRY_AFTER, max(0, delay))
 
     def get(self, path: str, *, token: str | None = None) -> dict:
-        if self.remaining <= 0:
-            raise ValueError("request budget exhausted")
-        self.remaining -= 1
         request = Request(
             f"{self.api_url}/{path}",
             headers={
@@ -35,8 +99,27 @@ class Probe:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        with urlopen(request, timeout=API_TIMEOUT) as response:
-            return json.load(response)
+        for attempt in range(MAX_RETRIES + 1):
+            timeout = min(API_TIMEOUT, self.time_left())
+            if self.remaining <= 0:
+                raise ValueError("request budget exhausted")
+            self.remaining -= 1  # Retries consume the same ten-attempt budget.
+            try:
+                with urlopen(request, timeout=timeout) as response:
+                    result = json.load(response)
+                self.time_left()
+                return result
+            except SelectionDeadline:
+                raise
+            except (HTTPError, URLError, TimeoutError, ConnectionError) as error:
+                if isinstance(error, HTTPError):
+                    error.close()
+                    if error.code != 429 and not 500 <= error.code < 600:
+                        raise
+                self.time_left()
+                if attempt == MAX_RETRIES or self.remaining <= 0:
+                    raise
+                self.sleep(min(self.retry_delay(error, attempt), self.time_left()))
 
     def entries(self, path: str, key: str, token: str) -> list[dict]:
         result = []
@@ -198,6 +281,17 @@ def required_capacity(min_idle: str, demand: str, mode: str = "") -> int:
     return max(minimum, per_run)
 
 
+def requested_labels(labels: str) -> list[str]:
+    requested = json.loads(labels)
+    if (
+        not isinstance(requested, list)
+        or not requested
+        or any(not isinstance(label, str) or not label.strip() for label in requested)
+    ):
+        raise ValueError("labels must be a nonempty string array")
+    return requested
+
+
 def select_labels(
     event: str,
     labels: str,
@@ -218,15 +312,7 @@ def select_labels(
     if event != "merge_group" or not labels:
         return decision("opt-in merge-group runner selection is disabled")
     try:
-        requested = json.loads(labels)
-        if (
-            not isinstance(requested, list)
-            or not requested
-            or any(
-                not isinstance(label, str) or not label.strip() for label in requested
-            )
-        ):
-            raise ValueError("labels must be a nonempty string array")
+        requested = requested_labels(labels)
         required = required_capacity(min_idle, demand, mode)
         if not token:
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
@@ -245,6 +331,8 @@ def select_labels(
                 for runner_id, busy in runners.items():
                     # A later busy observation wins over an earlier idle snapshot.
                     matched[runner_id] = matched.get(runner_id, False) or busy
+            except SelectionDeadline:
+                raise
             except Exception as error:
                 # An unavailable scope must not discard a match from the other.
                 # Log only the error class/status, never server text or credentials.
@@ -262,22 +350,16 @@ def select_labels(
         admitted, commitments = admission_available(
             repo, wanted, probe, len(matched), idle, required
         )
+        probe.time_left()
         counts += commitments
+        prefix = {"prefer": "prefer mode: "}.get(mode, "")
         if admitted:
-            reason = (
-                "prefer mode: sufficient idle capacity"
-                if mode == "prefer"
-                else "sufficient idle capacity"
-            )
+            reason = f"{prefix}sufficient idle capacity"
             return decision(
                 f"{reason} ({counts})",
                 json.dumps(requested, separators=(",", ":")),
             )
-        reason = (
-            "prefer mode: insufficient idle capacity"
-            if mode == "prefer"
-            else "insufficient idle capacity"
-        )
+        reason = f"{prefix}insufficient idle capacity"
         reason = (
             f"{reason} after in-flight commitments within the probe limit ({counts})"
         )
@@ -291,16 +373,21 @@ def select_labels(
 
 
 def main() -> int:
-    labels = select_labels(
-        os.environ.get("GITHUB_EVENT_NAME", ""),
-        os.environ.get("MQ_RUNNER_LABELS", ""),
-        os.environ.get("MQ_RUNNER_STATUS_TOKEN", ""),
-        os.environ.get("GITHUB_REPOSITORY", ""),
-        os.environ.get("GITHUB_API_URL", "https://api.github.com"),
-        min_idle=os.environ.get("MQ_RUNNER_MIN_IDLE", ""),
-        demand=os.environ.get("MQ_RUNNER_DEMAND", ""),
-        mode=os.environ.get("MQ_RUNNER_MODE", ""),
-    )
+    try:
+        with wall_deadline():
+            labels = select_labels(
+                os.environ.get("GITHUB_EVENT_NAME", ""),
+                os.environ.get("MQ_RUNNER_LABELS", ""),
+                os.environ.get("MQ_RUNNER_STATUS_TOKEN", ""),
+                os.environ.get("GITHUB_REPOSITORY", ""),
+                os.environ.get("GITHUB_API_URL", "https://api.github.com"),
+                min_idle=os.environ.get("MQ_RUNNER_MIN_IDLE", ""),
+                demand=os.environ.get("MQ_RUNNER_DEMAND", ""),
+                mode=os.environ.get("MQ_RUNNER_MODE", ""),
+            )
+    except SelectionDeadline:
+        warning("selection deadline exhausted")
+        labels = decision("selection deadline exhausted")
     try:
         with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
             output.write(f"heavy-labels={labels}\n")

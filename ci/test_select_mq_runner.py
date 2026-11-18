@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import unittest
+from contextlib import ExitStack
 from urllib.parse import parse_qs, urlparse
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -37,6 +38,7 @@ class SelectMqRunnerTest(unittest.TestCase):
         admission = patch.object(selector, "inflight_commitments", return_value=(0, 0))
         admission.start()
         self.addCleanup(admission.stop)
+        self.enterContext(patch.object(selector.time, "sleep"))
 
     def select(
         self,
@@ -89,7 +91,7 @@ class SelectMqRunnerTest(unittest.TestCase):
             "https://api.github.com/repos/obs-rust/obs-studio/actions/runners?per_page=100&page=1",
         )
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
-        self.assertLessEqual(http.call_args.kwargs["timeout"], 5)
+        self.assertEqual(http.call_args.kwargs["timeout"], 10)
 
     def test_all_six_online_runners_busy_use_hosted(self):
         result, _, output = self.select([runner(busy=True) for _ in range(6)])
@@ -285,7 +287,7 @@ class SelectMqRunnerTest(unittest.TestCase):
             "https://api.github.com/orgs/obs-rust/actions/runners?per_page=100&page=1",
         )
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
-        self.assertLessEqual(http.call_args.kwargs["timeout"], 5)
+        self.assertEqual(http.call_args.kwargs["timeout"], 10)
         self.assertEqual(output, "")
 
     def test_org_forbidden_or_missing_preserves_repo_result(self):
@@ -585,8 +587,234 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertIn("::warning::", output.getvalue())
 
 
+class RetryDeadlineTest(unittest.TestCase):
+    def setUp(self):
+        self.elapsed = 0.0
+        self.sleeps = []
+        self.calls = []
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.elapsed += seconds
+
+    def select(self, failures=(), *, duration=0, delay=None, org_success=False):
+        failures = iter(failures)
+
+        def respond(request, *, timeout):
+            self.calls.append((request.full_url, timeout))
+            self.elapsed += min(duration, timeout)
+            failure = next(failures, None)
+            if failure:
+                raise failure
+            entries = [runner()] if org_success or "/repos/" in request.full_url else []
+            return io.BytesIO(
+                json.dumps({"total_count": len(entries), "runners": entries}).encode()
+            )
+
+        # All elapsed time and backoff are virtual; these cases never sleep.
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(
+                    selector.time, "monotonic", side_effect=lambda: self.elapsed
+                )
+            )
+            stack.enter_context(
+                patch.object(selector.time, "sleep", side_effect=self.sleep)
+            )
+            stack.enter_context(patch.object(selector, "urlopen", side_effect=respond))
+            stack.enter_context(
+                patch.object(selector, "inflight_commitments", return_value=(0, 0))
+            )
+            stack.enter_context(redirect_stdout(io.StringIO()))
+            if delay is not None:
+                # Exhaust the deadline while reading the first successful body.
+                load = selector.json.load
+
+                def delayed_load(response):
+                    self.elapsed += delay
+                    return load(response)
+
+                stack.enter_context(
+                    patch.object(selector.json, "load", side_effect=delayed_load)
+                )
+            return selector.select_labels(
+                "merge_group", LABELS, "token", "obs-rust/obs-studio"
+            )
+
+    def test_timeout_then_success_selects_dell(self):
+        self.assertEqual(self.select([TimeoutError()]), LABELS)
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(len(self.sleeps), 1)
+        self.assertEqual(self.calls[0][1], 10)
+
+    def test_connection_error_then_success(self):
+        self.assertEqual(self.select([URLError(ConnectionResetError())]), LABELS)
+        self.assertEqual(len(self.calls), 3)
+
+    def test_persistent_timeouts_are_bounded(self):
+        self.assertEqual(self.select([TimeoutError()] * 10, duration=10), "")
+        self.assertLessEqual(self.elapsed, 45)
+        self.assertEqual(len(self.calls), 5)
+        self.assertLess(self.calls[-1][1], 10)
+
+    def test_server_errors_and_rate_limits_retry(self):
+        for status in (500, 502, 503, 504, 429):
+            with self.subTest(status=status):
+                self.setUp()
+                error = HTTPError(
+                    "https://api.github.com", status, "transient", {}, None
+                )
+                self.assertEqual(self.select([error]), LABELS)
+                self.assertEqual(len(self.calls), 3)
+                self.assertEqual(len(self.sleeps), 1)
+
+    def test_retry_after_is_capped(self):
+        error = HTTPError(
+            "https://api.github.com", 429, "slow", {"Retry-After": "120"}, None
+        )
+        self.assertEqual(self.select([error]), LABELS)
+        self.assertEqual(self.sleeps, [5])
+
+    def test_other_client_errors_never_retry(self):
+        for status in (400, 401, 403, 404, 422):
+            with self.subTest(status=status):
+                self.setUp()
+                error = HTTPError(
+                    "https://api.github.com", status, "permanent", {}, None
+                )
+                self.assertEqual(self.select([error, error]), "")
+                self.assertEqual(len(self.calls), 2)
+                self.assertEqual(self.sleeps, [])
+
+    def test_deadline_discards_successful_response(self):
+        self.assertEqual(self.select(delay=45), "")
+        self.assertEqual(len(self.calls), 1)
+
+    def test_deadline_discards_earlier_scope_match(self):
+        self.assertEqual(self.select(delay=23), "")
+        self.assertEqual(len(self.calls), 2)
+
+    def test_backoff_stops_at_deadline(self):
+        probe = selector.Probe(
+            "token",
+            "https://api.github.com",
+            clock=lambda: self.elapsed,
+            sleep=self.sleep,
+        )
+        self.elapsed = 44
+        error = HTTPError(
+            "https://api.github.com", 429, "slow", {"Retry-After": "5"}, None
+        )
+        with patch.object(selector, "urlopen", side_effect=error) as http:
+            with self.assertRaises(selector.SelectionDeadline):
+                probe.get("runners")
+        self.assertEqual(http.call_count, 1)
+        self.assertEqual(self.elapsed, 45)
+        self.assertEqual(self.sleeps, [1])
+
+    def test_retries_consume_shared_request_budget(self):
+        probe = selector.Probe(
+            "token",
+            "https://api.github.com",
+            clock=lambda: self.elapsed,
+            sleep=self.sleep,
+        )
+        with patch.object(selector, "urlopen", side_effect=TimeoutError()) as http:
+            for _ in range(4):
+                with self.assertRaises(TimeoutError):
+                    probe.get("runners")
+            with self.assertRaisesRegex(ValueError, "request budget"):
+                probe.get("runners")
+        self.assertEqual(http.call_count, 10)
+
+    def test_retry_limit_is_per_request(self):
+        self.assertEqual(self.select([TimeoutError()] * 3, org_success=True), LABELS)
+        self.assertEqual(len(self.calls), 4)
+        self.assertEqual(len(self.sleeps), 2)
+
+    @unittest.skipUnless(hasattr(selector.signal, "setitimer"), "Linux selector timer")
+    def test_swallowed_alarm_still_publishes_hosted(self):
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(
+                os.environ,
+                {"GITHUB_OUTPUT": str(Path(temporary) / "output")},
+                clear=True,
+            ),
+            patch.object(selector.signal, "signal") as install,
+            patch.object(selector.signal, "getitimer", return_value=(0, 0)),
+            patch.object(selector.signal, "setitimer"),
+            patch.object(selector, "select_labels") as select,
+            redirect_stdout(io.StringIO()),
+        ):
+
+            def swallow(*args, **kwargs):
+                try:
+                    install.call_args_list[0].args[1](selector.signal.SIGALRM, None)
+                except Exception:
+                    return LABELS
+
+            select.side_effect = swallow
+            self.assertEqual(selector.main(), 0)
+            self.assertEqual(
+                Path(os.environ["GITHUB_OUTPUT"]).read_text(), "heavy-labels=\n"
+            )
+
+    @unittest.skipUnless(hasattr(selector.signal, "setitimer"), "Linux selector timer")
+    def test_wall_timer_interrupts_body_and_publishes_hosted(self):
+        previous_handler = object()
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.dict(
+                os.environ,
+                {
+                    "GITHUB_EVENT_NAME": "merge_group",
+                    "MQ_RUNNER_LABELS": LABELS,
+                    "MQ_RUNNER_STATUS_TOKEN": "token",
+                    "GITHUB_REPOSITORY": "obs-rust/obs-studio",
+                    "GITHUB_OUTPUT": str(Path(temporary) / "output"),
+                },
+                clear=True,
+            ),
+            patch.object(selector.signal, "getsignal", return_value=previous_handler),
+            patch.object(selector.signal, "getitimer", return_value=(60, 2)),
+            patch.object(selector.signal, "signal") as install,
+            patch.object(selector.signal, "setitimer") as timer,
+            patch.object(selector.time, "monotonic", side_effect=lambda: self.elapsed),
+            patch.object(selector, "urlopen", return_value=io.BytesIO()) as http,
+            patch.object(selector.json, "load") as body,
+            redirect_stdout(io.StringIO()),
+        ):
+
+            def interrupt(response):
+                # Fire the installed alarm from inside a body read. Keeping the
+                # injected clock below 45 also proves the exception cannot be
+                # swallowed by a scope's generic error fallback.
+                self.elapsed = 2
+                install.call_args_list[0].args[1](selector.signal.SIGALRM, None)
+
+            body.side_effect = interrupt
+            self.assertEqual(selector.main(), 0)
+            self.assertEqual(
+                Path(os.environ["GITHUB_OUTPUT"]).read_text(), "heavy-labels=\n"
+            )
+            self.assertEqual(http.call_count, 1)
+            self.assertEqual(
+                [call.args for call in timer.call_args_list],
+                [
+                    (selector.signal.ITIMER_REAL, 45),
+                    (selector.signal.ITIMER_REAL, 0),
+                    (selector.signal.ITIMER_REAL, 58, 2),
+                ],
+            )
+            self.assertEqual(
+                install.call_args.args, (selector.signal.SIGALRM, previous_handler)
+            )
+
+
 class InflightAdmissionTest(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.object(selector.time, "sleep"))
         self.fixture = json.loads(
             (Path(__file__).parent / "fixtures/mq-admission.json").read_text()
         )

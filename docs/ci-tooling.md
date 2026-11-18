@@ -1037,8 +1037,13 @@ result. API failures in either scope warn without discarding a match in the othe
 If App token creation fails and no legacy token is available, selection falls
 back to hosted runners. Missing tokens, invalid label JSON, or no matching online
 runner in either available list emit a warning and keep each job's original hosted label. The probe
-checks at most five pages of 100 entries per list, with a three-second timeout per
-request and **ten requests total**, shared by runner, run and job probes.
+checks at most five pages of 100 entries per list, with a ten-second timeout per
+request and **ten attempts total**, shared by runner, run and job probes including
+retries. Timeouts, connection failures, HTTP 5xx and 429 get at most two retries
+with short jittered backoff; Retry-After (seconds or HTTP date) is capped at five
+seconds. Other HTTP 4xx responses are never retried. A shared 45-second deadline
+caps requests and backoff across the selection, well inside the job's two-minute
+timeout; an expired deadline discards even an earlier matching scope.
 An incomplete commitment list or exhausted request budget falls back to hosted.
 An unset or empty variable skips the
 probe steps. Outside `merge_group` the selection is empty and no API call runs.
