@@ -45,8 +45,9 @@ enum studio_mode_program_step {
  * the program scene does nothing and a swap after the transition may be
  * scheduled. duplicate: "Duplicate Scene" is on. swap_mode: "Swap
  * Preview/Program Scenes After Transitioning" is on. still_transitioning: the
- * program transition is between its start and its end. Updates *state and
- * says how the frontend goes on. */
+ * program transition is between its start and its end. Says how the
+ * frontend goes on and updates *state, except for a refused switch, which
+ * leaves it as it was. */
 enum studio_mode_program_step studio_mode_program_switch(struct studio_mode_program *state, void *target,
 							 void *preview_now, bool tbar_active, bool check_same,
 							 bool duplicate, bool swap_mode, bool still_transitioning);
