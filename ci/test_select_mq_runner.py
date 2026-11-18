@@ -954,6 +954,33 @@ class InflightAdmissionTest(unittest.TestCase):
         ]
         self.assertTrue(self.select(self.runs[2]["id"]))
 
+    def test_recorded_hosted_backlog_releases_queued_run_reservations(self):
+        fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-hosted-backlog.json").read_text()
+        )
+        current = dict(self.runs[-1], created_at="2026-11-18T18:15:00Z")
+        self.runs = [record["run"] for record in fixture["records"]] + [current]
+        for record in fixture["records"]:
+            self.jobs[record["run"]["id"]] = [record["selector_job"]] + [
+                dict(job, status="queued", conclusion=None, runner_name="")
+                for job in record["heavy_jobs"]
+            ]
+        self.assertTrue(self.select(current["id"]))
+
+    def test_recorded_completed_hosted_jobs_release_older_reservations(self):
+        fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-hosted-backlog.json").read_text()
+        )
+        current = dict(self.runs[-1], created_at="2026-11-18T18:15:00Z")
+        self.runs = [
+            dict(record["run"], status="in_progress") for record in fixture["records"]
+        ] + [current]
+        for record in fixture["records"]:
+            self.jobs[record["run"]["id"]] = [record["selector_job"]] + record[
+                "heavy_jobs"
+            ]
+        self.assertTrue(self.select(current["id"]))
+
     def test_running_jobs_are_not_subtracted_twice(self):
         self.runs = self.runs[:2]
         self.jobs[self.runs[0]["id"]] = [

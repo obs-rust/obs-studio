@@ -1,0 +1,281 @@
+{
+  "source": "Read-only REST jobs and selector logs fetched 2026-11-18 for report-15. IDs, names, labels, conclusions and warnings are recorded. Run status replays queued hosted-backlog snapshots; the API now reports completed. Tests replay queued heavy jobs or completed hosted jobs with unfinished unrelated work.",
+  "records": [
+    {
+      "run": {
+        "id": 44359171975,
+        "event": "merge_group",
+        "created_at": "2026-11-18T17:29:04Z",
+        "status": "queued"
+      },
+      "selector_job": {
+        "id": 134995483499,
+        "name": "Select Merge Queue Runner",
+        "status": "completed",
+        "conclusion": "success",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_name": "GitHub Actions 1000174369"
+      },
+      "heavy_jobs": [
+        {
+          "id": 135006689662,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (build)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174450"
+        },
+        {
+          "id": 135006689756,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174433"
+        },
+        {
+          "id": 135006689832,
+          "name": "Build 🧱 / macOS Rust Artifacts 🐧",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174438"
+        },
+        {
+          "id": 135006689838,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174432"
+        },
+        {
+          "id": 135006689872,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174437"
+        },
+        {
+          "id": 135025625743,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": ""
+        },
+        {
+          "id": 135025625848,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": ""
+        }
+      ],
+      "selector_warning": "Merge-queue runner: capacity-driven hosted routing: insufficient idle capacity after in-flight commitments within the probe limit (online=6, busy=0, idle=6, required=3; queued=0, committed=5, run_limit=2); using hosted runners.",
+      "selector_log_url": "https://github.com/obs-rust/obs-studio/actions/runs/44359171975/job/134995483499"
+    },
+    {
+      "run": {
+        "id": 44367435932,
+        "event": "merge_group",
+        "created_at": "2026-11-18T18:14:04Z",
+        "status": "queued"
+      },
+      "selector_job": {
+        "id": 135024874840,
+        "name": "Select Merge Queue Runner",
+        "status": "completed",
+        "conclusion": "success",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_name": "GitHub Actions 1000174492"
+      },
+      "heavy_jobs": [
+        {
+          "id": 135032585334,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174546"
+        },
+        {
+          "id": 135032585379,
+          "name": "Build 🧱 / macOS Rust Artifacts 🐧",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174583"
+        },
+        {
+          "id": 135032585472,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174567"
+        },
+        {
+          "id": 135032585527,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174549"
+        },
+        {
+          "id": 135032585758,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (build)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174587"
+        },
+        {
+          "id": 135049426524,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174642"
+        },
+        {
+          "id": 135049426615,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174635"
+        }
+      ],
+      "selector_warning": "Merge-queue runner: capacity-driven hosted routing: insufficient idle capacity after in-flight commitments within the probe limit (online=6, busy=0, idle=6, required=3; queued=0, committed=3, run_limit=2); using hosted runners.",
+      "selector_log_url": "https://github.com/obs-rust/obs-studio/actions/runs/44367435932/job/135024874840"
+    },
+    {
+      "run": {
+        "id": 44367448224,
+        "event": "merge_group",
+        "created_at": "2026-11-18T18:14:08Z",
+        "status": "queued"
+      },
+      "selector_job": {
+        "id": 135024915358,
+        "name": "Select Merge Queue Runner",
+        "status": "completed",
+        "conclusion": "success",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "runner_name": "GitHub Actions 1000174491"
+      },
+      "heavy_jobs": [
+        {
+          "id": 135029618555,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174540"
+        },
+        {
+          "id": 135029618640,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174539"
+        },
+        {
+          "id": 135029618882,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174593"
+        },
+        {
+          "id": 135029619022,
+          "name": "Build 🧱 / macOS Rust Artifacts 🐧",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174547"
+        },
+        {
+          "id": 135029619285,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (build)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174589"
+        },
+        {
+          "id": 135051508532,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174666"
+        },
+        {
+          "id": 135051508545,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-26.04"
+          ],
+          "runner_name": "GitHub Actions 1000174647"
+        }
+      ],
+      "selector_warning": "Merge-queue runner: in-flight commitments probe failed (ValueError: runs probe (queued): incomplete collection); using hosted runners.",
+      "selector_log_url": "https://github.com/obs-rust/obs-studio/actions/runs/44367448224/job/135024915358"
+    }
+  ]
+}
