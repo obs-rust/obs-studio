@@ -10,8 +10,14 @@ fn canonical_texture_file_data_swap_is_registered() {
     graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         let selected = graph
-            .select(&[(os.into(), true), ("OS_FREEBSD".into(), false),
-                    ("HAVE_LIBOBS_RUST_STATIC".into(), true)].into())
+            .select(
+                &[
+                    (os.into(), true),
+                    ("OS_FREEBSD".into(), false),
+                    ("HAVE_LIBOBS_RUST_STATIC".into(), true),
+                ]
+                .into(),
+            )
             .unwrap();
         assert_eq!(selected.tests[name].target, name);
         assert!(format!("{:?}", selected.targets[name]).contains("libobs_rust-static"));
