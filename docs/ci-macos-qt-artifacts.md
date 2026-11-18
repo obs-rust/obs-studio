@@ -47,8 +47,10 @@ The SDK pins match the existing job and cross-compile host-tool pins:
 `322cf861992c957f5fd2b3ec43ce42eebdb7162cce7f81f74c651b184e67adcd`.
 This producer uses the published SDK that the original integration job tests.
 
-The runtime closure contains arm64 Core, Gui, Widgets frameworks and the minimal
-platform plugin. Their load names already use `@rpath`; the producer supplies
+The runtime closure contains arm64 Core, Gui, Widgets frameworks and both minimal
+and offscreen platform plugins. The generated metaobject contract uses minimal;
+the unchanged Darwin C tests select offscreen in-process. Their load names already
+use `@rpath`; the producer supplies
 relative `@executable_path` rpaths for each native/CMake layout and rejects
 unbundled load paths. macOS system dependencies include libc++, libSystem,
 Objective-C, zlib and the Apple frameworks exported by the Qt interfaces (including
