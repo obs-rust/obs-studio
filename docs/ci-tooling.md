@@ -585,7 +585,14 @@ the paths that select them, so a change only triggers the tests it can affect.
    recent completions, covering bursts where GitHub replaces a pending recovery
    job; the schedule remains the backstop for delayed or missing events.
 
-   A PR run gets **one failed-jobs rerun** (attempt 1 only). An ejected merge
+   A PR run gets **one failed-jobs rerun** (attempt 1 only). A capacity-failed
+   group that is still present at the exact tested SHA also gets one failed-jobs
+   rerun, with fresh membership/PR-head checks. GitHub may mark that entry
+   `UNMERGEABLE` even though the PR has no conflict: capacity classification uses
+   exact annotations and CI Gate diagnostics, never that queue state. Run
+   44351072142 (#5111, cancelled macOS job 134968894019, gate 134992644660) is
+   the recorded example; it stayed queued until a manual removal/re-addition.
+   A real PR conflict still blocks recovery. An ejected merge
    group gets a **fresh queue execution**, not a rerun of its departed synthetic
    head: the tool checks the latest removal belongs to that exact group, proves
    prior queue intent and an unchanged PR head, refuses conflicts, manual
@@ -598,11 +605,12 @@ the paths that select them, so a change only triggers the tests it can affect.
    diagnostics for every unsuccessful job. Missing/unknown/incomplete evidence,
    independent gate failures and real test failures never authorize recovery.
    `github.token` (`actions: write`, `checks: read`, `contents: read`) suffices
-   for PR reruns. Queue recovery requires **AI_REBASE_TOKEN**, an App token or
+   for PR and still-live group reruns. Re-arming ejected groups requires
+   **AI_REBASE_TOKEN**, an App token or
    fine-grained PAT with contents/checks read, Actions write and pull requests
    write: enqueues with GITHUB_TOKEN do not trigger merge-group workflows.
-   Without that secret PR recovery still runs; queue recovery emits a warning
-   and leaves the PR alone. Restore this existing secret to enable unattended
+   Without that secret PR and still-live group reruns still work; ejected-group
+   re-arming emits a warning and leaves the PR alone. Restore this existing secret to enable unattended
    queue recovery; the 2026-11-18 maintenance log showed it absent.
 
    The older `ci/ai_rebase.py --requeue-ejected` remains a scheduled/push/dispatch

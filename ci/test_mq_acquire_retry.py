@@ -38,6 +38,7 @@ class RecordedApi:
         self.comments = []
         self.run_reads = 0
         self.changed_run = False
+        self.advance_on_live = False
         self.changed_pr = False
         self.pr_reads = 0
         self.fail_annotations = False
@@ -93,7 +94,8 @@ class RecordedApi:
         else:
             value = dict(self.run)
             self.run_reads += 1
-            if self.changed_run and self.run_reads > 1:
+            if ((self.changed_run and self.run_reads > 1)
+                    or (self.advance_on_live and self.run_reads > 2)):
                 value["run_attempt"] += 1
         return value
 
@@ -250,17 +252,31 @@ class RetryTest(unittest.TestCase):
                 self.assert_no_mutations()
 
     def test_live_capacity_retry_never_follows_a_changed_group_or_real_conflict(self):
-        for change in ("group", "conflict", "gate_error"):
+        for change in ("group", "conflict", "gate_error", "fresh_head", "disarmed"):
             with self.subTest(change=change):
                 self.live_group()
                 if change == "group":
                     self.api.pr["mergeQueueEntry"]["headCommit"]["oid"] = "a" * 40
                 elif change == "conflict":
                     self.api.pr["mergeable"] = "CONFLICTING"
+                elif change == "fresh_head":
+                    self.api.changed_pr = True
+                elif change == "disarmed":
+                    self.api.events.append({"__typename": "AutoMergeDisabledEvent"})
                 else:
                     self.api.fixture["annotations"]["134992644660"].append({
                         "annotation_level": "failure", "message": "scope is unknown"})
                 self.assert_no_mutations()
+
+    def test_live_manual_retry_during_membership_reads_prevents_duplicate(self):
+        self.live_group()
+        self.api.advance_on_live = True
+        self.assert_no_mutations()
+
+    def test_live_capacity_dry_run_never_mutates(self):
+        self.live_group()
+        self.assertIn("dry-run", self.run_bot(dry_run=True, token=False)[1])
+        self.assertEqual(self.api.mutations, [])
 
     def test_real_failed_checks_timeline_and_uncached_authorization_read(self):
         fixture = json.loads((ROOT / "ci/fixtures/mq-acquire-retry.json").read_text())["observed_ejection"]

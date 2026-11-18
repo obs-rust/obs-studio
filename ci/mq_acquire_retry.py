@@ -6,7 +6,7 @@
 
     uv run --no-project --script ci/mq_acquire_retry.py [--run-id ID] [--dry-run]
 
-Needs GH_TOKEN, actions: write, checks: read and contents: read. Queue recovery
+Needs GH_TOKEN, actions: write, checks: read and contents: read. Re-arming ejected groups
 also needs pull-requests: write and a workflow-triggering token (AI_REBASE_TOKEN).
 Unknown evidence never permits a retry. CI Gate must still pass on the rerun.
 """
@@ -109,7 +109,7 @@ def pr_snapshot(repo: str, number: int, *, fresh: bool = False) -> dict:
     query = """query($owner:String!,$name:String!,$number:Int!,$before:String){
       repository(owner:$owner,name:$name){pullRequest(number:$number){
         id number headRefOid state isDraft mergeable mergeStateStatus reviewDecision
-        autoMergeRequest{enabledAt} body labels(first:100){nodes{name} pageInfo{hasNextPage}}
+        autoMergeRequest{enabledAt} mergeQueueEntry{headCommit{oid}} body labels(first:100){nodes{name} pageInfo{hasNextPage}}
         timelineItems(last:100,before:$before,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT,
           ADDED_TO_MERGE_QUEUE_EVENT,AUTO_MERGE_DISABLED_EVENT,AUTO_MERGE_ENABLED_EVENT,
           PULL_REQUEST_COMMIT,HEAD_REF_FORCE_PUSHED_EVENT]){
@@ -157,8 +157,8 @@ def pr_snapshot(repo: str, number: int, *, fresh: bool = False) -> dict:
         cursors.add(cursor)
 
 
-def ejection(pr: dict, run: dict) -> dict | None:
-    """A latest involuntary removal must bind the tested queue SHA and PR head."""
+def held(pr: dict) -> bool:
+    """PR conflicts/holds are distinct from a capacity-failed queue entry."""
     labels = {label["name"] for label in pr["labels"]}
     hold = r"do not (enqueue|merge)|don't (enqueue|merge)|\bhold\b|\bwip\b|stacked on #"
     if (pr["state"] != "OPEN" or pr["isDraft"] or pr["mergeable"] != "MERGEABLE"
@@ -166,6 +166,13 @@ def ejection(pr: dict, run: dict) -> dict | None:
             or pr["reviewDecision"] == "CHANGES_REQUESTED"
             or labels.intersection({"queue-failed", "draft", "pool-active"})
             or re.search(hold, pr["body"] + " " + " ".join(labels), re.I)):
+        return True
+    return False
+
+
+def ejection(pr: dict, run: dict) -> dict | None:
+    """A latest involuntary removal must bind the tested queue SHA and PR head."""
+    if held(pr):
         return None
     events = list(reversed(pr["events"]))
     if not events or events[0]["__typename"] != "RemovedFromMergeQueueEvent":
@@ -184,6 +191,33 @@ def ejection(pr: dict, run: dict) -> dict | None:
     return removed if head == pr["headRefOid"] else None
 
 
+def live_group(pr: dict, run: dict) -> bool:
+    """Membership in this exact group, never the queue's UNMERGEABLE status."""
+    entry = pr.get("mergeQueueEntry") or {}
+    if held(pr) or (entry.get("headCommit") or {}).get("oid") != run["head_sha"]:
+        return False
+    events = list(reversed(pr["events"]))
+    if not events or events[0]["__typename"] != "AddedToMergeQueueEvent":
+        return False
+    head = next(((event.get("commit") or event.get("afterCommit") or {}).get("oid")
+                 for event in events[1:] if event["__typename"] in ("PullRequestCommit", "HeadRefForcePushedEvent")), None)
+    return head == pr["headRefOid"]
+
+
+def run_unchanged(repo: str, run: dict) -> bool:
+    fresh = command(["gh", "api", f"repos/{repo}/actions/runs/{run['id']}"])
+    identity = ("id", "event", "workflow_id", "head_sha", "head_branch", "status", "conclusion", "run_attempt")
+    return all(fresh.get(key) == run.get(key) for key in identity)
+
+
+def rerun_failed(repo: str, run: dict, label: str, *, dry_run: bool) -> None:
+    if dry_run:
+        print(f"{label}: dry-run: would rerun failed jobs")
+    else:
+        command(["gh", "api", "-X", "POST", f"repos/{repo}/actions/runs/{run['id']}/rerun-failed-jobs"])
+        print(f"{label}: requested rerun of failed jobs")
+
+
 def retry_marker(head: str) -> str:
     # Share the older infrastructure handler's per-head budget as well.
     return f"<!-- ai-rebase:requeue-ejected:{head} -->"
@@ -198,28 +232,28 @@ def recover_run(repo: str, run: dict, workflow_id: int, *, dry_run: bool, can_re
     if reason:
         print(f"{label}: skipped: {reason}")
         return
-    fresh = command(["gh", "api", f"repos/{repo}/actions/runs/{run['id']}"])
-    identity = ("id", "event", "workflow_id", "head_sha", "head_branch", "status", "conclusion", "run_attempt")
-    if any(fresh.get(k) != run.get(k) for k in identity):
+    if not run_unchanged(repo, run):
         print(f"{label}: skipped: run changed during inspection")
         return
     if run["event"] == "pull_request":
-        if dry_run:
-            print(f"{label}: dry-run: would rerun failed jobs")
-        else:
-            command(["gh", "api", "-X", "POST", f"repos/{repo}/actions/runs/{run['id']}/rerun-failed-jobs"])
-            print(f"{label}: requested rerun of failed jobs")
+        rerun_failed(repo, run, label, dry_run=dry_run)
         return
-    recover_ejected(repo, run, label, dry_run=dry_run, can_requeue=can_requeue)
+    recover_group(repo, run, label, dry_run=dry_run, can_requeue=can_requeue)
 
 
-def recover_ejected(repo: str, run: dict, label: str, *, dry_run: bool, can_requeue: bool) -> None:
+def recover_group(repo: str, run: dict, label: str, *, dry_run: bool, can_requeue: bool) -> None:
     match = re.fullmatch(r"gh-readonly-queue/master/pr-([1-9][0-9]*)-[0-9a-f]{40}", run.get("head_branch") or "")
     if not match:
         print(f"{label}: skipped: unknown merge-group branch")
         return
     number = int(match[1])
     pr = pr_snapshot(repo, number)
+    if live_group(pr, run):
+        if pr_snapshot(repo, number, fresh=True) == pr and run_unchanged(repo, run):
+            rerun_failed(repo, run, label, dry_run=dry_run)
+        else:
+            print(f"{label}: skipped: live group changed during inspection")
+        return
     removed = ejection(pr, run)
     if removed is None:
         print(f"{label}: skipped: no matching latest ejection on an unchanged, armed, mergeable head")
@@ -232,7 +266,7 @@ def recover_ejected(repo: str, run: dict, label: str, *, dry_run: bool, can_requ
     if not can_requeue:
         print(f"::warning::{label}: AI_REBASE_TOKEN is required to trigger fresh merge-group CI; no requeue")
         return
-    if pr_snapshot(repo, number, fresh=True) != pr:
+    if pr_snapshot(repo, number, fresh=True) != pr or not run_unchanged(repo, run):
         print(f"{label}: skipped: PR changed during inspection")
         return
     if dry_run:
