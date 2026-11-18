@@ -52,12 +52,29 @@ class WorkflowTest(unittest.TestCase):
         workflow = jobs()
         for name in ("rust-tests-macos-build", "rust-tests-macos"):
             job = workflow[name]
-            self.assertIn("/opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}", job)
             self.assertIn("ci/macos_test_workspace.py place", job)
             self.assertIn("ci/macos_test_workspace.py restore", job)
             self.assertIn("if: always()", job)
             self.assertLess(job.index("ci/macos_test_workspace.py place"),
                             job.index("ci/macos_test_artifact.py"))
+
+    def test_consumer_rerun_uses_original_producer_receipts(self):
+        workflow = jobs()
+        producer, consumer = (workflow[name] for name in ("rust-tests-macos-build", "rust-tests-macos"))
+        self.assertIn("/opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}", producer)
+        self.assertIn("common-parent: ${{ steps.workspace.outputs.common-parent }}", producer)
+        self.assertIn("artifact-id: ${{ steps.bundle.outputs.artifact-id }}", producer)
+        self.assertIn("COMMON_PARENT: ${{ needs.rust-tests-macos-build.outputs.common-parent }}", consumer)
+        self.assertIn("artifact-ids: ${{ needs.rust-tests-macos-build.outputs.artifact-id }}", consumer)
+        # A consumer attempt 2 still uses producer attempt 1's root and artifact.
+        self.assertNotIn("github.run_attempt", consumer)
+
+    def test_linux_prerequisites_precede_cooking_and_analysis(self):
+        producer = jobs()["rust-tests-macos-build"]
+        self.assertLess(producer.index("Install Linux preparation dependencies"), producer.index("Set Up soldr"))
+        self.assertLess(producer.index("ci/macos_test_artifact.py prepare-target"), producer.index("Run Clippy"))
+        for package in ("uuid-dev", "libglib2.0-dev", "libxkbcommon-dev", "libncurses6"):
+            self.assertIn(package, producer)
 
     def test_gate_requires_both_selected_jobs_and_rejects_missing_producer(self):
         selected = scope(["rust/obs-util/src/dstr.rs"], event="merge_group")
