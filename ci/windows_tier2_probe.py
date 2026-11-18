@@ -91,6 +91,18 @@ def parity(reference: set[str], hybrid: set[str]) -> list[str]:
     return sorted(reference)
 
 
+def core_symbols(artifacts: list[Path], readobj: str) -> list[str]:
+    cores = [path for path in artifacts if path.name.lower() == "obs.dll"]
+    variants = {path.parent.name: path for path in cores}
+    if len(cores) != 2 or set(variants) != {"reference", "shared"}:
+        raise ValueError(
+            "probe inventory requires distinct shared/reference obs.dll cores"
+        )
+    return parity(
+        exports(variants["reference"], readobj), exports(variants["shared"], readobj)
+    )
+
+
 def closure(artifacts: list[Path], roots: list[Path]) -> list[Path]:
     known = {path.name.lower() for path in artifacts}
     index = {}
@@ -132,10 +144,7 @@ def stage(
     readobj: str,
 ) -> dict:
     build, output, source = build.resolve(), output.absolute(), source.resolve()
-    cores = [path for path in artifacts if path.name.lower() == "obs.dll"]
-    if len(cores) != 2:
-        raise ValueError("probe inventory requires both obs.dll cores")
-    symbols = parity(*(exports(path, readobj) for path in cores))
+    core_symbols(artifacts, readobj)
     paths = closure(artifacts, roots)
     cache = build / "CMakeCache.txt"
     match = (
@@ -177,9 +186,7 @@ def stage(
     # Imports/exports can change during a concurrent rebuild. Validate the bytes
     # we will transport, including newly introduced transitive dependencies.
     closure(staged, [output / "build", output / "deps"])
-    symbols = parity(
-        *(exports(path, readobj) for path in staged if path.name.lower() == "obs.dll")
-    )
+    symbols = core_symbols(staged, readobj)
     manifest = {
         "schema": 1,
         "target": TARGET,

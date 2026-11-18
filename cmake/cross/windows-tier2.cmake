@@ -54,14 +54,27 @@ target_sources(libobs-cross-generated PRIVATE "${CMAKE_BINARY_DIR}/config/libobs
 include(FetchContent)
 set(WITH_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(UNIT_TESTING OFF CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build native Windows cmocka DLL" FORCE)
 FetchContent_Declare(
   cmocka
   URL https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
   URL_HASH SHA256=810570eb0b8d64804331f82b29ff47c790ce9cd6b163e98d47a4807047ecad82
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
+# Function-existence checks need a real link. The compile-only toolchain's
+# STATIC_LIBRARY probes otherwise claim Windows has POSIX siglongjmp.
+set(_tier2_try_compile "${CMAKE_TRY_COMPILE_TARGET_TYPE}")
+set(_tier2_try_configuration "${CMAKE_TRY_COMPILE_CONFIGURATION}")
+set(_tier2_required_options "${CMAKE_REQUIRED_LINK_OPTIONS}")
+set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+# xwin ships the release CRT, so feature probes must use the native profile.
+set(CMAKE_TRY_COMPILE_CONFIGURATION RelWithDebInfo)
+list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "-L${CMAKE_BINARY_DIR}/cross-case-libs")
 FetchContent_MakeAvailable(cmocka)
+set(CMAKE_REQUIRED_LINK_OPTIONS "${_tier2_required_options}")
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "${_tier2_try_compile}")
+set(CMAKE_TRY_COMPILE_CONFIGURATION "${_tier2_try_configuration}")
+target_link_directories(cmocka PRIVATE "${CMAKE_BINARY_DIR}/cross-case-libs")
 add_library(obs-native-test-cmocka INTERFACE)
 add_library(OBS::native-test-cmocka ALIAS obs-native-test-cmocka)
 target_include_directories(obs-native-test-cmocka INTERFACE "${cmocka_SOURCE_DIR}/include")

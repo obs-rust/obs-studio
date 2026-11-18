@@ -58,6 +58,12 @@ class ProbeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 helper.parity(left, right)
 
+    def test_export_comparison_requires_both_core_variants(self):
+        helper = self.helper()
+        core = Path("shared/obs.dll")
+        with self.assertRaisesRegex(ValueError, "distinct shared/reference"):
+            helper.core_symbols([core, core], "llvm-readobj")
+
     def test_transitive_dll_closure_and_missing_runtime(self):
         helper = self.helper()
         with tempfile.TemporaryDirectory() as tmp:
