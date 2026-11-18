@@ -209,6 +209,7 @@ def stage(
         "native_contract_prebuilt": False,
         "files": files,
         "directories": directories,
+        "dyld_library_path": "deps",
         "ctest_templates": templates,
     }
     output.mkdir(parents=True, exist_ok=True)
@@ -293,6 +294,7 @@ def main() -> int:
     collect.add_argument(
         "--deps", type=Path, help="directory containing signed dependency dylibs"
     )
+    collect.add_argument("--darwin-receipt", type=Path, help="soldr toolchain darwin JSON supplying sanitizer runtimes")
     execute = subparsers.add_parser("run")
     execute.add_argument("--bundle", required=True, type=Path)
     execute.add_argument("--source", required=True, type=Path)
@@ -307,6 +309,9 @@ def main() -> int:
     ]
     artifacts = selected_runtime(args.build, artifacts)
     dependencies = list(args.deps.glob("*.dylib")) if args.deps else []
+    if args.darwin_receipt:
+        runtime = Path(json.loads(args.darwin_receipt.read_text())["compiler_rt"])
+        dependencies += [runtime / f"libclang_rt.{kind}_osx_dynamic.dylib" for kind in ("asan", "ubsan")]
     stage(
         args.build,
         args.source,

@@ -178,7 +178,7 @@ match, stale build tree or snapshot from another commit cannot pass.
 | 4. Native runtime compiler | Separate preparation/complete receipts and assertion-only consumer implemented; shared loader/data/registration controls retained. Full preparation/execution waits on the toolchain rows below. |
 | 5. Missing owners and registry parity | Real canonical owners configured; all original 30 missing names present. Same-commit name/property comparator implemented. Independent native snapshot/property comparison still required before activation. |
 | 6. Empty core-module list | Replaced by the actual enabled canonical plugin graph (23 observed names); both CMake cores use its generated manifest. |
-| Darwin compiler-rt | The managed closure supplies all link inputs, including `__isPlatformVersionAtLeast`, but the current ASan/UBSan dylibs carry absolute Conan build-directory install names. New executables inherit those loads and fail the closure audit. The upstream compiler-rt package must provide relocatable, freshly signed runtimes before activation. |
+| Darwin compiler-rt | The managed closure supplies all link inputs, including `__isPlatformVersionAtLeast`. Current ASan/UBSan dylibs retain absolute Conan install names. Stage their original signed bytes in `deps` and explicitly declare the consumer's `DYLD_LIBRARY_PATH`; the closure audit records this requirement. Actual sanitizer loading still needs hosted proof. |
 | Swift/Metal and SDK 26.5 | The same managed receipt supplies Linux Swift 6.3.2, Darwin overlays, SDK 26.5, LLVM linker and dsymutil. Both CMake and Cargo-native preparation use it. |
 | Full staged closure and macOS execution | Still requires all signed frameworks/dependencies, resources and generated data at the common paths, and successful execution of all four full passes plus contracts on macOS. |
 
@@ -213,11 +213,16 @@ Both `libclang_rt.asan_osx_dynamic.dylib` and
 `libclang_rt.ubsan_osx_dynamic.dylib` have signed arm64 slices, but their
 `LC_ID_DYLIB` is `/work/.conan-home/p/b/compid4110e650ac77/b/rt-build/lib/darwin/`
 followed by the filename. The independent sanitized availability probe inherits
-that absolute `LC_LOAD_DYLIB`. `ci/macos_tier2_audit.py` correctly rejects it.
-Request an upstream compiler-rt rebuild with `@rpath/<filename>` identities,
-fresh signatures and a new verified catalogue digest; then rebuild and re-audit
-the sanitized fixtures. Do not rewrite installed toolchain files or permit these
-producer paths in the run-host closure.
+that absolute `LC_LOAD_DYLIB`. The strict audit rejects it without an explicit
+runtime override. Apple's [dyld reference](https://raw.githubusercontent.com/apple-oss-distributions/dyld/main/doc/man/man1/dyld.1)
+specifies that `DYLD_LIBRARY_PATH` searches dylib leaf names before install paths.
+The existing consumer already sets this variable to its staged `deps` directory.
+`stage --darwin-receipt DARWIN_JSON` adds the original signed ASan/UBSan runtimes;
+`macos_tier2_audit.py --library-path DIR` models only that explicitly declared
+override and writes a checksum-bound environment receipt. Without it, producer
+paths remain rejected. No toolchain files or signed images are rewritten. Hosted
+sanitizer execution and loader logs must prove that the packet's copies load,
+with missing-runtime and missing-environment negative controls before activation.
 
 The aggregate builds the same native Tier 2 roots, including every cmocka test
 and helper. Configuring canonical owners does not imply building unrelated app

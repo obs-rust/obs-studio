@@ -34,7 +34,25 @@ def executable_directory(image: Path) -> Path | None:
     return image.parent if len(data) >= 16 and struct.unpack_from("<I", data, 12)[0] == 2 else None
 
 
-def resolve_load(value: str, image: Path, entry: Path | None, rpaths: list[str], search: list[Path]) -> Path:
+def dyld_override(value: str, library_path: list[Path]) -> Path | None:
+    """An explicitly declared DYLD_LIBRARY_PATH searches dylib leaf names first.
+
+    Apple dyld reference: apple-oss-distributions/dyld/doc/man/man1/dyld.1.
+    This is separate from rpath search and never inferred from ambient env.
+    """
+    if not value.endswith(".dylib"):
+        return None
+    for root in library_path:
+        candidate = root / Path(value).name
+        if candidate.is_file() and candidate.resolve().is_relative_to(root):
+            return candidate.resolve()
+    return None
+
+
+def resolve_load(value: str, image: Path, entry: Path | None, rpaths: list[str], search: list[Path], library_path: list[Path]) -> Path:
+    override = dyld_override(value, library_path)
+    if override:
+        return override
     def expand(path):
         if "@executable_path" in path and entry is None:
             raise ValueError(f"@executable_path requires an entry executable context: {image}")
@@ -56,14 +74,15 @@ def resolve_load(value: str, image: Path, entry: Path | None, rpaths: list[str],
     return found
 
 
-def closure(images: list[Path], search: list[Path], verify, executable_context: Path | None = None) -> dict:
+def closure(images: list[Path], search: list[Path], verify, executable_context: Path | None = None, library_path: list[Path] | None = None) -> dict:
     """Check against explicitly declared run-host DYLD library/framework roots.
 
     This is a signed load-closure proof; actual dyld loading is a separate
     macOS assertion. Library roots need an explicit entry-executable context
     if they use @executable_path.
     """
-    search = [root.resolve() for root in search]
+    library_path = [root.resolve() for root in library_path or []]
+    search = [root.resolve() for root in search] + library_path
     pending = [(image, executable_directory(image) or executable_context) for image in images]
     checked = {}
     seen = set()
@@ -81,7 +100,7 @@ def closure(images: list[Path], search: list[Path], verify, executable_context: 
         for command, value in commands:
             if command == 0x8000001C or value.startswith(("/usr/lib/", "/System/Library/")):
                 continue
-            found = resolve_load(value, image, entry, rpaths, search)
+            found = resolve_load(value, image, entry, rpaths, search, library_path)
             dependencies.append({"load": value, "path": str(found)})
             pending.append((found, entry))
         if str(image) in checked and checked[str(image)] != dependencies:
@@ -96,12 +115,18 @@ def main() -> int:
     parser.add_argument("--search", action="append", type=Path, default=[],
                         help="declared run-host DYLD library/framework root")
     parser.add_argument("--executable-context", type=Path, help="entry executable directory for library roots")
+    parser.add_argument("--library-path", action="append", type=Path, default=[],
+                        help="explicit runtime DYLD_LIBRARY_PATH directory (recorded in evidence)")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     verify = bundle.verifier(Path(__file__).with_name("macos_test_artifact.py"))
     images = [Path(line) for line in args.inventory.read_text().splitlines() if line]
-    result = closure(images, args.search, verify, args.executable_context)
+    result = closure(images, args.search, verify, args.executable_context, args.library_path)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
+    args.output.with_suffix(".environment.json").write_text(json.dumps({
+        "schema": 1, "closure_sha256": bundle.digest(args.output),
+        "DYLD_LIBRARY_PATH": [str(path.resolve()) for path in args.library_path],
+    }, indent=2) + "\n")
     print(f"Verified {len(images)} roots and {len(result)} total signed arm64 images")
     return 0
 
