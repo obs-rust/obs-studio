@@ -41,6 +41,9 @@ class NativeTier2Parallel(unittest.TestCase):
 
     def test_every_suite_run_uses_the_jobs(self) -> None:
         sh = VALIDATE_SH.read_text(encoding="utf-8")
+        shared = VALIDATE_SH.with_name("macos-assertions.sh")
+        self.assertIn(f"source rust/tools/tier2-validate/{shared.name}", sh)
+        sh += "\n" + shared.read_text(encoding="utf-8")
         suites = [l for l in sh.splitlines() if "ctest --test-dir" in l and "if !" in l]
         self.assertEqual(len(suites), 2, suites)
         for line in suites:
