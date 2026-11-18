@@ -20,7 +20,19 @@ API_TIMEOUT = 10
 SELECTION_TIMEOUT = 45
 MAX_RETRIES = 2
 MAX_RETRY_AFTER = 5
-MAX_REQUESTS = 2 * MAX_PAGES
+# The master ruleset builds five entries; a regroup can leave both waves visible.
+MAX_ACTIVE_RUNS = 5 * 2
+# Two runner scopes, two run statuses, and a jobs collection for each active run.
+# Include pagination and retries, while retaining the shared wall-clock deadline.
+MAX_REQUESTS = (4 + MAX_ACTIVE_RUNS) * MAX_PAGES * (MAX_RETRIES + 1)
+
+
+class RequestBudgetExhausted(ValueError):
+    """An active run must reserve capacity when its jobs cannot be probed."""
+
+    def __init__(self, message: str, *, entries=()):
+        super().__init__(message)
+        self.entries = list(entries)
 
 
 class SelectionDeadline(TimeoutError):
@@ -60,7 +72,7 @@ def wall_deadline():
 
 
 class Probe:
-    """Share the original ten-request budget between census and commitments."""
+    """Share a bounded regroup-sized budget between census and commitments."""
 
     def __init__(self, token: str, api_url: str, *, clock=None, sleep=None):
         self.token = token
@@ -102,8 +114,8 @@ class Probe:
         for attempt in range(MAX_RETRIES + 1):
             timeout = min(API_TIMEOUT, self.time_left())
             if self.remaining <= 0:
-                raise ValueError("request budget exhausted")
-            self.remaining -= 1  # Retries consume the same ten-attempt budget.
+                raise RequestBudgetExhausted("request budget exhausted")
+            self.remaining -= 1  # Retries consume the same shared budget.
             try:
                 with urlopen(request, timeout=timeout) as response:
                     result = json.load(response)
@@ -117,14 +129,19 @@ class Probe:
                     if error.code != 429 and not 500 <= error.code < 600:
                         raise
                 self.time_left()
-                if attempt == MAX_RETRIES or self.remaining <= 0:
+                if self.remaining <= 0:
+                    raise RequestBudgetExhausted("request budget exhausted") from error
+                if attempt == MAX_RETRIES:
                     raise
                 self.sleep(min(self.retry_delay(error, attempt), self.time_left()))
 
     def entries(self, path: str, key: str, token: str) -> list[dict]:
         result = []
         for page in range(1, MAX_PAGES + 1):
-            data = self.get(f"{path}&per_page=100&page={page}", token=token)
+            try:
+                data = self.get(f"{path}&per_page=100&page={page}", token=token)
+            except RequestBudgetExhausted as error:
+                raise RequestBudgetExhausted(str(error), entries=result) from error
             entries = data[key]
             total = data["total_count"]
             if not isinstance(entries, list) or type(total) is not int or total < 0:
@@ -140,6 +157,18 @@ class Probe:
 def warning(reason: str, *, hosted: bool = True) -> None:
     fallback = "; using hosted runners" if hosted else ""
     print(f"::warning::Merge-queue runner: {reason}{fallback}.")
+
+
+def probe_error(error: Exception) -> str:
+    """Include validation reasons, escaping Actions annotation control characters."""
+    detail = ""
+    if isinstance(error, ValueError):
+        detail = ": " + str(error).replace("%", "%25").replace("\r", "%0D").replace(
+            "\n", "%0A"
+        )
+    elif isinstance(error, HTTPError):
+        detail = f" {error.code}"
+    return f"{type(error).__name__}{detail}"
 
 
 def decision(reason: str, labels: str = "") -> str:
@@ -183,6 +212,8 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
     queued = 0
     dell = hosted = False
     for job in jobs:
+        if job.get("status") == "completed" or job.get("conclusion") is not None:
+            continue
         raw_labels = job["labels"]
         if (
             not isinstance(raw_labels, list)
@@ -212,8 +243,48 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
     return queued, dell, hosted
 
 
-def inflight_commitments(repo: str, wanted: set[str], probe: Probe) -> tuple[int, int]:
-    """Count queued Dell jobs and active Dell/older undecided Pull runs.
+def active_runs(repo: str, probe: Probe, token: str) -> dict:
+    """Keep only active run snapshots; terminal snapshots release reservations."""
+    runs = {}
+    finished = set()
+    for status in ("queued", "in_progress"):
+        try:
+            entries = probe.entries(
+                f"repos/{repo}/actions/workflows/ci.yml/runs?event=merge_group&status={status}",
+                "workflow_runs",
+                token,
+            )
+        except ValueError as error:
+            raise ValueError(f"runs probe ({status}): {error}") from error
+        for run in entries:
+            run_id = run["id"]
+            if (
+                run.get("status") in ("completed", "cancelled")
+                or run.get("conclusion") is not None
+            ):
+                runs.pop(run_id, None)
+                finished.add(run_id)
+                continue
+            if run_id in finished:
+                continue
+            if (
+                type(run_id) is not int
+                or run_id < 1
+                or run["event"] != "merge_group"
+                or run["status"] not in ("queued", "in_progress")
+            ):
+                raise ValueError(f"runs probe ({status}): invalid active run")
+            created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+            if created.tzinfo is None:
+                raise ValueError(f"runs probe ({status}): missing run timezone")
+            runs[run_id] = ((created, run_id), run["status"])
+    return runs
+
+
+def inflight_commitments(
+    repo: str, wanted: set[str], probe: Probe, demand: int = 1
+) -> tuple[int, int]:
+    """Count queued Dell jobs and active Dell/older undecided runs.
 
     Outputs aren't exposed by the jobs API. A routed heavy job's labels prove
     the choice; before those jobs appear, older runs reserve a run slot. This
@@ -223,38 +294,40 @@ def inflight_commitments(repo: str, wanted: set[str], probe: Probe) -> tuple[int
     token = os.environ["GITHUB_TOKEN"]
     if current_id < 1 or not token:
         raise ValueError("missing Actions probe identity")
-    runs = {}
-    for status in ("queued", "in_progress"):
-        for run in probe.entries(
-            f"repos/{repo}/actions/workflows/ci.yml/runs?event=merge_group&status={status}",
-            "workflow_runs",
-            token,
-        ):
-            run_id = run["id"]
-            if (
-                type(run_id) is not int
-                or run_id < 1
-                or run["event"] != "merge_group"
-                or run["status"] not in ("queued", "in_progress")
-            ):
-                raise ValueError("invalid active run")
-            created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
-            if created.tzinfo is None:
-                raise ValueError("missing run timezone")
-            runs[run_id] = (created, run_id)
+    runs = active_runs(repo, probe, token)
     current = runs[current_id]  # An incomplete/eventually consistent list is unsafe.
-    queued = committed = 0
-    for run_id, priority in sorted(runs.items(), key=lambda item: item[1]):
+    queued = committed = unprobed = 0
+    current = current[0]
+    for run_id, (priority, status) in sorted(runs.items(), key=lambda item: item[1][0]):
         if run_id == current_id:
             continue
-        jobs = probe.entries(
-            f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
-        )
-        pending, dell, hosted = job_commitments(jobs, wanted)
+        if status == "queued":
+            # A queued workflow has not started its selector or heavy jobs.
+            committed += priority < current
+            continue
+        try:
+            jobs = probe.entries(
+                f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
+            )
+            pending, dell, hosted = job_commitments(jobs, wanted)
+        except RequestBudgetExhausted as error:
+            unprobed += 1
+            observed, _, _ = job_commitments(error.entries, wanted)
+            queued += max(observed, demand)
+            committed += 1
+            continue
+        except ValueError as error:
+            raise ValueError(f"jobs probe (run {run_id}): {error}") from error
         queued += pending
         # Count known Dell runs regardless of age. Unknown older runs also
         # reserve slots; an observed hosted choice releases their reservation.
         committed += dell or (not hosted and priority < current)
+    if unprobed:
+        warning(
+            f"jobs probe: request budget exhausted; unprobed={unprobed}; "
+            f"reserving at least {demand} runners per unprobed active run",
+            hosted=False,
+        )
     return queued, committed
 
 
@@ -264,7 +337,7 @@ def admission_available(
     """The idle floor and in-flight run cap must both admit this run."""
     if idle < required:
         return False, ""
-    queued, committed = inflight_commitments(repo, wanted, probe)
+    queued, committed = inflight_commitments(repo, wanted, probe, required)
     limit = online // required
     counts = f"; queued={queued}, committed={committed}, run_limit={limit}"
     return idle - queued >= required and committed < limit, counts
@@ -311,6 +384,7 @@ def select_labels(
     """
     if event != "merge_group" or not labels:
         return decision("opt-in merge-group runner selection is disabled")
+    step = "configuration"
     try:
         requested = requested_labels(labels)
         required = required_capacity(min_idle, demand, mode)
@@ -326,6 +400,7 @@ def select_labels(
             ("repository", f"repos/{repo}"),
             ("organization", f"orgs/{owner}"),
         ):
+            step = f"{scope} availability probe"
             try:
                 runners = online_runners(path, wanted, probe)
                 for runner_id, busy in runners.items():
@@ -337,9 +412,8 @@ def select_labels(
                 # An unavailable scope must not discard a match from the other.
                 # Log only the error class/status, never server text or credentials.
                 unavailable.append(scope)
-                status = f" {error.code}" if isinstance(error, HTTPError) else ""
                 warning(
-                    f"{scope} availability probe failed ({type(error).__name__}{status})",
+                    f"{step} failed ({probe_error(error)})",
                     hosted=False,
                 )
         busy = sum(matched.values())
@@ -347,6 +421,7 @@ def select_labels(
         counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
         if unavailable:
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
+        step = "in-flight commitments probe"
         admitted, commitments = admission_available(
             repo, wanted, probe, len(matched), idle, required
         )
@@ -363,11 +438,12 @@ def select_labels(
         reason = (
             f"{reason} after in-flight commitments within the probe limit ({counts})"
         )
+        reason = f"capacity-driven hosted routing: {reason}"
         warning(reason)
         return decision(reason)
     except Exception as error:
         # Exception messages can contain credentials or server-controlled text.
-        reason = f"availability probe failed ({type(error).__name__})"
+        reason = f"{step} failed ({probe_error(error)})"
         warning(reason)
         return decision(reason)
 

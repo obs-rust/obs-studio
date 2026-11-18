@@ -721,9 +721,13 @@ class RetryDeadlineTest(unittest.TestCase):
             sleep=self.sleep,
         )
         with patch.object(selector, "urlopen", side_effect=TimeoutError()) as http:
-            for _ in range(4):
+            for _ in range(3):
                 with self.assertRaises(TimeoutError):
                     probe.get("runners")
+            with self.assertRaisesRegex(
+                selector.RequestBudgetExhausted, "request budget"
+            ):
+                probe.get("runners")
             with self.assertRaisesRegex(ValueError, "request budget"):
                 probe.get("runners")
         self.assertEqual(http.call_count, 10)
@@ -908,7 +912,9 @@ class InflightAdmissionTest(unittest.TestCase):
         ):
             try:
                 with self.subTest(error=type(error).__name__):
-                    self.assertEqual(self.select(self.runs[0]["id"], api_error=error), "")
+                    self.assertEqual(
+                        self.select(self.runs[0]["id"], api_error=error), ""
+                    )
             finally:
                 if isinstance(error, HTTPError):
                     error.close()
@@ -1018,7 +1024,35 @@ class InflightAdmissionTest(unittest.TestCase):
         self.runs[0]["status"] = "queued"
         self.assertEqual(self.select(self.runs[2]["id"]), "")
         urls = [call.args[0].full_url for call in self.http.call_args_list]
-        self.assertFalse(any(f'/runs/{self.runs[0]["id"]}/jobs' in url for url in urls))
+        self.assertFalse(any(f"/runs/{self.runs[0]['id']}/jobs" in url for url in urls))
+
+    def test_retry_budget_exhaustion_reserves_all_unprobed_runs(self):
+        def timeout_jobs(path, payload):
+            if path.endswith("/jobs"):
+                raise TimeoutError()
+            return payload
+
+        with patch.object(selector, "MAX_REQUESTS", 6):
+            self.assertEqual(
+                self.select(self.runs[0]["id"], transform=timeout_jobs), ""
+            )
+        self.assertIn("unprobed=3", self.output)
+        self.assertIn("queued=9", self.output)
+        self.assertNotIn("probe failed", self.output)
+
+    def test_pagination_budget_exhaustion_reserves_whole_run(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[1]["id"]] = self.fixture["queued_jobs"][:1] * 100
+
+        def more_jobs(path, payload):
+            return dict(payload, total_count=101) if path.endswith("/jobs") else payload
+
+        with patch.object(selector, "MAX_REQUESTS", 5):
+            self.assertEqual(self.select(self.runs[0]["id"], transform=more_jobs), "")
+        self.assertIn("unprobed=1", self.output)
+        self.assertIn("queued=100", self.output)
+        self.assertIn("reserving at least 3 runners", self.output)
+        self.assertNotIn("probe failed", self.output)
 
     def test_terminal_runs_in_active_listing_are_ignored(self):
         current = self.runs[-1]["id"]
@@ -1028,6 +1062,7 @@ class InflightAdmissionTest(unittest.TestCase):
             {"conclusion": "cancelled"},
             {"conclusion": "success"},
         ):
+
             def finish_runs(path, payload):
                 if path.endswith("/runs"):
                     payload["workflow_runs"] = [
@@ -1047,7 +1082,9 @@ class InflightAdmissionTest(unittest.TestCase):
             {"status": "in_progress", "conclusion": "success"},
         ):
             for run in self.runs[1:]:
-                self.jobs[run["id"]] = [dict(job, **terminal) for job in self.fixture["queued_jobs"]]
+                self.jobs[run["id"]] = [
+                    dict(job, **terminal) for job in self.fixture["queued_jobs"]
+                ]
             with self.subTest(terminal=terminal):
                 self.assertTrue(self.select(self.runs[0]["id"]))
 
