@@ -153,7 +153,10 @@ def verify(manifest: Path) -> dict:
         if entry["binary"] not in images:
             raise ValueError("test executable missing from PE inventory")
     for name, dependencies in images.items():
-        if pe_imports(shared.within(root, name).read_bytes(), staged_dlls=staged_dlls) != dependencies:
+        # Only Qt entries receive qt/bin in PATH. Category/helper executables
+        # must not borrow a library merely because it exists elsewhere in payload.
+        loader_dlls = staged_dlls if name.startswith("target/windows-qt/") else frozenset()
+        if pe_imports(shared.within(root, name).read_bytes(), staged_dlls=loader_dlls) != dependencies:
             raise ValueError("PE runtime dependency inventory mismatch")
     expected = sorted({dll for deps in [*images.values(), *qt_images.values()] for dll in deps if VC_RUNTIME.match(dll)})
     if data["runtime_dlls"] != expected:

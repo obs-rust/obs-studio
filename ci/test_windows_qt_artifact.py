@@ -20,6 +20,19 @@ def dll(dependencies=("KERNEL32.dll",)):
     return bytes(data)
 
 
+def delayed_executable(name):
+    data = bytearray(executable(["KERNEL32.dll"]))
+    offset = len(data)
+    rva = 0x1000 + offset - 0x200
+    data.extend(struct.pack("<8I", 1, rva + 64, 0, 0, 0, 0, 0, 0))
+    data.extend(bytes(32) + name.encode() + b"\0")
+    struct.pack_into("<II", data, 0x40 + 24 + 112 + 13 * 8, rva, 64)
+    section = 0x40 + 24 + 240
+    struct.pack_into("<I", data, section + 8, len(data) - 0x200)
+    struct.pack_into("<I", data, section + 16, len(data) - 0x200)
+    return bytes(data)
+
+
 class WindowsQtTest(unittest.TestCase):
     def test_matches_current_windows_job_and_linux_generators(self):
         workflow = (qt.ROOT / ".github/workflows/build-project.yaml").read_text()
@@ -55,7 +68,7 @@ class WindowsQtTest(unittest.TestCase):
     def test_closure_verification_rejects_unstaged_delay_import(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "answer.exe").write_bytes(executable(["Qt6Core.dll"]))
+            (root / "answer.exe").write_bytes(delayed_executable("Qt6Core.dll"))
             with self.assertRaisesRegex(ValueError, "runtime dependency"):
                 qt.image_inventory(root)
             (root / "Qt6Core.dll").write_bytes(dll())
@@ -124,6 +137,12 @@ class WindowsQtTest(unittest.TestCase):
             self.assertEqual(len(data["tests"]), 4)
             self.assertEqual(data["tests"][0]["timeout"], 19)
             self.assertIn("{root}/target/windows-qt/contracts/resource", data["tests"][0]["args"])
+            # An unrelated Rust/helper image has no Qt loader PATH.
+            (bundle / "helper.exe").write_bytes(executable(["Qt6Core.dll"]))
+            data["images"]["helper.exe"] = ["qt6core.dll"]
+            artifact.shared.finalize(bundle, data)
+            with self.assertRaisesRegex(ValueError, "runtime dependency"):
+                artifact.verify(bundle / "manifest.json")
             (bundle / qt.RELATIVE / "qt/bin/Qt6Core.dll").write_bytes(b"corrupt")
             with self.assertRaisesRegex(ValueError, "checksum"):
                 artifact.verify(bundle / "manifest.json")

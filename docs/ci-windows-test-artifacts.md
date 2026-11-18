@@ -176,7 +176,7 @@ Windows fixture paths also replace Rust `::` with `--` for legal Windows names.
 
 The shared Qt recorder and bundle appender preserve all payload bytes and checksums.
 Windows staging includes QtCore/Gui/Widgets, cmocka, `qminimal.dll`, optional imported
-modules and their full recursive normal/delay-import closure. OS/UCRT and supported
+modules and their full recursive normal/delay-import closure. OS/UCRT (including the SDK's Windows ICU C API) and supported
 VC redist DLLs remain explicit runner prerequisites; they are not xwin artifacts.
 The verifier checks every PE/DLL, hashes, the exact image/import inventory, required
 plugin and each executable/DLL's actual staged loader search directories.
@@ -197,3 +197,7 @@ lane, immutable artifact IDs/attempt receipts, rerun and failure-artifact behavi
 eight-category/native/doctest/Qt coverage, and the 64 MiB complete compressed budget.
 Record publication, extraction, verification and execution timings over four
 comparable hosted runs before claiming a speedup. Windows Tier 2 remains separate.
+
+The pinned SDK enables `winsdkicu`: its `icuuc.dll` import is the Windows system
+ICU C API, not an omitted third-party payload. See [Microsoft's ICU documentation](https://learn.microsoft.com/en-us/windows/win32/intl/international-components-for-unicode--icu-).
+The hosted proof must verify that OS prerequisite alongside UCRT and the VC redist.
