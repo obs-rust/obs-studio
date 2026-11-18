@@ -875,18 +875,6 @@ bool obs_output_pause(obs_output_t *output, bool pause)
 	return success;
 }
 
-video_t *obs_output_video(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_video"))
-		return NULL;
-
-	if (!flag_encoded(output))
-		return output->video;
-
-	obs_encoder_t *vencoder = obs_output_get_video_encoder(output);
-	return obs_encoder_video(vencoder);
-}
-
 audio_t *obs_output_audio(const obs_output_t *output)
 {
 	if (!obs_output_valid(output, "obs_output_audio"))
