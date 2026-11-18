@@ -206,6 +206,37 @@ Compared with that historical name list, the cross registry adds only
 differences cannot be computed from a name-only log; matching names are not
 treated as native qualification. No workflow was dispatched to manufacture it.
 
+## Cargo producer qualification
+
+`ci/windows_tier2_cargo.py` prepares the native Windows validator's Rust release
+archive, Cargo-native core pair, renderers and loader/graphics probes on Linux.
+It also links the existing Application-category Windows test executable without
+running it and performs the independent bundled obs-sys check. The Linux harness
+runs the original `native_libobs::windows_tests::core_builds_from_the_canonical_manifest`
+assertions with an explicit Windows target; it executes no Windows program.
+
+This requires the real targeted clang-cl API from forge-ci/soldr PR #4169
+(Refs #4167). The first release containing that API is not assigned yet; the
+source-built binary still reports 0.9.53, so its version string is insufficient.
+The local `OBS_TIER2_SOLDR` override selects that executable without changing the
+repository's tooling pin or installing tools on hosted Windows:
+
+```sh
+OBS_TIER2_SOLDR=/absolute/path/to/source-built/soldr \
+  uv run --no-project ci/windows_tier2_cargo.py \
+  --build build_windows_tier2 \
+  --dependencies .deps/obs-deps-2026-10-25-x64 \
+  --output build_ci_audit/windows-tier2-cargo
+```
+
+The producer asks that exact executable for its target-qualified compiler,
+librarian, resource compiler and SDK. It records the executable's hash, keeps
+full per-step logs and status receipts, and stops on a failure or timeout. Only
+a complete successful preparation writes `cargo-receipt.json`. A completed
+output cannot be reused and mistaken for a new proof. This preparation alone
+does not change schema-2 packet completeness or authorize hosted execution;
+transport, relocation, native parity and hosted assertions remain separate gates.
+
 ## Consumer contract
 
 `ci/windows_tier2_run.py` downloads nothing itself. The optional job in the
