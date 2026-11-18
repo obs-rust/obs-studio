@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_service_handler_getters_rust": {
+      "sources": [
+        "test/cmocka/test_service_handler_getters.c",
+        "test/cmocka/service-handler-getters-link-support.c",
+        "libobs/util/base-variadic.c.h"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs",
+        "deps/libcaption",
+        "rust/obs-c-oracle/vendor/uthash"
+      ],
+      "definitions": [
+        "OBS_SERVICE_HANDLER_GETTERS_RUST"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-handler-getters.c.h",
+        "libobs/obs-service-handler-getters-fields.c.h"
+      ],
+      "conditional_link_options": [
+        {
+          "name": "-Wl,--gc-sections",
+          "requires": {
+            "all": [
+              "UNIX",
+              {
+                "not": "OS_MACOS"
+              }
+            ]
+          }
+        },
+        {
+          "name": "-Wl,-dead_strip",
+          "requires": "OS_MACOS"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_service_handler_getters_rust": {
+      "target": "test_service_handler_getters_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}
