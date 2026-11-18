@@ -1418,48 +1418,12 @@ void gs_vertexbuffer_flush_direct(gs_vertbuffer_t *vertbuffer, const struct gs_v
 	thread_graphics->exports.gs_vertexbuffer_flush_direct(vertbuffer, data);
 }
 
-void gs_indexbuffer_destroy(gs_indexbuffer_t *indexbuffer)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_indexbuffer_destroy"))
-		return;
-	if (!indexbuffer)
-		return;
-
-	graphics->exports.gs_indexbuffer_destroy(indexbuffer);
-}
-
-void gs_indexbuffer_flush(gs_indexbuffer_t *indexbuffer)
-{
-	if (!gs_valid_p("gs_indexbuffer_flush", indexbuffer))
-		return;
-
-	thread_graphics->exports.gs_indexbuffer_flush(indexbuffer);
-}
-
-void gs_indexbuffer_flush_direct(gs_indexbuffer_t *indexbuffer, const void *data)
-{
-	if (!gs_valid_p2("gs_indexbuffer_flush_direct", indexbuffer, data))
-		return;
-
-	thread_graphics->exports.gs_indexbuffer_flush_direct(indexbuffer, data);
-}
-
 void *gs_indexbuffer_get_data(const gs_indexbuffer_t *indexbuffer)
 {
 	if (!gs_valid_p("gs_indexbuffer_get_data", indexbuffer))
 		return NULL;
 
 	return thread_graphics->exports.gs_indexbuffer_get_data(indexbuffer);
-}
-
-size_t gs_indexbuffer_get_num_indices(const gs_indexbuffer_t *indexbuffer)
-{
-	if (!gs_valid_p("gs_indexbuffer_get_num_indices", indexbuffer))
-		return 0;
-
-	return thread_graphics->exports.gs_indexbuffer_get_num_indices(indexbuffer);
 }
 
 enum gs_index_type gs_indexbuffer_get_type(const gs_indexbuffer_t *indexbuffer)
