@@ -21,6 +21,13 @@ and one Rust-static test (`test_async_conversion_plan_rust`) consume their
 complete existing records from `test/cmocka/build/test-graph.json`.
 Cargo checks source freshness every build. No C tests or public headers change.
 
+The current installed toolchain does **not** complete this build: the C reference
+links with unresolved `__udivti3` and SSE intrinsics such as `_mm_loadu_ps`,
+`_mm_shuffle_ps` and `_mm_mul_ps`. Its C/PCH/unity and resource compiles complete.
+These compiler support gaps belong in soldr-toolchain. No new in-repository
+intrinsic shim, Rust-linked C reference, sanitizer disablement or native compiler
+fallback is added. This is a diagnostic prototype, not a completed first slice.
+
 Soldr currently exposes the target's GNU-style clang driver. Registry requirement
 facts select the Windows MSVC ABI in a local function, following obs-build's
 target facts. This does not turn the compiler into clang-cl: the actual frontend

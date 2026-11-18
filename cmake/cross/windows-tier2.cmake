@@ -25,7 +25,7 @@ target_link_libraries(
     bcrypt
     userenv
 )
-target_link_directories(libobs-cross-reference PRIVATE "${OBS_CROSS_DEPS}/lib")
+target_link_directories(libobs-cross-reference PRIVATE "${OBS_CROSS_DEPS}/lib" "${CMAKE_BINARY_DIR}/cross-case-libs")
 foreach(_variant IN ITEMS shared reference)
   set_target_properties(
     libobs-cross-${_variant}
