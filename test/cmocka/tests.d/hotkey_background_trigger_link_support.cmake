@@ -4,6 +4,7 @@ function(_hotkey_background_trigger_link_support)
     foreach(
       _target
       test_hotkey_background_enum
+      test_hotkey_background_press
       test_hotkey_background_trigger
       test_hotkey_binding_press_steps
       test_hotkey_getters_characterization

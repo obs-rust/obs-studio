@@ -37,6 +37,7 @@ fn canonical_hotkey_background_trigger_swap_is_registered() {
         consumers,
         [
             "test_hotkey_background_enum",
+            "test_hotkey_background_press",
             "test_hotkey_background_trigger",
             "test_hotkey_binding_press_steps",
             "test_hotkey_getters_characterization",

@@ -501,28 +501,6 @@ void obs_hotkey_inject_event(obs_key_combination_t hotkey, bool pressed)
 	unlock();
 }
 
-void obs_hotkey_enable_background_press(bool enable)
-{
-	if (!lock())
-		return;
-
-	bool changed = obs->hotkeys.thread_disable_press == enable;
-	obs->hotkeys.thread_disable_press = !enable;
-	unlock();
-
-	if (!changed)
-		return;
-
-	/* Platforms that have the desktop hold the keys for OBS (the
-	 * GlobalShortcuts portal on Wayland) give them back while presses
-	 * are disabled. */
-	calldata_t data;
-	uint8_t stack[128];
-	calldata_init_fixed(&data, stack, sizeof(stack));
-	calldata_set_bool(&data, "enabled", enable);
-	signal_handler_signal(obs->hotkeys.signals, "hotkey_background_press_changed", &data);
-}
-
 void obs_hotkeys_background_clear_shortcuts(struct obs_hotkeys_background *background)
 {
 	for (size_t i = 0; i < background->shortcuts.num; i++)
