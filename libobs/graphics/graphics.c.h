@@ -1055,46 +1055,6 @@ enum gs_texture_type gs_get_texture_type(const gs_texture_t *texture)
 	return graphics->exports.device_get_texture_type(texture);
 }
 
-void gs_load_vertexbuffer(gs_vertbuffer_t *vertbuffer)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_load_vertexbuffer"))
-		return;
-
-	graphics->exports.device_load_vertexbuffer(graphics->device, vertbuffer);
-}
-
-void gs_load_indexbuffer(gs_indexbuffer_t *indexbuffer)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_load_indexbuffer"))
-		return;
-
-	graphics->exports.device_load_indexbuffer(graphics->device, indexbuffer);
-}
-
-void gs_load_texture(gs_texture_t *tex, int unit)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_load_texture"))
-		return;
-
-	graphics->exports.device_load_texture(graphics->device, tex, unit);
-}
-
-void gs_load_samplerstate(gs_samplerstate_t *samplerstate, int unit)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_load_samplerstate"))
-		return;
-
-	graphics->exports.device_load_samplerstate(graphics->device, samplerstate, unit);
-}
-
 void gs_load_vertexshader(gs_shader_t *vertshader)
 {
 	graphics_t *graphics = thread_graphics;
@@ -1113,16 +1073,6 @@ void gs_load_pixelshader(gs_shader_t *pixelshader)
 		return;
 
 	graphics->exports.device_load_pixelshader(graphics->device, pixelshader);
-}
-
-void gs_load_default_samplerstate(bool b_3d, int unit)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_load_default_samplerstate"))
-		return;
-
-	graphics->exports.device_load_default_samplerstate(graphics->device, b_3d, unit);
 }
 
 gs_shader_t *gs_get_vertex_shader(void)
