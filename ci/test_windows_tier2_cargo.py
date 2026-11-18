@@ -2,13 +2,28 @@
 """The Cargo producer must select the real soldr MSVC frontend explicitly."""
 
 import importlib
+import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
 
 
 class CargoProducerTests(unittest.TestCase):
+    def test_failed_preparation_records_status_and_stops(self):
+        producer = importlib.import_module("windows_tier2_cargo")
+        cmake = shutil.which("cmake")
+        if not cmake:
+            self.skipTest("CMake is unavailable")
+        with tempfile.TemporaryDirectory(prefix="cargo proof ") as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(RuntimeError, "probe failed"):
+                producer.run([cmake, "-E", "false"], root, root, {}, "probe")
+            receipt = json.loads((root / "probe.json").read_text())
+            self.assertNotEqual(0, receipt["exit_code"])
+            self.assertTrue((root / "probe.log").is_file())
+
     def test_selected_soldr_provisions_target_qualified_cl_tools(self):
         producer = importlib.import_module("windows_tier2_cargo")
         with tempfile.TemporaryDirectory() as directory:

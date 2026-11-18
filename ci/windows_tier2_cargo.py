@@ -169,17 +169,11 @@ def produce(source: Path, build: Path, output: Path, dependencies: Path) -> dict
             "OBS_BUILD_WINDOWS_RUST_ARCHIVE": str(archive),
             "OBS_BUILD_WINDOWS_PCH": "1",
             "OBS_BUILD_WINDOWS_REFERENCE": str(build / "cores/reference/obs.dll"),
-            "OBS_BUILD_WINDOWS_EXPORT_TOOL": str(
-                tools["tools"]["ar"]
-                and Path(tools["tools"]["ar"]).with_name("llvm-readobj")
-            ),
+            "OBS_BUILD_WINDOWS_EXPORT_TOOL": shutil.which("llvm-readobj")
+            or str(Path(tools["tools"]["ar"]).with_name("llvm-readobj")),
             "OBS_BUILD_WINDOWS_GRAPHICS": "1",
-            "OBS_BUILD_WINDOWS_D3D11_REFERENCE": str(
-                build / "libobs-d3d11/libobs-d3d11.dll"
-            ),
-            "OBS_BUILD_WINDOWS_OPENGL_REFERENCE": str(
-                build / "libobs-opengl/libobs-opengl.dll"
-            ),
+            "OBS_BUILD_WINDOWS_D3D11_REFERENCE": str(build / "libobs-d3d11.dll"),
+            "OBS_BUILD_WINDOWS_OPENGL_REFERENCE": str(build / "libobs-opengl.dll"),
         }
     )
     # The existing assertion test runs on Linux and requests the explicit target
