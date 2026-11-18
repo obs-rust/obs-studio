@@ -20,6 +20,7 @@ def executable(dlls=("KERNEL32.dll", "VCRUNTIME140.dll")):
     struct.pack_into("<H", data, 0x40 + 22, 0x22)  # executable, large-address-aware
     struct.pack_into("<I", data, 0x40 + 24 + 16, 0x1000)  # entry point
     struct.pack_into("<H", data, 0x40 + 24 + 68, 3)  # console subsystem
+    struct.pack_into("<I", data, 0x40 + 24 + 240 + 36, 0x60000020)  # executable code section
     return bytes(data)
 
 
@@ -31,7 +32,11 @@ class WindowsArtifactTest(unittest.TestCase):
         struct.pack_into("<H", arm, 0x44, 0xAA64)
         dll = bytearray(good)
         struct.pack_into("<H", dll, 0x56, 0x2022)
-        for bad in (bytes(arm), bytes(dll), b"not PE", good[:100]):
+        truncated_body = bytearray(good)
+        struct.pack_into("<I", truncated_body, 0x40 + 24 + 240 + 16, 1_000_000)
+        no_code = bytearray(good)
+        struct.pack_into("<I", no_code, 0x40 + 24 + 240 + 36, 0x40000040)
+        for bad in (bytes(arm), bytes(dll), b"not PE", good[:100], bytes(truncated_body), bytes(no_code)):
             with self.subTest(size=len(bad)), self.assertRaises(ValueError):
                 artifact.pe_imports(bad)
 

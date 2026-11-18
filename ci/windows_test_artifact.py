@@ -60,6 +60,17 @@ def pe_imports(data: bytes) -> list[str]:
                 or not flags & 2 or flags & 0x2000 or not entry or subsystem != 3
                 or size < 240 or not sections or pe + 24 + size + sections * 40 > len(data)):
             raise ValueError("not an x86_64 PE32+ console executable")
+        executable_entry = False
+        for index in range(sections):
+            section = pe + 24 + size + index * 40
+            virtual, raw_size, raw = struct.unpack_from("<III", data, section + 12)
+            characteristics = struct.unpack_from("<I", data, section + 36)[0]
+            if raw_size and (raw < pe + 24 + size + sections * 40 or raw + raw_size > len(data)):
+                raise ValueError("truncated PE section body")
+            if characteristics & 0x20000000 and virtual <= entry < virtual + raw_size:
+                executable_entry = True
+        if not executable_entry:
+            raise ValueError("PE entry point has no executable section")
         dependencies = sorted(set(imports(data)))
         if not dependencies:
             raise ValueError("missing Windows runtime imports")
