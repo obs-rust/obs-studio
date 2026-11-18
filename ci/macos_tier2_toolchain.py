@@ -12,8 +12,9 @@ import json
 import os
 import shlex
 import subprocess
-import sys
 from pathlib import Path
+
+import host_platform
 
 TARGET = "aarch64-apple-darwin"
 RUNTIMES = (
@@ -43,7 +44,7 @@ def validate(receipt: dict) -> None:
 
 def provision(output: Path, environ: dict | None = None) -> dict:
     selected = os.environ if environ is None else environ
-    if sys.platform != "linux":
+    if not host_platform.is_linux():
         raise ValueError("Tier 2 compilation is Linux-only")
     command = [selected.get("OBS_TIER2_SOLDR", "soldr"), "toolchain", "darwin",
                "--target", TARGET, "--sdk-version", "26.5", "--json"]
