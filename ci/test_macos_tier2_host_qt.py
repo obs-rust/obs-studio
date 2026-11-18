@@ -20,21 +20,21 @@ class HostQtTest(unittest.TestCase):
                 (host / name).write_bytes(b"\x7fELF")
             (root / "CMakeLists.txt").write_text(
                 "cmake_minimum_required(VERSION 3.28)\nproject(host_tools NONE)\n"
-                + f'include("{ROOT}/cmake/cross/tier2-host-qt.cmake")\n'
+                + f'include("{ROOT.as_posix()}/cmake/cross/tier2-host-qt.cmake")\n'
                 + "".join(
                     f'add_executable(Qt6::{name} IMPORTED)\n'
                     f'set_target_properties(Qt6::{name} PROPERTIES IMPORTED_CONFIGURATIONS "RELEASE;RELWITHDEBINFO" '
                     f'IMPORTED_LOCATION_RELEASE "/Darwin/{name}" IMPORTED_LOCATION_RELWITHDEBINFO "/Darwin/{name}")\n'
                     for name in names
                 )
-                + f'obs_tier2_bind_host_qt("{host.parent}")\n'
+                + f'obs_tier2_bind_host_qt("{host.parent.as_posix()}")\n'
                 + 'file(GENERATE OUTPUT "tools.txt" CONTENT "'
                 + "\\n".join(f"$<TARGET_FILE:Qt6::{name}>" for name in names) + '")\n'
             )
             result = subprocess.run(["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja",
                                      "-DCMAKE_BUILD_TYPE=RelWithDebInfo"], capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual((root / "build/tools.txt").read_text().splitlines(), [str(host / name) for name in names])
+            self.assertEqual((root / "build/tools.txt").read_text().splitlines(), [(host / name).as_posix() for name in names])
 
 
 if __name__ == "__main__":

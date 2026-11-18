@@ -36,7 +36,7 @@ class DarwinToolchainTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             receipt = self.receipt(root)
-            with patch.object(toolchain.subprocess, "run") as run:
+            with patch.object(toolchain.host_platform, "is_linux", return_value=True), patch.object(toolchain.subprocess, "run") as run:
                 run.return_value.stdout = json.dumps(receipt)
                 actual = toolchain.provision(root / "out", {"OBS_TIER2_SOLDR": "/proof/soldr"})
             self.assertEqual(run.call_args.args[0], ["/proof/soldr", "toolchain", "darwin",
