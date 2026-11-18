@@ -9,6 +9,19 @@ from unittest.mock import patch
 
 
 class CargoProducerTests(unittest.TestCase):
+    def test_missing_products_never_clear_the_cargo_pending_marker(self):
+        pack = importlib.import_module("windows_tier2_cargo_pack")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / "bundle"
+            bundle.mkdir()
+            manifest = bundle / "manifest.json"
+            original = '{"pending": ["cargo parts pending"], "complete": false}'
+            manifest.write_text(original)
+            with self.assertRaisesRegex(ValueError, "Cargo preparation receipt"):
+                pack.attach(bundle, root / "absent", root, root)
+            self.assertEqual(original, manifest.read_text())
+
     def test_selected_soldr_provisions_target_qualified_cl_tools(self):
         producer = importlib.import_module("windows_tier2_cargo")
         with tempfile.TemporaryDirectory() as directory:
