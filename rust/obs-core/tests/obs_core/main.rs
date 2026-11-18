@@ -131,6 +131,7 @@ mod private_data_parity;
 mod raw_audio_remove;
 mod raw_audio_remove_parity;
 mod set_locale;
+mod set_locale_parity;
 mod set_output_source;
 mod set_output_source_parity;
 mod shutdown_detach;

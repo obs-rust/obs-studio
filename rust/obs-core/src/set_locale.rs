@@ -18,6 +18,17 @@ pub trait Host {
 
 /// Free before copying, store before notifying, and read each next link after
 /// its callback. Notifications receive the original argument, including NULL.
-pub fn set_locale<H: Host>(_host: &mut H, _locale: H::Locale) {
-    todo!("Refs #5042: locale swap")
+pub fn set_locale<H: Host>(host: &mut H, locale: H::Locale) {
+    if let Some(old) = host.owned_locale() {
+        host.free_locale(old);
+    }
+    let owned = host.copy_locale(locale);
+    host.store_locale(owned);
+    let mut current = host.first_module();
+    while let Some(module) = current {
+        if let Some(callback) = host.callback(module) {
+            host.notify(callback, locale);
+        }
+        current = host.next_module(module);
+    }
 }

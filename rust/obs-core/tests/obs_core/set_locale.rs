@@ -87,29 +87,60 @@ fn test_set_locale_replacement_owns_one_copy() {
     drop(core);
     initial[0] = b'x';
     assert_eq!(owned.as_deref(), Some(b"en-US".as_slice()));
-    let mut core = Core { owned, ..Core::default() };
+    let mut core = Core {
+        owned,
+        ..Core::default()
+    };
     set_locale::set_locale(&mut core, Some(&replacement));
     assert_copy(&core, &replacement);
     assert_eq!(&core.events, &["free", "copy", "store"]);
     let owned = core.owned.take();
     drop(core);
     replacement[0] = b'x';
-    assert_eq!(owned.as_deref(), Some(b"a-much-longer-replacement-locale".as_slice()));
-    let mut core = Core { owned, ..Core::default() };
+    assert_eq!(
+        owned.as_deref(),
+        Some(b"a-much-longer-replacement-locale".as_slice())
+    );
+    let mut core = Core {
+        owned,
+        ..Core::default()
+    };
     set_locale::set_locale(&mut core, Some(empty));
     assert_copy(&core, empty);
     set_locale::set_locale(&mut core, None);
     assert!(core.owned.is_none());
     set_locale::set_locale(&mut core, None);
     assert!(core.owned.is_none());
-    assert_eq!(&core.events, &["free", "copy", "store", "free", "copy", "store", "copy", "store"]);
+    assert_eq!(
+        &core.events,
+        &[
+            "free", "copy", "store", "free", "copy", "store", "copy", "store"
+        ]
+    );
 }
 #[test]
 fn test_set_locale_ordered_callbacks_skip_missing() {
     let locale = b"fr-FR";
-    let mut core = Core { first: Some(5), disabled: Some(6), expected: Some(locale), ..Core::default() };
-    for (module, next, callback) in [(5, Some(2), None), (2, Some(3), Some(3)), (3, Some(0), None), (0, Some(1), Some(1)), (1, Some(4), Some(2)), (6, None, Some(99))] {
-        core.modules[module] = Module { next, callback, loaded: false, disabled: module == 0 };
+    let mut core = Core {
+        first: Some(5),
+        disabled: Some(6),
+        expected: Some(locale),
+        ..Core::default()
+    };
+    for (module, next, callback) in [
+        (5, Some(2), None),
+        (2, Some(3), Some(3)),
+        (3, Some(0), None),
+        (0, Some(1), Some(1)),
+        (1, Some(4), Some(2)),
+        (6, None, Some(99)),
+    ] {
+        core.modules[module] = Module {
+            next,
+            callback,
+            loaded: false,
+            disabled: module == 0,
+        };
     }
     let before = core.modules.clone();
     for i in 0..2 {
@@ -128,7 +159,10 @@ fn test_set_locale_ordered_callbacks_skip_missing() {
 }
 #[test]
 fn test_set_locale_all_callbacks_missing() {
-    let mut core = Core { first: Some(0), ..Core::default() };
+    let mut core = Core {
+        first: Some(0),
+        ..Core::default()
+    };
     core.modules[0].next = Some(1);
     core.modules[1].next = Some(2);
     set_locale::set_locale(&mut core, Some(b"de-DE"));
