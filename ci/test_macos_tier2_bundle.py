@@ -61,6 +61,12 @@ class PacketTest(unittest.TestCase):
         self.assertEqual(result[3], command[3])
         self.assertEqual(result[7], command[7])
         self.assertEqual(packet.command_tokens(["/unknown/cmake"], {"cmake": command[0]}), ["/unknown/cmake"])
+        with tempfile.TemporaryDirectory() as temporary:
+            real = Path(temporary) / "actual-cmake"
+            real.touch()
+            alias = Path(temporary) / "cmake"
+            alias.symlink_to(real)
+            self.assertEqual(packet.command_tokens([str(real)], {"cmake": str(alias)}), [result[0]])
 
     def test_actual_ctest_roundtrip_keeps_empty_arguments_names_and_properties(self):
         packet = importlib.import_module("macos_tier2_packet")
@@ -87,6 +93,17 @@ class PacketTest(unittest.TestCase):
         for command in ("setup-soldr@", "brew install", "cmake --build", "soldr cargo"):
             self.assertNotIn(command, proof)
         self.assertIn("bash rust/tools/tier2-validate/validate.sh", workflow["rust-tier2-macos"])
+
+    def test_proof_dispatch_skips_ordinary_root_and_cross_jobs(self):
+        import re
+        from test_flatpak_measurement_scope import selected
+        from test_macos_run_only import jobs
+
+        workflow = jobs()
+        for name in ("check-event", "ci-mode", "rust-cross-lint"):
+            expression = re.search(r"^    if: (.+)$", workflow[name], re.M)[1]
+            self.assertTrue(selected(expression, False, True))
+            self.assertFalse(selected(expression, False, True, input_values={"macos-tier2-proof-artifact-id": "123"}))
 
     def test_non_common_producer_cannot_certify_existing_absolute_binaries(self):
         packet = importlib.import_module("macos_tier2_packet")

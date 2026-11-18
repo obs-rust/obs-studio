@@ -144,7 +144,7 @@ env:
 jobs:
   check-event:
     # A direct proof dispatch runs only the optional artifact consumer.
-    if: inputs.macos-tier2-proof-artifact-id == ''
+    if: ${{ !inputs.macos-tier2-proof-artifact-id }}
     timeout-minutes: 10
     name: Event Data 🔎
     runs-on: ubuntu-26.04
@@ -1674,7 +1674,7 @@ jobs:
 
   # zackees/ci.yml GATE-008/010: single immutable-base verifier. Unknown/old output contracts run real CI.
   ci-mode:
-    if: inputs.macos-tier2-proof-artifact-id == ''
+    if: ${{ !inputs.macos-tier2-proof-artifact-id }}
     name: CI Mode 🛂
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -2126,7 +2126,7 @@ jobs:
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # Independent of Fast Gate: no outputs/artifacts consumed (Refs #4990).
     needs: [check-event, ci-mode]
-    if: ${{ inputs.macos-tier2-proof-artifact-id == '' && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
+    if: ${{ !inputs.macos-tier2-proof-artifact-id && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
     defaults:
       run:
         shell: bash
@@ -3378,6 +3378,7 @@ jobs:
         with:
           python-version: '3.14'
           enable-cache: false
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Prepare common runtime parent (no compiler)
         run: sudo install -d -o "$(id -u)" -g "$(id -g)" /opt/obs-tier2-run-only
       - name: Verify immutable Linux packet and run all four suites (no compiler)

@@ -138,14 +138,15 @@ def normalized_tests(snapshot_: dict) -> list[dict]:
 def command_tokens(command: list[str], tools: dict[str, str]) -> list[str]:
     """Only executable slots have host-specific tool identities (#5019)."""
     result = command.copy()
-    identities = {program: f"@OBS_TIER2_TOOL_{name.upper()}@" for name, program in tools.items()}
+    identities = {alias: f"@OBS_TIER2_TOOL_{name.upper()}@" for name, program in tools.items()
+                  for alias in (program, str(Path(program).resolve()))}
     index = 0
     while index < len(command):
         program = command[index]
         if program not in identities:
             break
         result[index] = identities[program]
-        if program != tools.get("cmake") or command[index + 1:index + 3] != ["-E", "env"]:
+        if identities[program] != "@OBS_TIER2_TOOL_CMAKE@" or command[index + 1:index + 3] != ["-E", "env"]:
             break
         index += 3
         while index < len(command) and ("=" in command[index] or command[index] == "--"):
