@@ -114,18 +114,6 @@ obs_canvas_t *obs_create_main_canvas(void)
 	return obs_canvas_create_internal(MAIN_CANVAS_NAME, MAIN_CANVAS_UUID, NULL, main_flags, false);
 }
 
-obs_canvas_t *obs_canvas_create(const char *name, struct obs_video_info *ovi, uint32_t flags)
-{
-	flags = obs_canvas_rules_public_flags(flags); /* Prevent user from creating a MAIN or removed canvas. */
-	return obs_canvas_create_internal(name, NULL, ovi, flags, false);
-}
-
-obs_canvas_t *obs_canvas_create_private(const char *name, struct obs_video_info *ovi, uint32_t flags)
-{
-	flags = obs_canvas_rules_public_flags(flags); /* Prevent user from creating a MAIN or removed canvas. */
-	return obs_canvas_create_internal(name, NULL, ovi, flags, true);
-}
-
 void obs_canvas_destroy(obs_canvas_t *canvas)
 {
 	canvas_dosignal(canvas, "canvas_destroy", "destroy");
@@ -320,14 +308,6 @@ void obs_canvas_rename_source(obs_source_t *source, const char *name)
 }
 
 /*** Public Canvas Object API ***/
-
-bool obs_canvas_reset_video(obs_canvas_t *canvas, struct obs_video_info *ovi)
-{
-	if (!ovi || !obs_canvas_rules_resets(canvas->flags) || obs_video_active())
-		return false;
-
-	return obs_canvas_reset_video_internal(canvas, ovi);
-}
 
 void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t *source)
 {
