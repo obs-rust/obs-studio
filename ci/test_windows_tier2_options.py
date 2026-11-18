@@ -95,6 +95,38 @@ class DriverOptionsTests(unittest.TestCase):
             subprocess.run(["cmake", "--build", str(root / "build")], check=True, capture_output=True)
             self.assertEqual("plugin data", (root / "build/run/core/fixture/data/fixture.txt").read_text())
 
+    def test_locale_fixture_survives_native_sibling_directory_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "core").mkdir()
+            (root / "tests").mkdir()
+            (root / "core/core.c").write_text("int fixture;\n")
+            (root / "core/CMakeLists.txt").write_text(
+                'set(LIBOBS_SHARED_TARGETS libobs libobs-c-reference)\n'
+                'add_library(libobs SHARED core.c)\nadd_library(libobs-c-reference SHARED core.c)\n'
+            )
+            (root / "tests/test_set_locale.c").write_text("int main(void) { return 0; }\n")
+            (root / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 3.30)\nproject(scope C)\n'
+                'add_library(OBS::caption INTERFACE IMPORTED GLOBAL)\n'
+                'add_library(Uthash::Uthash INTERFACE IMPORTED GLOBAL)\n'
+                'add_custom_target(cmocka-tests)\nadd_subdirectory(core)\nadd_subdirectory(tests)\n'
+            )
+            (root / "tests/CMakeLists.txt").write_text(
+                f'include("{ROOT}/test/cmocka/tests.d/test_set_locale.cmake")\n'
+                'file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/sources.txt" '
+                'CONTENT "$<TARGET_PROPERTY:libobs,SOURCES>\n$<TARGET_PROPERTY:libobs-c-reference,SOURCES>")\n'
+            )
+            result = subprocess.run(
+                ["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja"],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            sources = (root / "build/sources.txt").read_text().splitlines()
+            self.assertEqual(2, len(sources))
+            for source in sources:
+                self.assertIn("core_set_locale_fixture.c", source)
+
     def test_gnu_frontend_receives_equivalent_options(self):
         command, link = self.commands("GNU")
         for option in ("-Os", "-ffp-model=strict", "-std=c11", "-fcommon", "-Dprobe=1"):
