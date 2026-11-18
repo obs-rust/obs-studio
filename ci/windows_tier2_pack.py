@@ -284,7 +284,11 @@ def stage(
     for path in products:
         probe.contained(build, path)
     dynamic = plugin_images(inventory["tests"], source, output)
-    paths = probe.closure([*products, *dynamic], [build, *roots], hosted_runtime=True)
+    paths = probe.closure(
+        [*products, *dynamic],
+        [build, *(path.resolve() for path in roots)],
+        hosted_runtime=True,
+    )
     for path in paths:
         name = destination_name(path, build, source)
         copy_path(path, output / name)
