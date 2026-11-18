@@ -48,7 +48,7 @@
 #include "libobs/obs-source-audio-active-fields.c.h"
 #include "libobs/obs-source-audio-active-setter-fields.c.h"
 #include "libobs/obs-source-audio-input-path-seam.c.h"
-#include "libobs/obs-source-audio-mixers-getter.c.h"
+#include "libobs/obs-source-audio-mixers-fields.c.h"
 #include "libobs/obs-source-audio-output-seam.c.h"
 #include "libobs/obs-source-audio-pause-callbacks.c.h"
 #include "libobs/obs-source-audio-settings-seam.c.h"

@@ -191,6 +191,7 @@ pub mod audio_active;
 pub mod audio_active_setter;
 pub mod audio_input;
 pub mod audio_input_path;
+pub mod audio_mixers_getter;
 pub mod audio_output;
 pub mod audio_place;
 pub mod audio_render_plan;
