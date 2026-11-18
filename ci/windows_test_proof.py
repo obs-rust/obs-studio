@@ -148,6 +148,9 @@ def native_receipts(data: dict, bundle: Path) -> None:
             for entry in event["files"]:
                 relative_path(entry["file"])
                 native_destination(entry["destination"], logical, roots)
+                blob = data["files"].get("native-fixtures/" + entry["file"])
+                if blob is None or entry.get("sha256") != blob:
+                    raise ValueError("native snapshot digest does not match verified blob")
     if events != 154:
         raise ValueError("native history requires all 154 original events")
 
