@@ -30,12 +30,12 @@ BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 # shims from obs-hotkey, so a stand-in here is a duplicate definition (#3112).
 # Binding getters are absent too: #3851 exports their real Rust shims.
 # Identity getters are absent: #3924 exports their real Rust shims.
+# The encoder packet copy and release are absent: #4650 exports them from
+# obs-encoder, which the bench links through obs-data.
 SYMBOLS = (
     "obs_encoder_get_name",
     "obs_encoder_group_num_started",
     "obs_encoder_interleave_info",
-    "obs_encoder_packet_create_instance",
-    "obs_encoder_packet_release",
     "obs_hotkey_binding_fields",
     "obs_hotkey_identity_fields",
     "obs_hotkey_key_is_pressed",

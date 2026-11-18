@@ -12,8 +12,9 @@
  * obs_encoder_packet_create_instance() and _release(), obs_output_get_name()
  * and obs_encoder_get_name(). The cargo test that links this file defines
  * them, recording each call, and the Rust shim calls the same ones, so both
- * sides are seen through the same stubs. pthread, blog and the darray come
- * from the real headers and libraries. */
+ * sides are seen through the same stubs; the packet copy and release are
+ * obs-encoder's real exports. pthread, blog and the darray come from the
+ * real headers and libraries. */
 /* As libobs is built for release (RelWithDebInfo defines NDEBUG): the
  * file's asserts and those of the darray.h inlines it calls are off. One of
  * them is reachable: discard_to_idx() pops the packet time of each video

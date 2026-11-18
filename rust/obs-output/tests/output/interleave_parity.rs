@@ -10,8 +10,8 @@
 //! `obs_encoder_group_num_started`, the `obs-output.c` wrappers (`active`,
 //! the two first-encoder-index helpers, `add_caption`), the output's
 //! `encoded_packet`, its packet callbacks and the two name getters. The
-//! packet copy and release are the delay parity's (one definition per test
-//! binary), which track every held copy. Each stand-in records its call,
+//! packet copy and release are the real ones obs-encoder exports, counted
+//! as the delay parity counts them. Each stand-in records its call,
 //! with whether `interleaved_mutex`, `pkt_callbacks_mutex` and the caption
 //! mutex were held, into the output it was given. `add_caption` and the
 //! packet callbacks change the packet (and the callbacks the packet time),

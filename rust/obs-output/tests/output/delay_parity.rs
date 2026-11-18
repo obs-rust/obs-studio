@@ -6,9 +6,12 @@
 //!
 //! Both sides run on a test output ([`Fixture`]) through the same stand-ins
 //! defined here: the accessors `obs_output_delay_fields` and
-//! `obs_output_delay_signal`, the `obs-output.c` calls, the packet copy and
-//! release, and the delay callback. Each records its call, with whether
-//! `delay_mutex` was held, into the output it was given. The C reads its
+//! `obs_output_delay_signal`, the `obs-output.c` calls and the delay
+//! callback. Each records its call, with whether `delay_mutex` was held,
+//! into the output it was given. The packet copy and release are the real
+//! ones obs-encoder exports; the test counts their blocks with
+//! `bnum_allocs()` and tells a copy from the caller's buffer by address
+//! ([`live`], [`is_copy`]). The C reads its
 //! clock from `oracle_output_delay_clock_ns`, which the test sets; the shim
 //! gets the same time through its `*_at` functions.
 //!
@@ -51,7 +54,7 @@ use obs_output::ffi::output_delay::{
 };
 use obs_output::{OBS_OUTPUT_DELAY_PRESERVE, OBS_OUTPUT_ENCODED};
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
-use obs_util::ffi::bmem::{bfree, bmalloc, bnum_allocs};
+use obs_util::ffi::bmem::bnum_allocs;
 use obs_util::ffi::deque::{deque, deque_data, deque_free, deque_init};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, TestRunner};
@@ -615,52 +618,15 @@ pub unsafe extern "C" fn obs_output_actual_stop(output: *mut c_void, force: bool
     o.events.push(Event::ActualStop { locked, force, ts });
 }
 
-/// The reference-counted copy of `obs-encoder.c` (hidden in libobs).
-///
-/// # Safety
-///
-/// `dst` is writable, `src` a valid packet of `size` bytes.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_encoder_packet_create_instance(
-    dst: *mut encoder_packet,
-    src: *const encoder_packet,
-) {
-    // SAFETY: caller contract; the block holds the count and the data.
-    unsafe {
-        *dst = *src;
-        let size = (*src).size;
-        let refs = bmalloc(size + size_of::<c_long>()).cast::<c_long>();
-        refs.write(1);
-        let data = refs.add(1).cast::<u8>();
-        if size > 0 {
-            ptr::copy_nonoverlapping((*src).data, data, size);
-        }
-        (*dst).data = data;
-    }
-}
-
-/// `obs_encoder_packet_release` of `obs-encoder.c`.
-///
-/// # Safety
-///
-/// `pkt` is null or a packet whose data is null or a held copy.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_encoder_packet_release(pkt: *mut encoder_packet) {
-    if pkt.is_null() {
-        return;
-    }
-    // SAFETY: caller contract.
-    unsafe {
-        let data = (*pkt).data;
-        if !data.is_null() {
-            let refs = data.cast::<c_long>().sub(1);
-            *refs -= 1;
-            if *refs == 0 {
-                bfree(refs.cast());
-            }
-        }
-        *pkt = encoder_packet::default();
-    }
+// The packet ownership both sides call: obs-encoder's exports
+// (`obs-encoder-packet-ownership.c.h`), the C oracle's calls included.
+unsafe extern "C" {
+    /// The reference-counted copy, hidden in libobs.
+    pub(super) fn obs_encoder_packet_create_instance(
+        dst: *mut encoder_packet,
+        src: *const encoder_packet,
+    );
+    pub(super) fn obs_encoder_packet_release(pkt: *mut encoder_packet);
 }
 
 /// The delay callback: `delayed_packet()` of the C test. It owns the
