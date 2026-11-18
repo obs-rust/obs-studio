@@ -242,6 +242,10 @@ function(_obs_cross_tier2_tests)
     "set(PACKAGE_VERSION 1.1.7)\nset(PACKAGE_VERSION_COMPATIBLE TRUE)\n"
   )
   set(CMocka_DIR "${CMAKE_BINARY_DIR}/cmocka-config")
+  # Preserve each fixture's real linked-library paths (for example the nested
+  # config-close fault shim). The common build-root contract retains these
+  # paths on the run host; forcing the generic install rpath drops them.
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
   enable_testing()
   add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
 endfunction()
