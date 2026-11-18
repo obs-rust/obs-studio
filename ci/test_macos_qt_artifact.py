@@ -15,6 +15,27 @@ import test_macos_test_artifact as artifact_tests
 
 
 class QtArtifactTest(unittest.TestCase):
+    def test_producer_pins_ninja_for_colon_bearing_contract_paths(self):
+        import local_gate
+
+        for inherited in (None, "Unix Makefiles"):
+            with self.subTest(inherited=inherited), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                environment = {} if inherited is None else {"CMAKE_GENERATOR": inherited}
+                with mock.patch.object(local_gate, "soldr_env", return_value=environment), \
+                        mock.patch.object(qt, "fetch"), mock.patch.object(qt, "toolchain"), \
+                        mock.patch.object(qt, "cmocka", return_value=root / "cmocka"), \
+                        mock.patch.object(qt, "append_bundle"), \
+                        mock.patch.object(qt.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "/soldr/cc\n")) as run:
+                    qt.build(root / "work", root / "bundle")
+                command = run.call_args
+                self.assertIn("--config", command.args[0])
+                self.assertIn('env.CMAKE_GENERATOR.value="Ninja"', command.args[0])
+                self.assertIn('env.CMAKE_GENERATOR.force=true', command.args[0])
+                self.assertNotIn("CMAKE_GENERATOR", command.kwargs["env"])
+                self.assertIn("--exact", command.args[0])
+                self.assertTrue(set(qt.CONTRACTS).issubset(command.args[0]))
+
     def test_runtime_stages_minimal_and_offscreen_for_unchanged_darwin_tests(self):
         with tempfile.TemporaryDirectory() as temporary:
             source, destination = Path(temporary) / "sdk", Path(temporary) / "runtime"
