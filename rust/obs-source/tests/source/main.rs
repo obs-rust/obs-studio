@@ -20,6 +20,7 @@ mod audio_input;
 mod audio_input_parity;
 mod audio_input_path;
 mod audio_mixers_getter;
+mod audio_mixers_getter_parity;
 mod audio_output;
 mod audio_place;
 mod audio_place_parity;

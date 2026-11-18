@@ -1,6 +1,9 @@
 //! Tier 1 mirrors of test_source_audio_mixers_getter.c.
 use core::cell::Cell;
-use obs_source::{audio_mixers_getter::{get, Source}, monitoring::AUDIO};
+use obs_source::{
+    audio_mixers_getter::{Source, get},
+    monitoring::AUDIO,
+};
 
 struct Probe {
     owned: bool,
@@ -11,7 +14,12 @@ struct Probe {
 
 impl Probe {
     fn new(owned: bool, flags: u32, mixers: u32) -> Self {
-        Self { owned, flags, mixers: Cell::new(mixers), reads: Cell::new((0, 0, 0)) }
+        Self {
+            owned,
+            flags,
+            mixers: Cell::new(mixers),
+            reads: Cell::new((0, 0, 0)),
+        }
     }
     fn get(&self) -> u32 {
         get(Some(self), |_, _| panic!("valid source must not log"))
@@ -38,8 +46,14 @@ impl Source for Probe {
 #[test]
 fn test_source_audio_mixers_getter_null_source() {
     let mut logs = Vec::new();
-    assert_eq!(get(None::<&Probe>, |level, message| logs.push((level, message))), 0);
-    assert_eq!(logs, [(400, c"obs_source_get_audio_mixers: Null 'source' parameter")]);
+    assert_eq!(
+        get(None::<&Probe>, |level, message| logs.push((level, message))),
+        0
+    );
+    assert_eq!(
+        logs,
+        [(400, c"obs_source_get_audio_mixers: Null 'source' parameter")]
+    );
 }
 
 #[test]
@@ -77,8 +91,14 @@ fn test_source_audio_mixers_getter_setter_round_trip() {
 fn every_flag_bit_and_owned_bypass() {
     for bit in 0..32 {
         let flags = 1 << bit;
-        assert_eq!(Probe::new(false, flags, 0x8000_0001).get(), if flags == AUDIO { 0x8000_0001 } else { 0 });
+        assert_eq!(
+            Probe::new(false, flags, 0x8000_0001).get(),
+            if flags == AUDIO { 0x8000_0001 } else { 0 }
+        );
         assert_eq!(Probe::new(true, flags, 0x8000_0001).get(), 0x8000_0001);
-        assert_eq!(Probe::new(false, flags | AUDIO, 0x8000_0001).get(), 0x8000_0001);
+        assert_eq!(
+            Probe::new(false, flags | AUDIO, 0x8000_0001).get(),
+            0x8000_0001
+        );
     }
 }

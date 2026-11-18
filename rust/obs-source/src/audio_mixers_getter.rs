@@ -10,6 +10,12 @@ pub trait Source {
 
 /// Read the stored mask only for audio-capable sources or owned source IDs.
 pub fn get(source: Option<&impl Source>, log: impl FnOnce(i32, &'static CStr)) -> u32 {
-    let _ = (source, log);
-    todo!()
+    let Some(source) = source else {
+        log(400, c"obs_source_get_audio_mixers: Null 'source' parameter");
+        return 0;
+    };
+    if !source.owns_info_id() && !crate::monitoring::has_audio(source.output_flags()) {
+        return 0;
+    }
+    source.audio_mixers()
 }

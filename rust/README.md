@@ -572,6 +572,8 @@ and compares their exported symbols. `OBS_LIBOBS_BACKEND=C` is temporary rollbac
 
 | `libobs/obs-scene-item-group-scene.c.h` | `obs-scene::item_group_scene` | Swapped in hybrid libobs; NULL and non-group items return NULL without reading the source. Groups borrow source context data, including NULL, through private live C field adapters. Callback-only original-C parity checks identity, repeat reads and all item/source/scene bytes. No intentional differences. |
 
+| `libobs/obs-source-audio-mixers-getter.c.h` | `obs-source::audio_mixers_getter` | Swapped in hybrid libobs; NULL logs the exact debug diagnostic and returns zero. Sources without audio return zero silently unless they own their info ID. The getter preserves all 32 mixer bits and field-read order through live scalar adapters. Unchanged Tier 2: `test_source_audio_mixers_getter`. Tier 3 compares the original C getter and predicate, return values, whole source bytes, scalar ABI and isolated diagnostics. No intentional differences. |
+
 ## obs-studio-rust
 
 `obs-studio-rust` is a small client for a running OBS (Tools → WebSocket
