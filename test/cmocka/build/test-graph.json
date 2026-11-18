@@ -5532,13 +5532,14 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "libraries": [
         "OBS::libobs",
@@ -5599,7 +5600,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5667,13 +5668,14 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "libraries": [
         "OBS::libobs",
@@ -5734,7 +5736,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5833,7 +5835,7 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -5845,7 +5847,8 @@
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "includes": [
         "libobs"
@@ -5898,7 +5901,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5987,13 +5990,14 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6052,7 +6056,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6100,13 +6104,14 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6162,7 +6167,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6241,7 +6246,7 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6253,7 +6258,8 @@
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "includes": [
         "libobs"
@@ -6306,7 +6312,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6329,7 +6335,7 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6341,7 +6347,8 @@
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "includes": [
         "libobs"
@@ -6394,7 +6401,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -11013,7 +11020,7 @@
         "libobs/obs-nix-portal-shortcut-status.c.h",
         "libobs/obs-nix-portal-shortcuts.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "requires": {
         "all": [
@@ -11041,7 +11048,8 @@
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "unity_groups": {
         "background-control": [
@@ -11118,7 +11126,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -19377,7 +19385,7 @@
         "libobs/obs-hotkey-pair.c.h",
         "libobs/obs-nix-hotkey-state.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
-        "libobs/obs-hotkey-background-trigger.c.h"
+        "test/cmocka/hotkey-background-trigger-link-support.c"
       ],
       "requires": {
         "any": [
@@ -19389,7 +19397,8 @@
         "obs=hotkey_test_obs",
         "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request"
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
       ],
       "includes": [
         "libobs"
@@ -19455,7 +19464,7 @@
           "test/cmocka/hotkey-enum-link-support.c"
         ],
         "hotkey_background_trigger": [
-          "libobs/obs-hotkey-background-trigger.c.h"
+          "test/cmocka/hotkey-background-trigger-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

@@ -1,4 +1,4 @@
-//! Tier 1: mirrors test_hotkey_background_trigger.c without FFI.
+//! Tier 1: mirrors test_hotkey_background_trigger.c without FFI (#5104).
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -51,7 +51,10 @@ impl BackgroundTrigger for Background {
             return (false, storage);
         }
         assert_eq!(combo, self.expected);
-        assert!(storage.allocation.is_none(), "callback starts with empty storage");
+        assert!(
+            storage.allocation.is_none(),
+            "callback starts with empty storage"
+        );
         self.calls += 1;
         if let Some(text) = self.text {
             storage.allocation = Some(text.to_vec());
@@ -68,10 +71,22 @@ impl BackgroundTrigger for Background {
 #[test]
 fn background_trigger_characterization() {
     let mut background = Background {
-        expected: KeyCombination { modifiers: u32::MAX, key: 1 },
+        expected: KeyCombination {
+            modifiers: u32::MAX,
+            key: 1,
+        },
         ..Background::default()
     };
-    assert!(query(&mut background, KeyCombination { modifiers: u32::MAX, key: 1 }).is_none());
+    assert!(
+        query(
+            &mut background,
+            KeyCombination {
+                modifiers: u32::MAX,
+                key: 1
+            }
+        )
+        .is_none()
+    );
     assert_eq!((background.calls, background.unlocks), (0, 0));
     background.available = true;
     assert!(query(&mut background, background_combo()).is_none());
@@ -108,5 +123,8 @@ fn background_trigger_characterization() {
 }
 
 fn background_combo() -> KeyCombination {
-    KeyCombination { modifiers: u32::MAX, key: 1 }
+    KeyCombination {
+        modifiers: u32::MAX,
+        key: 1,
+    }
 }

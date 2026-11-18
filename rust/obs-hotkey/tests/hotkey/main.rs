@@ -11,6 +11,7 @@ mod background_error_parity;
 mod background_query;
 mod background_query_parity;
 mod background_trigger;
+mod background_trigger_parity;
 mod binding_getters;
 mod binding_getters_parity;
 mod binding_press;

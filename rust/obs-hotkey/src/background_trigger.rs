@@ -10,7 +10,14 @@ pub trait BackgroundTrigger {
 }
 
 /// Preserve callback ownership, including success without allocated storage.
-pub fn query<B: BackgroundTrigger>(background: &mut B, combo: KeyCombination) -> Option<B::Trigger> {
-    let _ = (background, combo);
-    todo!("port background trigger query")
+pub fn query<B: BackgroundTrigger>(
+    background: &mut B,
+    combo: KeyCombination,
+) -> Option<B::Trigger> {
+    if !background.lock() {
+        return None;
+    }
+    let (found, trigger) = background.trigger(combo);
+    background.unlock();
+    if found { Some(trigger) } else { None }
 }
