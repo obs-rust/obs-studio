@@ -9,6 +9,7 @@
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics-indexbuffer-maintenance.c.h"
 #include "libobs/graphics/graphics-shader-params-adapter.c.h"
+#include "libobs/graphics/graphics-texture-copy.c.h"
 #include "libobs/graphics/graphics-viewport-fields.c.h"
 #include "libobs/graphics/graphics.c.h"
 #include "libobs/graphics/indexbuffer-create-fields.c.h"

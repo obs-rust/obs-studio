@@ -1175,28 +1175,6 @@ bool gs_framebuffer_srgb_enabled(void)
 	return graphics->exports.device_framebuffer_srgb_enabled(graphics->device);
 }
 
-void gs_copy_texture(gs_texture_t *dst, gs_texture_t *src)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p2("gs_copy_texture", dst, src))
-		return;
-
-	graphics->exports.device_copy_texture(graphics->device, dst, src);
-}
-
-void gs_copy_texture_region(gs_texture_t *dst, uint32_t dst_x, uint32_t dst_y, gs_texture_t *src, uint32_t src_x,
-			    uint32_t src_y, uint32_t src_w, uint32_t src_h)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_copy_texture_region", dst))
-		return;
-
-	graphics->exports.device_copy_texture_region(graphics->device, dst, dst_x, dst_y, src, src_x, src_y, src_w,
-						     src_h);
-}
-
 void gs_stage_texture(gs_stagesurf_t *dst, gs_texture_t *src)
 {
 	graphics_t *graphics = thread_graphics;
