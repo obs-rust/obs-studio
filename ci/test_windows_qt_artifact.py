@@ -87,6 +87,9 @@ class WindowsQtTest(unittest.TestCase):
                 qt.stage_runtime(sdk, prefix, root / "bad", {"qt6widgets.dll"})
 
     def test_closure_verification_rejects_unstaged_delay_import(self):
+        for name in ("VCRUNTIME140D.dll", "MSVCP140D.dll", "ucrtbased.dll"):
+            with self.subTest(debug=name), self.assertRaisesRegex(ValueError, "debug.*runtime"):
+                artifact.pe_imports(executable([name]), staged_dlls={name.lower()})
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "answer.exe").write_bytes(delayed_executable("Qt6Core.dll"))
