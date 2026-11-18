@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import unittest
+from contextlib import ExitStack
 from urllib.parse import parse_qs, urlparse
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -583,6 +584,97 @@ class SelectMqRunnerTest(unittest.TestCase):
             with redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(selector.main(), 0)
         self.assertIn("::warning::", output.getvalue())
+
+
+class RetryDeadlineTest(unittest.TestCase):
+    def setUp(self):
+        self.elapsed = 0.0
+        self.sleeps = []
+        self.calls = []
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.elapsed += seconds
+
+    def select(self, failures=(), *, duration=0, delay=None, org_success=False):
+        failures = iter(failures)
+
+        def respond(request, *, timeout):
+            self.calls.append((request.full_url, timeout))
+            self.elapsed += min(duration, timeout)
+            failure = next(failures, None)
+            if failure:
+                raise failure
+            entries = [runner()] if org_success or "/repos/" in request.full_url else []
+            return io.BytesIO(json.dumps({"total_count": len(entries), "runners": entries}).encode())
+
+        # Patch production time through its module so the old implementation can
+        # demonstrate the missing retry before clock injection is implemented.
+        with ExitStack() as stack:
+            if hasattr(selector, "time"):
+                stack.enter_context(patch.object(selector.time, "monotonic", side_effect=lambda: self.elapsed))
+                stack.enter_context(patch.object(selector.time, "sleep", side_effect=self.sleep))
+            stack.enter_context(patch.object(selector, "urlopen", side_effect=respond))
+            stack.enter_context(patch.object(selector, "inflight_commitments", return_value=(0, 0)))
+            stack.enter_context(redirect_stdout(io.StringIO()))
+            if delay is not None:
+                # Exhaust the deadline while reading the first successful body.
+                load = selector.json.load
+
+                def delayed_load(response):
+                    self.elapsed += delay
+                    return load(response)
+
+                stack.enter_context(patch.object(selector.json, "load", side_effect=delayed_load))
+            return selector.select_labels("merge_group", LABELS, "token", "obs-rust/obs-studio")
+
+    def test_timeout_then_success_selects_dell(self):
+        self.assertEqual(self.select([TimeoutError()]), LABELS)
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(len(self.sleeps), 1)
+        self.assertEqual(self.calls[0][1], 10)
+
+    def test_connection_error_then_success(self):
+        self.assertEqual(self.select([URLError(ConnectionResetError())]), LABELS)
+        self.assertEqual(len(self.calls), 3)
+
+    def test_persistent_timeouts_are_bounded(self):
+        self.assertEqual(self.select([TimeoutError()] * 10, duration=10), "")
+        self.assertLessEqual(self.elapsed, 45)
+        self.assertEqual(len(self.calls), 5)
+        self.assertLess(self.calls[-1][1], 10)
+
+    def test_server_errors_and_rate_limits_retry(self):
+        for status in (500, 502, 503, 504, 429):
+            with self.subTest(status=status):
+                self.setUp()
+                error = HTTPError("https://api.github.com", status, "transient", {}, None)
+                self.assertEqual(self.select([error]), LABELS)
+                self.assertEqual(len(self.calls), 3)
+                self.assertEqual(len(self.sleeps), 1)
+
+    def test_retry_after_is_capped(self):
+        error = HTTPError("https://api.github.com", 429, "slow", {"Retry-After": "120"}, None)
+        self.assertEqual(self.select([error]), LABELS)
+        self.assertEqual(self.sleeps, [5])
+
+    def test_other_client_errors_never_retry(self):
+        for status in (400, 401, 403, 404, 422):
+            with self.subTest(status=status):
+                self.setUp()
+                error = HTTPError("https://api.github.com", status, "permanent", {}, None)
+                self.assertEqual(self.select([error, error]), "")
+                self.assertEqual(len(self.calls), 2)
+                self.assertEqual(self.sleeps, [])
+
+    def test_deadline_discards_successful_response(self):
+        self.assertEqual(self.select(delay=45), "")
+        self.assertEqual(len(self.calls), 1)
+
+    def test_retry_limit_is_per_request(self):
+        self.assertEqual(self.select([TimeoutError()] * 3, org_success=True), LABELS)
+        self.assertEqual(len(self.calls), 4)
+        self.assertEqual(len(self.sleeps), 2)
 
 
 class InflightAdmissionTest(unittest.TestCase):
