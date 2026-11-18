@@ -1168,6 +1168,23 @@ for publication. Baked package versions are frozen until an image input changes;
 stock installs resolve current Ubuntu archive versions. Tests continue checking
 the exact runtime package closure from their build artifact.
 
+Prepared release runtimes first inspect the descriptor's pinned Docker image ID
+and reuse an exact match. Dell runners use `/var/cache/obs-runner/assets` only
+when that directory and the `/var/cache/obs-runner/.persistent-cache` file both
+exist. Environment variables cannot bypass this check. Hosted runners without
+the persistent marker and directory retain cold delivery.
+
+Archive filenames are their SHA256 (no extension). Reads copy into the job
+directory, verify size and SHA256, then refresh the cache entry's access time for
+host GC. A miss downloads directly into `.<sha256>.<random>.part`, verifies it,
+sets mode `0644`, and atomically renames it into place. Existing entries remain
+untouched for host GC, including corrupt files another uid may own. The job uses
+a verified local copy. Any cache I/O error, including an access-time permission
+error, falls back to downloading into the job directory. Downloaded bytes and
+loaded image IDs retain their integrity checks. Image and asset cache hits/misses
+appear in the setup log. The host owner reports all six Dell runners restarted
+with the HDD-backed mount deployed on 2026-11-18.
+
 ### Host Ubuntu package acquisition (#1269)
 
 The existing Fast Gate, Qt frontend, full Ubuntu app and both Flatpak

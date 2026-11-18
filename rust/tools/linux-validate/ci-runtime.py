@@ -16,7 +16,9 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -27,6 +29,8 @@ BUILD = '/__w/_temp/tier2'
 COST = '/__w/_temp/tier2-cost'
 # One zlib update made every job install the whole closure for 75 s (#1592).
 MAX_DELTA = 16
+ASSET_CACHE_DIR = Path('/var/cache/obs-runner/assets')
+ASSET_CACHE_MARKER = Path('/var/cache/obs-runner/.persistent-cache')
 spec = importlib.util.spec_from_file_location('runtime_selection', Path(__file__).with_name('runtime-selection.py'))
 selection = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selection)
@@ -53,6 +57,70 @@ def prepared_image(descriptor: dict, requirements: str, root: Path) -> str | Non
     return download_prepared(descriptor, root)
 
 
+def asset_cache_directory() -> Path | None:
+    """Use only the marker-gated persistent Dell mount."""
+    try:
+        if ASSET_CACHE_MARKER.is_file() and ASSET_CACHE_DIR.is_dir():
+            return ASSET_CACHE_DIR
+    except OSError as error:
+        print(f'Prepared runtime asset cache: unavailable ({error})', flush=True)
+    return None
+
+
+def cached_archive(descriptor: dict, archive: Path) -> tuple[Path | None, bool]:
+    """Copy and verify optional persistent bytes before using them in this job."""
+    directory = asset_cache_directory()
+    if directory is None:
+        return None, False
+    digest = descriptor['archive_sha256']
+    if not re.fullmatch(r'[0-9a-f]{64}', digest):
+        raise ValueError('Invalid prepared archive checksum')
+    cached = directory / digest
+    try:
+        # Verify the job's copy, so concurrent cache replacement cannot change it.
+        shutil.copyfile(cached, archive)
+        verify_archive(archive, descriptor)
+        os.utime(cached, None)
+    except (FileNotFoundError, ValueError) as error:
+        print(f'Prepared runtime asset cache: miss ({error})', flush=True)
+        return cached, False
+    except OSError as error:
+        print(f'Prepared runtime asset cache: read failed, using job download ({error})', flush=True)
+        return None, False
+    print('Prepared runtime asset cache: hit', flush=True)
+    return cached, True
+
+
+def download_archive(descriptor: dict, archive: Path) -> None:
+    with urllib.request.urlopen(descriptor['url'], timeout=60) as response, archive.open('wb') as output:
+        while block := response.read(1024 * 1024):
+            output.write(block)
+    verify_archive(archive, descriptor)
+
+
+def download_cached_archive(descriptor: dict, archive: Path, cached: Path) -> bool:
+    """Download to the shared .part first; cache errors retry in the job directory."""
+    try:
+        with tempfile.NamedTemporaryFile(prefix=f'.{cached.name}.', suffix='.part',
+                                         dir=cached.parent, delete=False) as temporary:
+            staging = Path(temporary.name)
+        try:
+            download_archive(descriptor, staging)
+            staging.chmod(0o644)
+            shutil.copyfile(staging, archive)
+            verify_archive(archive, descriptor)
+            # Another uid can own an existing entry in the sticky directory.
+            # Keep it for host GC; this job uses its verified local copy.
+            if not cached.exists():
+                os.replace(staging, cached)
+        finally:
+            staging.unlink(missing_ok=True)
+    except OSError as error:
+        print(f'Prepared runtime asset cache: write failed, using job download ({error})', flush=True)
+        return False
+    return True
+
+
 def download_prepared(descriptor: dict, root: Path) -> str | None:
     image = descriptor['image_id']
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', image):
@@ -60,15 +128,22 @@ def download_prepared(descriptor: dict, root: Path) -> str | None:
     url = descriptor['url']
     if not url.startswith('https://github.com/obs-rust/obs-studio-libs/releases/download/'):
         raise ValueError('Prepared runtime must use the approved immutable asset route')
-    archive = root / 'runtime.tar.zst'
     try:
-        with urllib.request.urlopen(url, timeout=60) as response, archive.open('wb') as output:
-            while block := response.read(1024 * 1024):
-                output.write(block)
-    except (urllib.error.URLError, TimeoutError):
-        print('Runtime selection: stock (prepared asset unavailable)', flush=True)
-        return None
-    verify_archive(archive, descriptor)
+        present = command('docker', 'image', 'inspect', '--format', '{{.Id}}', image) == image
+    except (OSError, subprocess.CalledProcessError):
+        present = False
+    print(f'Prepared runtime image cache: {"hit" if present else "miss"}', flush=True)
+    if present:
+        return image
+    archive = root / 'runtime.tar.zst'
+    cached, cache_hit = cached_archive(descriptor, archive)
+    if not cache_hit:
+        try:
+            if cached is None or not download_cached_archive(descriptor, archive, cached):
+                download_archive(descriptor, archive)
+        except (urllib.error.URLError, TimeoutError):
+            print('Runtime selection: stock (prepared asset unavailable)', flush=True)
+            return None
     unpacked = root / 'runtime.tar'
     command('zstd', '-d', '-f', str(archive), '-o', str(unpacked))
     command('docker', 'image', 'load', '--input', str(unpacked))
