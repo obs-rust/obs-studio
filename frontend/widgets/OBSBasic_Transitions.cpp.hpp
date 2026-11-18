@@ -316,23 +316,32 @@ void OBSBasic::TransitionToScene(OBSSource source, bool force, bool quickTransit
 		return;
 	}
 
+	OBSSourceAutoRelease transition = obs_get_output_source(0);
+	bool stillTransitioning = false;
+	if (transition) {
+		float t = obs_transition_get_time(transition);
+		stillTransitioning = t < 1.0f && t > 0.0f;
+	}
+
 	if (usingPreviewProgram) {
-		if (!tBarActive) {
-			lastProgramScene = programScene;
-		}
-		programScene = OBSGetWeakRef(source);
+		OBSSource program = OBSGetStrongRef(programScene);
+		OBSSource lastProgram = OBSGetStrongRef(lastProgramScene);
+		OBSSource swap = OBSGetStrongRef(swapScene);
+		OBSSource swapPreview = OBSGetStrongRef(swapPreviewScene);
+		OBSSource preview = GetCurrentSceneSource();
 
-		if (!force && !black) {
-			OBSSource previousScene = OBSGetStrongRef(lastProgramScene);
+		struct studio_mode_program state = {program.Get(), lastProgram.Get(), swap.Get(), swapPreview.Get()};
+		enum studio_mode_program_step step =
+			studio_mode_program_switch(&state, source.Get(), preview.Get(), tBarActive, !force && !black,
+						   sceneDuplicationMode, swapScenesMode, stillTransitioning);
 
-			if (!sceneDuplicationMode && previousScene == source) {
-				return;
-			}
+		programScene = OBSGetWeakRef(static_cast<obs_source_t *>(state.program));
+		lastProgramScene = OBSGetWeakRef(static_cast<obs_source_t *>(state.last_program));
+		swapScene = OBSGetWeakRef(static_cast<obs_source_t *>(state.swap_scene));
+		swapPreviewScene = OBSGetWeakRef(static_cast<obs_source_t *>(state.swap_preview));
 
-			if (swapScenesMode && previousScene && previousScene != GetCurrentSceneSource()) {
-				swapScene = lastProgramScene;
-				swapPreviewScene = OBSGetWeakRef(GetCurrentSceneSource());
-			}
+		if (step == STUDIO_MODE_PROGRAM_SAME) {
+			return;
 		}
 	}
 
@@ -343,16 +352,12 @@ void OBSBasic::TransitionToScene(OBSSource source, bool force, bool quickTransit
 		source = obs_scene_get_source(scene);
 	}
 
-	OBSSourceAutoRelease transition = obs_get_output_source(0);
 	if (!transition) {
 		if (usingPreviewProgram && sceneDuplicationMode) {
 			obs_scene_release(scene);
 		}
 		return;
 	}
-
-	float t = obs_transition_get_time(transition);
-	bool stillTransitioning = t < 1.0f && t > 0.0f;
 
 	// If actively transitioning, block new transitions from starting
 	if (usingPreviewProgram && stillTransitioning) {
