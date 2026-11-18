@@ -170,34 +170,6 @@ void obs_canvas_destroy(obs_canvas_t *canvas)
 	bfree(canvas);
 }
 
-/*** Saving / Loading ***/
-
-obs_data_t *obs_save_canvas(obs_canvas_t *canvas)
-{
-	if (!obs_canvas_rules_saves(canvas->flags))
-		return NULL;
-
-	obs_data_t *canvas_data = obs_data_create();
-
-	obs_data_set_string(canvas_data, "name", canvas->context.name);
-	obs_data_set_string(canvas_data, "uuid", canvas->context.uuid);
-	obs_data_set_bool(canvas_data, "private", canvas->context.private);
-	obs_data_set_int(canvas_data, "flags", canvas->flags);
-
-	return canvas_data;
-}
-
-obs_canvas_t *obs_load_canvas(obs_data_t *data)
-{
-	const char *name = obs_data_get_string(data, "name");
-	const char *uuid = obs_data_get_string(data, "uuid");
-	const bool private = obs_data_get_bool(data, "private");
-	uint32_t flags = (uint32_t)obs_data_get_int(data, "flags");
-
-	flags = obs_canvas_rules_public_flags(flags); /* Prevent user from creating a MAIN or removed canvas. */
-	return obs_canvas_create_internal(name, uuid, NULL, flags, private);
-}
-
 /*** Internal API ***/
 
 /* Free canvas mix (if any) */
@@ -402,19 +374,5 @@ void obs_canvas_set_channel(obs_canvas_t *canvas, uint32_t channel, obs_source_t
 	if (prev_source) {
 		obs_source_deactivate(prev_source, view->type);
 		obs_source_release(prev_source);
-	}
-}
-
-void obs_canvas_remove(obs_canvas_t *canvas)
-{
-	/* Do not allow removing the main canvas, or canvases already marked as removed. */
-	if (!obs_canvas_rules_removable(canvas->flags))
-		return;
-
-	obs_canvas_t *c = obs_canvas_get_ref(canvas);
-	if (c) {
-		c->flags = obs_canvas_rules_mark_removed(c->flags);
-		canvas_dosignal(c, "canvas_remove", "remove");
-		obs_canvas_release(c);
 	}
 }
