@@ -18,8 +18,8 @@ class ModuleTest(unittest.TestCase):
         self.assertNotIn("set(OBS_CORE_MODULE_COUNT 0)", text)
 
     def test_objc_visibility_and_capture_bundle_identity_match_native(self):
-        text = (ROOT / 'cmake/cross/macos-tier2.cmake').read_text()
-        self.assertIn('OBJC_VISIBILITY_PRESET hidden', text)
+        text = (ROOT / "cmake/cross/macos-tier2.cmake").read_text()
+        self.assertIn("OBJC_VISIBILITY_PRESET hidden", text)
         self.assertIn('MACOSX_BUNDLE_GUI_IDENTIFIER "com.obsproject.${target}"', text)
 
 

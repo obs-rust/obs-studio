@@ -153,8 +153,9 @@ The registry now contains all 30 previously missing names. The five additions
 relative to the supplied older native list are `test_encoder_group_lifecycle_api`,
 `test_encoder_set_group`, `test_hotkey_pair_register`, `test_scene_group_enum_items`
 and `test_source_init_context_rust`: registrations from newer source history.
-Configuring the real x264 owner also restores `obs-x264-test`, which the earlier
-name inventory did not contain. Counts from those different revisions are not
+The real x264 owner is configured too. Its helper test is registered before
+`enable_testing()` in the native graph, so the cross graph preserves that ordering
+and does not add an extra CTest entry. Counts from different revisions are not
 property parity evidence.
 
 For an independent native snapshot at the same final commit, add

@@ -1,6 +1,11 @@
 # Opt-in Linux-produced macOS runtime graph (#5009). This is infrastructure,
 # not permission to replace the native validator's renderer/capture contracts.
 set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+foreach(_objects IN ITEMS libobs-cross libobs-cross-shared-objects)
+  # Canonical macOS compilerconfig also hides Objective-C implementation
+  # symbols. C_VISIBILITY_PRESET does not apply to these translation units.
+  set_target_properties(${_objects} PROPERTIES OBJC_VISIBILITY_PRESET hidden OBJCXX_VISIBILITY_PRESET hidden)
+endforeach()
 include("${OBS_SOURCE_ROOT}/cmake/cross/tier2-registry-evidence.cmake")
 include("${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.cmake")
 obs_rust_hidden_lists(
@@ -154,7 +159,10 @@ function(_obs_cross_tier2_tests)
       target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:OBJC,OBJCXX>:-fmodules>")
     endif()
     if(_kind STREQUAL "MODULE_LIBRARY")
-      set_target_properties(${target} PROPERTIES BUNDLE TRUE BUNDLE_EXTENSION plugin)
+      set_target_properties(
+        ${target}
+        PROPERTIES BUNDLE TRUE BUNDLE_EXTENSION plugin MACOSX_BUNDLE_GUI_IDENTIFIER "com.obsproject.${target}"
+      )
       target_link_options(${target} PRIVATE "LINKER:-adhoc_codesign")
       if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
         add_custom_command(
@@ -221,10 +229,11 @@ function(_obs_cross_tier2_tests)
     "set(PACKAGE_VERSION 1.1.7)\nset(PACKAGE_VERSION_COMPATIBLE TRUE)\n"
   )
   set(CMocka_DIR "${CMAKE_BINARY_DIR}/cmocka-config")
+  enable_testing()
   add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")
 endfunction()
-enable_testing()
 _obs_cross_tier2_tests()
+enable_testing()
 add_custom_target(
   tier2-cross-manifest-fixture
   COMMAND
