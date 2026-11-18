@@ -174,8 +174,8 @@ static void repeated_failure_and_success(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {cmocka_unit_test(failed_init_has_no_decode_or_second_free),
-					 cmocka_unit_test(failed_decode_frees_without_output_writes),
-					 cmocka_unit_test(successful_decode_publishes_before_free),
-					 cmocka_unit_test(repeated_failure_and_success)};
+					   cmocka_unit_test(failed_decode_frees_without_output_writes),
+					   cmocka_unit_test(successful_decode_publishes_before_free),
+					   cmocka_unit_test(repeated_failure_and_success)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
