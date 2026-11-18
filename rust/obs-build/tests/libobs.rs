@@ -1354,7 +1354,6 @@ fn macos_core_builds_from_the_canonical_manifest() {
             .map(|path| std::fs::read_to_string(path).expect("read canonical native module list"))
             .map(|names| names.lines().map(str::to_owned).collect())
             .unwrap_or_default(),
-        ..libobs::Options::default()
     };
     if std::env::var_os("OBS_BUILD_MACOS_PREPARE_ONLY").is_some() {
         assert!(!assert_only, "select preparation or assertions");
