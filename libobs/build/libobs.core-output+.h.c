@@ -68,7 +68,6 @@
 #include "libobs/obs-output-type-info-fields.c.h"
 #include "libobs/obs-output-update-fields.c.h"
 #include "libobs/obs-output-video-encoder-getter-fields.c.h"
-#include "libobs/obs-output-video-getter.c.h"
 #include "libobs/obs-output.c.h"
 #include "libobs/obs-service-context-getter-fields.c.h"
 #include "libobs/obs-service-handler-getters-fields.c.h"

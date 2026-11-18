@@ -1,6 +1,7 @@
 //! `obs_output_video()`: a raw output borrows its own video, an encoded
 //! output the video of its first occupied video encoder. No private layout
 //! here; the shim reads the output through C adapters.
+use crate::video_checks::OBS_OUTPUT_ENCODED;
 use core::ffi::CStr;
 
 /// `valid` is `obs_output_valid()`'s NULL check. Only a valid output's
@@ -8,11 +9,19 @@ use core::ffi::CStr;
 /// `encoded` runs, and its result is returned unchanged. A NULL output logs
 /// `obs_output_video` and reads nothing.
 pub fn video<T: Default>(
-    _valid: bool,
-    _flags: impl FnOnce() -> u32,
-    _raw: impl FnOnce() -> T,
-    _encoded: impl FnOnce() -> T,
-    _log: impl FnOnce(&'static CStr),
+    valid: bool,
+    flags: impl FnOnce() -> u32,
+    raw: impl FnOnce() -> T,
+    encoded: impl FnOnce() -> T,
+    log: impl FnOnce(&'static CStr),
 ) -> T {
-    todo!("RED: output video getter")
+    if !valid {
+        log(c"obs_output_video");
+        return T::default();
+    }
+    if flags() & OBS_OUTPUT_ENCODED == 0 {
+        raw()
+    } else {
+        encoded()
+    }
 }
