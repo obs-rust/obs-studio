@@ -4743,6 +4743,19 @@
         }
       ]
     },
+    "test_graphics_device_queries": {
+      "sources": [
+        "test/cmocka/test_graphics_device_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_graphics_ffmpeg_host": {
       "sources": [
         "test/cmocka/test_graphics_ffmpeg_host.c"
@@ -22055,6 +22068,12 @@
     },
     "test_graphics_device_load": {
       "target": "test_graphics_device_load",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_device_queries": {
+      "target": "test_graphics_device_queries",
       "command": [
         "${target}"
       ]
