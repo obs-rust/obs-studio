@@ -58,10 +58,7 @@ def prepared_image(descriptor: dict, requirements: str, root: Path) -> str | Non
 
 
 def asset_cache_directory() -> Path | None:
-    """Use an explicit cache or the marker-gated persistent Dell mount."""
-    directory = os.environ.get('OBS_ASSET_CACHE_DIR')
-    if directory:
-        return Path(directory)
+    """Use only the marker-gated persistent Dell mount."""
     try:
         if ASSET_CACHE_MARKER.is_file() and ASSET_CACHE_DIR.is_dir():
             return ASSET_CACHE_DIR
@@ -83,38 +80,45 @@ def cached_archive(descriptor: dict, archive: Path) -> tuple[Path | None, bool]:
         # Verify the job's copy, so concurrent cache replacement cannot change it.
         shutil.copyfile(cached, archive)
         verify_archive(archive, descriptor)
-    except (OSError, ValueError) as error:
+        os.utime(cached, None)
+    except (FileNotFoundError, ValueError) as error:
         print(f'Prepared runtime asset cache: miss ({error})', flush=True)
         return cached, False
-    print('Prepared runtime asset cache: hit', flush=True)
-    try:
-        os.utime(cached, None)
     except OSError as error:
-        # Shared entries can belong to another uid; verified bytes remain usable.
-        print(f'Prepared runtime asset cache: GC refresh skipped ({error})', flush=True)
+        print(f'Prepared runtime asset cache: read failed, using job download ({error})', flush=True)
+        return None, False
+    print('Prepared runtime asset cache: hit', flush=True)
     return cached, True
 
 
-def save_archive(archive: Path, cached: Path) -> None:
-    """Publish verified bytes atomically; cache failures never block delivery."""
+def download_archive(descriptor: dict, archive: Path) -> None:
+    with urllib.request.urlopen(descriptor['url'], timeout=60) as response, archive.open('wb') as output:
+        while block := response.read(1024 * 1024):
+            output.write(block)
+    verify_archive(archive, descriptor)
+
+
+def download_cached_archive(descriptor: dict, archive: Path, cached: Path) -> bool:
+    """Download to the shared .part first; cache errors retry in the job directory."""
     try:
-        cached.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(prefix=f'.{cached.name}.', suffix='.part',
                                          dir=cached.parent, delete=False) as temporary:
             staging = Path(temporary.name)
         try:
-            shutil.copyfile(archive, staging)
+            download_archive(descriptor, staging)
             staging.chmod(0o644)
-            # Dell's sticky shared directory may contain another uid's entry.
-            # Leave existing corrupt files for host GC; explicit private caches
-            # can replace them after a verified re-download.
-            if cached.exists() and not os.environ.get('OBS_ASSET_CACHE_DIR'):
-                return
-            os.replace(staging, cached)
+            shutil.copyfile(staging, archive)
+            verify_archive(archive, descriptor)
+            # Another uid can own an existing entry in the sticky directory.
+            # Keep it for host GC; this job uses its verified local copy.
+            if not cached.exists():
+                os.replace(staging, cached)
         finally:
             staging.unlink(missing_ok=True)
     except OSError as error:
-        print(f'Prepared runtime asset cache: write skipped ({error})', flush=True)
+        print(f'Prepared runtime asset cache: write failed, using job download ({error})', flush=True)
+        return False
+    return True
 
 
 def download_prepared(descriptor: dict, root: Path) -> str | None:
@@ -135,15 +139,11 @@ def download_prepared(descriptor: dict, root: Path) -> str | None:
     cached, cache_hit = cached_archive(descriptor, archive)
     if not cache_hit:
         try:
-            with urllib.request.urlopen(url, timeout=60) as response, archive.open('wb') as output:
-                while block := response.read(1024 * 1024):
-                    output.write(block)
+            if cached is None or not download_cached_archive(descriptor, archive, cached):
+                download_archive(descriptor, archive)
         except (urllib.error.URLError, TimeoutError):
             print('Runtime selection: stock (prepared asset unavailable)', flush=True)
             return None
-        verify_archive(archive, descriptor)
-        if cached is not None:
-            save_archive(archive, cached)
     unpacked = root / 'runtime.tar'
     command('zstd', '-d', '-f', str(archive), '-o', str(unpacked))
     command('docker', 'image', 'load', '--input', str(unpacked))

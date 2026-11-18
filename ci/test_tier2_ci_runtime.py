@@ -197,7 +197,7 @@ class RuntimeReuseTest(unittest.TestCase):
             self.assertEqual(cache.read_bytes(), b'file')
 
     def test_cache_read_and_publish_errors_do_not_block_download(self):
-        for operation in ('copyfile', 'replace'):
+        for operation in ('copyfile', 'chmod', 'replace'):
             with self.subTest(operation=operation), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 cache = root / 'cache'
@@ -306,6 +306,18 @@ class RuntimeReuseTest(unittest.TestCase):
 
             _, download = self.deliver(root, network=network)
             download.assert_called_once()
+
+    def test_unwritable_shared_cache_downloads_once_in_job_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'assets'
+            cache.mkdir()
+            self.enable_cache(cache)
+            with patch.object(runtime.tempfile, 'NamedTemporaryFile', side_effect=PermissionError('cache read-only')):
+                _, download = self.deliver(root)
+            download.assert_called_once()
+            self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
+            self.assertEqual(list(cache.iterdir()), [])
 
     def test_dell_cache_miss_publishes_world_readable_verified_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1159,18 +1159,19 @@ the exact runtime package closure from their build artifact.
 Prepared release runtimes first inspect the descriptor's pinned Docker image ID
 and reuse an exact match. Dell runners use `/var/cache/obs-runner/assets` only
 when that directory and the `/var/cache/obs-runner/.persistent-cache` file both
-exist. A runner can override this with `OBS_ASSET_CACHE_DIR`. Hosted runners
-without either configuration retain cold delivery.
+exist. Environment variables cannot bypass this check. Hosted runners without
+the persistent marker and directory retain cold delivery.
 
 Archive filenames are their SHA256 (no extension). Reads copy into the job
 directory, verify size and SHA256, then refresh the cache entry's access time for
-host GC; an access-time permission error leaves the verified copy usable.
-Verified downloads publish through `.<sha256>.<random>.part` files, mode `0644`,
-and atomic rename. Cache I/O errors or corrupt cached bytes trigger downloading.
-Dell's sticky shared directory keeps existing corrupt entries for host GC;
-explicit `OBS_ASSET_CACHE_DIR` caches replace them. Downloaded bytes and loaded
-image IDs retain their integrity checks. Image and asset cache hits/misses appear
-in the setup log. Confirm the Dell runner mount rollout before measuring hit rates.
+host GC. A miss downloads directly into `.<sha256>.<random>.part`, verifies it,
+sets mode `0644`, and atomically renames it into place. Existing entries remain
+untouched for host GC, including corrupt files another uid may own. The job uses
+a verified local copy. Any cache I/O error, including an access-time permission
+error, falls back to downloading into the job directory. Downloaded bytes and
+loaded image IDs retain their integrity checks. Image and asset cache hits/misses
+appear in the setup log. The host owner reports all six Dell runners restarted
+with the HDD-backed mount deployed on 2026-11-18.
 
 ### Host Ubuntu package acquisition (#1269)
 
