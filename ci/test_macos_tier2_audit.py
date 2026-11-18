@@ -10,6 +10,21 @@ import macos_tier2_audit as audit
 
 
 class ClosureTest(unittest.TestCase):
+    def test_executable_path_stays_anchored_to_the_entry_binary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            executable = root / "bin/probe"
+            library = root / "lib/main.dylib"
+            decoy = root / "lib/private/dep.dylib"
+            for path in (executable, library, decoy):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+            commands = {executable: [(0xC, "@rpath/main.dylib")],
+                        library: [(0xC, "@executable_path/private/dep.dylib")], decoy: []}
+            with patch.object(audit, "loads", side_effect=lambda image: commands[image]):
+                with self.assertRaisesRegex(ValueError, "executable_path"):
+                    audit.closure([executable], [root / "lib"], lambda _: None)
+
     def test_transitive_runtime_is_verified_and_missing_runtime_is_fatal(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
