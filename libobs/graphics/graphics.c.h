@@ -925,36 +925,6 @@ void gs_update_color_space(void)
 	graphics->exports.device_update_color_space(graphics->device);
 }
 
-void gs_get_size(uint32_t *x, uint32_t *y)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_size"))
-		return;
-
-	graphics->exports.device_get_size(graphics->device, x, y);
-}
-
-uint32_t gs_get_width(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_width"))
-		return 0;
-
-	return graphics->exports.device_get_width(graphics->device);
-}
-
-uint32_t gs_get_height(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_height"))
-		return 0;
-
-	return graphics->exports.device_get_height(graphics->device);
-}
-
 /* The host's own entry points (#872): each list guards itself. */
 #include "libobs/graphics/graphics-functions-linux.h"
 
