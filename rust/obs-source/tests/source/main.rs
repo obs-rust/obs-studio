@@ -35,6 +35,8 @@ mod color_space;
 mod color_space_parity;
 mod conversion_plan;
 mod conversion_plan_parity;
+mod default_flags;
+mod default_flags_parity;
 mod deinterlace;
 mod deinterlace_draw;
 mod deinterlace_draw_parity;
