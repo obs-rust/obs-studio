@@ -89,6 +89,9 @@ def pe_imports(data: bytes, *, allow_dll: bool = False, staged_dlls: set[str] = 
     except (struct.error, IndexError) as error:
         raise ValueError("truncated PE executable") from error
     for name in dependencies:
+        runtime = VC_RUNTIME.match(name)
+        if name == "ucrtbased.dll" or (runtime and runtime.group(3)):
+            raise ValueError(f"unsupported debug Windows runtime dependency: {name}")
         if (name not in SYSTEM_DLLS and name not in VC_DLLS and name not in staged_dlls
                 and not (name.startswith(("api-ms-win-", "ext-ms-win-")) and name.endswith(".dll")
                          and "/" not in name and "\\" not in name)):
