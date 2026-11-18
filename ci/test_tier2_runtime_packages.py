@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / 'rust/tools/linux-validate/runtime-packages.py'
@@ -15,6 +16,55 @@ def module():
 
 
 class RuntimePackagesTest(unittest.TestCase):
+    def test_dependency_scans_overlap_with_a_four_process_bound(self):
+        import subprocess
+        import threading
+        m = module()
+        binaries = [ROOT / f'fixture-{i}' for i in range(8)]
+        rendezvous = threading.Barrier(4, timeout=3)
+        lock = threading.Lock()
+        active = peak = 0
+        visited = []
+
+        def scan(argv, **kwargs):
+            nonlocal active, peak
+            self.assertEqual(argv[0], 'ldd')
+            self.assertEqual(kwargs['env']['LC_ALL'], 'C')
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                visited.append(argv[1])
+            try:
+                rendezvous.wait()
+                return subprocess.CompletedProcess(argv, 0, f'libc.so.6 => /runtime/{Path(argv[1]).name}.so (0x123)\n', '')
+            finally:
+                with lock:
+                    active -= 1
+
+        with patch.object(m, 'elf_files', return_value=iter(binaries)), \
+             patch.object(m.subprocess, 'run', side_effect=scan), \
+             patch.object(m, 'ownership_packages', return_value={'libc6:amd64'}) as ownership, \
+             patch.object(m, 'RUNTIME_TOOLS', ('zstd',)), \
+             patch.object(m, 'query', return_value=subprocess.CompletedProcess([], 0, '1.2', '')):
+            self.assertEqual(m.collect(ROOT), ['libc6:amd64=1.2', 'zstd=1.2'])
+        self.assertEqual(peak, 4)
+        self.assertCountEqual(visited, map(str, binaries))
+        ownership.assert_called_once_with(sorted(f'/runtime/{p.name}.so' for p in binaries))
+
+    def test_failed_dependency_scan_cannot_publish_a_partial_manifest(self):
+        import subprocess
+        m = module()
+        for status, output in [(0, 'libmissing.so => not found\n'), (2, 'loader failure')]:
+            with self.subTest(status=status), \
+                 patch.object(m, 'elf_files', return_value=iter([ROOT / 'good', ROOT / 'bad'])), \
+                 patch.object(m.subprocess, 'run', side_effect=[
+                     subprocess.CompletedProcess([], 0, 'libc.so.6 => /runtime/libc.so.6 (0x123)\n', ''),
+                     subprocess.CompletedProcess([], status, output, '')]), \
+                 patch.object(m, 'ownership_packages') as ownership:
+                with self.assertRaises(ValueError):
+                    m.collect(ROOT)
+                ownership.assert_not_called()
+
     def test_loader_paths_include_transitive_dependencies_and_loader(self):
         m = module()
         text = '''linux-vdso.so.1 (0xabc)

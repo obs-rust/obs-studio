@@ -9,6 +9,7 @@ coverage. This is a package manifest, never a test attestation.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
 import re
@@ -115,12 +116,20 @@ def collect(root: Path) -> list[str]:
         raise ValueError(f'No runtime ELF files under {root}')
     env = {**os.environ, 'LC_ALL': 'C',
            'LD_LIBRARY_PATH': f'{root}/libobs:{root}/libobs-c-reference'}
-    for binary in binaries:
+
+    def dependencies(binary: Path) -> set[str]:
         result = subprocess.run(['ldd', str(binary)], capture_output=True, text=True, env=env)
         output = result.stdout + result.stderr
         if result.returncode and not any(marker in output for marker in ('not a dynamic executable', 'statically linked')):
             raise ValueError(f'ldd failed for {binary}: {output.strip()}')
-        paths.update(library_paths(output))
+        return library_paths(output)
+
+    # Independent loader queries dominate this producer's post-build tail.
+    # Bound subprocess fan-out on shared and hosted runners. Every result must
+    # pass before ownership resolution or manifest publication can begin.
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for libraries in executor.map(dependencies, binaries):
+            paths.update(libraries)
     packages = set(RUNTIME_TOOLS)
     external = [path for path in sorted(paths) if not Path(path).resolve().is_relative_to(root)]
     packages.update(ownership_packages(external))
