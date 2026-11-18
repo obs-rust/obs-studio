@@ -49,7 +49,7 @@ fn test_source_default_flags_exact_storage_and_replacement() {
 #[test]
 fn test_source_default_flags_independent_sources_and_current_flags() {
     let mut first = Source {
-        flags: 1,
+        flags: 2,
         default_flags: 0,
         last_obs_ver: 0,
     };
@@ -61,7 +61,7 @@ fn test_source_default_flags_independent_sources_and_current_flags() {
     set_default_flags(Some(&mut first.default_flags), 0x8000_0001, || {
         panic!("valid source")
     });
-    assert_eq!((first.default_flags, first.flags), (0x8000_0001, 1));
+    assert_eq!((first.default_flags, first.flags), (0x8000_0001, 2));
     assert_eq!(
         (second.default_flags, second.flags),
         (0x2468_ace0, 0x4000_0000)
