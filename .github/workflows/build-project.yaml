@@ -2469,6 +2469,136 @@ jobs:
   # slice each against one libobs (OFF: C reference, ON: hybrid libobs via
   # LD_LIBRARY_PATH) on the same paths; rust-linux-tier2-done publishes the
   # lane proof.
+  # Qualification only. No required job depends on these opt-in experiments.
+  windows-run-only-proof-build:
+    name: Windows Run-only Proof Producer (optional)
+    timeout-minutes: 60
+    continue-on-error: true
+    runs-on: ubuntu-26.04
+    needs: [check-event]
+    if: ${{ vars.WINDOWS_RUN_ONLY_PROOF_REF != '' && vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref && github.event_name != 'merge_group' && needs.check-event.outputs.windows_link == 'true' && needs.check-event.outputs.docs_only != 'true' }}
+    outputs:
+      artifact-id: ${{ steps.bundle.outputs.artifact-id }}
+      archive-sha: ${{ steps.seal.outputs.archive-sha }}
+      logical-root: ${{ steps.seal.outputs.logical-root }}
+      run-id: ${{ steps.seal.outputs.run-id }}
+      attempt: ${{ steps.seal.outputs.attempt }}
+      source-sha: ${{ steps.seal.outputs.source-sha }}
+    env:
+      LOGICAL_ROOT: /opt/obs-win-${{ github.run_id }}-${{ github.run_attempt }}/src
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: false
+      - name: Place compiled logical root
+        id: workspace
+        run: |
+          sudo mkdir -p "$(dirname "$LOGICAL_ROOT")"
+          sudo chown "$(id -u):$(id -g)" "$(dirname "$LOGICAL_ROOT")"
+          uv run --no-project ci/windows_test_proof.py place --source "$GITHUB_WORKSPACE" --logical-root "$LOGICAL_ROOT"
+      - name: Install Linux preparation dependencies
+        run: |
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
+          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y --no-install-recommends cmake ninja-build pkg-config uuid-dev libglib2.0-dev libxkbcommon-dev libncurses6 libtinfo6 libsqlite3-0
+      - uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676
+        with:
+          version: 0.9.45
+          verdict-scope: build-project
+          build-cache: false
+          prebuild-deps: none
+          save-cache-remote: false
+          solo-toolchain-cache: false
+      - name: Prepare all Windows categories doctests and native histories
+        working-directory: ${{ steps.workspace.outputs.real-root }}
+        run: uv run --no-project ci/windows_test_artifact.py build --output "$RUNNER_TEMP/windows-proof-bundle"
+      - name: Prepare every published Qt contract
+        working-directory: ${{ steps.workspace.outputs.real-root }}
+        run: uv run --no-project ci/windows_qt_artifact.py build --work "$RUNNER_TEMP/windows-proof-qt" --bundle "$RUNNER_TEMP/windows-proof-bundle"
+      - name: Seal source receipt and pack complete Windows proof
+        id: seal
+        working-directory: ${{ steps.workspace.outputs.real-root }}
+        run: uv run --no-project ci/windows_test_proof.py seal --bundle "$RUNNER_TEMP/windows-proof-bundle" --archive "$RUNNER_TEMP/windows-proof.tar.zst" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+      - name: Upload immutable Windows proof
+        id: bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-run-only-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/windows-proof.tar.zst
+            ${{ runner.temp }}/windows-proof.tar.zst.sha256
+          retention-days: 2
+          compression-level: 0
+          if-no-files-found: error
+      - name: Restore checkout
+        if: always() && steps.workspace.outcome == 'success'
+        working-directory: ${{ runner.temp }}
+        run: uv run --no-project "$GITHUB_WORKSPACE/ci/windows_test_proof.py" restore --source "$GITHUB_WORKSPACE" --logical-root "$LOGICAL_ROOT"
+
+  windows-run-only-proof:
+    name: Windows Run-only Hosted Proof (optional)
+    timeout-minutes: 35
+    continue-on-error: true
+    runs-on: windows-2025-vs2026
+    needs: [check-event, windows-run-only-proof-build]
+    if: ${{ always() && !cancelled() && vars.WINDOWS_RUN_ONLY_PROOF_REF != '' && vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref && github.event_name != 'merge_group' && needs.check-event.outputs.windows_link == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.windows-run-only-proof-build.result == 'success' && needs.windows-run-only-proof-build.outputs.artifact-id != '' }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      LOGICAL_ROOT: ${{ needs.windows-run-only-proof-build.outputs.logical-root }}
+      OBS_WINDOWS_PROOF_ROOT: ${{ needs.windows-run-only-proof-build.outputs.logical-root }}
+    steps:
+      - name: Keep exact source bytes
+        run: git config --global core.autocrlf input
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.windows-run-only-proof-build.outputs.source-sha }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: false
+      - name: Place checkout on owned C drive root
+        id: workspace
+        run: uv run --no-project ci/windows_test_proof.py place --source "$env:GITHUB_WORKSPACE" --logical-root "$env:LOGICAL_ROOT"
+      # Job outputs refer to the original producer even on a consumer-only rerun.
+      - name: Download exact producer artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.windows-run-only-proof-build.outputs.artifact-id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/windows-proof-download
+      - name: Verify complete packet source receipt and compiled roots before running
+        working-directory: ${{ steps.workspace.outputs.real-root }}
+        env:
+          ARCHIVE_SHA: ${{ needs.windows-run-only-proof-build.outputs.archive-sha }}
+          PRODUCER_RUN: ${{ needs.windows-run-only-proof-build.outputs.run-id }}
+          PRODUCER_ATTEMPT: ${{ needs.windows-run-only-proof-build.outputs.attempt }}
+          PRODUCER_SHA: ${{ needs.windows-run-only-proof-build.outputs.source-sha }}
+        run: uv run --no-project ci/windows_test_proof.py consume --archive "$env:RUNNER_TEMP/windows-proof-download/windows-proof.tar.zst" --stage "$env:RUNNER_TEMP/windows-proof-stage" --sha256 "$env:ARCHIVE_SHA" --run-id "$env:PRODUCER_RUN" --attempt "$env:PRODUCER_ATTEMPT" --source-sha "$env:PRODUCER_SHA" --logical-root "$env:LOGICAL_ROOT"
+      - name: Preserve proof diagnostics and failing proptest cases
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-proof-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.workspace.outputs.real-root }}/windows-proof-result.json
+            ${{ steps.workspace.outputs.real-root }}/rust/*/tests/proptest-regressions/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Restore checkout
+        if: always() && steps.workspace.outcome == 'success'
+        working-directory: ${{ runner.temp }}
+        run: uv run --no-project "$env:GITHUB_WORKSPACE/ci/windows_test_proof.py" restore --source "$env:GITHUB_WORKSPACE" --logical-root "$env:LOGICAL_ROOT"
+
   rust-tests-windows:
     # 2x the 9-14.3 min the lane runs on windows-2025-vs2026 (#2593 A).
     timeout-minutes: 30

@@ -38,7 +38,7 @@ RELATIVE = "target/windows-qt"
 def image_inventory(directory: Path) -> dict[str, list[str]]:
     paths = sorted(path for path in directory.rglob("*") if path.suffix.lower() in (".exe", ".dll"))
     dlls = {path.name.lower() for path in paths if path.suffix.lower() == ".dll"}
-    return {str(path.relative_to(directory)): artifact.pe_imports(
+    return {path.relative_to(directory).as_posix(): artifact.pe_imports(
         path.read_bytes(), allow_dll=path.suffix.lower() == ".dll", staged_dlls=dlls) for path in paths}
 
 

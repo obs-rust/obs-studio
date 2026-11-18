@@ -15,7 +15,7 @@ class ProofWorkflowTest(unittest.TestCase):
             self.assertIn("continue-on-error: true", body)
         # Existing required Windows lane retains its original native coverage.
         required = job("rust-tests-windows")
-        self.assertIn("Run Tests", required)
+        self.assertIn("cargo test", required)
         self.assertIn("soldr cargo", required)
         self.assertNotIn("windows_test_proof", required)
 

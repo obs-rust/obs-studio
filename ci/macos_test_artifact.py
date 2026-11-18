@@ -325,10 +325,13 @@ def entry_environment(entry: dict, root: Path) -> dict[str, str]:
 
 def execute(manifest: Path, root: Path, *, require_qt: bool = False, target: str = TARGET,
             validate: Callable[[dict, Path], None] | None = None,
-            kinds: set[str] | None = None) -> int:
+            kinds: set[str] | None = None,
+            root_validator: Callable[[str, Path], None] | None = None) -> int:
     data = json.loads(manifest.read_text())
-    if data["version"] != 1 or data["target"] != target or data["build_root"] != str(root):
+    if data["version"] != 1 or data["target"] != target or (root_validator is None and data["build_root"] != str(root)):
         raise ValueError("artifact target/version/source root mismatch (compiled paths cannot be relocated)")
+    if root_validator is not None:
+        root_validator(data["build_root"], root)
     if not data["tests"] and not (data.get("scope_skipped", False) or data.get("scope_no_tests", False)):
         raise ValueError("empty test manifest without an explicit scope skip")
     if require_qt:
