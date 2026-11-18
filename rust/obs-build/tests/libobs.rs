@@ -69,6 +69,7 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
     let runner = bin.join("obs-native-integration");
     std::fs::copy(std::env::current_exe().unwrap(), &runner).unwrap();
     let mut options = libobs::Options {
+        test_support: true,
         pch: std::env::var_os("OBS_BUILD_PCH").is_some(),
         unity: std::env::var_os("OBS_BUILD_DISABLE_CORE_UNITY").is_none(),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
@@ -167,8 +168,17 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
         target: build.target.clone(),
         output: build.output.join("production"),
     };
-    let production_core = libobs::build_with_options(&production, &root, &options).unwrap();
-    assert_eq!(exports(&production_core), exports(&libraries.with_rust));
+    let production_options = libobs::Options {
+        test_support: false,
+        ..options.clone()
+    };
+    let production_core =
+        libobs::build_with_options(&production, &root, &production_options).unwrap();
+    // Exercise the fixture opt-in on Linux without an additional native build.
+    // Only the test pair may export the helper; production must exclude it.
+    let mut expected = exports(&production_core);
+    assert!(expected.insert("obs_test_set_locale_swap_core".into()));
+    assert_eq!(exports(&libraries.with_rust), expected);
     assert!(!production.output.join("obs-c-reference").exists());
     if std::env::var_os("OBS_BUILD_C_TESTS").is_some() {
         let executables = obs_build::validation::build_c_tests(
@@ -1326,6 +1336,7 @@ fn macos_core_builds_from_the_canonical_manifest() {
     assert!(build.target.contains("apple-darwin"));
     let options = libobs::Options {
         native_dependencies: Some(dependencies.into()),
+        test_support: std::env::var_os("OBS_BUILD_MACOS_REFERENCE").is_some(),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
         pulseaudio: false,
         gio: false,

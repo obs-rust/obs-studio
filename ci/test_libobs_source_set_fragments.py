@@ -27,6 +27,7 @@ SPEC.loader.exec_module(PORTED)
 # Set name -> (windows, macos, linux tier2) a fragment edit selects.
 SETS = {
     "LIBOBS_SOURCES": (False, False, True),
+    "LIBOBS_TEST_SOURCES": (False, False, True),
     "LIBOBS_PORTED_SOURCES": (False, False, True),
     "LIBOBS_RUST_SOURCES": (False, False, True),
     "LIBOBS_HEVC_PORTED_SOURCES": (False, False, True),

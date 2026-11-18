@@ -1,5 +1,6 @@
 //! The native libobs graph, shared by bundled obs-sys and the application build.
 mod archive_path;
+mod source_plan;
 
 use crate::{NativeBuild, SharedLibrary};
 use std::{
@@ -19,6 +20,9 @@ pub struct Options {
     pub pulseaudio: bool,
     pub gio: bool,
     pub core_modules: Vec<String>,
+    /// Include cmocka-only library fixtures when comparing test-enabled CMake builds.
+    /// Production builds leave this disabled so the private test seams never ship.
+    pub test_support: bool,
     /// Prebuilt OBS dependency bundle for targets without pkg-config metadata.
     pub native_dependencies: Option<PathBuf>,
 }
@@ -33,6 +37,7 @@ impl Default for Options {
             pulseaudio: true,
             gio: true,
             core_modules: vec![],
+            test_support: false,
             native_dependencies: None,
         }
     }
@@ -333,7 +338,7 @@ fn prepare(build: &NativeBuild, root: &Path, options: &Options) -> Result<Plan, 
         unity: false,
         ..SharedLibrary::default()
     };
-    append_sources(&sets, "LIBOBS_SOURCES", &root, &mut library)?;
+    library.sources = source_plan::common_sources(&sets, &root, options.test_support)?;
     if options.hevc {
         library.definitions.push(("ENABLE_HEVC".into(), None));
     }
@@ -427,17 +432,9 @@ pub(crate) fn append_sources(
     root: &Path,
     library: &mut SharedLibrary,
 ) -> Result<(), String> {
-    let sources = sets
-        .get(name)
-        .ok_or_else(|| format!("missing source set {name}"))?;
-    library.sources.extend(
-        sources
-            .iter()
-            .filter(|s| {
-                s.ends_with(".c") || s.ends_with(".cpp") || s.ends_with(".m") || s.ends_with(".mm")
-            })
-            .map(|s| root.join("libobs").join(s)),
-    );
+    library
+        .sources
+        .extend(source_plan::sources(sets, name, root)?);
     Ok(())
 }
 
