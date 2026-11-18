@@ -42,7 +42,7 @@ def closure(images: list[Path], search: list[Path], verify, executable_context: 
     if they use @executable_path.
     """
     search = [root.resolve() for root in search]
-    pending = [(image, executable_context or executable_directory(image)) for image in images]
+    pending = [(image, executable_directory(image) or executable_context) for image in images]
     checked = {}
     seen = set()
     while pending:

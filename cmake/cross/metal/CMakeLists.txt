@@ -2,6 +2,9 @@
 # requires install_name_tool even when no install/rewrite is requested. This
 # project links the final install name and signature in one Linux link instead.
 cmake_minimum_required(VERSION 3.28...3.30)
+if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+  message(FATAL_ERROR "The Metal Tier 2 producer compiles only on Linux")
+endif()
 project(obs-tier2-metal LANGUAGES Swift)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "@loader_path")
