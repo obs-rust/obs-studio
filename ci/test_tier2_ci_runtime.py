@@ -140,7 +140,7 @@ class RuntimeReuseTest(unittest.TestCase):
                 cache = root / 'cache'
                 cache.mkdir()
                 os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
-                cached = cache / (self.descriptor()['archive_sha256'] + '.tar.zst')
+                cached = cache / self.descriptor()['archive_sha256']
                 cached.write_bytes(contents)
                 calls, download = self.deliver(root)
                 self.assertEqual(download.call_count, int(contents != b'good'))
@@ -159,7 +159,10 @@ class RuntimeReuseTest(unittest.TestCase):
             def publish(source, destination):
                 self.assertEqual(Path(source).read_bytes(), b'good')
                 self.assertFalse(Path(destination).exists())
-                self.assertEqual(Path(source).parent.parent, cache)
+                self.assertEqual(Path(source).parent, cache)
+                self.assertTrue(Path(source).name.startswith('.' + self.descriptor()['archive_sha256']))
+                self.assertEqual(Path(source).suffix, '.part')
+                self.assertEqual(Path(source).stat().st_mode & 0o777, 0o644)
                 replace(source, destination)
 
             with patch.object(os, 'replace', side_effect=publish) as atomic:
@@ -184,7 +187,7 @@ class RuntimeReuseTest(unittest.TestCase):
                 root = Path(tmp)
                 cache = root / 'cache'
                 cache.mkdir()
-                cached = cache / (self.descriptor()['archive_sha256'] + '.tar.zst')
+                cached = cache / self.descriptor()['archive_sha256']
                 cached.write_bytes(b'good' if operation == 'copyfile' else b'evil')
                 os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
                 target = runtime.shutil if operation == 'copyfile' else runtime.os
@@ -210,6 +213,58 @@ class RuntimeReuseTest(unittest.TestCase):
                     self.assertEqual(command.call_count, 1)
                 else:
                     self.assertEqual(command.call_count, 4)
+
+    def test_dell_cache_requires_marker_and_existing_directory(self):
+        for marker_exists, directory_exists in ((False, True), (True, False), (True, True)):
+            with self.subTest(marker=marker_exists, directory=directory_exists), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                marker = root / '.persistent-cache'
+                cache = root / 'assets'
+                if marker_exists:
+                    marker.touch()
+                if directory_exists:
+                    cache.mkdir()
+                    (cache / self.descriptor()['archive_sha256']).write_bytes(b'good')
+                with patch.object(runtime, 'ASSET_CACHE_DIR', cache, create=True), \
+                        patch.object(runtime, 'ASSET_CACHE_MARKER', marker, create=True), \
+                        patch.object(runtime.os, 'utime') as touch:
+                    _, download = self.deliver(root)
+                hit = marker_exists and directory_exists
+                self.assertEqual(download.call_count, int(not hit))
+                self.assertEqual(touch.call_count, int(hit))
+
+    def test_dell_cache_leaves_existing_corruption_for_host_gc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            marker = root / '.persistent-cache'
+            marker.touch()
+            cache = root / 'assets'
+            cache.mkdir()
+            cached = cache / self.descriptor()['archive_sha256']
+            cached.write_bytes(b'evil')
+            with patch.object(runtime, 'ASSET_CACHE_DIR', cache, create=True), \
+                    patch.object(runtime, 'ASSET_CACHE_MARKER', marker, create=True):
+                _, download = self.deliver(root)
+            download.assert_called_once()
+            self.assertEqual(cached.read_bytes(), b'evil')
+            self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
+            self.assertEqual(list(cache.iterdir()), [cached])
+
+    def test_dell_cache_miss_publishes_world_readable_verified_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            marker = root / '.persistent-cache'
+            marker.touch()
+            cache = root / 'assets'
+            cache.mkdir()
+            with patch.object(runtime, 'ASSET_CACHE_DIR', cache, create=True), \
+                    patch.object(runtime, 'ASSET_CACHE_MARKER', marker, create=True):
+                _, download = self.deliver(root)
+            download.assert_called_once()
+            cached = cache / self.descriptor()['archive_sha256']
+            self.assertEqual(cached.read_bytes(), b'good')
+            self.assertEqual(cached.stat().st_mode & 0o777, 0o644)
+            self.assertEqual(list(cache.iterdir()), [cached])
 
 
 class PrebakedRuntimeTest(unittest.TestCase):
