@@ -3449,16 +3449,6 @@ void obs_source_set_audio_mixers(obs_source_t *source, uint32_t mixers)
 	source->audio_mixers = mixers;
 }
 
-uint32_t obs_source_get_audio_mixers(const obs_source_t *source)
-{
-	if (!obs_source_valid(source, "obs_source_get_audio_mixers"))
-		return 0;
-	if (!source->owns_info_id && !obs_source_monitoring_has_audio(source->info.output_flags))
-		return 0;
-
-	return source->audio_mixers;
-}
-
 void obs_source_draw_set_color_matrix(const struct matrix4 *color_matrix, const struct vec3 *color_range_min,
 				      const struct vec3 *color_range_max)
 {
