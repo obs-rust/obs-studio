@@ -472,20 +472,6 @@ uint32_t obs_encoder_group_num_started(struct obs_encoder_group *group)
 	return num_started;
 }
 
-obs_data_t *obs_encoder_defaults(const char *id)
-{
-	const struct obs_encoder_info *info = find_encoder(id);
-	return (info) ? encoder_get_defaults(info) : NULL;
-}
-
-obs_data_t *obs_encoder_get_defaults(const obs_encoder_t *encoder)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_defaults"))
-		return NULL;
-
-	return encoder_get_defaults(&encoder->info);
-}
-
 void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_update"))
