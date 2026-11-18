@@ -91,6 +91,7 @@ def cmake_toolchain(receipt: dict, output: Path, env: dict) -> Path:
         lines.append(f'set(CMAKE_{language}_COMPILER {json.dumps(env[key])})')
     lines.extend([
         'set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Tier 2 minimum" FORCE)',
+        'set(CMAKE_Swift_COMPILER_TARGET "arm64-apple-macosx13.0")',
         'set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)',
         f'set(CMAKE_FIND_ROOT_PATH {json.dumps(receipt["sdk"])})',
         'set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)',
