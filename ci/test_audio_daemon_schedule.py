@@ -16,7 +16,7 @@ FRAGMENTS = ("test_pulse_default_follow", "test_pulse_stream_restart", "test_pip
 
 @unittest.skipUnless(all(shutil.which(tool) for tool in ("cmake", "ctest", "cc")), "requires CMake/CTest/cc")
 class AudioDaemonScheduling(unittest.TestCase):
-    def test_private_daemons_share_a_lock_in_both_loader_modes(self):
+    def test_private_daemons_share_a_lock_with_or_without_a_display_wrapper(self):
         graph = json.loads((CMOCKA / "build/test-graph.json").read_text())
         tests = {name: test for name, test in graph["tests"].items()
                  if any(Path(arg).name in WRAPPERS for arg in test.get("command", []))
@@ -24,8 +24,8 @@ class AudioDaemonScheduling(unittest.TestCase):
         self.assertGreaterEqual(len(tests), 15)
         # Keep the real graph test registrations; replace only compilation inputs.
         targets = {test["target"]: {"sources": ["stub.c"]} for test in tests.values()}
-        for mode in ("OFF", "ON"):
-            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+        for display_wrapper in ("", "/usr/bin/xvfb-run"):
+            with self.subTest(display_wrapper=display_wrapper), tempfile.TemporaryDirectory() as directory:
                 source = Path(directory)
                 (source / "stub.c").write_text("int fixture;\n")
                 (source / "graph.json").write_text(json.dumps(
@@ -64,6 +64,8 @@ add_custom_target(cmocka-tests)
 set(OBS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output")
 add_test(NAME unrelated COMMAND "${CMAKE_COMMAND}" -E true)
 '''
+                cmake += f'set(XVFB_RUN "{display_wrapper}")\n'
+                cmake += f'set(OBS_TEST_XVFB_RUN "{display_wrapper}")\n'
                 for fragment in FRAGMENTS:
                     cmake += f'include("{CMOCKA}/tests.d/{fragment}.cmake")\n'
                 cmake += f'include("{CMOCKA}/native-test-graph.cmake")\n'
@@ -75,8 +77,7 @@ add_test(NAME unrelated COMMAND "${CMAKE_COMMAND}" -E true)
                 result = subprocess.run(["cmake", "-S", str(source), "-B", str(build)],
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                result = subprocess.run(["cmake", "-E", "env", f"LD_LIBRARY_PATH={build / mode}",
-                                         "ctest", "--test-dir", str(build), "--show-only=json-v1"],
+                result = subprocess.run(["ctest", "--test-dir", str(build), "--show-only=json-v1"],
                                         capture_output=True, text=True, check=True)
                 registry = json.loads(result.stdout)["tests"]
                 expected = set(tests) | set(FRAGMENTS) | {"test_pulse_default_follow_pipewire"}
