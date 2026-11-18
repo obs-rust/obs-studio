@@ -9,7 +9,8 @@
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
-        "libobs/build/libobs.image-decode-adapter+.h.c"
+        "libobs/build/libobs.image-decode-adapter+.h.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
