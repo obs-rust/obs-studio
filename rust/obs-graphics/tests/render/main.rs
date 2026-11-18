@@ -62,6 +62,7 @@ mod sprite_parity;
 mod state_stacks;
 mod state_stacks_parity;
 mod target_size;
+mod target_size_parity;
 mod texture_copy;
 mod texture_copy_parity;
 mod texture_creators;

@@ -1,0 +1,3 @@
+gs_get_height
+gs_get_size
+gs_get_width

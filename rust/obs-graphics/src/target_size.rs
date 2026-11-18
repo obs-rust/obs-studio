@@ -2,14 +2,26 @@
 use std::ffi::CStr;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Entry { Size, Width, Height }
+pub enum Entry {
+    Size,
+    Width,
+    Height,
+}
 
 impl Entry {
     pub const fn name(self) -> &'static str {
-        match self { Self::Size => "gs_get_size", Self::Width => "gs_get_width", Self::Height => "gs_get_height" }
+        match self {
+            Self::Size => "gs_get_size",
+            Self::Width => "gs_get_width",
+            Self::Height => "gs_get_height",
+        }
     }
     pub const fn c_name(self) -> &'static CStr {
-        match self { Self::Size => c"gs_get_size", Self::Width => c"gs_get_width", Self::Height => c"gs_get_height" }
+        match self {
+            Self::Size => c"gs_get_size",
+            Self::Width => c"gs_get_width",
+            Self::Height => c"gs_get_height",
+        }
     }
 }
 
@@ -23,6 +35,24 @@ pub trait Host {
     fn height(&mut self) -> u32;
 }
 
-pub fn get_size<H: Host>(_host: &mut H, _x: H::Output, _y: H::Output) { todo!() }
-pub fn get_width<H: Host>(_host: &mut H) -> u32 { todo!() }
-pub fn get_height<H: Host>(_host: &mut H) -> u32 { todo!() }
+pub fn get_size<H: Host>(host: &mut H, x: H::Output, y: H::Output) {
+    if !host.has_context() {
+        host.debug(Entry::Size);
+        return;
+    }
+    host.size(x, y);
+}
+pub fn get_width<H: Host>(host: &mut H) -> u32 {
+    if !host.has_context() {
+        host.debug(Entry::Width);
+        return 0;
+    }
+    host.width()
+}
+pub fn get_height<H: Host>(host: &mut H) -> u32 {
+    if !host.has_context() {
+        host.debug(Entry::Height);
+        return 0;
+    }
+    host.height()
+}

@@ -11,6 +11,8 @@ mod canonical_graphics_device_queries_swap_is_registered;
 mod canonical_graphics_indexbuffer_maintenance_swap_is_registered;
 #[path = "native/registration/canonical_graphics_render_target_setters_swap_is_registered.rs"]
 mod canonical_graphics_render_target_setters_swap_is_registered;
+#[path = "native/registration/canonical_graphics_target_size_swap_is_registered.rs"]
+mod canonical_graphics_target_size_swap_is_registered;
 #[path = "native/registration/canonical_graphics_texture_copy_swap_is_registered.rs"]
 mod canonical_graphics_texture_copy_swap_is_registered;
 #[path = "native/registration/canonical_gs_perspective_is_registered.rs"]
