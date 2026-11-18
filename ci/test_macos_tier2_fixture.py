@@ -41,5 +41,25 @@ class FixtureTest(unittest.TestCase):
             self.assertIn('missing prepared fixture', result.stdout + result.stderr)
 
 
+class NativeSplitTest(unittest.TestCase):
+    def test_contract_has_explicit_assert_only_receipt(self):
+        source = (ROOT / 'rust/obs-build/tests/libobs.rs').read_text()
+        self.assertIn('OBS_BUILD_MACOS_ASSERT_ONLY', source)
+        self.assertIn('prepared.finish()', source)
+        self.assertIn('prepared.get("cores"', source)
+        self.assertIn('prepared.get("capture-probe"', source)
+        self.assertIn('prepared.get("graphics-probe"', source)
+
+    def test_shared_runtime_script_retains_all_negative_controls(self):
+        script = ROOT / 'rust/tools/tier2-validate/macos-assertions.sh'
+        self.assertTrue(script.is_file())
+        source = script.read_text()
+        self.assertEqual(source.count('"$status" -eq 14'), 2)
+        self.assertEqual(source.count('"$status" -eq 12'), 2)
+        self.assertIn('diff -r "$capture_data" "$reference_data"', source)
+        self.assertIn('DYLD_PRINT_LIBRARIES=1', source)
+        self.assertNotIn('soldr cargo', source)
+
+
 if __name__ == '__main__':
     unittest.main()
