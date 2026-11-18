@@ -598,5 +598,5299 @@
         "raw_details": ""
       }
     ]
+  },
+  "merge_group": {
+    "source": "GitHub REST API, 2026-11-18: run 44341056238 attempt 1; projected unmodified values",
+    "run": {
+      "id": 44341056238,
+      "event": "merge_group",
+      "head_sha": "aaec1bbb2ed4f4b3be90809616ff068b2beaebe6",
+      "head_branch": "gh-readonly-queue/master/pr-5109-f8561367f0b4eddde7d24875bb828d8df1b2b60e",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_attempt": 1,
+      "workflow_id": 386287070,
+      "created_at": "2026-11-18T15:54:42Z",
+      "updated_at": "2026-11-18T16:24:36Z"
+    },
+    "jobs": {
+      "total_count": 41,
+      "jobs": [
+        {
+          "id": 134930818992,
+          "name": "Select Merge Queue Runner",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173983",
+          "runner_id": 1000173983,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134930818992",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:54:59Z",
+              "completed_at": "2026-11-18T15:55:00Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:00Z",
+              "completed_at": "2026-11-18T15:55:02Z"
+            },
+            {
+              "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:02Z",
+              "completed_at": "2026-11-18T15:55:03Z"
+            },
+            {
+              "name": "Create Runner Probe App Token",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:55:03Z",
+              "completed_at": "2026-11-18T15:55:04Z"
+            },
+            {
+              "name": "Check Runner Availability",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:55:04Z",
+              "completed_at": "2026-11-18T15:55:07Z"
+            },
+            {
+              "name": "Report Probe Setup Failure",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T15:55:07Z",
+              "completed_at": "2026-11-18T15:55:07Z"
+            },
+            {
+              "name": "Post Create Runner Probe App Token",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T15:55:07Z",
+              "completed_at": "2026-11-18T15:55:07Z"
+            },
+            {
+              "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T15:55:07Z",
+              "completed_at": "2026-11-18T15:55:08Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T15:55:08Z",
+              "completed_at": "2026-11-18T15:55:08Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T15:55:08Z",
+              "completed_at": "2026-11-18T15:55:08Z"
+            }
+          ]
+        },
+        {
+          "id": 134930821816,
+          "name": "Recheck Flatpak Saved Profile 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134930821816",
+          "steps": []
+        },
+        {
+          "id": 134930821896,
+          "name": "Update Documentation 📖",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134930821896",
+          "steps": []
+        },
+        {
+          "id": 134930822107,
+          "name": "CI Pre 🧹 / Cache Janitor 🧹",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134930822107",
+          "steps": []
+        },
+        {
+          "id": 134931140567,
+          "name": "Cancel Superseded Queue Runs 🧹",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173985",
+          "runner_id": 1000173985,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931140567",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:15Z",
+              "completed_at": "2026-11-18T15:55:16Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:16Z",
+              "completed_at": "2026-11-18T15:55:17Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:17Z",
+              "completed_at": "2026-11-18T15:55:19Z"
+            },
+            {
+              "name": "Cancel 🧹",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:55:19Z",
+              "completed_at": "2026-11-18T15:55:21Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T15:55:21Z",
+              "completed_at": "2026-11-18T15:55:22Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:55:22Z",
+              "completed_at": "2026-11-18T15:55:22Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:55:22Z",
+              "completed_at": "2026-11-18T15:55:22Z"
+            }
+          ]
+        },
+        {
+          "id": 134931141342,
+          "name": "Build 🧱 / CI Mode 🛂",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173986",
+          "runner_id": 1000173986,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931141342",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:15Z",
+              "completed_at": "2026-11-18T15:55:16Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:16Z",
+              "completed_at": "2026-11-18T15:55:25Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:25Z",
+              "completed_at": "2026-11-18T15:55:27Z"
+            },
+            {
+              "name": "Verify Client Admission from Immutable Base 🛂",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 4,
+              "started_at": "2026-11-18T15:55:27Z",
+              "completed_at": "2026-11-18T15:55:27Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T15:55:27Z",
+              "completed_at": "2026-11-18T15:55:27Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:55:27Z",
+              "completed_at": "2026-11-18T15:55:27Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:55:27Z",
+              "completed_at": "2026-11-18T15:55:28Z"
+            }
+          ]
+        },
+        {
+          "id": 134931141392,
+          "name": "Build 🧱 / Event Data 🔎",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173990",
+          "runner_id": 1000173990,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931141392",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:31Z",
+              "completed_at": "2026-11-18T15:55:32Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:32Z",
+              "completed_at": "2026-11-18T15:55:42Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:42Z",
+              "completed_at": "2026-11-18T15:55:44Z"
+            },
+            {
+              "name": "Select Swift from Immutable Event Diff",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:55:44Z",
+              "completed_at": "2026-11-18T15:55:44Z"
+            },
+            {
+              "name": "Select Tier 2 Container Image",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:55:44Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Select Tier 2 Scheduling",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Check Experimental Flatpak Inputs",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Check Event Data ☑️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Check Submodule Pointers 🧭",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Check Change Scope 🧭",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T15:55:45Z",
+              "completed_at": "2026-11-18T15:55:45Z"
+            }
+          ]
+        },
+        {
+          "id": 134931141563,
+          "name": "Format 🔍 / checks",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173987",
+          "runner_id": 1000173987,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931141563",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:15Z",
+              "completed_at": "2026-11-18T15:55:15Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:15Z",
+              "completed_at": "2026-11-18T15:55:19Z"
+            },
+            {
+              "name": "Fetch History 📜",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:19Z",
+              "completed_at": "2026-11-18T15:55:35Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:55:35Z",
+              "completed_at": "2026-11-18T15:55:37Z"
+            },
+            {
+              "name": "Check for Swift Changes 🔎",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:55:37Z",
+              "completed_at": "2026-11-18T15:55:37Z"
+            },
+            {
+              "name": "clang-format Check 🐉",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T15:55:37Z",
+              "completed_at": "2026-11-18T15:55:37Z"
+            },
+            {
+              "name": "gersemi Check 🎛️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T15:55:37Z",
+              "completed_at": "2026-11-18T15:55:37Z"
+            },
+            {
+              "name": "Flatpak Manifest Check 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:55:37Z",
+              "completed_at": "2026-11-18T15:55:39Z"
+            },
+            {
+              "name": "Qt XML Check 🖼️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:55:39Z",
+              "completed_at": "2026-11-18T15:55:43Z"
+            },
+            {
+              "name": "ci/ Self-Tests 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T15:55:43Z",
+              "completed_at": "2026-11-18T15:57:28Z"
+            },
+            {
+              "name": "Post Qt XML Check 🖼️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T15:57:28Z",
+              "completed_at": "2026-11-18T15:57:29Z"
+            },
+            {
+              "name": "Post Flatpak Manifest Check 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-11-18T15:57:29Z",
+              "completed_at": "2026-11-18T15:57:29Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-18T15:57:29Z",
+              "completed_at": "2026-11-18T15:57:29Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-18T15:57:29Z",
+              "completed_at": "2026-11-18T15:57:29Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T15:57:29Z",
+              "completed_at": "2026-11-18T15:57:29Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568245,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (build)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173997",
+          "runner_id": 1000173997,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568245",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:59Z",
+              "completed_at": "2026-11-18T15:56:01Z"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:56:01Z",
+              "completed_at": "2026-11-18T15:56:05Z"
+            },
+            {
+              "name": "Install Git 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:56:05Z",
+              "completed_at": "2026-11-18T15:56:23Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:23Z",
+              "completed_at": "2026-11-18T15:56:30Z"
+            },
+            {
+              "name": "Select Persistent Cache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:30Z",
+              "completed_at": "2026-11-18T15:56:30Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T15:56:30Z",
+              "completed_at": "2026-11-18T15:56:32Z"
+            },
+            {
+              "name": "Keep apt Downloads 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T15:56:32Z",
+              "completed_at": "2026-11-18T15:56:32Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:56:32Z",
+              "completed_at": "2026-11-18T15:56:37Z"
+            },
+            {
+              "name": "Install Tier 2 Packages 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:56:37Z",
+              "completed_at": "2026-11-18T15:57:10Z"
+            },
+            {
+              "name": "Save apt Downloads 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T15:57:10Z",
+              "completed_at": "2026-11-18T15:57:10Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T15:57:10Z",
+              "completed_at": "2026-11-18T15:57:18Z"
+            },
+            {
+              "name": "Bound zccache 🧹",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T15:57:18Z",
+              "completed_at": "2026-11-18T15:57:18Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T15:57:18Z",
+              "completed_at": "2026-11-18T15:57:34Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-18T15:57:34Z",
+              "completed_at": "2026-11-18T15:57:36Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-18T15:57:36Z",
+              "completed_at": "2026-11-18T15:57:37Z"
+            },
+            {
+              "name": "Seed Tier 2 Test Timings ⏱️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T15:57:37Z",
+              "completed_at": "2026-11-18T15:57:37Z"
+            },
+            {
+              "name": "Install zccache 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T15:57:37Z",
+              "completed_at": "2026-11-18T15:57:38Z"
+            },
+            {
+              "name": "Mark Cache Ledger Start 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-11-18T15:57:38Z",
+              "completed_at": "2026-11-18T15:57:38Z"
+            },
+            {
+              "name": "Restore Kept Tier 2 Tree 🌲",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-18T15:57:38Z",
+              "completed_at": "2026-11-18T15:57:38Z"
+            },
+            {
+              "name": "Build Tier 2 (libobs and libobs-c-reference) 🧱",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-18T15:57:38Z",
+              "completed_at": "2026-11-18T16:07:03Z"
+            },
+            {
+              "name": "Record Tier 2 Runtime Packages 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T16:07:03Z",
+              "completed_at": "2026-11-18T16:07:09Z"
+            },
+            {
+              "name": "Hand Off Tier 2 Tree 🤝",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-18T16:07:09Z",
+              "completed_at": "2026-11-18T16:07:09Z"
+            },
+            {
+              "name": "Upload Tier 2 Tree 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T16:07:09Z",
+              "completed_at": "2026-11-18T16:07:13Z"
+            },
+            {
+              "name": "Save Tier 2 Module Cache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 24,
+              "started_at": "2026-11-18T16:07:13Z",
+              "completed_at": "2026-11-18T16:07:13Z"
+            },
+            {
+              "name": "Save Tier 2 zccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 25,
+              "started_at": "2026-11-18T16:07:13Z",
+              "completed_at": "2026-11-18T16:07:13Z"
+            },
+            {
+              "name": "Keep Tier 2 Tree 🌲",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 26,
+              "started_at": "2026-11-18T16:07:13Z",
+              "completed_at": "2026-11-18T16:07:13Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-18T16:07:13Z",
+              "completed_at": "2026-11-18T16:07:16Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 51,
+              "started_at": "2026-11-18T16:07:16Z",
+              "completed_at": "2026-11-18T16:07:16Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 52,
+              "started_at": "2026-11-18T16:07:16Z",
+              "completed_at": "2026-11-18T16:07:16Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 53,
+              "started_at": "2026-11-18T16:07:16Z",
+              "completed_at": "2026-11-18T16:07:17Z"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 54,
+              "started_at": "2026-11-18T16:07:17Z",
+              "completed_at": "2026-11-18T16:07:21Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 55,
+              "started_at": "2026-11-18T16:07:21Z",
+              "completed_at": "2026-11-18T16:07:22Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568252,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173993",
+          "runner_id": 1000173993,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568252",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:52Z",
+              "completed_at": "2026-11-18T15:55:53Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:53Z",
+              "completed_at": "2026-11-18T15:55:57Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:57Z",
+              "completed_at": "2026-11-18T15:56:13Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:13Z",
+              "completed_at": "2026-11-18T15:56:16Z"
+            },
+            {
+              "name": "Local Gate (cross-release) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:16Z",
+              "completed_at": "2026-11-18T15:59:38Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:59:38Z",
+              "completed_at": "2026-11-18T15:59:39Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:59:39Z",
+              "completed_at": "2026-11-18T15:59:39Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T15:59:39Z",
+              "completed_at": "2026-11-18T15:59:39Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T15:59:39Z",
+              "completed_at": "2026-11-18T15:59:39Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568306,
+          "name": "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173991",
+          "runner_id": 1000173991,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568306",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:53Z",
+              "completed_at": "2026-11-18T15:55:55Z"
+            },
+            {
+              "name": "Check Out With LF 📝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:55Z",
+              "completed_at": "2026-11-18T15:55:56Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:56Z",
+              "completed_at": "2026-11-18T15:56:06Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:06Z",
+              "completed_at": "2026-11-18T15:56:40Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:40Z",
+              "completed_at": "2026-11-18T15:56:45Z"
+            },
+            {
+              "name": "Run Rust Tests (changed crates) 🧪",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T15:56:45Z",
+              "completed_at": "2026-11-18T15:56:45Z"
+            },
+            {
+              "name": "Run Rust Tests 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T15:56:45Z",
+              "completed_at": "2026-11-18T16:02:16Z"
+            },
+            {
+              "name": "Run Clippy 📎",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:02:16Z",
+              "completed_at": "2026-11-18T16:04:08Z"
+            },
+            {
+              "name": "Check Formatting 🎨",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:04:08Z",
+              "completed_at": "2026-11-18T16:04:16Z"
+            },
+            {
+              "name": "Check Published Qt SDK 🧩",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:04:16Z",
+              "completed_at": "2026-11-18T16:06:55Z"
+            },
+            {
+              "name": "Note proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T16:06:55Z",
+              "completed_at": "2026-11-18T16:06:55Z"
+            },
+            {
+              "name": "Upload proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T16:06:55Z",
+              "completed_at": "2026-11-18T16:06:55Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T16:06:55Z",
+              "completed_at": "2026-11-18T16:06:58Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T16:06:58Z",
+              "completed_at": "2026-11-18T16:06:59Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T16:06:59Z",
+              "completed_at": "2026-11-18T16:06:59Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 26,
+              "started_at": "2026-11-18T16:06:59Z",
+              "completed_at": "2026-11-18T16:07:01Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-18T16:07:01Z",
+              "completed_at": "2026-11-18T16:07:01Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568336,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173995",
+          "runner_id": 1000173995,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568336",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:52Z",
+              "completed_at": "2026-11-18T15:55:55Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:55Z",
+              "completed_at": "2026-11-18T15:55:59Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:59Z",
+              "completed_at": "2026-11-18T15:56:14Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:14Z",
+              "completed_at": "2026-11-18T15:56:16Z"
+            },
+            {
+              "name": "Local Gate (cross) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:16Z",
+              "completed_at": "2026-11-18T16:00:20Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:00:20Z",
+              "completed_at": "2026-11-18T16:00:20Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:00:20Z",
+              "completed_at": "2026-11-18T16:00:21Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:00:21Z",
+              "completed_at": "2026-11-18T16:00:21Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T16:00:21Z",
+              "completed_at": "2026-11-18T16:00:21Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568347,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173994",
+          "runner_id": 1000173994,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568347",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:52Z",
+              "completed_at": "2026-11-18T15:55:54Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:54Z",
+              "completed_at": "2026-11-18T15:55:59Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:59Z",
+              "completed_at": "2026-11-18T15:56:15Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:15Z",
+              "completed_at": "2026-11-18T15:56:17Z"
+            },
+            {
+              "name": "Local Gate (cross) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:17Z",
+              "completed_at": "2026-11-18T16:01:50Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:01:50Z",
+              "completed_at": "2026-11-18T16:01:50Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:01:50Z",
+              "completed_at": "2026-11-18T16:01:51Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:01:51Z",
+              "completed_at": "2026-11-18T16:01:51Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T16:01:51Z",
+              "completed_at": "2026-11-18T16:01:51Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568353,
+          "name": "Build 🧱 / Fast Gate ⚡",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173996",
+          "runner_id": 1000173996,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568353",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:52Z",
+              "completed_at": "2026-11-18T15:55:54Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:54Z",
+              "completed_at": "2026-11-18T15:55:58Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:58Z",
+              "completed_at": "2026-11-18T15:56:01Z"
+            },
+            {
+              "name": "Install libuuid and GIO",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:01Z",
+              "completed_at": "2026-11-18T15:56:12Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:12Z",
+              "completed_at": "2026-11-18T15:56:31Z"
+            },
+            {
+              "name": "Local Gate (lint) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T15:56:31Z",
+              "completed_at": "2026-11-18T16:01:06Z"
+            },
+            {
+              "name": "Upload Dylint Lane Proof 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T16:01:06Z",
+              "completed_at": "2026-11-18T16:01:07Z"
+            },
+            {
+              "name": "Unit Tests (changed crates) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:01:07Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Restore ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Prepare Touched Target apt Directory",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Restore Touched Target apt Downloads",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Build Touched Linux Targets 🧱",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Save Touched Target ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Check Touched Target apt Snapshot",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Save Touched Target apt Downloads",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Local Gate (rust-test) 🧪",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Mark Lane Proof 🧾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Upload Lane Proof 🧾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Note proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Upload proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Report soldr cache 📊",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Report S3 cache size 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:11Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T16:06:11Z",
+              "completed_at": "2026-11-18T16:06:12Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 44,
+              "started_at": "2026-11-18T16:06:12Z",
+              "completed_at": "2026-11-18T16:06:13Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 45,
+              "started_at": "2026-11-18T16:06:13Z",
+              "completed_at": "2026-11-18T16:06:13Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 46,
+              "started_at": "2026-11-18T16:06:13Z",
+              "completed_at": "2026-11-18T16:06:13Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-18T16:06:13Z",
+              "completed_at": "2026-11-18T16:06:13Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568365,
+          "name": "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174000",
+          "runner_id": 1000174000,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568365",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:56:47Z",
+              "completed_at": "2026-11-18T15:56:51Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:56:51Z",
+              "completed_at": "2026-11-18T15:56:59Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:56:59Z",
+              "completed_at": "2026-11-18T15:57:14Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:57:14Z",
+              "completed_at": "2026-11-18T15:57:17Z"
+            },
+            {
+              "name": "Link Windows Test Binaries 🔗",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:57:17Z",
+              "completed_at": "2026-11-18T16:00:15Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:00:15Z",
+              "completed_at": "2026-11-18T16:00:16Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:00:16Z",
+              "completed_at": "2026-11-18T16:00:16Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:00:16Z",
+              "completed_at": "2026-11-18T16:00:16Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T16:00:16Z",
+              "completed_at": "2026-11-18T16:00:16Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568440,
+          "name": "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173992",
+          "runner_id": 1000173992,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568440",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:55:52Z",
+              "completed_at": "2026-11-18T15:55:54Z"
+            },
+            {
+              "name": "Check Out With LF 📝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:55:54Z",
+              "completed_at": "2026-11-18T15:55:55Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:55:55Z",
+              "completed_at": "2026-11-18T15:56:20Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:20Z",
+              "completed_at": "2026-11-18T15:56:45Z"
+            },
+            {
+              "name": "Restore Tier 2 Xcode Cache 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:45Z",
+              "completed_at": "2026-11-18T15:56:45Z"
+            },
+            {
+              "name": "Validate Tier 2 on macOS (libobs C vs with Rust) 🍏",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T15:56:45Z",
+              "completed_at": "2026-11-18T15:56:45Z"
+            },
+            {
+              "name": "Save Tier 2 Xcode Cache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T15:56:45Z",
+              "completed_at": "2026-11-18T15:56:45Z"
+            },
+            {
+              "name": "Restore Tier 2 ccache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T15:56:45Z",
+              "completed_at": "2026-11-18T15:57:18Z"
+            },
+            {
+              "name": "Set Up ccache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T15:57:18Z",
+              "completed_at": "2026-11-18T15:57:20Z"
+            },
+            {
+              "name": "Read Runner Image 🏷️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T15:57:20Z",
+              "completed_at": "2026-11-18T15:57:20Z"
+            },
+            {
+              "name": "Cache vcpkg Binaries 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T15:57:20Z",
+              "completed_at": "2026-11-18T15:57:22Z"
+            },
+            {
+              "name": "Validate Tier 2 on Windows (libobs C vs with Rust) 🪟",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T15:57:22Z",
+              "completed_at": "2026-11-18T16:10:16Z"
+            },
+            {
+              "name": "Save Tier 2 ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-18T16:10:16Z",
+              "completed_at": "2026-11-18T16:10:16Z"
+            },
+            {
+              "name": "Save vcpkg Binaries 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-18T16:10:16Z",
+              "completed_at": "2026-11-18T16:10:16Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-18T16:10:16Z",
+              "completed_at": "2026-11-18T16:10:16Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 28,
+              "started_at": "2026-11-18T16:10:16Z",
+              "completed_at": "2026-11-18T16:10:19Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 29,
+              "started_at": "2026-11-18T16:10:19Z",
+              "completed_at": "2026-11-18T16:10:20Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568502,
+          "name": "Build 🧱 / Rust Tier 2 (macos-26)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174015",
+          "runner_id": 1000174015,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568502",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:00:28Z",
+              "completed_at": "2026-11-18T16:00:31Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:00:31Z",
+              "completed_at": "2026-11-18T16:00:48Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:00:48Z",
+              "completed_at": "2026-11-18T16:01:03Z"
+            },
+            {
+              "name": "Restore Tier 2 Xcode Cache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:01:03Z",
+              "completed_at": "2026-11-18T16:01:14Z"
+            },
+            {
+              "name": "Validate Tier 2 on macOS (libobs C vs with Rust) 🍏",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:01:14Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Save Tier 2 Xcode Cache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Restore Tier 2 ccache 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Set Up ccache 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Cache vcpkg Binaries 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Validate Tier 2 on Windows (libobs C vs with Rust) 🪟",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Save Tier 2 ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Save vcpkg Binaries 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:58Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T16:15:58Z",
+              "completed_at": "2026-11-18T16:15:59Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T16:15:59Z",
+              "completed_at": "2026-11-18T16:16:00Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T16:16:00Z",
+              "completed_at": "2026-11-18T16:16:03Z"
+            }
+          ]
+        },
+        {
+          "id": 134931568515,
+          "name": "Build 🧱 / macOS Rust Artifacts 🐧",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173998",
+          "runner_id": 1000173998,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931568515",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T15:56:19Z",
+              "completed_at": "2026-11-18T15:56:21Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T15:56:21Z",
+              "completed_at": "2026-11-18T15:56:24Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T15:56:24Z",
+              "completed_at": "2026-11-18T15:56:27Z"
+            },
+            {
+              "name": "Place common checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T15:56:27Z",
+              "completed_at": "2026-11-18T15:56:27Z"
+            },
+            {
+              "name": "Install Linux preparation dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T15:56:27Z",
+              "completed_at": "2026-11-18T15:56:40Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T15:56:40Z",
+              "completed_at": "2026-11-18T15:56:56Z"
+            },
+            {
+              "name": "Prepare Darwin standard library",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T15:56:56Z",
+              "completed_at": "2026-11-18T15:57:00Z"
+            },
+            {
+              "name": "Run Clippy 📎",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-11-18T15:57:00Z",
+              "completed_at": "2026-11-18T15:57:00Z"
+            },
+            {
+              "name": "Check Formatting 🎨",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-18T15:57:00Z",
+              "completed_at": "2026-11-18T15:57:00Z"
+            },
+            {
+              "name": "Prepare selected Darwin tests and fixtures",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T15:57:00Z",
+              "completed_at": "2026-11-18T15:57:00Z"
+            },
+            {
+              "name": "Prepare workspace Darwin tests and fixtures",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T15:57:00Z",
+              "completed_at": "2026-11-18T16:03:31Z"
+            },
+            {
+              "name": "Prepare published Qt SDK contracts",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T16:03:31Z",
+              "completed_at": "2026-11-18T16:04:38Z"
+            },
+            {
+              "name": "Pack complete Darwin bundle",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T16:04:38Z",
+              "completed_at": "2026-11-18T16:05:24Z"
+            },
+            {
+              "name": "Upload Darwin bundle",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-18T16:05:24Z",
+              "completed_at": "2026-11-18T16:05:27Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-18T16:05:27Z",
+              "completed_at": "2026-11-18T16:05:29Z"
+            },
+            {
+              "name": "Restore checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T16:05:29Z",
+              "completed_at": "2026-11-18T16:05:29Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 30,
+              "started_at": "2026-11-18T16:05:29Z",
+              "completed_at": "2026-11-18T16:05:30Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 31,
+              "started_at": "2026-11-18T16:05:30Z",
+              "completed_at": "2026-11-18T16:05:30Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 32,
+              "started_at": "2026-11-18T16:05:30Z",
+              "completed_at": "2026-11-18T16:05:30Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 33,
+              "started_at": "2026-11-18T16:05:30Z",
+              "completed_at": "2026-11-18T16:05:30Z"
+            }
+          ]
+        },
+        {
+          "id": 134931570982,
+          "name": "Build 🧱 / Ubuntu 🐧 ${{ (((matrix.rust == 'ON') && '(OBS-Studio-Rust) ') || '') }}",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931570982",
+          "steps": []
+        },
+        {
+          "id": 134931571694,
+          "name": "Build 🧱 / Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931571694",
+          "steps": []
+        },
+        {
+          "id": 134931571851,
+          "name": "Build 🧱 / Windows 🪟",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931571851",
+          "steps": []
+        },
+        {
+          "id": 134931572142,
+          "name": "Build 🧱 / Flatpak 📦",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931572142",
+          "steps": []
+        },
+        {
+          "id": 134931572264,
+          "name": "Build 🧱 / macOS 🍏",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931572264",
+          "steps": []
+        },
+        {
+          "id": 134931572526,
+          "name": "Build 🧱 / Qt Frontend Linux 🐧",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931572526",
+          "steps": []
+        },
+        {
+          "id": 134931572812,
+          "name": "Build 🧱 / Native Cache Transport (${{ matrix.platform }} ${{ matrix.architecture }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931572812",
+          "steps": []
+        },
+        {
+          "id": 134931573245,
+          "name": "Build 🧱 / Flatpak Saved Profile 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931573245",
+          "steps": []
+        },
+        {
+          "id": 134931573391,
+          "name": "Build 🧱 / Flatpak Compiler Consumer 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134931573391",
+          "steps": []
+        },
+        {
+          "id": 134932726504,
+          "name": "Format 🔍 / swift-format",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134932726504",
+          "steps": []
+        },
+        {
+          "id": 134935769212,
+          "name": "Build 🧱 / Rust Cross Lane Proof 🧾",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134935769212",
+          "steps": []
+        },
+        {
+          "id": 134938308757,
+          "name": "Build 🧱 / Rust Tests 🦀 (macos-26)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "runner_name": "",
+          "runner_id": 0,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134938308757",
+          "steps": []
+        },
+        {
+          "id": 134939579907,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174053",
+          "runner_id": 1000174053,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134939579907",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:10:26Z",
+              "completed_at": "2026-11-18T16:10:27Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:10:27Z",
+              "completed_at": "2026-11-18T16:10:31Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:10:31Z",
+              "completed_at": "2026-11-18T16:10:32Z"
+            },
+            {
+              "name": "Prepare apt Archive Directory",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:10:32Z",
+              "completed_at": "2026-11-18T16:10:32Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:10:32Z",
+              "completed_at": "2026-11-18T16:10:33Z"
+            },
+            {
+              "name": "Take Tier 2 Tree Handoff 🤝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T16:10:33Z",
+              "completed_at": "2026-11-18T16:10:33Z"
+            },
+            {
+              "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T16:10:33Z",
+              "completed_at": "2026-11-18T16:10:38Z"
+            },
+            {
+              "name": "Unpack Tier 2 Tree 📂",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:10:38Z",
+              "completed_at": "2026-11-18T16:10:40Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:10:40Z",
+              "completed_at": "2026-11-18T16:10:41Z"
+            },
+            {
+              "name": "Test Tier 2 (ON) ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:10:41Z",
+              "completed_at": "2026-11-18T16:17:08Z"
+            },
+            {
+              "name": "Upload Runtime Setup Measurement",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T16:17:08Z",
+              "completed_at": "2026-11-18T16:17:09Z"
+            },
+            {
+              "name": "Upload Test Timings ⏱️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T16:17:09Z",
+              "completed_at": "2026-11-18T16:17:09Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T16:17:09Z",
+              "completed_at": "2026-11-18T16:17:09Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T16:17:09Z",
+              "completed_at": "2026-11-18T16:17:09Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T16:17:09Z",
+              "completed_at": "2026-11-18T16:17:09Z"
+            }
+          ]
+        },
+        {
+          "id": 134939579946,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174041",
+          "runner_id": 1000174041,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134939579946",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:08:09Z",
+              "completed_at": "2026-11-18T16:08:12Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:08:12Z",
+              "completed_at": "2026-11-18T16:08:20Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:08:20Z",
+              "completed_at": "2026-11-18T16:08:22Z"
+            },
+            {
+              "name": "Prepare apt Archive Directory",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:08:22Z",
+              "completed_at": "2026-11-18T16:08:22Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:08:22Z",
+              "completed_at": "2026-11-18T16:08:22Z"
+            },
+            {
+              "name": "Take Tier 2 Tree Handoff 🤝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T16:08:22Z",
+              "completed_at": "2026-11-18T16:08:22Z"
+            },
+            {
+              "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T16:08:22Z",
+              "completed_at": "2026-11-18T16:08:25Z"
+            },
+            {
+              "name": "Unpack Tier 2 Tree 📂",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:08:25Z",
+              "completed_at": "2026-11-18T16:08:26Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:08:26Z",
+              "completed_at": "2026-11-18T16:08:27Z"
+            },
+            {
+              "name": "Test Tier 2 (OFF) ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:08:27Z",
+              "completed_at": "2026-11-18T16:14:32Z"
+            },
+            {
+              "name": "Upload Runtime Setup Measurement",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T16:14:32Z",
+              "completed_at": "2026-11-18T16:14:33Z"
+            },
+            {
+              "name": "Upload Test Timings ⏱️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T16:14:33Z",
+              "completed_at": "2026-11-18T16:14:33Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T16:14:33Z",
+              "completed_at": "2026-11-18T16:14:33Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T16:14:33Z",
+              "completed_at": "2026-11-18T16:14:33Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T16:14:33Z",
+              "completed_at": "2026-11-18T16:14:33Z"
+            }
+          ]
+        },
+        {
+          "id": 134946452732,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134946452732",
+          "steps": []
+        },
+        {
+          "id": 134950834986,
+          "name": "Validate Data 🕵️",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174092",
+          "runner_id": 1000174092,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134950834986",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:23:34Z",
+              "completed_at": "2026-11-18T16:23:35Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:23:35Z",
+              "completed_at": "2026-11-18T16:23:45Z"
+            },
+            {
+              "name": "Check for Changed Compatibility Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:23:45Z",
+              "completed_at": "2026-11-18T16:23:48Z"
+            },
+            {
+              "name": "Check for Invalid Compatibility Data 📉",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 4,
+              "started_at": "2026-11-18T16:23:48Z",
+              "completed_at": "2026-11-18T16:23:48Z"
+            },
+            {
+              "name": "Check for Changed Services Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:23:48Z",
+              "completed_at": "2026-11-18T16:23:50Z"
+            },
+            {
+              "name": "Check Services JSON Schema 📉",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T16:23:50Z",
+              "completed_at": "2026-11-18T16:23:50Z"
+            },
+            {
+              "name": "Post Check for Changed Services Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T16:23:50Z",
+              "completed_at": "2026-11-18T16:23:50Z"
+            },
+            {
+              "name": "Post Check for Changed Compatibility Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T16:23:50Z",
+              "completed_at": "2026-11-18T16:23:51Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T16:23:51Z",
+              "completed_at": "2026-11-18T16:23:51Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T16:23:51Z",
+              "completed_at": "2026-11-18T16:23:51Z"
+            }
+          ]
+        },
+        {
+          "id": 134950838227,
+          "name": "Tier 2 Setup (${{ matrix.variant }}, trial ${{ matrix.trial }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134950838227",
+          "steps": []
+        },
+        {
+          "id": 134950838346,
+          "name": "Tier 2 Setup Producer 📦",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134950838346",
+          "steps": []
+        },
+        {
+          "id": 134950838817,
+          "name": "Format 🔍",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134950838817",
+          "steps": []
+        },
+        {
+          "id": 134950839103,
+          "name": "Native Cache Consumer (${{ matrix.platform }} ${{ matrix.architecture }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134950839103",
+          "steps": []
+        },
+        {
+          "id": 134951098092,
+          "name": "CI Gate ✅",
+          "status": "completed",
+          "conclusion": "failure",
+          "runner_name": "GitHub Actions 1000174094",
+          "runner_id": 1000174094,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134951098092",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:23:57Z",
+              "completed_at": "2026-11-18T16:23:58Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:23:58Z",
+              "completed_at": "2026-11-18T16:24:08Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:24:08Z",
+              "completed_at": "2026-11-18T16:24:10Z"
+            },
+            {
+              "name": "Report Queue Run 📊",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:24:10Z",
+              "completed_at": "2026-11-18T16:24:15Z"
+            },
+            {
+              "name": "Report Lane Proof Output 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T16:24:15Z",
+              "completed_at": "2026-11-18T16:24:15Z"
+            },
+            {
+              "name": "Check Job Results ✅",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T16:24:15Z",
+              "completed_at": "2026-11-18T16:24:15Z"
+            },
+            {
+              "name": "Check Run Jobs ✅",
+              "status": "completed",
+              "conclusion": "failure",
+              "number": 7,
+              "started_at": "2026-11-18T16:24:15Z",
+              "completed_at": "2026-11-18T16:24:17Z"
+            },
+            {
+              "name": "Run echo 'Every selected queue job executed successfully; out-of-scope jobs may skip.'",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-11-18T16:24:17Z",
+              "completed_at": "2026-11-18T16:24:17Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-18T16:24:17Z",
+              "completed_at": "2026-11-18T16:24:17Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T16:24:17Z",
+              "completed_at": "2026-11-18T16:24:17Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T16:24:17Z",
+              "completed_at": "2026-11-18T16:24:17Z"
+            }
+          ]
+        },
+        {
+          "id": 134951404172,
+          "name": "Cache Janitor 🧹",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174095",
+          "runner_id": 1000174095,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134951404172",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T16:24:23Z",
+              "completed_at": "2026-11-18T16:24:24Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T16:24:24Z",
+              "completed_at": "2026-11-18T16:24:26Z"
+            },
+            {
+              "name": "Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T16:24:26Z",
+              "completed_at": "2026-11-18T16:24:28Z"
+            },
+            {
+              "name": "Sweep Caches 🧹",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T16:24:28Z",
+              "completed_at": "2026-11-18T16:24:33Z"
+            },
+            {
+              "name": "Post Run astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T16:24:33Z",
+              "completed_at": "2026-11-18T16:24:33Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T16:24:33Z",
+              "completed_at": "2026-11-18T16:24:33Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T16:24:33Z",
+              "completed_at": "2026-11-18T16:24:33Z"
+            }
+          ]
+        },
+        {
+          "id": 134951405459,
+          "name": "Tier 2 Lane Proof 🧾",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134951405459",
+          "steps": []
+        }
+      ]
+    },
+    "annotations": {
+      "134938308757": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/aaec1bbb2ed4f4b3be90809616ff068b2beaebe6/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "The job was not acquired by Runner of type hosted even after multiple attempts",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/aaec1bbb2ed4f4b3be90809616ff068b2beaebe6/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/aaec1bbb2ed4f4b3be90809616ff068b2beaebe6/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/aaec1bbb2ed4f4b3be90809616ff068b2beaebe6/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        }
+      ],
+      "134951098092": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/aaec1bbb2ed4f4b3be90809616ff068b2beaebe6/.github",
+          "start_line": 11,
+          "start_column": null,
+          "end_line": 11,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "Process completed with exit code 1.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/aaec1bbb2ed4f4b3be90809616ff068b2beaebe6/.github",
+          "start_line": 10,
+          "start_column": null,
+          "end_line": 10,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "Build 🧱 / Rust Tests 🦀 (macos-26): runner capacity condition: job did not acquire a runner; validation did not run",
+          "raw_details": ""
+        }
+      ]
+    }
+  },
+  "pull_request": {
+    "source": "GitHub REST API, 2026-11-18: run 44318137015 attempt 1; projected unmodified values",
+    "run": {
+      "id": 44318137015,
+      "event": "pull_request",
+      "head_sha": "4942bd2884ddd3b4d55da0a188e9098aa3da0f9c",
+      "head_branch": "test/5085-source-missing-files-getter",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_attempt": 1,
+      "workflow_id": 386287070,
+      "created_at": "2026-11-18T13:52:16Z",
+      "updated_at": "2026-11-18T14:26:13Z"
+    },
+    "jobs": {
+      "total_count": 41,
+      "jobs": [
+        {
+          "id": 134849614882,
+          "name": "Build 🧱 / Event Data 🔎",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173613",
+          "runner_id": 1000173613,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849614882",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:21Z",
+              "completed_at": "2026-11-18T13:52:22Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:22Z",
+              "completed_at": "2026-11-18T13:52:32Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:32Z",
+              "completed_at": "2026-11-18T13:52:34Z"
+            },
+            {
+              "name": "Select Swift from Immutable Event Diff",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:52:34Z",
+              "completed_at": "2026-11-18T13:52:34Z"
+            },
+            {
+              "name": "Select Tier 2 Container Image",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:52:34Z",
+              "completed_at": "2026-11-18T13:52:34Z"
+            },
+            {
+              "name": "Select Tier 2 Scheduling",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T13:52:34Z",
+              "completed_at": "2026-11-18T13:52:34Z"
+            },
+            {
+              "name": "Check Experimental Flatpak Inputs",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T13:52:34Z",
+              "completed_at": "2026-11-18T13:52:34Z"
+            },
+            {
+              "name": "Check Event Data ☑️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:52:34Z",
+              "completed_at": "2026-11-18T13:52:35Z"
+            },
+            {
+              "name": "Check Submodule Pointers 🧭",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:52:35Z",
+              "completed_at": "2026-11-18T13:52:35Z"
+            },
+            {
+              "name": "Check Change Scope 🧭",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:52:35Z",
+              "completed_at": "2026-11-18T13:52:35Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-18T13:52:35Z",
+              "completed_at": "2026-11-18T13:52:35Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-18T13:52:35Z",
+              "completed_at": "2026-11-18T13:52:36Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T13:52:36Z",
+              "completed_at": "2026-11-18T13:52:36Z"
+            }
+          ]
+        },
+        {
+          "id": 134849614961,
+          "name": "Recheck Flatpak Saved Profile 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849614961",
+          "steps": []
+        },
+        {
+          "id": 134849615382,
+          "name": "Build 🧱 / CI Mode 🛂",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173614",
+          "runner_id": 1000173614,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849615382",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:21Z",
+              "completed_at": "2026-11-18T13:52:22Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:22Z",
+              "completed_at": "2026-11-18T13:52:33Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:33Z",
+              "completed_at": "2026-11-18T13:52:35Z"
+            },
+            {
+              "name": "Verify Client Admission from Immutable Base 🛂",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:52:35Z",
+              "completed_at": "2026-11-18T13:52:38Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T13:52:38Z",
+              "completed_at": "2026-11-18T13:52:38Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:52:38Z",
+              "completed_at": "2026-11-18T13:52:38Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:52:38Z",
+              "completed_at": "2026-11-18T13:52:38Z"
+            }
+          ]
+        },
+        {
+          "id": 134849616635,
+          "name": "Cancel Superseded Queue Runs 🧹",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849616635",
+          "steps": []
+        },
+        {
+          "id": 134849617353,
+          "name": "Format 🔍",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849617353",
+          "steps": []
+        },
+        {
+          "id": 134849670100,
+          "name": "CI Pre 🧹 / Cache Janitor 🧹",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849670100",
+          "steps": []
+        },
+        {
+          "id": 134849688383,
+          "name": "Update Documentation 📖",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849688383",
+          "steps": []
+        },
+        {
+          "id": 134849696904,
+          "name": "Select Merge Queue Runner",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849696904",
+          "steps": []
+        },
+        {
+          "id": 134849836906,
+          "name": "Build 🧱 / Ubuntu 🐧 ${{ (((matrix.rust == 'ON') && '(OBS-Studio-Rust) ') || '') }}",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849836906",
+          "steps": []
+        },
+        {
+          "id": 134849837096,
+          "name": "Build 🧱 / Flatpak 📦",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849837096",
+          "steps": []
+        },
+        {
+          "id": 134849837476,
+          "name": "Build 🧱 / macOS 🍏",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849837476",
+          "steps": []
+        },
+        {
+          "id": 134849837896,
+          "name": "Build 🧱 / Native Cache Transport (${{ matrix.platform }} ${{ matrix.architecture }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849837896",
+          "steps": []
+        },
+        {
+          "id": 134849838380,
+          "name": "Build 🧱 / Windows 🪟",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849838380",
+          "steps": []
+        },
+        {
+          "id": 134849838432,
+          "name": "Build 🧱 / Flatpak Compiler Consumer 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849838432",
+          "steps": []
+        },
+        {
+          "id": 134849839913,
+          "name": "Build 🧱 / Flatpak Saved Profile 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849839913",
+          "steps": []
+        },
+        {
+          "id": 134849851304,
+          "name": "Build 🧱 / Fast Gate ⚡",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173617",
+          "runner_id": 1000173617,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851304",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:44Z",
+              "completed_at": "2026-11-18T13:52:47Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:47Z",
+              "completed_at": "2026-11-18T13:52:50Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:50Z",
+              "completed_at": "2026-11-18T13:52:52Z"
+            },
+            {
+              "name": "Install libuuid and GIO",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:52:52Z",
+              "completed_at": "2026-11-18T13:54:13Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:54:13Z",
+              "completed_at": "2026-11-18T13:54:28Z"
+            },
+            {
+              "name": "Local Gate (lint) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T13:54:28Z",
+              "completed_at": "2026-11-18T13:57:47Z"
+            },
+            {
+              "name": "Upload Dylint Lane Proof 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T13:57:47Z",
+              "completed_at": "2026-11-18T13:57:48Z"
+            },
+            {
+              "name": "Unit Tests (changed crates) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:57:48Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Restore ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Prepare Touched Target apt Directory",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Restore Touched Target apt Downloads",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Build Touched Linux Targets 🧱",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Save Touched Target ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Check Touched Target apt Snapshot",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Save Touched Target apt Downloads",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Local Gate (rust-test) 🧪",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Mark Lane Proof 🧾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Upload Lane Proof 🧾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 18,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Note proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Upload proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 20,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Report soldr cache 📊",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Report S3 cache size 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:29Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T14:01:29Z",
+              "completed_at": "2026-11-18T14:01:31Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 44,
+              "started_at": "2026-11-18T14:01:31Z",
+              "completed_at": "2026-11-18T14:01:31Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 45,
+              "started_at": "2026-11-18T14:01:31Z",
+              "completed_at": "2026-11-18T14:01:31Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 46,
+              "started_at": "2026-11-18T14:01:31Z",
+              "completed_at": "2026-11-18T14:01:32Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 47,
+              "started_at": "2026-11-18T14:01:32Z",
+              "completed_at": "2026-11-18T14:01:32Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851321,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173616",
+          "runner_id": 1000173616,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851321",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:45Z",
+              "completed_at": "2026-11-18T13:52:47Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:47Z",
+              "completed_at": "2026-11-18T13:52:50Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:50Z",
+              "completed_at": "2026-11-18T13:53:05Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:53:05Z",
+              "completed_at": "2026-11-18T13:53:08Z"
+            },
+            {
+              "name": "Local Gate (cross) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:08Z",
+              "completed_at": "2026-11-18T13:58:53Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:58:53Z",
+              "completed_at": "2026-11-18T13:58:53Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:58:53Z",
+              "completed_at": "2026-11-18T13:58:54Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:58:54Z",
+              "completed_at": "2026-11-18T13:58:55Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T13:58:55Z",
+              "completed_at": "2026-11-18T13:58:55Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851384,
+          "name": "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173622",
+          "runner_id": 1000173622,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851384",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:44Z",
+              "completed_at": "2026-11-18T13:52:47Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:47Z",
+              "completed_at": "2026-11-18T13:52:51Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:51Z",
+              "completed_at": "2026-11-18T13:53:06Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:53:06Z",
+              "completed_at": "2026-11-18T13:53:09Z"
+            },
+            {
+              "name": "Link Windows Test Binaries 🔗",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:09Z",
+              "completed_at": "2026-11-18T13:57:39Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:57:39Z",
+              "completed_at": "2026-11-18T13:57:40Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:57:40Z",
+              "completed_at": "2026-11-18T13:57:40Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:57:40Z",
+              "completed_at": "2026-11-18T13:57:40Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T13:57:40Z",
+              "completed_at": "2026-11-18T13:57:40Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851400,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173615",
+          "runner_id": 1000173615,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851400",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:45Z",
+              "completed_at": "2026-11-18T13:52:46Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:46Z",
+              "completed_at": "2026-11-18T13:52:51Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:51Z",
+              "completed_at": "2026-11-18T13:53:06Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:53:06Z",
+              "completed_at": "2026-11-18T13:53:08Z"
+            },
+            {
+              "name": "Local Gate (cross-release) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:08Z",
+              "completed_at": "2026-11-18T13:56:28Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:56:28Z",
+              "completed_at": "2026-11-18T13:56:29Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:56:29Z",
+              "completed_at": "2026-11-18T13:56:29Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:56:29Z",
+              "completed_at": "2026-11-18T13:56:29Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T13:56:29Z",
+              "completed_at": "2026-11-18T13:56:29Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851431,
+          "name": "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173621",
+          "runner_id": 1000173621,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851431",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:45Z",
+              "completed_at": "2026-11-18T13:52:47Z"
+            },
+            {
+              "name": "Check Out With LF 📝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:47Z",
+              "completed_at": "2026-11-18T13:52:48Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:48Z",
+              "completed_at": "2026-11-18T13:53:12Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:53:12Z",
+              "completed_at": "2026-11-18T13:53:43Z"
+            },
+            {
+              "name": "Restore Tier 2 Xcode Cache 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:43Z",
+              "completed_at": "2026-11-18T13:53:43Z"
+            },
+            {
+              "name": "Validate Tier 2 on macOS (libobs C vs with Rust) 🍏",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T13:53:43Z",
+              "completed_at": "2026-11-18T13:53:43Z"
+            },
+            {
+              "name": "Save Tier 2 Xcode Cache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T13:53:43Z",
+              "completed_at": "2026-11-18T13:53:43Z"
+            },
+            {
+              "name": "Restore Tier 2 ccache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:53:43Z",
+              "completed_at": "2026-11-18T13:54:16Z"
+            },
+            {
+              "name": "Set Up ccache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:54:16Z",
+              "completed_at": "2026-11-18T13:54:18Z"
+            },
+            {
+              "name": "Read Runner Image 🏷️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:54:18Z",
+              "completed_at": "2026-11-18T13:54:18Z"
+            },
+            {
+              "name": "Cache vcpkg Binaries 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T13:54:18Z",
+              "completed_at": "2026-11-18T13:54:19Z"
+            },
+            {
+              "name": "Validate Tier 2 on Windows (libobs C vs with Rust) 🪟",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T13:54:19Z",
+              "completed_at": "2026-11-18T14:03:56Z"
+            },
+            {
+              "name": "Save Tier 2 ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-11-18T14:03:56Z",
+              "completed_at": "2026-11-18T14:03:56Z"
+            },
+            {
+              "name": "Save vcpkg Binaries 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-11-18T14:03:56Z",
+              "completed_at": "2026-11-18T14:03:56Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-18T14:03:56Z",
+              "completed_at": "2026-11-18T14:03:56Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 28,
+              "started_at": "2026-11-18T14:03:56Z",
+              "completed_at": "2026-11-18T14:04:00Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 29,
+              "started_at": "2026-11-18T14:04:00Z",
+              "completed_at": "2026-11-18T14:04:00Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851450,
+          "name": "Build 🧱 / macOS Rust Artifacts 🐧",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173619",
+          "runner_id": 1000173619,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851450",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:44Z",
+              "completed_at": "2026-11-18T13:52:46Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:46Z",
+              "completed_at": "2026-11-18T13:52:50Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:50Z",
+              "completed_at": "2026-11-18T13:52:53Z"
+            },
+            {
+              "name": "Place common checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:52:53Z",
+              "completed_at": "2026-11-18T13:52:53Z"
+            },
+            {
+              "name": "Install Linux preparation dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:52:54Z",
+              "completed_at": "2026-11-18T13:53:15Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T13:53:15Z",
+              "completed_at": "2026-11-18T13:53:30Z"
+            },
+            {
+              "name": "Prepare Darwin standard library",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T13:53:30Z",
+              "completed_at": "2026-11-18T13:53:33Z"
+            },
+            {
+              "name": "Run Clippy 📎",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:53:33Z",
+              "completed_at": "2026-11-18T13:55:25Z"
+            },
+            {
+              "name": "Check Formatting 🎨",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:55:25Z",
+              "completed_at": "2026-11-18T13:55:29Z"
+            },
+            {
+              "name": "Prepare selected Darwin tests and fixtures",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:55:29Z",
+              "completed_at": "2026-11-18T14:00:36Z"
+            },
+            {
+              "name": "Prepare workspace Darwin tests and fixtures",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T14:00:36Z",
+              "completed_at": "2026-11-18T14:00:36Z"
+            },
+            {
+              "name": "Prepare published Qt SDK contracts",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T14:00:36Z",
+              "completed_at": "2026-11-18T14:01:36Z"
+            },
+            {
+              "name": "Pack complete Darwin bundle",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T14:01:36Z",
+              "completed_at": "2026-11-18T14:02:16Z"
+            },
+            {
+              "name": "Upload Darwin bundle",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-18T14:02:16Z",
+              "completed_at": "2026-11-18T14:02:17Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-18T14:02:17Z",
+              "completed_at": "2026-11-18T14:02:19Z"
+            },
+            {
+              "name": "Restore checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T14:02:19Z",
+              "completed_at": "2026-11-18T14:02:19Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 30,
+              "started_at": "2026-11-18T14:02:19Z",
+              "completed_at": "2026-11-18T14:02:19Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 31,
+              "started_at": "2026-11-18T14:02:19Z",
+              "completed_at": "2026-11-18T14:02:19Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 32,
+              "started_at": "2026-11-18T14:02:19Z",
+              "completed_at": "2026-11-18T14:02:20Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 33,
+              "started_at": "2026-11-18T14:02:20Z",
+              "completed_at": "2026-11-18T14:02:20Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851463,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173618",
+          "runner_id": 1000173618,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851463",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:44Z",
+              "completed_at": "2026-11-18T13:52:46Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:46Z",
+              "completed_at": "2026-11-18T13:52:50Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:50Z",
+              "completed_at": "2026-11-18T13:53:05Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:53:05Z",
+              "completed_at": "2026-11-18T13:53:08Z"
+            },
+            {
+              "name": "Local Gate (cross) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:08Z",
+              "completed_at": "2026-11-18T13:59:22Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:59:23Z",
+              "completed_at": "2026-11-18T13:59:23Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:59:23Z",
+              "completed_at": "2026-11-18T13:59:23Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T13:59:23Z",
+              "completed_at": "2026-11-18T13:59:23Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T13:59:23Z",
+              "completed_at": "2026-11-18T13:59:23Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851530,
+          "name": "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173620",
+          "runner_id": 1000173620,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851530",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:45Z",
+              "completed_at": "2026-11-18T13:52:48Z"
+            },
+            {
+              "name": "Check Out With LF 📝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:48Z",
+              "completed_at": "2026-11-18T13:52:49Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:49Z",
+              "completed_at": "2026-11-18T13:52:59Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:52:59Z",
+              "completed_at": "2026-11-18T13:53:33Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:33Z",
+              "completed_at": "2026-11-18T13:53:39Z"
+            },
+            {
+              "name": "Run Rust Tests (changed crates) 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T13:53:39Z",
+              "completed_at": "2026-11-18T14:01:21Z"
+            },
+            {
+              "name": "Run Rust Tests 🧪",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T14:01:21Z",
+              "completed_at": "2026-11-18T14:01:21Z"
+            },
+            {
+              "name": "Run Clippy 📎",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T14:01:21Z",
+              "completed_at": "2026-11-18T14:04:10Z"
+            },
+            {
+              "name": "Check Formatting 🎨",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T14:04:10Z",
+              "completed_at": "2026-11-18T14:04:18Z"
+            },
+            {
+              "name": "Check Published Qt SDK 🧩",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T14:04:18Z",
+              "completed_at": "2026-11-18T14:07:07Z"
+            },
+            {
+              "name": "Note proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T14:07:07Z",
+              "completed_at": "2026-11-18T14:07:07Z"
+            },
+            {
+              "name": "Upload proptest regressions 🗂️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T14:07:07Z",
+              "completed_at": "2026-11-18T14:07:07Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T14:07:07Z",
+              "completed_at": "2026-11-18T14:07:11Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T14:07:11Z",
+              "completed_at": "2026-11-18T14:07:12Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T14:07:12Z",
+              "completed_at": "2026-11-18T14:07:12Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 26,
+              "started_at": "2026-11-18T14:07:12Z",
+              "completed_at": "2026-11-18T14:07:15Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-18T14:07:15Z",
+              "completed_at": "2026-11-18T14:07:15Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851699,
+          "name": "Build 🧱 / Rust Tier 2 (macos-26)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173655",
+          "runner_id": 1000173655,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851699",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:03:04Z",
+              "completed_at": "2026-11-18T14:03:06Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:03:06Z",
+              "completed_at": "2026-11-18T14:03:24Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:03:24Z",
+              "completed_at": "2026-11-18T14:03:33Z"
+            },
+            {
+              "name": "Restore Tier 2 Xcode Cache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T14:03:33Z",
+              "completed_at": "2026-11-18T14:03:37Z"
+            },
+            {
+              "name": "Validate Tier 2 on macOS (libobs C vs with Rust) 🍏",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:03:37Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Save Tier 2 Xcode Cache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Restore Tier 2 ccache 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Set Up ccache 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Cache vcpkg Binaries 🗄️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Validate Tier 2 on Windows (libobs C vs with Rust) 🪟",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Save Tier 2 ccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Save vcpkg Binaries 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:42Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T14:16:42Z",
+              "completed_at": "2026-11-18T14:16:43Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T14:16:43Z",
+              "completed_at": "2026-11-18T14:16:46Z"
+            }
+          ]
+        },
+        {
+          "id": 134849851741,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (build)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173623",
+          "runner_id": 1000173623,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849851741",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T13:52:45Z",
+              "completed_at": "2026-11-18T13:52:47Z"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T13:52:47Z",
+              "completed_at": "2026-11-18T13:52:50Z"
+            },
+            {
+              "name": "Install Git 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T13:52:50Z",
+              "completed_at": "2026-11-18T13:53:07Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T13:53:07Z",
+              "completed_at": "2026-11-18T13:53:13Z"
+            },
+            {
+              "name": "Select Persistent Cache 🗄️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T13:53:13Z",
+              "completed_at": "2026-11-18T13:53:13Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T13:53:13Z",
+              "completed_at": "2026-11-18T13:53:14Z"
+            },
+            {
+              "name": "Keep apt Downloads 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T13:53:14Z",
+              "completed_at": "2026-11-18T13:53:14Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T13:53:14Z",
+              "completed_at": "2026-11-18T13:53:17Z"
+            },
+            {
+              "name": "Install Tier 2 Packages 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T13:53:17Z",
+              "completed_at": "2026-11-18T13:53:46Z"
+            },
+            {
+              "name": "Save apt Downloads 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-11-18T13:53:46Z",
+              "completed_at": "2026-11-18T13:53:46Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T13:53:46Z",
+              "completed_at": "2026-11-18T13:53:56Z"
+            },
+            {
+              "name": "Bound zccache 🧹",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T13:53:56Z",
+              "completed_at": "2026-11-18T13:53:56Z"
+            },
+            {
+              "name": "Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T13:53:56Z",
+              "completed_at": "2026-11-18T13:54:08Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-11-18T13:54:08Z",
+              "completed_at": "2026-11-18T13:54:10Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-11-18T13:54:10Z",
+              "completed_at": "2026-11-18T13:54:10Z"
+            },
+            {
+              "name": "Seed Tier 2 Test Timings ⏱️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T13:54:10Z",
+              "completed_at": "2026-11-18T13:54:11Z"
+            },
+            {
+              "name": "Install zccache 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T13:54:11Z",
+              "completed_at": "2026-11-18T13:54:12Z"
+            },
+            {
+              "name": "Mark Cache Ledger Start 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-11-18T13:54:12Z",
+              "completed_at": "2026-11-18T13:54:12Z"
+            },
+            {
+              "name": "Restore Kept Tier 2 Tree 🌲",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 19,
+              "started_at": "2026-11-18T13:54:12Z",
+              "completed_at": "2026-11-18T13:54:12Z"
+            },
+            {
+              "name": "Build Tier 2 (libobs and libobs-c-reference) 🧱",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-18T13:54:12Z",
+              "completed_at": "2026-11-18T14:01:03Z"
+            },
+            {
+              "name": "Record Tier 2 Runtime Packages 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T14:01:03Z",
+              "completed_at": "2026-11-18T14:01:09Z"
+            },
+            {
+              "name": "Hand Off Tier 2 Tree 🤝",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 22,
+              "started_at": "2026-11-18T14:01:09Z",
+              "completed_at": "2026-11-18T14:01:09Z"
+            },
+            {
+              "name": "Upload Tier 2 Tree 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T14:01:09Z",
+              "completed_at": "2026-11-18T14:01:12Z"
+            },
+            {
+              "name": "Save Tier 2 Module Cache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 24,
+              "started_at": "2026-11-18T14:01:12Z",
+              "completed_at": "2026-11-18T14:01:12Z"
+            },
+            {
+              "name": "Save Tier 2 zccache 💾",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 25,
+              "started_at": "2026-11-18T14:01:12Z",
+              "completed_at": "2026-11-18T14:01:12Z"
+            },
+            {
+              "name": "Keep Tier 2 Tree 🌲",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 26,
+              "started_at": "2026-11-18T14:01:12Z",
+              "completed_at": "2026-11-18T14:01:12Z"
+            },
+            {
+              "name": "Cache ledger 📒",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-11-18T14:01:12Z",
+              "completed_at": "2026-11-18T14:01:14Z"
+            },
+            {
+              "name": "Post Set Up soldr 🦀",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 51,
+              "started_at": "2026-11-18T14:01:14Z",
+              "completed_at": "2026-11-18T14:01:15Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 52,
+              "started_at": "2026-11-18T14:01:15Z",
+              "completed_at": "2026-11-18T14:01:15Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 53,
+              "started_at": "2026-11-18T14:01:15Z",
+              "completed_at": "2026-11-18T14:01:15Z"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 54,
+              "started_at": "2026-11-18T14:01:15Z",
+              "completed_at": "2026-11-18T14:01:22Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 55,
+              "started_at": "2026-11-18T14:01:22Z",
+              "completed_at": "2026-11-18T14:01:22Z"
+            }
+          ]
+        },
+        {
+          "id": 134849854246,
+          "name": "Build 🧱 / Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849854246",
+          "steps": []
+        },
+        {
+          "id": 134849855411,
+          "name": "Build 🧱 / Qt Frontend Linux 🐧",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134849855411",
+          "steps": []
+        },
+        {
+          "id": 134853975432,
+          "name": "Build 🧱 / Rust Cross Lane Proof 🧾",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134853975432",
+          "steps": []
+        },
+        {
+          "id": 134855167946,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173642",
+          "runner_id": 1000173642,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134855167946",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:01:26Z",
+              "completed_at": "2026-11-18T14:01:27Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:01:27Z",
+              "completed_at": "2026-11-18T14:01:32Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:01:32Z",
+              "completed_at": "2026-11-18T14:01:33Z"
+            },
+            {
+              "name": "Prepare apt Archive Directory",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T14:01:33Z",
+              "completed_at": "2026-11-18T14:01:33Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:01:33Z",
+              "completed_at": "2026-11-18T14:01:34Z"
+            },
+            {
+              "name": "Take Tier 2 Tree Handoff 🤝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T14:01:34Z",
+              "completed_at": "2026-11-18T14:01:34Z"
+            },
+            {
+              "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T14:01:34Z",
+              "completed_at": "2026-11-18T14:01:36Z"
+            },
+            {
+              "name": "Unpack Tier 2 Tree 📂",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T14:01:36Z",
+              "completed_at": "2026-11-18T14:01:38Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T14:01:38Z",
+              "completed_at": "2026-11-18T14:01:39Z"
+            },
+            {
+              "name": "Test Tier 2 (OFF) ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T14:01:39Z",
+              "completed_at": "2026-11-18T14:07:46Z"
+            },
+            {
+              "name": "Upload Runtime Setup Measurement",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T14:07:46Z",
+              "completed_at": "2026-11-18T14:07:47Z"
+            },
+            {
+              "name": "Upload Test Timings ⏱️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T14:07:47Z",
+              "completed_at": "2026-11-18T14:07:47Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T14:07:47Z",
+              "completed_at": "2026-11-18T14:07:47Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T14:07:47Z",
+              "completed_at": "2026-11-18T14:07:47Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T14:07:47Z",
+              "completed_at": "2026-11-18T14:07:47Z"
+            }
+          ]
+        },
+        {
+          "id": 134855168150,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173643",
+          "runner_id": 1000173643,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134855168150",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:01:26Z",
+              "completed_at": "2026-11-18T14:01:27Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:01:27Z",
+              "completed_at": "2026-11-18T14:01:31Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:01:31Z",
+              "completed_at": "2026-11-18T14:01:32Z"
+            },
+            {
+              "name": "Prepare apt Archive Directory",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T14:01:32Z",
+              "completed_at": "2026-11-18T14:01:32Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:01:32Z",
+              "completed_at": "2026-11-18T14:01:33Z"
+            },
+            {
+              "name": "Take Tier 2 Tree Handoff 🤝",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T14:01:33Z",
+              "completed_at": "2026-11-18T14:01:33Z"
+            },
+            {
+              "name": "Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T14:01:33Z",
+              "completed_at": "2026-11-18T14:01:37Z"
+            },
+            {
+              "name": "Unpack Tier 2 Tree 📂",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T14:01:37Z",
+              "completed_at": "2026-11-18T14:01:39Z"
+            },
+            {
+              "name": "Run ./.github/actions/cache",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T14:01:39Z",
+              "completed_at": "2026-11-18T14:01:40Z"
+            },
+            {
+              "name": "Test Tier 2 (ON) ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T14:01:40Z",
+              "completed_at": "2026-11-18T14:07:39Z"
+            },
+            {
+              "name": "Upload Runtime Setup Measurement",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T14:07:39Z",
+              "completed_at": "2026-11-18T14:07:40Z"
+            },
+            {
+              "name": "Upload Test Timings ⏱️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-11-18T14:07:40Z",
+              "completed_at": "2026-11-18T14:07:40Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-11-18T14:07:40Z",
+              "completed_at": "2026-11-18T14:07:40Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-11-18T14:07:40Z",
+              "completed_at": "2026-11-18T14:07:40Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-11-18T14:07:40Z",
+              "completed_at": "2026-11-18T14:07:41Z"
+            }
+          ]
+        },
+        {
+          "id": 134855809655,
+          "name": "Build 🧱 / Rust Tests 🦀 (macos-26)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "runner_name": "",
+          "runner_id": 0,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134855809655",
+          "steps": []
+        },
+        {
+          "id": 134859183606,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134859183606",
+          "steps": []
+        },
+        {
+          "id": 134865320531,
+          "name": "Validate Data 🕵️",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173702",
+          "runner_id": 1000173702,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134865320531",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:17:30Z",
+              "completed_at": "2026-11-18T14:17:31Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:17:31Z",
+              "completed_at": "2026-11-18T14:17:41Z"
+            },
+            {
+              "name": "Check for Changed Compatibility Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:17:41Z",
+              "completed_at": "2026-11-18T14:17:44Z"
+            },
+            {
+              "name": "Check for Invalid Compatibility Data 📉",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 4,
+              "started_at": "2026-11-18T14:17:44Z",
+              "completed_at": "2026-11-18T14:17:44Z"
+            },
+            {
+              "name": "Check for Changed Services Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:17:44Z",
+              "completed_at": "2026-11-18T14:17:46Z"
+            },
+            {
+              "name": "Check Services JSON Schema 📉",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T14:17:46Z",
+              "completed_at": "2026-11-18T14:17:46Z"
+            },
+            {
+              "name": "Post Check for Changed Services Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T14:17:46Z",
+              "completed_at": "2026-11-18T14:17:46Z"
+            },
+            {
+              "name": "Post Check for Changed Compatibility Files ✅",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-11-18T14:17:46Z",
+              "completed_at": "2026-11-18T14:17:47Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-11-18T14:17:47Z",
+              "completed_at": "2026-11-18T14:17:47Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-11-18T14:17:47Z",
+              "completed_at": "2026-11-18T14:17:47Z"
+            }
+          ]
+        },
+        {
+          "id": 134865321246,
+          "name": "Format 🔍 / checks",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173703",
+          "runner_id": 1000173703,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134865321246",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:17:31Z",
+              "completed_at": "2026-11-18T14:17:32Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:17:32Z",
+              "completed_at": "2026-11-18T14:17:39Z"
+            },
+            {
+              "name": "Fetch History 📜",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:17:39Z",
+              "completed_at": "2026-11-18T14:17:57Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T14:17:57Z",
+              "completed_at": "2026-11-18T14:17:59Z"
+            },
+            {
+              "name": "Check for Swift Changes 🔎",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:17:59Z",
+              "completed_at": "2026-11-18T14:17:59Z"
+            },
+            {
+              "name": "clang-format Check 🐉",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T14:17:59Z",
+              "completed_at": "2026-11-18T14:17:59Z"
+            },
+            {
+              "name": "gersemi Check 🎛️",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-11-18T14:17:59Z",
+              "completed_at": "2026-11-18T14:17:59Z"
+            },
+            {
+              "name": "Flatpak Manifest Check 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-11-18T14:17:59Z",
+              "completed_at": "2026-11-18T14:18:01Z"
+            },
+            {
+              "name": "Qt XML Check 🖼️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-11-18T14:18:01Z",
+              "completed_at": "2026-11-18T14:18:05Z"
+            },
+            {
+              "name": "ci/ Self-Tests 🧪",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-11-18T14:18:05Z",
+              "completed_at": "2026-11-18T14:19:30Z"
+            },
+            {
+              "name": "Post Qt XML Check 🖼️",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T14:19:30Z",
+              "completed_at": "2026-11-18T14:19:30Z"
+            },
+            {
+              "name": "Post Flatpak Manifest Check 📦",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-11-18T14:19:30Z",
+              "completed_at": "2026-11-18T14:19:30Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-11-18T14:19:30Z",
+              "completed_at": "2026-11-18T14:19:31Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-11-18T14:19:31Z",
+              "completed_at": "2026-11-18T14:19:31Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-11-18T14:19:31Z",
+              "completed_at": "2026-11-18T14:19:31Z"
+            }
+          ]
+        },
+        {
+          "id": 134865322504,
+          "name": "Native Cache Consumer (${{ matrix.platform }} ${{ matrix.architecture }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134865322504",
+          "steps": []
+        },
+        {
+          "id": 134865322939,
+          "name": "Tier 2 Setup Producer 📦",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134865322939",
+          "steps": []
+        },
+        {
+          "id": 134865323887,
+          "name": "Tier 2 Setup (${{ matrix.variant }}, trial ${{ matrix.trial }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134865323887",
+          "steps": []
+        },
+        {
+          "id": 134866721153,
+          "name": "Format 🔍 / swift-format",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000173747",
+          "runner_id": 1000173747,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134866721153",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:25:19Z",
+              "completed_at": "2026-11-18T14:25:20Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:25:20Z",
+              "completed_at": "2026-11-18T14:25:37Z"
+            },
+            {
+              "name": "swift-format Check 🔥",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:25:37Z",
+              "completed_at": "2026-11-18T14:25:44Z"
+            },
+            {
+              "name": "Post swift-format Check 🔥",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:25:44Z",
+              "completed_at": "2026-11-18T14:25:44Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-11-18T14:25:44Z",
+              "completed_at": "2026-11-18T14:25:45Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-11-18T14:25:45Z",
+              "completed_at": "2026-11-18T14:25:45Z"
+            }
+          ]
+        },
+        {
+          "id": 134870752505,
+          "name": "CI Gate ✅",
+          "status": "completed",
+          "conclusion": "failure",
+          "runner_name": "GitHub Actions 1000173749",
+          "runner_id": 1000173749,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134870752505",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T14:25:51Z",
+              "completed_at": "2026-11-18T14:25:52Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T14:25:52Z",
+              "completed_at": "2026-11-18T14:26:03Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T14:26:03Z",
+              "completed_at": "2026-11-18T14:26:05Z"
+            },
+            {
+              "name": "Report Queue Run 📊",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 4,
+              "started_at": "2026-11-18T14:26:05Z",
+              "completed_at": "2026-11-18T14:26:05Z"
+            },
+            {
+              "name": "Report Lane Proof Output 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T14:26:05Z",
+              "completed_at": "2026-11-18T14:26:06Z"
+            },
+            {
+              "name": "Check Job Results ✅",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T14:26:06Z",
+              "completed_at": "2026-11-18T14:26:06Z"
+            },
+            {
+              "name": "Check Run Jobs ✅",
+              "status": "completed",
+              "conclusion": "failure",
+              "number": 7,
+              "started_at": "2026-11-18T14:26:06Z",
+              "completed_at": "2026-11-18T14:26:09Z"
+            },
+            {
+              "name": "Run echo 'Every selected queue job executed successfully; out-of-scope jobs may skip.'",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-11-18T14:26:09Z",
+              "completed_at": "2026-11-18T14:26:09Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-18T14:26:09Z",
+              "completed_at": "2026-11-18T14:26:09Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T14:26:09Z",
+              "completed_at": "2026-11-18T14:26:10Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T14:26:10Z",
+              "completed_at": "2026-11-18T14:26:10Z"
+            }
+          ]
+        },
+        {
+          "id": 134871010249,
+          "name": "Tier 2 Lane Proof 🧾",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134871010249",
+          "steps": []
+        },
+        {
+          "id": 134871011761,
+          "name": "Cache Janitor 🧹",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134871011761",
+          "steps": []
+        }
+      ]
+    },
+    "annotations": {
+      "134855809655": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/4942bd2884ddd3b4d55da0a188e9098aa3da0f9c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "The job was not acquired by Runner of type hosted even after multiple attempts",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/4942bd2884ddd3b4d55da0a188e9098aa3da0f9c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/4942bd2884ddd3b4d55da0a188e9098aa3da0f9c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/4942bd2884ddd3b4d55da0a188e9098aa3da0f9c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        }
+      ],
+      "134870752505": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/4942bd2884ddd3b4d55da0a188e9098aa3da0f9c/.github",
+          "start_line": 11,
+          "start_column": null,
+          "end_line": 11,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "Process completed with exit code 1.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/4942bd2884ddd3b4d55da0a188e9098aa3da0f9c/.github",
+          "start_line": 10,
+          "start_column": null,
+          "end_line": 10,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "Build 🧱 / Rust Tests 🦀 (macos-26): runner capacity condition: job did not acquire a runner; validation did not run",
+          "raw_details": ""
+        }
+      ]
+    }
   }
 }
