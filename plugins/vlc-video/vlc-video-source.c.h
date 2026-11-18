@@ -640,9 +640,15 @@ static void add_file(media_file_array_t *new_files, const char *path, int networ
 		libvlc_media_add_option_(new_media, track_option.array);
 		dstr_free(&track_option);
 
+		/* With subtitles off, say so: without an option libVLC shows
+		 * the track it selects by default (a track flagged Default, or
+		 * a subtitle file next to the video). ":no-spu" turns off
+		 * sub-pictures for this input only. */
 		struct dstr sub_option = {0};
 		if (subtitle_enable) {
 			dstr_catf(&sub_option, ":sub-track=%d", subtitle_index - 1);
+		} else {
+			dstr_copy(&sub_option, ":no-spu");
 		}
 		libvlc_media_add_option_(new_media, sub_option.array);
 		dstr_free(&sub_option);
