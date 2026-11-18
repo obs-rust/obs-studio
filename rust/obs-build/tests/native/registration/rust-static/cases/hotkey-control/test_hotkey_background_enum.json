@@ -93,6 +93,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "texture_file_data_support": [
+          "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

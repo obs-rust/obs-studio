@@ -233,6 +233,7 @@
   "build/libobs.graphics-texture-creators-fields+.h.c",
   "build/libobs.image-decode-adapter+.h.c",
   "build/libobs.media+.h.c",
+  "build/libobs.media-texture-file-data-adapter+.h.c",
   "build/libobs.media-resampler-kernel+.h.c",
   "build/libobs.source-private-settings+.h.c"
 ]
