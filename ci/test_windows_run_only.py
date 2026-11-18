@@ -1,6 +1,7 @@
 """Windows doctest and native preparation contracts; no hosted activation."""
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,29 @@ from test_windows_test_artifact import executable
 
 
 class WindowsRunOnlyTest(unittest.TestCase):
+    @unittest.skipUnless(sys.version_info >= (3, 14), "zstd transport uses Python 3.14")
+    def test_shared_zstd_transport_keeps_all_files_and_rejects_corruption(self):
+        import macos_test_workspace as transport
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bundle = root / "bundle"
+            bundle.mkdir()
+            (bundle / "manifest.json").write_text('{"tests": []}')
+            (bundle / ".hidden").write_bytes(b"build-script data")
+            executable = bundle / "probe.exe"
+            executable.write_bytes(b"fixture payload" * 1000)
+            executable.chmod(0o755)
+            archive = root / "bundle.tar.zst"
+            transport.pack(bundle, archive, compression="zst")
+            transport.unpack(archive, root / "restored")
+            self.assertEqual((root / "restored/.hidden").read_bytes(), b"build-script data")
+            self.assertEqual((root / "restored/probe.exe").read_bytes(), executable.read_bytes())
+            self.assertEqual((root / "restored/probe.exe").stat().st_mode, executable.stat().st_mode)
+            archive.write_bytes(archive.read_bytes() + b"corrupt")
+            with self.assertRaisesRegex(ValueError, "checksum"):
+                transport.unpack(archive, root / "corrupt")
+
     def test_doctest_capture_uses_pe_exe_and_preserves_harness_arguments(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
