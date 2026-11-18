@@ -24,6 +24,7 @@ mod encoder_counters_parity;
 mod encoder_dimensions;
 mod encoder_dimensions_parity;
 mod encoder_extra_data;
+mod encoder_extra_data_parity;
 mod encoder_frame_rate_divisor;
 mod encoder_frame_rate_divisor_parity;
 mod encoder_gpu_gates;

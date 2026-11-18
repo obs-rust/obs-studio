@@ -30,7 +30,10 @@ fn optional_gate() {
             let data = Some(&token);
             let size = usize::MAX;
             for _ in 0..2 {
-                assert!(!get_extra_data(Some((context, callback.then_some(run))), || panic!("live encoder")));
+                assert!(!get_extra_data(
+                    Some((context, callback.then_some(run))),
+                    || panic!("live encoder")
+                ));
             }
             assert_eq!(calls.get(), 0);
             assert_eq!(data, Some(&token));
@@ -46,7 +49,14 @@ fn dispatch_and_outputs() {
     for result in [false, true] {
         for mutate in [false, true] {
             for null_data in [false, true] {
-                for value in [0, 1, usize::MAX / 2, usize::MAX / 2 + 1, usize::MAX - 1, usize::MAX] {
+                for value in [
+                    0,
+                    1,
+                    usize::MAX / 2,
+                    usize::MAX / 2 + 1,
+                    usize::MAX - 1,
+                    usize::MAX,
+                ] {
                     let mut data = Some(&sentinel);
                     let mut size = 17;
                     let calls = Cell::new(0);
@@ -61,7 +71,10 @@ fn dispatch_and_outputs() {
                         }
                         result
                     };
-                    assert_eq!(get_extra_data(Some((true, Some(callback))), || panic!("live encoder")), result);
+                    assert_eq!(
+                        get_extra_data(Some((true, Some(callback))), || panic!("live encoder")),
+                        result
+                    );
                     assert_eq!(calls.get(), 1);
                     assert_eq!(data, if mutate { output } else { Some(&sentinel) });
                     assert_eq!(size, if mutate { value } else { 17 });
@@ -92,9 +105,19 @@ fn nullable_outputs() {
                 }
                 result
             };
-            assert_eq!(get_extra_data(Some((true, Some(callback))), || panic!("live encoder")), result);
+            assert_eq!(
+                get_extra_data(Some((true, Some(callback))), || panic!("live encoder")),
+                result
+            );
             assert_eq!(calls.get(), 1);
-            assert_eq!(data, if outputs & 1 != 0 { Some(&payload) } else { Some(&sentinel) });
+            assert_eq!(
+                data,
+                if outputs & 1 != 0 {
+                    Some(&payload)
+                } else {
+                    Some(&sentinel)
+                }
+            );
             assert_eq!(size, if outputs & 2 != 0 { usize::MAX } else { 17 });
         }
     }
