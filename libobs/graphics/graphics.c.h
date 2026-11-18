@@ -1125,16 +1125,6 @@ gs_zstencil_t *gs_get_zstencil_target(void)
 	return graphics->exports.device_get_zstencil_target(graphics->device);
 }
 
-void gs_set_render_target(gs_texture_t *tex, gs_zstencil_t *zstencil)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_render_target"))
-		return;
-
-	graphics->exports.device_set_render_target(graphics->device, tex, zstencil);
-}
-
 void gs_set_render_target_with_color_space(gs_texture_t *tex, gs_zstencil_t *zstencil, enum gs_color_space space)
 {
 	graphics_t *graphics = thread_graphics;
@@ -1143,16 +1133,6 @@ void gs_set_render_target_with_color_space(gs_texture_t *tex, gs_zstencil_t *zst
 		return;
 
 	graphics->exports.device_set_render_target_with_color_space(graphics->device, tex, zstencil, space);
-}
-
-void gs_set_cube_render_target(gs_texture_t *cubetex, int side, gs_zstencil_t *zstencil)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_set_cube_render_target"))
-		return;
-
-	graphics->exports.device_set_cube_render_target(graphics->device, cubetex, side, zstencil);
 }
 
 void gs_enable_framebuffer_srgb(bool enable)
