@@ -3,7 +3,16 @@ use std::path::Path;
 use std::process::Command;
 
 fn logical_path(path: &str) -> Result<String, &'static str> {
-    todo!("Linux/Windows logical root boundary: {path}")
+    let normalized = path.replace('\\', "/");
+    let rooted = normalized.strip_prefix("C:").unwrap_or(&normalized);
+    if !rooted.starts_with('/')
+        || rooted.starts_with("//")
+        || rooted.contains(':')
+        || rooted.split('/').any(|part| part == "..")
+    {
+        return Err("unsupported root or drive");
+    }
+    Ok(rooted.to_owned())
 }
 
 #[test]

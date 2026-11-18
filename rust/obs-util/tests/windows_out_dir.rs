@@ -1,6 +1,6 @@
 //! Qualify the real build-script OUT_DIR without another category executable.
 #[test]
-#[cfg(windows)]
+#[cfg(all(windows, target_env = "msvc"))]
 fn compiled_out_dir_reads_transported_build_output() {
     let Ok(root) = std::env::var("OBS_WINDOWS_PROOF_ROOT") else { return };
     let out = env!("OUT_DIR");

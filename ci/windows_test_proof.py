@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import tarfile
 import time
+from collections import Counter
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import macos_test_artifact as shared
@@ -27,7 +28,7 @@ import macos_test_workspace as transport
 import windows_test_artifact as windows
 
 ROOT_PATTERN = re.compile(r"/opt/obs-win-[1-9][0-9]*-[1-9][0-9]*/src\Z")
-CATEGORIES = {"obs-util", "obs-data", "obs-graphics", "obs-media-io", "obs-codec",
+CATEGORIES = {"obs-util", "obs-data", "obs-graphics", "obs-media-io", "obs-nvenc",
               "obs-gpu-status", "obs-preflight", "obs-studio-rust"}
 
 
@@ -107,13 +108,48 @@ def seal(bundle: Path, root: Path, run_id: str, attempt: str) -> None:
 
 
 def verify_complete(data: dict) -> None:
+    from windows_qt_artifact import CONTRACTS
+
     categories = [e["package"] for e in data["tests"] if e.get("kind") not in ("qt-contract", "doctest")]
     if len(categories) != 8 or set(categories) != CATEGORIES or data.get("coverage") != windows.PREPARED_COVERAGE:
         raise ValueError("proof requires all eight categories and full preparation")
     tests = {e["binary"] for e in data["tests"]}
-    helpers = set(data["images"]) - tests
+    helpers = {name for name in set(data["images"]) - tests if not name.startswith("target/windows-qt/")}
     if len(helpers) != 3:
         raise ValueError("proof requires all three Cargo helpers")
+    observations = Counter(e["package"].removeprefix("Qt/") for e in data["tests"] if e.get("kind") == "qt-contract")
+    if observations != dict(zip(CONTRACTS, (3, 11, 4, 30), strict=True)):
+        raise ValueError("proof requires all 48 original Windows Qt observations")
+
+
+def native_destination(name: str, logical: str, roots: list[str]) -> None:
+    if not name.startswith(logical + "/target/cross-native-fixture-work/"):
+        raise ValueError("native fixture compiled root mismatch")
+    relative_path(name.removeprefix(logical + "/"))
+    if not any(PurePosixPath(name).is_relative_to(PurePosixPath(root)) for root in roots):
+        raise ValueError("native fixture destination escapes recorded roots")
+
+
+def native_receipts(data: dict, bundle: Path) -> None:
+    from windows_native_fixtures import TESTS
+
+    logical = data["build_root"]
+    windows_root(logical)
+    events = 0
+    for name in TESTS:
+        history = json.loads((bundle / "native-fixtures" / ("native_build::" + name).replace("::", "--") / "manifest.json").read_text())
+        roots = history["directories"]
+        for root in roots:
+            native_destination(root, logical, roots)
+        for event in history["events"]:
+            events += 1
+            for directory in event["directories"]:
+                native_destination(directory, logical, roots)
+            for entry in event["files"]:
+                relative_path(entry["file"])
+                native_destination(entry["destination"], logical, roots)
+    if events != 154:
+        raise ValueError("native history requires all 154 original events")
 
 
 def verify_payload(bundle: Path, *, require_qt: bool) -> dict:
@@ -126,6 +162,8 @@ def verify_payload(bundle: Path, *, require_qt: bool) -> dict:
     # Checksums first, then native histories, every PE/import and Qt closure.
     shared.validate_files(data, bundle)
     windows.verify(manifest)
+    if data.get("native_fixtures"):
+        native_receipts(data, bundle)
     if require_qt:
         shared.validate_qt_inventory(data)
     for entry in data["tests"]:
