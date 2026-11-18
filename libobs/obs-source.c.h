@@ -810,18 +810,6 @@ obs_data_t *obs_get_source_defaults(const char *id)
 	return info ? source_get_defaults(info) : NULL;
 }
 
-obs_missing_files_t *obs_source_get_missing_files(const obs_source_t *source)
-{
-	if (!data_valid(source, "obs_source_get_missing_files"))
-		return obs_missing_files_create();
-
-	if (source->info.missing_files) {
-		return source->info.missing_files(source->context.data);
-	}
-
-	return obs_missing_files_create();
-}
-
 void obs_source_replace_missing_file(obs_missing_file_cb cb, obs_source_t *source, const char *new_path, void *data)
 {
 	if (!data_valid(source, "obs_source_replace_missing_file"))

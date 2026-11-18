@@ -15812,6 +15812,21 @@
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
+    "test_source_missing_files_getter": {
+      "sources": [
+        "test/cmocka/test_source_missing_files_getter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_source_monitor_only_load": {
       "sources": [
         "test/cmocka/test_source_monitor_only_load.c"
@@ -26002,6 +26017,13 @@
     "test_source_media_admission_steps_rust": {
       "target": "test_source_media_admission_steps_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
+    "test_source_missing_files_getter": {
+      "target": "test_source_missing_files_getter",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
     },
     "test_source_monitor_only_load": {
       "target": "test_source_monitor_only_load",
