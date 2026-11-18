@@ -105,7 +105,7 @@ class WindowsQtTest(unittest.TestCase):
             tools.mkdir(parents=True)
             for name in ("moc", "uic", "rcc"):
                 (tools / name).write_bytes(b"host generator")
-            with mock.patch.object(qt, "fetch"), \
+            with mock.patch.object(qt.platform, "system", return_value="Linux"), mock.patch.object(qt, "fetch"), \
                     mock.patch.object(qt, "configure_tools", return_value=({"CMAKE_GENERATOR": "Unix Makefiles"}, {})), \
                     mock.patch.object(qt, "cmocka", return_value=root / "cmocka"), \
                     mock.patch.object(qt, "append_bundle"), \
