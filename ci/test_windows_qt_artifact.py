@@ -54,6 +54,14 @@ class WindowsQtTest(unittest.TestCase):
                 native.configure_tools(root, tools, {})
             self.assertIn("/EHsc", (tools / "cxx-clang-cl").read_text())
             self.assertNotIn("/EHsc", (tools / "cc-clang-cl").read_text())
+            with mock.patch.object(native.shared, "tool", side_effect=tool), \
+                    mock.patch.object(native.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "/managed/clang")):
+                native.configure_tools(root, tools, {}, cpp_standard="17")
+            wrapper = (tools / "cxx-clang-cl").read_text()
+            self.assertIn("/std:c++17", wrapper)
+            self.assertIn("/Zc:__cplusplus", wrapper)
+            self.assertLess(wrapper.index("/std:c++17"), wrapper.index('"$@"'))
+            self.assertNotIn("/std:", (tools / "cc-clang-cl").read_text())
 
     def test_matches_current_windows_job_and_linux_generators(self):
         workflow = (qt.ROOT / ".github/workflows/build-project.yaml").read_text()
