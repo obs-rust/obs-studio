@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import unittest
+from urllib.parse import parse_qs, urlparse
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
@@ -31,6 +32,14 @@ def runner(status="online", *, busy=False, labels=None):
 
 
 class SelectMqRunnerTest(unittest.TestCase):
+    def setUp(self):
+        # These cases isolate the runner census; admission is exercised below.
+        admission = patch.object(
+            selector, "inflight_commitments", return_value=(0, 0), create=True
+        )
+        admission.start()
+        self.addCleanup(admission.stop)
+
     def select(
         self,
         runners=(),
@@ -573,6 +582,67 @@ class SelectMqRunnerTest(unittest.TestCase):
             with redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(selector.main(), 0)
         self.assertIn("::warning::", output.getvalue())
+
+
+class InflightAdmissionTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-admission.json").read_text()
+        )
+        self.runs = self.fixture["runs"]
+        self.jobs = {run["id"]: [] for run in self.runs}
+
+    def select(self, run_id, *, api_error=None, busy=0):
+        def respond(request, **kwargs):
+            url = urlparse(request.full_url)
+            query = parse_qs(url.query)
+            if url.path.endswith("/runners"):
+                entries = (
+                    [runner(busy=index < busy) for index in range(6)]
+                    if "/orgs/" in url.path else []
+                )
+                payload = {"total_count": len(entries), "runners": entries}
+            else:
+                if api_error:
+                    raise api_error
+                self.assertEqual(request.get_header("Authorization"), "Bearer actions-token")
+                if url.path.endswith("/runs"):
+                    entries = [run for run in self.runs if run["status"] == query["status"][0]]
+                    payload = {"total_count": len(entries), "workflow_runs": entries}
+                else:
+                    other = int(url.path.split("/runs/")[1].split("/")[0])
+                    entries = self.jobs[other]
+                    payload = {"total_count": len(entries), "jobs": entries}
+            return io.BytesIO(json.dumps(payload).encode())
+
+        with (
+            patch.dict(os.environ, {"GITHUB_RUN_ID": str(run_id), "GITHUB_TOKEN": "actions-token"}, clear=True),
+            patch.object(selector, "urlopen", side_effect=respond) as http,
+            redirect_stdout(io.StringIO()),
+        ):
+            selected = selector.select_labels(
+                "merge_group", LABELS, "runner-token", "obs-rust/obs-studio",
+                min_idle="3", demand="3",
+            )
+        self.assertLessEqual(http.call_count, 10)
+        return selected
+
+    def test_four_simultaneous_recorded_runs_admit_oldest_two(self):
+        # Each probe sees the same idle census and no heavy jobs yet. Reverse
+        # probe order too: priority follows creation, not which probe ran first.
+        for runs in (self.runs, list(reversed(self.runs))):
+            with self.subTest(order=[run["id"] for run in runs]):
+                actual = {run["id"]: bool(self.select(run["id"])) for run in runs}
+                self.assertEqual(actual, {run["id"]: index < 2 for index, run in enumerate(self.runs)})
+
+    def test_queued_dell_jobs_reduce_idle_capacity(self):
+        self.jobs[self.runs[0]["id"]] = self.fixture["queued_jobs"][:4]
+        self.assertEqual(self.select(self.runs[1]["id"]), "")
+
+    def test_actions_api_error_uses_hosted(self):
+        for error in (URLError("private server text"), HTTPError("url", 403, "denied", {}, None)):
+            with self.subTest(error=type(error).__name__):
+                self.assertEqual(self.select(self.runs[0]["id"], api_error=error), "")
 
 
 if __name__ == "__main__":
