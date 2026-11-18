@@ -9,6 +9,26 @@ const TARGET: &str = "aarch64-apple-darwin";
 const PREPARE: &str = "OBS_NATIVE_FIXTURES_PREPARE";
 const PREBUILT: &str = "OBS_NATIVE_FIXTURES";
 
+#[test]
+fn windows_evidence_is_target_bound_and_resource_mutations_require_rebuilds() {
+    let mut manifest = json!({"version": 1, "host": "x86_64-unknown-linux-gnu",
+        "target": "x86_64-pc-windows-msvc", "complete": true, "events": [], "directories": []});
+    assert!(validate_manifest_for_target(&manifest, "x86_64-pc-windows-msvc").is_ok());
+    assert!(validate_manifest_for_target(&manifest, TARGET).is_err());
+    manifest["complete"] = false.into();
+    assert!(validate_manifest_for_target(&manifest, "x86_64-pc-windows-msvc").is_err());
+    let first = json!({"profile": "Debug", "kind": "shared", "identity": "resources",
+        "output": "out", "recipe": "RC /DVALUE=40", "inputs": {"payload.rc": "old"}});
+    let mut changed = first.clone();
+    changed["inputs"]["payload.rc"] = "new".into();
+    let events = vec![json!({"request": first})];
+    assert_eq!(rebuild_decision(&events, &changed)["required"], true);
+    changed = events[0]["request"].clone();
+    assert_eq!(rebuild_decision(&events, &changed)["required"], false);
+    changed["recipe"] = "RC /DVALUE=50".into();
+    assert_eq!(rebuild_decision(&events, &changed)["recipe"], true);
+}
+
 thread_local! {
     static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
 }
