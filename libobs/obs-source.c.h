@@ -832,14 +832,6 @@ void obs_source_reset_settings(obs_source_t *source, obs_data_t *settings)
 	obs_source_update(source, settings);
 }
 
-void obs_source_update_properties(obs_source_t *source)
-{
-	if (!obs_source_valid(source, "obs_source_update_properties"))
-		return;
-
-	obs_source_dosignal(source, NULL, "update_properties");
-}
-
 void obs_source_set_texcoords_centered(obs_source_t *source, bool centered)
 {
 	source->texcoords_centered = centered;
