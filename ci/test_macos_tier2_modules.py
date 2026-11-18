@@ -20,6 +20,7 @@ class ModuleTest(unittest.TestCase):
     def test_objc_visibility_and_capture_bundle_identity_match_native(self):
         text = (ROOT / "cmake/cross/macos-tier2.cmake").read_text()
         self.assertIn("OBJC_VISIBILITY_PRESET hidden", text)
+        self.assertIn("set(CMAKE_OBJC_VISIBILITY_PRESET hidden)", text)
         self.assertIn('MACOSX_BUNDLE_GUI_IDENTIFIER "com.obsproject.${target}"', text)
 
 
