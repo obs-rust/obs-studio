@@ -3324,6 +3324,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_encoder_defaults_dispatch": {
+      "sources": [
+        "test/cmocka/test_encoder_defaults_dispatch.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_dimensions": {
       "sources": [
         "test/cmocka/test_encoder_dimensions.c"
@@ -22044,6 +22059,13 @@
     },
     "test_encoder_counter_getters": {
       "target": "test_encoder_counter_getters"
+    },
+    "test_encoder_defaults_dispatch": {
+      "target": "test_encoder_defaults_dispatch",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 10
     },
     "test_encoder_dimensions": {
       "target": "test_encoder_dimensions",
