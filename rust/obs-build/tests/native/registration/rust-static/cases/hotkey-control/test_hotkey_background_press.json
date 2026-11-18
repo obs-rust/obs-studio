@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_hotkey_background_press": {
+      "sources": [
+        "libobs/obs-hotkey-binding-press.c.h",
+        "test/cmocka/test_hotkey_background_press.c",
+        "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-register.c.h",
+        "libobs/obs-hotkey-background-control-fields.c.h",
+        "libobs/obs-hotkey-unregister.c.h",
+        "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-identity-setters.c.h",
+        "libobs/obs-hotkey-background-enum.c.h",
+        "libobs/obs-hotkey-enum.c.h",
+        "libobs/obs-hotkey-save-load.c.h",
+        "libobs/obs-hotkey-bindings.c.h",
+        "libobs/obs-hotkey-translations.c.h",
+        "libobs/obs-hotkey-press.c.h",
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c",
+        "test/cmocka/hotkey-background-trigger-link-support.c",
+        "libobs/obs-hotkey-background-press.c.h"
+      ],
+      "definitions": [
+        "obs=hotkey_test_obs",
+        "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
+        "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
+        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        "libobs_rust-static"
+      ],
+      "unity_groups": {
+        "background-control": [
+          "libobs/obs-hotkey-background-control-fields.c.h"
+        ],
+        "hotkey_identity_setters": [
+          "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_registration": [
+          "libobs/obs-hotkey-register.c.h",
+          "libobs/obs-hotkey.c.h"
+        ],
+        "hotkey_unregister": [
+          "libobs/obs-hotkey-unregister.c.h"
+        ],
+        "source_0": [
+          "libobs/obs-hotkey-binding-press.c.h"
+        ],
+        "source_1": [
+          "test/cmocka/test_hotkey_background_press.c"
+        ],
+        "source_2": [
+          "libobs/obs-hotkey-background-query.c.h"
+        ],
+        "source_5": [
+          "libobs/obs-hotkey-background-enum.c.h"
+        ],
+        "source_6": [
+          "libobs/obs-hotkey-enum.c.h"
+        ],
+        "source_7": [
+          "libobs/obs-hotkey-save-load.c.h"
+        ],
+        "source_8": [
+          "libobs/obs-hotkey-bindings.c.h"
+        ],
+        "source_9": [
+          "libobs/obs-hotkey-translations.c.h"
+        ],
+        "source_10": [
+          "libobs/obs-hotkey-press.c.h"
+        ],
+        "source_11": [
+          "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
+        ],
+        "hotkey_background_trigger": [
+          "test/cmocka/hotkey-background-trigger-link-support.c"
+        ],
+        "hotkey_background_press": [
+          "libobs/obs-hotkey-background-press.c.h"
+        ]
+      },
+      "pch": "libobs/build/libobs.pch.h"
+    }
+  },
+  "tests": {
+    "test_hotkey_background_press": {
+      "target": "test_hotkey_background_press",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}
