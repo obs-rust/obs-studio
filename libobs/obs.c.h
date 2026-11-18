@@ -3528,8 +3528,9 @@ static void set_ui_thread(void *unused)
 
 void obs_set_ui_task_handler(obs_task_handler_t handler)
 {
-	obs->ui_task_handler = handler;
+	/* RED: deliberately dispatch before installing the handler. */
 	obs_queue_task(OBS_TASK_UI, set_ui_thread, NULL, false);
+	obs->ui_task_handler = handler;
 }
 
 /* File-local macros (BUILD.md): out of the next file in the unity group. */
