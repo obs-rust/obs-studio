@@ -21,6 +21,15 @@ pub trait Backend {
 
 /// Load legacy straight-alpha pixels and publish post-decode metadata before
 /// releasing an initialized session. Failed initialization owns its cleanup.
-pub fn create_texture_file_data<B: Backend>(_backend: &mut B) -> Option<B::Pixels> {
-    todo!("#5145 legacy image-file orchestration")
+pub fn create_texture_file_data<B: Backend>(backend: &mut B) -> Option<B::Pixels> {
+    if !backend.init() {
+        return None;
+    }
+    let data = backend.decode_straight();
+    if data.is_some() {
+        let metadata = backend.metadata();
+        backend.publish(metadata);
+    }
+    backend.free();
+    data
 }
