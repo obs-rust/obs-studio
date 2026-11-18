@@ -21,6 +21,7 @@ mod encoder_configuration;
 mod encoder_configuration_parity;
 mod encoder_counters;
 mod encoder_counters_parity;
+mod encoder_defaults;
 mod encoder_dimensions;
 mod encoder_dimensions_parity;
 mod encoder_extra_data;
