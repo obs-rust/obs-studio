@@ -5,7 +5,11 @@ function(_graphics_samplerstate_lifecycle_link_support)
     get_target_property(_links ${_target} LINK_LIBRARIES)
     if(_target MATCHES "^test_" AND "libobs_rust-static" IN_LIST _links)
       if(NOT TARGET obs-graphics-samplerstate-lifecycle-link-support)
-        add_library(obs-graphics-samplerstate-lifecycle-link-support STATIC graphics-samplerstate-lifecycle-link-support.c)
+        add_library(
+          obs-graphics-samplerstate-lifecycle-link-support
+          STATIC
+          graphics-samplerstate-lifecycle-link-support.c
+        )
         target_include_directories(
           obs-graphics-samplerstate-lifecycle-link-support
           PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs"
