@@ -17547,6 +17547,23 @@
         "not": "OS_WINDOWS"
       }
     },
+    "test_texture_file_data_legacy": {
+      "sources": [
+        "test/cmocka/test_texture_file_data_legacy.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale",
+        "FFmpeg::swresample"
+      ],
+      "watch_inputs": [
+        "libobs/graphics/graphics-texture-file-data.c.h"
+      ]
+    },
     "test_texture_render": {
       "sources": [
         "test/cmocka/test_texture_render.c"
@@ -26903,6 +26920,12 @@
         "${target}"
       ],
       "timeout_seconds": 180
+    },
+    "test_texture_file_data_legacy": {
+      "target": "test_texture_file_data_legacy",
+      "command": [
+        "${target}"
+      ]
     },
     "test_texture_render": {
       "target": "test_texture_render",
