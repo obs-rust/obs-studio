@@ -170,6 +170,20 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
     let production_core = libobs::build_with_options(&production, &root, &options).unwrap();
     assert_eq!(exports(&production_core), exports(&libraries.with_rust));
     assert!(!production.output.join("obs-c-reference").exists());
+    // Test-enabled CMake libraries contain private fixture exports. Exercise the
+    // same opt-in on Linux, where native Tier 2 previously never compared these
+    // exports with CMake. Production must still exclude the test-only seam.
+    let mut test_options = options.clone();
+    test_options.test_support = true;
+    let test_build = NativeBuild {
+        output: build.output.join("cmocka-fixtures"),
+        ..build.clone()
+    };
+    let test_core =
+        libobs::build_c_reference_with_options(&test_build, &root, &test_options).unwrap();
+    let mut expected = exports(&libraries.reference);
+    assert!(expected.insert("obs_test_set_locale_swap_core".into()));
+    assert_eq!(exports(&test_core), expected);
     if std::env::var_os("OBS_BUILD_C_TESTS").is_some() {
         let executables = obs_build::validation::build_c_tests(
             &build,
@@ -1326,6 +1340,7 @@ fn macos_core_builds_from_the_canonical_manifest() {
     assert!(build.target.contains("apple-darwin"));
     let options = libobs::Options {
         native_dependencies: Some(dependencies.into()),
+        test_support: std::env::var_os("OBS_BUILD_MACOS_REFERENCE").is_some(),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
         pulseaudio: false,
         gio: false,

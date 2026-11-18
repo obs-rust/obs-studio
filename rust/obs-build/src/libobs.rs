@@ -19,6 +19,9 @@ pub struct Options {
     pub pulseaudio: bool,
     pub gio: bool,
     pub core_modules: Vec<String>,
+    /// Include cmocka-only library fixtures when comparing test-enabled CMake builds.
+    /// Production builds leave this disabled so the private test seams never ship.
+    pub test_support: bool,
     /// Prebuilt OBS dependency bundle for targets without pkg-config metadata.
     pub native_dependencies: Option<PathBuf>,
 }
@@ -33,6 +36,7 @@ impl Default for Options {
             pulseaudio: true,
             gio: true,
             core_modules: vec![],
+            test_support: false,
             native_dependencies: None,
         }
     }
@@ -334,6 +338,9 @@ fn prepare(build: &NativeBuild, root: &Path, options: &Options) -> Result<Plan, 
         ..SharedLibrary::default()
     };
     append_sources(&sets, "LIBOBS_SOURCES", &root, &mut library)?;
+    if options.test_support {
+        append_sources(&sets, "LIBOBS_TEST_SOURCES", &root, &mut library)?;
+    }
     if options.hevc {
         library.definitions.push(("ENABLE_HEVC".into(), None));
     }

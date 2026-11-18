@@ -27,6 +27,7 @@ fn core_builds_from_the_canonical_manifest() {
     assert!(build.target.contains("windows-msvc"));
     let options = libobs::Options {
         native_dependencies: Some(dependencies.into()),
+        test_support: std::env::var_os("OBS_BUILD_WINDOWS_REFERENCE").is_some(),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
         unity: std::env::var_os("OBS_BUILD_WINDOWS_SEPARATE").is_none(),
         pch: std::env::var_os("OBS_BUILD_WINDOWS_PCH").is_some(),

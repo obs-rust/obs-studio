@@ -1,8 +1,16 @@
 # Exercise the actual entry point in each test-enabled library over synthetic
 # records, without exporting a production seam or compiling a test implementation.
+file(READ "${CMAKE_CURRENT_LIST_DIR}/../../../libobs/build/source-sets.d/LIBOBS_TEST_SOURCES.json" _set_locale_sources)
+string(JSON _set_locale_count LENGTH "${_set_locale_sources}")
+math(EXPR _set_locale_last "${_set_locale_count} - 1")
+set(_set_locale_fixtures "")
+foreach(_set_locale_index RANGE ${_set_locale_last})
+  string(JSON _set_locale_fixture GET "${_set_locale_sources}" ${_set_locale_index})
+  list(APPEND _set_locale_fixtures "${CMAKE_CURRENT_LIST_DIR}/../../../libobs/${_set_locale_fixture}")
+endforeach()
 foreach(_set_locale_library IN ITEMS libobs libobs-c-reference)
   if(TARGET ${_set_locale_library})
-    target_sources(${_set_locale_library} PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../core_set_locale_fixture.c")
+    target_sources(${_set_locale_library} PRIVATE ${_set_locale_fixtures})
     target_link_libraries(${_set_locale_library} PRIVATE OBS::caption Uthash::Uthash)
     if(TARGET OBS::w32-pthreads)
       target_link_libraries(${_set_locale_library} PRIVATE OBS::w32-pthreads)
