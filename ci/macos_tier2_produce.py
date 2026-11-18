@@ -56,6 +56,11 @@ def produce(root: Path = packet.COMMON) -> dict:
                       + receipt["swift_link_args"] + ["-debug-prefix-map", prefix])
     env["CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS"] = f"--remap-path-prefix={Path.home()}=/toolchain"
     cmake_toolchain = toolchain.cmake_toolchain(receipt, work / "toolchain", env)
+    with cmake_toolchain.open("a") as output:
+        for language in ("C", "CXX", "OBJC", "OBJCXX"):
+            flags = f" -ffile-prefix-map={prefix} -fdebug-prefix-map={prefix}"
+            output.write(f"string(APPEND CMAKE_{language}_FLAGS_INIT {json.dumps(flags)})\n")
+        output.write(f"string(APPEND CMAKE_Swift_FLAGS_INIT {json.dumps(' -debug-prefix-map ' + prefix)})\n")
     subprocess.run([
         "cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
         "-DOBS_CROSS_TARGET=mac-arm64", "-DOBS_CROSS_TIER2=ON",

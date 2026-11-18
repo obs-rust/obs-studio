@@ -159,17 +159,31 @@ class PacketTest(unittest.TestCase):
             diagnostic = fixture / "CMakeCache.txt"
             diagnostic.write_text("CMAKE_OSX_SYSROOT=/producer/home/.soldr/sdk\n")
             before = bundle.digest(diagnostic)
+            duplicate = fixture / "duplicate.txt"
+            duplicate.write_bytes(diagnostic.read_bytes())
             evidence = fixture / "evidence.cmake"
-            evidence.write_text(f"set(_sha_CMakeCache.txt {before})\n")
+            evidence.write_text(f"set(_sha_CMakeCache.txt {before})\nset(_sha_duplicate.txt {before})\n")
             original = bundle.digest(evidence)
             result = packet.normalize_fixture(fixture, Path("/producer/home"))
             self.assertEqual(result["linux_receipt_sha256"], original)
             self.assertEqual(result["files"]["CMakeCache.txt"]["linux_sha256"], before)
             self.assertIn(bundle.digest(diagnostic), evidence.read_text())
             self.assertNotIn("/producer/home", diagnostic.read_text())
+            self.assertEqual(duplicate.read_bytes(), diagnostic.read_bytes())
             (fixture / "bad.o").write_bytes(b"\xcf\xfa\xed\xfe/producer/home")
             with self.assertRaisesRegex(ValueError, "compiled fixture"):
                 packet.normalize_fixture(fixture, Path("/producer/home"))
+
+    def test_capture_reference_uses_cmake_owner_not_module_name(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        files = ["libobs-opengl/libobs-opengl.0.dylib", "libobs-metal-managed/libobs-metal.0.dylib"]
+        for owner, module in (("mac-capture", "mac-capture"), ("mac-avcapture", "mac-avcapture"),
+                              ("mac-avcapture", "mac-avcapture-legacy")):
+            files.append(f"plugins/{owner}/{module}.plugin/Contents/MacOS/{module}")
+        manifest = {"files": {(packet.BUILD / name).as_posix(): {} for name in files},
+                    "dyld_library_path": [".tier2/deps"]}
+        env = packet.runtime_environment(packet.COMMON, manifest)
+        self.assertIn("/plugins/mac-avcapture/mac-avcapture-legacy.plugin/", env["OBS_BUILD_MACOS_MAC_AVCAPTURE_LEGACY_REFERENCE"])
 
 
 class BundleTest(unittest.TestCase):

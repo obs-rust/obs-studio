@@ -261,6 +261,7 @@ def normalize_fixture(fixture: Path, producer_home: Path) -> dict:
     original_evidence = bundle.digest(evidence)
     receipt = evidence.read_text()
     changed = {}
+    replacements = {}
     for path in sorted(fixture.rglob("*")):
         if not path.is_file() or path == evidence:
             continue
@@ -275,8 +276,10 @@ def normalize_fixture(fixture: Path, producer_home: Path) -> dict:
         after = bundle.digest(path)
         if before not in receipt:
             raise ValueError(f"unhashed producer diagnostic: {path.name}")
-        receipt = receipt.replace(before, after)
+        replacements[before] = after
         changed[path.relative_to(fixture).as_posix()] = {"linux_sha256": before, "portable_sha256": after}
+    for before, after in replacements.items():
+        receipt = receipt.replace(before, after)
     evidence.write_text(receipt)
     return {"normalization": "producer-home-to-logical-toolchain-v1",
             "linux_receipt_sha256": original_evidence, "portable_receipt_sha256": bundle.digest(evidence),
@@ -492,7 +495,11 @@ def runtime_environment(root: Path, manifest: dict) -> dict:
     refs = {"OPENGL": BUILD / "libobs-opengl/libobs-opengl.0.dylib",
             "METAL": BUILD / "libobs-metal-managed/libobs-metal.0.dylib"}
     for module in ("mac-capture", "mac-avcapture", "mac-avcapture-legacy"):
-        refs[module.upper().replace("-", "_")] = BUILD / f"plugins/{module}/{module}.plugin/Contents/MacOS/{module}"
+        candidates = [name for name in manifest["files"] if name.startswith(BUILD.as_posix() + "/")
+                      and name.endswith(f"/{module}.plugin/Contents/MacOS/{module}")]
+        if len(candidates) != 1:
+            raise ValueError(f"one sealed CMake capture reference required: {module}")
+        refs[module.upper().replace("-", "_")] = relative(candidates[0])
     for key, path in refs.items():
         if path.as_posix() not in manifest["files"]:
             raise ValueError(f"unsealed CMake reference: {path}")
