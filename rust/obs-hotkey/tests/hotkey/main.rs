@@ -10,6 +10,7 @@ mod background_error;
 mod background_error_parity;
 mod background_query;
 mod background_query_parity;
+mod background_trigger;
 mod binding_getters;
 mod binding_getters_parity;
 mod binding_press;
