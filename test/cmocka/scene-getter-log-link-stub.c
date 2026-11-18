@@ -37,3 +37,21 @@ void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const struct obs_scene_it
 	(void)item;
 	abort();
 }
+
+void obs_sceneitem_pos_canvas_read(struct vec2 *dst, const struct vec2 *v, const struct obs_scene_item *item);
+void obs_sceneitem_pos_canvas_read(struct vec2 *dst, const struct vec2 *v, const struct obs_scene_item *item)
+{
+	(void)dst;
+	(void)v;
+	(void)item;
+	abort();
+}
+
+void obs_sceneitem_size_canvas_read(struct vec2 *dst, const struct vec2 *v, const struct obs_scene_item *item);
+void obs_sceneitem_size_canvas_read(struct vec2 *dst, const struct vec2 *v, const struct obs_scene_item *item)
+{
+	(void)dst;
+	(void)v;
+	(void)item;
+	abort();
+}

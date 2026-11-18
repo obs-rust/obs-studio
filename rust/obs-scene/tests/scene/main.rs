@@ -68,6 +68,7 @@ mod item_render_getters_parity;
 
 mod item_bounds_getters_parity;
 mod item_info_getters;
+mod item_info_getters_parity;
 mod item_scale_getter;
 mod item_scale_getter_parity;
 

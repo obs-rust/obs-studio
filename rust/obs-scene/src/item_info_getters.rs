@@ -29,8 +29,7 @@ pub fn read_vec2(
     relative: impl FnOnce() -> [u32; 2],
     output: &mut [u32; 2],
 ) {
-    let _ = (value, relative, output);
-    todo!("RED: position and bounds reads")
+    crate::item_scale_getter::read_scale(value, relative, output);
 }
 
 /// The info written for a stored item and its `absolute_coordinates` flag;
@@ -38,8 +37,19 @@ pub fn read_vec2(
 /// convert position, scale and bounds, once each and in that order.
 pub fn read_info(
     value: Option<(TransformBits, bool)>,
-    convert: impl FnMut(Conversion) -> [u32; 2],
+    mut convert: impl FnMut(Conversion) -> [u32; 2],
 ) -> Option<TransformBits> {
-    let _ = (value, convert);
-    todo!("RED: transform info read")
+    let (stored, absolute) = value?;
+    if absolute {
+        return Some(stored);
+    }
+    let pos = convert(Conversion::Position);
+    let scale = convert(Conversion::Scale);
+    let bounds = convert(Conversion::Bounds);
+    Some(TransformBits {
+        pos,
+        scale,
+        bounds,
+        ..stored
+    })
 }

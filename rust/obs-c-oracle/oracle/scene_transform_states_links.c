@@ -1,8 +1,10 @@
 /* Test-only link stand-ins: obs_get_source_by_uuid(),
- * obs_sceneitem_get_info2(), obs_sceneitem_set_info2(),
+ * obs_sceneitem_set_info2(),
  * obs_sceneitem_defer_update_begin() and obs_sceneitem_defer_update_end()
  * under libobs's own names, for the test
  * binaries that link the obs-scene shims without libobs.
+ * obs_sceneitem_get_info2() is the obs-scene shim itself now
+ * (rust/obs-scene/src/ffi/item_info_getters.rs).
  *
  * The transform snapshot/restore shims
  * (rust/obs-scene/src/ffi/transform_states.rs) export
@@ -21,12 +23,6 @@ obs_source_t *obs_get_source_by_uuid(const char *uuid)
 {
 	UNUSED_PARAMETER(uuid);
 	return NULL;
-}
-
-void obs_sceneitem_get_info2(const obs_sceneitem_t *item, struct obs_transform_info *info)
-{
-	UNUSED_PARAMETER(item);
-	UNUSED_PARAMETER(info);
 }
 
 void obs_sceneitem_set_info2(obs_sceneitem_t *item, const struct obs_transform_info *info)
