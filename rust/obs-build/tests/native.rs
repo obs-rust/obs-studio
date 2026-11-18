@@ -333,6 +333,8 @@ mod canonical_headless_abi_is_registered;
 mod canonical_headless_audio_is_registered;
 #[path = "native/registration/canonical_hotkey_background_app_id_is_registered.rs"]
 mod canonical_hotkey_background_app_id_is_registered;
+#[path = "native/registration/canonical_hotkey_background_press_swap_is_registered.rs"]
+mod canonical_hotkey_background_press_swap_is_registered;
 #[path = "native/registration/canonical_hotkey_background_query_is_registered.rs"]
 mod canonical_hotkey_background_query_is_registered;
 #[path = "native/registration/canonical_hotkey_background_trigger_swap_is_registered.rs"]
