@@ -89,6 +89,36 @@ class WindowsRunOnlyTest(unittest.TestCase):
             self.assertNotRegex(body, r"\.(shared_library|static_library|executable)\(")
             self.assertIsNotNone(re.search(r"fixture_shared_library", body))
 
+    def test_windows_histories_require_contained_empty_directory_inventory(self):
+        import windows_native_fixtures as fixtures
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / "native-fixtures"
+            names = ["native_build::" + name for name in fixtures.TESTS]
+            directory.mkdir()
+            (directory / "index.json").write_text(json.dumps({"version": 1, "target": windows.TARGET,
+                "complete": True, "tests": names, "images": {"blob": []}}))
+            paths = []
+            for name in names:
+                path = directory / name.replace("::", "--") / "manifest.json"
+                path.parent.mkdir()
+                path.write_text(json.dumps({"complete": True, "target": windows.TARGET,
+                    "host": "x86_64-unknown-linux-gnu", "directories": ["/opt/proof/src/work"],
+                    "events": [{"files": [], "directories": ["/opt/proof/src/work/runtime root/Release"]}]}))
+                paths.append(path)
+            with patch.object(fixtures, "fixture_images", return_value={"blob": []}):
+                fixtures.validate(root)
+                data = json.loads(paths[0].read_text())
+                for bad in (None, ["/opt/escape"], ["/opt/proof/src/work/../escape"]):
+                    event = data["events"][0]
+                    event.pop("directories", None)
+                    if bad is not None:
+                        event["directories"] = bad
+                    paths[0].write_text(json.dumps(data))
+                    with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, "directory inventory"):
+                        fixtures.validate(root)
+
     def test_fixture_dll_imports_allow_only_staged_dependencies(self):
         data = bytearray(executable(["fixture-core.dll", "KERNEL32.dll"]))
         import struct
