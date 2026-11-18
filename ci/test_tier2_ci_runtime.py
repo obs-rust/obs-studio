@@ -103,7 +103,15 @@ class RuntimeReuseTest(unittest.TestCase):
         marker.start()
         self.addCleanup(marker.stop)
 
-    def deliver(self, root, first_inspect='sha256:' + 'b' * 64):
+    def enable_cache(self, cache):
+        marker = cache.parent / '.persistent-cache'
+        marker.touch()
+        for name, value in (('ASSET_CACHE_DIR', cache), ('ASSET_CACHE_MARKER', marker)):
+            setting = patch.object(runtime, name, value)
+            setting.start()
+            self.addCleanup(setting.stop)
+
+    def deliver(self, root, first_inspect='sha256:' + 'b' * 64, network=None):
         descriptor = self.descriptor()
         calls = []
 
@@ -116,7 +124,8 @@ class RuntimeReuseTest(unittest.TestCase):
             return descriptor['image_id']
 
         with patch.object(runtime, 'command', side_effect=command), \
-                patch.object(runtime.urllib.request, 'urlopen', return_value=io.BytesIO(b'good')) as download:
+                patch.object(runtime.urllib.request, 'urlopen',
+                             side_effect=network or (lambda *args, **kwargs: io.BytesIO(b'good'))) as download:
             self.assertEqual(runtime.download_prepared(descriptor, root), descriptor['image_id'])
         return calls, download
 
@@ -138,19 +147,19 @@ class RuntimeReuseTest(unittest.TestCase):
                 self.assertEqual(calls[2][:3], ('docker', 'image', 'load'))
                 self.assertEqual(calls[-1], calls[0])
 
-    def test_verified_cache_avoids_network_and_corrupt_cache_is_replaced(self):
+    def test_verified_cache_avoids_network_and_corrupt_cache_downloads_without_replacement(self):
         for contents in (b'good', b'evil'):
             with self.subTest(contents=contents), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 cache = root / 'cache'
                 cache.mkdir()
-                os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+                self.enable_cache(cache)
                 cached = cache / self.descriptor()['archive_sha256']
                 cached.write_bytes(contents)
                 calls, download = self.deliver(root)
                 self.assertEqual(download.call_count, int(contents != b'good'))
                 self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
-                self.assertEqual(cached.read_bytes(), b'good')
+                self.assertEqual(cached.read_bytes(), contents)
                 self.assertEqual(list(cache.iterdir()), [cached])
                 self.assertEqual(calls[2][:3], ('docker', 'image', 'load'))
 
@@ -158,7 +167,8 @@ class RuntimeReuseTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             cache = root / 'new-cache'
-            os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+            cache.mkdir()
+            self.enable_cache(cache)
             replace = os.replace
 
             def publish(source, destination):
@@ -181,7 +191,7 @@ class RuntimeReuseTest(unittest.TestCase):
             root = Path(tmp)
             cache = root / 'not-a-directory'
             cache.write_bytes(b'file')
-            os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+            self.enable_cache(cache)
             _, download = self.deliver(root)
             download.assert_called_once()
             self.assertEqual(cache.read_bytes(), b'file')
@@ -193,28 +203,30 @@ class RuntimeReuseTest(unittest.TestCase):
                 cache = root / 'cache'
                 cache.mkdir()
                 cached = cache / self.descriptor()['archive_sha256']
-                cached.write_bytes(b'good' if operation == 'copyfile' else b'evil')
-                os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+                if operation == 'copyfile':
+                    cached.write_bytes(b'good')
+                self.enable_cache(cache)
                 target = runtime.shutil if operation == 'copyfile' else runtime.os
                 with patch.object(target, operation, side_effect=OSError('cache unavailable')):
                     _, download = self.deliver(root)
-                download.assert_called_once()
+                self.assertEqual(download.call_count, 1 if operation == 'copyfile' else 2)
                 self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
-                self.assertEqual(list(cache.iterdir()), [cached])
+                self.assertEqual(list(cache.iterdir()), [cached] if operation == 'copyfile' else [])
 
     def test_download_corruption_and_loaded_identity_mismatch_still_fail(self):
         for corrupt in (True, False):
             with self.subTest(corrupt=corrupt), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 cache = root / 'cache'
-                os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+                cache.mkdir()
+                self.enable_cache(cache)
                 with patch.object(runtime, 'command', return_value='wrong') as command, \
                         patch.object(runtime.urllib.request, 'urlopen',
                                      return_value=io.BytesIO(b'evil' if corrupt else b'good')):
                     with self.assertRaisesRegex(ValueError, 'checksum' if corrupt else 'identity'):
                         runtime.download_prepared(self.descriptor(), root)
                 if corrupt:
-                    self.assertFalse(cache.exists())
+                    self.assertEqual(list(cache.iterdir()), [])
                     self.assertEqual(command.call_count, 1)
                 else:
                     self.assertEqual(command.call_count, 4)
@@ -255,16 +267,45 @@ class RuntimeReuseTest(unittest.TestCase):
             self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
             self.assertEqual(list(cache.iterdir()), [cached])
 
-    def test_cache_gc_refresh_permission_error_keeps_verified_hit(self):
+    def test_cache_gc_refresh_permission_error_falls_back_to_job_download(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'cache'
+            cache.mkdir()
+            (cache / self.descriptor()['archive_sha256']).write_bytes(b'good')
+            self.enable_cache(cache)
+            with patch.object(runtime.os, 'utime', side_effect=PermissionError('another uid')):
+                _, download = self.deliver(root)
+            download.assert_called_once()
+
+    def test_environment_variables_cannot_bypass_persistent_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             cache = root / 'cache'
             cache.mkdir()
             (cache / self.descriptor()['archive_sha256']).write_bytes(b'good')
             os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
-            with patch.object(runtime.os, 'utime', side_effect=PermissionError('another uid')):
-                _, download = self.deliver(root)
-            download.assert_not_called()
+            os.environ['OBS_RUNNER_CACHE'] = str(cache)
+            _, download = self.deliver(root)
+            download.assert_called_once()
+
+    def test_network_download_starts_in_shared_part_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'assets'
+            cache.mkdir()
+            self.enable_cache(cache)
+
+            def network(*args, **kwargs):
+                parts = list(cache.iterdir())
+                self.assertEqual(len(parts), 1)
+                self.assertTrue(parts[0].name.startswith('.' + self.descriptor()['archive_sha256'] + '.'))
+                self.assertEqual(parts[0].suffix, '.part')
+                self.assertFalse((root / 'runtime.tar.zst').exists())
+                return io.BytesIO(b'good')
+
+            _, download = self.deliver(root, network=network)
+            download.assert_called_once()
 
     def test_dell_cache_miss_publishes_world_readable_verified_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
