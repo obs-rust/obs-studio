@@ -1,6 +1,8 @@
 # Opt-in Linux-produced macOS runtime graph (#5009). This is infrastructure,
 # not permission to replace the native validator's renderer/capture contracts.
 set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+set(CMAKE_OBJC_VISIBILITY_PRESET hidden)
+set(CMAKE_OBJCXX_VISIBILITY_PRESET hidden)
 foreach(_objects IN ITEMS libobs-cross libobs-cross-shared-objects)
   # Canonical macOS compilerconfig also hides Objective-C implementation
   # symbols. C_VISIBILITY_PRESET does not apply to these translation units.
