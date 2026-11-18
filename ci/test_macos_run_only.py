@@ -2,6 +2,7 @@
 """The complete Darwin bundle is built on Linux and only executed on macOS."""
 from __future__ import annotations
 
+import errno
 import json
 import re
 import tempfile
@@ -41,7 +42,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}", producer)
         for text in ("needs.check-event.outputs.macos == 'true'", "skip_rust-tests-macos != 'true'",
                      "github.event_name != 'merge_group'", "needs.check-event.outputs.deferred == 'true'",
-                     "--base", "--qt", "needs.check-event.outputs.qt_sdk", "ci/macos_qt_artifact.py build",
+                     "--base", "needs.check-event.outputs.qt_sdk", "ci/macos_qt_artifact.py build",
                      "ci/macos_test_artifact.py build", "ci/macos_test_workspace.py pack",
                      "actions/upload-artifact@", "if-no-files-found: error"):
             self.assertIn(text, producer)
@@ -74,6 +75,19 @@ class WorkflowTest(unittest.TestCase):
 
 
 class WorkspaceTest(unittest.TestCase):
+    def test_checkout_placement_across_runner_mounts(self):
+        import macos_test_workspace as workspace
+
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "runner/checkout"
+            source.mkdir(parents=True)
+            (source / "Cargo.toml").write_text("workspace")
+            destination = Path(temporary) / "common/src"
+            with mock.patch("os.rename", side_effect=OSError(errno.EXDEV, "different mounts")):
+                workspace.place(source, destination)
+                workspace.restore(source, destination)
+            self.assertEqual((source / "Cargo.toml").read_text(), "workspace")
+
     def test_real_checkout_moves_and_restores_without_a_second_copy(self):
         import macos_test_workspace as workspace
 
