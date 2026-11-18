@@ -742,16 +742,6 @@ obs_source_t *obs_source_get_ref(obs_source_t *source)
 	return obs_weak_source_get_source(get_weak(source));
 }
 
-obs_weak_source_t *obs_source_get_weak_source(obs_source_t *source)
-{
-	if (!source)
-		return NULL;
-
-	obs_weak_source_t *weak = get_weak(source);
-	obs_weak_source_addref(weak);
-	return weak;
-}
-
 obs_source_t *obs_weak_source_get_source(obs_weak_source_t *weak)
 {
 	if (!weak)
