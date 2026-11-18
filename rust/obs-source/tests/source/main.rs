@@ -142,6 +142,7 @@ mod volume_apply_parity;
 mod volume_mul;
 mod volume_mul_parity;
 mod weak_predicates;
+mod weak_predicates_parity;
 
 mod type_id_getters;
 
