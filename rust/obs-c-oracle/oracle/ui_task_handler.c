@@ -41,7 +41,8 @@ bool obs_core_is_ui_thread(void);
 /* Mirror the shared printf/va_list callback attribute used by the existing
  * characterization: the format is supplied by the logging API. */
 #if defined(__GNUC__) || defined(__clang__)
-static void ui_capture_log(int level, const char *format, va_list args, void *param) __attribute__((format(printf, 2, 0)));
+static void ui_capture_log(int level, const char *format, va_list args, void *param)
+	__attribute__((format(printf, 2, 0)));
 #endif
 static void ui_capture_log(int level, const char *format, va_list args, void *param)
 {
