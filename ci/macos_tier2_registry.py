@@ -74,6 +74,12 @@ def snapshot(build: Path, source: Path) -> dict:
         check=True,
         stdout=subprocess.DEVNULL,
     )
+    if subprocess.check_output(
+        ["git", "-C", str(source), "ls-files", "--others", "--exclude-standard", "-z"]
+    ):
+        raise ValueError(
+            "untracked source files invalidate same-commit registry evidence"
+        )
     result = subprocess.run(
         [
             "ctest",
@@ -112,6 +118,19 @@ def record(build: Path, source: Path) -> None:
     ).returncode
     if dirty not in (0, 1):
         raise ValueError("unable to record configured source state")
+    dirty = dirty or bool(
+        subprocess.check_output(
+            [
+                "git",
+                "-C",
+                str(source),
+                "ls-files",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ]
+        )
+    )
     (build / "tier2-registry-provenance.json").write_text(
         json.dumps({"revision": revision, "dirty": bool(dirty)}) + "\n"
     )
