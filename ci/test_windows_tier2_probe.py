@@ -105,6 +105,43 @@ class ProbeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "changed artifact"):
                 helper.prepare(output)
 
+    def test_copy_race_cannot_publish_a_missing_dependency(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            build, output = root / "producer", root / "bundle"
+            build.mkdir()
+            artifacts = []
+            for variant in ["shared", "reference"]:
+                core = build / variant / "obs.dll"
+                core.parent.mkdir()
+                core.write_bytes(pe([]))
+                artifacts.append(core)
+            (build / "CTestTestfile.cmake").write_text("# registry\n")
+
+            def racing_copy(source, destination):
+                Path(destination).write_bytes(pe(["unavailable.dll"]))
+
+            with (
+                patch.object(helper, "exports", return_value={"api"}),
+                patch.object(helper.shutil, "copyfile", side_effect=racing_copy),
+            ):
+                with self.assertRaisesRegex(ValueError, "unavailable.dll"):
+                    helper.stage(build, output, root, artifacts, [], "llvm-readobj")
+            self.assertFalse((output / "manifest.json").exists())
+
+    def test_core_variants_are_not_ambiguous_dependencies(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifacts = []
+            for variant, dlls in [("shared", ["kernel32.dll"]), ("reference", [])]:
+                core = root / variant / "obs.dll"
+                core.parent.mkdir()
+                core.write_bytes(pe(dlls))
+                artifacts.append(core)
+            self.assertEqual(len(helper.closure(artifacts, [root])), 2)
+
     def test_manifest_cannot_escape_bundle(self):
         helper = self.helper()
         with tempfile.TemporaryDirectory() as tmp:

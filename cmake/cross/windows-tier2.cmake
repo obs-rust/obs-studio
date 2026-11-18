@@ -43,7 +43,8 @@ endforeach()
 enable_language(RC)
 function(_obs_windows_tier2_resource)
   set(CMAKE_CURRENT_SOURCE_DIR "${OBS_SOURCE_ROOT}")
-  include(versionconfig)
+  set(CMAKE_SOURCE_DIR "${OBS_SOURCE_ROOT}")
+  include(bootstrap)
   configure_file("${OBS_SOURCE_ROOT}/libobs/cmake/windows/obs-module.rc.in" "${CMAKE_BINARY_DIR}/config/libobs.rc")
 endfunction()
 _obs_windows_tier2_resource()
@@ -114,7 +115,13 @@ set(OS_FREEBSD FALSE)
 set(HAVE_LIBOBS_RUST_STATIC TRUE)
 include("${OBS_SOURCE_ROOT}/test/cmocka/native-test-graph.cmake")
 enable_testing()
-obs_native_test_graph("${CMAKE_BINARY_DIR}/tier2-probe-graph.json" "${OBS_SOURCE_ROOT}")
+function(_obs_windows_tier2_registry)
+  # The canonical registry uses target facts, as obs-build does for *-msvc.
+  # Keep CMake's actual GNU frontend untouched outside this registry scope.
+  set(MSVC TRUE)
+  obs_native_test_graph("${CMAKE_BINARY_DIR}/tier2-probe-graph.json" "${OBS_SOURCE_ROOT}")
+endfunction()
+_obs_windows_tier2_registry()
 add_custom_target(tier2-cross-probe DEPENDS libobs-cross-shared libobs-cross-reference ${_probe_tests})
 set(_runtime "$<TARGET_FILE:libobs-cross-shared>\n$<TARGET_FILE:libobs-cross-reference>\n")
 foreach(_test IN LISTS _probe_tests)
@@ -124,5 +131,5 @@ file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/tier2-runtime.txt" CONTENT "${_runtime
 
 file(
   WRITE "${CMAKE_BINARY_DIR}/tier2-probe-toolchain.txt"
-  "MSVC=${MSVC}\nfrontend=${CMAKE_C_COMPILER_FRONTEND_VARIANT}\ncompiler=${CMAKE_C_COMPILER}\nlinker=${CMAKE_LINKER}\nRC=${CMAKE_RC_COMPILER}\nprofile=${CMAKE_BUILD_TYPE}\n"
+  "registry_msvc=TRUE\ncompiler_msvc=${MSVC}\nfrontend=${CMAKE_C_COMPILER_FRONTEND_VARIANT}\ncompiler=${CMAKE_C_COMPILER}\nlinker=${CMAKE_LINKER}\nRC=${CMAKE_RC_COMPILER}\nprofile=${CMAKE_BUILD_TYPE}\n"
 )

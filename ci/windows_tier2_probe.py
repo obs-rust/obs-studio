@@ -92,15 +92,17 @@ def parity(reference: set[str], hybrid: set[str]) -> list[str]:
 
 
 def closure(artifacts: list[Path], roots: list[Path]) -> list[Path]:
+    known = {path.name.lower() for path in artifacts}
     index = {}
     for root in roots:
         for path in sorted(root.rglob("*")):
             if path.is_file() and path.suffix.lower() == ".dll":
                 key = path.name.lower()
+                if key in known:
+                    continue
                 if key in index and digest(path) != digest(index[key]):
                     raise ValueError(f"ambiguous dependency DLL: {key}")
                 index[key] = path
-    known = {path.name.lower() for path in artifacts}
     pending, result = list(artifacts), []
     while pending:
         path = pending.pop()
@@ -154,7 +156,7 @@ def stage(
         raise ValueError("missing runtime inventory or CTest metadata")
     if output.exists():
         raise ValueError(f"refusing to overwrite bundle: {output}")
-    files, embedded = {}, []
+    files, embedded, staged = {}, [], []
     for path in paths:
         relative = (
             Path("build") / contained(build, path)
@@ -164,6 +166,7 @@ def stage(
         destination = output / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, destination)
+        staged.append(destination)
         image(destination.read_bytes())
         files[relative.as_posix()] = digest(destination)
         if (
@@ -171,6 +174,12 @@ def stage(
             or str(source).encode() in destination.read_bytes()
         ):
             embedded.append(relative.as_posix())
+    # Imports/exports can change during a concurrent rebuild. Validate the bytes
+    # we will transport, including newly introduced transitive dependencies.
+    closure(staged, [output / "build", output / "deps"])
+    symbols = parity(
+        *(exports(path, readobj) for path in staged if path.name.lower() == "obs.dll")
+    )
     manifest = {
         "schema": 1,
         "target": TARGET,
