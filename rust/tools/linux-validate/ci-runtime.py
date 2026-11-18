@@ -29,6 +29,8 @@ BUILD = '/__w/_temp/tier2'
 COST = '/__w/_temp/tier2-cost'
 # One zlib update made every job install the whole closure for 75 s (#1592).
 MAX_DELTA = 16
+ASSET_CACHE_DIR = Path('/var/cache/obs-runner/assets')
+ASSET_CACHE_MARKER = Path('/var/cache/obs-runner/.persistent-cache')
 spec = importlib.util.spec_from_file_location('runtime_selection', Path(__file__).with_name('runtime-selection.py'))
 selection = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selection)
@@ -55,15 +57,28 @@ def prepared_image(descriptor: dict, requirements: str, root: Path) -> str | Non
     return download_prepared(descriptor, root)
 
 
+def asset_cache_directory() -> Path | None:
+    """Use an explicit cache or the marker-gated persistent Dell mount."""
+    directory = os.environ.get('OBS_ASSET_CACHE_DIR')
+    if directory:
+        return Path(directory)
+    try:
+        if ASSET_CACHE_MARKER.is_file() and ASSET_CACHE_DIR.is_dir():
+            return ASSET_CACHE_DIR
+    except OSError as error:
+        print(f'Prepared runtime asset cache: unavailable ({error})', flush=True)
+    return None
+
+
 def cached_archive(descriptor: dict, archive: Path) -> tuple[Path | None, bool]:
     """Copy and verify optional persistent bytes before using them in this job."""
-    directory = os.environ.get('OBS_ASSET_CACHE_DIR')
-    if not directory:
+    directory = asset_cache_directory()
+    if directory is None:
         return None, False
     digest = descriptor['archive_sha256']
     if not re.fullmatch(r'[0-9a-f]{64}', digest):
         raise ValueError('Invalid prepared archive checksum')
-    cached = Path(directory) / (digest + '.tar.zst')
+    cached = directory / digest
     try:
         # Verify the job's copy, so concurrent cache replacement cannot change it.
         shutil.copyfile(cached, archive)
@@ -72,6 +87,11 @@ def cached_archive(descriptor: dict, archive: Path) -> tuple[Path | None, bool]:
         print(f'Prepared runtime asset cache: miss ({error})', flush=True)
         return cached, False
     print('Prepared runtime asset cache: hit', flush=True)
+    try:
+        os.utime(cached, None)
+    except OSError as error:
+        # Shared entries can belong to another uid; verified bytes remain usable.
+        print(f'Prepared runtime asset cache: GC refresh skipped ({error})', flush=True)
     return cached, True
 
 
@@ -79,10 +99,20 @@ def save_archive(archive: Path, cached: Path) -> None:
     """Publish verified bytes atomically; cache failures never block delivery."""
     try:
         cached.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix='.runtime-', dir=cached.parent) as temporary:
-            staging = Path(temporary) / 'archive'
+        with tempfile.NamedTemporaryFile(prefix=f'.{cached.name}.', suffix='.part',
+                                         dir=cached.parent, delete=False) as temporary:
+            staging = Path(temporary.name)
+        try:
             shutil.copyfile(archive, staging)
+            staging.chmod(0o644)
+            # Dell's sticky shared directory may contain another uid's entry.
+            # Leave existing corrupt files for host GC; explicit private caches
+            # can replace them after a verified re-download.
+            if cached.exists() and not os.environ.get('OBS_ASSET_CACHE_DIR'):
+                return
             os.replace(staging, cached)
+        finally:
+            staging.unlink(missing_ok=True)
     except OSError as error:
         print(f'Prepared runtime asset cache: write skipped ({error})', flush=True)
 

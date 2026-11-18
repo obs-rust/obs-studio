@@ -1157,14 +1157,20 @@ stock installs resolve current Ubuntu archive versions. Tests continue checking
 the exact runtime package closure from their build artifact.
 
 Prepared release runtimes first inspect the descriptor's pinned Docker image ID
-and reuse an exact match. A runner can also set `OBS_ASSET_CACHE_DIR` to a writable
-persistent directory to cache archives as `<archive_sha256>.tar.zst`. Reads copy
-into the job directory and verify size and SHA256; downloads publish through a
-temporary file and atomic rename. Cache I/O errors or corrupt cached bytes trigger
-the normal download path. Downloaded bytes and loaded image IDs retain their
-integrity checks. Image and asset cache hits/misses appear in the setup log.
-Without the environment variable the archive cache is disabled. Dell runner
-wiring is a separate host configuration step.
+and reuse an exact match. Dell runners use `/var/cache/obs-runner/assets` only
+when that directory and the `/var/cache/obs-runner/.persistent-cache` file both
+exist. A runner can override this with `OBS_ASSET_CACHE_DIR`. Hosted runners
+without either configuration retain cold delivery.
+
+Archive filenames are their SHA256 (no extension). Reads copy into the job
+directory, verify size and SHA256, then refresh the cache entry's access time for
+host GC; an access-time permission error leaves the verified copy usable.
+Verified downloads publish through `.<sha256>.<random>.part` files, mode `0644`,
+and atomic rename. Cache I/O errors or corrupt cached bytes trigger downloading.
+Dell's sticky shared directory keeps existing corrupt entries for host GC;
+explicit `OBS_ASSET_CACHE_DIR` caches replace them. Downloaded bytes and loaded
+image IDs retain their integrity checks. Image and asset cache hits/misses appear
+in the setup log. Confirm the Dell runner mount rollout before measuring hit rates.
 
 ### Host Ubuntu package acquisition (#1269)
 

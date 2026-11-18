@@ -97,6 +97,11 @@ class RuntimeReuseTest(unittest.TestCase):
         env = patch.dict(os.environ, {}, clear=True)
         env.start()
         self.addCleanup(env.stop)
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        marker = patch.object(runtime, 'ASSET_CACHE_MARKER', Path(temporary.name) / 'absent')
+        marker.start()
+        self.addCleanup(marker.stop)
 
     def deliver(self, root, first_inspect='sha256:' + 'b' * 64):
         descriptor = self.descriptor()
@@ -249,6 +254,17 @@ class RuntimeReuseTest(unittest.TestCase):
             self.assertEqual(cached.read_bytes(), b'evil')
             self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
             self.assertEqual(list(cache.iterdir()), [cached])
+
+    def test_cache_gc_refresh_permission_error_keeps_verified_hit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'cache'
+            cache.mkdir()
+            (cache / self.descriptor()['archive_sha256']).write_bytes(b'good')
+            os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+            with patch.object(runtime.os, 'utime', side_effect=PermissionError('another uid')):
+                _, download = self.deliver(root)
+            download.assert_not_called()
 
     def test_dell_cache_miss_publishes_world_readable_verified_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
