@@ -1368,7 +1368,7 @@ void obs_set_locale(const char *locale)
 	module = obs->first_module;
 	while (module) {
 		if (module->set_locale)
-			module->set_locale(locale);
+			module->set_locale(obs->locale);
 
 		module = module->next;
 	}
