@@ -17594,6 +17594,15 @@
         "libobs/data"
       ]
     },
+    "test_ui_task_handler": {
+      "sources": [
+        "test/cmocka/test_ui_task_handler.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_unclean_launch": {
       "sources": [
         "test/cmocka/test_unclean_launch.cpp"
@@ -26269,6 +26278,21 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_ui_task_handler": {
+      "target": "test_ui_task_handler",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_unclean_launch": {
       "target": "test_unclean_launch",
