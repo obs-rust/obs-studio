@@ -1,6 +1,5 @@
 """The test-enabled CMake libraries use the same fixture set as obs-build."""
 import json
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,39 +16,12 @@ class SetLocaleRegistrationTest(unittest.TestCase):
         expected = sorted((ROOT / 'libobs' / source).resolve()
                           for source in json.loads(MANIFEST.read_text()))
         self.assertIn(ROOT / 'test/cmocka/core_set_locale_fixture.c', expected)
-        if plan := os.environ.get('OBS_BUILD_NATIVE_FIXTURE_PLAN'):
-            native = sorted(Path(source).resolve() for source in json.loads(Path(plan).read_text()))
-            self.assertEqual(native, expected, 'Cargo and CMake must select identical fixture inputs')
         fragment = ROOT / 'test/cmocka/tests.d/test_set_locale.cmake'
         with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory)
-            (source / 'CMakeLists.txt').write_text('''
-cmake_minimum_required(VERSION 3.28)
-project(locale_fixture NONE)
-# Capture actual target_sources calls without requiring any platform SDK.
-add_custom_target(libobs)
-add_custom_target(libobs-c-reference)
-function(target_sources target)
-  foreach(source IN LISTS ARGN)
-    if(NOT source STREQUAL "PRIVATE")
-      cmake_path(ABSOLUTE_PATH source NORMALIZE OUTPUT_VARIABLE absolute)
-      file(APPEND "${CMAKE_BINARY_DIR}/${target}.sources" "${absolute}\\n")
-    endif()
-  endforeach()
-endfunction()
-function(target_link_libraries)
-endfunction()
-function(add_executable)
-  add_custom_target(${ARGV0})
-endfunction()
-function(target_include_directories)
-endfunction()
-add_custom_target(cmocka-tests)
-include("${FRAGMENT}")
-''')
+            source = ROOT / 'ci/fixtures/locale_registration'
             for host in ('Linux', 'Darwin', 'Windows'):
                 with self.subTest(host=host):
-                    build = source / host
+                    build = Path(directory) / host
                     result = subprocess.run(
                         ['cmake', '-S', str(source), '-B', str(build),
                          f'-DCMAKE_SYSTEM_NAME={host}', f'-DFRAGMENT={fragment}'],

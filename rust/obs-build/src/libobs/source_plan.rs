@@ -10,8 +10,7 @@ pub(super) fn common_sources(
     test_support: bool,
 ) -> Result<Vec<PathBuf>, String> {
     let mut common = sources(sets, "LIBOBS_SOURCES", root)?;
-    // RED: reproduce the omitted native fixture input on the repaired head.
-    if test_support && false {
+    if test_support {
         common.extend(sources(sets, "LIBOBS_TEST_SOURCES", root)?);
     }
     Ok(common)

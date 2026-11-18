@@ -9,14 +9,16 @@ use std::{
     process::Command,
 };
 
-#[test]
-fn canonical_fixture_exports_match_cmake_on_every_host() {
+fn fixture_sources() -> (PathBuf, Vec<PathBuf>) {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let sets: BTreeMap<String, Vec<String>> = ["LIBOBS_SOURCES", "LIBOBS_TEST_SOURCES"]
         .into_iter()
         .map(|name| {
             let path = root.join(format!("libobs/build/source-sets.d/{name}.json"));
-            (name.into(), serde_json::from_slice(&fs::read(path).unwrap()).unwrap())
+            (
+                name.into(),
+                serde_json::from_slice(&fs::read(path).unwrap()).unwrap(),
+            )
         })
         .collect();
     let normal = production::common_sources(&sets, &root, false).unwrap();
@@ -26,21 +28,52 @@ fn canonical_fixture_exports_match_cmake_on_every_host() {
         .filter(|source| !normal.contains(source))
         .map(|source| source.canonicalize().unwrap())
         .collect();
+    (root, fixtures)
+}
+
+#[test]
+fn canonical_fixture_sources_match_cmake_on_every_host() {
+    let (root, fixtures) = fixture_sources();
     let temp = tempfile::tempdir().unwrap();
-    let plan = temp.path().join("cargo-fixtures.json");
-    fs::write(&plan, serde_json::to_vec(&fixtures).unwrap()).unwrap();
-    let cmake = Command::new("uv")
-        .args(["run", "--no-project"])
-        .arg(root.join("ci/test_set_locale_registration.py"))
-        .env("OBS_BUILD_NATIVE_FIXTURE_PLAN", &plan)
-        .output()
-        .unwrap();
-    assert!(
-        cmake.status.success(),
-        "{}{}",
-        String::from_utf8_lossy(&cmake.stdout),
-        String::from_utf8_lossy(&cmake.stderr)
-    );
+    for host in ["Linux", "Darwin", "Windows"] {
+        let build = temp.path().join(host);
+        let cmake = Command::new("cmake")
+            .args(["-G", "Ninja"])
+            .arg("-S")
+            .arg(root.join("ci/fixtures/locale_registration"))
+            .arg("-B")
+            .arg(&build)
+            .arg(format!("-DCMAKE_SYSTEM_NAME={host}"))
+            .arg(format!(
+                "-DFRAGMENT={}",
+                root.join("test/cmocka/tests.d/test_set_locale.cmake")
+                    .display()
+            ))
+            .output()
+            .unwrap();
+        assert!(
+            cmake.status.success(),
+            "{}",
+            String::from_utf8_lossy(&cmake.stderr)
+        );
+        for library in ["libobs", "libobs-c-reference"] {
+            let selected = fs::read_to_string(build.join(format!("{library}.sources"))).unwrap();
+            let cmake_sources: Vec<_> = selected
+                .lines()
+                .map(|line| PathBuf::from(line).canonicalize().unwrap())
+                .collect();
+            assert_eq!(
+                fixtures, cmake_sources,
+                "{host} {library}: Cargo/CMake fixture inputs"
+            );
+        }
+    }
+}
+
+#[test]
+fn canonical_fixture_exports_match_failed_queue_diff() {
+    let (_, fixtures) = fixture_sources();
+    let temp = tempfile::tempdir().unwrap();
     // This fixture only swaps an opaque pointer. Compile its actual C body with
     // that declaration, without pulling platform SDKs or the rest of libobs in.
     fs::write(
@@ -60,7 +93,11 @@ fn canonical_fixture_exports_match_cmake_on_every_host() {
             .arg(&object)
             .output()
             .unwrap();
-        assert!(compile.status.success(), "{}", String::from_utf8_lossy(&compile.stderr));
+        assert!(
+            compile.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
         let symbols = Command::new("nm")
             .args(["-g", "--defined-only"])
             .arg(&object)
@@ -74,5 +111,8 @@ fn canonical_fixture_exports_match_cmake_on_every_host() {
                 .map(|line| line.split_whitespace().last().unwrap().to_owned()),
         );
     }
-    assert_eq!(exported, BTreeSet::from(["obs_test_set_locale_swap_core".to_owned()]));
+    assert_eq!(
+        exported,
+        BTreeSet::from(["obs_test_set_locale_swap_core".to_owned()])
+    );
 }
