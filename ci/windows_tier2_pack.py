@@ -211,6 +211,50 @@ def prepare_fixture(
     return {"test_core_module_manifest_source": name}
 
 
+def release_image(path: Path) -> bool:
+    return not any(
+        name == "ucrtbased.dll" or re.fullmatch(r"(?:msvcp|vcruntime|concrt).*d\.dll", name)
+        for name in probe.image(path.read_bytes())
+    )
+
+
+def plugin_images(tests: list[dict], source: Path, output: Path) -> list[Path]:
+    """Qt loads platform/image/style DLLs dynamically, outside the PE import graph."""
+    roots = set()
+    prefix = "QT_PLUGIN_PATH=path_list_prepend:"
+    for test in tests:
+        for prop in test.get("properties", []):
+            if prop["name"] == "ENVIRONMENT_MODIFICATION":
+                roots.update(
+                    Path(value[len(prefix) :])
+                    for value in prop["value"]
+                    if value.startswith(prefix)
+                )
+    images = []
+    for root in sorted(roots):
+        probe.contained(source, root)
+        if not (root / "platforms/qminimal.dll").is_file():
+            raise ValueError("missing Qt minimal platform plugin")
+        for path in sorted(root.rglob("*")):
+            if path.is_symlink():
+                raise ValueError("symlink in Qt plugin tree")
+            if path.is_dir():
+                (output / "source" / path.relative_to(source)).mkdir(
+                    parents=True, exist_ok=True
+                )
+            elif path.suffix.lower() == ".dll" and release_image(path):
+                images.append(path)
+    return images
+
+
+def destination_name(path: Path, build: Path, source: Path) -> Path:
+    if path.is_relative_to(build):
+        return Path("build") / path.relative_to(build)
+    if path.is_relative_to(source):
+        return Path("source") / path.relative_to(source)
+    return Path("deps") / path.name
+
+
 def stage(
     build: Path, source: Path, output: Path, roots: list[Path], source_sha: str
 ) -> dict:
@@ -228,13 +272,10 @@ def stage(
     ]
     for path in products:
         probe.contained(build, path)
-    paths = probe.closure(products, [build, *roots], hosted_runtime=True)
+    dynamic = plugin_images(inventory["tests"], source, output)
+    paths = probe.closure([*products, *dynamic], [build, *roots], hosted_runtime=True)
     for path in paths:
-        name = (
-            Path("build") / path.relative_to(build)
-            if path.is_relative_to(build)
-            else Path("deps") / path.name
-        )
+        name = destination_name(path, build, source)
         copy_path(path, output / name)
     stage_data(build, source, output, products)
     stage_arguments(build, source, output, inventory["tests"])

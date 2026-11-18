@@ -27,11 +27,11 @@ CMAKE = "@OBS_TIER2_CMAKE@"
 SYSTEM = frozenset(
     """
 advapi32.dll authz.dll avicap32.dll avrt.dll bcrypt.dll bcryptprimitives.dll cfgmgr32.dll comctl32.dll comdlg32.dll
-coremessaging.dll crypt32.dll d3d9.dll d3d11.dll d3d12.dll d3dcompiler_47.dll dbghelp.dll dnsapi.dll dwmapi.dll dwrite.dll dxgi.dll gdi32.dll icuuc.dll imm32.dll
+coremessaging.dll crypt32.dll d2d1.dll d3d9.dll d3d11.dll d3d12.dll d3dcompiler_47.dll dbghelp.dll dnsapi.dll dwmapi.dll dwrite.dll dxgi.dll dxva2.dll evr.dll gdi32.dll icuuc.dll imm32.dll
 iphlpapi.dll kernel32.dll kernelbase.dll mpr.dll msimg32.dll ncrypt.dll
-netapi32.dll normaliz.dll ntdll.dll ole32.dll oleaut32.dll opengl32.dll
+mf.dll mfplat.dll mfreadwrite.dll netapi32.dll normaliz.dll ntdll.dll ole32.dll oleaut32.dll opengl32.dll
 powrprof.dll propsys.dll psapi.dll rpcrt4.dll secur32.dll setupapi.dll
-shell32.dll shlwapi.dll user32.dll userenv.dll uxtheme.dll version.dll
+shell32.dll shlwapi.dll uiautomationcore.dll user32.dll userenv.dll uxtheme.dll version.dll
 winhttp.dll winmm.dll wintrust.dll wldap32.dll ws2_32.dll wtsapi32.dll
 """.split()
 )

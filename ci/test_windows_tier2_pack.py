@@ -156,16 +156,57 @@ class CMakePackTests(unittest.TestCase):
             (qt / "plugins/platforms").mkdir(parents=True)
             (qt / "bin").mkdir()
             (qt / "plugins/platforms/qminimal.dll").write_bytes(pe(["Qt6Gui.dll"]))
+            (qt / "plugins/platforms/qminimald.dll").write_bytes(pe(["ucrtbased.dll"]))
+            (qt / "plugins/platforms/qdirect2d.dll").write_bytes(pe([]))
             (qt / "plugins/platforms/qminimal.pdb").write_bytes(b"debug symbols")
             (qt / "bin/Qt6Gui.dll").write_bytes(pe([]))
-            tests[0]["properties"].append({"name": "ENVIRONMENT_MODIFICATION", "value": [f"QT_PLUGIN_PATH=path_list_prepend:{qt / 'plugins'}", f"PATH=path_list_prepend:{qt / 'bin'}"]})
-            with patch.object(h.registry, "inventory", return_value={"tests": tests, "unbuilt_tests": [], "missing_native_tests": []}), patch.object(h.consumer, "coff_exports", return_value={"api"}):
-                manifest = h.stage(build, source, root / "bundle", [deps, qt / "bin"], "a" * 40)
-            self.assertIn("source/.deps/target-qt/plugins/platforms/qminimal.dll", manifest["files"])
+            tests[0]["properties"].append(
+                {
+                    "name": "ENVIRONMENT_MODIFICATION",
+                    "value": [
+                        f"QT_PLUGIN_PATH=path_list_prepend:{qt / 'plugins'}",
+                        f"PATH=path_list_prepend:{qt / 'bin'}",
+                    ],
+                }
+            )
+            with (
+                patch.object(
+                    h.registry,
+                    "inventory",
+                    return_value={
+                        "tests": tests,
+                        "unbuilt_tests": [],
+                        "missing_native_tests": [],
+                    },
+                ),
+                patch.object(h.consumer, "coff_exports", return_value={"api"}),
+            ):
+                manifest = h.stage(
+                    build, source, root / "bundle", [deps, qt / "bin"], "a" * 40
+                )
+            self.assertIn(
+                "source/.deps/target-qt/plugins/platforms/qminimal.dll",
+                manifest["files"],
+            )
             self.assertIn("source/.deps/target-qt/bin/Qt6Gui.dll", manifest["files"])
             self.assertFalse(any(name.endswith(".pdb") for name in manifest["files"]))
-            prop = next(p for p in manifest["tests"][0]["properties"] if p["name"] == "ENVIRONMENT_MODIFICATION")
-            self.assertEqual("QT_PLUGIN_PATH=path_list_prepend:@OBS_TIER2_SOURCE@/.deps/target-qt/plugins", prop["value"][0])
+            self.assertNotIn(
+                "source/.deps/target-qt/plugins/platforms/qminimald.dll",
+                manifest["files"],
+            )
+            self.assertIn(
+                "source/.deps/target-qt/plugins/platforms/qdirect2d.dll",
+                manifest["files"],
+            )
+            prop = next(
+                p
+                for p in manifest["tests"][0]["properties"]
+                if p["name"] == "ENVIRONMENT_MODIFICATION"
+            )
+            self.assertEqual(
+                "QT_PLUGIN_PATH=path_list_prepend:@OBS_TIER2_SOURCE@/.deps/target-qt/plugins",
+                prop["value"][0],
+            )
 
     def test_missing_transitive_dependency_and_case_collision_fail(self):
         h = self.helper()
