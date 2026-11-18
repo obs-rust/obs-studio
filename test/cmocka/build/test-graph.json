@@ -8484,6 +8484,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_object_id": {
+      "sources": [
+        "test/cmocka/test_object_id.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_object_queries": {
       "sources": [
         "test/cmocka/test_object_queries.c"
@@ -23478,6 +23493,12 @@
     },
     "test_nvenc_override": {
       "target": "test_nvenc_override"
+    },
+    "test_object_id": {
+      "target": "test_object_id",
+      "command": [
+        "${target}"
+      ]
     },
     "test_object_queries": {
       "target": "test_object_queries",
