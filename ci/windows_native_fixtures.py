@@ -78,7 +78,7 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
     validate(bundle)
 
 
-def configure_tools(root: Path, directory: Path, env: dict) -> tuple[dict, dict]:
+def configure_tools(root: Path, directory: Path, env: dict, *, cpp_standard: str | None = None) -> tuple[dict, dict]:
     """Resolve the same managed MSVC tools for native and Qt preparation."""
     environment = dict(env)
     tools = {name: shared.tool(option, root, env, target=TARGET) for name, option in {
@@ -108,6 +108,10 @@ def configure_tools(root: Path, directory: Path, env: dict) -> tuple[dict, dict]
         # clang-cl rejects existing try/catch code without /EHsc, whereas MSVC
         # accepts it. Keep exceptions enabled for the real C++ contracts.
         language_flags = ["/EHsc"] if name == "CXX" else []
+        if name == "CXX" and cpp_standard is not None:
+            # Match Linux clang's baseline for Qt. Caller/target flags stay
+            # after these defaults, so an explicit newer standard wins.
+            language_flags.extend([f"/std:c++{cpp_standard}", "/Zc:__cplusplus"])
         wrapper.write_text(f'#!/bin/sh\nexec {shlex.join([clang, *flags, *language_flags])} "$@"\n')
         wrapper.chmod(0o755)
         tools[name] = str(wrapper)

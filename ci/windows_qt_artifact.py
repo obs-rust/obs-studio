@@ -158,7 +158,8 @@ def build(work: Path, bundle: Path) -> None:
     fetch(QT_TAG, HOST_ASSET, HOST_SHA, host)
     tools_dir = work / "producer-tools"
     tools_dir.mkdir(exist_ok=True)
-    environment, _ = configure_tools(ROOT, tools_dir, local_gate.soldr_env({"SOLDR_PORCELAIN": "0", "SOLDR_VERDICTS": "off"}))
+    environment, _ = configure_tools(ROOT, tools_dir, local_gate.soldr_env({"SOLDR_PORCELAIN": "0", "SOLDR_VERDICTS": "off"}),
+                                     cpp_standard="17")
     toolchain = tools_dir / "windows.cmake"
     with toolchain.open("a") as stream:
         stream.write(f'set(QT_HOST_PATH "{host}")\nset(CMAKE_BUILD_TYPE Release)\n')
