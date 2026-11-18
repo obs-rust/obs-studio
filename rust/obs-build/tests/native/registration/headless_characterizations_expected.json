@@ -1,248 +1,248 @@
 {
-  "schema": 1,
-  "targets": {
-    "test_wayland_hotkeys": {
-      "sources": [
-        "test/cmocka/test_wayland_hotkeys.c",
-        "libobs/obs-hotkey-binding-press.c.h",
-        "libobs/obs-hotkey-background-query.c.h",
-        "libobs/obs-hotkey-register.c.h",
-        "libobs/obs-hotkey-background-control-fields.c.h",
-        "libobs/obs-hotkey-unregister.c.h",
-        "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkey-identity-setters.c.h",
-        "libobs/obs-hotkey-background-enum.c.h",
-        "libobs/obs-hotkey-enum.c.h",
-        "libobs/obs-hotkey-save-load.c.h",
-        "libobs/obs-hotkey-bindings.c.h",
-        "libobs/obs-hotkey-translations.c.h",
-        "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h",
-        "libobs/obs-nix-hotkey-state.c.h",
-        "test/cmocka/hotkey-enum-link-support.c",
-        "test/cmocka/hotkey-background-trigger-link-support.c",
-        "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
-      ],
-      "requires": {
-        "any": [
-          "OS_LINUX",
-          "OS_FREEBSD"
-        ]
-      },
-      "definitions": [
-        "obs=hotkey_test_obs",
-        "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
-        "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
-        "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
-        "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
-        "obs_hotkey_enable_background_press=obs_hotkey_background_press_request"
-      ],
-      "includes": [
-        "libobs",
-        "."
-      ],
-      "watch_inputs": [
-        "libobs/build/libobs.pch.h",
-        "libobs/build/libobs-nix.pch.h"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        "OBS::caption",
-        "OBS::native-test-cmocka",
-        "libobs_rust-static",
-        "FFmpeg::avcodec",
-        "FFmpeg::avformat",
-        "FFmpeg::avutil",
-        "FFmpeg::swscale"
-      ],
-      "unity_groups": {
-        "background-control": [
-          "libobs/obs-hotkey-background-control-fields.c.h"
-        ],
-        "hotkey_identity_setters": [
-          "libobs/obs-hotkey-identity-setters.c.h"
-        ],
-        "hotkey_registration": [
-          "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
-        ],
-        "hotkey_unregister": [
-          "libobs/obs-hotkey-unregister.c.h"
-        ],
-        "source_0": [
-          "test/cmocka/test_wayland_hotkeys.c"
-        ],
-        "source_1": [
-          "libobs/obs-hotkey-binding-press.c.h"
-        ],
-        "source_2": [
-          "libobs/obs-hotkey-background-query.c.h"
-        ],
-        "source_5": [
-          "libobs/obs-hotkey-background-enum.c.h"
-        ],
-        "source_6": [
-          "libobs/obs-hotkey-enum.c.h"
-        ],
-        "source_7": [
-          "libobs/obs-hotkey-save-load.c.h"
-        ],
-        "source_8": [
-          "libobs/obs-hotkey-bindings.c.h"
-        ],
-        "source_9": [
-          "libobs/obs-hotkey-translations.c.h"
-        ],
-        "source_10": [
-          "libobs/obs-hotkey-press.c.h"
-        ],
-        "source_11": [
-          "libobs/obs-hotkey-pair.c.h"
-        ],
-        "source_12": [
-          "libobs/obs-nix-hotkey-state.c.h"
-        ],
-        "hotkey_enumeration_fields": [
-          "test/cmocka/hotkey-enum-link-support.c"
-        ],
-        "hotkey_background_trigger": [
-          "test/cmocka/hotkey-background-trigger-link-support.c"
-        ],
-        "hotkey_background_press": [
-          "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "texture_file_data_support": [
-          "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
-        ]
-      },
-      "pch": "libobs/build/libobs.pch.h"
-    },
-    "test_service_state": {
-      "sources": [
-        "test/cmocka/test_service_state.c"
-      ],
-      "header_libraries": [
-        "OBS::headless-characterization-headers"
-      ],
-      "includes": [
-        "deps/libcaption"
-      ],
-      "watch_inputs": [
-        "libobs/obs-service-state.c.h"
-      ],
-      "libraries": [
-        "OBS::libobs",
-        {
-          "name": "OBS::w32-pthreads",
-          "requires": "OS_WINDOWS"
+    "schema": 1,
+    "targets": {
+        "test_wayland_hotkeys": {
+            "sources": [
+                "test/cmocka/test_wayland_hotkeys.c",
+                "libobs/obs-hotkey-binding-press.c.h",
+                "libobs/obs-hotkey-background-query.c.h",
+                "libobs/obs-hotkey-register.c.h",
+                "libobs/obs-hotkey-background-control-fields.c.h",
+                "libobs/obs-hotkey-unregister.c.h",
+                "libobs/obs-hotkey.c.h",
+                "libobs/obs-hotkey-identity-setters.c.h",
+                "libobs/obs-hotkey-background-enum.c.h",
+                "libobs/obs-hotkey-enum.c.h",
+                "libobs/obs-hotkey-save-load.c.h",
+                "libobs/obs-hotkey-bindings.c.h",
+                "libobs/obs-hotkey-translations.c.h",
+                "libobs/obs-hotkey-press.c.h",
+                "libobs/obs-hotkey-pair.c.h",
+                "libobs/obs-nix-hotkey-state.c.h",
+                "test/cmocka/hotkey-enum-link-support.c",
+                "test/cmocka/hotkey-background-trigger-link-support.c",
+                "test/cmocka/hotkey-background-press-link-support.c",
+                "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+            ],
+            "requires": {
+                "any": [
+                    "OS_LINUX",
+                    "OS_FREEBSD"
+                ]
+            },
+            "definitions": [
+                "obs=hotkey_test_obs",
+                "obs_hotkeys_retry_background=obs_hotkey_background_control_retry_request",
+                "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
+                "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
+                "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
+                "obs_hotkey_enable_background_press=obs_hotkey_background_press_request"
+            ],
+            "includes": [
+                "libobs",
+                "."
+            ],
+            "watch_inputs": [
+                "libobs/build/libobs.pch.h",
+                "libobs/build/libobs-nix.pch.h"
+            ],
+            "libraries": [
+                "OBS::libobs",
+                "OBS::caption",
+                "OBS::native-test-cmocka",
+                "libobs_rust-static",
+                "FFmpeg::avcodec",
+                "FFmpeg::avformat",
+                "FFmpeg::avutil",
+                "FFmpeg::swscale"
+            ],
+            "unity_groups": {
+                "background-control": [
+                    "libobs/obs-hotkey-background-control-fields.c.h"
+                ],
+                "hotkey_identity_setters": [
+                    "libobs/obs-hotkey-identity-setters.c.h"
+                ],
+                "hotkey_registration": [
+                    "libobs/obs-hotkey-register.c.h",
+                    "libobs/obs-hotkey.c.h"
+                ],
+                "hotkey_unregister": [
+                    "libobs/obs-hotkey-unregister.c.h"
+                ],
+                "source_0": [
+                    "test/cmocka/test_wayland_hotkeys.c"
+                ],
+                "source_1": [
+                    "libobs/obs-hotkey-binding-press.c.h"
+                ],
+                "source_2": [
+                    "libobs/obs-hotkey-background-query.c.h"
+                ],
+                "source_5": [
+                    "libobs/obs-hotkey-background-enum.c.h"
+                ],
+                "source_6": [
+                    "libobs/obs-hotkey-enum.c.h"
+                ],
+                "source_7": [
+                    "libobs/obs-hotkey-save-load.c.h"
+                ],
+                "source_8": [
+                    "libobs/obs-hotkey-bindings.c.h"
+                ],
+                "source_9": [
+                    "libobs/obs-hotkey-translations.c.h"
+                ],
+                "source_10": [
+                    "libobs/obs-hotkey-press.c.h"
+                ],
+                "source_11": [
+                    "libobs/obs-hotkey-pair.c.h"
+                ],
+                "source_12": [
+                    "libobs/obs-nix-hotkey-state.c.h"
+                ],
+                "hotkey_enumeration_fields": [
+                    "test/cmocka/hotkey-enum-link-support.c"
+                ],
+                "hotkey_background_trigger": [
+                    "test/cmocka/hotkey-background-trigger-link-support.c"
+                ],
+                "hotkey_background_press": [
+                    "test/cmocka/hotkey-background-press-link-support.c"
+                ],
+                "texture_file_data_support": [
+                    "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+                ]
+            },
+            "pch": "libobs/build/libobs.pch.h"
         },
-        "OBS::native-test-cmocka"
-      ]
-    },
-    "test_lua_graphics_lock": {
-      "sources": [
-        "test/cmocka/test_lua_graphics_lock.c"
-      ],
-      "header_libraries": [
-        "OBS::headless-characterization-headers"
-      ],
-      "watch_inputs": [
-        "test/cmocka/fixtures/lua-graphics-lock-original.h"
-      ],
-      "libraries": [
-        "OBS::native-test-cmocka"
-      ]
-    },
-    "test_lua_graphics_lock_bounded": {
-      "sources": [
-        "test/cmocka/test_lua_graphics_lock_bounded.c"
-      ],
-      "header_libraries": [
-        "OBS::headless-characterization-headers"
-      ],
-      "watch_inputs": [
-        "shared/obs-scripting/obs-scripting-lua-source.c.h"
-      ],
-      "libraries": [
-        "OBS::native-test-cmocka",
-        {
-          "name": "OBS::w32-pthreads",
-          "requires": "OS_WINDOWS"
+        "test_service_state": {
+            "sources": [
+                "test/cmocka/test_service_state.c"
+            ],
+            "header_libraries": [
+                "OBS::headless-characterization-headers"
+            ],
+            "includes": [
+                "deps/libcaption"
+            ],
+            "watch_inputs": [
+                "libobs/obs-service-state.c.h"
+            ],
+            "libraries": [
+                "OBS::libobs",
+                {
+                    "name": "OBS::w32-pthreads",
+                    "requires": "OS_WINDOWS"
+                },
+                "OBS::native-test-cmocka"
+            ]
         },
-        {
-          "name": "Threads::Threads",
-          "requires": {
-            "not": "OS_WINDOWS"
-          }
+        "test_lua_graphics_lock": {
+            "sources": [
+                "test/cmocka/test_lua_graphics_lock.c"
+            ],
+            "header_libraries": [
+                "OBS::headless-characterization-headers"
+            ],
+            "watch_inputs": [
+                "test/cmocka/fixtures/lua-graphics-lock-original.h"
+            ],
+            "libraries": [
+                "OBS::native-test-cmocka"
+            ]
+        },
+        "test_lua_graphics_lock_bounded": {
+            "sources": [
+                "test/cmocka/test_lua_graphics_lock_bounded.c"
+            ],
+            "header_libraries": [
+                "OBS::headless-characterization-headers"
+            ],
+            "watch_inputs": [
+                "shared/obs-scripting/obs-scripting-lua-source.c.h"
+            ],
+            "libraries": [
+                "OBS::native-test-cmocka",
+                {
+                    "name": "OBS::w32-pthreads",
+                    "requires": "OS_WINDOWS"
+                },
+                {
+                    "name": "Threads::Threads",
+                    "requires": {
+                        "not": "OS_WINDOWS"
+                    }
+                }
+            ]
+        },
+        "test_vcam_audio_config": {
+            "sources": [
+                "frontend/tests/test_vcam_audio_config.cpp"
+            ],
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "watch_inputs": [
+                "frontend/utility/VCamAudio.hpp"
+            ]
+        },
+        "test_virtual_cam_shutdown": {
+            "sources": [
+                "frontend/tests/test_virtual_cam_shutdown.cpp"
+            ],
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+            "watch_inputs": [
+                "frontend/widgets/VirtualCamShutdown.hpp"
+            ]
         }
-      ]
     },
-    "test_vcam_audio_config": {
-      "sources": [
-        "frontend/tests/test_vcam_audio_config.cpp"
-      ],
-      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
-      "watch_inputs": [
-        "frontend/utility/VCamAudio.hpp"
-      ]
-    },
-    "test_virtual_cam_shutdown": {
-      "sources": [
-        "frontend/tests/test_virtual_cam_shutdown.cpp"
-      ],
-      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
-      "watch_inputs": [
-        "frontend/widgets/VirtualCamShutdown.hpp"
-      ]
+    "tests": {
+        "test_wayland_hotkeys": {
+            "target": "test_wayland_hotkeys",
+            "command": [
+                "${target}"
+            ],
+            "requires": {
+                "any": [
+                    "OS_LINUX",
+                    "OS_FREEBSD"
+                ]
+            }
+        },
+        "test_service_state": {
+            "target": "test_service_state",
+            "command": [
+                "${target}"
+            ]
+        },
+        "test_lua_graphics_lock": {
+            "target": "test_lua_graphics_lock",
+            "command": [
+                "${target}"
+            ],
+            "timeout_seconds": 10
+        },
+        "test_lua_graphics_lock_bounded": {
+            "target": "test_lua_graphics_lock_bounded",
+            "command": [
+                "${target}"
+            ],
+            "timeout_seconds": 10
+        },
+        "test_vcam_audio_config": {
+            "target": "test_vcam_audio_config",
+            "command": [
+                "${target}"
+            ],
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+        },
+        "test_virtual_cam_shutdown": {
+            "target": "test_virtual_cam_shutdown",
+            "command": [
+                "${target}"
+            ],
+            "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
+        }
     }
-  },
-  "tests": {
-    "test_wayland_hotkeys": {
-      "target": "test_wayland_hotkeys",
-      "command": [
-        "${target}"
-      ],
-      "requires": {
-        "any": [
-          "OS_LINUX",
-          "OS_FREEBSD"
-        ]
-      }
-    },
-    "test_service_state": {
-      "target": "test_service_state",
-      "command": [
-        "${target}"
-      ]
-    },
-    "test_lua_graphics_lock": {
-      "target": "test_lua_graphics_lock",
-      "command": [
-        "${target}"
-      ],
-      "timeout_seconds": 10
-    },
-    "test_lua_graphics_lock_bounded": {
-      "target": "test_lua_graphics_lock_bounded",
-      "command": [
-        "${target}"
-      ],
-      "timeout_seconds": 10
-    },
-    "test_vcam_audio_config": {
-      "target": "test_vcam_audio_config",
-      "command": [
-        "${target}"
-      ],
-      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
-    },
-    "test_virtual_cam_shutdown": {
-      "target": "test_virtual_cam_shutdown",
-      "command": [
-        "${target}"
-      ],
-      "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER"
-    }
-  }
 }
