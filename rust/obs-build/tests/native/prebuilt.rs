@@ -689,6 +689,38 @@ pub fn defer_answer(library: &Path, symbol: &str, expected: i32) -> bool {
     }
 }
 
+fn command_recipe_with_tools(command: &Command, _tools: &BTreeMap<String, PathBuf>) -> Value {
+    command_recipe(command)
+}
+
+#[test]
+fn host_tool_recipes_preserve_every_non_tool_field() {
+    let recipe = |cmake: &str| {
+        let mut command = Command::new(cmake);
+        command.args(["-E", "env", "OBS_WRAPPER_VALUE=outer", cmake, "-E", "env",
+            "OBS_WRAPPER_VALUE=wrapped", "/fixture/answer", "two words"])
+            .env("OBS_GRAPH_VALUE", "first;second").current_dir("/fixture/runtime root");
+        command_recipe_with_tools(&command, &BTreeMap::from([("cmake".into(), PathBuf::from(cmake))]))
+    };
+    let linux = recipe("/usr/local/bin/cmake");
+    let macos = recipe("/opt/homebrew/bin/cmake");
+    assert_eq!(linux, macos);
+    assert_eq!(linux["program"], json!({"tool": "cmake"}));
+    assert_eq!(linux["args"][3], json!({"tool": "cmake"}));
+    for (pointer, replacement) in [("/args/2", "OBS_WRAPPER_VALUE=changed"),
+        ("/args/7", "/different/answer"), ("/args/8", "changed words"),
+        ("/env/OBS_GRAPH_VALUE", "changed"), ("/cwd", "/different/cwd")] {
+        let mut changed = macos.clone();
+        *changed.pointer_mut(pointer).unwrap() = json!(replacement);
+        assert_ne!(linux, changed, "{pointer}");
+    }
+    let tools = BTreeMap::from([("cmake".into(), PathBuf::from("/trusted/cmake"))]);
+    let unknown = command_recipe_with_tools(Command::new("/arbitrary/cmake").arg("-E"), &tools);
+    assert_eq!(unknown["program"], "/arbitrary/cmake");
+    let literal = command_recipe_with_tools(Command::new("/trusted/cmake").args(["-E", "echo", "/trusted/cmake"]), &tools);
+    assert_eq!(literal["args"][2], "/trusted/cmake");
+}
+
 fn command_recipe(command: &Command) -> Value {
     let environment: BTreeMap<_, _> = command
         .get_envs()
