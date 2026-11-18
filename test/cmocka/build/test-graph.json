@@ -16627,6 +16627,21 @@
         "frontend/utility"
       ]
     },
+    "test_studio_mode_program": {
+      "sources": [
+        "test/cmocka/test_studio_mode_program.c",
+        "frontend/utility/studio-mode-swap.c.h"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ],
+      "includes": [
+        "frontend/utility"
+      ],
+      "watch_inputs": [
+        "frontend/utility"
+      ]
+    },
     "test_studio_mode_swap": {
       "sources": [
         "test/cmocka/test_studio_mode_swap.c",
@@ -25867,6 +25882,12 @@
     },
     "test_studio_mode_exit": {
       "target": "test_studio_mode_exit",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_studio_mode_program": {
+      "target": "test_studio_mode_program",
       "command": [
         "${target}"
       ]
