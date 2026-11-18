@@ -36,18 +36,26 @@ pub trait Host {
 }
 
 pub fn set_render_target<H: Host>(
-    _host: &mut H,
-    _texture: Option<H::Texture>,
-    _depth: Option<H::Depth>,
+    host: &mut H,
+    texture: Option<H::Texture>,
+    depth: Option<H::Depth>,
 ) {
-    todo!("render-target port")
+    if !host.has_context() {
+        host.debug(Entry::RenderTarget);
+        return;
+    }
+    host.target(texture, depth);
 }
 
 pub fn set_cube_render_target<H: Host>(
-    _host: &mut H,
-    _texture: Option<H::Texture>,
-    _side: i32,
-    _depth: Option<H::Depth>,
+    host: &mut H,
+    texture: Option<H::Texture>,
+    side: i32,
+    depth: Option<H::Depth>,
 ) {
-    todo!("cube render-target port")
+    if !host.has_context() {
+        host.debug(Entry::CubeRenderTarget);
+        return;
+    }
+    host.cube(texture, side, depth);
 }

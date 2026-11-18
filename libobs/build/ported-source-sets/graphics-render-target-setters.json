@@ -1,0 +1,5 @@
+{
+  "LIBOBS_PORTED_SOURCES": [
+    "build/libobs.ported-graphics-render-target-setters+.h.c"
+  ]
+}
