@@ -6,7 +6,7 @@
 #define obs_weak_source_expired oracle_obs_weak_source_expired
 #define obs_weak_source_references_source oracle_obs_weak_source_references_source
 #include "obs-internal.h"
-#include "../legacy/obs-source-weak-predicates.c.h"
+#include "../legacy/obs-source-weak-predicates.h"
 #undef obs_weak_source_references_source
 #undef obs_weak_source_expired
 #include "source_weak_predicates_fields.inc"
