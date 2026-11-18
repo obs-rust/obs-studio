@@ -41,20 +41,37 @@ pub trait PacketHost {
 /// `obs_encoder_packet_create_instance`: an independent owned copy of `src`
 /// with a count of one, whatever `src`'s payload is (raw or already owned).
 pub fn create_instance<H: PacketHost>(host: &mut H, dst: H::Packet, src: H::Packet) {
-    let _ = (host, dst, src);
-    todo!("port obs_encoder_packet_create_instance")
+    host.assign(dst, src);
+    // `src->size + sizeof(long)`, unsigned as in C.
+    let bytes = host.size(src).wrapping_add(host.header_size());
+    let block = host.allocate(bytes);
+    host.attach(dst, block);
+    host.init_count(block);
+    host.copy_payload(dst, src);
 }
 
 /// `obs_encoder_packet_ref`: alias `src` into `dst`, retaining its payload.
 /// A missing `src` is a no-op; a NULL payload is copied without a count.
 pub fn reference<H: PacketHost>(host: &mut H, dst: H::Packet, src: Option<H::Packet>) {
-    let _ = (host, dst, src);
-    todo!("port obs_encoder_packet_ref")
+    let Some(src) = src else {
+        return;
+    };
+    if let Some(block) = host.block(src) {
+        host.increment(block);
+    }
+    host.assign(dst, src);
 }
 
 /// `obs_encoder_packet_release`: drop one reference, free the block on the
 /// last one, then zero the whole packet. A missing packet is a no-op.
 pub fn release<H: PacketHost>(host: &mut H, packet: Option<H::Packet>) {
-    let _ = (host, packet);
-    todo!("port obs_encoder_packet_release")
+    let Some(packet) = packet else {
+        return;
+    };
+    if let Some(block) = host.block(packet)
+        && host.decrement(block)
+    {
+        host.free(block);
+    }
+    host.zero(packet);
 }
