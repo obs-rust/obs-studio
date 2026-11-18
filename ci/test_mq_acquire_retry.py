@@ -45,6 +45,7 @@ class RecordedApi:
             "number": 5109, "headRefOid": "b" * 40, "state": "OPEN", "isDraft": False,
             "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN", "reviewDecision": "APPROVED",
             "autoMergeRequest": None, "labels": [], "body": "", "id": "PR_test",
+            "mergeQueueEntry": None,
         }
         # Synthetic queue transitions bound to the recorded synthetic run SHA.
         self.events = [
@@ -131,7 +132,7 @@ class RetryTest(unittest.TestCase):
     def test_schedule_finds_departed_groups_without_live_queue_inventory(self):
         self.run_bot(sweep=True)
         self.assertEqual(len(self.api.mutations), 2)
-        self.assertFalse(any("mergeQueue" in " ".join(a) for a in self.api.reads))
+        self.assertFalse(any("mergeQueue{" in " ".join(a) for a in self.api.reads))
 
     def test_same_head_retry_budget_survives_new_run_id(self):
         self.run_bot()
@@ -230,6 +231,35 @@ class RetryTest(unittest.TestCase):
             with self.subTest(values=values):
                 self.api = RecordedApi()
                 self.api.run.update(values)
+                self.assert_no_mutations()
+
+    def live_group(self, state="UNMERGEABLE"):
+        self.api = RecordedApi("live_group")
+        self.api.events.pop()  # the capacity-failed group is still present
+        self.api.pr["mergeQueueEntry"] = {"state": state, "headCommit": {"oid": self.api.run["head_sha"]}}
+
+    def test_capacity_group_retries_while_present_regardless_of_queue_state(self):
+        for state in ("UNMERGEABLE", "AWAITING_CHECKS"):
+            with self.subTest(state=state):
+                self.live_group(state)
+                self.assertEqual(self.run_bot(token=False)[0], 0)
+                self.assertEqual(len(self.api.mutations), 1)
+                self.assertIn("44351072142/rerun-failed-jobs", " ".join(self.api.mutations[0]))
+                self.api.mutations.clear()
+                self.api.run["run_attempt"] = 2
+                self.assert_no_mutations()
+
+    def test_live_capacity_retry_never_follows_a_changed_group_or_real_conflict(self):
+        for change in ("group", "conflict", "gate_error"):
+            with self.subTest(change=change):
+                self.live_group()
+                if change == "group":
+                    self.api.pr["mergeQueueEntry"]["headCommit"]["oid"] = "a" * 40
+                elif change == "conflict":
+                    self.api.pr["mergeable"] = "CONFLICTING"
+                else:
+                    self.api.fixture["annotations"]["134992644660"].append({
+                        "annotation_level": "failure", "message": "scope is unknown"})
                 self.assert_no_mutations()
 
     def test_real_failed_checks_timeline_and_uncached_authorization_read(self):

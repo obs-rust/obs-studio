@@ -1749,5 +1749,563 @@
         }
       }
     ]
+  },
+  "live_group": {
+    "source": "GitHub REST API, 2026-11-18: run 44351072142 attempt 1, jobs 134968894019 and 134992644660; projected unmodified values. Manager observed queue entry UNMERGEABLE despite clean merge-tree.",
+    "run": {
+      "id": 44351072142,
+      "event": "merge_group",
+      "head_sha": "25c26a2d92e9759750489460820c06fbb9f47e4c",
+      "head_branch": "gh-readonly-queue/master/pr-5111-11c530f0b98eccffda5dc2460d2d22e7fbd7a54d",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_attempt": 1,
+      "workflow_id": 386287070,
+      "created_at": "2026-11-18T16:46:20Z",
+      "updated_at": "2026-11-18T17:30:38Z"
+    },
+    "jobs": {
+      "total_count": 41,
+      "jobs": [
+        {
+          "id": 134966524691,
+          "name": "Select Merge Queue Runner",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174183",
+          "runner_id": 1000174183,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966524691"
+        },
+        {
+          "id": 134966527856,
+          "name": "Recheck Flatpak Saved Profile 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966527856"
+        },
+        {
+          "id": 134966528747,
+          "name": "CI Pre 🧹 / Cache Janitor 🧹",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966528747"
+        },
+        {
+          "id": 134966614473,
+          "name": "Update Documentation 📖",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966614473"
+        },
+        {
+          "id": 134966890816,
+          "name": "Cancel Superseded Queue Runs 🧹",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174192",
+          "runner_id": 1000174192,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966890816"
+        },
+        {
+          "id": 134966891928,
+          "name": "Format 🔍 / checks",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174198",
+          "runner_id": 1000174198,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966891928"
+        },
+        {
+          "id": 134966892138,
+          "name": "Build 🧱 / CI Mode 🛂",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174190",
+          "runner_id": 1000174190,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966892138"
+        },
+        {
+          "id": 134966892980,
+          "name": "Build 🧱 / Event Data 🔎",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174200",
+          "runner_id": 1000174200,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134966892980"
+        },
+        {
+          "id": 134968893680,
+          "name": "Build 🧱 / Fast Gate ⚡",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174207",
+          "runner_id": 1000174207,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968893680"
+        },
+        {
+          "id": 134968893744,
+          "name": "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174217",
+          "runner_id": 1000174217,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968893744"
+        },
+        {
+          "id": 134968893801,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174224",
+          "runner_id": 1000174224,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968893801"
+        },
+        {
+          "id": 134968893854,
+          "name": "Build 🧱 / Rust Tier 2 (windows-2025-vs2026)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174202",
+          "runner_id": 1000174202,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968893854"
+        },
+        {
+          "id": 134968894019,
+          "name": "Build 🧱 / Rust Tier 2 (macos-26)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "runner_name": "",
+          "runner_id": 0,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968894019",
+          "steps": []
+        },
+        {
+          "id": 134968894047,
+          "name": "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174206",
+          "runner_id": 1000174206,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968894047"
+        },
+        {
+          "id": 134968894092,
+          "name": "Build 🧱 / macOS Rust Artifacts 🐧",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174220",
+          "runner_id": 1000174220,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968894092"
+        },
+        {
+          "id": 134968894114,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (build)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174223",
+          "runner_id": 1000174223,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968894114"
+        },
+        {
+          "id": 134968894259,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (release targets)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174226",
+          "runner_id": 1000174226,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968894259"
+        },
+        {
+          "id": 134968894263,
+          "name": "Build 🧱 / Rust Cross Lint 🦀 (aarch64-apple-darwin)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174219",
+          "runner_id": 1000174219,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968894263"
+        },
+        {
+          "id": 134968896569,
+          "name": "Build 🧱 / Ubuntu 🐧 ${{ (((matrix.rust == 'ON') && '(OBS-Studio-Rust) ') || '') }}",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968896569"
+        },
+        {
+          "id": 134968896894,
+          "name": "Build 🧱 / Windows 🪟",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968896894"
+        },
+        {
+          "id": 134968896901,
+          "name": "Build 🧱 / Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968896901"
+        },
+        {
+          "id": 134968897171,
+          "name": "Build 🧱 / macOS 🍏",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968897171"
+        },
+        {
+          "id": 134968897273,
+          "name": "Build 🧱 / Flatpak 📦",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968897273"
+        },
+        {
+          "id": 134968897809,
+          "name": "Build 🧱 / Qt Frontend Linux 🐧",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968897809"
+        },
+        {
+          "id": 134968898698,
+          "name": "Build 🧱 / Native Cache Transport (${{ matrix.platform }} ${{ matrix.architecture }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968898698"
+        },
+        {
+          "id": 134968899260,
+          "name": "Build 🧱 / Flatpak Compiler Consumer 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968899260"
+        },
+        {
+          "id": 134968900529,
+          "name": "Build 🧱 / Flatpak Saved Profile 🧪",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134968900529"
+        },
+        {
+          "id": 134969884367,
+          "name": "Format 🔍 / swift-format",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134969884367"
+        },
+        {
+          "id": 134976197724,
+          "name": "Build 🧱 / Rust Tests 🦀 (macos-26)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174244",
+          "runner_id": 1000174244,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134976197724"
+        },
+        {
+          "id": 134977039597,
+          "name": "Build 🧱 / Rust Cross Lane Proof 🧾",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134977039597"
+        },
+        {
+          "id": 134987126509,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests OFF, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174289",
+          "runner_id": 1000174289,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134987126509"
+        },
+        {
+          "id": 134987126559,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧 (tests ON, all)",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174290",
+          "runner_id": 1000174290,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134987126559"
+        },
+        {
+          "id": 134991521176,
+          "name": "Build 🧱 / Rust Tier 2 Linux 🐧",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134991521176"
+        },
+        {
+          "id": 134991521746,
+          "name": "Validate Data 🕵️",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174330",
+          "runner_id": 1000174330,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134991521746"
+        },
+        {
+          "id": 134991524472,
+          "name": "Tier 2 Setup Producer 📦",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134991524472"
+        },
+        {
+          "id": 134991524909,
+          "name": "Native Cache Consumer (${{ matrix.platform }} ${{ matrix.architecture }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134991524909"
+        },
+        {
+          "id": 134991524936,
+          "name": "Format 🔍",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134991524936"
+        },
+        {
+          "id": 134991526373,
+          "name": "Tier 2 Setup (${{ matrix.variant }}, trial ${{ matrix.trial }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134991526373"
+        },
+        {
+          "id": 134992644660,
+          "name": "CI Gate ✅",
+          "status": "completed",
+          "conclusion": "failure",
+          "runner_name": "GitHub Actions 1000174333",
+          "runner_id": 1000174333,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134992644660",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-11-18T17:25:12Z",
+              "completed_at": "2026-11-18T17:25:13Z"
+            },
+            {
+              "name": "Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-11-18T17:25:13Z",
+              "completed_at": "2026-11-18T17:25:22Z"
+            },
+            {
+              "name": "Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-11-18T17:25:22Z",
+              "completed_at": "2026-11-18T17:25:24Z"
+            },
+            {
+              "name": "Report Queue Run 📊",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-11-18T17:25:24Z",
+              "completed_at": "2026-11-18T17:25:29Z"
+            },
+            {
+              "name": "Report Lane Proof Output 🧾",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-11-18T17:25:29Z",
+              "completed_at": "2026-11-18T17:25:29Z"
+            },
+            {
+              "name": "Check Job Results ✅",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 6,
+              "started_at": "2026-11-18T17:25:29Z",
+              "completed_at": "2026-11-18T17:25:29Z"
+            },
+            {
+              "name": "Check Run Jobs ✅",
+              "status": "completed",
+              "conclusion": "failure",
+              "number": 7,
+              "started_at": "2026-11-18T17:25:29Z",
+              "completed_at": "2026-11-18T17:25:30Z"
+            },
+            {
+              "name": "Run echo 'Every selected queue job executed successfully; out-of-scope jobs may skip.'",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-11-18T17:25:30Z",
+              "completed_at": "2026-11-18T17:25:30Z"
+            },
+            {
+              "name": "Post Set Up uv 🐍",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-11-18T17:25:30Z",
+              "completed_at": "2026-11-18T17:25:30Z"
+            },
+            {
+              "name": "Post Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-11-18T17:25:30Z",
+              "completed_at": "2026-11-18T17:25:30Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-11-18T17:25:30Z",
+              "completed_at": "2026-11-18T17:25:30Z"
+            }
+          ]
+        },
+        {
+          "id": 134993118898,
+          "name": "Cache Janitor 🧹",
+          "status": "completed",
+          "conclusion": "success",
+          "runner_name": "GitHub Actions 1000174345",
+          "runner_id": 1000174345,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134993118898"
+        },
+        {
+          "id": 134993120540,
+          "name": "Tier 2 Lane Proof 🧾",
+          "status": "completed",
+          "conclusion": "skipped",
+          "runner_name": null,
+          "runner_id": null,
+          "check_run_url": "https://api.github.com/repos/obs-rust/obs-studio/check-runs/134993120540"
+        }
+      ]
+    },
+    "annotations": {
+      "134968894019": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/25c26a2d92e9759750489460820c06fbb9f47e4c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "The job was not acquired by Runner of type hosted even after multiple attempts",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/25c26a2d92e9759750489460820c06fbb9f47e4c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/25c26a2d92e9759750489460820c06fbb9f47e4c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/25c26a2d92e9759750489460820c06fbb9f47e4c/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        }
+      ],
+      "134992644660": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/25c26a2d92e9759750489460820c06fbb9f47e4c/.github",
+          "start_line": 11,
+          "start_column": null,
+          "end_line": 11,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "Process completed with exit code 1.",
+          "raw_details": ""
+        },
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/obs-rust/obs-studio/blob/25c26a2d92e9759750489460820c06fbb9f47e4c/.github",
+          "start_line": 10,
+          "start_column": null,
+          "end_line": 10,
+          "end_column": null,
+          "annotation_level": "failure",
+          "title": "",
+          "message": "Build 🧱 / Rust Tier 2 (macos-26): runner capacity condition: job did not acquire a runner; validation did not run",
+          "raw_details": ""
+        }
+      ]
+    }
   }
 }
