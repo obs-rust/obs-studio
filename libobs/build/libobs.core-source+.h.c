@@ -56,7 +56,6 @@
 #include "libobs/obs-source-boolean-query-fields.c.h"
 #include "libobs/obs-source-canvas-getter.c.h"
 #include "libobs/obs-source-caption-callback-fields.c.h"
-#include "libobs/obs-source-configurable.c.h"
 #include "libobs/obs-source-default-flags-fields.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace-seam.c.h"
