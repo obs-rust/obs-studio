@@ -170,7 +170,10 @@ Linux pkg-config executable, version and checksum are recorded in `qt_inputs`;
 its search path contains only the cross-built cmocka package. No Windows vcpkg
 or pkgconf executable runs on Linux or is required by the run-only consumer.
 Native and Qt preparation share soldr's clang-cl/xwin/LLVM discovery and CMake
-toolchain, including managed llvm-mt. Missing cross tools fail preparation.
+toolchain, including managed llvm-mt. C++ wrappers enable `/EHsc`. Qt preparation
+also defaults to C++17 with accurate `__cplusplus`, matching Linux clang; explicit
+per-target standard flags follow the defaults and still take precedence. The other
+native histories keep their existing standard defaults. Missing cross tools fail preparation.
 Cargo forces Ninja after soldr's managed tool preparation, as #5019 requires;
 Windows fixture paths also replace Rust `::` with `--` for legal Windows names.
 
@@ -201,3 +204,31 @@ comparable hosted runs before claiming a speedup. Windows Tier 2 remains separat
 The pinned SDK enables `winsdkicu`: its `icuuc.dll` import is the Windows system
 ICU C API, not an omitted third-party payload. See [Microsoft's ICU documentation](https://learn.microsoft.com/en-us/windows/win32/intl/international-components-for-unicode--icu-).
 The hosted proof must verify that OS prerequisite alongside UCRT and the VC redist.
+
+
+Slice 5 Linux qualification (2026-11-18, CI-pinned soldr 0.9.45): the published-SDK
+resolver and all four unchanged contracts passed, with inherited Make deliberately
+set at producer entry. All four CMake consumers used Ninja/Release. Windows Qt
+Test is absent from this SDK; the existing optional Backtab guard was retained.
+There are 48 pending target executions: metaobjects 3, remux 11, product/meter 4,
+frontend utilities 30. No Rust category binary or assertion was removed or added.
+
+The full bundle contains 1,757 checksummed files, 65 PE executables, five Qt/cmocka
+DLLs and 55 native fixture PE snapshots. All 125 images independently passed
+managed LLVM inspection as AMD64 COFF/PE, in addition to the shared PE/import,
+checksum and loader-directory verification. Actual compiler probes also passed
+both the Qt C++17 default and an explicit C++20 override. Runtime remains pending.
+
+The complete archive is **47,849,892 bytes (45.63 MiB)**; with the retained
+312,477-byte four-case doctest probe, **45.93 MiB**, within the 64 MiB budget.
+The uncompressed tree is 298,672,446 bytes, including its manifest. Shared zstd
+packing took 14.60 s; extraction plus complete verification took 3.70 s. No file,
+mutation snapshot or assertion was removed to meet the budget. Archive SHA256:
+`c2296f6c6e3571bb28ab33d321acc7ca3ee7935b02a961aa9232897bad083b1e`.
+
+The fresh Rust/doctest/native producer took 26:13.94 (peak RSS 4,693,516 KiB),
+and Qt preparation took 12:06.87 (356,344 KiB). Rust rebuilt large category
+harnesses with LTO while the shared eight-job broker reported over 100 in-flight
+requests. These are local contention measurements with cached SDK inputs, not
+hosted timings or evidence of a speedup. Hosted Windows must still qualify OS
+UCRT/ICU and the five recorded VC 14.x runtime DLLs before activation.
