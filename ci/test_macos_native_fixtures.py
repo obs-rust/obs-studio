@@ -1,11 +1,100 @@
 """Fail-closed contracts for Linux-prepared Darwin native fixtures."""
 import json
+import io
+import subprocess
 import tempfile
+import threading
 import unittest
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
 import macos_test_artifact as artifacts
+import macos_native_fixtures as fixtures
+
+
+class ParallelFixtureTest(unittest.TestCase):
+    def test_worker_budget_is_conservative_and_override_is_cpu_bounded(self):
+        for cpus, expected in ((None, 1), (1, 1), (2, 2), (64, 2)):
+            with self.subTest(cpus=cpus), patch.object(fixtures.os, "cpu_count", return_value=cpus):
+                self.assertEqual(fixtures.fixture_workers({}), expected)
+        with patch.object(fixtures.os, "cpu_count", return_value=4):
+            for value, expected in (("1", 1), ("3", 3), ("999", 4)):
+                self.assertEqual(fixtures.fixture_workers({"OBS_NATIVE_FIXTURE_WORKERS": value}), expected)
+            for value in ("0", "-1", "many", ""):
+                with self.subTest(value=value), self.assertRaisesRegex(ValueError, "OBS_NATIVE_FIXTURE_WORKERS"):
+                    fixtures.fixture_workers({"OBS_NATIVE_FIXTURE_WORKERS": value})
+
+    def test_prepare_uses_pool_and_preserves_index_order_when_second_finishes_first(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / "native-fixtures"
+            names = ["native_build::first", "native_build::second"]
+            second_finished = threading.Event()
+            completed = []
+
+            def run(command, **kwargs):
+                if command[0] == "soldr":
+                    event = {"reason": "compiler-artifact", "target": {"name": "obs-tests-app"}, "executable": "app-tests"}
+                    return subprocess.CompletedProcess(command, 0, json.dumps(event))
+                name = command[2]
+                self.assertTrue(kwargs["capture_output"])
+                self.assertTrue(kwargs["check"])
+                if name == names[0]:
+                    self.assertTrue(second_finished.wait(3), "second fixture never ran concurrently")
+                path = directory / name.replace("::", "--") / "manifest.json"
+                path.parent.mkdir()
+                path.write_text(json.dumps({"complete": True}))
+                completed.append(name)
+                if name == names[1]:
+                    second_finished.set()
+                return subprocess.CompletedProcess(command, 0, name + "\n", "")
+
+            signed = [name.replace("::", "--") + "/fixture.dylib" for name in names]
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures, "TESTS", ("first", "second")), \
+                    patch.object(fixtures.os, "cpu_count", return_value=4), \
+                    patch.object(fixtures, "tool", return_value="tool"), \
+                    patch.object(fixtures, "configure_swift"), \
+                    patch.object(fixtures, "signed_fixtures", return_value=list(reversed(signed))), \
+                    patch.object(fixtures.subprocess, "run", side_effect=run), \
+                    patch.object(fixtures, "ThreadPoolExecutor", wraps=ThreadPoolExecutor) as pool:
+                fixtures.prepare(root, root, {"OBS_NATIVE_FIXTURE_WORKERS": "2"})
+            pool.assert_called_once_with(max_workers=2)
+            self.assertEqual(completed, list(reversed(names)))
+            index = json.loads((directory / "index.json").read_text())
+            self.assertEqual(index["tests"], names)
+            self.assertEqual(index["signed"], signed)
+            self.assertIs(index["complete"], True)
+
+    def test_first_completed_failure_reports_its_output_and_cancels_pending_work(self):
+        first, failed, pending = Future(), Future(), Future()
+        failure = subprocess.CalledProcessError(7, ["app-tests", "--exact", "second"],
+                                                output="fixture stdout", stderr="fixture stderr")
+        failed.set_exception(failure)
+        with patch.object(fixtures, "ThreadPoolExecutor") as pool, \
+                patch.object(fixtures, "as_completed", return_value=iter((failed, first, pending))), \
+                patch("sys.stdout", new_callable=io.StringIO) as stdout, \
+                patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            pool.return_value.__enter__.return_value.submit.side_effect = (first, failed, pending)
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
+                fixtures.prepare_fixtures("app-tests", ["first", "second", "third"], Path("unused"), Path("unused"), {}, 2)
+        self.assertIs(raised.exception, failure)
+        self.assertIn("fixture stdout", stdout.getvalue())
+        self.assertIn("fixture stderr", stderr.getvalue())
+        self.assertTrue(pending.cancelled())
+
+    def test_incomplete_fixture_still_fails_without_publishing_index(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            name = "native_build::incomplete"
+            path = root / name.replace("::", "--") / "manifest.json"
+            path.parent.mkdir()
+            path.write_text('{"complete": false}')
+            with patch.object(fixtures.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")):
+                with self.assertRaisesRegex(ValueError, "incomplete native fixture"):
+                    fixtures.prepare_fixtures("app-tests", [name], root, root, {}, 1)
+            self.assertFalse((root / "index.json").exists())
 
 
 class NativeFixtureTest(unittest.TestCase):
