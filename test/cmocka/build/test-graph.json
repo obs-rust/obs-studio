@@ -1059,6 +1059,15 @@
         }
       ]
     },
+    "test_canvas_channel_setter": {
+      "sources": [
+        "test/cmocka/test_canvas_channel_setter.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_canvas_clear_mix": {
       "sources": [
         "test/cmocka/test_canvas_clear_mix.c",
@@ -23548,6 +23557,14 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_canvas_channel_setter": {
+      "target": "test_canvas_channel_setter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_canvas_clear_mix": {
       "target": "test_canvas_clear_mix",
