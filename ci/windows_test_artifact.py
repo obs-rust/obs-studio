@@ -29,16 +29,43 @@ COVERAGE = "rust-test-executables"
 # Runtime libraries supplied by the supported Windows runner, not by xwin's
 # import-library SDK. Record VC dependencies separately for later consumer setup.
 SYSTEM_DLLS = frozenset({
-    "advapi32.dll", "bcrypt.dll", "bcryptprimitives.dll", "cfgmgr32.dll",
-    "comctl32.dll", "comdlg32.dll", "crypt32.dll", "dbghelp.dll", "gdi32.dll",
+    "advapi32.dll", "avrt.dll", "bcrypt.dll", "bcryptprimitives.dll", "cfgmgr32.dll",
+    "comctl32.dll", "comdlg32.dll", "crypt32.dll", "dbghelp.dll", "dxgi.dll", "gdi32.dll",
     "iphlpapi.dll", "kernel32.dll", "msvcrt.dll", "ncrypt.dll", "netapi32.dll",
-    "ntdll.dll", "ole32.dll", "oleaut32.dll", "powrprof.dll", "propsys.dll",
+    "ntdll.dll", "ole32.dll", "oleaut32.dll", "pdh.dll", "powrprof.dll", "propsys.dll",
     "psapi.dll", "rpcrt4.dll", "secur32.dll", "setupapi.dll", "shell32.dll",
     "shlwapi.dll", "ucrtbase.dll", "user32.dll", "userenv.dll", "version.dll",
     "winhttp.dll", "winmm.dll", "winspool.drv", "ws2_32.dll", "wtsapi32.dll",
 })
 VC_DLLS = frozenset({"vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll",
                      "msvcp140_1.dll", "msvcp140_2.dll", "concrt140.dll"})
+
+
+def verify_pe_header(data: bytes) -> None:
+    """Validate AMD64 console headers, file-backed sections and entry point."""
+    if data[:2] != b"MZ":
+        raise ValueError("missing DOS header")
+    pe = struct.unpack_from("<I", data, 0x3C)[0]
+    machine, sections = struct.unpack_from("<HH", data, pe + 4)
+    size, flags = struct.unpack_from("<HH", data, pe + 20)
+    magic = struct.unpack_from("<H", data, pe + 24)[0]
+    entry = struct.unpack_from("<I", data, pe + 40)[0]
+    subsystem = struct.unpack_from("<H", data, pe + 92)[0]
+    if (data[pe:pe + 4] != b"PE\0\0" or machine != 0x8664 or magic != 0x20B
+            or not flags & 2 or flags & 0x2000 or not entry or subsystem != 3
+            or size < 240 or not sections or pe + 24 + size + sections * 40 > len(data)):
+        raise ValueError("not an x86_64 PE32+ console executable")
+    executable_entry = False
+    for index in range(sections):
+        section = pe + 24 + size + index * 40
+        virtual, raw_size, raw = struct.unpack_from("<III", data, section + 12)
+        characteristics = struct.unpack_from("<I", data, section + 36)[0]
+        if raw_size and (raw < pe + 24 + size + sections * 40 or raw + raw_size > len(data)):
+            raise ValueError("truncated PE section body")
+        if characteristics & 0x20000000 and virtual <= entry < virtual + raw_size:
+            executable_entry = True
+    if not executable_entry:
+        raise ValueError("PE entry point has no executable section")
 
 
 def pe_imports(data: bytes) -> list[str]:
@@ -48,29 +75,7 @@ def pe_imports(data: bytes) -> list[str]:
     check. This is format/dependency evidence, not a Windows execution result.
     """
     try:
-        if data[:2] != b"MZ":
-            raise ValueError("missing DOS header")
-        pe = struct.unpack_from("<I", data, 0x3C)[0]
-        machine, sections = struct.unpack_from("<HH", data, pe + 4)
-        size, flags = struct.unpack_from("<HH", data, pe + 20)
-        magic = struct.unpack_from("<H", data, pe + 24)[0]
-        entry = struct.unpack_from("<I", data, pe + 40)[0]
-        subsystem = struct.unpack_from("<H", data, pe + 92)[0]
-        if (data[pe:pe + 4] != b"PE\0\0" or machine != 0x8664 or magic != 0x20B
-                or not flags & 2 or flags & 0x2000 or not entry or subsystem != 3
-                or size < 240 or not sections or pe + 24 + size + sections * 40 > len(data)):
-            raise ValueError("not an x86_64 PE32+ console executable")
-        executable_entry = False
-        for index in range(sections):
-            section = pe + 24 + size + index * 40
-            virtual, raw_size, raw = struct.unpack_from("<III", data, section + 12)
-            characteristics = struct.unpack_from("<I", data, section + 36)[0]
-            if raw_size and (raw < pe + 24 + size + sections * 40 or raw + raw_size > len(data)):
-                raise ValueError("truncated PE section body")
-            if characteristics & 0x20000000 and virtual <= entry < virtual + raw_size:
-                executable_entry = True
-        if not executable_entry:
-            raise ValueError("PE entry point has no executable section")
+        verify_pe_header(data)
         dependencies = sorted(set(imports(data)))
         if not dependencies:
             raise ValueError("missing Windows runtime imports")

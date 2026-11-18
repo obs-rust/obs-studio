@@ -28,6 +28,8 @@ class WindowsArtifactTest(unittest.TestCase):
     def test_pe_rejects_wrong_architecture_dll_non_pe_and_truncation(self):
         good = executable()
         self.assertEqual(artifact.pe_imports(good), ["kernel32.dll", "vcruntime140.dll"])
+        self.assertEqual(artifact.pe_imports(executable(["DXGI.dll", "pdh.dll", "avrt.dll"])),
+                         ["avrt.dll", "dxgi.dll", "pdh.dll"])
         arm = bytearray(good)
         struct.pack_into("<H", arm, 0x44, 0xAA64)
         dll = bytearray(good)
