@@ -4,8 +4,10 @@ use super::*;
 fn canonical_texture_file_data_swap_is_registered() {
     use obs_build::validation::graph::Graph;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
+    let mut graph = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     let name = "test_texture_file_data_steps_rust";
+    graph.targets.retain(|key, _| key == name);
+    graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
         let selected = graph
             .select(&[(os.into(), true), ("HAVE_LIBOBS_RUST_STATIC".into(), true)].into())
