@@ -3,6 +3,7 @@
 
 import importlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -182,7 +183,11 @@ class CMakePackTests(unittest.TestCase):
                 patch.object(h.consumer, "coff_exports", return_value={"api"}),
             ):
                 manifest = h.stage(
-                    build, source, root / "bundle", [deps, qt / "bin"], "a" * 40
+                    build,
+                    source,
+                    root / "bundle",
+                    [deps, Path(os.path.relpath(qt / "bin"))],
+                    "a" * 40,
                 )
             self.assertIn(
                 "source/.deps/target-qt/plugins/platforms/qminimal.dll",
