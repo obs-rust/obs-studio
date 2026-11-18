@@ -21,6 +21,7 @@ import struct
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 from rust_scope import affected
@@ -184,7 +185,8 @@ def copy_artifact(root: Path, bundle: Path, path: str) -> str:
     return rel
 
 
-def collect_build_scripts(events: list[dict], root: Path, bundle: Path, target_directory: Path) -> dict:
+def collect_build_scripts(events: list[dict], root: Path, bundle: Path, target_directory: Path,
+                          *, target: str = TARGET) -> dict:
     scripts = {}
     for event in events:
         if event.get("reason") != "build-script-executed":
@@ -193,18 +195,19 @@ def collect_build_scripts(events: list[dict], root: Path, bundle: Path, target_d
         if output:
             copy_artifact(root, bundle, output)
         # A build dependency can execute the same package's build script for
-        # both hosts. Retain both outputs, but use Darwin's env regardless of
+        # both hosts. Retain both outputs, but use the target's env regardless of
         # Cargo event ordering. Pure host dependencies have no target event.
-        if event["package_id"] not in scripts or (output and Path(output).is_relative_to(target_directory / TARGET)):
+        if event["package_id"] not in scripts or (output and Path(output).is_relative_to(target_directory / target)):
             scripts[event["package_id"]] = event
     return scripts
 
 
-def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: list[str]) -> dict:
+def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: list[str],
+            *, target: str = TARGET, verify_executable: Callable[[Path], None] | None = None) -> dict:
     if not events or events[-1] != {"reason": "build-finished", "success": True}:
         raise ValueError("Cargo did not report a complete successful build")
     packages = {p["id"]: p for p in metadata["packages"]}
-    scripts = collect_build_scripts(events, root, bundle, Path(metadata.get("target_directory", root / "target")))
+    scripts = collect_build_scripts(events, root, bundle, Path(metadata.get("target_directory", root / "target")), target=target)
     tests = []
 
     def relative(path: str) -> str:
@@ -217,7 +220,7 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: 
         if event.get("reason") != "compiler-artifact" or not event.get("executable"):
             continue
         executable = event["executable"]
-        verify_macho(Path(executable))
+        (verify_executable or verify_macho)(Path(executable))
         binary = copy_artifact(root, bundle, executable)
         if not event["profile"]["test"]:
             continue  # helper executable used by CARGO_BIN_EXE, still transported
@@ -229,7 +232,7 @@ def collect(metadata: dict, events: list[dict], root: Path, bundle: Path, args: 
         if script.get("out_dir"):
             env["OUT_DIR"] = "{root}/" + relative(script["out_dir"])
         tests.append({"package": package["name"], "binary": binary, "cwd": cwd, "env": env, "args": args})
-    result = {"version": 1, "target": TARGET, "build_root": str(root), "tests": tests}
+    result = {"version": 1, "target": target, "build_root": str(root), "tests": tests}
     bundle.mkdir(parents=True, exist_ok=True)
     (bundle / "manifest.json").write_text(json.dumps(result, indent=2) + "\n")
     return result
@@ -268,6 +271,11 @@ def validate_native_fixtures(root: Path) -> None:
 def validate_inventory(data: dict, root: Path) -> None:
     if not data.get("doctests_complete"):
         raise ValueError("doctest compilation was not completed")
+    validate_files(data, root)
+
+
+def validate_files(data: dict, root: Path) -> None:
+    """Shared checksummed transport; coverage is checked by each lane's verifier."""
     for name, digest in data["files"].items():
         path = within(root, name)
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
