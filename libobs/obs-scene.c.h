@@ -2187,16 +2187,6 @@ void obs_sceneitem_set_scale(obs_sceneitem_t *item, const struct vec2 *scale)
 	}
 }
 
-void obs_sceneitem_set_alignment(obs_sceneitem_t *item, uint32_t alignment)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		item->align = alignment;
-		item_fields_unlock(scene);
-		do_update_transform(item);
-	}
-}
-
 static inline void signal_reorder(struct obs_scene_item *item)
 {
 	const char *command = NULL;
