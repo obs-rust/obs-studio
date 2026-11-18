@@ -64,6 +64,7 @@ pub mod source_video_tick;
 pub mod source_volume;
 pub mod source_volume_mul;
 pub mod type_info;
+pub mod weak_predicates;
 
 pub mod source_type_id_getters;
 
