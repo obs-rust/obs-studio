@@ -103,6 +103,22 @@ def stage_data(build: Path, source: Path, output: Path, products: list[Path]) ->
     for name in ("libobs/data", "test/cmocka/data"):
         copy_path(source / name, output / "source" / name)
     copy_path(source / "libobs/data", output / "build/data/libobs")
+    stage_owners(build, source, output, products)
+    # Canonical resource helper's installed data layout and generated fixtures.
+    for data in sorted((build / "rundir").glob("**/data")):
+        if data.is_dir():
+            copy_path(data, output / "build" / data.relative_to(build))
+    # Only runtime fixture outputs; never ship CMake/Ninja/PCH/OBJ/PDB state.
+    for path in sorted((build / "test/cmocka").iterdir()):
+        if (
+            path.is_file()
+            and path.suffix.lower() in {".png", ".gif", ".ini", ".json", ".mkv", ".txt"}
+            and path.name != "CMakeLists.txt"
+        ):
+            copy_path(path, output / "build/test/cmocka" / path.name)
+
+
+def stage_owners(build: Path, source: Path, output: Path, products: list[Path]) -> None:
     owners = {
         p.relative_to(build).parts[1]
         for p in products
@@ -116,18 +132,22 @@ def stage_data(build: Path, source: Path, output: Path, products: list[Path]) ->
         for product in products:
             if product.parent == build / "plugins" / owner:
                 copy_path(product, output / "build/core" / owner / product.name)
-    # Canonical resource helper's installed data layout and generated fixtures.
-    for data in sorted((build / "rundir").glob("**/data")):
-        if data.is_dir():
-            copy_path(data, output / "build" / data.relative_to(build))
-    # Only runtime fixture outputs; never ship CMake/Ninja/PCH/OBJ/PDB state.
-    for path in sorted((build / "test/cmocka").iterdir()):
-        if (
-            path.is_file()
-            and path.suffix.lower() in {".png", ".gif", ".ini", ".json", ".mkv", ".txt"}
-            and path.name != "CMakeLists.txt"
-        ):
-            copy_path(path, output / "build/test/cmocka" / path.name)
+        if owner == "win-capture":
+            stage_capture_helpers(build, output, products)
+
+
+def stage_capture_helpers(build: Path, output: Path, products: list[Path]) -> None:
+    names = {"graphics-hook64.dll", "inject-helper64.exe", "get-graphics-offsets64.exe"}
+    helpers = [
+        p
+        for p in products
+        if p.is_relative_to(build / "plugins/win-capture") and p.name in names
+    ]
+    if {p.name for p in helpers} != names:
+        raise ValueError("missing win-capture module-data helpers")
+    for path in helpers:
+        for base in ("build/core/win-capture/data", "source/plugins/win-capture/data"):
+            copy_path(path, output / base / path.name)
 
 
 def stage_arguments(build: Path, source: Path, output: Path, tests: list[dict]) -> None:
@@ -208,7 +228,7 @@ def stage(
     ]
     for path in products:
         probe.contained(build, path)
-    paths = probe.closure(products, roots, hosted_runtime=True)
+    paths = probe.closure(products, [build, *roots], hosted_runtime=True)
     for path in paths:
         name = (
             Path("build") / path.relative_to(build)

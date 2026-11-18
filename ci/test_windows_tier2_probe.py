@@ -21,6 +21,29 @@ class ProbeTests(unittest.TestCase):
     def helper(self):
         return importlib.import_module("windows_tier2_probe")
 
+    def test_full_renderer_and_qt_system_imports_keep_unknown_dlls_fatal(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "renderer.dll"
+            path.write_bytes(
+                pe(
+                    [
+                        "authz.dll",
+                        "coremessaging.dll",
+                        "d3d11.dll",
+                        "d3d12.dll",
+                        "d3d9.dll",
+                        "d3dcompiler_47.dll",
+                        "dwrite.dll",
+                        "icuuc.dll",
+                    ]
+                )
+            )
+            self.assertEqual([path], helper.closure([path], []))
+            path.write_bytes(pe(["unprovided-renderer.dll"]))
+            with self.assertRaisesRegex(ValueError, "unresolved"):
+                helper.closure([path], [])
+
     def test_wrong_target_fails_before_toolchain_setup(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
