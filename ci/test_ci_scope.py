@@ -356,7 +356,7 @@ class CiScopeTest(unittest.TestCase):
             if name == "build-project.yaml":
                 self.assertIn("runs-on: ${{ matrix.os }}", blocks["ubuntu-build"])
 
-    def test_queue_heavy_demand_matches_expanded_jobs(self):
+    def test_queue_heavy_demand_fallback_matches_expanded_jobs(self):
         import re
         from tier2_matrix import matrix
 
@@ -366,7 +366,9 @@ class CiScopeTest(unittest.TestCase):
         tier2 = matrix("merge_group")
         demand = 1 + len(tier2["mode"]) * len(tier2["part"]) + len(targets) + 1
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn(f"MQ_RUNNER_DEMAND: '{demand}'", ci)
+        self.assertIn(
+            f"MQ_RUNNER_DEMAND: ${{{{ vars.MQ_RUNNER_DEMAND || '{demand}' }}}}", ci,
+        )
 
     def test_queue_runner_probe_and_reusable_inputs(self):
         import re
