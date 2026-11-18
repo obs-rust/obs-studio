@@ -178,7 +178,7 @@ pub fn tempdir() -> Result<Directory, std::io::Error> {
             state.manifest["directories"]
                 .as_array_mut()
                 .unwrap()
-                .push(path.to_string_lossy().into_owned().into());
+                .push(portable_path(&path).into());
             path
         };
         fs::create_dir_all(&path)?;
@@ -219,7 +219,10 @@ fn fixture_paths(root: &Path) -> Vec<PathBuf> {
     result
 }
 fn portable_path(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
+    // read_dir returns native separators, while a caller can join a suffix
+    // containing '/'. Store one spelling, including on Windows. This is only
+    // representation normalization: keep '..' so restore still rejects escapes.
+    path.to_string_lossy().replace('\\', "/")
 }
 
 #[test]
@@ -233,7 +236,9 @@ fn fixture_inventory_paths_have_one_portable_separator_form() {
         assert_eq!(portable_path(Path::new(spelling)), expected);
     }
     assert_eq!(
-        portable_path(Path::new("/opt/obs-ci-42-1/src/output/runtime root/Release")),
+        portable_path(Path::new(
+            "/opt/obs-ci-42-1/src/output/runtime root/Release"
+        )),
         "/opt/obs-ci-42-1/src/output/runtime root/Release"
     );
 }
@@ -245,7 +250,7 @@ fn snapshot(state: &State) -> Value {
         let root = Path::new(root.as_str().unwrap());
         for path in fixture_paths(root) {
             if path.is_dir() {
-                directories.push(path);
+                directories.push(portable_path(&path));
                 continue;
             }
             let hash = digest(&path);
@@ -255,7 +260,7 @@ fn snapshot(state: &State) -> Value {
             if !destination.exists() {
                 fs::copy(&path, &destination).unwrap();
             }
-            snapshots.push(json!({"file": stored, "destination": path, "sha256": hash}));
+            snapshots.push(json!({"file": portable_path(&stored), "destination": portable_path(&path), "sha256": hash}));
         }
     }
     json!({"files": snapshots, "directories": directories})
@@ -481,7 +486,7 @@ fn snapshot_replay_preserves_empty_space_named_working_directories() {
         event["directories"]
             .as_array()
             .unwrap()
-            .contains(&json!(runtime))
+            .contains(&json!(portable_path(&runtime)))
     );
     fs::remove_dir_all(&work).unwrap();
     restore(&state, &event);
