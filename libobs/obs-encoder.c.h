@@ -525,17 +525,6 @@ void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
 	pthread_mutex_unlock(&group->mutex);
 }
 
-bool obs_encoder_get_extra_data(const obs_encoder_t *encoder, uint8_t **extra_data, size_t *size)
-{
-	if (!obs_encoder_valid(encoder, "obs_encoder_get_extra_data"))
-		return false;
-
-	if (encoder->info.get_extra_data && encoder->context.data)
-		return encoder->info.get_extra_data(encoder->context.data, extra_data, size);
-
-	return false;
-}
-
 static THREAD_LOCAL bool can_reroute = false;
 
 static inline bool obs_encoder_initialize_internal(obs_encoder_t *encoder)
