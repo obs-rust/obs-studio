@@ -2,7 +2,8 @@
 
 Status: Linux prototype only. `rust-tier2-macos` remains unchanged. Its check,
 assertions, four CTest passes and loader controls have not been removed.
-This inventory starts at master e12874916 (2026-11-17); #5005 was still open.
+Initial inspection used master e12874916 (2026-11-17). Before final validation,
+the branch incorporated master fd4412dcb, including the merged #5005 aggregate.
 The cross graph is deliberately opt-in (`OBS_CROSS_TIER2=ON`, mac-arm64 only).
 It is not yet equivalent to the native graph.
 
@@ -19,7 +20,8 @@ ON, hybrid backend, frontend/scripting/browser/websocket OFF. Its roots are
 libobs, libobs-c-reference, cmocka-tests, libobs-opengl, libobs-metal,
 mac-capture, mac-avcapture and mac-avcapture-legacy. #5005 aggregates exactly
 these roots as tier2-native; this prototype does not replace or duplicate that
-native aggregate. Consume it after #5005 merges before switching the job.
+native aggregate. The existing native validator now consumes it; a future
+complete cross producer must cover its full closure before switching the job.
 
 | Compiled product | Inputs and purpose |
 | --- | --- |
@@ -144,7 +146,7 @@ LLVM's loader audit found only system absolute paths in the 15 staged images.
 
 The native-contract Application category was independently cross-linked with
 `--features libobs-integration --test obs-tests-app --no-run`, then collected
-using #5008's package/cwd/build-script manifest helper. Its 20,219,600-byte arm64
+using #5008's package/cwd/build-script manifest helper. Its roughly 20 MB arm64
 executable passed signature verification. This proves prebuilding the executable,
 not that executing its existing compile-at-runtime body is allowed on macOS.
 
