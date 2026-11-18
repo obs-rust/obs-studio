@@ -2210,6 +2210,13 @@ area.
   Issue [#560](https://github.com/obs-rust/obs-studio/issues/560), PR
   [#561](https://github.com/obs-rust/obs-studio/pull/561), upstream
   [obsproject/obs-websocket#1320](https://github.com/obsproject/obs-websocket/issues/1320).
+- In Studio Mode, a program switch that is refused because a transition is
+  still running no longer becomes the current program scene: the frontend
+  API and obs-websocket keep naming the scene on the program, and turning
+  Studio Mode off no longer cuts to the refused scene. *All*, 2026-11-18.
+  Issue [#5017](https://github.com/obs-rust/obs-studio/issues/5017), PR
+  [#5020](https://github.com/obs-rust/obs-studio/pull/5020), upstream
+  [obsproject/obs-studio#14217](https://github.com/obsproject/obs-studio/issues/14217).
 - On the Advanced Streaming tab, the Rescale Output resolution is greyed out
   when Rescale Output is Disabled. *All*, 2026-10-13. Issue
   [#585](https://github.com/obs-rust/obs-studio/issues/585), PR
