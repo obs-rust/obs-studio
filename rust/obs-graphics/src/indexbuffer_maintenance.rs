@@ -57,10 +57,39 @@ pub trait Host {
     fn count(&mut self, buffer: Self::Buffer) -> usize;
 }
 
-// RED: callable stubs let both Tier 1 and the ABI differential report failures.
-pub fn destroy<H: Host>(_host: &mut H, _buffer: Option<H::Buffer>) {}
-pub fn flush<H: Host>(_host: &mut H, _buffer: Option<H::Buffer>) {}
-pub fn flush_direct<H: Host>(_host: &mut H, _buffer: Option<H::Buffer>, _data: Option<H::Data>) {}
-pub fn get_num_indices<H: Host>(_host: &mut H, _buffer: Option<H::Buffer>) -> usize {
-    0
+fn valid<H: Host>(host: &mut H, entry: Entry, buffer: Option<H::Buffer>) -> Option<H::Buffer> {
+    if !host.has_context() {
+        host.debug(entry, Rejection::Context);
+        return None;
+    }
+    if buffer.is_none() && entry != Entry::Destroy {
+        host.debug(entry, Rejection::Buffer);
+    }
+    buffer
+}
+
+pub fn destroy<H: Host>(host: &mut H, buffer: Option<H::Buffer>) {
+    if let Some(buffer) = valid(host, Entry::Destroy, buffer) {
+        host.destroy(buffer);
+    }
+}
+
+pub fn flush<H: Host>(host: &mut H, buffer: Option<H::Buffer>) {
+    if let Some(buffer) = valid(host, Entry::Flush, buffer) {
+        host.flush(buffer);
+    }
+}
+
+pub fn flush_direct<H: Host>(host: &mut H, buffer: Option<H::Buffer>, data: Option<H::Data>) {
+    if let Some(buffer) = valid(host, Entry::Direct, buffer) {
+        if let Some(data) = data {
+            host.direct(buffer, data);
+        } else {
+            host.debug(Entry::Direct, Rejection::Data);
+        }
+    }
+}
+
+pub fn get_num_indices<H: Host>(host: &mut H, buffer: Option<H::Buffer>) -> usize {
+    valid(host, Entry::Count, buffer).map_or(0, |buffer| host.count(buffer))
 }

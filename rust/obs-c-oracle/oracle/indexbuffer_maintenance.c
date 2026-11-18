@@ -138,20 +138,20 @@ int oracle_indexbuffer_maintenance_level(void)
 	return ibm_level;
 }
 
-const void * oracle_indexbuffer_maintenance_buffer(void);
-const void * oracle_indexbuffer_maintenance_buffer(void)
+const void *oracle_indexbuffer_maintenance_buffer(void);
+const void *oracle_indexbuffer_maintenance_buffer(void)
 {
 	return ibm_buffer;
 }
 
-const void * oracle_indexbuffer_maintenance_data(void);
-const void * oracle_indexbuffer_maintenance_data(void)
+const void *oracle_indexbuffer_maintenance_data(void);
+const void *oracle_indexbuffer_maintenance_data(void)
 {
 	return ibm_data;
 }
 
-const char * oracle_indexbuffer_maintenance_log(void);
-const char * oracle_indexbuffer_maintenance_log(void)
+const char *oracle_indexbuffer_maintenance_log(void);
+const char *oracle_indexbuffer_maintenance_log(void)
 {
 	return ibm_log;
 }

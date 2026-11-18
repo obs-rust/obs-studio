@@ -3,6 +3,8 @@
 mod archive_freshness;
 #[path = "native/registration/canonical_graphics_device_load_is_registered.rs"]
 mod canonical_graphics_device_load_is_registered;
+#[path = "native/registration/canonical_graphics_indexbuffer_maintenance_swap_is_registered.rs"]
+mod canonical_graphics_indexbuffer_maintenance_swap_is_registered;
 #[path = "native/registration/canonical_gs_perspective_is_registered.rs"]
 mod canonical_gs_perspective_is_registered;
 #[path = "native/registration/canonical_portal_output_is_registered.rs"]
