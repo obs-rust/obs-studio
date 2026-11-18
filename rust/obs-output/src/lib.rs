@@ -155,6 +155,7 @@ pub mod encoder_clear_roi;
 pub mod encoder_configuration;
 pub mod encoder_counters;
 pub mod encoder_dimensions;
+pub mod encoder_extra_data;
 pub mod encoder_frame_rate_divisor;
 pub mod encoder_gpu_gates;
 pub mod encoder_gpu_rescale;
