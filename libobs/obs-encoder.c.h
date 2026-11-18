@@ -449,11 +449,6 @@ void obs_encoder_destroy(obs_encoder_t *encoder)
 	}
 }
 
-const char *obs_encoder_get_name(const obs_encoder_t *encoder)
-{
-	return obs_encoder_valid(encoder, "obs_encoder_get_name") ? encoder->context.name : NULL;
-}
-
 struct obs_encoder_interleave_info obs_encoder_interleave_info(const obs_encoder_t *encoder)
 {
 	struct obs_encoder_interleave_info info = {

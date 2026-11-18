@@ -11,6 +11,7 @@
 #include "libobs/obs-encoder-dimensions-fields.c.h"
 #include "libobs/obs-encoder-error-ownership-fields.c.h"
 #include "libobs/obs-encoder-frame-rate-divisor-fields.c.h"
+#include "libobs/obs-encoder-get-name.c.h"
 #include "libobs/obs-encoder-gpu-scaling-getters-fields.c.h"
 #include "libobs/obs-encoder-group-lifecycle-fields.c.h"
 #include "libobs/obs-encoder-init-fields.c.h"
