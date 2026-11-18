@@ -175,6 +175,18 @@ installer alone does not update that embedded wrapper. Matching the versions
 does not establish Rust compiler-cache correctness: the Rust wrapper bypass
 above remains enabled.
 
+Hosted Linux Tier 2 wraps its build in `ci/tier2_front_cache.py` (#4988).
+A checksum-pinned ccache 4.14.3 binary provides a fresh, job-local 512M front
+cache with `CCACHE_PREFIX=zccache`. This shares identical private-fixture C
+compiles with different output paths while retaining zccache for misses. The
+pinned zccache salts user depfile keys with output/target arguments; a local
+24-output probe reported 24 cold calls versus 1 cold call and 23 front hits.
+Both caches still validate headers and compiler flags. No sloppiness is enabled;
+the front cache has its own empty configuration and is never uploaded. The
+Dell's explicit empty launcher bypasses the helper. Rust caching, all test
+assertions, sanitizer flags and OFF/ON suites retain their existing policy.
+The expected hosted saving is an estimate until a completed job measures it.
+
 #### Qt compiler snapshot publication
 
 Qt compiler snapshots use `qt-ccache-linux-inputs-v2-<digest>` rather than a

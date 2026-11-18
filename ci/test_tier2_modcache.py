@@ -105,7 +105,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_the_build_step_passes_the_cache_dir(self):
         build = self.job[self.job.index("id: tier2-build") :]
-        build = build[: build.index("run: bash rust/tools/linux-validate/validate.sh")]
+        build = build[: build.index("run:")]
         self.assertIn("OBS_LIBOBS_MODULE_CACHE_DIR: ${{ github.workspace }}/.tier2-modcache", build)
 
 

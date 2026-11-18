@@ -244,7 +244,7 @@ else
     # A lost request ("daemon response failure") and a connection the daemon
     # reset mid-compile ("broken connection to daemon", #3346) both exit 1.
     lost_requests=$(grep -cE '^zccache\[err\]\[R\]: (daemon response failure|broken connection to daemon)' "$build.build.log" || true)
-    if [ "${OBS_TIER2_LAUNCHER-zccache}" = zccache ] && { [ "$launcher_failed" -gt 0 ] || [ "$lost_requests" -gt 0 ]; }; then
+    if { [ "${OBS_TIER2_LAUNCHER-zccache}" = zccache ] || [ "${CCACHE_PREFIX:-}" = zccache ]; } && { [ "$launcher_failed" -gt 0 ] || [ "$lost_requests" -gt 0 ]; }; then
       echo "== zccache launcher failures: $launcher_failed exit 125, $lost_requests requests the daemon lost; restarting it and rebuilding once"
       # Keep the original cause: the retry can report only a recovery cooldown.
       cp "$build.build.log" "$build.build-first-failure.log"

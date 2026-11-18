@@ -2903,7 +2903,7 @@ jobs:
           OBS_TIER2_MODES: "OFF ON"
           OBS_TIER2_STAGE: build
           OBS_TIER2_MCP: "1"
-        run: bash rust/tools/linux-validate/validate.sh
+        run: uv run --no-project ci/tier2_front_cache.py -- bash rust/tools/linux-validate/validate.sh
 
       - name: Record Tier 2 Runtime Packages 📦
         run: >-
