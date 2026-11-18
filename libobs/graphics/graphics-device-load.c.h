@@ -1,8 +1,19 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
-/* Private unity-group dependencies defined in graphics.c.h, which sorts later. */
-static THREAD_LOCAL graphics_t *thread_graphics;
-static inline bool gs_valid(const char *f);
+/* Reference-only group: read graphics.c.h's context through its existing
+ * getter, and preserve its validator and each original function body. */
+#define thread_graphics gs_get_context()
+
+static inline bool device_load_ref_valid(const char *f)
+{
+	if (!thread_graphics) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", f);
+		return false;
+	}
+
+	return true;
+}
+#define gs_valid device_load_ref_valid
 
 void gs_load_vertexbuffer(gs_vertbuffer_t *vertbuffer)
 {
@@ -53,3 +64,6 @@ void gs_load_default_samplerstate(bool b_3d, int unit)
 
 	graphics->exports.device_load_default_samplerstate(graphics->device, b_3d, unit);
 }
+
+#undef gs_valid
+#undef thread_graphics

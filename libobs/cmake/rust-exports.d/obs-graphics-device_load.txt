@@ -1,0 +1,5 @@
+gs_load_vertexbuffer
+gs_load_indexbuffer
+gs_load_texture
+gs_load_samplerstate
+gs_load_default_samplerstate
