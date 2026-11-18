@@ -259,6 +259,7 @@ pub mod type_info;
 pub mod video_tick;
 pub mod volume_apply;
 pub mod volume_mul;
+pub mod weak_predicates;
 
 mod platform;
 
