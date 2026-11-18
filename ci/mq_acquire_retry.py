@@ -2,21 +2,24 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Retry only proven hosted-runner acquisition cancellations in the live queue.
+"""Recover proven hosted-runner acquisition failures on PRs and ejected groups.
 
-    uv run --no-project --script ci/mq_acquire_retry.py [--dry-run]
+    uv run --no-project --script ci/mq_acquire_retry.py [--run-id ID] [--dry-run]
 
-Needs GH_TOKEN (github.token), actions: write, checks: read and contents: read.
+Needs GH_TOKEN, actions: write, checks: read and contents: read. Queue recovery
+also needs pull-requests: write and a workflow-triggering token (AI_REBASE_TOKEN).
 Unknown evidence never permits a retry. CI Gate must still pass on the rerun.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import re
 import subprocess
+import uuid
 from pathlib import Path
 
 ACQUISITION = "The job was not acquired by Runner of type hosted even after multiple attempts"
@@ -38,51 +41,6 @@ def items(endpoint: str, key: str | None = None) -> list[dict]:
     return values
 
 
-def queue_page(repo: str, cursor: str | None) -> dict:
-    owner, name = repo.split("/")
-    after = f",after:{json.dumps(cursor)}" if cursor else ""
-    query = (f"{{repository(owner:{json.dumps(owner)},name:{json.dumps(name)}){{mergeQueue{{"
-             f"entries(first:100{after}){{totalCount nodes{{headCommit{{oid}}}}"
-             "pageInfo{hasNextPage endCursor}}}}}")
-    result = command(["uv", "run", "--no-project", "--script",
-                      str(Path(__file__).with_name("gh_graphql.py")), "-f", f"query={query}"])
-    if result.get("errors"):
-        raise ValueError("merge queue GraphQL errors")
-    return result["data"]["repository"]["mergeQueue"]["entries"]
-
-
-def queue_heads(repo: str) -> set[str]:
-    heads: set[str] = set()
-    cursor = None
-    seen = set()
-    total = None
-    count = 0
-    while True:
-        entries = queue_page(repo, cursor)
-        if total is None:
-            total = entries["totalCount"]
-        if entries["totalCount"] != total:
-            raise ValueError("merge queue changed during pagination")
-        count += len(entries["nodes"])
-        for node in entries["nodes"]:
-            sha = (node.get("headCommit") or {}).get("oid")
-            # Entries awaiting a build may have no synthetic head yet.
-            if sha is None:
-                continue
-            if not re.fullmatch(r"[0-9a-f]{40}", sha):
-                raise ValueError("invalid merge queue head")
-            heads.add(sha)
-        seen.add(cursor)
-        info = entries["pageInfo"]
-        if not info["hasNextPage"]:
-            if count != total:
-                raise ValueError("incomplete merge queue inventory")
-            return heads
-        cursor = info["endCursor"]
-        if not cursor or cursor in seen:
-            raise ValueError("incomplete merge queue pagination")
-
-
 def failures(repo: str, job: dict) -> list[str]:
     # Never send the token to an API URL supplied by a job response.
     expected = f"https://api.github.com/repos/{repo}/check-runs/"
@@ -96,8 +54,8 @@ def failures(repo: str, job: dict) -> list[str]:
 def classify(repo: str, run: dict) -> str | None:
     """Return a refusal reason, or None for a proven acquisition-only failure."""
     attempt = run.get("run_attempt")
-    if type(attempt) is not int or not 1 <= attempt < 3:
-        return "attempt limit (maximum 3) or unknown attempt"
+    if type(attempt) is not int or attempt != 1:
+        return "automatic retry already spent or unknown attempt"
     if run.get("status") != "completed":
         return "run still active; defer until all jobs finish"
     if run.get("conclusion") not in ("failure", "cancelled"):
@@ -129,6 +87,8 @@ def classify(repo: str, run: dict) -> str | None:
 
 def aggregate_reason(repo: str, gates: list[dict], acquisition: list[str]) -> str | None:
     """Only the known CI Gate result-checking steps and diagnostics are safe."""
+    if len(gates) != 1:
+        return "missing or duplicate CI Gate evidence"
     expected = {name + CAPACITY for name in acquisition}
     for gate in gates:
         steps = gate.get("steps") or []
@@ -143,49 +103,171 @@ def aggregate_reason(repo: str, gates: list[dict], acquisition: list[str]) -> st
     return None
 
 
-def retry_run(repo: str, head: str, run: dict, *, dry_run: bool) -> None:
-    label = f"queue run {run['id']} attempt {run.get('run_attempt')}"
-    if run.get("event") != "merge_group" or run.get("head_sha") != head:
-        print(f"{label}: ignored: event/head mismatch")
-        return
-    if run.get("status") not in ("in_progress", "completed"):
-        print(f"{label}: deferred: {run.get('status')}")
+def pr_snapshot(repo: str, number: int, *, fresh: bool = False) -> dict:
+    """Read current state and a complete relevant timeline from trusted GraphQL."""
+    owner, name = repo.split("/")
+    query = """query($owner:String!,$name:String!,$number:Int!,$before:String){
+      repository(owner:$owner,name:$name){pullRequest(number:$number){
+        id number headRefOid state isDraft mergeable mergeStateStatus reviewDecision
+        autoMergeRequest{enabledAt} body labels(first:100){nodes{name} pageInfo{hasNextPage}}
+        timelineItems(last:100,before:$before,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT,
+          ADDED_TO_MERGE_QUEUE_EVENT,AUTO_MERGE_DISABLED_EVENT,AUTO_MERGE_ENABLED_EVENT,
+          PULL_REQUEST_COMMIT,HEAD_REF_FORCE_PUSHED_EVENT]){
+          pageInfo{hasPreviousPage startCursor} nodes{__typename
+            ...on RemovedFromMergeQueueEvent{id createdAt reason beforeCommit{oid}}
+            ...on AddedToMergeQueueEvent{createdAt}
+            ...on PullRequestCommit{commit{oid}}
+            ...on HeadRefForcePushedEvent{afterCommit{oid}}
+          }
+        }
+      }}
+    }"""
+    if fresh:
+        # ghd keys arbitrary-query reads by the complete request body. A unique
+        # operation name forces upstream evidence without disrupting the shared
+        # daemon; GHD_FRESH_MS is only read when that daemon starts.
+        query = query.replace("query(", f"query CapacityRecheck{uuid.uuid4().hex}(", 1)
+    events, cursors = [], set()
+    cursor = None
+    snapshot = None
+    while True:
+        argv = ["uv", "run", "--no-project", "--script", str(Path(__file__).with_name("gh_graphql.py")),
+                "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={number}"]
+        if cursor:
+            argv += ["-f", f"before={cursor}"]
+        data = command(argv)
+        if data.get("errors"):
+            raise ValueError("PR timeline GraphQL errors")
+        pr = data["data"]["repository"]["pullRequest"]
+        timeline = pr.pop("timelineItems")
+        labels = pr["labels"]
+        if labels["pageInfo"]["hasNextPage"]:
+            raise ValueError("incomplete PR labels")
+        pr["labels"] = labels["nodes"]
+        if snapshot is not None and pr != snapshot:
+            raise ValueError("PR changed during timeline pagination")
+        snapshot = pr
+        events = timeline["nodes"] + events
+        page = timeline["pageInfo"]
+        if not page["hasPreviousPage"]:
+            return dict(pr, events=events)
+        cursor = page["startCursor"]
+        if not cursor or cursor in cursors:
+            raise ValueError("incomplete PR timeline")
+        cursors.add(cursor)
+
+
+def ejection(pr: dict, run: dict) -> dict | None:
+    """A latest involuntary removal must bind the tested queue SHA and PR head."""
+    labels = {label["name"] for label in pr["labels"]}
+    hold = r"do not (enqueue|merge)|don't (enqueue|merge)|\bhold\b|\bwip\b|stacked on #"
+    if (pr["state"] != "OPEN" or pr["isDraft"] or pr["mergeable"] != "MERGEABLE"
+            or pr["mergeStateStatus"] in ("DIRTY", "UNKNOWN")
+            or pr["reviewDecision"] == "CHANGES_REQUESTED"
+            or labels.intersection({"queue-failed", "draft", "pool-active"})
+            or re.search(hold, pr["body"] + " " + " ".join(labels), re.I)):
+        return None
+    events = list(reversed(pr["events"]))
+    if not events or events[0]["__typename"] != "RemovedFromMergeQueueEvent":
+        return None  # a manual disarm/requeue/push since removal wins
+    removed = events[0]
+    if (removed["reason"] not in ("failed_checks", "checks_timed_out")
+            or (removed.get("beforeCommit") or {}).get("oid") != run["head_sha"]):
+        return None
+    # AddedToMergeQueue proves prior intent to merge; a manual disarm before
+    # removal invalidates that intent even if GitHub later emits failed_checks.
+    prior = events[1:]
+    if not prior or prior[0]["__typename"] != "AddedToMergeQueueEvent":
+        return None
+    head = next(((event.get("commit") or event.get("afterCommit") or {}).get("oid")
+                 for event in prior[1:] if event["__typename"] in ("PullRequestCommit", "HeadRefForcePushedEvent")), None)
+    return removed if head == pr["headRefOid"] else None
+
+
+def retry_marker(head: str) -> str:
+    # Share the older infrastructure handler's per-head budget as well.
+    return f"<!-- ai-rebase:requeue-ejected:{head} -->"
+
+
+def recover_run(repo: str, run: dict, workflow_id: int, *, dry_run: bool, can_requeue: bool) -> None:
+    label = f"capacity run {run['id']} attempt {run.get('run_attempt')}"
+    if run.get("workflow_id") != workflow_id or run.get("event") not in ("pull_request", "merge_group"):
+        print(f"{label}: ignored: unrelated workflow/event")
         return
     reason = classify(repo, run)
     if reason:
         print(f"{label}: skipped: {reason}")
         return
     fresh = command(["gh", "api", f"repos/{repo}/actions/runs/{run['id']}"])
-    identity = ("id", "event", "head_sha", "status", "conclusion", "run_attempt")
+    identity = ("id", "event", "workflow_id", "head_sha", "head_branch", "status", "conclusion", "run_attempt")
     if any(fresh.get(k) != run.get(k) for k in identity):
         print(f"{label}: skipped: run changed during inspection")
         return
-    if head not in queue_heads(repo):
-        print(f"{label}: skipped: head left the merge queue")
+    if run["event"] == "pull_request":
+        if dry_run:
+            print(f"{label}: dry-run: would rerun failed jobs")
+        else:
+            command(["gh", "api", "-X", "POST", f"repos/{repo}/actions/runs/{run['id']}/rerun-failed-jobs"])
+            print(f"{label}: requested rerun of failed jobs")
+        return
+    recover_ejected(repo, run, label, dry_run=dry_run, can_requeue=can_requeue)
+
+
+def recover_ejected(repo: str, run: dict, label: str, *, dry_run: bool, can_requeue: bool) -> None:
+    match = re.fullmatch(r"gh-readonly-queue/master/pr-([1-9][0-9]*)-[0-9a-f]{40}", run.get("head_branch") or "")
+    if not match:
+        print(f"{label}: skipped: unknown merge-group branch")
+        return
+    number = int(match[1])
+    pr = pr_snapshot(repo, number)
+    removed = ejection(pr, run)
+    if removed is None:
+        print(f"{label}: skipped: no matching latest ejection on an unchanged, armed, mergeable head")
+        return
+    endpoint = f"repos/{repo}/issues/{number}/comments"
+    marker = retry_marker(pr["headRefOid"])
+    if any(marker in (c.get("body") or "") for c in items(endpoint + "?per_page=100")):
+        print(f"{label}: skipped: automatic retry already spent for this PR head")
+        return
+    if not can_requeue:
+        print(f"::warning::{label}: AI_REBASE_TOKEN is required to trigger fresh merge-group CI; no requeue")
+        return
+    if pr_snapshot(repo, number, fresh=True) != pr:
+        print(f"{label}: skipped: PR changed during inspection")
         return
     if dry_run:
-        print(f"{label}: dry-run: would rerun failed jobs")
-    else:
-        command(["gh", "api", "-X", "POST", f"repos/{repo}/actions/runs/{run['id']}/rerun-failed-jobs"])
-        print(f"{label}: requested rerun of failed jobs")
+        print(f"{label}: dry-run: would re-arm #{number} at {pr['headRefOid']}")
+        return
+    # Serialized maintenance reserves the attempt before mutation, so even an
+    # ambiguous enqueue API failure cannot create an endless recovery loop.
+    body = (f"{marker}\nOne automatic capacity retry for `{pr['headRefOid']}` after "
+            f"run {run['id']} attempt {run['run_attempt']} ({removed['id']}). CI Gate must pass on the new group.")
+    command(["gh", "api", "-X", "POST", endpoint, "-f", f"body={body}"])
+    command(["gh", "pr", "merge", str(number), "--repo", repo, "--auto", "--match-head-commit", pr["headRefOid"]])
+    print(f"{label}: re-armed #{number} on the unchanged head")
 
 
-def maintain(repo: str, *, dry_run: bool = False) -> int:
-    """Inspect live merge-group runs and rerun only acquisition failures."""
+def maintain(repo: str, *, run_id: int | None = None, dry_run: bool = False, can_requeue: bool = False) -> int:
+    """Completed-event fast path, with a three-hour scheduled backstop."""
     rc = 0
     try:
-        heads = queue_heads(repo)
-        print(f"queue: {len(heads)} current merge-group head(s)")
-        for head in sorted(heads):
-            runs = items(f"repos/{repo}/actions/runs?event=merge_group&head_sha={head}&per_page=100", "workflow_runs")
-            for run in runs:
-                try:
-                    retry_run(repo, head, run, dry_run=dry_run)
-                except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
-                    print(f"queue run {run['id']}: skipped: API/evidence error: {error}")
-                    rc = 1
+        workflow = command(["gh", "api", f"repos/{repo}/actions/workflows/ci.yml"])
+        if workflow["path"] != ".github/workflows/ci.yml":
+            raise ValueError("unexpected CI workflow")
+        runs = [command(["gh", "api", f"repos/{repo}/actions/runs/{run_id}"])] if run_id is not None else []
+        since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        recent = items(f"repos/{repo}/actions/workflows/{workflow['id']}/runs?status=completed&created=%3E%3D{since}&per_page=100",
+                       "workflow_runs")
+        runs += [run for run in recent if run["id"] != run_id]
+        # Newest first; old failed attempts must never undo a newer transition.
+        for run in runs:
+            try:
+                recover_run(repo, run, workflow["id"], dry_run=dry_run, can_requeue=can_requeue)
+            except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+                print(f"capacity run {run['id']}: no retry authorized: API/evidence error: {error}")
+                rc = 1
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
-        print(f"queue: no retry authorized: API/evidence error: {error}")
+        print(f"capacity: no retry authorized: API/evidence error: {error}")
         return 1
     return rc
 
@@ -193,8 +275,10 @@ def maintain(repo: str, *, dry_run: bool = False) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--run-id", type=int)
     args = parser.parse_args()
-    return maintain(os.environ.get("GITHUB_REPOSITORY", "obs-rust/obs-studio"), dry_run=args.dry_run)
+    return maintain(os.environ.get("GITHUB_REPOSITORY", "obs-rust/obs-studio"), run_id=args.run_id,
+                    dry_run=args.dry_run, can_requeue=os.environ.get("HAS_TOKEN") == "true")
 
 
 if __name__ == "__main__":

@@ -36,6 +36,7 @@ class RecordedApi:
         self.mutations = []
         self.reads = []
         self.comments = []
+        self.run_reads = 0
         self.changed_run = False
         self.changed_pr = False
         self.pr_reads = 0
@@ -66,28 +67,34 @@ class RecordedApi:
             pr = copy.deepcopy(self.pr)
             if self.changed_pr and self.pr_reads > 1:
                 pr["headRefOid"] = "c" * 40
+            pr["labels"] = {"nodes": pr["labels"], "pageInfo": {"hasNextPage": False}}
             pr["timelineItems"] = {"nodes": self.events, "pageInfo": {"hasPreviousPage": False, "startCursor": None}}
             value = {"data": {"repository": {"pullRequest": pr}}}
         else:
-            endpoint = next(a for a in argv if a.startswith(f"repos/{REPO}/"))
-            if "/check-runs/" in endpoint:
-                if self.fail_annotations:
-                    raise subprocess.CalledProcessError(1, argv)
-                job = endpoint.split("/check-runs/")[1].split("/")[0]
-                value = [self.fixture["annotations"][job]]
-            elif "/comments" in endpoint:
-                value = [self.comments]
-            elif "/jobs?" in endpoint:
-                value = [self.fixture["jobs"]]
-            elif endpoint.endswith("workflows/ci.yml"):
-                value = {"id": 386287070, "path": ".github/workflows/ci.yml"}
-            elif "/runs?" in endpoint:
-                value = [{"total_count": 1, "workflow_runs": [self.run]}]
-            else:
-                value = dict(self.run)
-                if self.changed_run:
-                    value["run_attempt"] += 1
+            value = self.rest(argv)
         return subprocess.CompletedProcess(argv, 0, json.dumps(value), "")
+
+    def rest(self, argv):
+        endpoint = next(a for a in argv if a.startswith(f"repos/{REPO}/"))
+        if "/check-runs/" in endpoint:
+            if self.fail_annotations:
+                raise subprocess.CalledProcessError(1, argv)
+            job = endpoint.split("/check-runs/")[1].split("/")[0]
+            value = [self.fixture["annotations"][job]]
+        elif "/comments" in endpoint:
+            value = [self.comments]
+        elif "/jobs?" in endpoint:
+            value = [self.fixture["jobs"]]
+        elif endpoint.endswith("workflows/ci.yml"):
+            value = {"id": 386287070, "path": ".github/workflows/ci.yml"}
+        elif "/runs?" in endpoint:
+            value = [{"total_count": 1, "workflow_runs": [self.run]}]
+        else:
+            value = dict(self.run)
+            self.run_reads += 1
+            if self.changed_run and self.run_reads > 1:
+                value["run_attempt"] += 1
+        return value
 
 
 class RetryTest(unittest.TestCase):
@@ -224,6 +231,35 @@ class RetryTest(unittest.TestCase):
                 self.api = RecordedApi()
                 self.api.run.update(values)
                 self.assert_no_mutations()
+
+    def test_real_failed_checks_timeline_and_uncached_authorization_read(self):
+        fixture = json.loads((ROOT / "ci/fixtures/mq-acquire-retry.json").read_text())["observed_ejection"]
+        pr = dict(self.api.pr, headRefOid=fixture["headRefOid"], events=fixture["events"])
+        run = dict(self.api.run, head_sha=fixture["events"][-1]["beforeCommit"]["oid"])
+        self.assertEqual(retry.ejection(pr, run), fixture["events"][-1])
+        self.run_bot()
+        queries = [next(a for a in argv if a.startswith("query=")) for argv in self.api.reads if argv[0] == "uv"]
+        self.assertEqual(len(queries), 2)
+        self.assertNotEqual(queries[0], queries[1])
+        self.assertIn("query CapacityRecheck", queries[1])
+
+    def test_missing_gate_and_exhausted_attempt_never_retry(self):
+        for scenario in ("missing_gate", "attempt_three", "unknown_attempt"):
+            with self.subTest(scenario=scenario):
+                self.api = RecordedApi()
+                if scenario == "missing_gate":
+                    jobs = self.api.fixture["jobs"]["jobs"]
+                    self.api.fixture["jobs"]["jobs"] = [j for j in jobs if j["name"] != "CI Gate ✅"]
+                    self.api.fixture["jobs"]["total_count"] -= 1
+                else:
+                    self.api.run["run_attempt"] = 3 if scenario == "attempt_three" else None
+                self.assert_no_mutations()
+
+    def test_legacy_handler_cannot_bypass_strict_runnerless_evidence(self):
+        bot = load_ci("ai_rebase")
+        with patch.object(bot, "requeue_api_items", return_value=[self.api.run]), \
+                patch.object(bot, "run_jobs", return_value=self.api.fixture["jobs"]["jobs"]):
+            self.assertEqual(bot.queue_failure_kind(self.api.events[-1]), "unknown")
 
     def test_dry_run_has_no_mutations(self):
         self.assertIn("dry-run", self.run_bot(dry_run=True)[1])

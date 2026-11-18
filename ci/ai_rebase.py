@@ -595,6 +595,13 @@ def queue_failure_kind(event: dict) -> str:
         # A cancelled workflow can contain a real failure that caused the
         # cancellation. Inspect every failed job before treating it as infra.
         jobs = run_jobs(workflow["id"])
+        # Runnerless cancellations belong exclusively to mq_acquire_retry's
+        # exact annotation + CI Gate classifier. A generic "cancelled = infra"
+        # fallback must not bypass its refusal or per-head recovery budget.
+        if any(j.get("conclusion") == "cancelled" and not j.get("runner_name")
+               and not j.get("steps") for j in jobs):
+            kinds.append("unknown")
+            continue
         failed = [j for j in jobs if j.get("conclusion") in BAD_CONCLUSIONS]
         substantive = [j for j in failed if j["name"].split(" / ")[-1] != "CI Gate ✅"]
         kinds.extend(failed_job_kind(workflow, j) for j in substantive)
