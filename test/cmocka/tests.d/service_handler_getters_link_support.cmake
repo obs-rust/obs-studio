@@ -43,10 +43,7 @@ function(_service_handler_getters_link_support)
       STATIC
       "${CMAKE_CURRENT_SOURCE_DIR}/source-enabled-setter-video-link-stub.c"
     )
-    target_link_libraries(
-      test_service_handler_getters_rust
-      PRIVATE libobs_rust-static service_handler_getters_platform_link_support
-    )
+    target_link_libraries(test_service_handler_getters_rust PRIVATE service_handler_getters_platform_link_support)
   endif()
 endfunction()
 cmake_language(DEFER CALL _service_handler_getters_link_support)
