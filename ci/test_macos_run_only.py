@@ -92,6 +92,54 @@ class WorkflowTest(unittest.TestCase):
 
 
 class WorkspaceTest(unittest.TestCase):
+    def test_restore_removes_privileged_common_parent_and_propagates_real_errors(self):
+        import macos_test_workspace as workspace
+
+        for failure in (None, PermissionError("sudo denied")):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
+                source = Path(temporary) / "runner/checkout"
+                source.mkdir(parents=True)
+                (source / "Cargo.toml").write_text("workspace")
+                destination = Path(temporary) / "common/src"
+                workspace.place(source, destination)
+                original = Path.rmdir
+
+                def remove(path):
+                    if path == destination.parent:
+                        raise PermissionError(errno.EACCES, "root-owned /opt", str(path))
+                    return original(path)
+
+                def privileged(command, **kwargs):
+                    self.assertEqual(command, ["sudo", "-n", "rmdir", "--", str(destination.parent)])
+                    self.assertEqual(kwargs, {"check": True})
+                    if failure:
+                        raise failure
+                    original(destination.parent)
+
+                with mock.patch.object(Path, "rmdir", remove), mock.patch("subprocess.run", side_effect=privileged) as run:
+                    if failure:
+                        with self.assertRaisesRegex(PermissionError, "sudo denied"):
+                            workspace.restore(source, destination)
+                    else:
+                        workspace.restore(source, destination)
+                    run.assert_called_once()
+                self.assertFalse(source.is_symlink())
+                self.assertEqual((source / "Cargo.toml").read_text(), "workspace")
+
+    def test_restore_does_not_hide_nonempty_common_parent(self):
+        import macos_test_workspace as workspace
+
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "checkout"
+            source.mkdir()
+            destination = Path(temporary) / "common/src"
+            workspace.place(source, destination)
+            (destination.parent / "unexpected").write_text("preserve")
+            with mock.patch("subprocess.run") as run, self.assertRaises(OSError) as error:
+                workspace.restore(source, destination)
+            self.assertEqual(error.exception.errno, errno.ENOTEMPTY)
+            run.assert_not_called()
+
     def test_checkout_placement_across_runner_mounts(self):
         import macos_test_workspace as workspace
 

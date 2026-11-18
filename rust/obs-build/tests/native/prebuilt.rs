@@ -406,6 +406,31 @@ fn replay_rejects_recipe_changes_before_touching_artifacts() {
 }
 
 #[test]
+fn snapshot_replay_preserves_empty_space_named_working_directories() {
+    let directory = tempfile::tempdir().unwrap();
+    let work = directory.path().join("work");
+    let runtime = work.join("output/runtime root/Release");
+    fs::create_dir_all(&runtime).unwrap();
+    fs::write(work.join("output/CTestTestfile.cmake"), "fixture").unwrap();
+    let state = State {
+        bundle: directory.path().join("bundle"),
+        name: "probe".into(),
+        manifest: json!({"directories": [work], "host_cmake": ""}),
+        cursor: 0,
+        directories: 0,
+        replay: true,
+    };
+    // Serialize the producer snapshot as the bundle does; replay from a clean tree.
+    let event: Value = serde_json::from_slice(&serde_json::to_vec(&snapshot(&state)).unwrap()).unwrap();
+    assert!(event["directories"].as_array().unwrap().contains(&json!(runtime)));
+    fs::remove_dir_all(&work).unwrap();
+    restore(&state, &event);
+    assert!(runtime.is_dir());
+    assert_eq!(fs::read_to_string(work.join("output/CTestTestfile.cmake")).unwrap(), "fixture");
+    assert_eq!(fs::read_dir(runtime).unwrap().count(), 0);
+}
+
+#[test]
 fn replay_restores_artifacts_without_compiling_and_rejects_missing_or_corrupt_files() {
     let directory = tempfile::tempdir().unwrap();
     let work = directory.path().join("work");
