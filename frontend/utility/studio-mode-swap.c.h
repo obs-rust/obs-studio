@@ -11,3 +11,38 @@ void *studio_mode_swap_scene(void *swap_scene, void *preview_at_start, void *pre
 
 	return swap_scene;
 }
+
+enum studio_mode_program_step studio_mode_program_switch(struct studio_mode_program *state, void *target,
+							 void *preview_now, bool tbar_active, bool check_same,
+							 bool duplicate, bool swap_mode, bool still_transitioning)
+{
+	struct studio_mode_program next = *state;
+
+	if (!tbar_active) {
+		next.last_program = next.program;
+	}
+	next.program = target;
+
+	if (check_same) {
+		void *previous = next.last_program;
+
+		if (!duplicate && previous == target) {
+			*state = next;
+			return STUDIO_MODE_PROGRAM_SAME;
+		}
+
+		if (swap_mode && previous && previous != preview_now) {
+			next.swap_scene = previous;
+			next.swap_preview = preview_now;
+		}
+	}
+
+	/* The running transition keeps its target on the program and its swap:
+	 * a refused switch stores nothing (obsproject/obs-studio#14217). */
+	if (still_transitioning) {
+		return STUDIO_MODE_PROGRAM_REFUSED;
+	}
+
+	*state = next;
+	return STUDIO_MODE_PROGRAM_SWITCH;
+}
