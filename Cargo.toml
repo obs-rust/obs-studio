@@ -94,11 +94,6 @@ codegen-units = 256
 [profile.release.package.obs-source]
 codegen-units = 256
 
-# Keep the source-init fixture's private bridge separate from audio settings
-# adapters that require the full core's global state.
-[profile.release.package.obs-source-seam]
-codegen-units = 256
-
 # Output module lookup also reaches the core global. Keep unrelated standalone
 # Rust-static output/encoder consumers in separate optimized archive members.
 [profile.release.package.obs-output]

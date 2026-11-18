@@ -576,8 +576,8 @@ function(obs_native_test_graph path root)
           add_custom_command(
             OUTPUT "${import_library}"
             COMMAND
-              "${import_librarian}" /nologo "/def:${root}/${import_definition}" "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}"
-              "/out:${import_library}"
+              "${import_librarian}" /nologo "/def:${root}/${import_definition}"
+              "/machine:${CMAKE_C_COMPILER_ARCHITECTURE_ID}" "/out:${import_library}"
             DEPENDS "${root}/${import_definition}"
             VERBATIM
           )

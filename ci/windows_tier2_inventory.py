@@ -18,9 +18,16 @@ def extensionless_commands(build: Path, tests: list[dict]) -> list[dict]:
     with tempfile.TemporaryDirectory() as directory:
         output = Path(directory) / "commands.json"
         subprocess.run(
-            ["cmake", f"-DBUILD={build}", f"-DOUTPUT={output}", "-P",
-             str(Path(__file__).with_name("windows_tier2_commands.cmake"))],
-            check=True, capture_output=True, text=True,
+            [
+                "cmake",
+                f"-DBUILD={build}",
+                f"-DOUTPUT={output}",
+                "-P",
+                str(Path(__file__).with_name("windows_tier2_commands.cmake")),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
         )
         commands = json.loads(output.read_text())
     resolutions = []
@@ -38,16 +45,20 @@ def extensionless_commands(build: Path, tests: list[dict]) -> list[dict]:
         data = candidate.read_bytes()
         try:
             offset = struct.unpack_from("<I", data, 0x3C)[0]
-            valid = (data[:2] == b"MZ" and data[offset:offset + 4] == b"PE\0\0"
-                     and struct.unpack_from("<H", data, offset + 4)[0] == 0x8664
-                     and struct.unpack_from("<H", data, offset + 24)[0] == 0x20B)
+            valid = (
+                data[:2] == b"MZ"
+                and data[offset : offset + 4] == b"PE\0\0"
+                and struct.unpack_from("<H", data, offset + 4)[0] == 0x8664
+                and struct.unpack_from("<H", data, offset + 24)[0] == 0x20B
+            )
         except struct.error:
             valid = False
         if not valid:
             raise ValueError(f"extensionless command requires AMD64 PE32+: {candidate}")
         test["command"] = [str(candidate), *command[1:]]
-        resolutions.append({"name": test["name"], "original": command,
-                            "resolved": test["command"]})
+        resolutions.append(
+            {"name": test["name"], "original": command, "resolved": test["command"]}
+        )
     return resolutions
 
 

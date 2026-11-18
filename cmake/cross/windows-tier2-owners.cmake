@@ -39,17 +39,34 @@ function(obs_windows_tier2_owners)
     add_subdirectory("${OBS_SOURCE_ROOT}/shared/${_shared}" "${CMAKE_BINARY_DIR}/shared/${_shared}")
   endforeach()
   add_subdirectory("${OBS_SOURCE_ROOT}/libobs-winrt" "${CMAKE_BINARY_DIR}/libobs-winrt")
-  foreach(_plugin IN ITEMS obs-outputs obs-filters image-source obs-transitions text-freetype2 win-capture)
+  # The MSVC SDK rejects Clang's experimental coroutine header. Use its
+  # supported standard coroutine implementation for this cross-only module.
+  set_property(TARGET libobs-winrt PROPERTY CXX_STANDARD 20)
+  target_compile_options(libobs-winrt PRIVATE -fno-char8_t)
+  foreach(
+    _plugin
+    IN
+    ITEMS obs-outputs obs-filters image-source obs-transitions text-freetype2 win-capture
+  )
     add_subdirectory("${OBS_SOURCE_ROOT}/plugins/${_plugin}" "${CMAKE_BINARY_DIR}/plugins/${_plugin}")
     if(TARGET ${_plugin})
       target_enable(${_plugin})
     endif()
   endforeach()
+  # Match rnnoise.cmake's MSVC ABI typedef for GNU-style Clang as well.
+  set_property(
+    SOURCE "${OBS_SOURCE_ROOT}/plugins/obs-filters/build/obs-filters.noise-suppress+.h.c" TARGET_DIRECTORY obs-filters
+    APPEND
+    PROPERTY COMPILE_DEFINITIONS ssize_t=intptr_t
+  )
   # Generate the real list for this enabled owner graph with the native template.
   get_property(_modules GLOBAL PROPERTY OBS_MODULES_ENABLED)
   list(LENGTH _modules OBS_CORE_MODULE_COUNT)
   string(REPLACE ";" "\",\n\t\"" _module_names "${_modules}")
   set(OBS_CORE_MODULE_LIST "\t\"${_module_names}\"")
-  configure_file("${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
-                 "${CMAKE_BINARY_DIR}/config/obs-core-modules.c" @ONLY)
+  configure_file(
+    "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
+    "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+    @ONLY
+  )
 endfunction()

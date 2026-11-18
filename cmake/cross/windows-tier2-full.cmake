@@ -25,11 +25,17 @@ set(ENABLE_SCRIPTING OFF)
 set(ENABLE_BROWSER OFF)
 set(ENABLE_WEBSOCKET OFF)
 set(ENABLE_CORE_MODULES ON)
+# bootstrap sets this for native directories. The probe's scoped bootstrap
+# cannot propagate it, so retain native owner-local header discovery here.
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+foreach(_variant IN ITEMS shared reference)
+  target_include_directories(libobs-cross-${_variant} PRIVATE "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+endforeach()
 add_library(libobs-cross-core-modules OBJECT "${CMAKE_BINARY_DIR}/config/obs-core-modules.c")
 add_library(OBS::libobs-core-modules ALIAS libobs-cross-core-modules)
 target_include_directories(libobs-cross-core-modules PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
 set(HAVE_LIBOBS_RUST_STATIC TRUE)
-set(LIBOBS_SHARED_TARGETS libobs-cross-shared libobs-cross-reference)
+set(OBS_TEST_LIBOBS_SHARED_TARGETS libobs-cross-shared libobs-cross-reference)
 add_library(libobs-objects ALIAS libobs-cross-shared-objects)
 list(PREPEND CMAKE_PREFIX_PATH "${OBS_CROSS_QT}")
 # All imported packages must describe the Windows target, never the Linux host.
@@ -160,12 +166,38 @@ include("${CMAKE_CURRENT_LIST_DIR}/windows-tier2-options.cmake")
 obs_windows_tier2_driver_options("${CMAKE_CURRENT_SOURCE_DIR}")
 add_custom_target(
   tier2-cross-full
-  DEPENDS libobs-cross-shared libobs-cross-reference cmocka-tests libobs-d3d11 libobs-opengl
-    obs-outputs obs-filters image-source obs-transitions text-freetype2 win-capture
-    graphics-hook get-graphics-offsets inject-helper libobs-winrt
+  DEPENDS
+    libobs-cross-shared
+    libobs-cross-reference
+    cmocka-tests
+    libobs-d3d11
+    libobs-opengl
+    obs-outputs
+    obs-filters
+    image-source
+    obs-transitions
+    text-freetype2
+    win-capture
+    graphics-hook
+    get-graphics-offsets
+    inject-helper
+    libobs-winrt
 )
-foreach(_owner IN ITEMS obs-outputs obs-filters image-source obs-transitions text-freetype2 win-capture
-                        graphics-hook get-graphics-offsets inject-helper libobs-winrt)
+foreach(
+  _owner
+  IN
+  ITEMS
+    obs-outputs
+    obs-filters
+    image-source
+    obs-transitions
+    text-freetype2
+    win-capture
+    graphics-hook
+    get-graphics-offsets
+    inject-helper
+    libobs-winrt
+)
   string(APPEND _owner_runtime "$<TARGET_FILE:${_owner}>\n")
 endforeach()
 get_property(_test_targets DIRECTORY "${OBS_SOURCE_ROOT}/test/cmocka" PROPERTY BUILDSYSTEM_TARGETS)

@@ -12,7 +12,9 @@ from test_windows_zip_check import pe
 import windows_tier2_inventory as helper
 
 
-@unittest.skipUnless(shutil.which("ctest") and shutil.which("cmake"), "needs CMake/CTest")
+@unittest.skipUnless(
+    shutil.which("ctest") and shutil.which("cmake"), "needs CMake/CTest"
+)
 class InventoryTests(unittest.TestCase):
     def fixture(self, root, data):
         tests = root / "test/cmocka"
@@ -21,7 +23,7 @@ class InventoryTests(unittest.TestCase):
         (root / "CTestTestfile.cmake").write_text('subdirs("test/cmocka")\n')
         (tests / "CTestTestfile.cmake").write_text(
             f'add_test(legacy "{tests}/legacy" "two words" "a;b")\n'
-            'set_tests_properties(legacy PROPERTIES TIMEOUT 17 RUN_SERIAL TRUE RESOURCE_LOCK graphics)\n'
+            "set_tests_properties(legacy PROPERTIES TIMEOUT 17 RUN_SERIAL TRUE RESOURCE_LOCK graphics)\n"
             f'add_test(missing "{tests}/missing")\n'
         )
 
@@ -29,10 +31,15 @@ class InventoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.fixture(root, pe([]))
-            result = helper.inventory(root, {"names": ["legacy", "missing"], "revision": "sha", "job": 1})
+            result = helper.inventory(
+                root, {"names": ["legacy", "missing"], "revision": "sha", "job": 1}
+            )
             self.assertEqual(["missing"], result["unbuilt_tests"])
             legacy = next(t for t in result["tests"] if t["name"] == "legacy")
-            self.assertEqual([str(root / "test/cmocka/legacy.exe"), "two words", "a;b"], legacy["command"])
+            self.assertEqual(
+                [str(root / "test/cmocka/legacy.exe"), "two words", "a;b"],
+                legacy["command"],
+            )
             props = {p["name"]: p["value"] for p in legacy["properties"]}
             self.assertEqual(17, props["TIMEOUT"])
             self.assertTrue(props["RUN_SERIAL"])
@@ -43,11 +50,16 @@ class InventoryTests(unittest.TestCase):
         bad = bytearray(pe([]))
         struct.pack_into("<H", bad, 0x44, 0xAA64)
         for data in (bytes(bad), b"not a PE"):
-            with self.subTest(data=data[:2]), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(data=data[:2]),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 root = Path(directory)
                 self.fixture(root, data)
                 with self.assertRaisesRegex(ValueError, "AMD64 PE"):
-                    helper.inventory(root, {"names": ["legacy"], "revision": "sha", "job": 1})
+                    helper.inventory(
+                        root, {"names": ["legacy"], "revision": "sha", "job": 1}
+                    )
 
     def test_rejects_resolution_outside_the_build(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -56,9 +68,13 @@ class InventoryTests(unittest.TestCase):
             outside = root / "outside.exe"
             outside.write_bytes(pe([]))
             build = root / "test/cmocka"
-            (build / "CTestTestfile.cmake").write_text(f'add_test(escape "{root}/outside")\n')
+            (build / "CTestTestfile.cmake").write_text(
+                f'add_test(escape "{root}/outside")\n'
+            )
             with self.assertRaisesRegex(ValueError, "outside"):
-                helper.inventory(build, {"names": ["escape"], "revision": "sha", "job": 1})
+                helper.inventory(
+                    build, {"names": ["escape"], "revision": "sha", "job": 1}
+                )
 
 
 if __name__ == "__main__":

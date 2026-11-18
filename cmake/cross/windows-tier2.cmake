@@ -17,8 +17,11 @@ endif()
 # soldr's case-insensitive VFS is a compiler-header overlay. lld-link still
 # searches physical library names; keep the one mixed-case consumer alias local.
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cross-case-libs")
-file(CREATE_LINK "${_tier2_xwin}/sdk/lib/um/x86_64/rpcrt4.lib"
-     "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib" SYMBOLIC RESULT _rpc_alias)
+file(
+  CREATE_LINK "${_tier2_xwin}/sdk/lib/um/x86_64/rpcrt4.lib" "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib"
+  SYMBOLIC
+  RESULT _rpc_alias
+)
 if(NOT _rpc_alias STREQUAL "0")
   message(FATAL_ERROR "Cannot create cross-only Rpcrt4.lib alias: ${_rpc_alias}")
 endif()
@@ -138,7 +141,10 @@ set_target_properties(
 )
 add_dependencies(libobs_rust-static libobs-cross-shared-rust)
 target_link_directories(libobs_rust-static INTERFACE "${CMAKE_BINARY_DIR}/cross-case-libs")
-target_link_libraries(libobs_rust-static INTERFACE ws2_32 ntdll bcrypt userenv legacy_stdio_definitions)
+target_link_libraries(
+  libobs_rust-static
+  INTERFACE ws2_32 ntdll bcrypt userenv legacy_stdio_definitions
+)
 foreach(_component IN ITEMS avcodec avformat avutil)
   add_library(FFmpeg::${_component} UNKNOWN IMPORTED GLOBAL)
   set_target_properties(

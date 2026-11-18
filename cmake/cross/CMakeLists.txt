@@ -280,7 +280,11 @@ function(_obs_cross_shared_libobs name)
     # Cargo owns source freshness; Ninja must also see the archive as a product.
     add_custom_target(
       ${name}-rust
-      COMMAND soldr cargo build --release --locked --target "${_rust_triple}" -p libobs-rust
+      # Preserve native compiler options. Only this GNU/MSVC producer needs
+      # source-seam FFI modules in separate release archive members.
+      COMMAND
+        soldr cargo build --release --locked --target "${_rust_triple}" -p libobs-rust --config
+        profile.release.package.obs-source-seam.codegen-units=256
       BYPRODUCTS "${_rust_archive}"
       WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
       USES_TERMINAL
