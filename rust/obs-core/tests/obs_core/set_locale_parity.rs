@@ -55,7 +55,7 @@ fn compare(order: &[u8; 6], count: u32, callbacks: u32, mutate: bool, steps: &[O
         assert_eq!(state[0], u64::from(step.is_some()));
         assert_eq!(state[1], u64::from(step.is_some()));
         let event_len = state[2] as usize;
-        for event in state[3..3 + event_len].chunks_exact(4) {
+        for event in state[3..3 + event_len].as_chunks::<4>().0 {
             assert!(event[0] < 6, "disabled-list callback must not run");
             assert_eq!(&event[1..], &[1, 1, u64::from(step.is_some())]);
         }
