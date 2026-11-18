@@ -226,6 +226,8 @@ mod output_mixer_setters_parity;
 
 mod output_video_encoder_getter;
 mod output_video_encoder_getter_parity;
+mod output_video_getter;
+mod output_video_getter_parity;
 
 mod output_size_getters;
 mod output_size_getters_parity;
