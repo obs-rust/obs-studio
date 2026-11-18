@@ -1233,6 +1233,26 @@ failed qualification: Windows profiles were cold, and successful macOS app
 builds lacked installed-binary freshness proof. Its retained evidence includes
 the final failed gate and successful compatibility and protocol checks.
 
+## Cross lint and Fast Gate overlap
+
+The debug cross-lint matrix starts after scope and immutable-base admission,
+alongside Fast Gate, as the release cross-lint lane already does (#4990).
+It consumes no Fast Gate output or artifact; PR admission, cumulative queue
+scope, targets, commands and CI Gate's required execution manifest are unchanged.
+A failed or cancelled Fast Gate still blocks merging even if cross lint passes.
+
+The November 17 sample of 30 completed `ci.yml` runs had 22 successful,
+four failed, two skipped and two cancelled Fast Gates. A fixed-duration replay
+removes 4.52–5.28 minutes from four of eleven successful hosted PR runs;
+other heavy jobs mask the saving in the remaining seven PR runs and all
+three successful queue runs. This is an overlap estimate, not a hosted
+after-change measurement, and earlier runner allocation can change contention.
+Cross lint now also spends runner time when Fast Gate fails: the observed
+median combined debug-matrix execution was 11.87 hosted or 9.21 Dell
+runner-minutes. All four failed Fast Gates used Dell runners, so full matrix
+execution at that median would add about 36.83 runner-minutes across the
+sample (1.23 per run), before cancellation savings. Successful runs add no work.
+
 ## Tier 2 execution and Fast Gate overlap
 
 The Windows and macOS validators opt into `OBS_BUILD_NATIVE_TIER2` and build
