@@ -38,6 +38,7 @@ mod caption_callbacks_parity;
 mod color_space;
 mod color_space_parity;
 mod configurable;
+mod configurable_parity;
 mod conversion_plan;
 mod conversion_plan_parity;
 mod default_flags;

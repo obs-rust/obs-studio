@@ -16,6 +16,7 @@ pub mod source_base_size;
 pub mod source_boolean_queries;
 pub mod source_caption_callbacks;
 pub mod source_color_space;
+pub mod source_configurable;
 pub mod source_conversion_plan;
 pub mod source_default_flags;
 pub mod source_deinterlace_draw;
