@@ -199,6 +199,7 @@ pub mod audio_settings;
 pub mod audio_timing;
 pub mod base_size;
 pub mod boolean_queries;
+pub mod caption_callbacks;
 pub mod color_space;
 pub mod conversion_plan;
 pub mod default_flags;
