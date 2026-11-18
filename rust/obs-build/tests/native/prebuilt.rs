@@ -10,6 +10,59 @@ const PREPARE: &str = "OBS_NATIVE_FIXTURES_PREPARE";
 const PREBUILT: &str = "OBS_NATIVE_FIXTURES";
 
 #[test]
+fn nonmatching_target_contracts_need_no_fixture_manifest() {
+    let category = std::env::current_exe().unwrap();
+    let module = module_path!().split_once("::").unwrap().1;
+    let parent = module.rsplit_once("::").unwrap().0;
+    let directory = tempfile::tempdir().unwrap();
+    for (name, native_applies) in [
+        (
+            "swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds",
+            obs_build::BUILD_TARGET.contains("apple-darwin"),
+        ),
+        (
+            "pch_preserves_mixed_languages_unity_and_header_flag_invalidation",
+            obs_build::BUILD_TARGET.contains("linux") || obs_build::BUILD_TARGET.contains("apple"),
+        ),
+    ] {
+        let selector = format!("{parent}::{name}");
+        let missing = directory.path().join(name);
+        // These contracts do not apply to MSVC. Preparation must return before
+        // entering a scope, rather than publish misleading empty evidence.
+        let output = Command::new(&category)
+            .args(["--exact", &selector, "--nocapture"])
+            .env_remove(PREBUILT)
+            .env(PREPARE, &missing)
+            .env("OBS_NATIVE_FIXTURE_TARGET", "x86_64-pc-windows-msvc")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{selector}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        assert!(!missing.exists(), "skipped contract created fixture evidence: {selector}");
+        if !native_applies {
+            // Replay sets this variable for the entire category. Inapplicable
+            // tests must still return without requesting an omitted fixture.
+            let output = Command::new(&category)
+                .args(["--exact", &selector, "--nocapture"])
+                .env_remove(PREPARE)
+                .env(PREBUILT, &missing)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{selector}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        }
+    }
+}
+
+#[test]
 fn windows_evidence_is_target_bound_and_resource_mutations_require_rebuilds() {
     let mut manifest = json!({"version": 1, "host": "x86_64-unknown-linux-gnu",
         "target": "x86_64-pc-windows-msvc", "complete": true, "events": [], "directories": []});
