@@ -2281,6 +2281,9 @@ jobs:
     name: macOS Rust Artifacts 🐧
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
+    outputs:
+      common-parent: ${{ steps.workspace.outputs.common-parent }}
+      artifact-id: ${{ steps.bundle.outputs.artifact-id }}
     if: ${{ always() && !cancelled() && (github.event_name == 'merge_group' || needs.ci-mode.outputs.skip_rust-tests-macos != 'true') && needs.check-event.outputs.macos == 'true' }}
     env:
       COMMON_PARENT: /opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}
@@ -2302,6 +2305,12 @@ jobs:
           sudo chown "$(id -u):$(id -g)" "${COMMON_PARENT}"
           uv run --no-project ci/macos_test_workspace.py place --source "${GITHUB_WORKSPACE}" --destination "${COMMON_PARENT}/src"
 
+      - name: Install Linux preparation dependencies
+        run: |
+          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
+          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y --no-install-recommends cmake ninja-build pkg-config uuid-dev libglib2.0-dev libxkbcommon-dev libncurses6 libtinfo6 libsqlite3-0
+
       - name: Set Up soldr 🦀
         uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         with:
@@ -2320,11 +2329,8 @@ jobs:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
-      - name: Install Linux preparation dependencies
-        run: |
-          sudo -E "$(command -v uv)" run --no-project ci/host_apt_mirrors.py
-          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
-          sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y --no-install-recommends cmake ninja-build pkg-config libglib2.0-dev libssl-dev libxml2 libedit2 libsqlite3-0 libcurl4 libtinfo6 libz3-4
+      - name: Prepare Darwin standard library
+        run: uv run --no-project ci/macos_test_artifact.py prepare-target
 
       # Preserve #4999: the required queue cross leg already owns this analysis.
       # Other events still analyze the Darwin target, now on Linux.
@@ -2358,6 +2364,7 @@ jobs:
         run: uv run --no-project ci/macos_test_workspace.py pack --bundle "${RUNNER_TEMP}/macos-bundle" --archive "${RUNNER_TEMP}/macos-tests.tar.gz"
 
       - name: Upload Darwin bundle
+        id: bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: macos-rust-tests-${{ github.run_id }}-${{ github.run_attempt }}
@@ -2381,7 +2388,7 @@ jobs:
     runs-on: macos-26
     needs: [check-event, ci-mode, rust-tests-macos-build]
     env:
-      COMMON_PARENT: /opt/obs-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      COMMON_PARENT: ${{ needs.rust-tests-macos-build.outputs.common-parent }}
     steps:
       # Source is runtime test data, including source-inventory assertions.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -2405,7 +2412,8 @@ jobs:
       - name: Download Darwin bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: macos-rust-tests-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.rust-tests-macos-build.outputs.artifact-id }}
+          merge-multiple: true
           path: ${{ runner.temp }}/macos-download
 
       - name: Verify and unpack Darwin bundle

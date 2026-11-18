@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import shutil
 import tarfile
 from pathlib import Path
@@ -66,6 +67,9 @@ def main() -> None:
     args = parser.parse_args()
     if args.action in ("place", "restore"):
         {"place": place, "restore": restore}[args.action](args.source, args.destination)
+        if args.action == "place" and os.environ.get("GITHUB_OUTPUT"):
+            with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+                output.write(f"common-parent={args.destination.parent}\n")
     elif args.action == "pack":
         pack(args.bundle, args.archive)
     else:

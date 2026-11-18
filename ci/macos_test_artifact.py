@@ -377,6 +377,7 @@ def build(output: Path, base: str | None) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("prepare-target")
     producer = sub.add_parser("build")
     producer.add_argument("--output", type=Path, required=True)
     producer.add_argument("--base")
@@ -388,6 +389,11 @@ def main() -> int:
     capture.add_argument("binary", type=Path)
     capture.add_argument("args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    if args.command == "prepare-target":
+        import local_gate
+
+        local_gate.add_target(TARGET)
+        return 0
     if args.command == "build":
         return build(args.output.resolve(), args.base)
     if args.command == "capture-doctest":
