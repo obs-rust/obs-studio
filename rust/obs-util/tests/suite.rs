@@ -19,3 +19,4 @@ mod strings;
 
 #[path = "../../obs-c-oracle/tests/oracle/main.rs"]
 mod oracle;
+mod windows_out_dir;

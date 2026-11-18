@@ -29,3 +29,4 @@ mod native_libobs;
 mod qt_sdk;
 #[path = "../../../obs-build/src/platform/shared_library.rs"]
 mod shared_library;
+mod windows_paths;
