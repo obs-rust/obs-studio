@@ -1,0 +1,37 @@
+"""The Windows hosted experiment stays opt-in and outside required jobs."""
+import unittest
+
+from test_windows_lf_checkout import job
+
+
+class ProofWorkflowTest(unittest.TestCase):
+    def test_proof_is_opt_in_path_gated_and_nonrequired(self):
+        for name in ("windows-run-only-proof-build", "windows-run-only-proof"):
+            body = job(name)
+            self.assertIn("vars.WINDOWS_RUN_ONLY_PROOF_REF == github.ref", body)
+            self.assertIn("needs.check-event.outputs.windows_link == 'true'", body)
+            self.assertIn("needs.check-event.outputs.docs_only != 'true'", body)
+            self.assertIn("github.event_name != 'merge_group'", body)
+            self.assertIn("continue-on-error: true", body)
+        # Existing required Windows lane retains its original native coverage.
+        required = job("rust-tests-windows")
+        self.assertIn("Run Tests", required)
+        self.assertIn("soldr cargo", required)
+        self.assertNotIn("windows_test_proof", required)
+
+    def test_consumer_uses_immutable_producer_and_never_compiles(self):
+        body = job("windows-run-only-proof")
+        self.assertIn("needs.windows-run-only-proof-build.result == 'success'", body)
+        self.assertIn("artifact-ids: ${{ needs.windows-run-only-proof-build.outputs.artifact-id }}", body)
+        for output in ("run-id", "attempt", "source-sha", "archive-sha", "logical-root"):
+            self.assertIn(f"needs.windows-run-only-proof-build.outputs.{output}", body)
+        self.assertIn("python-version: '3.14'", body)
+        self.assertIn("shell: pwsh", body)
+        self.assertIn("working-directory: ${{ steps.workspace.outputs.real-root }}", body)
+        self.assertIn("core.autocrlf input", body)
+        for forbidden in ("setup-soldr", "cargo ", "vcpkg", "pkgconf", "Install Qt"):
+            self.assertNotIn(forbidden, body)
+
+
+if __name__ == "__main__":
+    unittest.main()
