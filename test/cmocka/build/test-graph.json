@@ -13835,6 +13835,27 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_service_handler_getters": {
+      "sources": [
+        "test/cmocka/test_service_handler_getters.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-handler-getters.c.h"
+      ],
+      "includes": [
+        "."
+      ]
+    },
     "test_service_lifecycle": {
       "sources": [
         "test/cmocka/test_service_lifecycle.c"
@@ -24899,6 +24920,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_service_handler_getters": {
+      "target": "test_service_handler_getters",
+      "command": [
+        "${target}"
       ]
     },
     "test_service_lifecycle": {
