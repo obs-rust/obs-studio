@@ -713,6 +713,7 @@ class RetryDeadlineTest(unittest.TestCase):
         self.assertEqual(self.sleeps, [1])
 
     def test_retries_consume_shared_request_budget(self):
+        self.enterContext(patch.object(selector, "MAX_REQUESTS", 10))
         probe = selector.Probe(
             "token",
             "https://api.github.com",
@@ -870,7 +871,7 @@ class InflightAdmissionTest(unittest.TestCase):
                 clear=True,
             ),
             patch.object(selector, "urlopen", side_effect=respond) as http,
-            redirect_stdout(io.StringIO()),
+            redirect_stdout(io.StringIO()) as output,
         ):
             selected = selector.select_labels(
                 "merge_group",
@@ -880,7 +881,9 @@ class InflightAdmissionTest(unittest.TestCase):
                 min_idle="3",
                 demand="3",
             )
-        self.assertLessEqual(http.call_count, 10)
+        self.output = output.getvalue()
+        self.http = http
+        self.assertLessEqual(http.call_count, selector.MAX_REQUESTS)
         return selected
 
     def test_four_simultaneous_recorded_runs_admit_oldest_two(self):
@@ -935,7 +938,7 @@ class InflightAdmissionTest(unittest.TestCase):
     def test_known_newer_dell_runs_reserve_slots(self):
         for run in self.runs[2:]:
             self.jobs[run["id"]] = [
-                dict(self.fixture["queued_jobs"][0], status="completed")
+                dict(self.fixture["queued_jobs"][0], status="in_progress")
             ]
         self.assertEqual(self.select(self.runs[0]["id"]), "")
 
@@ -992,13 +995,77 @@ class InflightAdmissionTest(unittest.TestCase):
                     self.select(self.runs[0]["id"], transform=incomplete), ""
                 )
 
-    def test_request_budget_exhaustion_uses_hosted(self):
-        # More active runs than can be classified in the ten-request budget.
+    def test_nine_active_runs_fit_request_budget(self):
+        # Five queue entries plus four still-visible runs from a regroup.
         self.runs.extend(
-            dict(self.runs[0], id=50000000000 + index) for index in range(10)
+            dict(self.runs[0], id=50000000000 + index) for index in range(5)
         )
         self.jobs.update({run["id"]: [] for run in self.runs})
-        self.assertEqual(self.select(self.runs[0]["id"]), "")
+        self.assertTrue(self.select(self.runs[0]["id"]))
+        self.assertEqual(self.http.call_count, 12)
+        self.assertNotIn("probe failed", self.output)
+
+    def test_budget_exhaustion_reserves_unprobed_runs(self):
+        with patch.object(selector, "MAX_REQUESTS", 5):
+            self.assertEqual(self.select(self.runs[0]["id"]), "")
+        self.assertIn("unprobed=2", self.output)
+        self.assertIn("queued=6", self.output)
+        self.assertIn("committed=2", self.output)
+        self.assertIn("request budget exhausted", self.output)
+        self.assertNotIn("probe failed", self.output)
+
+    def test_queued_runs_reserve_capacity_without_jobs_calls(self):
+        self.runs[0]["status"] = "queued"
+        self.assertEqual(self.select(self.runs[2]["id"]), "")
+        urls = [call.args[0].full_url for call in self.http.call_args_list]
+        self.assertFalse(any(f'/runs/{self.runs[0]["id"]}/jobs' in url for url in urls))
+
+    def test_terminal_runs_in_active_listing_are_ignored(self):
+        current = self.runs[-1]["id"]
+        for terminal in (
+            {"status": "completed"},
+            {"status": "cancelled"},
+            {"conclusion": "cancelled"},
+            {"conclusion": "success"},
+        ):
+            def finish_runs(path, payload):
+                if path.endswith("/runs"):
+                    payload["workflow_runs"] = [
+                        run if run["id"] == current else dict(run, **terminal)
+                        for run in payload["workflow_runs"]
+                    ]
+                return payload
+
+            with self.subTest(terminal=terminal):
+                self.assertTrue(self.select(current, transform=finish_runs))
+                self.assertEqual(self.http.call_count, 4)
+
+    def test_terminal_jobs_do_not_commit_capacity(self):
+        for terminal in (
+            {"status": "completed"},
+            {"status": "queued", "conclusion": "cancelled"},
+            {"status": "in_progress", "conclusion": "success"},
+        ):
+            for run in self.runs[1:]:
+                self.jobs[run["id"]] = [dict(job, **terminal) for job in self.fixture["queued_jobs"]]
+            with self.subTest(terminal=terminal):
+                self.assertTrue(self.select(self.runs[0]["id"]))
+
+    def test_warning_names_probe_step_and_value_error(self):
+        def incomplete_jobs(path, payload):
+            return dict(payload, total_count=999) if path.endswith("/jobs") else payload
+
+        self.assertEqual(self.select(self.runs[0]["id"], transform=incomplete_jobs), "")
+        self.assertIn("jobs probe", self.output)
+        self.assertIn("incomplete collection", self.output)
+
+    def test_warning_names_runs_probe_and_value_error(self):
+        def incomplete_runs(path, payload):
+            return dict(payload, total_count=999) if path.endswith("/runs") else payload
+
+        self.assertEqual(self.select(self.runs[0]["id"], transform=incomplete_runs), "")
+        self.assertIn("runs probe (queued)", self.output)
+        self.assertIn("incomplete collection", self.output)
 
     def test_malformed_job_labels_use_hosted(self):
         self.jobs[self.runs[0]["id"]] = [
