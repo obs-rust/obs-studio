@@ -34,6 +34,28 @@ def executable_directory(image: Path) -> Path | None:
     return image.parent if len(data) >= 16 and struct.unpack_from("<I", data, 12)[0] == 2 else None
 
 
+def resolve_load(value: str, image: Path, entry: Path | None, rpaths: list[str], search: list[Path]) -> Path:
+    def expand(path):
+        if "@executable_path" in path and entry is None:
+            raise ValueError(f"@executable_path requires an entry executable context: {image}")
+        return Path(path.replace("@loader_path", str(image.parent)).replace("@executable_path", str(entry)))
+    if value.startswith("@rpath/"):
+        suffix = value.removeprefix("@rpath/")
+        candidates = [expand(path) / suffix for path in rpaths] + [root / suffix for root in search]
+    elif value.startswith(("@loader_path/", "@executable_path/")):
+        candidates = [expand(value)]
+    elif value.startswith("/"):
+        candidate = Path(value)
+        candidates = [candidate] if any(candidate.is_relative_to(root) for root in search) else []
+    else:
+        candidates = []
+    found = next((path.resolve() for path in candidates if path.is_file()
+                  and any(path.resolve().is_relative_to(root) for root in search)), None)
+    if found is None:
+        raise ValueError(f"unresolved Darwin load in {image}: {value}")
+    return found
+
+
 def closure(images: list[Path], search: list[Path], verify, executable_context: Path | None = None) -> dict:
     """Check against explicitly declared run-host DYLD library/framework roots.
 
@@ -59,24 +81,7 @@ def closure(images: list[Path], search: list[Path], verify, executable_context: 
         for command, value in commands:
             if command == 0x8000001C or value.startswith(("/usr/lib/", "/System/Library/")):
                 continue
-            def expand(path):
-                if "@executable_path" in path and entry is None:
-                    raise ValueError(f"@executable_path requires an entry executable context: {image}")
-                return Path(path.replace("@loader_path", str(image.parent)).replace("@executable_path", str(entry)))
-            if value.startswith("@rpath/"):
-                suffix = value.removeprefix("@rpath/")
-                candidates = [expand(path) / suffix for path in rpaths] + [root / suffix for root in search]
-            elif value.startswith(("@loader_path/", "@executable_path/")):
-                candidates = [expand(value)]
-            elif value.startswith("/"):
-                candidate = Path(value)
-                candidates = [candidate] if any(candidate.is_relative_to(root) for root in search) else []
-            else:
-                candidates = []
-            found = next((path.resolve() for path in candidates if path.is_file()
-                          and any(path.resolve().is_relative_to(root) for root in search)), None)
-            if found is None:
-                raise ValueError(f"unresolved Darwin load in {image}: {value}")
+            found = resolve_load(value, image, entry, rpaths, search)
             dependencies.append({"load": value, "path": str(found)})
             pending.append((found, entry))
         if str(image) in checked and checked[str(image)] != dependencies:
