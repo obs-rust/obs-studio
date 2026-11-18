@@ -32,7 +32,7 @@ void obs_hotkey_unregister_remove(obs_hotkey_t *key)
 
 int obs_hotkey_unregister_category(obs_hotkey_t *key)
 {
-	return key->registerer_type;
+	return (int)key->registerer_type;
 }
 
 void *obs_hotkey_unregister_owner(obs_hotkey_t *key)
