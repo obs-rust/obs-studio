@@ -16,6 +16,9 @@ function(set_target_properties_obs target)
     ${target}
     PRIVATE NOMINMAX UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS
   )
+  # CMake's GNU Windows link rule uses -nostdlib, so retain the provisioned
+  # compiler-rt archive for real owner DLLs as for the original C reference.
+  target_link_libraries(${target} PRIVATE "${_tier2_builtins}")
   target_install_resources(${target})
 endfunction()
 function(obs_windows_tier2_owners)
