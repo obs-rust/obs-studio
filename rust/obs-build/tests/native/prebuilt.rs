@@ -689,27 +689,41 @@ pub fn defer_answer(library: &Path, symbol: &str, expected: i32) -> bool {
     }
 }
 
-fn command_recipe_with_tools(command: &Command, _tools: &BTreeMap<String, PathBuf>) -> Value {
-    command_recipe(command)
-}
-
 #[test]
 fn host_tool_recipes_preserve_every_non_tool_field() {
     let recipe = |cmake: &str| {
         let mut command = Command::new(cmake);
-        command.args(["-E", "env", "OBS_WRAPPER_VALUE=outer", cmake, "-E", "env",
-            "OBS_WRAPPER_VALUE=wrapped", "/fixture/answer", "two words"])
-            .env("OBS_GRAPH_VALUE", "first;second").current_dir("/fixture/runtime root");
-        command_recipe_with_tools(&command, &BTreeMap::from([("cmake".into(), PathBuf::from(cmake))]))
+        command
+            .args([
+                "-E",
+                "env",
+                "OBS_WRAPPER_VALUE=outer",
+                cmake,
+                "-E",
+                "env",
+                "OBS_WRAPPER_VALUE=wrapped",
+                "/fixture/answer",
+                "two words",
+            ])
+            .env("OBS_GRAPH_VALUE", "first;second")
+            .current_dir("/fixture/runtime root");
+        command_recipe_with_tools(
+            &command,
+            &BTreeMap::from([("cmake".into(), PathBuf::from(cmake))]),
+        )
     };
     let linux = recipe("/usr/local/bin/cmake");
     let macos = recipe("/opt/homebrew/bin/cmake");
     assert_eq!(linux, macos);
     assert_eq!(linux["program"], json!({"tool": "cmake"}));
     assert_eq!(linux["args"][3], json!({"tool": "cmake"}));
-    for (pointer, replacement) in [("/args/2", "OBS_WRAPPER_VALUE=changed"),
-        ("/args/7", "/different/answer"), ("/args/8", "changed words"),
-        ("/env/OBS_GRAPH_VALUE", "changed"), ("/cwd", "/different/cwd")] {
+    for (pointer, replacement) in [
+        ("/args/2", "OBS_WRAPPER_VALUE=changed"),
+        ("/args/7", "/different/answer"),
+        ("/args/8", "changed words"),
+        ("/env/OBS_GRAPH_VALUE", "changed"),
+        ("/cwd", "/different/cwd"),
+    ] {
         let mut changed = macos.clone();
         *changed.pointer_mut(pointer).unwrap() = json!(replacement);
         assert_ne!(linux, changed, "{pointer}");
@@ -717,11 +731,104 @@ fn host_tool_recipes_preserve_every_non_tool_field() {
     let tools = BTreeMap::from([("cmake".into(), PathBuf::from("/trusted/cmake"))]);
     let unknown = command_recipe_with_tools(Command::new("/arbitrary/cmake").arg("-E"), &tools);
     assert_eq!(unknown["program"], "/arbitrary/cmake");
-    let literal = command_recipe_with_tools(Command::new("/trusted/cmake").args(["-E", "echo", "/trusted/cmake"]), &tools);
+    let literal = command_recipe_with_tools(
+        Command::new("/trusted/cmake").args(["-E", "echo", "/trusted/cmake"]),
+        &tools,
+    );
     assert_eq!(literal["args"][2], "/trusted/cmake");
 }
 
+fn resolved_host_tools() -> BTreeMap<String, PathBuf> {
+    let mut tools = BTreeMap::new();
+    for name in ["cmake", "ctest"] {
+        let mut suffixes = vec![String::new()];
+        if cfg!(windows) {
+            suffixes.extend(
+                std::env::var("PATHEXT")
+                    .unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".into())
+                    .split(';')
+                    .filter(|suffix| !suffix.is_empty())
+                    .map(str::to_owned),
+            );
+        }
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        let found = std::env::split_paths(&path)
+            .flat_map(|directory| {
+                suffixes
+                    .iter()
+                    .map(move |suffix| directory.join(format!("{name}{suffix}")))
+            })
+            .find(|candidate| host_tool_executable(candidate));
+        if let Some(path) = found {
+            let absolute = if path.is_absolute() {
+                path
+            } else {
+                std::env::current_dir().unwrap().join(path)
+            };
+            // Match native_test_program: retain symlinks/argv[0], don't resolve
+            // arbitrary aliases based on a basename or canonical target.
+            tools.insert(name.into(), absolute);
+        }
+    }
+    tools
+}
+
+fn host_tool_executable(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        path.metadata().unwrap().permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    true
+}
+
+fn logical_tool(value: &str, tools: &BTreeMap<String, PathBuf>) -> Value {
+    tools
+        .iter()
+        .find_map(|(name, path)| {
+            (value == name || Path::new(value) == path).then(|| json!({"tool": name}))
+        })
+        .unwrap_or_else(|| json!(value))
+}
+
+fn logical_wrapper_args(program: &Value, args: &mut [Value], tools: &BTreeMap<String, PathBuf>) {
+    let mut wrapper = program.clone();
+    let mut offset = 0;
+    // Only executable slots in cmake -E env wrappers are tool identities.
+    // Literal path arguments (including cmake -E echo) stay byte-for-byte exact.
+    while wrapper == json!({"tool": "cmake"})
+        && args.get(offset) == Some(&json!("-E"))
+        && args.get(offset + 1) == Some(&json!("env"))
+    {
+        offset += 2;
+        while args
+            .get(offset)
+            .and_then(Value::as_str)
+            .is_some_and(|arg| arg.contains('='))
+        {
+            offset += 1;
+        }
+        if args.get(offset) == Some(&json!("--")) {
+            offset += 1;
+        }
+        let Some(child) = args.get_mut(offset) else {
+            break;
+        };
+        *child = logical_tool(child.as_str().unwrap(), tools);
+        wrapper = child.clone();
+        offset += 1;
+    }
+}
+
 fn command_recipe(command: &Command) -> Value {
+    command_recipe_with_tools(command, &resolved_host_tools())
+}
+
+fn command_recipe_with_tools(command: &Command, tools: &BTreeMap<String, PathBuf>) -> Value {
     let environment: BTreeMap<_, _> = command
         .get_envs()
         .map(|(key, value)| {
@@ -735,9 +842,45 @@ fn command_recipe(command: &Command) -> Value {
             (key.to_str().unwrap(), value)
         })
         .collect();
-    json!({"program": command.get_program().to_str().unwrap(),
-        "args": command.get_args().map(|v| v.to_str().unwrap()).collect::<Vec<_>>(),
+    let program = logical_tool(command.get_program().to_str().unwrap(), tools);
+    let mut args = command
+        .get_args()
+        .map(|value| json!(value.to_str().unwrap()))
+        .collect::<Vec<_>>();
+    logical_wrapper_args(&program, &mut args, tools);
+    json!({"program": program, "args": args,
         "cwd": command.get_current_dir(), "env": environment})
+}
+
+#[test]
+fn logical_recipe_keeps_native_cmake_env_execution() {
+    let tools = resolved_host_tools();
+    let cmake = tools.get("cmake").expect("native contract requires cmake");
+    let mut command = Command::new(cmake);
+    command.args([
+        "-E",
+        "env",
+        "OBS_WRAPPER_VALUE=outer",
+        cmake.to_str().unwrap(),
+        "-E",
+        "env",
+        "OBS_WRAPPER_VALUE=wrapped",
+        cmake.to_str().unwrap(),
+        "-E",
+        "echo",
+        "two words",
+    ]);
+    let recipe = command_recipe(&command);
+    assert_eq!(recipe["program"], json!({"tool": "cmake"}));
+    assert_eq!(recipe["args"][3], json!({"tool": "cmake"}));
+    assert_eq!(recipe["args"][7], json!({"tool": "cmake"}));
+    assert_eq!(command.get_program(), cmake.as_os_str());
+    let output = command.output().unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap().trim(),
+        "two words"
+    );
 }
 
 pub fn assert_runtime(command: &mut Command, stdout: Option<&[u8]>, required: &[PathBuf]) {
