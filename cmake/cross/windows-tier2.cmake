@@ -61,6 +61,23 @@ function(_obs_windows_tier2_resource)
   set(CMAKE_CURRENT_SOURCE_DIR "${OBS_SOURCE_ROOT}")
   set(CMAKE_SOURCE_DIR "${OBS_SOURCE_ROOT}")
   include(bootstrap)
+  foreach(
+    _version_var
+    IN
+    ITEMS
+      OBS_VERSION
+      OBS_VERSION_CANONICAL
+      OBS_VERSION_MAJOR
+      OBS_VERSION_MINOR
+      OBS_VERSION_PATCH
+      OBS_COMMIT
+      OBS_COMPANY_NAME
+      OBS_PRODUCT_NAME
+      OBS_COMMENTS
+      OBS_LEGAL_COPYRIGHT
+  )
+    set(${_version_var} "${${_version_var}}" PARENT_SCOPE)
+  endforeach()
   configure_file("${OBS_SOURCE_ROOT}/libobs/cmake/windows/obs-module.rc.in" "${CMAKE_BINARY_DIR}/config/libobs.rc")
 endfunction()
 _obs_windows_tier2_resource()
@@ -91,10 +108,13 @@ set(CMAKE_REQUIRED_LINK_OPTIONS "${_tier2_required_options}")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "${_tier2_try_compile}")
 set(CMAKE_TRY_COMPILE_CONFIGURATION "${_tier2_try_configuration}")
 target_link_directories(cmocka PRIVATE "${CMAKE_BINARY_DIR}/cross-case-libs")
-add_library(obs-native-test-cmocka INTERFACE)
-add_library(OBS::native-test-cmocka ALIAS obs-native-test-cmocka)
-target_include_directories(obs-native-test-cmocka INTERFACE "${cmocka_SOURCE_DIR}/include")
-target_link_libraries(obs-native-test-cmocka INTERFACE cmocka)
+option(OBS_CROSS_WINDOWS_TIER2_FULL "Configure the entire canonical Windows Tier 2 registry" OFF)
+if(NOT OBS_CROSS_WINDOWS_TIER2_FULL)
+  add_library(obs-native-test-cmocka INTERFACE)
+  add_library(OBS::native-test-cmocka ALIAS obs-native-test-cmocka)
+  target_include_directories(obs-native-test-cmocka INTERFACE "${cmocka_SOURCE_DIR}/include")
+  target_link_libraries(obs-native-test-cmocka INTERFACE cmocka)
+endif()
 
 add_library(OBS::libobs ALIAS libobs-cross-shared)
 add_library(OBS::w32-pthreads ALIAS libobs-cross-shared-pthreads)
@@ -123,6 +143,11 @@ list(PREPEND CMAKE_MODULE_PATH "${OBS_SOURCE_ROOT}/cmake/finders")
 list(PREPEND CMAKE_PREFIX_PATH "${OBS_CROSS_DEPS}")
 find_package(Uthash REQUIRED)
 find_package(SIMDe REQUIRED)
+
+if(OBS_CROSS_WINDOWS_TIER2_FULL)
+  include("${CMAKE_CURRENT_LIST_DIR}/windows-tier2-full.cmake")
+  return()
+endif()
 
 # Consume complete entries from the canonical registry, never copied recipes.
 # The explicit probe list is not a claim of native Tier 2 completeness.
