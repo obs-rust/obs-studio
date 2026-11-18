@@ -22,11 +22,13 @@ import host_platform
 import macos_test_workspace as workspace
 import macos_tier2_audit as audit
 import macos_tier2_bundle as bundle
+import macos_tier2_registry as registry
 
 COMMON = Path("/opt/obs-tier2-run-only/src")
 BUILD = Path(".tier2/cross")
 NATIVE = Path(".tier2/native")
 CONTRACT = Path(".tier2/obs-tests-app")
+QT = Path(".deps/obs-deps-qt6-2026-10-25-universal")
 RUNTIMES = ("libclang_rt.asan_osx_dynamic.dylib", "libclang_rt.ubsan_osx_dynamic.dylib")
 TOOLS = ("cmake", "ctest", "nm", "bash")
 COMPILERS = ("cc", "c++", "gcc", "g++", "clang", "clang++", "swift", "swiftc",
@@ -186,18 +188,26 @@ def prepared_artifacts(native: Path) -> dict:
     return prepared
 
 
+def qt_plugins(source: Path) -> list[Path]:
+    plugins = sorted((source / QT / "plugins").rglob("*.dylib"))
+    required = {source / QT / f"plugins/platforms/libq{name}.dylib" for name in ("minimal", "offscreen")}
+    if not required.issubset(plugins):
+        raise ValueError("missing Qt runtime platform plugins")
+    return plugins
+
+
 def stage_images(source: Path, output: Path, receipt: Path, contract: Path, prepared: dict, verify) -> None:
     build = source / BUILD
     artifacts = bundle.selected_runtime(build, [Path(line) for line in (build / "tier2-runtime.txt").read_text().splitlines()])
     compiler_rt = Path(json.loads(receipt.read_text())["compiler_rt"])
     dependencies = source / ".deps/obs-deps-2026-10-25-universal/lib"
-    roots = artifacts + [contract]
+    roots = artifacts + [contract] + qt_plugins(source)
     for paths in prepared["artifacts"].values():
         for name in paths:
             path = Path(name)
             if path.is_file():
                 roots.append(path)
-    closure = audit.closure(roots, [source, dependencies, compiler_rt], verify,
+    closure = audit.closure(roots, [source, dependencies, compiler_rt, source / QT / "lib"], verify,
                             build / "test/cmocka", [dependencies, compiler_rt])
     output.mkdir(parents=True)
     for name in closure:
@@ -227,7 +237,7 @@ def stage_resources(source: Path, output: Path, prepared: dict, verify) -> None:
                 copy(path, output / bundle.contained(source, path), verify)
     copy(native / "macos-prepared.json", output / NATIVE / "macos-prepared.json", verify)
     copy(build / "tier2-modules.txt", output / BUILD / "tier2-modules.txt", verify)
-    copy(build / "test/cmocka/core_module_manifest_source", output / BUILD / "test/cmocka/core_module_manifest_source", verify)
+    stage_fixture(source, output, verify)
     for variant in ("obs", "obs-c-reference"):
         copy(native / variant / "libobs.framework", output / NATIVE / variant / "libobs.framework", verify)
     source_resources(source, output, verify)
@@ -238,6 +248,50 @@ def stage_resources(source: Path, output: Path, prepared: dict, verify) -> None:
     for path in build.rglob("*"):
         if path.is_dir():
             (output / path.relative_to(source)).mkdir(parents=True, exist_ok=True)
+
+
+def normalize_fixture(fixture: Path, producer_home: Path) -> dict:
+    """Normalize producer-only diagnostics, retaining every prepared-file check.
+
+    The original receipt must pass before copying. No image/object/archive is
+    edited. Each diagnostic rewrite records both hashes; the CMake assertion
+    script then verifies the corresponding portable hash of *every* file.
+    """
+    evidence = fixture / "evidence.cmake"
+    original_evidence = bundle.digest(evidence)
+    receipt = evidence.read_text()
+    changed = {}
+    for path in sorted(fixture.rglob("*")):
+        if not path.is_file() or path == evidence:
+            continue
+        data = path.read_bytes()
+        if str(producer_home).encode() not in data:
+            continue
+        if data[:4] in (b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe") or data.startswith(b"!<arch>"):
+            raise ValueError(f"producer path in compiled fixture; rebuild with prefix maps: {path.name}")
+        text = data.decode("utf-8")  # Nontext evidence cannot be rewritten.
+        before = bundle.digest(path)
+        path.write_text(text.replace(str(producer_home), "/toolchain"))
+        after = bundle.digest(path)
+        if before not in receipt:
+            raise ValueError(f"unhashed producer diagnostic: {path.name}")
+        receipt = receipt.replace(before, after)
+        changed[path.relative_to(fixture).as_posix()] = {"linux_sha256": before, "portable_sha256": after}
+    evidence.write_text(receipt)
+    return {"normalization": "producer-home-to-logical-toolchain-v1",
+            "linux_receipt_sha256": original_evidence, "portable_receipt_sha256": bundle.digest(evidence),
+            "files": changed}
+
+
+def stage_fixture(source: Path, output: Path, verify) -> None:
+    relative_ = BUILD / "test/cmocka/core_module_manifest_source"
+    command = ["cmake", f"-DOBS_CORE_MODULES_CMAKE={source / 'libobs/cmake/obs-core-modules.cmake'}",
+               f"-DTEST_FIXTURE_ROOT={source / relative_}", "-P", str(source / "test/cmocka/check_core_module_manifest_source.cmake")]
+    subprocess.run(command, env={**os.environ, "OBS_TIER2_FIXTURE_PREPARED": "1"}, check=True)
+    copy(source / relative_, output / relative_, verify)
+    receipt = normalize_fixture(output / relative_, Path.home())
+    path = output / ".tier2/fixture-normalization.json"
+    path.write_text(json.dumps(receipt, indent=2) + "\n")
 
 
 def source_resources(source: Path, output: Path, verify) -> None:
@@ -257,7 +311,7 @@ def source_resources(source: Path, output: Path, verify) -> None:
 
 
 def stage_registry(source: Path, output: Path) -> tuple[list[dict], dict]:
-    tests = snapshot(source / BUILD)
+    tests = registry.snapshot(source / BUILD, source)["registry"]
     if not tests["tests"] or any(not test.get("command") for test in tests["tests"]):
         raise ValueError("complete CTest command inventory required")
     tools = {name: shutil.which(name) for name in TOOLS}
@@ -272,10 +326,25 @@ def stage_registry(source: Path, output: Path) -> tuple[list[dict], dict]:
     return runtime_tests, templates
 
 
+def verify_production(source: Path, sha: str, contract: Path, prepared: dict, runtime: list[Path]) -> None:
+    production = json.loads((source / ".tier2/production.json").read_text())
+    if (production.get("complete") is not True or production.get("source_sha") != sha
+            or source / relative(production["contract"]) != contract):
+        raise ValueError("complete exact-source Linux production evidence required")
+    roots = runtime + [contract] + [Path(path) for paths in prepared["artifacts"].values()
+                                   for path in paths if Path(path).is_file()]
+    expected = {bundle.contained(source, path).as_posix() for path in roots}
+    if set(production["files"]) != expected:
+        raise ValueError("Linux production image inventory mismatch")
+    for name, digest in production["files"].items():
+        if bundle.digest(source / relative(name)) != digest:
+            raise ValueError(f"changed Linux production artifact: {name}")
+
+
 def stage(source: Path, output: Path, receipt: Path, contract: Path, forbidden: list[str]) -> dict:
     if not host_platform.is_linux():
         raise ValueError("Tier 2 production is Linux-only")
-    if source != COMMON or source.resolve() != COMMON:
+    if source != COMMON or not source.is_dir() or source.resolve() != COMMON:
         raise ValueError("producer must use the common real checkout root before compilation")
     if output.exists():
         raise ValueError("packet output must be absent")
@@ -284,8 +353,12 @@ def stage(source: Path, output: Path, receipt: Path, contract: Path, forbidden: 
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip()
     verify = bundle.verifier(Path(__file__).with_name("macos_test_artifact.py"))
     prepared = prepared_artifacts(source / NATIVE)
+    build = source / BUILD
+    runtime = bundle.selected_runtime(build, [Path(line) for line in (build / "tier2-runtime.txt").read_text().splitlines()])
+    verify_production(source, sha, contract, prepared, runtime)
     stage_images(source, output, receipt, contract, prepared, verify)
     stage_resources(source, output, prepared, verify)
+    copy(source / ".tier2/production.json", output / ".tier2/production.json", verify)
     runtime_tests, templates = stage_registry(source, output)
     forbidden = list(dict.fromkeys([*forbidden, str(Path.home())]))
     result = scan(output, forbidden)
@@ -414,6 +487,8 @@ def runtime_environment(root: Path, manifest: dict) -> dict:
     # All dependency dylibs share the explicit leaf-name override directory,
     # including compiler-rt's preserved signed Conan install names.
     env["DYLD_LIBRARY_PATH"] = ":".join(str(root / relative(name)) for name in manifest["dyld_library_path"])
+    env["QT_PLUGIN_PATH"] = str(root / QT / "plugins")
+    env["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(root / QT / "plugins/platforms")
     refs = {"OPENGL": BUILD / "libobs-opengl/libobs-opengl.0.dylib",
             "METAL": BUILD / "libobs-metal-managed/libobs-metal.0.dylib"}
     for module in ("mac-capture", "mac-avcapture", "mac-avcapture-legacy"):

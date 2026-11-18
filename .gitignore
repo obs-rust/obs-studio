@@ -3,6 +3,7 @@
 
 # CMake build trees and user presets
 /build/
+/.tier2/
 /build_*/
 /out/
 /release/

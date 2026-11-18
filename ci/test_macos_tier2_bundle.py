@@ -119,6 +119,58 @@ class PacketTest(unittest.TestCase):
                 packet.download("obs-rust/obs-studio", "12345", "a" * 40, Path("/unused"))
             execute.assert_not_called()
 
+    def test_qt_inventory_requires_dynamic_platform_plugins(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            platforms = source / packet.QT / "plugins/platforms"
+            platforms.mkdir(parents=True)
+            (platforms / "libqminimal.dylib").touch()
+            with self.assertRaisesRegex(ValueError, "Qt runtime"):
+                packet.qt_plugins(source)
+            (platforms / "libqoffscreen.dylib").touch()
+            self.assertEqual(len(packet.qt_plugins(source)), 2)
+
+    def test_stale_or_incomplete_production_cannot_certify_native_contract(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            (source / ".tier2").mkdir()
+            contract = source / "contract"
+            contract.write_bytes(b"contract bytes")
+            receipt = source / ".tier2/production.json"
+            metadata = {"complete": True, "source_sha": "a" * 40, "contract": "contract",
+                        "files": {"contract": bundle.digest(contract)}}
+            receipt.write_text(json.dumps(metadata))
+            packet.verify_production(source, "a" * 40, contract, {"artifacts": {}}, [])
+            with self.assertRaisesRegex(ValueError, "exact-source"):
+                packet.verify_production(source, "b" * 40, contract, {"artifacts": {}}, [])
+            contract.write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "changed Linux"):
+                packet.verify_production(source, "a" * 40, contract, {"artifacts": {}}, [])
+            receipt.write_text(json.dumps({**metadata, "files": {}}))
+            with self.assertRaisesRegex(ValueError, "inventory"):
+                packet.verify_production(source, "a" * 40, contract, {"artifacts": {}}, [])
+
+    def test_fixture_diagnostics_keep_original_and_portable_hashes(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary)
+            diagnostic = fixture / "CMakeCache.txt"
+            diagnostic.write_text("CMAKE_OSX_SYSROOT=/producer/home/.soldr/sdk\n")
+            before = bundle.digest(diagnostic)
+            evidence = fixture / "evidence.cmake"
+            evidence.write_text(f"set(_sha_CMakeCache.txt {before})\n")
+            original = bundle.digest(evidence)
+            result = packet.normalize_fixture(fixture, Path("/producer/home"))
+            self.assertEqual(result["linux_receipt_sha256"], original)
+            self.assertEqual(result["files"]["CMakeCache.txt"]["linux_sha256"], before)
+            self.assertIn(bundle.digest(diagnostic), evidence.read_text())
+            self.assertNotIn("/producer/home", diagnostic.read_text())
+            (fixture / "bad.o").write_bytes(b"\xcf\xfa\xed\xfe/producer/home")
+            with self.assertRaisesRegex(ValueError, "compiled fixture"):
+                packet.normalize_fixture(fixture, Path("/producer/home"))
+
 
 class BundleTest(unittest.TestCase):
     def setUp(self):
