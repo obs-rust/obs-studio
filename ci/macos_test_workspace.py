@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import os
 import shutil
+import subprocess
 import tarfile
 from pathlib import Path
 
@@ -27,7 +28,13 @@ def restore(source: Path, destination: Path) -> None:
         raise ValueError("refusing to restore an unrelated workspace")
     source.unlink()
     shutil.move(destination, source)
-    destination.parent.rmdir()
+    try:
+        destination.parent.rmdir()
+    except PermissionError:
+        # Setup owns COMMON_PARENT, but /opt itself remains root-owned on
+        # hosted macOS. Removing its empty child needs the setup privilege.
+        # Never recurse or suppress a failed removal (including ENOTEMPTY).
+        subprocess.run(["sudo", "-n", "rmdir", "--", str(destination.parent)], check=True)
 
 
 def checksum(path: Path) -> str:

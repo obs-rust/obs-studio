@@ -196,6 +196,12 @@ fn digest(path: &Path) -> String {
         .collect()
 }
 fn files(root: &Path) -> Vec<PathBuf> {
+    fixture_paths(root)
+        .into_iter()
+        .filter(|path| path.is_file())
+        .collect()
+}
+fn fixture_paths(root: &Path) -> Vec<PathBuf> {
     if !root.exists() {
         return vec![];
     }
@@ -205,19 +211,23 @@ fn files(root: &Path) -> Vec<PathBuf> {
         assert!(!entry.file_type().unwrap().is_symlink(), "fixture symlink");
         let path = entry.path();
         if path.is_dir() {
-            result.extend(files(&path));
-        } else {
-            result.push(path);
+            result.extend(fixture_paths(&path));
         }
+        result.push(path);
     }
     result.sort();
     result
 }
 fn snapshot(state: &State) -> Value {
     let mut snapshots = Vec::new();
+    let mut directories = Vec::new();
     for root in state.manifest["directories"].as_array().unwrap() {
         let root = Path::new(root.as_str().unwrap());
-        for path in files(root) {
+        for path in fixture_paths(root) {
+            if path.is_dir() {
+                directories.push(path);
+                continue;
+            }
             let hash = digest(&path);
             let stored = PathBuf::from("blobs").join(&hash);
             let destination = state.bundle.join(&stored);
@@ -228,9 +238,32 @@ fn snapshot(state: &State) -> Value {
             snapshots.push(json!({"file": stored, "destination": path, "sha256": hash}));
         }
     }
-    snapshots.into()
+    json!({"files": snapshots, "directories": directories})
 }
 fn restore(state: &State, event: &Value) {
+    // Files alone cannot preserve empty CTest working directories. Keep the
+    // directory inventory in each checksummed event, including names with spaces.
+    if let Some(directories) = event.get("directories") {
+        for directory in directories.as_array().expect("fixture directory inventory") {
+            let destination = Path::new(directory.as_str().unwrap());
+            assert!(
+                state.manifest["directories"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(
+                        |root| destination.strip_prefix(root.as_str().unwrap()).is_ok_and(
+                            |relative| relative.components().all(|component| matches!(
+                                component,
+                                std::path::Component::Normal(_)
+                            ))
+                        )
+                    ),
+                "fixture directory destination escape"
+            );
+            fs::create_dir_all(destination).unwrap();
+        }
+    }
     for entry in event["files"].as_array().unwrap() {
         let relative = Path::new(entry["file"].as_str().unwrap());
         assert!(
@@ -303,13 +336,14 @@ fn record(request: Value, result: Value) {
         };
         assert!(!state.replay);
         let index = state.manifest["events"].as_array().unwrap().len();
-        let files = snapshot(state);
+        let snapshot = snapshot(state);
         let decision = rebuild_decision(
             &state.manifest["events"].as_array().unwrap()[..index],
             &request,
         );
         state.manifest["events"].as_array_mut().unwrap().push(
-            json!({"request": request, "result": result, "files": files, "rebuild": decision}),
+            json!({"request": request, "result": result, "files": snapshot["files"],
+                "directories": snapshot["directories"], "rebuild": decision}),
         );
     });
 }
@@ -421,13 +455,27 @@ fn snapshot_replay_preserves_empty_space_named_working_directories() {
         replay: true,
     };
     // Serialize the producer snapshot as the bundle does; replay from a clean tree.
-    let event: Value = serde_json::from_slice(&serde_json::to_vec(&snapshot(&state)).unwrap()).unwrap();
-    assert!(event["directories"].as_array().unwrap().contains(&json!(runtime)));
+    let event: Value =
+        serde_json::from_slice(&serde_json::to_vec(&snapshot(&state)).unwrap()).unwrap();
+    assert!(
+        event["directories"]
+            .as_array()
+            .unwrap()
+            .contains(&json!(runtime))
+    );
     fs::remove_dir_all(&work).unwrap();
     restore(&state, &event);
     assert!(runtime.is_dir());
-    assert_eq!(fs::read_to_string(work.join("output/CTestTestfile.cmake")).unwrap(), "fixture");
+    assert_eq!(
+        fs::read_to_string(work.join("output/CTestTestfile.cmake")).unwrap(),
+        "fixture"
+    );
     assert_eq!(fs::read_dir(runtime).unwrap().count(), 0);
+    for escape in [directory.path().join("escape"), work.join("../escape")] {
+        let event = json!({"files": [], "directories": [escape]});
+        assert!(std::panic::catch_unwind(|| restore(&state, &event)).is_err());
+        assert!(!directory.path().join("escape").exists());
+    }
 }
 
 #[test]

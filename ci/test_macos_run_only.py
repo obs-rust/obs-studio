@@ -203,6 +203,22 @@ class WorkspaceTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "checksum"):
                 workspace.unpack(archive, destination)
 
+    def test_archive_preserves_empty_space_named_working_directory(self):
+        import macos_test_workspace as workspace
+
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            bundle = parent / "bundle"
+            (bundle / "output/runtime root/Release").mkdir(parents=True)
+            (bundle / "manifest.json").write_text('{"tests": []}')
+            archive = parent / "bundle.tar.gz"
+            workspace.pack(bundle, archive)
+            destination = parent / "checkout"
+            workspace.unpack(archive, destination)
+            runtime = destination / "output/runtime root/Release"
+            self.assertTrue(runtime.is_dir())
+            self.assertEqual(list(runtime.iterdir()), [])
+
     def test_missing_qt_payload_fails_before_running_any_test(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
