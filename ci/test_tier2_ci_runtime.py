@@ -178,6 +178,39 @@ class RuntimeReuseTest(unittest.TestCase):
             download.assert_called_once()
             self.assertEqual(cache.read_bytes(), b'file')
 
+    def test_cache_read_and_publish_errors_do_not_block_download(self):
+        for operation in ('copyfile', 'replace'):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                cache = root / 'cache'
+                cache.mkdir()
+                cached = cache / (self.descriptor()['archive_sha256'] + '.tar.zst')
+                cached.write_bytes(b'good' if operation == 'copyfile' else b'evil')
+                os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+                target = runtime.shutil if operation == 'copyfile' else runtime.os
+                with patch.object(target, operation, side_effect=OSError('cache unavailable')):
+                    _, download = self.deliver(root)
+                download.assert_called_once()
+                self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
+                self.assertEqual(list(cache.iterdir()), [cached])
+
+    def test_download_corruption_and_loaded_identity_mismatch_still_fail(self):
+        for corrupt in (True, False):
+            with self.subTest(corrupt=corrupt), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                cache = root / 'cache'
+                os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+                with patch.object(runtime, 'command', return_value='wrong') as command, \
+                        patch.object(runtime.urllib.request, 'urlopen',
+                                     return_value=io.BytesIO(b'evil' if corrupt else b'good')):
+                    with self.assertRaisesRegex(ValueError, 'checksum' if corrupt else 'identity'):
+                        runtime.download_prepared(self.descriptor(), root)
+                if corrupt:
+                    self.assertFalse(cache.exists())
+                    self.assertEqual(command.call_count, 1)
+                else:
+                    self.assertEqual(command.call_count, 4)
+
 
 class PrebakedRuntimeTest(unittest.TestCase):
     def test_prebaked_runtime_keeps_exact_install_and_inventory_check_without_update(self):

@@ -16,7 +16,9 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -53,6 +55,38 @@ def prepared_image(descriptor: dict, requirements: str, root: Path) -> str | Non
     return download_prepared(descriptor, root)
 
 
+def cached_archive(descriptor: dict, archive: Path) -> tuple[Path | None, bool]:
+    """Copy and verify optional persistent bytes before using them in this job."""
+    directory = os.environ.get('OBS_ASSET_CACHE_DIR')
+    if not directory:
+        return None, False
+    digest = descriptor['archive_sha256']
+    if not re.fullmatch(r'[0-9a-f]{64}', digest):
+        raise ValueError('Invalid prepared archive checksum')
+    cached = Path(directory) / (digest + '.tar.zst')
+    try:
+        # Verify the job's copy, so concurrent cache replacement cannot change it.
+        shutil.copyfile(cached, archive)
+        verify_archive(archive, descriptor)
+    except (OSError, ValueError) as error:
+        print(f'Prepared runtime asset cache: miss ({error})', flush=True)
+        return cached, False
+    print('Prepared runtime asset cache: hit', flush=True)
+    return cached, True
+
+
+def save_archive(archive: Path, cached: Path) -> None:
+    """Publish verified bytes atomically; cache failures never block delivery."""
+    try:
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='.runtime-', dir=cached.parent) as temporary:
+            staging = Path(temporary) / 'archive'
+            shutil.copyfile(archive, staging)
+            os.replace(staging, cached)
+    except OSError as error:
+        print(f'Prepared runtime asset cache: write skipped ({error})', flush=True)
+
+
 def download_prepared(descriptor: dict, root: Path) -> str | None:
     image = descriptor['image_id']
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', image):
@@ -60,15 +94,26 @@ def download_prepared(descriptor: dict, root: Path) -> str | None:
     url = descriptor['url']
     if not url.startswith('https://github.com/obs-rust/obs-studio-libs/releases/download/'):
         raise ValueError('Prepared runtime must use the approved immutable asset route')
-    archive = root / 'runtime.tar.zst'
     try:
-        with urllib.request.urlopen(url, timeout=60) as response, archive.open('wb') as output:
-            while block := response.read(1024 * 1024):
-                output.write(block)
-    except (urllib.error.URLError, TimeoutError):
-        print('Runtime selection: stock (prepared asset unavailable)', flush=True)
-        return None
-    verify_archive(archive, descriptor)
+        present = command('docker', 'image', 'inspect', '--format', '{{.Id}}', image) == image
+    except (OSError, subprocess.CalledProcessError):
+        present = False
+    print(f'Prepared runtime image cache: {"hit" if present else "miss"}', flush=True)
+    if present:
+        return image
+    archive = root / 'runtime.tar.zst'
+    cached, cache_hit = cached_archive(descriptor, archive)
+    if not cache_hit:
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response, archive.open('wb') as output:
+                while block := response.read(1024 * 1024):
+                    output.write(block)
+        except (urllib.error.URLError, TimeoutError):
+            print('Runtime selection: stock (prepared asset unavailable)', flush=True)
+            return None
+        verify_archive(archive, descriptor)
+        if cached is not None:
+            save_archive(archive, cached)
     unpacked = root / 'runtime.tar'
     command('zstd', '-d', '-f', str(archive), '-o', str(unpacked))
     command('docker', 'image', 'load', '--input', str(unpacked))

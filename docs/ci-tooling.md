@@ -1156,6 +1156,16 @@ for publication. Baked package versions are frozen until an image input changes;
 stock installs resolve current Ubuntu archive versions. Tests continue checking
 the exact runtime package closure from their build artifact.
 
+Prepared release runtimes first inspect the descriptor's pinned Docker image ID
+and reuse an exact match. A runner can also set `OBS_ASSET_CACHE_DIR` to a writable
+persistent directory to cache archives as `<archive_sha256>.tar.zst`. Reads copy
+into the job directory and verify size and SHA256; downloads publish through a
+temporary file and atomic rename. Cache I/O errors or corrupt cached bytes trigger
+the normal download path. Downloaded bytes and loaded image IDs retain their
+integrity checks. Image and asset cache hits/misses appear in the setup log.
+Without the environment variable the archive cache is disabled. Dell runner
+wiring is a separate host configuration step.
+
 ### Host Ubuntu package acquisition (#1269)
 
 The existing Fast Gate, Qt frontend, full Ubuntu app and both Flatpak
