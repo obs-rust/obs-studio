@@ -7,7 +7,7 @@
 #include <string.h>
 #include "graphics/graphics.h"
 #include "util/threading.h"
-enum AVPixelFormat { TFD_INITIAL, TFD_DECODED };
+enum AVPixelFormat { TFD_NONE = -1, TFD_INITIAL, TFD_DECODED };
 typedef struct AVFormatContext AVFormatContext;
 typedef struct AVCodecContext AVCodecContext;
 typedef struct AVCodec AVCodec;
