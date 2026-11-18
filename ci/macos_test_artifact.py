@@ -36,9 +36,9 @@ def within(root: Path, value: str) -> Path:
     return path
 
 
-def macho_signature(path: Path, data: bytes) -> tuple[bytes, int]:
+def macho_signature(path: Path, data: bytes, allowed_filetypes: tuple[int, ...] = (2,)) -> tuple[bytes, int]:
     magic, cpu, _, kind, commands, size, _, _ = struct.unpack_from("<8I", data)
-    if (magic, cpu, kind) != (0xFEEDFACF, 0x100000C, 2):
+    if (magic, cpu) != (0xFEEDFACF, 0x100000C) or kind not in allowed_filetypes:
         raise ValueError(f"not an arm64 Mach-O executable: {path}")
     offset = 32
     for _ in range(commands):
@@ -70,14 +70,14 @@ def verify_directory(path: Path, directory: bytes, data: bytes, signature_start:
             raise ValueError(f"invalid code signature page {page}: {path}")
 
 
-def verify_macho(path: Path) -> None:
+def verify_macho(path: Path, allowed_filetypes: tuple[int, ...] = (2,)) -> None:
     """Verify arm64 MH_EXECUTE and its ad-hoc SHA256 CodeDirectory pages.
 
     ld64.lld signs arm64 by default. Inspect the load command and actual page
     hashes, rather than treating an arbitrary LC_CODE_SIGNATURE as proof.
     """
     data = path.read_bytes()
-    signature, signature_start = macho_signature(path, data)
+    signature, signature_start = macho_signature(path, data, allowed_filetypes)
     magic, length, count = struct.unpack_from(">3I", signature)
     if magic != 0xFADE0CC0 or length != len(signature):
         raise ValueError(f"invalid signature superblob: {path}")
@@ -245,6 +245,23 @@ def check_test_inventory(metadata: dict, events: list[dict], packages: list[str]
     return bool(expected)
 
 
+def validate_native_fixtures(root: Path) -> None:
+    from macos_native_fixtures import TESTS
+
+    index = json.loads((root / "native-fixtures/index.json").read_text())
+    expected = ["native_build::" + name for name in TESTS]
+    if (index.get("version") != 1 or index.get("target") != TARGET
+            or index.get("complete") is not True or index.get("tests") != expected or not index.get("signed")):
+        raise ValueError("native fixture inventory is incomplete")
+    for name in expected:
+        manifest = json.loads((root / "native-fixtures" / name.replace("::", "--") / "manifest.json").read_text())
+        if (manifest.get("complete") is not True or manifest.get("target") != TARGET
+                or "linux" not in manifest.get("host", "") or not manifest.get("events")):
+            raise ValueError(f"missing native fixture evidence: {name}")
+    for name in index["signed"]:
+        verify_macho(within(root / "native-fixtures", name), allowed_filetypes=(2, 6, 8))
+
+
 def validate_inventory(data: dict, root: Path) -> None:
     if not data.get("doctests_complete"):
         raise ValueError("doctest compilation was not completed")
@@ -257,6 +274,8 @@ def validate_inventory(data: dict, root: Path) -> None:
         if name not in data["files"]:
             raise ValueError(f"executable missing from artifact inventory: {path}")
         path.chmod(path.stat().st_mode | 0o111)
+    if data.get("native_fixtures"):
+        validate_native_fixtures(root)
 
 
 def execute(manifest: Path, root: Path) -> int:
@@ -319,6 +338,14 @@ def build(output: Path, base: str | None) -> int:
     result.check_returncode()
     manifest["tests"].extend(json.loads(path.read_text()) for path in sorted((output / "doctest-records").glob("*.json")))
     manifest["doctests_complete"] = True
+    if any(entry["package"] == "obs-studio-rust" for entry in manifest["tests"]):
+        from macos_native_fixtures import prepare
+
+        prepare(ROOT, output, env)
+        manifest["native_fixtures"] = True
+        for entry in manifest["tests"]:
+            if entry["package"] == "obs-studio-rust":
+                entry["env"]["OBS_NATIVE_FIXTURES"] = "{root}/native-fixtures"
     finalize(output, manifest)
     return 0
 
