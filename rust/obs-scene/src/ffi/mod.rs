@@ -38,6 +38,7 @@ pub mod item_info_getters;
 pub mod item_render_getters;
 pub mod item_scale_getter;
 
+pub mod item_alignment_setter;
 pub mod item_bounds_setters;
 pub mod item_crop_getter;
 pub mod item_crop_setter;

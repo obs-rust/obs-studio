@@ -15,6 +15,10 @@ pub trait Item {
 }
 
 /// A missing item is a silent no-op.
-pub fn set<I: Item>(_item: Option<&mut I>, _alignment: u32) {
-    todo!("alignment setter port")
+pub fn set<I: Item>(item: Option<&mut I>, alignment: u32) {
+    let Some(item) = item else { return };
+    let parent = item.lock();
+    item.store(alignment);
+    item.unlock(parent);
+    item.update();
 }

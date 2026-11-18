@@ -21,6 +21,8 @@ mod canonical_portal_output_is_registered;
 mod canonical_qt_core_filename_is_registered;
 #[path = "native/registration/canonical_rust_static_windows_keys_are_registered.rs"]
 mod canonical_rust_static_windows_keys_are_registered;
+#[path = "native/registration/canonical_scene_item_alignment_setter_swap_is_registered.rs"]
+mod canonical_scene_item_alignment_setter_swap_is_registered;
 #[path = "native/registration/canonical_source_missing_files_getter_swap_is_registered.rs"]
 mod canonical_source_missing_files_getter_swap_is_registered;
 #[path = "native/registration/canonical_websocket_helpers_is_registered.rs"]

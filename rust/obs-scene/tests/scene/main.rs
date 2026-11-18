@@ -81,6 +81,7 @@ mod item_crop_setter;
 #[allow(unsafe_code)]
 mod item_transform_getters_parity;
 
+mod item_alignment_setter_parity;
 mod item_bounds_setters_parity;
 mod item_crop_getter_parity;
 mod item_crop_setter_parity;
