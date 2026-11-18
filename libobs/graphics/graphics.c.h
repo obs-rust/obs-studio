@@ -390,11 +390,6 @@ uint64_t gs_get_gpu_smem(void)
 		return 0;
 }
 
-int gs_get_device_type(void)
-{
-	return gs_valid("gs_get_device_type") ? thread_graphics->exports.device_get_type() : -1;
-}
-
 static inline void reset_immediate_arrays(graphics_t *graphics)
 {
 	da_init(graphics->verts);
@@ -1466,16 +1461,6 @@ void gs_debug_marker_end(void)
 		return;
 
 	thread_graphics->exports.device_debug_marker_end(thread_graphics->device);
-}
-
-uint32_t gs_get_adapter_count(void)
-{
-	if (!gs_valid("gs_get_adapter_count"))
-		return 0;
-	if (!thread_graphics->exports.gs_get_adapter_count)
-		return 0;
-
-	return thread_graphics->exports.gs_get_adapter_count();
 }
 
 /* The host's own entry points (#872): each list guards itself. */
