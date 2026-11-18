@@ -5,12 +5,53 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 MAX_PAGES = 5
 API_TIMEOUT = 3
+MAX_REQUESTS = 2 * MAX_PAGES
+
+
+class Probe:
+    """Share the original ten-request budget between census and commitments."""
+
+    def __init__(self, token: str, api_url: str):
+        self.token = token
+        self.api_url = api_url.rstrip("/")
+        self.remaining = MAX_REQUESTS
+
+    def get(self, path: str, *, token: str | None = None) -> dict:
+        if self.remaining <= 0:
+            raise ValueError("request budget exhausted")
+        self.remaining -= 1
+        request = Request(
+            f"{self.api_url}/{path}",
+            headers={
+                "Authorization": f"Bearer {self.token if token is None else token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        with urlopen(request, timeout=API_TIMEOUT) as response:
+            return json.load(response)
+
+    def entries(self, path: str, key: str, token: str) -> list[dict]:
+        result = []
+        for page in range(1, MAX_PAGES + 1):
+            data = self.get(f"{path}&per_page=100&page={page}", token=token)
+            entries = data[key]
+            total = data["total_count"]
+            if not isinstance(entries, list) or type(total) is not int or total < 0:
+                raise ValueError("invalid collection")
+            result.extend(entries)
+            if len(result) >= total:
+                return result
+            if len(entries) < 100:
+                raise ValueError("incomplete collection")
+        raise ValueError("collection exceeds probe limit")
 
 
 def warning(reason: str, *, hosted: bool = True) -> None:
@@ -33,22 +74,11 @@ def decision(reason: str, labels: str = "") -> str:
     return labels
 
 
-def online_runners(
-    path: str, wanted: set[str], token: str, api_url: str
-) -> dict[int, bool]:
+def online_runners(path: str, wanted: set[str], probe: Probe) -> dict[int, bool]:
     """Collect matching online runner IDs and busy states within bounded pages."""
     matched = {}
     for page in range(1, MAX_PAGES + 1):
-        request = Request(
-            f"{api_url.rstrip('/')}/{path}/actions/runners?per_page=100&page={page}",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-        )
-        with urlopen(request, timeout=API_TIMEOUT) as response:
-            data = json.load(response)
+        data = probe.get(f"{path}/actions/runners?per_page=100&page={page}")
         runners = data["runners"]
         for runner in runners:
             if runner["status"] != "online" or not wanted.issubset(
@@ -63,6 +93,98 @@ def online_runners(
         if len(runners) < 100 or page * 100 >= data["total_count"]:
             break
     return matched
+
+
+def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool]:
+    """Read the common heavy-pool choice from labels, including queued work."""
+    queued = 0
+    dell = hosted = False
+    for job in jobs:
+        raw_labels = job["labels"]
+        if (
+            not isinstance(raw_labels, list)
+            or any(not isinstance(label, str) for label in raw_labels)
+            or not isinstance(job["name"], str)
+            or job["status"]
+            not in (
+                "queued",
+                "waiting",
+                "pending",
+                "requested",
+                "in_progress",
+                "completed",
+            )
+        ):
+            raise ValueError("invalid job routing data")
+        labels = {label.casefold() for label in raw_labels}
+        if wanted.issubset(labels):
+            dell = True
+            if job["status"] in ("queued", "waiting", "pending", "requested"):
+                queued += 1
+        elif labels and any(
+            name in job["name"]
+            for name in ("Rust Cross Lint 🦀 (", "Rust Tier 2 Linux 🐧 (")
+        ):
+            hosted = True
+    return queued, dell, hosted
+
+
+def inflight_commitments(repo: str, wanted: set[str], probe: Probe) -> tuple[int, int]:
+    """Count queued Dell jobs and active Dell/older undecided Pull runs.
+
+    Outputs aren't exposed by the jobs API. A routed heavy job's labels prove
+    the choice; before those jobs appear, older runs reserve a run slot. This
+    gives identical empty-pool snapshots the same deterministic winners.
+    """
+    current_id = int(os.environ["GITHUB_RUN_ID"])
+    token = os.environ["GITHUB_TOKEN"]
+    if current_id < 1 or not token:
+        raise ValueError("missing Actions probe identity")
+    runs = {}
+    for status in ("queued", "in_progress"):
+        for run in probe.entries(
+            f"repos/{repo}/actions/workflows/ci.yml/runs?event=merge_group&status={status}",
+            "workflow_runs",
+            token,
+        ):
+            run_id = run["id"]
+            if (
+                type(run_id) is not int
+                or run_id < 1
+                or run["event"] != "merge_group"
+                or run["status"] not in ("queued", "in_progress")
+            ):
+                raise ValueError("invalid active run")
+            created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+            if created.tzinfo is None:
+                raise ValueError("missing run timezone")
+            runs[run_id] = (created, run_id)
+    current = runs[current_id]  # An incomplete/eventually consistent list is unsafe.
+    queued = committed = 0
+    for run_id, priority in sorted(runs.items(), key=lambda item: item[1]):
+        if run_id == current_id:
+            continue
+        jobs = probe.entries(
+            f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
+        )
+        pending, dell, hosted = job_commitments(jobs, wanted)
+        queued += pending
+        # Count known Dell runs regardless of age. Unknown older runs also
+        # reserve slots; an observed hosted choice releases their reservation.
+        committed += dell or (not hosted and priority < current)
+    return queued, committed
+
+
+def admission_available(
+    repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int
+) -> tuple[bool, str]:
+    """The idle floor and in-flight run cap must both admit this run."""
+    if idle < required:
+        return False, ""
+    queued, committed = inflight_commitments(repo, wanted, probe)
+    limit = online // required
+    counts = f"; queued={queued}, committed={committed}, run_limit={limit}"
+    return idle - queued >= required and committed < limit, counts
 
 
 def required_capacity(min_idle: str, demand: str, mode: str = "") -> int:
@@ -91,7 +213,7 @@ def select_labels(
 
     Require spare capacity in both threshold and prefer modes. Pagination and
     each HTTP request stay bounded; runners visible in both scopes count only
-    once. Neither mode reserves runners.
+    once. In-flight commitments and older undecided runs reserve capacity.
     """
     if event != "merge_group" or not labels:
         return decision("opt-in merge-group runner selection is disabled")
@@ -110,6 +232,7 @@ def select_labels(
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
             return decision("runner probe token is missing")
         wanted = {label.casefold() for label in requested}
+        probe = Probe(token, api_url)
         matched = {}
         unavailable = []
         owner = repo.split("/", 1)[0]
@@ -118,7 +241,7 @@ def select_labels(
             ("organization", f"orgs/{owner}"),
         ):
             try:
-                runners = online_runners(path, wanted, token, api_url)
+                runners = online_runners(path, wanted, probe)
                 for runner_id, busy in runners.items():
                     # A later busy observation wins over an earlier idle snapshot.
                     matched[runner_id] = matched.get(runner_id, False) or busy
@@ -136,7 +259,11 @@ def select_labels(
         counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
         if unavailable:
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
-        if idle >= required:
+        admitted, commitments = admission_available(
+            repo, wanted, probe, len(matched), idle, required
+        )
+        counts += commitments
+        if admitted:
             reason = (
                 "prefer mode: sufficient idle capacity"
                 if mode == "prefer"
@@ -151,7 +278,9 @@ def select_labels(
             if mode == "prefer"
             else "insufficient idle capacity"
         )
-        reason = f"{reason} within the probe limit ({counts})"
+        reason = (
+            f"{reason} after in-flight commitments within the probe limit ({counts})"
+        )
         warning(reason)
         return decision(reason)
     except Exception as error:

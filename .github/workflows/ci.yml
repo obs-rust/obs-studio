@@ -79,6 +79,9 @@ jobs:
   # PRs use hosted runners directly; a queue probe must not allocate on admission.
   select-mq-runner:
     name: Select Merge Queue Runner
+    permissions:
+      contents: read
+      actions: read
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -119,6 +122,7 @@ jobs:
           # Tier 2 build + OFF/ON tests + two cross-lint legs + release lint.
           MQ_RUNNER_DEMAND: ${{ vars.MQ_RUNNER_DEMAND || '6' }}
           MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token || secrets.MQ_RUNNER_STATUS_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/select_mq_runner.py
       - name: Report Probe Setup Failure
         if: ${{ !cancelled() && (steps.checkout.outcome == 'failure' || steps.uv.outcome == 'failure' || steps.select.outcome == 'failure') }}

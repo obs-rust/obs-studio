@@ -1017,15 +1017,18 @@ Both repository-level and organization-level runners are supported.
 The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
 selecting labels; matching capacity across the available lists qualifies according
-to `MQ_RUNNER_MODE`.
+to `MQ_RUNNER_MODE`. Its workflow token has **Actions: read** for the separate
+run/job commitment probe; the runner-probe App needs no additional permission.
 The `heavy-labels` output goes only to Build's `mq-heavy-labels` input. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
 If App token creation fails and no legacy token is available, selection falls
 back to hosted runners. Missing tokens, invalid label JSON, or no matching online
 runner in either available list emit a warning and keep each job's original hosted label. The probe
-checks at most five pages of 100 runners per list, with a three-second timeout per
-request; no match within that limit also falls back. An unset or empty variable skips the
+checks at most five pages of 100 entries per list, with a three-second timeout per
+request and **ten requests total**, shared by runner, run and job probes.
+An incomplete commitment list or exhausted request budget falls back to hosted.
+An unset or empty variable skips the
 probe steps. Outside `merge_group` the selection is empty and no API call runs.
 Pull requests, master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
@@ -1064,9 +1067,27 @@ Busy runners do not supply idle capacity, and runner IDs visible in both
 scopes count once (a busy observation wins). Empty threshold inputs use their
 defaults; invalid or nonpositive values fall back to hosted. The job summary
 records the choice, reason, online/busy/idle counts and required capacity,
-plus unavailable scopes. No queued-job API is queried. This remains a bounded
-capacity snapshot, not a reservation: simultaneous selections can race, and
-runners may become busy or offline after selection.
+plus unavailable scopes. With sufficient idle runners, admission also lists
+queued/in-progress `ci.yml` merge-group runs and their latest-attempt jobs:
+
+- Subtract jobs queued for **all** the Dell labels from idle capacity. Running
+  jobs are already represented by busy runner state and are not subtracted again.
+- Cap unfinished Dell-routed runs at `floor(online / required)`, without another
+  variable. With six online runners and required capacity three, two runs fit.
+  A routed heavy job's labels establish Dell or hosted selection. Before heavy
+  jobs appear, older unresolved runs reserve a slot, ordered by creation time
+  then run ID; a visible hosted choice releases that reservation. Thus the same
+  four-run idle snapshot admits the oldest two, regardless of probe order.
+  Known Dell commitments count even when newer than the probing run.
+
+The run cap covers the gap between selection and heavy-job creation; queued-job
+subtraction also protects against a run queuing more work than its configured
+demand. Unknown older choices conservatively hold slots until their heavy jobs
+appear or their runs finish. Actions API errors, missing identity/token, incomplete
+lists and budget exhaustion select hosted. This is a bounded snapshot, not an
+atomic reservation: API visibility lag or runners becoming busy/offline after
+selection can still affect capacity. Fixtures reproduce the recorded four-run
+burst; improved hosted timing and utilization still require measurement.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
 Run the runner and its job processes inside its Ubuntu container image / FHS
