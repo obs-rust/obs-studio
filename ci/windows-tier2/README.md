@@ -103,6 +103,10 @@ every other copied file for the producer source/build/home roots in UTF-8 and
 UTF-16; any survivor fails. CTest commands/properties use distinct source/build
 tokens and PATH-resolved tool identities. Test names, including `:`, remain
 metadata rather than filenames. All filenames and directory entries use `/`.
+Qt's release plugin trees and their recursive imports retain the exact
+source-relative `.deps` locations used by CTest's PATH/QT_PLUGIN_PATH properties;
+debug plugins and PDBs are excluded. win-capture's dynamically located graphics,
+offset and injection helpers also enter its module data directories.
 
 The archive is **not runnable as a full suite**: `schema=2`, `complete=false`,
 `coverage=cmake-part-only`, and `pending[0]="cargo parts pending"`. The existing
@@ -123,10 +127,12 @@ that same tree with the producer-only option added here:
 ```sh
 uv run --no-project ci/tier2_kept_tree.py restore \
   --kept "$WIN_KEPT" --build "$WIN_BUILD" --src "$GITHUB_WORKSPACE"
-cmake -S cmake/cross -B "$WIN_BUILD/tree" -G Ninja \
-  -DOBS_CROSS_TARGET=win-x64 -DOBS_CROSS_WINDOWS_TIER2=ON \
-  -DOBS_CROSS_WINDOWS_TIER2_FULL=ON \
-  -DOBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR="$WIN_BUILD/tree/rust-target"
+if [ ! -f "$WIN_BUILD/tree/CMakeCache.txt" ]; then
+  cmake -S cmake/cross -B "$WIN_BUILD/tree" -G Ninja \
+    -DOBS_CROSS_TARGET=win-x64 -DOBS_CROSS_WINDOWS_TIER2=ON \
+    -DOBS_CROSS_WINDOWS_TIER2_FULL=ON \
+    -DOBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR="$WIN_BUILD/tree/rust-target"
+fi
 cmake --build "$WIN_BUILD/tree" --target tier2-cross-full --parallel 6
 # Stage and seal the payload while the tree is present; save only on success.
 uv run --no-project ci/tier2_kept_tree.py save \
@@ -135,11 +141,16 @@ uv run --no-project ci/tier2_kept_tree.py save \
 
 Admission must remain restricted to the existing trusted queue/runner path.
 Choose a runner-specific `$WIN_KEPT` (for example, an adjacent
-`windows-tier2-kept` directory under its existing tmpfs area); never share it
+`windows-tier2-kept-<configuration-digest>` directory under its existing tmpfs area); never share it
 with Linux Tier 2 or another concurrent runner. The pinned toolchain, dependency
 archives and source identity still enter normal CMake/Cargo freshness. Keeping
 the tree is a cache, never proof of passing tests or native parity. No Dell host
 or workflow setting is changed by this prototype.
+The configuration digest must cover the soldr/compiler/SDK identity, dependency
+pins, build profile and lane options; a mismatch starts a new tree. On a hit,
+Ninja handles changed CMake inputs normally after source-mtime replay. Do not
+force a configure on every warm run: the measured forced configure below is
+substantially more expensive than the warm build.
 
 For a second **Linux job pinned to the same Dell**, publish the sealed archive
 and its SHA256 through the existing `handoff-put --root "$WIN_HANDOFF" --key
@@ -162,6 +173,38 @@ the 500 MiB ceiling is 26.2 s at that rate, before contention/service overhead.
 The 18.5-minute fresh producer can exceed the historical 15.3-minute Windows
 job median. Warm retention is therefore central to the Dell design; a queue
 latency reduction and full Cargo-inclusive cost remain unqualified.
+
+### CMake qualification measurement (2026-11-18)
+
+After rebasing onto master b29f7d7a1, the registry includes the new
+`test_graphics_device_queries`: 633 executable tests plus the prepared
+compile-only fixture, with none of the earlier 632 executables removed. The
+CMake-only archive is about **61.30 MiB**, below the 250 MiB target and 500 MiB
+ceiling. It contains 2,180 hashed files, 117 directories and 698 PE image copies
+(including native/source plugin-data lookup layouts), without OBJ/PCH/PDB caches.
+
+The local Linux measurement took about 3.19 s to pack at zstd level 3, 2.92 s
+to extract, 9.03 s to verify and 1.06 s for the final copied-byte path scan.
+All 634 commands and property records round-tripped through real CTest. The
+relocated stale-manifest assertion ran successfully without compiling. Both
+transported CMake cores retain the same 1,796 named exports. These are Linux
+transport/assertion measurements, not Windows extraction or execution evidence.
+
+The relocation rebuild took 113.30 s to configure and 616.35 s to build; its
+outputs were rebuilt with new path flags while toolchain/dependency caches were
+already present. A subsequent forced configure took 219.12 s and its warm build
+18.04 s on the shared host. Neither is a new cold hosted benchmark. At 20 MB/s,
+this CMake part alone needs about 3.21 s of upload before contention and service
+overhead. Cargo additions will increase the complete artifact and producer cost.
+
+Full same-commit native parity remains unavailable from existing CI: the master
+b29f7d7a1 Push run 44306821448 had no jobs/artifacts at inspection. The latest
+available Windows Tier 2 job 134805045208 (run 44301710451, source 708ad64e7)
+reports four passes of 633 tests, but neither emits nor uploads its CTest JSON.
+Compared with that historical name list, the cross registry adds only
+`test_graphics_device_queries` and removes nothing. Full native command/property
+differences cannot be computed from a name-only log; matching names are not
+treated as native qualification. No workflow was dispatched to manufacture it.
 
 ## Consumer contract
 
