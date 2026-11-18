@@ -5478,8 +5478,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -5510,6 +5509,9 @@
         ],
         "source_11": [
           "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5677,8 +5679,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "test/cmocka/test_hotkey_binding_press_steps.c"
@@ -5709,6 +5710,9 @@
         ],
         "source_11": [
           "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5818,8 +5822,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -5853,6 +5856,9 @@
         ],
         "source_12": [
           "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5921,8 +5927,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -5953,6 +5958,9 @@
         ],
         "source_11": [
           "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6055,8 +6063,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -6087,6 +6094,9 @@
         ],
         "source_11": [
           "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6133,8 +6143,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -6165,6 +6174,9 @@
         ],
         "source_11": [
           "libobs/obs-hotkey-pair.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -10820,8 +10832,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "test/cmocka/test_portal_shortcuts.c"
@@ -10879,6 +10890,9 @@
         ],
         "source_20": [
           "libobs/obs-nix-portal-shortcuts.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -18962,8 +18976,7 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h",
-          "test/cmocka/hotkey-enum-link-support.c"
+          "libobs/obs-hotkey.c.h"
         ],
         "source_0": [
           "test/cmocka/test_wayland_hotkeys.c"
@@ -18997,6 +19010,9 @@
         ],
         "source_12": [
           "libobs/obs-nix-hotkey-state.c.h"
+        ],
+        "hotkey_enumeration_fields": [
+          "test/cmocka/hotkey-enum-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

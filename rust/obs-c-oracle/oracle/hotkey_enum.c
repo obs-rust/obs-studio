@@ -15,6 +15,14 @@ static _Thread_local size_t hkenum_counts[5];
 static _Thread_local bool hkenum_active;
 static _Thread_local bool hkenum_available;
 
+/* Separate adapter archive members (including the benchmark's) share the real
+ * fixture core without introducing a placeholder production obs global. */
+struct obs_core *oracle_hotkey_enum_core(void);
+struct obs_core *oracle_hotkey_enum_core(void)
+{
+	return &hkenum_core;
+}
+
 bool oracle_hotkey_enum_active(void);
 bool oracle_hotkey_enum_active(void)
 {

@@ -54,8 +54,7 @@
                 ],
                 "hotkey_registration": [
                     "libobs/obs-hotkey-register.c.h",
-                    "libobs/obs-hotkey.c.h",
-                    "test/cmocka/hotkey-enum-link-support.c"
+                    "libobs/obs-hotkey.c.h"
                 ],
                 "source_0": [
                     "test/cmocka/test_wayland_hotkeys.c"
@@ -89,6 +88,9 @@
                 ],
                 "source_12": [
                     "libobs/obs-nix-hotkey-state.c.h"
+                ],
+                "hotkey_enumeration_fields": [
+                    "test/cmocka/hotkey-enum-link-support.c"
                 ]
             },
             "pch": "libobs/build/libobs.pch.h"
