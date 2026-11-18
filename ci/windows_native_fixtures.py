@@ -105,7 +105,10 @@ def configure_tools(root: Path, directory: Path, env: dict) -> tuple[dict, dict]
                                    text=True, capture_output=True, check=True).stdout.strip()
     for name in ("CC", "CXX"):
         wrapper = directory / f"{name.lower()}-clang-cl"
-        wrapper.write_text(f'#!/bin/sh\nexec {shlex.join([clang, *flags])} "$@"\n')
+        # clang-cl rejects existing try/catch code without /EHsc, whereas MSVC
+        # accepts it. Keep exceptions enabled for the real C++ contracts.
+        language_flags = ["/EHsc"] if name == "CXX" else []
+        wrapper.write_text(f'#!/bin/sh\nexec {shlex.join([clang, *flags, *language_flags])} "$@"\n')
         wrapper.chmod(0o755)
         tools[name] = str(wrapper)
     for name, value in tools.items():
