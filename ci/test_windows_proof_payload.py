@@ -124,18 +124,20 @@ class PayloadTest(unittest.TestCase):
                 proof.verify_complete(changed)
 
     def test_native_history_count_and_compiled_roots_are_bound_before_execution(self):
-        for change in ("event", "root"):
+        for change in ("event", "root", "snapshot digest"):
             with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
                 _, bundle, data, _ = fixture(Path(temporary))
                 path = bundle / "native-fixtures" / ("native_build::" + native.TESTS[0]).replace("::", "--") / "manifest.json"
                 history = json.loads(path.read_text())
                 if change == "event":
                     history["events"].pop()
-                else:
+                elif change == "root":
                     history = json.loads(json.dumps(history).replace(LOGICAL, "/opt/obs-win-99-1/src"))
+                else:
+                    history["events"][0]["files"][0]["sha256"] = "0" * 64
                 path.write_text(json.dumps(history))
                 shared.finalize(bundle, data)
-                with self.assertRaisesRegex(ValueError, "history|compiled root"):
+                with self.assertRaisesRegex(ValueError, "history|compiled root|snapshot"):
                     proof.verify_payload(bundle, require_qt=True)
 
 
