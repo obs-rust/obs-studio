@@ -237,6 +237,17 @@ output cannot be reused and mistaken for a new proof. This preparation alone
 does not change schema-2 packet completeness or authorize hosted execution;
 transport, relocation, native parity and hosted assertions remain separate gates.
 
+Qualification of soldr source `7db1f398a3fb` found two upstream gaps. The native
+C-reference link cannot resolve uppercase `MSVCRT.lib` and `OLDNAMES.lib` requests
+against the lowercase xwin library files. Header VFS coverage does not provide
+linker library-name aliases. A tiny object containing only uppercase defaultlib
+directives reproduces this with the targeted driver. The bundled obs-sys build
+also observes `CC_x86_64_pc_windows_msvc=clang-cl` after entering the soldr Cargo
+front door, replacing the selected targeted driver; its w32-pthreads DLL link
+fails to spawn the linker. Both need qualification in soldr#4169. The Rust release
+archive and Windows Application-category executable do cross-link, but those
+successes do not establish Cargo core or bundled-builder parity.
+
 ## Consumer contract
 
 `ci/windows_tier2_run.py` downloads nothing itself. The optional job in the
