@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 import subprocess
 import struct
 import tempfile
@@ -12,6 +13,56 @@ from pathlib import Path
 from unittest.mock import patch
 
 import macos_tier2_bundle as bundle
+
+
+class PacketTest(unittest.TestCase):
+    def test_seal_rejects_extra_files_tampering_and_missing_empty_directories(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "empty space").mkdir()
+            (root / "probe").write_bytes(b"signed fixture")
+            manifest = packet.seal(root, {"schema": 2, "complete": True})
+            packet.verify_files(root, manifest)
+            (root / "extra").touch()
+            with self.assertRaisesRegex(ValueError, "inventory"):
+                packet.verify_files(root, manifest)
+            (root / "extra").unlink()
+            (root / "probe").write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "inventory"):
+                packet.verify_files(root, manifest)
+            (root / "probe").write_bytes(b"signed fixture")
+            (root / "empty space").rmdir()
+            with self.assertRaisesRegex(ValueError, "inventory"):
+                packet.verify_files(root, manifest)
+
+    def test_scan_checks_binary_and_utf16_resource_paths(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for encoding in ("utf-8", "utf-16le"):
+                (root / "image").write_bytes("/producer/source/fixture".encode(encoding))
+                with self.assertRaisesRegex(ValueError, "producer path"):
+                    packet.scan(root, ["/producer/source"])
+
+    def test_portable_names_and_escaping_links_fail_closed(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        for name in ("/absolute", "../escape", "a/../b", "a\\b", "a//b"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                packet.relative(name)
+
+    def test_hosted_proof_is_opt_in_and_preserves_required_native_job(self):
+        from test_macos_run_only import jobs
+
+        workflow = jobs()
+        self.assertIn("rust-tier2-macos-proof", workflow)
+        proof = workflow["rust-tier2-macos-proof"]
+        self.assertIn("inputs.macos-tier2-proof-artifact-id != ''", proof)
+        self.assertIn("ci/macos_tier2_packet.py consume", proof)
+        self.assertIn("no compiler", proof)
+        for command in ("setup-soldr@", "brew install", "cmake --build", "soldr cargo"):
+            self.assertNotIn(command, proof)
+        self.assertIn("bash rust/tools/tier2-validate/validate.sh", workflow["rust-tier2-macos"])
 
 
 class BundleTest(unittest.TestCase):
