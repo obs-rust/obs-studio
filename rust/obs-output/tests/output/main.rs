@@ -55,6 +55,8 @@ mod encoder_preferred_format;
 mod encoder_preferred_format_parity;
 mod encoder_preferred_range;
 mod encoder_preferred_range_parity;
+mod encoder_priming_samples;
+mod encoder_priming_samples_parity;
 mod encoder_properties;
 mod encoder_properties_parity;
 mod encoder_registry_queries;

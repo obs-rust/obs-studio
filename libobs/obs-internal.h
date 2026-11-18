@@ -2611,6 +2611,13 @@ static inline obs_data_t *encoder_get_defaults(const struct obs_encoder_info *in
 	return settings;
 }
 
+/* Borrowed installed priming callback and plugin data, without dispatch. */
+struct obs_encoder_priming_samples_fields {
+	uint32_t (*callback)(void *data);
+	void *data;
+};
+struct obs_encoder_priming_samples_fields obs_encoder_priming_samples_fields(const obs_encoder_t *encoder);
+
 /* Callback snapshots; all handles remain borrowed from the registered type/encoder. */
 struct obs_encoder_properties_fields {
 	obs_properties_t *(*properties)(void *data);

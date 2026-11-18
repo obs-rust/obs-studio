@@ -1,6 +1,8 @@
 //! Build-system integration contracts; these compile and load actual C artifacts.
 #[path = "native/archive_freshness.rs"]
 mod archive_freshness;
+#[path = "native/registration/canonical_encoder_priming_samples_swap_is_registered.rs"]
+mod canonical_encoder_priming_samples_swap_is_registered;
 #[path = "native/registration/canonical_graphics_device_load_is_registered.rs"]
 mod canonical_graphics_device_load_is_registered;
 #[path = "native/registration/canonical_graphics_device_queries_swap_is_registered.rs"]
