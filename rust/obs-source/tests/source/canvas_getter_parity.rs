@@ -15,19 +15,15 @@ unsafe extern "C" {
     ) -> bool;
 }
 
-fn check(refs: i32, weak_refs: i32, flags: u32, noise: u32) {
+/// `c_long` is 32-bit on Windows and 64-bit on Linux/macOS; taking it directly
+/// keeps the call free of a conversion that is useless on one of them.
+const MAX_REFS: c_long = 100_000;
+
+fn check(refs: c_long, weak_refs: c_long, flags: u32, noise: u32) {
     // SAFETY: oracle owns real-header source/control fixtures, keeps live strong
     // owners, balances every returned reference and checks all object bytes.
     assert!(
-        unsafe {
-            oracle_source_canvas_check(
-                obs_source_get_canvas,
-                refs.into(),
-                weak_refs.into(),
-                flags,
-                noise,
-            )
-        },
+        unsafe { oracle_source_canvas_check(obs_source_get_canvas, refs, weak_refs, flags, noise) },
         "refs={refs}, weak_refs={weak_refs}, flags={flags}, noise={noise}"
     );
 }
@@ -50,7 +46,7 @@ fn owned_returns_moves_and_expiry_match_original_c() {
     });
     runner
         .run(
-            &(-1i32..100_000, 0i32..100_000, 0u32..4, any::<u32>()),
+            &(-1..MAX_REFS, 0..MAX_REFS, 0u32..4, any::<u32>()),
             |(refs, weak_refs, flags, noise)| {
                 check(refs, weak_refs, flags, noise);
                 Ok(())
