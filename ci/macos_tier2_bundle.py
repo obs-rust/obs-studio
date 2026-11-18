@@ -241,7 +241,7 @@ def run(bundle: Path, source: Path, mode: str, jobs: int) -> int:
             "--test-dir",
             str(bundle / "build"),
             "-C",
-            "Release",
+            "RelWithDebInfo",
             "--output-on-failure",
             "-j",
             str(jobs),

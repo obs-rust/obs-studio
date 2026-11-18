@@ -25,6 +25,7 @@ if(OBS_CROSS_TIER2)
     message(FATAL_ERROR "OBS_CROSS_TIER2 requires mac-arm64")
   endif()
   set(OBS_CROSS_LINK ON CACHE BOOL "Tier 2 needs linked artifacts" FORCE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Match the native Tier 2 validator" FORCE)
 endif()
 
 # The Linux-side xwin SDK ships only the release CRT (there is no msvcrtd.lib),
