@@ -30,7 +30,9 @@ class RustCachePolicyTest(unittest.TestCase):
                         continue
                     self.assertIn("prebuild-deps-flags:", step)
                     self.assertNotIn("prebuild-deps: none", step)
-        self.assertEqual(found, 13, "Audit new setup-soldr consumers explicitly")
+        # The manual Windows artifact proof producer retains the same dev/test
+        # cook and disabled compiler-store transport as the Linux host lanes.
+        self.assertEqual(found, 14, "Audit new setup-soldr consumers explicitly")
         self.assertEqual(cook_free, 4, "Audit each consumer that skips cook explicitly")
 
     def test_all_consumers_inherit_the_rust_wrapper_bypass(self):

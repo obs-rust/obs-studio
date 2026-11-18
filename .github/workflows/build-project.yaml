@@ -971,7 +971,7 @@ jobs:
           cache: true
           # No Actions cache for the builder state (#1801 phase A).
           restore-cache: false
-          save-cache: false
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
           mirror-screenshots-url: https://dl.flathub.org/media
           # Keep the module-local diagnostic log until its sanitized summary.
           keep-build-dirs: ${{ inputs.flatpak-compiler-diagnostics }}
@@ -2513,9 +2513,17 @@ jobs:
           version: 0.9.45
           verdict-scope: build-project
           build-cache: false
-          prebuild-deps: none
-          save-cache-remote: false
+          prebuild-deps-flags: --profile dev -- --tests
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           solo-toolchain-cache: false
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
       - name: Prepare all Windows categories doctests and native histories
         working-directory: ${{ steps.workspace.outputs.real-root }}
         run: uv run --no-project ci/windows_test_artifact.py build --output "$RUNNER_TEMP/windows-proof-bundle"
@@ -2565,7 +2573,7 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: '3.14'
-          save-cache: false
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Place checkout on owned C drive root
         id: workspace
         run: uv run --no-project ci/windows_test_proof.py place --source "$env:GITHUB_WORKSPACE" --logical-root "$env:LOGICAL_ROOT"
