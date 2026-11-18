@@ -86,5 +86,41 @@ class RuntimeTest(unittest.TestCase):
                 self.assertEqual(report['variant'], 'prepared')
 
 
+class PrebakedRuntimeTest(unittest.TestCase):
+    def test_prebaked_runtime_keeps_exact_install_and_inventory_check_without_update(self):
+        for matching in (True, False):
+            with self.subTest(matching=matching), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'packages').write_text('a=1\n')
+                args = argparse.Namespace(packages=root / 'packages', descriptor=root / 'unused',
+                    state=root / 'state', cost=root / 'cost', source=root, build=root,
+                    uv=root / 'uv', archives=root, mode='OFF', part='all',
+                    prebaked_image='ghcr.io/obs-rust/tier2-linux@sha256:' + 'c' * 64)
+
+                def command(*argv):
+                    if argv[:2] == ('docker', 'create'):
+                        return 'd' * 64
+                    if 'dpkg-query' in argv:
+                        return 'a\t' + ('1' if matching else '2')
+                    return ''
+
+                with patch.object(runtime, 'prepared_image') as prepared, \
+                        patch.object(runtime, 'command', side_effect=command) as commands, \
+                        patch.object(runtime.subprocess, 'run') as run:
+                    if matching:
+                        runtime.execute(args)
+                        self.assertEqual(json.loads((args.state / 'runtime-measurement.json').read_text())['variant'], 'prebaked')
+                        run.assert_called_once()
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'package closure'):
+                            runtime.execute(args)
+                        run.assert_not_called()
+                    prepared.assert_not_called()
+                    calls = [call.args for call in commands.call_args_list]
+                    self.assertFalse(any('update' in call for call in calls))
+                    self.assertTrue(any('install' in call and 'a=1' in call for call in calls))
+                    self.assertEqual(calls[-1], ('docker', 'stop', '--timeout', '1', 'd' * 64))
+
+
 if __name__ == '__main__':
     unittest.main()
