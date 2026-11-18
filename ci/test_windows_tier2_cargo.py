@@ -15,6 +15,7 @@ class CargoProducerTests(unittest.TestCase):
             root = Path(directory)
             soldr = root / "soldr"
             soldr.write_bytes(b"selected soldr")
+            soldr.chmod(0o755)
             driver = root / "x86_64-pc-windows-msvc-clang-cl"
             tools = {
                 "cc": driver,
