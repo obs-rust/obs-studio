@@ -1,5 +1,18 @@
 # Opt-in producer probe: canonical C source sets and a small unchanged registry.
 # Full native registry/renderer coverage is required before any workflow switch.
+# CMake's Windows-GNU-clang link rule uses -nostdlib. Ask clang to resolve the
+# runtime selected by --rtlib/-resource-dir, then explicitly link it to the C
+# reference. Rust-static consumers already carry Rust's compiler-builtins;
+# auto-linking a second runtime there would duplicate __compilerrt_abort_impl.
+execute_process(
+  COMMAND "${_tier2_cc}" "--config=${_tier2_config}" -print-libgcc-file-name
+  RESULT_VARIABLE _builtins_result
+  OUTPUT_VARIABLE _tier2_builtins
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if(NOT _builtins_result EQUAL 0 OR NOT EXISTS "${_tier2_builtins}")
+  message(FATAL_ERROR "clang did not resolve the provisioned Windows compiler-rt")
+endif()
 add_library(libobs-cross-reference SHARED)
 target_link_libraries(
   libobs-cross-reference
@@ -15,6 +28,7 @@ target_link_libraries(
     swscale
     swresample
     jansson
+    zlib
     avrt
     dwmapi
     dxgi
@@ -24,7 +38,9 @@ target_link_libraries(
     ntdll
     bcrypt
     userenv
+    "${_tier2_builtins}"
 )
+target_link_libraries(libobs-cross-shared PRIVATE zlib)
 target_link_directories(libobs-cross-reference PRIVATE "${OBS_CROSS_DEPS}/lib" "${CMAKE_BINARY_DIR}/cross-case-libs")
 foreach(_variant IN ITEMS shared reference)
   set_target_properties(
