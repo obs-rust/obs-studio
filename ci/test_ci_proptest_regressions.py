@@ -29,7 +29,7 @@ WORKFLOW = ROOT / ".github" / "workflows" / "build-project.yaml"
 # Steps that run the Rust test lane: the workspace/diff tests, the local gate's
 # rust-test lane, and the per-crate invocations the Qt SDK check uses.
 TEST_RUN = re.compile(
-    r"soldr cargo test|local_gate\.py --lane rust-test|local_gate\.py --test-diff"
+    r"soldr cargo test|local_gate\.py --lane rust-test|local_gate\.py --test-diff|macos_test_artifact\.py run"
 )
 REGRESSIONS = "proptest-regressions"
 ARTIFACT_ACTION = "actions/upload-artifact@"

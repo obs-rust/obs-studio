@@ -2375,6 +2375,13 @@ jobs:
           retention-days: 1
           compression-level: 0
 
+      # Cache diagnostics follow the compilation work onto Linux.
+      - name: Cache ledger 📒
+        if: always() && hashFiles('.github/actions/job-cache-ledger/action.yaml') != ''
+        uses: ./.github/actions/job-cache-ledger
+        with:
+          lane: rust-tests-macos-build
+
       # Restore before Actions' checkout/cache post steps and leave no large
       # relocated checkout behind on a persistent Dell runner.
       - name: Restore checkout
