@@ -21,7 +21,8 @@
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
-        "test/cmocka/hotkey-background-press-link-support.c"
+        "test/cmocka/hotkey-background-press-link-support.c",
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -35,7 +36,11 @@
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
-        "libobs_rust-static"
+        "libobs_rust-static",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale"
       ],
       "unity_groups": {
         "background-control": [
@@ -97,7 +102,11 @@
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
         ]
       },
-      "pch": "libobs/build/libobs.pch.h"
+      "pch": "libobs/build/libobs.pch.h",
+      "includes": [
+        ".",
+        "libobs"
+      ]
     }
   },
   "tests": {

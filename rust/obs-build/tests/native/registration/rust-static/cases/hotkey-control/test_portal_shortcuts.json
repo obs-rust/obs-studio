@@ -29,7 +29,8 @@
         "libobs/obs-nix-portal-shortcuts.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
-        "test/cmocka/hotkey-background-press-link-support.c"
+        "test/cmocka/hotkey-background-press-link-support.c",
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
       ],
       "requires": {
         "all": [
@@ -48,10 +49,15 @@
         "gio::gio",
         "PkgConfig::PORTAL_TEST_GLIB",
         "OBS::native-test-cmocka",
-        "libobs_rust-static"
+        "libobs_rust-static",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "definitions": [
         "obs=hotkey_test_obs",
