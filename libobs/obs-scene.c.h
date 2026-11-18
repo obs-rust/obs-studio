@@ -402,6 +402,19 @@ void obs_sceneitem_scale_canvas_read(struct vec2 *dst, const obs_sceneitem_t *it
 	item_canvas_scale(dst, item);
 }
 
+/* Private conversion boundaries: preserve the scene/canvas dimension path. */
+void obs_sceneitem_pos_canvas_read(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
+void obs_sceneitem_pos_canvas_read(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item)
+{
+	pos_to_absolute(dst, v, item);
+}
+
+void obs_sceneitem_size_canvas_read(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item);
+void obs_sceneitem_size_canvas_read(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item)
+{
+	size_to_absolute(dst, v, item);
+}
+
 /* Return scale value scaled to original canvas size. */
 static inline void item_relative_scale(struct vec2 *dst, const struct vec2 *v, const obs_sceneitem_t *item)
 {
@@ -2325,59 +2338,6 @@ void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 
 	signal_reorder(item);
 	obs_scene_release(scene);
-}
-
-void obs_sceneitem_get_pos(const obs_sceneitem_t *item, struct vec2 *pos)
-{
-	if (!item)
-		return;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	if (!item->absolute_coordinates)
-		pos_to_absolute(pos, &item->pos, item);
-	else
-		vec2_copy(pos, &item->pos);
-	item_fields_unlock(scene);
-}
-
-void obs_sceneitem_get_bounds(const obs_sceneitem_t *item, struct vec2 *bounds)
-{
-	if (!item)
-		return;
-
-	obs_scene_t *scene = item_fields_lock(item);
-	if (!item->absolute_coordinates)
-		size_to_absolute(bounds, &item->bounds, item);
-	else
-		vec2_copy(bounds, &item->bounds);
-	item_fields_unlock(scene);
-}
-
-static inline void scene_item_get_info_internal(const obs_sceneitem_t *item, struct obs_transform_info *info)
-{
-	if (!item->absolute_coordinates) {
-		pos_to_absolute(&info->pos, &item->pos, item);
-		item_canvas_scale(&info->scale, item);
-		size_to_absolute(&info->bounds, &item->bounds, item);
-	} else {
-		info->pos = item->pos;
-		info->scale = item->scale;
-		info->bounds = item->bounds;
-	}
-	info->rot = item->rot;
-	info->alignment = item->align;
-	info->bounds_type = item->bounds_type;
-	info->bounds_alignment = item->bounds_align;
-}
-
-void obs_sceneitem_get_info2(const obs_sceneitem_t *item, struct obs_transform_info *info)
-{
-	if (item && info) {
-		obs_scene_t *scene = item_fields_lock(item);
-		scene_item_get_info_internal(item, info);
-		info->crop_to_bounds = item->crop_to_bounds;
-		item_fields_unlock(scene);
-	}
 }
 
 static inline void scene_item_set_info_internal(obs_sceneitem_t *item, const struct obs_transform_info *info)

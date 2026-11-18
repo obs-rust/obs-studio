@@ -8,6 +8,7 @@
     "core-output",
     "core-output-weak-lifetime",
     "core-private-data-fields",
+    "core-scene-item-info-getters",
     "core-scene-lookup",
     "core-source",
     "core-source-type-enum",
