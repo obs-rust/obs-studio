@@ -79,6 +79,15 @@ fn real_header_callback_and_bool_layout() {
     let mut layout = [0; 6];
     // SAFETY: the oracle writes exactly six size_t entries into this array.
     unsafe { oracle_ui_task_handler_layout(layout.as_mut_ptr()) };
-    assert_eq!(layout, [size_of::<Handler>(), align_of::<Handler>(),
-        size_of::<Task>(), align_of::<Task>(), size_of::<bool>(), align_of::<bool>()]);
+    assert_eq!(
+        layout,
+        [
+            size_of::<Handler>(),
+            align_of::<Handler>(),
+            size_of::<Task>(),
+            align_of::<Task>(),
+            size_of::<bool>(),
+            align_of::<bool>()
+        ]
+    );
 }

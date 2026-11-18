@@ -10,10 +10,14 @@ fn canonical_ui_task_handler_is_registered() {
     let target = &graph.targets[name];
     assert!(matches!(target.sources.as_slice(), [Source::Path(path)]
         if path == "test/cmocka/test_ui_task_handler.c"));
-    let libraries: Vec<_> = target.libraries.iter().map(|library| match library {
-        ConditionalValue::Name(name) => name.as_str(),
-        _ => panic!("UI characterization requires unconditional linkage"),
-    }).collect();
+    let libraries: Vec<_> = target
+        .libraries
+        .iter()
+        .map(|library| match library {
+            ConditionalValue::Name(name) => name.as_str(),
+            _ => panic!("UI characterization requires unconditional linkage"),
+        })
+        .collect();
     assert_eq!(libraries, ["OBS::libobs", "OBS::native-test-cmocka"]);
     assert_eq!(graph.tests[name].target, name);
     assert_eq!(graph.tests[name].command, ["${target}"]);
@@ -21,7 +25,9 @@ fn canonical_ui_task_handler_is_registered() {
     graph.targets.retain(|key, _| key == name);
     graph.tests.retain(|key, _| key == name);
     for os in ["OS_LINUX", "OS_MACOS", "OS_WINDOWS"] {
-        let selected = graph.select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into()).unwrap();
+        let selected = graph
+            .select(&[("OS_LINUX".into(), os == "OS_LINUX"), (os.into(), true)].into())
+            .unwrap();
         assert_eq!(selected.targets.len(), 1);
         assert_eq!(selected.tests.len(), 1);
         assert!(selected.targets.contains_key(name));

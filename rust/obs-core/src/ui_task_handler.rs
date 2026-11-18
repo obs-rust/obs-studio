@@ -14,8 +14,9 @@ pub trait Host {
 }
 
 /// Store even a missing handler before asking the UI queue to dispatch.
-pub fn install<H: Host>(_host: &mut H, _handler: H::Handler) {
-    todo!("port obs_set_ui_task_handler")
+pub fn install<H: Host>(host: &mut H, handler: H::Handler) {
+    host.store(handler);
+    host.queue_bootstrap();
 }
 
 /// Called only when the queued bootstrap actually executes.
