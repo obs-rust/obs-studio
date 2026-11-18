@@ -5,6 +5,7 @@ pub mod background_control;
 pub mod background_enum;
 pub mod background_error;
 pub mod background_query;
+pub mod background_trigger;
 pub mod binding_getters;
 pub mod binding_press;
 pub mod bindings;

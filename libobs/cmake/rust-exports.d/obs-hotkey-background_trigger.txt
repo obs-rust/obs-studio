@@ -1,0 +1,1 @@
+obs_hotkey_combination_get_background_trigger
