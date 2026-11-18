@@ -54,6 +54,7 @@
 #include "libobs/obs-source-base-size-fields.c.h"
 #include "libobs/obs-source-boolean-query-fields.c.h"
 #include "libobs/obs-source-caption-callbacks.c.h"
+#include "libobs/obs-source-default-flags.c.h"
 #include "libobs/obs-source-deinterlace-fields.c.h"
 #include "libobs/obs-source-deinterlace-seam.c.h"
 #include "libobs/obs-source-deinterlace-texture-fields.c.h"

@@ -1,0 +1,10 @@
+# Characterize actual libobs default-flag storage with private stack fixtures.
+add_executable(test_source_default_flags test_source_default_flags.c)
+target_include_directories(test_source_default_flags PRIVATE ${CMOCKA_INCLUDE_DIR})
+target_link_libraries(test_source_default_flags PRIVATE OBS::libobs OBS::caption Uthash::Uthash ${CMOCKA_LIBRARIES})
+if(OS_WINDOWS)
+  target_link_libraries(test_source_default_flags PRIVATE OBS::w32-pthreads)
+endif()
+add_dependencies(cmocka-tests test_source_default_flags)
+add_test(NAME test_source_default_flags COMMAND test_source_default_flags)
+set_tests_properties(test_source_default_flags PROPERTIES TIMEOUT 30)
