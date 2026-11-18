@@ -15,6 +15,16 @@
 
 cmake_minimum_required(VERSION 3.28...3.30)
 
+# Branch-only runtime probe. No native runner or workflow consumes this graph.
+option(OBS_CROSS_WINDOWS_TIER2 "Build a Windows Tier 2 runtime probe on Linux" OFF)
+if(OBS_CROSS_WINDOWS_TIER2)
+  if(NOT OBS_CROSS_TARGET STREQUAL "win-x64")
+    message(FATAL_ERROR "OBS_CROSS_WINDOWS_TIER2 requires win-x64")
+  endif()
+  set(OBS_CROSS_LINK ON CACHE BOOL "Tier 2 needs linked cores" FORCE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Native Tier 2 profile" FORCE)
+endif()
+
 # The Linux-side xwin SDK ships only the release CRT (there is no msvcrtd.lib),
 # so a link needs the release configuration while CMake's default here is
 # Debug. Set before project() so the configuration flags are computed for it.
@@ -235,15 +245,26 @@ function(_obs_cross_shared_libobs name)
     set(_rust_triple "x86_64-apple-darwin")
     set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/liblibobs_rust.a")
   endif()
-  add_custom_command(
-    OUTPUT "${_rust_archive}"
-    COMMAND soldr cargo build --release --target "${_rust_triple}" -p libobs-rust
-    WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
-    COMMENT "Building libobs-rust staticlib for ${_rust_triple}"
-    DEPENDS "${OBS_SOURCE_ROOT}/Cargo.toml" "${OBS_SOURCE_ROOT}/Cargo.lock"
-    USES_TERMINAL
-  )
-  add_custom_target(${name}-rust DEPENDS "${_rust_archive}")
+  if(OBS_CROSS_WINDOWS_TIER2)
+    # Cargo owns source freshness; Ninja must also see the archive as a product.
+    add_custom_target(
+      ${name}-rust
+      COMMAND soldr cargo build --release --locked --target "${_rust_triple}" -p libobs-rust
+      BYPRODUCTS "${_rust_archive}"
+      WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
+      USES_TERMINAL
+    )
+  else()
+    add_custom_command(
+      OUTPUT "${_rust_archive}"
+      COMMAND soldr cargo build --release --target "${_rust_triple}" -p libobs-rust
+      WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
+      COMMENT "Building libobs-rust staticlib for ${_rust_triple}"
+      DEPENDS "${OBS_SOURCE_ROOT}/Cargo.toml" "${OBS_SOURCE_ROOT}/Cargo.lock"
+      USES_TERMINAL
+    )
+    add_custom_target(${name}-rust DEPENDS "${_rust_archive}")
+  endif()
   add_dependencies(${name} ${name}-rust)
   # Whole archive: libobs itself does not call every shim (plugins do), and the
   # DLL's export set must keep them.
@@ -1029,4 +1050,8 @@ if(_host STREQUAL WINDOWS)
     file(WRITE "${CMAKE_BINARY_DIR}/aja-case/${_header}.h" "#include <${_lower}.h>\n")
   endforeach()
   target_include_directories(aja-cross PRIVATE "${CMAKE_BINARY_DIR}/aja-case")
+endif()
+
+if(OBS_CROSS_WINDOWS_TIER2)
+  include("${CMAKE_CURRENT_LIST_DIR}/windows-tier2.cmake")
 endif()
