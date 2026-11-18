@@ -1,7 +1,25 @@
 name: Build Project
 on:
+  workflow_dispatch:
+    inputs:
+      macos-tier2-proof-artifact-id:
+        description: 'Opt-in run-only Tier 2 proof: immutable artifact ID (empty disables)'
+        type: string
+        default: ''
+      macos-tier2-proof-sha256:
+        description: SHA256 of the certified macos-tier2.tar.zst archive
+        type: string
+        default: ''
   workflow_call:
     inputs:
+      macos-tier2-proof-artifact-id:
+        description: Immutable artifact ID for the optional hosted run-only proof
+        type: string
+        default: ''
+      macos-tier2-proof-sha256:
+        description: Expected archive SHA256 for the optional hosted proof
+        type: string
+        default: ''
       mq-heavy-labels:
         description: Capacity-checked merge-queue labels for Linux heavy jobs; empty uses hosted runners
         type: string
@@ -125,6 +143,8 @@ env:
   SETUP_SOLDR_PROFILE: ${{ vars.SETUP_SOLDR_PROFILE }}
 jobs:
   check-event:
+    # A direct proof dispatch runs only the optional artifact consumer.
+    if: inputs.macos-tier2-proof-artifact-id == ''
     timeout-minutes: 10
     name: Event Data 🔎
     runs-on: ubuntu-26.04
@@ -1654,6 +1674,7 @@ jobs:
 
   # zackees/ci.yml GATE-008/010: single immutable-base verifier. Unknown/old output contracts run real CI.
   ci-mode:
+    if: inputs.macos-tier2-proof-artifact-id == ''
     name: CI Mode 🛂
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -2105,7 +2126,7 @@ jobs:
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # Independent of Fast Gate: no outputs/artifacts consumed (Refs #4990).
     needs: [check-event, ci-mode]
-    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
+    if: ${{ inputs.macos-tier2-proof-artifact-id == '' && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && always() && !cancelled() && ((github.event_name == 'pull_request' && needs.check-event.outputs.docs_only != 'true' && needs.ci-mode.outputs.skip_rust-cross-lint != 'true') || (github.event_name == 'merge_group' && needs.check-event.outputs.cross_lint == 'true') || (github.event_name != 'pull_request' && github.event_name != 'merge_group' && (needs.check-event.outputs.deferred != 'true' || needs.check-event.outputs.macos == 'true' || needs.check-event.outputs.windows == 'true' || needs.check-event.outputs.cross_lint == 'true'))) }}
     defaults:
       run:
         shell: bash
@@ -3345,6 +3366,30 @@ jobs:
           mode: save
           path: ${{ runner.temp }}/ffmpeg
           key: libs-ffmpeg-${{ env.FFMPEG_SHA256 }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+  rust-tier2-macos-proof:
+    name: macOS Tier 2 run-only proof (optional)
+    if: github.event_name == 'workflow_dispatch' && inputs.macos-tier2-proof-artifact-id != ''
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          enable-cache: false
+      - name: Prepare common runtime parent (no compiler)
+        run: sudo install -d -o "$(id -u)" -g "$(id -g)" /opt/obs-tier2-run-only
+      - name: Verify immutable Linux packet and run all four suites (no compiler)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROOF_ARTIFACT_ID: ${{ inputs.macos-tier2-proof-artifact-id }}
+          PROOF_SHA256: ${{ inputs.macos-tier2-proof-sha256 }}
+        run: |
+          uv run --python 3.14 --no-project ci/macos_tier2_packet.py consume \
+            --repository "$GITHUB_REPOSITORY" --artifact-id "$PROOF_ARTIFACT_ID" \
+            --sha256 "$PROOF_SHA256" --source-sha "$GITHUB_SHA" \
+            --scratch "$RUNNER_TEMP/macos-tier2-proof"
 
   rust-tier2-macos:
     # 2x the 10-15 min the lane runs; bounds a dead runner at 25 (#2593 A).

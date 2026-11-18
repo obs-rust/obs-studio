@@ -51,6 +51,30 @@ class PacketTest(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 packet.relative(name)
 
+    def test_tool_identity_changes_only_known_executable_slots(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        command = ["/producer/bin/cmake", "-E", "env", "LITERAL=/producer/bin/cmake",
+                   "/producer/bin/cmake", "-E", "echo", "/producer/bin/cmake"]
+        result = packet.command_tokens(command, {"cmake": "/producer/bin/cmake"})
+        self.assertEqual(result[0], "@OBS_TIER2_TOOL_CMAKE@")
+        self.assertEqual(result[4], result[0])
+        self.assertEqual(result[3], command[3])
+        self.assertEqual(result[7], command[7])
+        self.assertEqual(packet.command_tokens(["/unknown/cmake"], {"cmake": command[0]}), ["/unknown/cmake"])
+
+    def test_actual_ctest_roundtrip_keeps_empty_arguments_names_and_properties(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory(prefix="tier2 with space ") as temporary:
+            root = Path(temporary)
+            tests = [{"name": "module::case", "config": "RelWithDebInfo", "command": ["/bin/false", "", "C:/literal\\name", "x]==]y"],
+                      "properties": [{"name": "WORKING_DIRECTORY", "value": str(root)},
+                                     {"name": "TIMEOUT", "value": 17.0},
+                                     {"name": "SKIP_RETURN_CODE", "value": 77},
+                                     {"name": "RUN_SERIAL", "value": True},
+                                     {"name": "ENVIRONMENT", "value": ["A=one;two", "B=yes"]}]}]
+            (root / "CTestTestfile.cmake").write_text(packet.ctest_text(tests))
+            self.assertEqual(packet.normalized_tests(packet.snapshot(root)), packet.normalized_tests({"tests": tests}))
+
     def test_hosted_proof_is_opt_in_and_preserves_required_native_job(self):
         from test_macos_run_only import jobs
 
@@ -63,6 +87,37 @@ class PacketTest(unittest.TestCase):
         for command in ("setup-soldr@", "brew install", "cmake --build", "soldr cargo"):
             self.assertNotIn(command, proof)
         self.assertIn("bash rust/tools/tier2-validate/validate.sh", workflow["rust-tier2-macos"])
+
+    def test_non_common_producer_cannot_certify_existing_absolute_binaries(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with patch.object(packet.host_platform, "is_linux", return_value=True):
+            with self.assertRaisesRegex(ValueError, "common real checkout"):
+                packet.stage(Path("/producer/source"), Path("/absent/output"), Path("receipt"), Path("contract"), [])
+
+    def test_archive_rejects_traversal_before_creating_destination(self):
+        import io
+        import tarfile
+
+        packet = importlib.import_module("macos_tier2_packet")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "packet.tar.zst"
+            with tarfile.open(archive, "w:zst") as output:
+                info = tarfile.TarInfo("../escape")
+                info.size = 1
+                output.addfile(info, io.BytesIO(b"x"))
+            with self.assertRaisesRegex(ValueError, "nonportable"):
+                packet.extract(archive, root / "output", bundle.digest(archive))
+            self.assertFalse((root / "output").exists())
+
+    def test_immutable_artifact_must_match_exact_source_before_downloading(self):
+        packet = importlib.import_module("macos_tier2_packet")
+        with patch.object(packet.subprocess, "check_output", return_value=json.dumps({
+            "expired": False, "workflow_run": {"head_sha": "b" * 40}
+        })), patch.object(packet.subprocess, "run") as execute:
+            with self.assertRaisesRegex(ValueError, "another source"):
+                packet.download("obs-rust/obs-studio", "12345", "a" * 40, Path("/unused"))
+            execute.assert_not_called()
 
 
 class BundleTest(unittest.TestCase):
