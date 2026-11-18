@@ -1482,6 +1482,46 @@ by the runner account; the Tier 2 build and Flatpak jobs use `container:`, thoug
 they are not selected on the trimmed queue path. This change neither registers
 nor configures a runner. Clear the variable to return to hosted Linux runners.
 
+### Kept Tier 2 configure reuse
+
+Only the marker-backed kept-tree path sets `OBS_TIER2_KEEP_CONFIGURE=1`.
+It disables the libobs module cache, including its restore/save steps: Dell
+measurements restored 0/7 modules in five jobs, while enabling the imported
+module list required a second configure. Hosted runners keep the existing
+configure and module-cache behavior.
+
+`ci/tier2_configure.py` stores `.tier2-configure.json` inside `tree/`, so the
+existing crash-safe kept-tree save/restore carries it with `CMakeCache.txt`.
+The SHA-256 input fingerprint covers the complete argument vector (preserving
+argument boundaries and order): source/build paths, generator, every `-D`/`-U`,
+compilers and launchers, build type, test/reference switches, extra flags and
+version/build-number overrides. It also covers the working directory; PATH,
+HOME, compiler/linker flags, locale, DISPLAY and SDK variables; every CMAKE_,
+PKG_CONFIG, OBS_, SOLDR_, RUST, CARGO_, CCACHE_, ZCCACHE_, UV_ and PYTHON environment input
+(including `OBS_TIER2_LAUNCHER` and the existing shell toolchain-version result); resolved
+CMake/Ninja/compiler/launcher/soldr/pkg-config/git/uv/Python/linker/archiver
+executable paths and contents;
+the Ubuntu installed-package/version inventory; explicit toolchain
+file contents; and Rust toolchain/Cargo configuration files.
+
+OBS embeds `git describe --always --tags --match '[0-9]*.[0-9]*.[0-9]*'
+--dirty=-modified` during configure. Its output is hashed too unless an explicit
+`OBS_VERSION_OVERRIDE` replaces it. A different commit/tag/dirty version must
+configure to avoid reporting a stale version: the first configure saving is
+therefore limited to unchanged-version retries. Removing the module-cache
+configure also benefits changed revisions. The measured 128–133 second Dell
+warm configure is an opportunity, not a guaranteed per-commit saving.
+
+Preload scripts (`-C`, including their arbitrary includes), presets and
+`--fresh` conservatively retain explicit configure.
+Reuse additionally requires matching contents of the cache, Ninja graph and
+rules, the cached compiler/toolchain binaries/files, and an enabled Ninja CMake
+regeneration rule. Missing/invalid stamps, trees, probes or any mismatch run
+configure. The stamp is invalidated before configure and written atomically
+only after success. Module-cache use never permits reuse. CMakeLists/includes
+and `CONFIGURE_DEPENDS` changes remain Ninja's responsibility through
+`cmake --build`; no build or test result is cached by this decision.
+
 ### Prebaked Dell Tier 2 packages
 
 The independent master-push `tier2-image` job publishes the content-addressed

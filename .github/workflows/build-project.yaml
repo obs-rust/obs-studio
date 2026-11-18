@@ -2940,9 +2940,10 @@ jobs:
           SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
           SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
 
-      # The libobs lib-module cache (#3264): PRs restore master's modules,
-      # only master pushes save (a PR-ref cache is unreachable by other PRs).
+      # The libobs lib-module cache (#3264): hosted PRs restore master's modules,
+      # only master pushes save. Kept trees never use this second cache.
       - uses: ./.github/actions/cache
+        if: steps.pcache.outputs.tree == ''
         with:
           mode: restore
           path: ${{ github.workspace }}/.tier2-modcache
@@ -3001,7 +3002,9 @@ jobs:
           # Only the Dell's marker-backed persistent slot bypasses zccache.
           OBS_TIER2_LAUNCHER: ${{ steps.pcache.outputs.zccache == '' && 'zccache' || '' }}
           ZCCACHE_CACHE_DIR: ${{ steps.pcache.outputs.zccache || format('{0}/.tier2-zccache', github.workspace) }}
-          OBS_LIBOBS_MODULE_CACHE_DIR: ${{ github.workspace }}/.tier2-modcache
+          # A kept tree outperforms the module cache (0/7 Dell hits); avoid its second configure.
+          OBS_LIBOBS_MODULE_CACHE_DIR: ${{ steps.pcache.outputs.tree == '' && format('{0}/.tier2-modcache', github.workspace) || '' }}
+          OBS_TIER2_KEEP_CONFIGURE: ${{ steps.pcache.outputs.tree != '' && '1' || '' }}
           OBS_TIER2_COST_DIR: ${{ github.workspace }}/.tier2-cost
           OBS_TIER2_MODES: "OFF ON"
           OBS_TIER2_STAGE: build
@@ -3040,7 +3043,7 @@ jobs:
 
       - name: Save Tier 2 Module Cache 💾
         uses: ./.github/actions/cache
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.tier2-build.outcome == 'success'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && steps.tier2-build.outcome == 'success' && steps.pcache.outputs.tree == ''
         with:
           mode: save
           path: ${{ github.workspace }}/.tier2-modcache

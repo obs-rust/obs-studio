@@ -31,8 +31,8 @@ class Tier2BuildSetupTest(unittest.TestCase):
         source = VALIDATE.read_text()
         setup = source.split('# Compiler cache:', 1)[1].split('# Read the same canonical', 1)[0]
         setup = '# Compiler cache:' + setup
-        configure = source.split('  cmake -S "$SRC" -B "$build" -G Ninja', 1)[1].split('  # -k 0:', 1)[0]
-        configure = 'cmake -S "$SRC" -B "$build" -G Ninja' + configure
+        configure = source.split('  # Kept-tree configure:', 1)[1].split('  # -k 0:', 1)[0]
+        configure = '# Kept-tree configure:' + configure
         stats = re.search(r'(?:^if [^\n]+\n)?[ \t]*echo "== zccache"\n.*', source, re.M | re.S)[0]
         for launcher in (None, '', 'ccache'):
             with self.subTest(launcher=launcher), tempfile.TemporaryDirectory() as directory:
@@ -120,12 +120,13 @@ runpath_flags=()
     def test_module_cost_and_artifact_state_stays_in_workspace(self):
         job = build_job()
         build = step(job, "Build Tier 2 (libobs and libobs-c-reference) 🧱")
-        self.assertIn("OBS_LIBOBS_MODULE_CACHE_DIR: ${{ github.workspace }}/.tier2-modcache", build)
+        self.assertIn("OBS_LIBOBS_MODULE_CACHE_DIR: ${{ steps.pcache.outputs.tree == '' && format('{0}/.tier2-modcache', github.workspace) || '' }}", build)
+        self.assertIn("OBS_TIER2_KEEP_CONFIGURE: ${{ steps.pcache.outputs.tree != '' && '1' || '' }}", build)
         self.assertIn("OBS_TIER2_COST_DIR: ${{ github.workspace }}/.tier2-cost", build)
         self.assertIn("path: .tier2-cost", job)
         self.assertIn("path: ${{ github.workspace }}/.tier2-modcache", job)
-        for name in ("Save Tier 2 Module Cache 💾", "Upload Tier 2 Tree 🧾"):
-            self.assertNotIn("pcache", step(job, name))
+        self.assertIn("steps.pcache.outputs.tree == ''", step(job, "Save Tier 2 Module Cache 💾"))
+        self.assertNotIn("pcache", step(job, "Upload Tier 2 Tree 🧾"))
 
     def test_bound_reads_the_container_workspace(self):
         # The job runs in a container: ${{ github.workspace }} in a run

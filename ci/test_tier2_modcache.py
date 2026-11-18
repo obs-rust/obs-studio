@@ -38,14 +38,14 @@ class ValidateTest(unittest.TestCase):
         self.text = VALIDATE.read_text(encoding="utf-8")
 
     def test_main_configure_clears_the_cache_variable(self):
-        configure = self.text[self.text.index('cmake -S "$SRC" -B "$build"') :]
+        configure = self.text[self.text.index('tier2_configure -S "$SRC" -B "$build"') :]
         configure = configure[: configure.index(".configure.log")]
         self.assertIn("-DOBS_LIBOBS_MODULE_CACHE=", configure)
 
     def test_main_configure_writes_compile_commands(self):
         # restore keys modules from compile_commands.json; the Tier 2 tree
         # did not write it and the first CI run failed (#3336).
-        configure = self.text[self.text.index('cmake -S "$SRC" -B "$build"') :]
+        configure = self.text[self.text.index('tier2_configure -S "$SRC" -B "$build"') :]
         configure = configure[: configure.index(".configure.log")]
         self.assertIn("-DCMAKE_EXPORT_COMPILE_COMMANDS=ON", configure)
 
@@ -106,7 +106,7 @@ class WorkflowTest(unittest.TestCase):
     def test_the_build_step_passes_the_cache_dir(self):
         build = self.job[self.job.index("id: tier2-build") :]
         build = build[: build.index("run:")]
-        self.assertIn("OBS_LIBOBS_MODULE_CACHE_DIR: ${{ github.workspace }}/.tier2-modcache", build)
+        self.assertIn("OBS_LIBOBS_MODULE_CACHE_DIR: ${{ steps.pcache.outputs.tree == '' && format('{0}/.tier2-modcache', github.workspace) || '' }}", build)
 
 
 if __name__ == "__main__":
