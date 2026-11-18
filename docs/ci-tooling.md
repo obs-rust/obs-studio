@@ -344,7 +344,8 @@ executables are included in slice (a)'s final checksummed bundle.
 `rust-tests-macos-build` in the existing build workflow prepares the full bundle
 on Linux. It uses the existing per-job `mq-heavy-labels` routing with
 `ubuntu-26.04` fallback. Both hosted and Dell producers upload the same gzip
-archive and SHA256 sidecar; neither uses local runner handoff. The archive keeps
+archive and SHA256 sidecar; the job outputs its immutable artifact ID and real
+checkout parent, so a macOS-only rerun retains the producer's original attempt; neither uses local runner handoff. The archive keeps
 hidden build-script files and permissions. The consumer verifies the archive
 before extracting, then verifies all manifest file checksums before any test.
 PRs retain `rust_scope.affected` selection through `--base`; merge groups and
@@ -1165,8 +1166,9 @@ probe steps. Outside `merge_group` the selection is empty and no API call runs.
 Pull requests, master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
-Only Rust Tier 2 Linux build, its OFF/ON test jobs, and the Rust Cross Lint
-jobs (two main targets plus the release-target job) use that selection.
+Rust Tier 2 Linux build, its OFF/ON test jobs, Rust Cross Lint
+(two main targets plus the release-target job), and the Linux macOS Rust artifact
+producer use that selection.
 Build and tests share the selected pool so local handoff remains valid.
 Event Data, CI Mode, Format, Fast Gate, Windows Link Check, Cross Compile,
 Qt, app builds, proof publication, queue cancellation and CI Gate use hosted
@@ -1182,32 +1184,29 @@ per-run idle-capacity requirement without a workflow change. Unset or empty
 uses the unchanged conservative default `6` (checked by `ci/test_ci_scope.py`).
 In #4980's per-job routing, the Dell-routed heavy work in
 `build-project.yaml` is one Tier 2 Linux build, two complete Tier 2 test jobs
-(OFF/ON), two main Cross Lint legs and one release-target Cross Lint job.
-These are six jobs in total, with a **peak of five concurrent heavy jobs**:
-the two Tier 2 tests wait for the build and can overlap all three Cross Lint
-jobs. The release-target job runs its three targets within one job. That
-topology permits demand `5` for the concurrent peak or `6` for the total-job
-bound. These counts describe that topology, not a fixed admission constant.
+(OFF/ON), two main Cross Lint legs, one release-target Cross Lint job, and the
+Linux macOS Rust artifact producer (#5008). These are seven jobs in total, with
+**a peak of six concurrent heavy jobs**: the two Tier 2 tests wait for their build
+and can overlap all three Cross Lint jobs and the Darwin producer. The release
+job runs its three targets within one job. The unchanged default demand `6`
+covers that peak; an earlier override of `5` no longer covers it. A demand of `7`
+is the conservative total-job bound. Before the Darwin producer, #4980's six-job
+topology had a peak of five. These counts describe those topologies, not a fixed
+admission constant.
 
 **Revisit `MQ_RUNNER_DEMAND` whenever heavy jobs are added or their dependencies
 change.** Inventory every job using `mq-heavy-labels` in
 `.github/workflows/build-project.yaml`, expand its matrix, and account for
 `needs` dependencies when estimating concurrent demand. A job count alone is
-not the peak: Tier 2 build and tests run in successive stages. For example,
-[PR #5019](https://github.com/obs-rust/obs-studio/pull/5019) adds the Linux macOS
-test-bundle producer to this pool, bringing the total to seven heavy jobs and
-the possible concurrent peak to about six. Once that topology lands, revisit
-the repository variable; `5` no longer covers its peak, while `6` covers that
-peak and `7` is the conservative total-job bound. A demand above the Dell's
-online capacity intentionally selects hosted. The selector uses the configured
-demand and actual queued-job labels; it does not hard-code a five-job peak or
-automatically infer future jobs before they appear in the API. The same
+not the peak: Tier 2 build and tests run in successive stages. A demand above
+the Dell's online capacity intentionally selects hosted. The selector uses the
+configured demand and actual queued-job labels; it does not hard-code a five-job
+peak or automatically infer future jobs before they appear in the API. The same
 configured requirement applies when path scope skips some heavy jobs.
 `MQ_RUNNER_MIN_IDLE` is an optional repository Actions variable (default `1`);
 required idle capacity is `max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. With the
 default demand, a six-runner Dell is selected only when all six matching
-runners are idle; demand `5` allows selection with five idle when the minimum
-is no higher. Otherwise the entire heavy pool falls back to hosted,
+runners are idle. Otherwise the entire heavy pool falls back to hosted,
 preserving the build/test handoff agreement.
 
 Busy runners do not supply idle capacity, and runner IDs visible in both
