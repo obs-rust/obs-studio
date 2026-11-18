@@ -69,6 +69,7 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
     let runner = bin.join("obs-native-integration");
     std::fs::copy(std::env::current_exe().unwrap(), &runner).unwrap();
     let mut options = libobs::Options {
+        test_support: true,
         pch: std::env::var_os("OBS_BUILD_PCH").is_some(),
         unity: std::env::var_os("OBS_BUILD_DISABLE_CORE_UNITY").is_none(),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
@@ -167,23 +168,18 @@ fn c_and_rust_twins_preserve_public_data_lifecycle_and_module_apis() {
         target: build.target.clone(),
         output: build.output.join("production"),
     };
-    let production_core = libobs::build_with_options(&production, &root, &options).unwrap();
-    assert_eq!(exports(&production_core), exports(&libraries.with_rust));
-    assert!(!production.output.join("obs-c-reference").exists());
-    // Test-enabled CMake libraries contain private fixture exports. Exercise the
-    // same opt-in on Linux, where native Tier 2 previously never compared these
-    // exports with CMake. Production must still exclude the test-only seam.
-    let mut test_options = options.clone();
-    test_options.test_support = true;
-    let test_build = NativeBuild {
-        output: build.output.join("cmocka-fixtures"),
-        ..build.clone()
+    let production_options = libobs::Options {
+        test_support: false,
+        ..options.clone()
     };
-    let test_core =
-        libobs::build_c_reference_with_options(&test_build, &root, &test_options).unwrap();
-    let mut expected = exports(&libraries.reference);
+    let production_core =
+        libobs::build_with_options(&production, &root, &production_options).unwrap();
+    // Exercise the fixture opt-in on Linux without an additional native build.
+    // Only the test pair may export the helper; production must exclude it.
+    let mut expected = exports(&production_core);
     assert!(expected.insert("obs_test_set_locale_swap_core".into()));
-    assert_eq!(exports(&test_core), expected);
+    assert_eq!(exports(&libraries.with_rust), expected);
+    assert!(!production.output.join("obs-c-reference").exists());
     if std::env::var_os("OBS_BUILD_C_TESTS").is_some() {
         let executables = obs_build::validation::build_c_tests(
             &build,
