@@ -25,7 +25,8 @@
         "libobs/obs-nix-portal-shortcut-ids.c.h",
         "libobs/obs-nix-portal-shortcut-sets.c.h",
         "libobs/obs-nix-portal-shortcut-status.c.h",
-        "libobs/obs-nix-portal-shortcuts.c.h"
+        "libobs/obs-nix-portal-shortcuts.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "requires": {
         "all": [
