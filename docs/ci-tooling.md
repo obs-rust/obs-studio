@@ -577,12 +577,55 @@ the paths that select them, so a change only triggers the tests it can affect.
   closed with named diagnostics. Cancelled jobs with no assigned runner and
   no steps are reported as runner-capacity conditions and still fail the gate;
    they are never converted to success. The existing AI rebase maintenance
-   workflow runs `ci/mq_acquire_retry.py` on its push, dispatch and :17/:47
-   schedule with `github.token` (`actions: write`, `checks: read`), independently
-   of `AI_REBASE_TOKEN`. It retries failed jobs only for current queue heads,
-   below attempt 3, when every unsuccessful job is an exact hosted-runner
-   acquisition cancellation or CI Gate with only those capacity diagnostics.
-   Missing evidence, real failures and departed heads are logged and left alone.
+   workflow runs `ci/mq_acquire_retry.py` in a separate `capacity-recovery` job
+   on completed **Pull** `workflow_run` failures/cancellations, plus master push,
+   dispatch and the :17/:47 schedule as a three-hour backstop. Recovery does not
+   wait behind conflict resolution. It uses only default-branch code and API
+   evidence, never the triggering head or its artifacts. Each event also scans
+   recent completions, covering bursts where GitHub replaces a pending recovery
+   job; the schedule remains the backstop for delayed or missing events.
+
+   A PR run gets **one failed-jobs rerun** (attempt 1 only). A capacity-failed
+   group that is still present at the exact tested SHA also gets one failed-jobs
+   rerun, with fresh membership/PR-head checks. GitHub may mark that entry
+   `UNMERGEABLE` even though the PR has no conflict: capacity classification uses
+   exact annotations and CI Gate diagnostics, never that queue state. Run
+   44351072142 (#5111, cancelled macOS job 134968894019, gate 134992644660) is
+   the recorded example; it stayed queued until a manual removal/re-addition.
+   A real PR conflict still blocks recovery. An ejected merge
+   group gets a **fresh queue execution**, not a rerun of its departed synthetic
+   head: the tool checks the latest removal belongs to that exact group, proves
+   prior queue intent and an unchanged PR head, refuses conflicts, manual
+   removals/disarms, holds and new queue transitions, and re-arms with
+   `--match-head-commit`. A comment reserves one automatic retry per PR head
+   before enqueueing; it shares the older ejection handler's retry marker.
+   Each recovery still requires every selected job and CI Gate to pass.
+
+   Both paths require exact hosted acquisition annotations and CI Gate capacity
+   diagnostics for every unsuccessful job. Missing/unknown/incomplete evidence,
+   independent gate failures and real test failures never authorize recovery.
+   `github.token` (`actions: write`, `checks: read`, `contents: read`) suffices
+   for PR and still-live group reruns. Re-arming ejected groups requires
+   **AI_REBASE_TOKEN**, an App token or
+   fine-grained PAT with contents/checks read, Actions write and pull requests
+   write: enqueues with GITHUB_TOKEN do not trigger merge-group workflows.
+   Without that secret PR and still-live group reruns still work; ejected-group
+   re-arming emits a warning and leaves the PR alone. Restore this existing secret to enable unattended
+   queue recovery; the 2026-11-18 maintenance log showed it absent.
+
+   The older `ci/ai_rebase.py --requeue-ejected` remains a scheduled/push/dispatch
+   backstop for broader proven infrastructure failures, now also guarded by
+   AI_REBASE_TOKEN. It inspects recent latest removals (three hours), binds the
+   PR head via its timeline, classifies all associated workflow failures, and
+   spends one per-head comment marker before re-arming. It skips armed, active,
+   held or conflicting PRs. Runnerless cancellations are reserved exclusively
+   for the strict capacity tool; the broader handler cannot bypass its refusal.
+   Its broader policy does not run on `workflow_run`.
+   The old capacity tool only scanned live queue heads at :17/:47/master pushes:
+   once CI Gate ejected a group it was invisible, and PR runs were never scanned
+   (#5115; merge-group runs 44306825758, 44318842478, 44323352759, 44329655339,
+   44341056238; PR run 44318137015). A running CI workflow cannot rerun itself;
+   external completed-run recovery keeps CI Gate's fail-closed behavior intact.
   Scope-policy edits (`ci/ci_scope.py`) also select Windows on PRs to exercise
   the routing on hosted CI. A failed or runnerless selected Windows job still
   blocks that PR. Selected queue jobs must also execute successfully; missing,

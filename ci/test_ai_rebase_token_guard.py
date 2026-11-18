@@ -8,7 +8,7 @@ every master push while the repository had no AI_REBASE_TOKEN secret, so an
 optional workflow showed a red run. GitHub does not allow the `secrets`
 context in `jobs.<id>.if` (actionlint error; #4730 tried it and was closed),
 so push/resolution steps check a job `env` flag. Read-only checkout, uv and
-the GITHUB_TOKEN-only requeue mode also run without the push token.
+capacity reads/PR reruns also run without the push token.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def steps(job: str) -> list[str]:
     m = re.search(r"^    steps:\n((?:(?:      .*)?\n)*)", job, re.M)
     if not m:
         return []
-    return [s for s in re.split(r"^      - ", m.group(1), flags=re.M) if s.strip()]
+    return [s for s in re.split(r"^      - ", m.group(1), flags=re.M)[1:] if s.strip()]
 
 
 def step_if(step: str) -> str:
@@ -73,8 +73,10 @@ def problems(text: str) -> list[str]:
             cond = step_if(step)
             if (("uses: actions/checkout@" in step and "secrets.AI_REBASE_TOKEN || github.token" in step)
                     or "uses: astral-sh/setup-uv@" in step
-                    or (("--requeue-ejected" in step or "ci/mq_acquire_retry.py" in step)
-                        and "GH_TOKEN: ${{ github.token }}" in step)):
+                    or ("ci/mq_acquire_retry.py" in step
+                        and "GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN || github.token }}" in step)
+                    or (name == "capacity-recovery" and "uses: actions/checkout@" in step
+                        and "persist-credentials: false" in step and "ref: master" in step)):
                 continue  # these steps need no push credential
             if not re.search(r"\benv\." + flag + r" *[!=]= *'true'", cond):
                 first = step.splitlines()[0].strip()
@@ -135,16 +137,19 @@ jobs:
 
 
 class TokenGuardTest(unittest.TestCase):
-    def test_requeue_runs_without_push_token_with_minimal_permissions(self):
+    def test_queue_recovery_requires_triggering_token_but_pr_retry_does_not(self):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertRegex(text, r"permissions:\n  contents: read\n  pull-requests: write")
-        shared = steps(jobs(text)["rebase"])
+        shared = steps(jobs(text)["capacity-recovery"])
         requeue = next(s for s in shared if "--requeue-ejected" in s)
-        self.assertEqual(step_if(requeue), "")
-        self.assertIn("GH_TOKEN: ${{ github.token }}", requeue)
+        self.assertIn("env.HAS_TOKEN == 'true'", step_if(requeue))
+        self.assertIn("GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN }}", requeue)
         checkout = next(s for s in shared if "uses: actions/checkout@" in s)
         self.assertEqual(step_if(checkout), "")
-        self.assertIn("secrets.AI_REBASE_TOKEN || github.token", checkout)
+        self.assertIn("persist-credentials: false", checkout)
+        retry_step = next(s for s in shared if "ci/mq_acquire_retry.py" in s)
+        self.assertEqual(step_if(retry_step), "")
+        self.assertIn("secrets.AI_REBASE_TOKEN || github.token", retry_step)
 
     def test_checker_catches_unguarded_steps(self) -> None:
         self.assertEqual(

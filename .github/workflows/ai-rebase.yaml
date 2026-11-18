@@ -10,14 +10,17 @@ name: AI rebase
 # Secrets:
 #   OPENROUTER_API_KEY  OpenRouter key (DeepSeek Flash by default).
 #   AI_REBASE_TOKEN     token that pushes the rebased branch (contents: write,
-#                       pull-requests: write). It must not be GITHUB_TOKEN: a
-#                       push made with GITHUB_TOKEN starts no workflows, so the
+#                       pull-requests: write, actions: write, checks: read). It must not be GITHUB_TOKEN: a
+#                       push/enqueue made with GITHUB_TOKEN starts no workflows, so the
 #                       rebased PR would never get CI. A GitHub App
 #                       installation token or a fine-grained PAT scoped to
 #                       this repo both work.
 on:
   push:
     branches: [master]
+  workflow_run:
+    workflows: [Pull]
+    types: [completed]
   schedule:
     - cron: "17,47 * * * *"
   workflow_dispatch:
@@ -35,18 +38,63 @@ permissions:
   actions: write
   checks: read
 
-concurrency:
-  group: ai-rebase
-  cancel-in-progress: false
-
 jobs:
+  capacity-recovery:
+    if: >-
+      (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio') &&
+      github.repository == 'obs-rust/obs-studio' &&
+      (github.event_name != 'workflow_run' ||
+       ((github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'merge_group') &&
+        (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Serialize all recovery paths, without waiting behind a 30-minute rebase.
+    concurrency:
+      group: ai-rebase-capacity
+      cancel-in-progress: false
+    env:
+      HAS_TOKEN: ${{ secrets.AI_REBASE_TOKEN != '' }}
+    steps:
+      # workflow_run is privileged. Never checkout the triggering head or read
+      # its artifacts; inspect only API evidence using default-branch code.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: master
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+      - name: Recover proven hosted capacity failures
+        env:
+          GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN || github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          # shellcheck disable=SC2086 # DRY is an optional argument
+          if [ -n "$RUN_ID" ]; then
+            uv run --no-project --script ci/mq_acquire_retry.py --run-id "$RUN_ID" $DRY
+          else
+            uv run --no-project --script ci/mq_acquire_retry.py $DRY
+          fi
+      - name: Re-arm infrastructure-ejected PRs
+        if: github.event_name != 'workflow_run' && env.HAS_TOKEN == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AI_REBASE_TOKEN }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          # Broader existing infrastructure recovery is a backstop only.
+          # shellcheck disable=SC2086 # DRY is an optional argument
+          uv run --no-project --script ci/ai_rebase.py --requeue-ejected --limit 10 $DRY
+
   rebase:
-    if: github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio'
+    concurrency:
+      group: ai-rebase-conflicts
+      cancel-in-progress: false
+    if: github.event_name != 'workflow_run' && (github.event_name != 'schedule' || github.repository == 'obs-rust/obs-studio')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # GitHub does not allow `secrets` in a job `if:`, so whether the token is
     # set comes through env. Only push/resolution steps need it (#4461).
-    # Requeue performs public Actions reads and PR writes with GITHUB_TOKEN.
     env:
       HAS_TOKEN: ${{ secrets.AI_REBASE_TOKEN != '' }}
     steps:
@@ -60,20 +108,6 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
-      - name: Retry merge-queue hosted runner acquisition failures
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
-        run: |
-          # shellcheck disable=SC2086 # DRY is an optional argument
-          uv run --no-project --script ci/mq_acquire_retry.py $DRY
-      - name: Re-arm infrastructure-ejected PRs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
-        run: |
-          # shellcheck disable=SC2086 # DRY is an optional argument
-          uv run --no-project --script ci/ai_rebase.py --requeue-ejected --limit 10 $DRY
       # rustfmt for resolved Rust files (the agent runs `soldr cargo fmt`).
       - uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         if: env.HAS_TOKEN == 'true'
