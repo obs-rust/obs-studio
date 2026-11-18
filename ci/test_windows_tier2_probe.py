@@ -2,11 +2,13 @@
 """Contracts for the opt-in Windows Tier 2 producer, with no Windows runner."""
 
 import importlib
+import io
 import json
 from pathlib import Path
 import struct
 import subprocess
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 
@@ -164,6 +166,54 @@ class ProbeTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "escapes"):
                 helper.prepare(root)
+
+    def test_hosted_runtime_is_explicit_and_still_requires_consumer_validation(self):
+        helper = self.helper()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exe = root / "test.exe"
+            exe.write_bytes(pe(["vcruntime140.dll", "kernel32.dll"]))
+            self.assertEqual(helper.closure([exe], [], hosted_runtime=True), [exe])
+            with self.assertRaisesRegex(ValueError, "vcruntime140.dll"):
+                helper.closure([exe], [])
+            exe.write_bytes(pe(["vcruntime140d.dll"]))
+            with self.assertRaisesRegex(ValueError, "vcruntime140d.dll"):
+                helper.closure([exe], [], hosted_runtime=True)
+
+    def test_pinned_builtins_overlay_keeps_managed_resources(self):
+        from compression import zstd
+
+        helper = importlib.import_module("windows_tier2_toolchain")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            resource = root / "managed"
+            (resource / "include").mkdir(parents=True)
+            (resource / "include/xmmintrin.h").write_text("managed intrinsic\n")
+            (resource / "share").mkdir()
+            payload = b"compiler-rt-test"
+            archive = io.BytesIO()
+            with tarfile.open(fileobj=archive, mode="w") as tar:
+                for name, data in [(helper.LIBRARY, payload), ("licenses/compiler-rt.txt", b"license")]:
+                    entry = tarfile.TarInfo(name)
+                    entry.size = len(data)
+                    tar.addfile(entry, io.BytesIO(data))
+            compressed = zstd.compress(archive.getvalue())
+            with (
+                patch.object(helper, "ARCHIVE_SHA256", helper.sha256(compressed)),
+                patch.object(helper, "LIBRARY_SHA256", helper.sha256(payload)),
+                patch.object(helper.subprocess, "check_output", return_value=str(resource)),
+                patch.object(helper.urllib.request, "urlopen", return_value=io.BytesIO(compressed)),
+            ):
+                config = helper.provision("soldr-driver", root / "overlay")
+                self.assertIn("--rtlib=compiler-rt", config.read_text())
+                self.assertIn("-isystem", config.read_text())
+                overlay = config.parent / "resource"
+                self.assertEqual((overlay / "include/xmmintrin.h").read_text(), "managed intrinsic\n")
+                self.assertEqual((overlay / "lib/windows/clang_rt.builtins-x86_64.lib").read_bytes(), payload)
+                self.assertFalse((resource / "lib").exists())
+                (overlay / "lib/windows/clang_rt.builtins-x86_64.lib").write_bytes(b"corrupt")
+                with self.assertRaisesRegex(ValueError, "builtins checksum"):
+                    helper.provision("soldr-driver", root / "overlay")
 
 
 if __name__ == "__main__":
