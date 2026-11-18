@@ -2551,23 +2551,6 @@ bool obs_scene_reorder_items(obs_scene_t *scene, obs_sceneitem_t *const *item_or
 	return true;
 }
 
-void obs_sceneitem_defer_update_begin(obs_sceneitem_t *item)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_defer_update_begin"))
-		return;
-
-	os_atomic_inc_long(&item->defer_update);
-}
-
-void obs_sceneitem_defer_update_end(obs_sceneitem_t *item)
-{
-	if (!obs_ptr_valid(item, "obs_sceneitem_defer_update_end"))
-		return;
-
-	if (os_atomic_dec_long(&item->defer_update) == 0)
-		do_update_transform(item);
-}
-
 /* The matrix math is obs-scene-group-transform.c.h. The scene still reads
  * the item, still converts absolute and relative coordinates, and still
  * decides whether to invert the group's draw transform. */
