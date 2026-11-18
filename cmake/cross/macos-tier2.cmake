@@ -205,11 +205,24 @@ function(_obs_cross_tier2_tests)
   add_subdirectory("${OBS_SOURCE_ROOT}/plugins" "${CMAKE_BINARY_DIR}/plugins")
   add_subdirectory("${OBS_SOURCE_ROOT}/libobs-opengl" "${CMAKE_BINARY_DIR}/libobs-opengl")
   target_link_libraries(libobs-opengl PRIVATE "-framework OpenGL")
-  file(
-    WRITE "${CMAKE_BINARY_DIR}/tier2-toolchain-waiting.txt"
-    "libobs-metal: waiting on Linux-hosted Swift/Darwin overlays and SDK 26.5\n"
-    "sanitized fixtures and availability builtins: waiting on Darwin compiler-rt\n"
-  )
+  if(NOT OBS_TIER2_DARWIN_RECEIPT OR NOT EXISTS "${OBS_TIER2_DARWIN_RECEIPT}")
+    message(FATAL_ERROR "Tier 2 requires ci/macos_tier2_toolchain.py and soldr toolchain darwin (SDK 26.5)")
+  endif()
+  enable_language(Swift)
+  # Translate the canonical Metal recipe's Xcode properties for Linux Ninja.
+  function(set_target_xcode_properties target)
+    cmake_parse_arguments(PARSE_ARGV 1 _swift "" "" "PROPERTIES")
+    while(_swift_PROPERTIES)
+      list(POP_FRONT _swift_PROPERTIES _key _value)
+      if(_key STREQUAL "SWIFT_OBJC_BRIDGING_HEADER")
+        target_compile_options(${target} PRIVATE -import-objc-header "${_value}")
+      elseif(_key STREQUAL "SWIFT_VERSION")
+        set_property(TARGET ${target} PROPERTY Swift_LANGUAGE_VERSION 6)
+      endif()
+    endwhile()
+    target_compile_options(${target} PRIVATE -Xcc -fobjc-arc -Xcc -fmodules)
+  endfunction()
+  add_subdirectory("${OBS_SOURCE_ROOT}/libobs-metal" "${CMAKE_BINARY_DIR}/libobs-metal")
   # The run host must not compile cmocka. Build the pinned source for Darwin.
   include(FetchContent)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build cmocka into the test executables" FORCE)
