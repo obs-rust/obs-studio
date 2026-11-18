@@ -1,6 +1,7 @@
 # Opt-in Linux-produced macOS runtime graph (#5009). This is infrastructure,
 # not permission to replace the native validator's renderer/capture contracts.
 set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
+include("${OBS_SOURCE_ROOT}/cmake/cross/tier2-registry-evidence.cmake")
 include("${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.cmake")
 obs_rust_hidden_lists(
   "${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.d"
@@ -192,6 +193,13 @@ function(_obs_cross_tier2_tests)
     file(WRITE "${CMAKE_BINARY_DIR}/tier2-modules.txt" "${_lines}\n")
   endfunction()
   add_subdirectory("${OBS_SOURCE_ROOT}/plugins" "${CMAKE_BINARY_DIR}/plugins")
+  add_subdirectory("${OBS_SOURCE_ROOT}/libobs-opengl" "${CMAKE_BINARY_DIR}/libobs-opengl")
+  target_link_libraries(libobs-opengl PRIVATE "-framework OpenGL")
+  file(
+    WRITE "${CMAKE_BINARY_DIR}/tier2-toolchain-waiting.txt"
+    "libobs-metal: waiting on Linux-hosted Swift/Darwin overlays and SDK 26.5\n"
+    "sanitized fixtures and availability builtins: waiting on Darwin compiler-rt\n"
+  )
   # The run host must not compile cmocka. Build the pinned source for Darwin.
   include(FetchContent)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build cmocka into the test executables" FORCE)

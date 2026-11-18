@@ -67,7 +67,7 @@ native contract 111.92/113.82 s. These are measurements, not cross-build savings
 ## Linux prototype and relocation contract
 
 ```sh
-cmake -S cmake/cross -B build_macos_tier2_cross -G Ninja \
+cmake -S . -B build_macos_tier2_cross -G Ninja \
   -DOBS_CROSS_TARGET=mac-arm64 -DOBS_CROSS_TIER2=ON
 cmake --build build_macos_tier2_cross --target tier2-cross -j 4
 ```
@@ -114,25 +114,72 @@ Only after the blockers below are resolved can the producer attest a complete
 bundle and enable the run-only job. No full CTest pass or native contract has
 been demonstrated on macOS from this prototype.
 
-## Blockers and fixes before activation
+## Preparation split and remaining blockers
 
-| Blocker / evidence | Required fix |
+The follow-up configures the canonical `plugins/CMakeLists.txt` dispatcher from
+its real checkout root. The plugin recipes create their real targets and shared
+owners, including RTMP/AMF/output, happy-eyeballs, media-playback, image/slideshow,
+LUT/filter and text-file. `tier2-modules.txt` records `OBS_MODULES_ENABLED`; the
+same list generates the linked core manifest. The observed selection has 23
+modules, including outputs and transitions. No test-only list is substituted.
+
+`test_core_module_manifest_source` keeps its registry entry. Linux builds
+`tier2-cross-manifest-fixture` with the soldr toolchain. Its receipt preserves
+successful configure/build results, the poisoned source-tree file, generated
+binary-tree source, build graph and product hashes. On macOS set
+`OBS_TIER2_FIXTURE_PREPARED=1`: the same script checks those hashes and recipe
+identity without configuring or compiling. The bundle helper transports the
+receipt and products and signature-verifies final Mach-O runtime images.
+
+For the exact `native_libobs::macos_core_builds_from_the_canonical_manifest`
+selector, `OBS_BUILD_MACOS_PREPARE_ONLY=1` builds on Linux using an explicit Darwin
+target, dependencies, Rust archive, soldr compiler/archiver and SDK. Set
+`OBS_BUILD_MACOS_MODULES` to the CMake-produced list. `macos-prepared.json` records
+each real core/module/probe path and independent failed preparations in `waiting`.
+It remains incomplete until both cores, both renderers, all three capture modules
+and both probes exist. Neither a failed artifact nor a partial renderer set is a
+successful full contract.
+
+On macOS `OBS_BUILD_MACOS_ASSERT_ONLY=1` reads that complete receipt and never calls
+a builder. It requires every CMake reference and retains export, framework-byte,
+module-kind, data and required-symbol assertions. `macos-run-prepared.sh` is the
+explicit prototype consumer: CMake export/loader checks and two complete CTest
+passes, the prebuilt exact Rust contract, then the two Cargo-core CTest passes.
+The ordinary validator and prototype share `macos-assertions.sh`, retaining both
+native/CMake renderer and capture loads, data diffs, source registration and all
+wrong-core (12) / wrong-module (14) controls. This is not workflow activation.
+
+The registry now contains all 30 previously missing names. The five additions
+relative to the supplied older native list are `test_encoder_group_lifecycle_api`,
+`test_encoder_set_group`, `test_hotkey_pair_register`, `test_scene_group_enum_items`
+and `test_source_init_context_rust`: registrations from newer source history.
+Configuring the real x264 owner also restores `obs-x264-test`, which the earlier
+name inventory did not contain. Counts from those different revisions are not
+property parity evidence.
+
+For an independent native snapshot at the same final commit, add
+`-DCMAKE_PROJECT_INCLUDE=<checkout>/cmake/cross/tier2-registry-evidence.cmake` to
+native configuration. The cross producer includes it automatically. Then run:
+
+```sh
+uv run --no-project ci/macos_tier2_registry.py snapshot --source . --build BUILD --output registry.json
+uv run --no-project ci/macos_tier2_registry.py compare --native native.json --cross cross.json
+```
+
+The snapshot requires clean tracked sources and matching configure-time commit
+provenance. Comparison checks names, commands and every CTest property, replacing
+only checkout/build path roots and ignoring numeric CMake backtrace IDs. A count
+match, stale build tree or snapshot from another commit cannot pass.
+
+| Blocker | Status / remaining evidence |
 | --- | --- |
-| Runtime CMake compilation: registered test_core_module_manifest_source passes TEST_C_COMPILER and TEST_TOOLCHAIN_FILE; check_core_module_manifest_source.cmake configures and builds a fixture. It appears in all four CTest passes. | Split fixture preparation to Linux and transfer every build result plus recorded build-graph assertions. Keep the existing runtime assertions; do not skip this registry entry. |
-| Runtime Cargo-native compilation: libobs.rs contract calls build_pair, build_metal, build_macos_capture and probe builders while executing. | Split Linux preparation from macOS identity/loading/data assertions. A no-run Rust executable is necessary but insufficient. Keep all native/CMake export comparisons and negative controls. |
-| Swift/Metal: libobs-metal is Swift, and swift_macos.rs requires explicit SWIFTC/SDKROOT off Darwin; no Swift compiler is provisioned by this soldr C-family toolchain. | Provision an approved Linux-hosted Swift cross toolchain plus Darwin standard libraries/overlays compatible with the blessed SDK, then build both Metal implementations on Linux. Do not compile it in a macOS preparation job. |
-| Native CMake requires Xcode and SDK 26.5; soldr's blessed cross SDK is 14.5. | Use the Ninja cross graph, validate availability/weak-linking for every selected host API, and resolve SDK/Swift overlay compatibility explicitly. Do not claim the Xcode app graph can run on Linux. |
-| Initial cross registry: 631 tests versus 656 in the supplied native log; 30 native names absent, five newer names added. Missing closures are obs-outputs/RTMP/AMF, happy-eyeballs, media-playback, image-source/slideshow, filters/LUT and text-file owners. | Add the real owner/dependency graphs and compare test names/properties on the same commit with native, not merely counts from different commits. No workflow switch with a partial registry. |
-| Core-module list in the old cross link is empty (`OBS_CORE_MODULE_COUNT=0`), while test_core_module_manifest asserts required output/transition modules. | Generate the canonical enabled-module list from the actual selected plugin graph; do not fabricate a list to satisfy the test. |
-| Qt code generators are Darwin binaries in the target package; first full build failed moc with exit 126. | Use the matching pinned Linux host Qt tools (prototype selects host moc/uic/rcc); keep Darwin Qt link/runtime artifacts and all optional test owners. |
-| Darwin sanitizer runtime missing: a direct `-fsanitize=address,undefined` link fails with `cannot open .../lib/darwin/libclang_rt.asan_osx_dynamic.dylib` and undefined `__asan_init`. The native registry enables per-test sanitizers. | Provision matching Darwin compiler-rt runtimes with soldr's LLVM, sign/stage them, then replay every sanitized fixture. Disabling sanitizers would remove existing coverage. The full prototype build was interrupted after this independent failure was established. |
-| Relocation includes compiled fixture paths, generated data, Qt plugins/frameworks and third-party dylib closure. | Establish a common source root before compiling; rewrite CTest build paths; stage/verify full loader/data closure. Prove selected core with DYLD_PRINT_LIBRARIES after relocation and run all four passes on macOS. |
-| Signing after any install-name/load-command edit invalidates page hashes. | Set final install names/RPATHs at link; keep/thin existing signed arm64 dependencies without byte edits. Verify every executable/dylib/bundle after its final content is fixed. No entitlements are needed for plain loader probes; release signing is outside this prototype. |
-
-No ObjC or Apple framework link failure has yet been established for libobs:
-its first cross-link succeeded. Swift availability, runtime compilation and graph
-completeness are distinct blockers; they should not be described as ld64.lld
-failing to link Metal without an actual Swift artifact and linker diagnostic.
+| 3. CTest runtime compiler | Split implemented; real Darwin fixture prepares on Linux and its assertion phase succeeds with a nonexistent compiler. Registry entry and original source-selection assertion retained. |
+| 4. Native runtime compiler | Separate preparation/complete receipts and assertion-only consumer implemented; shared loader/data/registration controls retained. Full preparation/execution waits on the toolchain rows below. |
+| 5. Missing owners and registry parity | Real canonical owners configured; all original 30 missing names present. Same-commit name/property comparator implemented. Independent native snapshot/property comparison still required before activation. |
+| 6. Empty core-module list | Replaced by the actual enabled canonical plugin graph (23 observed names); both CMake cores use its generated manifest. |
+| Darwin compiler-rt (outside repository scope) | ASan/UBSan runtime remains unprovisioned. Real native screen-capture linking also fails on compiler-rt availability builtin `__isPlatformVersionAtLeast`; no substitute or sanitizer change. |
+| Swift/Metal and SDK 26.5 (outside repository scope) | Both native/CMake Metal artifacts wait on the approved Linux-hosted Swift/Darwin toolchain and SDK. No fake Metal target or alternate renderer closes the gate. |
+| Full staged closure and macOS execution | Still requires all signed frameworks/dependencies, resources and generated data at the common paths, and successful execution of all four full passes plus contracts on macOS. |
 
 ## Observed prototype results
 

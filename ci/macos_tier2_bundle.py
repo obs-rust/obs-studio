@@ -102,6 +102,34 @@ def verifier(helper: Path) -> Callable[[Path], None]:
     return verify
 
 
+def stage_fixture(
+    build: Path, output: Path, files: dict, verify: Callable[[Path], None]
+) -> None:
+    fixture = build / "test/cmocka/core_module_manifest_source"
+    if fixture.exists():
+        if not (fixture / "evidence.cmake").is_file():
+            raise ValueError("missing prepared core-manifest fixture evidence")
+        for path in sorted(fixture.rglob("*")):
+            if not path.is_file():
+                continue
+            relative = Path("build") / contained(build, path)
+            destination = output / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            data = path.read_bytes()
+            runtime_image = (
+                data[:4] == b"\xcf\xfa\xed\xfe"
+                and len(data) >= 16
+                and struct.unpack_from("<I", data, 12)[0] in (2, 6, 8)
+            )
+            if runtime_image:
+                verify(path)
+            destination.write_bytes(data)
+            shutil.copymode(path, destination)
+            if runtime_image:
+                verify(destination)
+            files[str(relative)] = digest(destination)
+
+
 def stage(
     build: Path,
     source: Path,
@@ -146,24 +174,7 @@ def stage(
         shutil.copymode(path, destination)
         verify(destination)
         files[str(relative)] = digest(destination)
-    fixture = build / "test/cmocka/core_module_manifest_source"
-    if fixture.exists():
-        if not (fixture / "evidence.cmake").is_file():
-            raise ValueError("missing prepared core-manifest fixture evidence")
-        for path in sorted(fixture.rglob("*")):
-            if not path.is_file():
-                continue
-            relative = Path("build") / contained(build, path)
-            destination = output / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            data = path.read_bytes()
-            if data[:4] == b"\xcf\xfa\xed\xfe":
-                verify(path)
-            destination.write_bytes(data)
-            shutil.copymode(path, destination)
-            if data[:4] == b"\xcf\xfa\xed\xfe":
-                verify(destination)
-            files[str(relative)] = digest(destination)
+    stage_fixture(build, output, files, verify)
     manifest = {
         "schema": 1,
         "target": "aarch64-apple-darwin",

@@ -26,6 +26,7 @@ export OBS_BUILD_MACOS_OUTPUT=$native_output
 export OBS_BUILD_MACOS_DEPENDENCIES=$OBS_TIER2_DEPS
 export OBS_BUILD_MACOS_CAPTURE=1 OBS_BUILD_MACOS_GRAPHICS=1
 export OBS_BUILD_MACOS_REFERENCE=$c_lib
+export OBS_BUILD_MACOS_MODULES=$build/tier2-modules.txt
 exports=$build/runtime-exports
 mkdir -p "$exports"
 nm -gUj "$c_lib" | LC_ALL=C sort > "$exports/reference"

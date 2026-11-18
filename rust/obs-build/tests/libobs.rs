@@ -1350,15 +1350,38 @@ fn macos_core_builds_from_the_canonical_manifest() {
         wayland: false,
         unity: std::env::var_os("OBS_BUILD_MACOS_SEPARATE").is_none(),
         pch: std::env::var_os("OBS_BUILD_MACOS_PCH").is_some(),
+        core_modules: std::env::var_os("OBS_BUILD_MACOS_MODULES")
+            .map(|path| std::fs::read_to_string(path).expect("read canonical native module list"))
+            .map(|names| names.lines().map(str::to_owned).collect())
+            .unwrap_or_default(),
         ..libobs::Options::default()
     };
+    if std::env::var_os("OBS_BUILD_MACOS_PREPARE_ONLY").is_some() {
+        assert!(!assert_only, "select preparation or assertions");
+        macos_prepared::prepare(&build, &root, &options);
+        return;
+    }
     if assert_only {
+        assert!(std::env::var_os("OBS_BUILD_MACOS_MODULES").is_some());
         assert!(std::env::var_os("OBS_BUILD_MACOS_RUST_ARCHIVE").is_some());
         assert!(std::env::var_os("OBS_BUILD_MACOS_CAPTURE").is_some());
         assert_eq!(
             std::env::var("OBS_BUILD_MACOS_GRAPHICS").as_deref(),
             Ok("1")
         );
+        for reference in [
+            "REFERENCE",
+            "OPENGL_REFERENCE",
+            "METAL_REFERENCE",
+            "MAC_CAPTURE_REFERENCE",
+            "MAC_AVCAPTURE_REFERENCE",
+            "MAC_AVCAPTURE_LEGACY_REFERENCE",
+        ] {
+            assert!(
+                std::env::var_os(format!("OBS_BUILD_MACOS_{reference}")).is_some(),
+                "missing CMake reference {reference}"
+            );
+        }
     }
     let mut prepared = macos_prepared::Artifacts::new(&build.output, assert_only);
     let library = if let Some(archive) = std::env::var_os("OBS_BUILD_MACOS_RUST_ARCHIVE") {

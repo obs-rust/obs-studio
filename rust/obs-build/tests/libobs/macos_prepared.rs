@@ -8,6 +8,7 @@ pub(super) struct Artifacts {
     file: PathBuf,
     read_only: bool,
     paths: BTreeMap<String, Vec<PathBuf>>,
+    waiting: BTreeMap<String, String>,
 }
 
 impl Artifacts {
@@ -30,6 +31,7 @@ impl Artifacts {
             file,
             read_only,
             paths,
+            waiting: BTreeMap::new(),
         };
         if !read_only {
             std::fs::create_dir_all(output).unwrap();
@@ -78,11 +80,82 @@ impl Artifacts {
         }
     }
 
+    pub(super) fn attempt(
+        &mut self,
+        key: &str,
+        build: impl FnOnce() -> Result<Vec<PathBuf>, String>,
+    ) -> Option<Vec<PathBuf>> {
+        assert!(!self.read_only, "assertions may never prepare an artifact");
+        match build() {
+            Ok(paths) => Some(self.get(key, || paths)),
+            Err(error) => {
+                self.waiting.insert(key.into(), error);
+                self.save(false);
+                None
+            }
+        }
+    }
+
     fn save(&self, complete: bool) {
-        let receipt =
-            serde_json::json!({"schema": 1, "complete": complete, "artifacts": self.paths});
+        let receipt = serde_json::json!({"schema": 1, "complete": complete, "artifacts": self.paths, "waiting": self.waiting});
         std::fs::write(&self.file, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
     }
+}
+
+pub(super) fn prepare(
+    build: &obs_build::NativeBuild,
+    root: &Path,
+    options: &obs_build::libobs::Options,
+) {
+    use obs_build::{
+        graphics, libobs,
+        plugins::{MacosCaptureModule, build_macos_capture},
+    };
+    let archive = PathBuf::from(
+        std::env::var_os("OBS_BUILD_MACOS_RUST_ARCHIVE")
+            .expect("Linux preparation requires the real Rust archive"),
+    );
+    let mut artifacts = Artifacts::new(&build.output, false);
+    if let Some(cores) = artifacts.attempt("cores", || {
+        libobs::build_pair(build, root, options, &archive)
+            .map(|pair| vec![pair.reference, pair.with_rust])
+    }) {
+        let core = &cores[1];
+        for module in [
+            MacosCaptureModule::ScreenAudio,
+            MacosCaptureModule::Camera,
+            MacosCaptureModule::LegacyCamera,
+        ] {
+            artifacts.attempt(module.name(), || {
+                build_macos_capture(build, root, core, options, module)
+                    .map(|module| vec![module.library, module.data])
+            });
+        }
+        // Probe builders have no runtime execution. All loader/registration
+        // assertions remain in the shared macOS assertion phase.
+        artifacts.get("capture-probe", || {
+            vec![super::macos_capture::build_probe(
+                build, root, options, core,
+            )]
+        });
+        artifacts.attempt("opengl", || {
+            graphics::build_opengl(build, root, core, options).map(|path| vec![path])
+        });
+        artifacts.attempt("metal", || {
+            graphics::build_metal(build, root, core, options).map(|path| vec![path])
+        });
+        artifacts.get("graphics-probe", || {
+            vec![super::macos_graphics::build_probe(
+                build, root, options, core,
+            )]
+        });
+    }
+    artifacts.finish();
+    assert!(
+        artifacts.waiting.is_empty(),
+        "Linux preparation incomplete; see macos-prepared.json waiting entries: {:?}",
+        artifacts.waiting.keys().collect::<Vec<_>>()
+    );
 }
 
 #[test]

@@ -60,9 +60,14 @@ def compare(native: dict, cross: dict) -> dict:
 
 
 def snapshot(build: Path, source: Path) -> dict:
+    evidence = json.loads((build / "tier2-registry-provenance.json").read_text())
     revision = subprocess.check_output(
         ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
     ).strip()
+    if evidence["revision"] != revision or evidence["dirty"]:
+        raise ValueError(
+            "configure clean native and cross registries on the same commit before snapshotting"
+        )
     # A snapshot cannot claim a commit while tracked source edits are present.
     subprocess.run(
         ["git", "-C", str(source), "diff", "--exit-code", "HEAD", "--"],
@@ -98,6 +103,20 @@ def snapshot(build: Path, source: Path) -> dict:
     }
 
 
+def record(build: Path, source: Path) -> None:
+    revision = subprocess.check_output(
+        ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+    ).strip()
+    dirty = subprocess.run(
+        ["git", "-C", str(source), "diff", "--quiet", "HEAD", "--"], check=False
+    ).returncode
+    if dirty not in (0, 1):
+        raise ValueError("unable to record configured source state")
+    (build / "tier2-registry-provenance.json").write_text(
+        json.dumps({"revision": revision, "dirty": bool(dirty)}) + "\n"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -105,10 +124,16 @@ def main() -> int:
     take.add_argument("--build", type=Path, required=True)
     take.add_argument("--source", type=Path, required=True)
     take.add_argument("--output", type=Path, required=True)
+    provenance = sub.add_parser("record")
+    provenance.add_argument("--build", type=Path, required=True)
+    provenance.add_argument("--source", type=Path, required=True)
     diff = sub.add_parser("compare")
     diff.add_argument("--native", type=Path, required=True)
     diff.add_argument("--cross", type=Path, required=True)
     args = parser.parse_args()
+    if args.command == "record":
+        record(args.build, args.source)
+        return 0
     if args.command == "snapshot":
         args.output.write_text(
             json.dumps(snapshot(args.build, args.source), indent=2) + "\n"
