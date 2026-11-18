@@ -15,16 +15,22 @@ if(NOT _builtins_result EQUAL 0 OR NOT EXISTS "${_tier2_builtins}")
   message(FATAL_ERROR "clang did not resolve the provisioned Windows compiler-rt")
 endif()
 # soldr's case-insensitive VFS is a compiler-header overlay. lld-link still
-# searches physical library names; keep the one mixed-case consumer alias local.
+# searches physical library names; keep mixed-case consumer aliases local.
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cross-case-libs")
-file(
-  CREATE_LINK "${_tier2_xwin}/sdk/lib/um/x86_64/rpcrt4.lib" "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib"
-  SYMBOLIC
-  RESULT _rpc_alias
-)
-if(NOT _rpc_alias STREQUAL "0")
-  message(FATAL_ERROR "Cannot create cross-only Rpcrt4.lib alias: ${_rpc_alias}")
-endif()
+foreach(_sdk_lib IN ITEMS Rpcrt4 Dwmapi)
+  string(TOLOWER "${_sdk_lib}" _sdk_lower)
+  file(
+    CREATE_LINK
+      "${_tier2_xwin}/sdk/lib/um/x86_64/${_sdk_lower}.lib"
+      "${CMAKE_BINARY_DIR}/cross-case-libs/${_sdk_lib}.lib"
+    SYMBOLIC
+    RESULT _sdk_alias
+  )
+  if(NOT _sdk_alias STREQUAL "0")
+    message(FATAL_ERROR "Cannot create cross-only ${_sdk_lib}.lib alias: ${_sdk_alias}")
+  endif()
+endforeach()
+
 add_library(libobs-cross-reference SHARED)
 target_link_libraries(
   libobs-cross-reference

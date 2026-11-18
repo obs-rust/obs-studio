@@ -7,8 +7,8 @@ runtime DLLs from System32; their AMD64 headers and recursive imports are checke
 
 `native-test-names.json` preserves all 623 names from hosted job 134577207879 at
 7e68243cfbe072830a5381a60010020a048ad026. It is independent evidence of names,
-not a same-commit CTest command/property baseline. Seven subsequent tests register
-on this branch's master base. Never call equal counts full-suite qualification.
+not a same-commit CTest command/property baseline. The inventory also reports
+subsequent tests from current master. Never call equal counts full-suite qualification.
 
 ## Producer
 
@@ -29,6 +29,24 @@ The inventory command fails for missing native names or unbuilt tests. It always
 records `complete=false`: the historical log cannot establish current native
 property parity. Missing owners are reported, never replaced by dummy targets.
 Qt generators run on Linux; target Qt DLLs and imports remain Windows artifacts.
+The real outputs, filters, image-source, transitions, FreeType and win-capture
+owners use their canonical CMake definitions and optional test guards. FreeType
+comes from the Windows obs-deps package. Capture also builds the x64 hook,
+offsets/injection helpers and WinRT module. Owner resources are copied using
+the native resource helper; no empty target satisfies an owner guard.
+
+The cross-only driver layer translates native MSVC option spellings for GNU-style
+Clang targeting MSVC. Native MSVC/clang-cl options are unchanged. The MSVC ABI
+still selects the original per-test sanitizer policy. SDK link-case aliases stay
+inside this producer; soldr's existing VFS handles case-insensitive headers.
+The source-seam archive-member isolation override is scoped to the producer's
+soldr invocation; native Cargo profiles are unchanged.
+
+Linux CTest omits four legacy extensionless Windows commands. The inventory
+recovers their complete argument vectors from generated CTest records and
+resolves only an existing, contained AMD64 PE32+ `.exe`, retaining CTest's
+original properties. Every resolution is recorded, and missing executables
+remain unbuilt.
 
 For a failed full build, retain its full log and map every unbuilt test to its
 failed Ninja dependency edges:
@@ -53,7 +71,10 @@ uv run --python 3.14 --no-project ci/windows_tier2_fixtures.py \
 
 The full producer is still blocked. In particular, this branch does not yet
 produce the independent Cargo cores, native loader/renderer contract helpers,
-bundled obs-sys check, all optional owners, or a complete schema-2 archive. The
+bundled obs-sys check, independent same-commit native registry parity, or a complete
+schema-2 archive. The required targeted clang-cl frontend is tracked in
+[forge-ci/soldr#4167](https://github.com/forge-ci/soldr/issues/4167); current GNU
+SDK arguments cannot be used in clang-cl mode. The
 older `windows_tier2_probe.py stage` remains a schema-1 four-test diagnostic and
 cannot enable hosted execution. No complete compressed size or successful full
 producer timing is claimed.

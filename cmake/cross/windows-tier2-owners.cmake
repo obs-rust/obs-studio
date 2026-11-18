@@ -10,6 +10,12 @@ function(set_target_properties_obs target)
     list(POP_FRONT _OWNER_PROPERTIES _key _value)
     set_property(TARGET ${target} PROPERTY ${_key} "${_value}")
   endwhile()
+  # Native windows/compilerconfig.cmake supplies these directory-wide. The
+  # cross-only owner hook preserves them without changing native options.
+  target_compile_definitions(
+    ${target}
+    PRIVATE NOMINMAX UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS
+  )
   target_install_resources(${target})
 endfunction()
 function(obs_windows_tier2_owners)
@@ -41,7 +47,9 @@ function(obs_windows_tier2_owners)
   add_subdirectory("${OBS_SOURCE_ROOT}/libobs-winrt" "${CMAKE_BINARY_DIR}/libobs-winrt")
   # The MSVC SDK rejects Clang's experimental coroutine header. Use its
   # supported standard coroutine implementation for this cross-only module.
-  set_property(TARGET libobs-winrt PROPERTY CXX_STANDARD 20)
+  set_target_properties(libobs-winrt PROPERTIES CXX_STANDARD 20 CXX_SCAN_FOR_MODULES OFF)
+  # This unity group has no C++ modules. Match the native C++17 graph's lack
+  # of module scanning after selecting the standard coroutine header.
   target_compile_options(libobs-winrt PRIVATE -fno-char8_t)
   foreach(
     _plugin
