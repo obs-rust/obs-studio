@@ -81,16 +81,6 @@ unsafe extern "C" {
     fn obs_sceneitem_get_crop(h: Handle, v: *mut Crop);
     fn obs_sceneitem_set_info2(h: Handle, v: *const TransformInfo);
     fn obs_sceneitem_set_crop(h: Handle, v: *const Crop);
-    fn obs_scene_enum_items(
-        h: Handle,
-        callback: unsafe extern "C" fn(Handle, Handle, Handle) -> bool,
-        data: Handle,
-    );
-    fn obs_sceneitem_group_enum_items(
-        h: Handle,
-        callback: unsafe extern "C" fn(Handle, Handle, Handle) -> bool,
-        data: Handle,
-    );
     fn obs_data_array_enum(h: Handle, callback: unsafe extern "C" fn(Handle, Handle), data: Handle);
 }
 fn key(k: &'static str) -> *const c_char {
@@ -286,11 +276,23 @@ impl Host for C {
     }
     fn enum_scene(&mut self, h: Handle, pass: &mut Pass<Handle>) {
         // SAFETY: C is constructed only under the exported live-handle contract; public APIs accept null handles.
-        unsafe { obs_scene_enum_items(h, save_callback, ptr::from_mut(pass).cast()) }
+        unsafe {
+            super::group_enum::obs_scene_enum_items(
+                h,
+                Some(save_callback),
+                ptr::from_mut(pass).cast(),
+            )
+        }
     }
     fn enum_group(&mut self, h: Handle, pass: &mut Pass<Handle>) {
         // SAFETY: C is constructed only under the exported live-handle contract; public APIs accept null handles.
-        unsafe { obs_sceneitem_group_enum_items(h, save_callback, ptr::from_mut(pass).cast()) }
+        unsafe {
+            super::group_enum::obs_sceneitem_group_enum_items(
+                h,
+                Some(save_callback),
+                ptr::from_mut(pass).cast(),
+            )
+        }
     }
     fn enum_data(&mut self, a: Handle, scene: Handle, groups: bool) {
         // SAFETY: C is constructed only under the exported live-handle contract; public APIs accept null handles.
