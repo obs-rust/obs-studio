@@ -96,6 +96,9 @@ def cmake_toolchain(receipt: dict, output: Path, env: dict) -> Path:
         'set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)',
         'add_link_options("$<$<LINK_LANGUAGE:OBJC,OBJCXX>:-fuse-ld=lld>")',
     ])
+    for name, binary in (("NM", "llvm-nm"), ("STRIP", "llvm-strip")):
+        tool = Path(receipt["clang"]).parent / binary
+        lines.append(f'set(CMAKE_{name} {json.dumps(str(tool))})')
     path.write_text("\n".join(lines) + "\n")
     return path.absolute()
 

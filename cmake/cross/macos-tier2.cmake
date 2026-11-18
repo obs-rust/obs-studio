@@ -3,7 +3,7 @@
 set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
 set(CMAKE_OBJC_VISIBILITY_PRESET hidden)
 set(CMAKE_OBJCXX_VISIBILITY_PRESET hidden)
-foreach(_objects IN ITEMS libobs-cross libobs-cross-shared-objects)
+foreach(_objects IN ITEMS libobs-cross libobs-objects)
   # Canonical macOS compilerconfig also hides Objective-C implementation
   # symbols. C_VISIBILITY_PRESET does not apply to these translation units.
   set_target_properties(${_objects} PROPERTIES OBJC_VISIBILITY_PRESET hidden OBJCXX_VISIBILITY_PRESET hidden)
@@ -17,18 +17,14 @@ obs_rust_hidden_lists(
   ON
 )
 target_link_options(
-  libobs-cross-shared
+  libobs
   PRIVATE "LINKER:-unexported_symbols_list,${CMAKE_BINARY_DIR}/config/rust-unexports-macos.txt"
 )
-set_property(
-  TARGET libobs-cross-shared
-  APPEND
-  PROPERTY LINK_DEPENDS "${CMAKE_BINARY_DIR}/config/rust-unexports-macos.txt"
-)
+set_property(TARGET libobs APPEND PROPERTY LINK_DEPENDS "${CMAKE_BINARY_DIR}/config/rust-unexports-macos.txt")
 
-add_library(libobs-cross-reference SHARED)
+add_library(libobs-c-reference SHARED)
 target_link_libraries(
-  libobs-cross-reference
+  libobs-c-reference
   PRIVATE
     libobs-cross
     OBS::caption
@@ -47,10 +43,15 @@ target_link_libraries(
     "-framework CoreAudio"
     "-framework IOKit"
 )
-target_link_directories(libobs-cross-reference PRIVATE "${OBS_CROSS_DEPS}/lib")
+target_link_directories(libobs-c-reference PRIVATE "${OBS_CROSS_DEPS}/lib")
 foreach(_variant IN ITEMS shared reference)
+  if(_variant STREQUAL "shared")
+    set(_core libobs)
+  else()
+    set(_core libobs-c-reference)
+  endif()
   set_target_properties(
-    libobs-cross-${_variant}
+    ${_core}
     PROPERTIES
       FRAMEWORK TRUE
       FRAMEWORK_VERSION A
@@ -62,7 +63,7 @@ foreach(_variant IN ITEMS shared reference)
       INSTALL_RPATH "@loader_path/../../../../../../deps"
       BUILD_WITH_INSTALL_RPATH TRUE
   )
-  target_link_options(libobs-cross-${_variant} PRIVATE "LINKER:-adhoc_codesign")
+  target_link_options(${_core} PRIVATE "LINKER:-adhoc_codesign")
 endforeach()
 
 # Reuse the unchanged native registry, including standalone Rust consumers.
@@ -99,17 +100,16 @@ function(_obs_cross_tier2_tests)
   set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
   list(APPEND CMAKE_FIND_ROOT_PATH "${OBS_CROSS_DEPS}")
   include_directories("${OBS_SOURCE_ROOT}" "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
-  add_library(OBS::libobs ALIAS libobs-cross-shared)
-  add_library(libobs-objects ALIAS libobs-cross-shared-objects)
+  add_library(OBS::libobs ALIAS libobs)
   add_library(OBS::libobs-core-modules ALIAS libobs-cross-generated)
-  target_include_directories(libobs-cross-shared INTERFACE "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+  target_include_directories(libobs INTERFACE "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
   add_library(libobs_rust-static STATIC IMPORTED GLOBAL)
   set_target_properties(
     libobs_rust-static
     PROPERTIES IMPORTED_LOCATION "${OBS_SOURCE_ROOT}/target/aarch64-apple-darwin/release/liblibobs_rust.a"
   )
-  add_dependencies(libobs_rust-static libobs-cross-shared-rust)
-  add_custom_target(cargo-build_libobs_rust DEPENDS libobs-cross-shared-rust)
+  add_dependencies(libobs_rust-static libobs-rust)
+  add_custom_target(cargo-build_libobs_rust DEPENDS libobs-rust)
   target_link_libraries(
     libobs_rust-static
     INTERFACE "-framework CoreFoundation" "-framework Foundation" "-framework IOKit" "-framework Security" iconv
@@ -129,10 +129,10 @@ function(_obs_cross_tier2_tests)
   find_package(Uthash REQUIRED)
   find_package(SIMDe REQUIRED)
   find_package(Threads REQUIRED)
-  target_link_libraries(libobs-cross-shared INTERFACE SIMDe::SIMDe Threads::Threads)
+  target_link_libraries(libobs INTERFACE SIMDe::SIMDe Threads::Threads)
   find_package(jansson REQUIRED)
   find_package(ZLIB REQUIRED)
-  target_link_libraries(libobs-cross-reference PRIVATE ZLIB::ZLIB)
+  target_link_libraries(libobs-c-reference PRIVATE ZLIB::ZLIB)
   # Configure the real native owner recipes. Their aliases gate the unchanged
   # registry; stand-ins would register tests without their link/data closure.
   include(helpers_common)
@@ -184,7 +184,6 @@ function(_obs_cross_tier2_tests)
   # shared/media-playback, shared/file-updater, plugins/image-source,
   # plugins/obs-transitions, plugins/obs-filters and plugins/text-freetype2
   # along with the other genuinely enabled native owners.
-  add_library(libobs ALIAS libobs-cross-shared)
   add_library(libobs-core-modules ALIAS libobs-cross-generated)
   function(set_obs_core_modules)
     get_property(_enabled GLOBAL PROPERTY OBS_MODULES_ENABLED)
@@ -208,21 +207,18 @@ function(_obs_cross_tier2_tests)
   if(NOT OBS_TIER2_DARWIN_RECEIPT OR NOT EXISTS "${OBS_TIER2_DARWIN_RECEIPT}")
     message(FATAL_ERROR "Tier 2 requires ci/macos_tier2_toolchain.py and soldr toolchain darwin (SDK 26.5)")
   endif()
-  enable_language(Swift)
-  # Translate the canonical Metal recipe's Xcode properties for Linux Ninja.
-  function(set_target_xcode_properties target)
-    cmake_parse_arguments(PARSE_ARGV 1 _swift "" "" "PROPERTIES")
-    while(_swift_PROPERTIES)
-      list(POP_FRONT _swift_PROPERTIES _key _value)
-      if(_key STREQUAL "SWIFT_OBJC_BRIDGING_HEADER")
-        target_compile_options(${target} PRIVATE -import-objc-header "${_value}")
-      elseif(_key STREQUAL "SWIFT_VERSION")
-        set_property(TARGET ${target} PROPERTY Swift_LANGUAGE_VERSION 6)
-      endif()
-    endwhile()
-    target_compile_options(${target} PRIVATE "SHELL:-Xcc -fobjc-arc" "SHELL:-Xcc -fmodules")
-  endfunction()
-  add_subdirectory("${OBS_SOURCE_ROOT}/libobs-metal" "${CMAKE_BINARY_DIR}/libobs-metal")
+  add_custom_target(
+    tier2-cross-metal
+    COMMAND
+      "${CMAKE_COMMAND}" -S "${OBS_SOURCE_ROOT}/cmake/cross/metal" -B "${CMAKE_BINARY_DIR}/libobs-metal" -G Ninja
+      "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}" "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+      "-DOBS_SOURCE_ROOT=${OBS_SOURCE_ROOT}" "-DOBS_TIER2_CORE=$<TARGET_FILE:libobs>"
+      "-DOBS_TIER2_CONFIG=${CMAKE_BINARY_DIR}/config" "-DOBS_TIER2_DEPS=${OBS_CROSS_DEPS}"
+    COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}/libobs-metal" --target libobs-metal
+    BYPRODUCTS "${CMAKE_BINARY_DIR}/libobs-metal/libobs-metal.0.dylib"
+    DEPENDS libobs
+    COMMENT "Cross-build the canonical Swift Metal recipe on Linux"
+  )
   # The run host must not compile cmocka. Build the pinned source for Darwin.
   include(FetchContent)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build cmocka into the test executables" FORCE)
@@ -260,9 +256,11 @@ add_custom_target(
     "${OBS_SOURCE_ROOT}/test/cmocka/check_core_module_manifest_source.cmake"
   COMMENT "Prepare stale core-manifest fixture on the Linux producer"
 )
+add_custom_target(libobs-cross-shared DEPENDS libobs)
+add_custom_target(libobs-cross-reference DEPENDS libobs-c-reference)
 add_custom_target(
   tier2-cross
-  DEPENDS libobs-cross-shared libobs-cross-reference cmocka-tests tier2-cross-manifest-fixture
+  DEPENDS libobs libobs-c-reference cmocka-tests tier2-cross-manifest-fixture tier2-cross-metal
 )
 
 # Export actual runtime targets, including generated/loadable fixture libraries.
@@ -282,7 +280,7 @@ function(_obs_cross_runtime_targets directory)
 endfunction()
 _obs_cross_runtime_targets("${CMAKE_SOURCE_DIR}")
 get_property(_runtime_targets GLOBAL PROPERTY OBS_TIER2_RUNTIME_TARGETS)
-set(_runtime_paths "")
+set(_runtime_paths "${CMAKE_BINARY_DIR}/libobs-metal/libobs-metal.0.dylib\n")
 foreach(_target IN LISTS _runtime_targets)
   string(APPEND _runtime_paths "$<TARGET_FILE:${_target}>\n")
 endforeach()
