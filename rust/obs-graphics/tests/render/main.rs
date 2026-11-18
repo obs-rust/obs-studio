@@ -53,6 +53,8 @@ mod present_entrypoints;
 mod present_entrypoints_parity;
 mod raster_entrypoints;
 mod raster_entrypoints_parity;
+mod render_target_setters;
+mod render_target_setters_parity;
 mod sprite;
 mod sprite_parity;
 mod state_stacks;

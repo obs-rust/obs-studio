@@ -1,0 +1,2 @@
+gs_set_cube_render_target
+gs_set_render_target

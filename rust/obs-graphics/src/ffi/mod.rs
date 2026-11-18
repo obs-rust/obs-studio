@@ -42,6 +42,7 @@ pub mod plane;
 pub mod present_entrypoints;
 pub mod quat;
 pub mod raster_entrypoints;
+pub mod render_target_setters;
 pub mod shader_file;
 pub mod shader_param_introspection;
 pub mod shader_param_names;
