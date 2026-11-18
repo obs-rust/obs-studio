@@ -109,6 +109,7 @@ pub mod stencil;
 pub mod target_size;
 pub mod texture_copy;
 pub mod texture_creators;
+pub mod texture_file_data;
 pub mod texture_file_data2;
 pub mod texture_metadata;
 pub mod texture_planar_creators;

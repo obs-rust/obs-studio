@@ -77,6 +77,7 @@ mod texture_copy;
 mod texture_copy_parity;
 mod texture_creators;
 mod texture_creators_parity;
+mod texture_file_data;
 mod texture_file_data2;
 mod texture_file_data2_parity;
 mod texture_metadata;
