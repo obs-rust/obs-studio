@@ -61,6 +61,10 @@ class MacosTier2CrossTest(unittest.TestCase):
             self.assertNotIn("OBS_CROSS_TIER2 requires mac-arm64", output)
             self.assertIn("missing-toolchain.cmake", output)
 
+    def test_tier2_uses_the_native_relwithdebinfo_configuration(self):
+        text = (ROOT / 'cmake/cross/CMakeLists.txt').read_text()
+        self.assertIn('set(CMAKE_BUILD_TYPE RelWithDebInfo', text)
+
 
 if __name__ == "__main__":
     unittest.main()
