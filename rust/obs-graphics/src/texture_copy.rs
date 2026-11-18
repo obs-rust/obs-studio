@@ -49,15 +49,34 @@ pub trait Host {
     fn region(&mut self, dst: Self::Texture, src: Option<Self::Texture>, values: [u32; 6]);
 }
 
-pub fn copy_texture<H: Host>(_host: &mut H, _dst: Option<H::Texture>, _src: Option<H::Texture>) {
-    todo!("#5062: texture-copy Rust swap")
+fn destination<H: Host>(host: &mut H, entry: Entry, dst: Option<H::Texture>) -> Option<H::Texture> {
+    if !host.has_context() {
+        host.debug(entry, Rejection::Context);
+        return None;
+    }
+    if dst.is_none() {
+        host.debug(entry, Rejection::Destination);
+    }
+    dst
+}
+
+pub fn copy_texture<H: Host>(host: &mut H, dst: Option<H::Texture>, src: Option<H::Texture>) {
+    if let Some(dst) = destination(host, Entry::Whole, dst) {
+        if let Some(src) = src {
+            host.whole(dst, src);
+        } else {
+            host.debug(Entry::Whole, Rejection::Source);
+        }
+    }
 }
 
 pub fn copy_texture_region<H: Host>(
-    _host: &mut H,
-    _dst: Option<H::Texture>,
-    _src: Option<H::Texture>,
-    _values: [u32; 6],
+    host: &mut H,
+    dst: Option<H::Texture>,
+    src: Option<H::Texture>,
+    values: [u32; 6],
 ) {
-    todo!("#5062: texture-copy Rust swap")
+    if let Some(dst) = destination(host, Entry::Region, dst) {
+        host.region(dst, src, values);
+    }
 }

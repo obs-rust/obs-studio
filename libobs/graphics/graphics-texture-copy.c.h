@@ -1,9 +1,31 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
-/* Private dependencies defined in graphics.c.h, later in the unity group. */
-static THREAD_LOCAL graphics_t *thread_graphics;
-static inline bool gs_valid(const char *f);
-static inline bool gs_obj_valid(const void *obj, const char *f, const char *name);
+/* Reference-only group: use the existing context getter and preserve the
+ * original validators and function bodies without a separate TLS instance. */
+#define thread_graphics gs_get_context()
+
+static inline bool texture_copy_ref_valid(const char *f)
+{
+	if (!thread_graphics) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", f);
+		return false;
+	}
+
+	return true;
+}
+
+static inline bool texture_copy_ref_obj_valid(const void *obj, const char *f, const char *name)
+{
+	if (!obj) {
+		blog(LOG_DEBUG, "%s: Null '%s' parameter", f, name);
+		return false;
+	}
+
+	return true;
+}
+
+#define gs_valid texture_copy_ref_valid
+#define gs_obj_valid texture_copy_ref_obj_valid
 
 #define ptr_valid(ptr, func) gs_obj_valid(ptr, func, #ptr)
 #define gs_valid_p(func, param1) (gs_valid(func) && ptr_valid(param1, func))
@@ -34,3 +56,7 @@ void gs_copy_texture_region(gs_texture_t *dst, uint32_t dst_x, uint32_t dst_y, g
 #undef gs_valid_p2
 #undef gs_valid_p
 #undef ptr_valid
+
+#undef gs_obj_valid
+#undef gs_valid
+#undef thread_graphics

@@ -132,20 +132,16 @@ fn test_graphics_texture_copy_region_forwarding() {
         context: true,
         ..Fixture::default()
     };
-    let mut values = vec![[11, 23, 37, 41, 53, 67], [0; 6]];
-    for i in 0..6 {
-        let mut v = [1, 2, 3, 4, 5, 0];
-        // Mirror each distinct per-field UINT32_MAX row in the C test.
-        for (index, value) in v.iter_mut().enumerate() {
-            *value = if index < i {
-                index as u32 + 1
-            } else {
-                index as u32
-            };
-        }
-        v[i] = u32::MAX;
-        values.push(v);
-    }
+    let values = [
+        [11, 23, 37, 41, 53, 67],
+        [0; 6],
+        [u32::MAX, 1, 2, 3, 4, 5],
+        [1, u32::MAX, 2, 3, 4, 5],
+        [1, 2, u32::MAX, 3, 4, 5],
+        [1, 2, 3, u32::MAX, 4, 5],
+        [1, 2, 3, 4, u32::MAX, 5],
+        [1, 2, 3, 4, 5, u32::MAX],
+    ];
     for src in [None, Some(2), Some(1)] {
         for &v in &values {
             let n = f.calls.len();
