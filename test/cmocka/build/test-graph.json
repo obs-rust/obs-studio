@@ -5199,6 +5199,19 @@
         }
       ]
     },
+    "test_graphics_texture_copy": {
+      "sources": [
+        "test/cmocka/test_graphics_texture_copy.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_group_active_refs": {
       "sources": [
         "test/cmocka/test_group_active_refs.c"
@@ -22119,6 +22132,12 @@
     "test_graphics_state_stacks_rust": {
       "target": "test_graphics_state_stacks_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_texture_copy": {
+      "target": "test_graphics_texture_copy",
       "command": [
         "${target}"
       ]
