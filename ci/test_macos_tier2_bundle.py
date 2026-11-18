@@ -38,6 +38,25 @@ class BundleTest(unittest.TestCase):
             self.build, self.source, self.output, [self.binary], lambda _: None
         )
 
+    def test_empty_space_named_working_directory_survives_transport(self):
+        directory = "test/cmocka/output runtime root/Release"
+        (self.build / directory).mkdir(parents=True)
+        manifest = self.stage()
+        self.assertIn("build/" + directory, manifest["directories"])
+        moved = self.root / "moved"
+        self.output.rename(moved)
+        bundle.prepare(moved, self.source)
+        self.assertTrue((moved / "build" / directory).is_dir())
+
+    def test_escaping_directory_inventory_is_rejected(self):
+        self.stage()
+        path = self.output / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["directories"] = ["../outside"]
+        path.write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "escapes artifact root"):
+            bundle.prepare(self.output, self.source)
+
     def test_prepared_fixture_evidence_and_products_are_transported(self):
         fixture = self.build / "test/cmocka/core_module_manifest_source"
         fixture.mkdir(parents=True)
