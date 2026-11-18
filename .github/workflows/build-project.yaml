@@ -971,7 +971,7 @@ jobs:
           cache: true
           # No Actions cache for the builder state (#1801 phase A).
           restore-cache: false
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          save-cache: false
           mirror-screenshots-url: https://dl.flathub.org/media
           # Keep the module-local diagnostic log until its sanitized summary.
           keep-build-dirs: ${{ inputs.flatpak-compiler-diagnostics }}
@@ -2496,7 +2496,7 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: '3.14'
-          save-cache: false
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
       - name: Place compiled logical root
         id: workspace
         run: |
