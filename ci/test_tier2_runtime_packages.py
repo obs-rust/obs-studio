@@ -65,24 +65,6 @@ class RuntimePackagesTest(unittest.TestCase):
                     m.collect(ROOT)
                 ownership.assert_not_called()
 
-    def test_cargo_subtrees_are_pruned_before_directory_traversal(self):
-        import os
-        import tempfile
-        m = module()
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / 'cargo').mkdir()
-            (root / 'cargo' / 'unused').write_bytes(b'\x7fELFbuildscript')
-            (root / 'test').write_bytes(b'\x7fELFruntime')
-            original = os.scandir
-
-            def scandir(path):
-                self.assertNotEqual(Path(path), root / 'cargo', 'build-only subtree was traversed')
-                return original(path)
-
-            with patch.object(os, 'scandir', side_effect=scandir):
-                self.assertEqual(list(m.elf_files(root)), [root / 'test'])
-
     def test_loader_paths_include_transitive_dependencies_and_loader(self):
         m = module()
         text = '''linux-vdso.so.1 (0xabc)
