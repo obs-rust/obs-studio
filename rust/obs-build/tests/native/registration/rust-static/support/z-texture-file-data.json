@@ -540,9 +540,6 @@
     ]
   },
   "test_scene_audio_window_steps_rust": {
-    "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
-    ],
     "includes": [
       ".",
       "libobs"
@@ -630,9 +627,6 @@
     ]
   },
   "test_scene_render_plan_steps_rust": {
-    "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
-    ],
     "includes": [
       ".",
       "libobs"

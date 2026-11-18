@@ -73,6 +73,7 @@ fn canonical_private_link_rules_are_registered() {
                     "FFmpeg::avcodec",
                     "FFmpeg::avformat",
                     "FFmpeg::avutil",
+                    "FFmpeg::swscale",
                     "LibUUID::LibUUID",
                     "PkgConfig::_window_match_test_gio",
                 ] {
@@ -100,7 +101,7 @@ fn canonical_private_link_rules_are_registered() {
                 let artifacts = window.dependency_artifacts(&facts, &interfaces).unwrap();
                 // The FFmpeg adapter libraries follow the host dependency.
                 assert_eq!(
-                    artifacts[artifacts.len() - 4],
+                    artifacts[artifacts.len() - 5],
                     PathBuf::from(if gio {
                         "PkgConfig::_window_match_test_gio"
                     } else {

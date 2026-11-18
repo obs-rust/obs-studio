@@ -34,7 +34,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     }

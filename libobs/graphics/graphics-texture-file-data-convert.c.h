@@ -178,4 +178,3 @@ void *ffmpeg_image_reformat_frame(struct ffmpeg_image *info, AVFrame *frame, enu
 fail:
 	return data;
 }
-
