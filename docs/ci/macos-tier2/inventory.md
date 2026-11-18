@@ -67,8 +67,8 @@ native contract 111.92/113.82 s. These are measurements, not cross-build savings
 ## Linux prototype and relocation contract
 
 ```sh
-cmake -S . -B build_macos_tier2_cross -G Ninja \
-  -DOBS_CROSS_TARGET=mac-arm64 -DOBS_CROSS_TIER2=ON
+uv run --no-project ci/macos_tier2_toolchain.py \
+  --output build_macos_tier2_tools --configure build_macos_tier2_cross
 cmake --build build_macos_tier2_cross --target tier2-cross -j 4
 ```
 
@@ -89,7 +89,7 @@ Staged bytes are signature-verified again before their hashes are published.
 Build/framework RPATHs use @loader_path and
 install names use @rpath. Source paths remain a **common absolute source-root
 contract** because C fixtures compile paths into binaries. An env var cannot
-relocate those strings. Use an agreed writable path (for example /tmp/obs-tier2-src)
+relocate those strings. Use the workspace helper's real `/opt/obs-ci-<run>-<attempt>/src` root
 on both hosts before the production cross-build, with the checkout available
 there. A normal Linux /home checkout cannot simply become a macOS /Users checkout.
 Build paths can also be compiled into fixture images. The manifest records every
@@ -158,9 +158,9 @@ The real x264 owner is configured too. Its helper test is registered before
 and does not add an extra CTest entry. Counts from different revisions are not
 property parity evidence.
 
-For an independent native snapshot at the same final commit, add
-`-DCMAKE_PROJECT_INCLUDE=<checkout>/cmake/cross/tier2-registry-evidence.cmake` to
-native configuration. The cross producer includes it automatically. Then run:
+Registry evidence must come from Linux configuration of both graphs at the same
+final commit. No hosted macOS configure/build step may produce the comparison
+snapshot. The cross producer includes the provenance hook automatically. Run:
 
 ```sh
 uv run --no-project ci/macos_tier2_registry.py snapshot --source . --build BUILD --output registry.json
@@ -178,11 +178,34 @@ match, stale build tree or snapshot from another commit cannot pass.
 | 4. Native runtime compiler | Separate preparation/complete receipts and assertion-only consumer implemented; shared loader/data/registration controls retained. Full preparation/execution waits on the toolchain rows below. |
 | 5. Missing owners and registry parity | Real canonical owners configured; all original 30 missing names present. Same-commit name/property comparator implemented. Independent native snapshot/property comparison still required before activation. |
 | 6. Empty core-module list | Replaced by the actual enabled canonical plugin graph (23 observed names); both CMake cores use its generated manifest. |
-| Darwin compiler-rt (outside repository scope) | ASan/UBSan runtime remains unprovisioned. Real native screen-capture linking also fails on compiler-rt availability builtin `__isPlatformVersionAtLeast`; no substitute or sanitizer change. |
-| Swift/Metal and SDK 26.5 (outside repository scope) | Both native/CMake Metal artifacts wait on the approved Linux-hosted Swift/Darwin toolchain and SDK. No fake Metal target or alternate renderer closes the gate. |
+| Darwin compiler-rt | `soldr toolchain darwin` supplies ASan/UBSan dylibs and `libclang_rt.osx.a`, including `__isPlatformVersionAtLeast`. Missing runtime files fail provisioning. |
+| Swift/Metal and SDK 26.5 | The same managed receipt supplies Linux Swift 6.3.2, Darwin overlays, SDK 26.5, LLVM linker and dsymutil. Both CMake and Cargo-native preparation use it. |
 | Full staged closure and macOS execution | Still requires all signed frameworks/dependencies, resources and generated data at the common paths, and successful execution of all four full passes plus contracts on macOS. |
 
 ## Observed prototype results
+
+### Unreleased managed Darwin interface
+
+CI still pins soldr 0.9.45. The minimum usable release is the first release
+containing forge-ci/soldr commit `efdec63674b01b45553212c01e0422e749f2c289`
+(#4168). Published 0.9.53 does not contain this interface; the source build at
+that commit also reports 0.9.53, so its version string alone is insufficient.
+Do not activate this branch until that release is pinned consistently.
+
+For a local proof only, set `OBS_TIER2_SOLDR=/absolute/path/to/source-built/soldr`.
+The producer requests `toolchain darwin --target aarch64-apple-darwin
+--sdk-version 26.5 --json` and retains the receipt. This override does not alter
+CI's pin. `environment.json` contains only explicit build overrides for the
+targeted C/C++ drivers, archiver, Swift and SDK, plus dsymutil. The Swift wrapper
+preserves the receipt's resource/importer/linker flags. CMake includes soldr's
+own toolchain and targets Objective-C with the same compiler-rt resource root.
+Sanitizers remain enabled by their existing test recipes.
+
+Activation requires the soldr pin bump, an independently configured same-commit
+registry/property comparison, a complete signed runtime/data/dependency packet,
+and hosted execution of all four full suites plus the exact native contract and
+every negative control. Hosted macOS only verifies and runs; all compilation,
+including Swift/Metal, debug symbols, probes and sanitized fixtures, is Linux work.
 
 The representative CMake command built both frameworks, unchanged test_bitstream
 and standalone test_async_conversion_plan_rust on Linux. All four images passed

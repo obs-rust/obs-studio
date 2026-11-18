@@ -28,6 +28,8 @@ DIRECTORIES = ("sdk", "compiler_rt", "clang_resource_dir", "swift_resource_dir")
 def validate(receipt: dict) -> None:
     if (receipt.get("schema_version"), receipt.get("target"), receipt.get("sdk_version")) != (1, TARGET, "26.5"):
         raise ValueError("Tier 2 requires soldr Darwin schema 1, arm64 and SDK 26.5")
+    if receipt.get("swift_version") != "6.3.2":
+        raise ValueError("Tier 2 requires the managed Swift 6.3.2 closure")
     for key in TOOLS:
         if not Path(receipt[key]).is_file():
             raise ValueError(f"missing managed Darwin tool: {key}")
@@ -74,6 +76,7 @@ def environment(receipt: dict, output: Path) -> dict[str, str]:
         "SWIFTC": swift,
         "SDKROOT": receipt["sdk"],
         "DSYMUTIL": receipt["dsymutil"],
+        "CMAKE_GENERATOR": "Ninja",
         "SOLDR_RUSTC_WRAPPER": "none",
     }
 
@@ -89,6 +92,8 @@ def cmake_toolchain(receipt: dict, output: Path, env: dict) -> Path:
     lines.extend([
         'set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Tier 2 minimum" FORCE)',
         'set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)',
+        f'set(CMAKE_FIND_ROOT_PATH {json.dumps(receipt["sdk"])})',
+        'set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)',
         'add_link_options("$<$<LINK_LANGUAGE:OBJC,OBJCXX>:-fuse-ld=lld>")',
     ])
     path.write_text("\n".join(lines) + "\n")

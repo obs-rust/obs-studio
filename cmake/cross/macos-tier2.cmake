@@ -220,7 +220,7 @@ function(_obs_cross_tier2_tests)
         set_property(TARGET ${target} PROPERTY Swift_LANGUAGE_VERSION 6)
       endif()
     endwhile()
-    target_compile_options(${target} PRIVATE -Xcc -fobjc-arc -Xcc -fmodules)
+    target_compile_options(${target} PRIVATE "SHELL:-Xcc -fobjc-arc" "SHELL:-Xcc -fmodules")
   endfunction()
   add_subdirectory("${OBS_SOURCE_ROOT}/libobs-metal" "${CMAKE_BINARY_DIR}/libobs-metal")
   # The run host must not compile cmocka. Build the pinned source for Darwin.
