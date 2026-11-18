@@ -1,8 +1,20 @@
 #include "libobs/build/libobs-graphics.pch.h"
 
-/* Private dependencies defined in graphics.c.h, later in the unity group. */
-static THREAD_LOCAL graphics_t *thread_graphics;
-static inline bool gs_valid(const char *f);
+/* Reference-only group: preserve the original context validator and bodies
+ * over the existing TLS context getter. */
+#define thread_graphics gs_get_context()
+
+static inline bool device_queries_ref_valid(const char *f)
+{
+	if (!thread_graphics) {
+		blog(LOG_DEBUG, "%s: called while not in a graphics context", f);
+		return false;
+	}
+
+	return true;
+}
+
+#define gs_valid device_queries_ref_valid
 
 int gs_get_device_type(void)
 {
@@ -18,3 +30,6 @@ uint32_t gs_get_adapter_count(void)
 
 	return thread_graphics->exports.gs_get_adapter_count();
 }
+
+#undef gs_valid
+#undef thread_graphics
