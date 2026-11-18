@@ -3,6 +3,10 @@
 # Check each generated development framework contains the newly linked core.
 # This is not release packaging. Existing test binaries and their
 # assertions remain unchanged; dyld must prove they loaded the selected core.
+cmake_reference_core=$c_lib
+if [[ $cmake_reference_core != /* ]]; then
+  cmake_reference_core="$PWD/$cmake_reference_core"
+fi
 for native_variant in obs-c-reference obs; do
   native_framework="$native_output/$native_variant/libobs.framework"
   cmp "$native_output/$native_variant/libobs.dylib" "$native_framework/Versions/A/libobs"
@@ -33,7 +37,7 @@ for native_variant in obs-c-reference obs; do
       status=$?
       [ "$status" -eq 14 ] || { echo "FAIL: renderer negative control returned $status" >&2; exit 1; }
     fi
-    if "${native_dyld[@]}" "$graphics_probe" "$renderer_path" "$renderer" "$PWD/$c_lib"; then
+    if "${native_dyld[@]}" "$graphics_probe" "$renderer_path" "$renderer" "$cmake_reference_core"; then
       echo 'FAIL: core negative control unexpectedly passed' >&2; exit 1
     else
       status=$?
@@ -64,7 +68,7 @@ for native_variant in obs-c-reference obs; do
       status=$?
       [ "$status" -eq 14 ] || { echo "FAIL: capture negative control returned $status" >&2; exit 1; }
     fi
-    if "${native_dyld[@]}" "$capture_probe" "$capture_path" "$capture" "$capture_data" "$PWD/$c_lib"; then
+    if "${native_dyld[@]}" "$capture_probe" "$capture_path" "$capture" "$capture_data" "$cmake_reference_core"; then
       echo 'FAIL: capture core negative control unexpectedly passed' >&2; exit 1
     else
       status=$?

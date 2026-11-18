@@ -1321,7 +1321,12 @@ fn captures_audio() -> bool {
     reason = "one block per build step of the canonical manifest"
 )]
 fn macos_core_builds_from_the_canonical_manifest() {
+    let assert_only = std::env::var_os("OBS_BUILD_MACOS_ASSERT_ONLY").is_some();
     let Some(dependencies) = std::env::var_os("OBS_BUILD_MACOS_DEPENDENCIES") else {
+        assert!(
+            !assert_only,
+            "assertion-only contract needs its prepared dependency bundle"
+        );
         return; // Explicit SDK-dependent integration, including cross compilation.
     };
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -1347,14 +1352,25 @@ fn macos_core_builds_from_the_canonical_manifest() {
         pch: std::env::var_os("OBS_BUILD_MACOS_PCH").is_some(),
         ..libobs::Options::default()
     };
-    let assert_only = std::env::var_os("OBS_BUILD_MACOS_ASSERT_ONLY").is_some();
+    if assert_only {
+        assert!(std::env::var_os("OBS_BUILD_MACOS_RUST_ARCHIVE").is_some());
+        assert!(std::env::var_os("OBS_BUILD_MACOS_CAPTURE").is_some());
+        assert_eq!(
+            std::env::var("OBS_BUILD_MACOS_GRAPHICS").as_deref(),
+            Ok("1")
+        );
+    }
     let mut prepared = macos_prepared::Artifacts::new(&build.output, assert_only);
     let library = if let Some(archive) = std::env::var_os("OBS_BUILD_MACOS_RUST_ARCHIVE") {
         let paths = prepared.get("cores", || {
-            let pair = libobs::build_pair(&build, &root, &options, &PathBuf::from(archive)).unwrap();
+            let pair =
+                libobs::build_pair(&build, &root, &options, &PathBuf::from(archive)).unwrap();
             vec![pair.reference, pair.with_rust]
         });
-        let pair = libobs::Libraries { reference: paths[0].clone(), with_rust: paths[1].clone() };
+        let pair = libobs::Libraries {
+            reference: paths[0].clone(),
+            with_rust: paths[1].clone(),
+        };
         let exports = |path: &std::path::Path| {
             let result = std::process::Command::new(
                 std::env::var_os("OBS_BUILD_MACOS_NM").unwrap_or_else(|| "nm".into()),
@@ -1392,7 +1408,10 @@ fn macos_core_builds_from_the_canonical_manifest() {
         .unwrap();
         pair.with_rust
     } else {
-        prepared.get("reference", || vec![libobs::build_c_reference_with_options(&build, &root, &options).unwrap()])[0].clone()
+        prepared.get("reference", || {
+            vec![libobs::build_c_reference_with_options(&build, &root, &options).unwrap()]
+        })[0]
+            .clone()
     };
     assert!(library.is_file());
     let framework = library.parent().unwrap().join("libobs.framework");
@@ -1405,18 +1424,27 @@ fn macos_core_builds_from_the_canonical_manifest() {
     if std::env::var_os("OBS_BUILD_MACOS_CAPTURE").is_some() {
         use obs_build::plugins::{MacosCaptureModule, build_macos_capture};
         let mut symbols_by_module = std::collections::BTreeMap::new();
-        let probe = prepared.get("capture-probe", || vec![macos_capture::build_probe(&build, &root, &options, &library)])[0].clone();
+        let probe = prepared.get("capture-probe", || {
+            vec![macos_capture::build_probe(
+                &build, &root, &options, &library,
+            )]
+        })[0]
+            .clone();
         let mut paths = String::new();
         for module in [
             MacosCaptureModule::ScreenAudio,
             MacosCaptureModule::Camera,
             MacosCaptureModule::LegacyCamera,
         ] {
-            let paths = prepared.get(module.name(), || {
-                let artifact = build_macos_capture(&build, &root, &library, &options, module).unwrap();
+            let module_paths = prepared.get(module.name(), || {
+                let artifact =
+                    build_macos_capture(&build, &root, &library, &options, module).unwrap();
                 vec![artifact.library, artifact.data]
             });
-            let artifact = plugins::Module { library: paths[0].clone(), data: paths[1].clone() };
+            let artifact = plugins::Module {
+                library: module_paths[0].clone(),
+                data: module_paths[1].clone(),
+            };
             assert!(artifact.library.is_file());
             assert_macos_module_image(&artifact.library);
             assert!(artifact.data.join("locale/en-US.ini").is_file());
@@ -1474,12 +1502,18 @@ fn macos_core_builds_from_the_canonical_manifest() {
         );
         let mut renderers = vec![(
             "OPENGL",
-            prepared.get("opengl", || vec![graphics::build_opengl(&build, &root, &library, &options).unwrap()])[0].clone(),
+            prepared.get("opengl", || {
+                vec![graphics::build_opengl(&build, &root, &library, &options).unwrap()]
+            })[0]
+                .clone(),
         )];
         if mode == "1" {
             renderers.push((
                 "METAL",
-                prepared.get("metal", || vec![graphics::build_metal(&build, &root, &library, &options).unwrap()])[0].clone(),
+                prepared.get("metal", || {
+                    vec![graphics::build_metal(&build, &root, &library, &options).unwrap()]
+                })[0]
+                    .clone(),
             ));
         }
         let mut symbols_by_renderer = std::collections::BTreeMap::new();
@@ -1502,7 +1536,12 @@ fn macos_core_builds_from_the_canonical_manifest() {
             }
             symbols_by_renderer.insert(name.to_string(), symbols);
         }
-        let probe = prepared.get("graphics-probe", || vec![macos_graphics::build_probe(&build, &root, &options, &library)])[0].clone();
+        let probe = prepared.get("graphics-probe", || {
+            vec![macos_graphics::build_probe(
+                &build, &root, &options, &library,
+            )]
+        })[0]
+            .clone();
         let mut paths = String::new();
         for (name, renderer) in &renderers {
             for path in [renderer, &probe] {

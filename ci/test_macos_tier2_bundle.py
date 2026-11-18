@@ -38,6 +38,21 @@ class BundleTest(unittest.TestCase):
             self.build, self.source, self.output, [self.binary], lambda _: None
         )
 
+    def test_prepared_fixture_evidence_and_products_are_transported(self):
+        fixture = self.build / "test/cmocka/core_module_manifest_source"
+        fixture.mkdir(parents=True)
+        (fixture / "evidence.cmake").write_text("set(_build_result 0)\n")
+        (fixture / "build-graph.txt").write_text("generated source selected\n")
+        manifest = self.stage()
+        relative = "build/test/cmocka/core_module_manifest_source/build-graph.txt"
+        self.assertIn(relative, manifest["files"])
+        self.assertEqual(
+            (self.output / relative).read_text(), "generated source selected\n"
+        )
+        (self.output / relative).write_text("changed")
+        with self.assertRaisesRegex(ValueError, "changed artifact"):
+            bundle.prepare(self.output, self.source)
+
     def test_relocation_preserves_ctest_properties(self):
         self.stage()
         moved = self.root / "relocated"

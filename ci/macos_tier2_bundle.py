@@ -146,6 +146,24 @@ def stage(
         shutil.copymode(path, destination)
         verify(destination)
         files[str(relative)] = digest(destination)
+    fixture = build / "test/cmocka/core_module_manifest_source"
+    if fixture.exists():
+        if not (fixture / "evidence.cmake").is_file():
+            raise ValueError("missing prepared core-manifest fixture evidence")
+        for path in sorted(fixture.rglob("*")):
+            if not path.is_file():
+                continue
+            relative = Path("build") / contained(build, path)
+            destination = output / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            data = path.read_bytes()
+            if data[:4] == b"\xcf\xfa\xed\xfe":
+                verify(path)
+            destination.write_bytes(data)
+            shutil.copymode(path, destination)
+            if data[:4] == b"\xcf\xfa\xed\xfe":
+                verify(destination)
+            files[str(relative)] = digest(destination)
     manifest = {
         "schema": 1,
         "target": "aarch64-apple-darwin",
@@ -203,6 +221,7 @@ def run(bundle: Path, source: Path, mode: str, jobs: int) -> int:
             "incomplete prototype: native contract and runtime compiler fixtures must be split first"
         )
     environment = dict(os.environ)
+    environment["OBS_TIER2_FIXTURE_PREPARED"] = "1"
     environment["DYLD_FRAMEWORK_PATH"] = str(bundle.absolute() / "build/cores" / mode)
     environment["DYLD_LIBRARY_PATH"] = str(bundle.absolute() / "deps")
     return subprocess.run(
