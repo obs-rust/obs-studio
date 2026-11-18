@@ -7,10 +7,11 @@
  * obs_output_delay_fields() and obs_output_delay_signal(), the
  * obs-output.c calls (can_begin, initialize_encoders, begin_data_capture,
  * actual_start, actual_stop) and obs_encoder_packet_create_instance() and
- * _release(). The cargo test that links this file defines them, recording
- * each call, and the Rust shim calls the same ones, so both sides are seen
- * through the same stubs. pthread, blog and the deque come from the real
- * headers and libraries. */
+ * _release(). The cargo test that links this file defines the accessors and
+ * the obs-output.c calls, recording each call, and the Rust shim calls the
+ * same ones, so both sides are seen through the same stubs. The packet copy
+ * and release are obs-encoder's real exports. pthread, blog and the deque
+ * come from the real headers and libraries. */
 #include <stddef.h>
 #include <stdint.h>
 

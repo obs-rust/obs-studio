@@ -10,8 +10,8 @@
 //! `obs_encoder_group_num_started`, the `obs-output.c` wrappers (`active`,
 //! the two first-encoder-index helpers, `add_caption`), the output's
 //! `encoded_packet`, its packet callbacks and the two name getters. The
-//! packet copy and release are the delay parity's (one definition per test
-//! binary), which track every held copy. Each stand-in records its call,
+//! packet copy and release are the real ones obs-encoder exports, counted
+//! as the delay parity counts them. Each stand-in records its call,
 //! with whether `interleaved_mutex`, `pkt_callbacks_mutex` and the caption
 //! mutex were held, into the output it was given. `add_caption` and the
 //! packet callbacks change the packet (and the callbacks the packet time),
@@ -43,7 +43,7 @@
 //! once per port, not on every change.
 
 use std::cell::{Cell, RefCell};
-use std::ffi::{CString, c_char, c_int, c_void};
+use std::ffi::{CString, c_char, c_int, c_long, c_void};
 use std::mem::{align_of, offset_of, size_of};
 use std::ptr;
 
@@ -74,7 +74,8 @@ use proptest::prelude::*;
 use proptest::test_runner::{Config, TestRunner};
 
 use super::delay_parity::{
-    Capture, LogLine, is_held, live, obs_encoder_packet_create_instance, obs_encoder_packet_release,
+    Capture, LogLine, end_sources, is_copy, keep_source, live, obs_encoder_packet_create_instance,
+    obs_encoder_packet_release,
 };
 use super::isolated;
 
@@ -514,7 +515,7 @@ impl Fixture {
     fn view_fields(&self, p: &encoder_packet) -> PView {
         PView {
             bytes: Vec::new(),
-            held_copy: is_held(p.data),
+            held_copy: is_copy(p.data),
             size: p.size,
             pts: p.pts,
             dts: p.dts,
@@ -1098,10 +1099,9 @@ fn run_side(f: &mut Fixture, c: bool, op: &Op, src: Option<&Src>) -> (Ret, Optio
             } else {
                 f.audio_encoders[src.track]
             };
-            let mut bytes = src.bytes.clone();
             let mut pkt = encoder_packet {
-                data: bytes.as_mut_ptr(),
-                size: bytes.len(),
+                data: keep_source(src.bytes.clone()),
+                size: src.bytes.len(),
                 pts: src.pts,
                 dts: src.dts,
                 timebase_num: src.timebase.0,
@@ -1126,6 +1126,13 @@ fn run_side(f: &mut Fixture, c: bool, op: &Op, src: Option<&Src>) -> (Ret, Optio
                 unsafe { obs_encoder_packet_create_instance(&raw mut held, &raw const pkt) };
                 pkt = held;
             }
+            // With a delay, the test holds one more reference on the copy for
+            // the step, so its count can be read after the call.
+            let held = (f.active_delay_ns != 0).then_some(pkt.data.cast::<c_long>());
+            if let Some(data) = held {
+                // SAFETY: the live copy made above; only this thread uses it.
+                unsafe { *data.sub(1) += 1 };
+            }
             let mut time = src.time;
             let time_ptr = time.as_mut().map_or(ptr::null_mut(), ptr::from_mut);
             // SAFETY: a live fixture, a valid packet of one of its encoders
@@ -1139,10 +1146,15 @@ fn run_side(f: &mut Fixture, c: bool, op: &Op, src: Option<&Src>) -> (Ret, Optio
             }
             // With a delay the caller's packet shares its data with the
             // queued one, which may already be sent and released: its bytes
-            // are read only while they are still held.
+            // are read only while a reference besides the test's is held.
+            // SAFETY: the test's reference keeps the count readable.
+            let still_held = held.is_some_and(|data| unsafe { *data.sub(1) } > 1);
             let mut view = f.view_fields(&pkt);
-            if f.active_delay_ns == 0 || is_held(pkt.data) {
+            if f.active_delay_ns == 0 || still_held {
                 view = f.view(&pkt);
+            }
+            if held.is_some() {
+                view.held_copy = still_held;
             }
             if f.active_delay_ns != 0 && !f.active {
                 // Characterized, not endorsed: not released; the delay's
@@ -1150,7 +1162,14 @@ fn run_side(f: &mut Fixture, c: bool, op: &Op, src: Option<&Src>) -> (Ret, Optio
                 // SAFETY: the held copy made above.
                 unsafe { obs_encoder_packet_release(&raw mut pkt) };
             }
-            drop(bytes);
+            if let Some(data) = held {
+                let mut keep = encoder_packet {
+                    data: data.cast(),
+                    ..encoder_packet::default()
+                };
+                // SAFETY: the test's own reference, taken above.
+                unsafe { obs_encoder_packet_release(&raw mut keep) };
+            }
             (Ret::None, Some(view))
         }
         Op::SetActive(a) => {
@@ -1502,6 +1521,8 @@ fn run_sequence(setup: Setup, ops: &[Op], mut log: Option<&mut Capture>) {
         let rs = side(&mut r, false, &mut log);
         assert_eq!(cs, rs, "step {i}: {op:?}\nsrc: {src:?}\nops: {ops:?}");
     }
+    drop((c, r));
+    end_sources();
 }
 
 // ---------------------------------------------------------------------------

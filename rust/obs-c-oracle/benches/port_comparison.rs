@@ -60,6 +60,22 @@ fn comparisons(criterion: &mut Criterion) {
     run_units(criterion);
 }
 
+/// The output delay and interleave oracles and shims call obs-encoder's
+/// packet copy and release by name. Nothing else here references
+/// obs-encoder, and lld-link takes an archive member only for a symbol it
+/// already needs, so these keep the exports in the Windows link (#4650).
+mod obs_encoder_exports {
+    use obs_encoder::ffi::packet_ownership::{
+        encoder_packet, obs_encoder_packet_create_instance, obs_encoder_packet_release,
+    };
+
+    #[used]
+    static CREATE: unsafe extern "C" fn(*mut encoder_packet, *const encoder_packet) =
+        obs_encoder_packet_create_instance;
+    #[used]
+    static RELEASE: unsafe extern "C" fn(*mut encoder_packet) = obs_encoder_packet_release;
+}
+
 /// libobs functions the obs-output and obs-hotkey shims and the output
 /// interleave oracle call by their libobs names (#3025). The cargo tests that
 /// link them define recording stand-ins; no bench calls them, so here they
@@ -85,16 +101,6 @@ mod libobs_stand_ins {
     #[unsafe(no_mangle)]
     pub extern "C" fn obs_encoder_interleave_info() -> ! {
         called("obs_encoder_interleave_info")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn obs_encoder_packet_create_instance() -> ! {
-        called("obs_encoder_packet_create_instance")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn obs_encoder_packet_release() -> ! {
-        called("obs_encoder_packet_release")
     }
 
     #[unsafe(no_mangle)]

@@ -6,9 +6,12 @@
 //!
 //! Both sides run on a test output ([`Fixture`]) through the same stand-ins
 //! defined here: the accessors `obs_output_delay_fields` and
-//! `obs_output_delay_signal`, the `obs-output.c` calls, the packet copy and
-//! release, and the delay callback. Each records its call, with whether
-//! `delay_mutex` was held, into the output it was given. The C reads its
+//! `obs_output_delay_signal`, the `obs-output.c` calls and the delay
+//! callback. Each records its call, with whether `delay_mutex` was held,
+//! into the output it was given. The packet copy and release are the real
+//! ones obs-encoder exports; the test counts their blocks with
+//! `bnum_allocs()` and tells a copy from the caller's buffer by address
+//! ([`live`], [`is_copy`]). The C reads its
 //! clock from `oracle_output_delay_clock_ns`, which the test sets; the shim
 //! gets the same time through its `*_at` functions.
 //!
@@ -31,7 +34,6 @@
 //! once per port, not on every change.
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
 use std::ffi::{CStr, c_char, c_int, c_long, c_void};
 use std::mem::{align_of, offset_of, size_of};
 use std::ptr;
@@ -52,7 +54,7 @@ use obs_output::ffi::output_delay::{
 };
 use obs_output::{OBS_OUTPUT_DELAY_PRESERVE, OBS_OUTPUT_ENCODED};
 use obs_util::ffi::base::{base_get_log_handler, base_set_log_handler};
-use obs_util::ffi::darray::{bfree, bmalloc};
+use obs_util::ffi::bmem::bnum_allocs;
 use obs_util::ffi::deque::{deque, deque_data, deque_free, deque_init};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, TestRunner};
@@ -228,7 +230,7 @@ impl PacketView {
         };
         Self {
             bytes,
-            held_copy: LIVE.with(|l| l.borrow().contains(&(p.data as usize))),
+            held_copy: is_copy(p.data),
             size: p.size,
             pts: p.pts,
             dts: p.dts,
@@ -449,18 +451,45 @@ struct Snapshot {
 thread_local! {
     /// `oracle_output_delay_clock_ns`.
     static CLOCK: Cell<u64> = const { Cell::new(0) };
-    /// Data pointers of the held copies not yet released.
-    static LIVE: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
+    /// The caller's packet buffers of the running sequence, kept alive
+    /// until it ends so no held copy can take one's address.
+    static SOURCES: RefCell<Vec<Vec<u8>>> = const { RefCell::new(Vec::new()) };
 }
 
+/// The live bmem blocks, as the C tests count them. The sequences run
+/// alone in a child process ([`isolated`]), so every block made or freed
+/// between two reads is the step's: held copies (whatever made them, the
+/// real `obs_encoder_packet_create_instance` included) and the queue's
+/// storage, on both sides alike.
+#[allow(
+    clippy::useless_conversion,
+    reason = "c_long is i64 here but i32 on Windows"
+)]
 pub(super) fn live() -> i64 {
-    LIVE.with(|l| i64::try_from(l.borrow().len()).unwrap())
+    // SAFETY: reads the allocation counter.
+    i64::from(unsafe { bnum_allocs() })
 }
 
-/// Whether `data` is a held copy not yet released. The interleaver parity
-/// shares these stand-ins (one definition per test binary).
-pub(super) fn is_held(data: *const u8) -> bool {
-    LIVE.with(|l| l.borrow().contains(&(data as usize)))
+/// Keeps a caller's packet buffer alive until [`end_sources`] and returns
+/// its data pointer.
+pub(super) fn keep_source(bytes: Vec<u8>) -> *mut u8 {
+    SOURCES.with(|s| {
+        let mut s = s.borrow_mut();
+        s.push(bytes);
+        s.last_mut().unwrap().as_mut_ptr()
+    })
+}
+
+/// Frees the buffers [`keep_source`] kept: the end of a sequence.
+pub(super) fn end_sources() {
+    SOURCES.with(|s| s.borrow_mut().clear());
+}
+
+/// Whether a live packet's `data` is a copy rather than a caller's buffer.
+/// Every packet the test hands in comes from [`keep_source`], so any other
+/// non-null `data` is a block some side allocated.
+pub(super) fn is_copy(data: *const u8) -> bool {
+    !data.is_null() && !SOURCES.with(|s| s.borrow().iter().any(|b| ptr::eq(b.as_ptr(), data)))
 }
 
 /// The C file's `os_gettime_ns`.
@@ -589,55 +618,15 @@ pub unsafe extern "C" fn obs_output_actual_stop(output: *mut c_void, force: bool
     o.events.push(Event::ActualStop { locked, force, ts });
 }
 
-/// The reference-counted copy of `obs-encoder.c` (hidden in libobs), whose
-/// data is tracked so a delivered packet can be told from the encoder's.
-///
-/// # Safety
-///
-/// `dst` is writable, `src` a valid packet of `size` bytes.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_encoder_packet_create_instance(
-    dst: *mut encoder_packet,
-    src: *const encoder_packet,
-) {
-    // SAFETY: caller contract; the block holds the count and the data.
-    unsafe {
-        *dst = *src;
-        let size = (*src).size;
-        let refs = bmalloc(size + size_of::<c_long>()).cast::<c_long>();
-        refs.write(1);
-        let data = refs.add(1).cast::<u8>();
-        if size > 0 {
-            ptr::copy_nonoverlapping((*src).data, data, size);
-        }
-        (*dst).data = data;
-        LIVE.with(|l| l.borrow_mut().insert(data as usize));
-    }
-}
-
-/// `obs_encoder_packet_release` of `obs-encoder.c`.
-///
-/// # Safety
-///
-/// `pkt` is null or a packet whose data is null or a held copy.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_encoder_packet_release(pkt: *mut encoder_packet) {
-    if pkt.is_null() {
-        return;
-    }
-    // SAFETY: caller contract.
-    unsafe {
-        let data = (*pkt).data;
-        if !data.is_null() {
-            let refs = data.cast::<c_long>().sub(1);
-            *refs -= 1;
-            if *refs == 0 {
-                LIVE.with(|l| l.borrow_mut().remove(&(data as usize)));
-                bfree(refs.cast());
-            }
-        }
-        *pkt = encoder_packet::default();
-    }
+// The packet ownership both sides call: obs-encoder's exports
+// (`obs-encoder-packet-ownership.c.h`), the C oracle's calls included.
+unsafe extern "C" {
+    /// The reference-counted copy, hidden in libobs.
+    pub(super) fn obs_encoder_packet_create_instance(
+        dst: *mut encoder_packet,
+        src: *const encoder_packet,
+    );
+    pub(super) fn obs_encoder_packet_release(pkt: *mut encoder_packet);
 }
 
 /// The delay callback: `delayed_packet()` of the C test. It owns the
@@ -824,10 +813,10 @@ fn run_op(side: Side, f: &mut Fixture, op: &Op, now: u64) -> Ret {
     unsafe {
         match op {
             Op::Packet { src, time, .. } => {
-                let mut bytes = src.bytes.clone();
+                let data = keep_source(src.bytes.clone());
                 let mut pkt = encoder_packet {
-                    data: bytes.as_mut_ptr(),
-                    size: bytes.len(),
+                    data,
+                    size: src.bytes.len(),
                     pts: src.pts,
                     dts: src.dts,
                     timebase_num: src.timebase.0,
@@ -852,8 +841,11 @@ fn run_op(side: Side, f: &mut Fixture, op: &Op, now: u64) -> Ret {
                     Side::Rust => process_delay_at(o, &raw mut pkt, t_ptr, now),
                 }
                 // the caller's packet is copied, not taken
-                assert_eq!(pkt.data, bytes.as_mut_ptr());
-                assert_eq!(bytes, src.bytes);
+                assert_eq!(pkt.data, data);
+                assert_eq!(
+                    std::slice::from_raw_parts(data, src.bytes.len()),
+                    &src.bytes[..]
+                );
                 Ret::None
             }
             Op::Start { .. } => Ret::Bool(match side {
@@ -967,6 +959,8 @@ fn run_sequence(ops: &[Op], mut log: Option<&mut Capture>) {
             "step {i} ({op:?}) of {ops:#?}\nC (left) and Rust (right) differ"
         );
     }
+    drop((c, rust));
+    end_sources();
 }
 
 fn packet(dt: u64, pts: i64) -> Op {
@@ -1317,10 +1311,9 @@ fn exported_entry_points_read_the_clock() {
     let (before, after) = unsafe {
         let before = os_gettime_ns();
         assert!(obs_output_delay_start(o));
-        let mut bytes = [1_u8, 2, 3];
         let mut pkt = encoder_packet {
-            data: bytes.as_mut_ptr(),
-            size: bytes.len(),
+            data: keep_source(vec![1_u8, 2, 3]),
+            size: 3,
             ..encoder_packet::default()
         };
         f.active_delay_ns = u64::MAX;
@@ -1362,4 +1355,5 @@ fn exported_entry_points_read_the_clock() {
     // SAFETY: a live fixture.
     unsafe { obs_output_cleanup_delay(o) };
     assert!(f.entries().is_empty());
+    end_sources();
 }

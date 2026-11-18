@@ -25,6 +25,8 @@ obs-codec = { path = "../obs-codec" }
 obs-callback = { path = "../obs-callback" }
 obs-core = { path = "../obs-core" }
 obs-output = { path = "../obs-output" }
+# The output oracles call its packet copy and release (port_comparison.rs).
+obs-encoder = { path = "../obs-encoder" }
 obs-media-io = { path = "../obs-media-io" }
 obs-source = { path = "../obs-source" }
 # The obs-service oracle calls obs_data_* and obs_properties_apply_settings.
