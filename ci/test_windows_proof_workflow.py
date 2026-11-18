@@ -1,6 +1,7 @@
 """The Windows hosted experiment stays opt-in and outside required jobs."""
 import unittest
 
+import gate_jobs
 from test_windows_lf_checkout import job
 
 
@@ -12,6 +13,7 @@ class ProofWorkflowTest(unittest.TestCase):
             self.assertIn("needs.check-event.outputs.windows_link == 'true'", body)
             self.assertIn("needs.check-event.outputs.docs_only != 'true'", body)
             self.assertIn("github.event_name != 'merge_group'", body)
+            self.assertIn("github.event_name == 'workflow_dispatch'", body)
             self.assertIn("continue-on-error: true", body)
         # Existing required Windows lane retains its original native coverage.
         required = job("rust-tests-windows")
@@ -31,6 +33,15 @@ class ProofWorkflowTest(unittest.TestCase):
         self.assertIn("core.autocrlf input", body)
         for forbidden in ("setup-soldr", "cargo ", "vcpkg", "pkgconf", "Install Qt"):
             self.assertNotIn(forbidden, body)
+
+    def test_failed_optional_proof_does_not_weaken_or_block_required_windows(self):
+        required = "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)"
+        for name in ("Windows Run-only Proof Producer", "Windows Run-only Hosted Proof"):
+            for conclusion in ("failure", "cancelled", "timed_out"):
+                optional = {"name": f"Build 🧱 / {name} (optional)", "status": "completed", "conclusion": conclusion}
+                self.assertEqual(gate_jobs.blocking([optional]), [])
+                failed = {"name": required, "status": "completed", "conclusion": conclusion}
+                self.assertEqual(gate_jobs.blocking([optional, failed], expected={required}), [required])
 
 
 if __name__ == "__main__":

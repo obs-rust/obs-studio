@@ -34,6 +34,13 @@ class RootsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "case"):
             proof.check_names(["target/A.exe", "target/a.exe"])
 
+    def test_child_temporary_directories_cannot_switch_away_from_owned_drive(self):
+        root = "C:/opt/obs-win-42-3/src"
+        env = proof.execution_environment(root, {"TEMP": "D:/runner/temp", "TMP": "D:/runner/temp", "PATH": "system"})
+        self.assertEqual(env["TEMP"], root + "/target/windows-proof-temp")
+        self.assertEqual(env["TMP"], env["TEMP"])
+        self.assertEqual(env["PATH"], "system")
+
 
 class ConsumerTest(unittest.TestCase):
     def bundle(self, parent):
