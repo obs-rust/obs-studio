@@ -12155,6 +12155,36 @@
         "frontend/utility/replay-buffer-estimate.hpp"
       ]
     },
+    "test_reset_video_core_mutexes": {
+      "sources": [
+        "test/cmocka/test_reset_video_core_mutexes.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "link_options": [
+        "-Wl,--export-dynamic-symbol=pthread_mutex_init"
+      ],
+      "requires": {
+        "all": [
+          "OS_LINUX",
+          "HAVE_OBS_OPENGL"
+        ]
+      },
+      "artifact_definitions": {
+        "GRAPHICS_MODULE_PATH": "OBS::libobs-opengl"
+      },
+      "watch_inputs": [
+        "libobs/data"
+      ]
+    },
     "test_rist_open_cleanup": {
       "sources": [
         "test/cmocka/test_rist_open_cleanup.c"
@@ -24676,6 +24706,23 @@
       "qt_runtime": "Qt6::Core",
       "suite": "qt",
       "target": "test_replay_buffer_estimate"
+    },
+    "test_reset_video_core_mutexes": {
+      "target": "test_reset_video_core_mutexes",
+      "command": [
+        "${target}"
+      ],
+      "suite": "graphics",
+      "working_directory": "${runtime}",
+      "timeout_seconds": 120,
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_rist_open_cleanup": {
       "target": "test_rist_open_cleanup",
