@@ -138,11 +138,11 @@ static int setup(void **state)
 	assert_non_null(first_source);
 	assert_non_null(second_source);
 
-	signal_handler_connect(obs_canvas_get_signal_handler(main_canvas), "channel_change",
-			       local_channel_change, NULL);
+	signal_handler_connect(obs_canvas_get_signal_handler(main_canvas), "channel_change", local_channel_change,
+			       NULL);
 	signal_handler_connect(obs_get_signal_handler(), "channel_change", global_channel_change, NULL);
-	signal_handler_connect(obs_canvas_get_signal_handler(public_canvas), "channel_change",
-			       local_channel_change, NULL);
+	signal_handler_connect(obs_canvas_get_signal_handler(public_canvas), "channel_change", local_channel_change,
+			       NULL);
 	memset(&events, 0, sizeof(events));
 	return 0;
 }
@@ -181,8 +181,8 @@ static int teardown(void **state)
 	return 0;
 }
 
-static void assert_event(size_t index, char kind, obs_canvas_t *canvas, long long channel,
-			 obs_source_t *prev_source, obs_source_t *source)
+static void assert_event(size_t index, char kind, obs_canvas_t *canvas, long long channel, obs_source_t *prev_source,
+			 obs_source_t *source)
 {
 	assert_true(index < events.count);
 	assert_int_equal(events.events[index].kind, kind);
