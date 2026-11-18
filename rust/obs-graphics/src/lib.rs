@@ -90,6 +90,7 @@ pub mod quat;
 pub mod raster_entrypoints;
 pub mod render_target_setters;
 mod round;
+pub mod samplerstate_lifecycle;
 pub mod shader_file;
 pub mod shader_param_introspection;
 pub mod shader_param_names;
