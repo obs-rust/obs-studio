@@ -5501,3 +5501,6 @@ mod canonical_core_private_data_is_registered;
 
 #[path = "native/registration/canonical_source_properties_is_registered.rs"]
 mod canonical_source_properties_is_registered;
+
+#[path = "native/registration/canonical_ui_task_handler_is_registered.rs"]
+mod canonical_ui_task_handler_is_registered;

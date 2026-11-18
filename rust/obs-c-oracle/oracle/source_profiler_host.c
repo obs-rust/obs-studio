@@ -17,9 +17,14 @@ void obs_enter_graphics(void) {}
 
 void obs_leave_graphics(void) {}
 
+void oracle_ui_task_handler_queue(obs_task_t task, void *param, bool wait);
+
 void obs_queue_task(enum obs_task_type type, obs_task_t task, void *param, bool wait)
 {
-	UNUSED_PARAMETER(type);
+	if (type == OBS_TASK_UI) {
+		oracle_ui_task_handler_queue(task, param, wait);
+		return;
+	}
 	UNUSED_PARAMETER(wait);
 	task(param);
 }

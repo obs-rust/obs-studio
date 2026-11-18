@@ -820,6 +820,11 @@ struct obs_core {
 
 extern struct obs_core *obs;
 
+/* UI handler seam: Rust checks the owner before obtaining the field. */
+extern struct obs_core *obs_core_ui_task_handler_core(void);
+extern obs_task_handler_t *obs_core_ui_task_handler_field(struct obs_core *core);
+extern bool obs_core_is_ui_thread(void);
+
 /* Live core required; storage is borrowed only under draw_callbacks_mutex. */
 extern struct darray *obs_core_tick_callbacks_array(struct obs_core *core);
 extern void obs_core_tick_callbacks_lock(struct obs_core *core);

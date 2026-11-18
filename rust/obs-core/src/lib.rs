@@ -177,6 +177,7 @@ pub mod source_load;
 pub mod source_profiler;
 pub mod source_type_enum;
 pub mod tick_callbacks;
+pub mod ui_task_handler;
 pub mod video_copy_plan;
 pub mod video_frame_copy;
 pub mod video_frame_timing;
