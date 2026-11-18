@@ -1017,15 +1017,18 @@ Both repository-level and organization-level runners are supported.
 The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
 selecting labels; matching capacity across the available lists qualifies according
-to `MQ_RUNNER_MODE`.
+to `MQ_RUNNER_MODE`. Its workflow token has **Actions: read** for the separate
+run/job commitment probe; the runner-probe App needs no additional permission.
 The `heavy-labels` output goes only to Build's `mq-heavy-labels` input. An organization API 403/404 (for example,
 when the token lacks organization scope) emits a warning and keeps the repository
 result. API failures in either scope warn without discarding a match in the other.
 If App token creation fails and no legacy token is available, selection falls
 back to hosted runners. Missing tokens, invalid label JSON, or no matching online
 runner in either available list emit a warning and keep each job's original hosted label. The probe
-checks at most five pages of 100 runners per list, with a three-second timeout per
-request; no match within that limit also falls back. An unset or empty variable skips the
+checks at most five pages of 100 entries per list, with a three-second timeout per
+request and **ten requests total**, shared by runner, run and job probes.
+An incomplete commitment list or exhausted request budget falls back to hosted.
+An unset or empty variable skips the
 probe steps. Outside `merge_group` the selection is empty and no API call runs.
 Pull requests, master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
@@ -1045,14 +1048,29 @@ fall back to hosted.
 Set the optional repository Actions variable `MQ_RUNNER_DEMAND` to tune the
 per-run idle-capacity requirement without a workflow change. Unset or empty
 uses the unchanged conservative default `6` (checked by `ci/test_ci_scope.py`).
-Since #4980's per-job routing, the Dell-routed heavy work in
+In #4980's per-job routing, the Dell-routed heavy work in
 `build-project.yaml` is one Tier 2 Linux build, two complete Tier 2 test jobs
 (OFF/ON), two main Cross Lint legs and one release-target Cross Lint job.
 These are six jobs in total, with a **peak of five concurrent heavy jobs**:
 the two Tier 2 tests wait for the build and can overlap all three Cross Lint
-jobs. The release-target job runs its three targets within one job. Set
-`MQ_RUNNER_DEMAND=5` to match that peak; keep `6` for the conservative total-job
-bound. The same requirement applies when path scope skips Tier 2.
+jobs. The release-target job runs its three targets within one job. That
+topology permits demand `5` for the concurrent peak or `6` for the total-job
+bound. These counts describe that topology, not a fixed admission constant.
+
+**Revisit `MQ_RUNNER_DEMAND` whenever heavy jobs are added or their dependencies
+change.** Inventory every job using `mq-heavy-labels` in
+`.github/workflows/build-project.yaml`, expand its matrix, and account for
+`needs` dependencies when estimating concurrent demand. A job count alone is
+not the peak: Tier 2 build and tests run in successive stages. For example,
+[PR #5019](https://github.com/obs-rust/obs-studio/pull/5019) adds the Linux macOS
+test-bundle producer to this pool, bringing the total to seven heavy jobs and
+the possible concurrent peak to about six. Once that topology lands, revisit
+the repository variable; `5` no longer covers its peak, while `6` covers that
+peak and `7` is the conservative total-job bound. A demand above the Dell's
+online capacity intentionally selects hosted. The selector uses the configured
+demand and actual queued-job labels; it does not hard-code a five-job peak or
+automatically infer future jobs before they appear in the API. The same
+configured requirement applies when path scope skips some heavy jobs.
 `MQ_RUNNER_MIN_IDLE` is an optional repository Actions variable (default `1`);
 required idle capacity is `max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. With the
 default demand, a six-runner Dell is selected only when all six matching
@@ -1064,9 +1082,27 @@ Busy runners do not supply idle capacity, and runner IDs visible in both
 scopes count once (a busy observation wins). Empty threshold inputs use their
 defaults; invalid or nonpositive values fall back to hosted. The job summary
 records the choice, reason, online/busy/idle counts and required capacity,
-plus unavailable scopes. No queued-job API is queried. This remains a bounded
-capacity snapshot, not a reservation: simultaneous selections can race, and
-runners may become busy or offline after selection.
+plus unavailable scopes. With sufficient idle runners, admission also lists
+queued/in-progress `ci.yml` merge-group runs and their latest-attempt jobs:
+
+- Subtract jobs queued for **all** the Dell labels from idle capacity. Running
+  jobs are already represented by busy runner state and are not subtracted again.
+- Cap unfinished Dell-routed runs at `floor(online / required)`, without another
+  variable. With six online runners and required capacity three, two runs fit.
+  A routed heavy job's labels establish Dell or hosted selection. Before heavy
+  jobs appear, older unresolved runs reserve a slot, ordered by creation time
+  then run ID; a visible hosted choice releases that reservation. Thus the same
+  four-run idle snapshot admits the oldest two, regardless of probe order.
+  Known Dell commitments count even when newer than the probing run.
+
+The run cap covers the gap between selection and heavy-job creation; queued-job
+subtraction also protects against a run queuing more work than its configured
+demand. Unknown older choices conservatively hold slots until their heavy jobs
+appear or their runs finish. Actions API errors, missing identity/token, incomplete
+lists and budget exhaustion select hosted. This is a bounded snapshot, not an
+atomic reservation: API visibility lag or runners becoming busy/offline after
+selection can still affect capacity. Fixtures reproduce the recorded four-run
+burst; improved hosted timing and utilization still require measurement.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
 Run the runner and its job processes inside its Ubuntu container image / FHS

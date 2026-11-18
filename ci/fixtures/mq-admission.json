@@ -1,0 +1,105 @@
+{
+  "source": "GitHub Actions REST snapshots of the 2026-11-18T00:44:55Z burst; report-7.md. IDs, timestamps, names and labels are recorded; run/job statuses replay the admission and pre-assignment moments, not the final completed snapshot.",
+  "runs": [
+    {
+      "id": 44210343771,
+      "created_at": "2026-11-18T00:44:55Z",
+      "name": "gh-readonly-queue/master/pr-5013-d5474ed6db705fc30a875f55214c6228caa774fa pull request run \ud83d\ude80",
+      "event": "merge_group",
+      "workflow_id": 386287070,
+      "status": "in_progress"
+    },
+    {
+      "id": 44210347163,
+      "created_at": "2026-11-18T00:44:56Z",
+      "name": "gh-readonly-queue/master/pr-5011-c87dae0a61102b86b0044d3971d0486ec7789d17 pull request run \ud83d\ude80",
+      "event": "merge_group",
+      "workflow_id": 386287070,
+      "status": "in_progress"
+    },
+    {
+      "id": 44210349421,
+      "created_at": "2026-11-18T00:44:57Z",
+      "name": "gh-readonly-queue/master/pr-5007-99830cbf2e32b11d1de84016d9b838576ec461c6 pull request run \ud83d\ude80",
+      "event": "merge_group",
+      "workflow_id": 386287070,
+      "status": "in_progress"
+    },
+    {
+      "id": 44210351809,
+      "created_at": "2026-11-18T00:44:58Z",
+      "name": "gh-readonly-queue/master/pr-5012-d87236225dbc2439b0b7a28393f8b7f1438f0366 pull request run \ud83d\ude80",
+      "event": "merge_group",
+      "workflow_id": 386287070,
+      "status": "in_progress"
+    }
+  ],
+  "queued_jobs": [
+    {
+      "id": 134487031396,
+      "name": "Build \ud83e\uddf1 / Rust Cross Lint \ud83e\udd80 (release targets)",
+      "labels": [
+        "self-hosted",
+        "obs-ubuntu-2604",
+        "dell-fsx3mn2"
+      ],
+      "status": "queued",
+      "runner_id": null
+    },
+    {
+      "id": 134487031429,
+      "name": "Build \ud83e\uddf1 / Rust Tier 2 Linux \ud83d\udc27 (build)",
+      "labels": [
+        "self-hosted",
+        "obs-ubuntu-2604",
+        "dell-fsx3mn2"
+      ],
+      "status": "queued",
+      "runner_id": null
+    },
+    {
+      "id": 134491556807,
+      "name": "Build \ud83e\uddf1 / Rust Cross Lint \ud83e\udd80 (aarch64-apple-darwin)",
+      "labels": [
+        "self-hosted",
+        "obs-ubuntu-2604",
+        "dell-fsx3mn2"
+      ],
+      "status": "queued",
+      "runner_id": null
+    },
+    {
+      "id": 134491556808,
+      "name": "Build \ud83e\uddf1 / Rust Cross Lint \ud83e\udd80 (x86_64-pc-windows-msvc)",
+      "labels": [
+        "self-hosted",
+        "obs-ubuntu-2604",
+        "dell-fsx3mn2"
+      ],
+      "status": "queued",
+      "runner_id": null
+    },
+    {
+      "id": 134491853584,
+      "name": "Build \ud83e\uddf1 / Rust Tier 2 Linux \ud83d\udc27 (tests OFF, all)",
+      "labels": [
+        "self-hosted",
+        "obs-ubuntu-2604",
+        "dell-fsx3mn2"
+      ],
+      "status": "queued",
+      "runner_id": null
+    },
+    {
+      "id": 134491853681,
+      "name": "Build \ud83e\uddf1 / Rust Tier 2 Linux \ud83d\udc27 (tests ON, all)",
+      "labels": [
+        "self-hosted",
+        "obs-ubuntu-2604",
+        "dell-fsx3mn2"
+      ],
+      "status": "queued",
+      "runner_id": null
+    }
+  ]
+}

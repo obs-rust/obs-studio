@@ -379,6 +379,8 @@ class CiScopeTest(unittest.TestCase):
         ))
         probe = blocks["select-mq-runner"]
         self.assertIn("runs-on: ubuntu-latest", probe)
+        self.assertIn("actions: read", probe)
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", probe)
         self.assertIn("if: github.event_name != 'pull_request'", probe)
         self.assertIn("!cancelled()", blocks["build-project"].split("    uses:", 1)[0])
         self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)

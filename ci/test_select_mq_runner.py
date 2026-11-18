@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import unittest
+from urllib.parse import parse_qs, urlparse
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
@@ -31,6 +32,12 @@ def runner(status="online", *, busy=False, labels=None):
 
 
 class SelectMqRunnerTest(unittest.TestCase):
+    def setUp(self):
+        # These cases isolate the runner census; admission is exercised below.
+        admission = patch.object(selector, "inflight_commitments", return_value=(0, 0))
+        admission.start()
+        self.addCleanup(admission.stop)
+
     def select(
         self,
         runners=(),
@@ -94,7 +101,9 @@ class SelectMqRunnerTest(unittest.TestCase):
         entries = [runner(busy=True) for _ in range(6)]
         for scope in ("repository", "organization"):
             with self.subTest(scope=scope):
-                options = {"runners" if scope == "repository" else "org_runners": entries}
+                options = {
+                    "runners" if scope == "repository" else "org_runners": entries
+                }
                 self.assertEqual(self.select(mode="prefer", **options)[0], "")
 
     def test_prefer_all_offline_uses_hosted(self):
@@ -204,7 +213,8 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(
             self.select(
                 [same, runner()], org_runners=[{**same, "busy": True}], min_idle="2"
-            )[0], ""
+            )[0],
+            "",
         )
 
     def test_unknown_busy_state_is_not_idle(self):
@@ -573,6 +583,200 @@ class SelectMqRunnerTest(unittest.TestCase):
             with redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(selector.main(), 0)
         self.assertIn("::warning::", output.getvalue())
+
+
+class InflightAdmissionTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-admission.json").read_text()
+        )
+        self.runs = self.fixture["runs"]
+        self.jobs = {run["id"]: [] for run in self.runs}
+        self.labels = json.dumps(
+            self.fixture["queued_jobs"][0]["labels"], separators=(",", ":")
+        )
+
+    def select(
+        self, run_id, *, api_error=None, busy=0, transform=None, environment=None
+    ):
+        def respond(request, **kwargs):
+            url = urlparse(request.full_url)
+            query = parse_qs(url.query)
+            if url.path.endswith("/runners"):
+                entries = (
+                    [
+                        runner(busy=index < busy, labels=json.loads(self.labels))
+                        for index in range(6)
+                    ]
+                    if "/orgs/" in url.path
+                    else []
+                )
+                payload = {"total_count": len(entries), "runners": entries}
+            else:
+                if api_error:
+                    raise api_error
+                self.assertEqual(
+                    request.get_header("Authorization"), "Bearer actions-token"
+                )
+                if url.path.endswith("/runs"):
+                    entries = [
+                        run for run in self.runs if run["status"] == query["status"][0]
+                    ]
+                    payload = {"total_count": len(entries), "workflow_runs": entries}
+                else:
+                    other = int(url.path.split("/runs/")[1].split("/")[0])
+                    entries = self.jobs[other]
+                    payload = {"total_count": len(entries), "jobs": entries}
+            if transform:
+                payload = transform(url.path, payload)
+            return io.BytesIO(json.dumps(payload).encode())
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "GITHUB_RUN_ID": str(run_id),
+                    "GITHUB_TOKEN": "actions-token",
+                    **(environment or {}),
+                },
+                clear=True,
+            ),
+            patch.object(selector, "urlopen", side_effect=respond) as http,
+            redirect_stdout(io.StringIO()),
+        ):
+            selected = selector.select_labels(
+                "merge_group",
+                self.labels,
+                "runner-token",
+                "obs-rust/obs-studio",
+                min_idle="3",
+                demand="3",
+            )
+        self.assertLessEqual(http.call_count, 10)
+        return selected
+
+    def test_four_simultaneous_recorded_runs_admit_oldest_two(self):
+        # Each probe sees the same idle census and no heavy jobs yet. Reverse
+        # probe order too: priority follows creation, not which probe ran first.
+        for runs in (self.runs, list(reversed(self.runs))):
+            with self.subTest(order=[run["id"] for run in runs]):
+                actual = {run["id"]: bool(self.select(run["id"])) for run in runs}
+                self.assertEqual(
+                    actual,
+                    {run["id"]: index < 2 for index, run in enumerate(self.runs)},
+                )
+
+    def test_queued_dell_jobs_reduce_idle_capacity(self):
+        self.jobs[self.runs[0]["id"]] = self.fixture["queued_jobs"][:4]
+        self.assertEqual(self.select(self.runs[1]["id"]), "")
+
+    def test_actions_api_error_uses_hosted(self):
+        for error in (
+            URLError("private server text"),
+            HTTPError("url", 403, "denied", {}, None),
+        ):
+            try:
+                with self.subTest(error=type(error).__name__):
+                    self.assertEqual(self.select(self.runs[0]["id"], api_error=error), "")
+            finally:
+                if isinstance(error, HTTPError):
+                    error.close()
+
+    def test_job_api_error_uses_hosted(self):
+        def fail_jobs(path, payload):
+            if path.endswith("/jobs"):
+                raise URLError("private server text")
+            return payload
+
+        self.assertEqual(self.select(self.runs[0]["id"], transform=fail_jobs), "")
+
+    def test_missing_identity_or_actions_token_uses_hosted(self):
+        for config in (
+            {"GITHUB_RUN_ID": ""},
+            {"GITHUB_RUN_ID": "0"},
+            {"GITHUB_TOKEN": ""},
+        ):
+            with self.subTest(config=config):
+                self.assertEqual(
+                    self.select(self.runs[0]["id"], environment=config), ""
+                )
+
+    def test_missing_current_run_uses_hosted(self):
+        self.assertEqual(self.select(1), "")
+
+    def test_known_newer_dell_runs_reserve_slots(self):
+        for run in self.runs[2:]:
+            self.jobs[run["id"]] = [
+                dict(self.fixture["queued_jobs"][0], status="completed")
+            ]
+        self.assertEqual(self.select(self.runs[0]["id"]), "")
+
+    def test_hosted_heavy_job_releases_older_reservation(self):
+        self.jobs[self.runs[0]["id"]] = [
+            dict(self.fixture["queued_jobs"][0], labels=["ubuntu-26.04"])
+        ]
+        self.assertTrue(self.select(self.runs[2]["id"]))
+
+    def test_running_jobs_are_not_subtracted_twice(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = [
+            dict(job, status="in_progress", runner_id=index + 1)
+            for index, job in enumerate(self.fixture["queued_jobs"][:3])
+        ]
+        self.assertTrue(self.select(self.runs[1]["id"], busy=3))
+
+    def test_equal_timestamps_use_run_id(self):
+        for run in self.runs:
+            run["created_at"] = self.runs[0]["created_at"]
+        self.test_four_simultaneous_recorded_runs_admit_oldest_two()
+
+    def test_queued_workflow_reserves_older_slot(self):
+        self.runs[0]["status"] = "queued"
+        self.assertEqual(self.select(self.runs[2]["id"]), "")
+
+    def test_unrelated_queued_labels_do_not_use_dell_capacity(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = [
+            dict(job, labels=["ubuntu-latest"], name="Format")
+            for job in self.fixture["queued_jobs"]
+        ]
+        self.assertTrue(self.select(self.runs[1]["id"]))
+
+    def test_queued_label_matching_is_case_insensitive(self):
+        self.jobs[self.runs[0]["id"]] = [
+            dict(job, labels=[label.upper() for label in job["labels"]])
+            for job in self.fixture["queued_jobs"][:4]
+        ]
+        self.assertEqual(self.select(self.runs[1]["id"]), "")
+
+    def test_incomplete_jobs_or_runs_use_hosted(self):
+        for endpoint in ("/jobs", "/runs"):
+
+            def incomplete(path, payload):
+                return (
+                    dict(payload, total_count=999)
+                    if path.endswith(endpoint)
+                    else payload
+                )
+
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(
+                    self.select(self.runs[0]["id"], transform=incomplete), ""
+                )
+
+    def test_request_budget_exhaustion_uses_hosted(self):
+        # More active runs than can be classified in the ten-request budget.
+        self.runs.extend(
+            dict(self.runs[0], id=50000000000 + index) for index in range(10)
+        )
+        self.jobs.update({run["id"]: [] for run in self.runs})
+        self.assertEqual(self.select(self.runs[0]["id"]), "")
+
+    def test_malformed_job_labels_use_hosted(self):
+        self.jobs[self.runs[0]["id"]] = [
+            dict(self.fixture["queued_jobs"][0], labels="not an array")
+        ]
+        self.assertEqual(self.select(self.runs[1]["id"]), "")
 
 
 if __name__ == "__main__":
