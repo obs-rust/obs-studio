@@ -763,16 +763,6 @@ obs_source_t *obs_weak_source_get_source(obs_weak_source_t *weak)
 	return NULL;
 }
 
-bool obs_weak_source_expired(obs_weak_source_t *weak)
-{
-	return weak ? obs_weak_ref_expired(&weak->ref) : true;
-}
-
-bool obs_weak_source_references_source(obs_weak_source_t *weak, obs_source_t *source)
-{
-	return weak && source && weak->source == source;
-}
-
 void obs_source_remove(obs_source_t *source)
 {
 	if (!obs_source_valid(source, "obs_source_remove"))
