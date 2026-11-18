@@ -38,6 +38,18 @@ class BundleTest(unittest.TestCase):
             self.build, self.source, self.output, [self.binary], lambda _: None
         )
 
+    def test_runtime_inventory_follows_the_complete_tier2_ninja_closure(self):
+        (self.build / "input.c").touch()
+        (self.build / "build.ninja").write_text(
+            "rule link\n  command = true\n"
+            "build fixture: link input.c\n"
+            "build helper: link input.c\n"
+            "build unrelated-plugin: link input.c\n"
+            "build tier2-cross: phony fixture helper\n"
+        )
+        paths = [self.build / name for name in ("fixture", "helper", "unrelated-plugin")]
+        self.assertEqual(bundle.selected_runtime(self.build, paths), paths[:2])
+
     def test_empty_space_named_working_directory_survives_transport(self):
         directory = "test/cmocka/output runtime root/Release"
         (self.build / directory).mkdir(parents=True)
