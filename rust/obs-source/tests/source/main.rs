@@ -78,6 +78,8 @@ mod interaction;
 mod interaction_parity;
 mod media_admission;
 mod media_admission_parity;
+mod missing_files_getter;
+mod missing_files_getter_parity;
 mod monitoring;
 mod monitoring_parity;
 mod own_clock_drift;

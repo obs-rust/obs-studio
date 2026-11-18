@@ -223,6 +223,7 @@ pub mod info_lookup;
 pub mod init_context;
 pub mod interaction;
 pub mod media_admission;
+pub mod missing_files_getter;
 pub mod monitoring;
 pub mod own_clock_drift;
 pub mod private_settings;

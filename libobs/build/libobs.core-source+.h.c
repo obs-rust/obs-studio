@@ -74,7 +74,7 @@
 #include "libobs/obs-source-init-context-fields.c.h"
 #include "libobs/obs-source-interaction-fields.c.h"
 #include "libobs/obs-source-media-getter-fields.c.h"
-#include "libobs/obs-source-missing-files-getter.c.h"
+#include "libobs/obs-source-missing-files-getter-fields.c.h"
 #include "libobs/obs-source-module-fields.c.h"
 #include "libobs/obs-source-module-roots.c.h"
 #include "libobs/obs-source-mute-monitor-hotkeys.c.h"
