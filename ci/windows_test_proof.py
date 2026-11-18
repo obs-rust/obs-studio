@@ -135,9 +135,14 @@ def native_receipts(data: dict, bundle: Path) -> None:
 
     logical = data["build_root"]
     windows_root(logical)
+    index = json.loads((bundle / "native-fixtures/index.json").read_text())
+    if len(index["images"]) != 55:
+        raise ValueError("native history requires all 55 PE snapshots")
     events = 0
     for name in TESTS:
         history = json.loads((bundle / "native-fixtures" / ("native_build::" + name).replace("::", "--") / "manifest.json").read_text())
+        if type(history.get("version")) is not int or history["version"] != 1:
+            raise ValueError("native history version mismatch")
         roots = history["directories"]
         for root in roots:
             native_destination(root, logical, roots)
