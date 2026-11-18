@@ -1,2 +1,0 @@
-# All five device-load Rust shims retain their original public exports.
-# The private C field adapters have no EXPORT annotation.
