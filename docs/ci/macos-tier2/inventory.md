@@ -231,20 +231,41 @@ executable configurations, including RelWithDebInfo and the automoc parser, bind
 to the pinned Linux SDK and require ELF headers; Darwin library targets remain
 unchanged.
 
-The representative CMake command built both frameworks, unchanged test_bitstream
-and standalone test_async_conversion_plan_rust on Linux. All four images passed
-CodeDirectory page verification. Both cores export exactly 1,904 symbols, with
-zero differences. The probe bundle contains these four images, 11 signed/thinned
-non-system dependency dylibs and six CTest templates; both test executables embed
-the producer build root, which the relocation guard correctly records.
-LLVM's loader audit found only system absolute paths in the 15 staged images.
+The complete Linux build with the managed SDK 26.5 receipt succeeded. Its CTest
+registry has 678 entries and its actual Ninja dependency graph selects 686 runtime
+targets. The existing per-target ASan/UBSan recipes remain enabled, including
+`test_amf3_classname`, `test_amf3_terminator` and `test_amf_decode`. Independent
+Cargo-native preparation produced both cores, both renderers, all three capture
+modules and both loader probes; its receipt is complete with no waiting entries.
+The existing Application-category contract executable was cross-linked too.
 
-The native-contract Application category was independently cross-linked with
-`--features libobs-integration --test obs-tests-app --no-run`, then collected
-using #5008's package/cwd/build-script manifest helper. Its roughly 20 MB arm64
-executable passed signature verification. This proves prebuilding the executable,
-not that executing its existing compile-at-runtime body is allowed on macOS.
+All four core images export the identical set of 1,879 symbols. CMake/Cargo-native
+OpenGL and Metal pairs export identical sets of 153 and 311 symbols respectively.
+Each capture pair exports the same seven symbols and matches all 64 locale files.
+The managed Linux Swift compiler builds the real 34-source Metal implementation;
+managed dsymutil produces its debug-symbol bundles. A separate sanitized
+availability probe links `__isPlatformVersionAtLeast` from `libclang_rt.osx.a`
+and produces its own dSYM. No Darwin executable was run on Linux.
 
-Local tooling was soldr 0.9.53 with LLVM 21.1.5 and SDK 14.5; the CI-pinned soldr
-0.9.45 and hosted execution were not replayed for these CMake artifacts. The full
-selected Tier 2 target remains blocked by the listed runtime/toolchain gaps.
+The final load-closure audit verifies 698 runtime roots and 717 total signed arm64
+images. It resolves both sanitizer runtimes only through the explicit recorded
+override above. A real failing audit exposed the nested `config_close_fault`
+preload helper: retaining CMake's automatic build RPATHs for test targets repairs
+that dependency without changing the C test or editing a signed image. These
+build paths still require the common-root contract on the eventual run host.
+
+Measured commands used four Ninja jobs: source-building soldr took 1,008.12 s;
+complete independent native preparation took 829.33 s. The first full CMake
+attempt spent 1,637.09 s compiling the suite before its last Metal step failed;
+after the Swift-probe/property fixes, the aggregate completed in 147.42 s using
+those compiled objects. The final fixture-RPATH reconfigure/relink took 257.36 s.
+These are measured stages and repair runs, not a cold end-to-end speedup claim.
+
+A compiled proof payload contains the actual runtime closure, capture resources,
+prepared stale-manifest evidence, CTest definitions, dSYMs and receipts. Its
+1,177 files occupy 216,341,061 bytes before compression and 51,634,705 bytes as
+Zstandard level 3; packing took 3.01 s and packing plus hash-verified compressed
+round-trip took 3.74 s. It retains the explicit incomplete-runner marker. This
+measurement does not certify a portable hosted packet: independent registry
+parity, common-root transport, every runtime assertion and all four complete
+macOS CTest passes remain activation requirements.
