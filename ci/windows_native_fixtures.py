@@ -69,6 +69,18 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
     environment.update(OBS_NATIVE_FIXTURES_PREPARE=str(directory),
                        OBS_NATIVE_FIXTURE_TARGET=TARGET, OBS_NATIVE_WINDOWS_TARGET=TARGET,
                        OBS_NATIVE_HOST_CMAKE=shutil.which("cmake") or "cmake")
+    environment, tools = configure_tools(root, directory, environment)
+    shared.prepare_tests(root, directory, environment, env, TESTS)
+    images = fixture_images(directory)
+    (directory / "index.json").write_text(json.dumps({"version": 1, "target": TARGET,
+        "tests": ["native_build::" + name for name in TESTS], "images": images,
+        "tools": tools, "complete": True}, indent=2) + "\n")
+    validate(bundle)
+
+
+def configure_tools(root: Path, directory: Path, env: dict) -> tuple[dict, dict]:
+    """Resolve the same managed MSVC tools for native and Qt preparation."""
+    environment = dict(env)
     tools = {name: shared.tool(option, root, env, target=TARGET) for name, option in {
         "CC": "--print-cc", "CXX": "--print-cxx", "AR": "--print-ar", "RC": "--print-rc",
         "SDKROOT": "--print-sysroot", "LINK": "--print-linker",
@@ -105,11 +117,7 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL",
         "CMAKE_C_COMPILER": tools["CC"], "CMAKE_CXX_COMPILER": tools["CXX"],
         "CMAKE_AR": tools["AR"], "CMAKE_RC_COMPILER": tools["RC"], "CMAKE_LINKER": tools["LINK"],
+        "CMAKE_MT": str(Path(tools["LINK"]).with_name("llvm-mt")),
     }.items()) + "\n")
     environment.update(CMAKE_TOOLCHAIN_FILE=str(toolchain), CMAKE_GENERATOR="Ninja")
-    shared.prepare_tests(root, directory, environment, env, TESTS)
-    images = fixture_images(directory)
-    (directory / "index.json").write_text(json.dumps({"version": 1, "target": TARGET,
-        "tests": ["native_build::" + name for name in TESTS], "images": images,
-        "tools": tools, "complete": True}, indent=2) + "\n")
-    validate(bundle)
+    return environment, tools

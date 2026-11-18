@@ -1,7 +1,7 @@
-# Windows Rust test artifacts (slices 1, 3 and 4)
+# Windows Rust test artifacts (slices 1, 3, 4 and 5)
 
 `ci/windows_test_artifact.py` prepares Windows tests on Linux. Workflow activation,
-native Windows qualification and the Qt contracts remain separate work:
+and native Windows qualification remain separate work:
 
 ```sh
 uv run --no-project ci/windows_test_artifact.py build --output build_windows_test_slice
@@ -112,7 +112,7 @@ The hosted proof run must show all of the following before activation:
 
 Before replacing the Windows Rust job, follow-up slices must prove the common
 Linux/Windows source path contract (including embedded CARGO_MANIFEST_DIR and
-CARGO_BIN_EXE paths), execute MSVC doctests and native histories, and prepare the
+CARGO_BIN_EXE paths), execute MSVC doctests and native histories, including the prepared
 published Qt SDK contracts and runtime DLL closure. Existing Rust categories,
 all native assertions and unchanged C compatibility tests remain required.
 Then enrich the existing Linux Windows-link producer rather than cross-building
@@ -141,3 +141,59 @@ evidence for an inapplicable Swift contract; GREEN `36d787fd8` moves Swift/GNU
 PCH target guards before fixture entry. All eight Rust prepare/replay tests pass. The new
 test takes at most 39 ms with 14.5 MiB peak RSS over 20 runs, starts no threads,
 and re-executes three child tests on Linux. No category executable was added.
+
+
+`ci/windows_qt_artifact.py` prepares slice 5, then appends to that same bundle:
+
+```sh
+uv run --no-project --python 3.14 ci/windows_qt_artifact.py build --work build_windows_qt --bundle build_windows_test_slice
+uv run --no-project ci/windows_test_artifact.py verify --manifest build_windows_test_slice/manifest.json
+# Only after the common source root is qualified on native Windows:
+uv run --no-project --python 3.14 ci/windows_qt_artifact.py run --manifest manifest.json --root ROOT
+```
+
+It uses the exact Windows Rust job's Qt 6.11.1 relwithdebinfo archive, SHA256
+`b05c17386d2a1b0564b00755bc1fba152a18eaac34e512d9315922990715b751`,
+and the matching Linux Qt archive, SHA256
+`f0edfc3432bd57058bbb9a2cf18aacceb55a2564b018346778c34eb0e3369dbf`.
+Linux moc/uic/rcc run while the MSVC Qt import libraries and headers target Windows.
+The original published-SDK resolver and all four Rust integration contracts run:
+metaobjects; remux; product/meter; frontend utilities. Their graph, source inventory,
+optional Qt Test/OS guards, generator and CTest-property assertions are retained.
+Target executions are recorded with their original arguments, cwd, environment,
+loader-path prepends and timeout. They remain PENDING until Windows executes them.
+
+Cmocka 1.1.7 is cross-built as a real DLL and import library from the existing
+shared helper's SHA256-pinned source. Function detection uses real MSVC links;
+static-library probes would falsely accept unavailable POSIX functions. The
+Linux pkg-config executable, version and checksum are recorded in `qt_inputs`;
+its search path contains only the cross-built cmocka package. No Windows vcpkg
+or pkgconf executable runs on Linux or is required by the run-only consumer.
+Native and Qt preparation share soldr's clang-cl/xwin/LLVM discovery and CMake
+toolchain, including managed llvm-mt. Missing cross tools fail preparation.
+Cargo forces Ninja after soldr's managed tool preparation, as #5019 requires;
+Windows fixture paths also replace Rust `::` with `--` for legal Windows names.
+
+The shared Qt recorder and bundle appender preserve all payload bytes and checksums.
+Windows staging includes QtCore/Gui/Widgets, cmocka, `qminimal.dll`, optional imported
+modules and their full recursive normal/delay-import closure. OS/UCRT and supported
+VC redist DLLs remain explicit runner prerequisites; they are not xwin artifacts.
+The verifier checks every PE/DLL, hashes, the exact image/import inventory, required
+plugin and each executable/DLL's actual staged loader search directories.
+
+Activation checklist additions for slice 2: prove all four Qt contracts' pending
+entries on hosted Windows, including the generator resource/UI/metaobject answers,
+original cmocka assertions, optional Qt Test selection, minimal plugin loading and
+transitive normal/delay imports. Poison/remove compilers, pkgconf and SDK tools on
+the consumer; missing/corrupt Qt files or DLLs and nonzero runtime status must fail.
+Preserve common-root rejection, embedded helper paths and all slices 3/4 histories.
+
+Slice 6 must enrich the existing Linux Windows-link producer, select Qt using the
+existing `qt_sdk` scope, append it before final packing, and require the verified
+producer artifact in CI Gate. Native Windows becomes checkout/download/verify/run
+only: no native compiler, SDK install, vcpkg, Clippy or doctest compilation fallback.
+Keep all-target Windows Clippy/Dylint required on Linux, formatting in its required
+lane, immutable artifact IDs/attempt receipts, rerun and failure-artifact behavior,
+eight-category/native/doctest/Qt coverage, and the 64 MiB complete compressed budget.
+Record publication, extraction, verification and execution timings over four
+comparable hosted runs before claiming a speedup. Windows Tier 2 remains separate.

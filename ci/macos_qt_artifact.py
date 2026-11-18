@@ -77,7 +77,7 @@ def ctest_path_prepend(modifications: list[str]) -> dict[str, list[str]]:
     return result
 
 
-def record(work: Path, contract: str, entry: dict | None, ctest: Path | None) -> None:
+def record(work: Path, contract: str, entry: dict | None, ctest: Path | None, *, runtime: str = "macOS") -> None:
     if contract not in CONTRACTS:
         raise ValueError(f"unexpected Qt contract: {contract}")
     entries = [entry] if entry is not None else ctest_entries(json.loads(subprocess.run(
@@ -86,7 +86,7 @@ def record(work: Path, contract: str, entry: dict | None, ctest: Path | None) ->
     with (work / "records.jsonl").open("a") as stream:
         for item in entries:
             stream.write(json.dumps(item | {"contract": contract}) + "\n")
-    print(f"Prepared {len(entries)} target executions for {contract}; macOS runtime PENDING")
+    print(f"Prepared {len(entries)} target executions for {contract}; {runtime} runtime PENDING")
 
 
 def read_records(work: Path) -> list[dict]:
@@ -121,7 +121,7 @@ def toolchain(work: Path) -> Path:
     return path
 
 
-def cmocka(work: Path, toolchain_file: Path) -> Path:
+def cmocka(work: Path, toolchain_file: Path, *, windows: bool = False, env: dict | None = None) -> Path:
     archive = work / "cmocka-1.1.7.tar.xz"
     if not archive.exists():
         urllib.request.urlretrieve(CMOCKA_URL, archive)
@@ -133,15 +133,19 @@ def cmocka(work: Path, toolchain_file: Path) -> Path:
             stream.extractall(work, filter="data")
     output = work / "cmocka-build"
     subprocess.run(["cmake", "-S", str(source), "-B", str(output), "-G", "Ninja",
-                    f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}", "-DBUILD_SHARED_LIBS=OFF",
-                    "-DUNIT_TESTING=OFF", "-DWITH_EXAMPLES=OFF", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"], check=True)
-    subprocess.run(["cmake", "--build", str(output), "--target", "cmocka", "--parallel", "2"], check=True)
+                    f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}", f"-DBUILD_SHARED_LIBS={'ON' if windows else 'OFF'}",
+                    "-DUNIT_TESTING=OFF", "-DWITH_EXAMPLES=OFF", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"], env=env, check=True)
+    subprocess.run(["cmake", "--build", str(output), "--target", "cmocka", "--parallel", "2"], env=env, check=True)
     prefix = work / "cmocka-prefix"
     (prefix / "lib/pkgconfig").mkdir(parents=True, exist_ok=True)
     shutil.copytree(source / "include", prefix / "include", dirs_exist_ok=True)
-    shutil.copy2(output / "src/libcmocka.a", prefix / "lib/libcmocka.a")
+    library = "cmocka.lib" if windows else "libcmocka.a"
+    shutil.copy2(output / "src" / library, prefix / "lib" / library)
+    if windows:
+        (prefix / "bin").mkdir(exist_ok=True)
+        shutil.copy2(output / "src/cmocka.dll", prefix / "bin/cmocka.dll")
     (prefix / "lib/pkgconfig/cmocka.pc").write_text(
-        f"prefix={prefix}\nName: cmocka\nDescription: Darwin cross-built cmocka\nVersion: 1.1.7\n"
+        f"prefix={prefix}\nName: cmocka\nDescription: cross-built cmocka\nVersion: 1.1.7\n"
         "Libs: -L${prefix}/lib -lcmocka\nCflags: -I${prefix}/include\n")
     return prefix
 
@@ -209,30 +213,37 @@ def stage_qt(qt: Path, destination: Path) -> None:
 
 
 def append_bundle(bundle: Path, work: Path, qt: Path) -> None:
+    append_contracts(bundle, work, qt, target=TARGET, relative=RELATIVE,
+                     verify_executable=artifact.verify_macho, stage_runtime=stage_qt, audit_runtime=audit_linkage)
+
+
+def append_contracts(bundle: Path, work: Path, qt: Path, *, target: str, relative: str,
+                     verify_executable, stage_runtime, audit_runtime) -> None:
+    """Shared Qt inventory, path translation and checksummed bundle transport."""
     manifest = json.loads((bundle / "manifest.json").read_text())
     if (manifest["build_root"] != str(ROOT) or manifest.get("qt_contracts_complete")
-            or manifest["version"] != 1 or manifest["target"] != TARGET):
+            or manifest["version"] != 1 or manifest["target"] != target):
         raise ValueError("Qt bundle source root mismatch or already complete")
     artifact.validate_inventory(manifest, bundle)
     entries = read_records(work / "contracts")
-    destination = bundle / RELATIVE
+    destination = bundle / relative
     shutil.copytree(work / "contracts", destination / "contracts")
-    stage_qt(qt, destination / "qt")
-    mappings = {str(work / "contracts"): "{root}/" + RELATIVE + "/contracts", str(ROOT): "{root}",
-                str(qt): "{root}/" + RELATIVE + "/qt"}
+    stage_runtime(qt, destination / "qt")
+    mappings = {str(work / "contracts"): "{root}/" + relative + "/contracts", str(ROOT): "{root}",
+                str(qt): "{root}/" + relative + "/qt"}
     for entry in entries:
         binary = Path(entry["binary"])
-        artifact.verify_macho(binary)
+        verify_executable(binary)
         item = {key: portable(entry[key], mappings) for key in ("binary", "cwd")}
         item = {key: value.removeprefix("{root}/") for key, value in item.items()}
-        audit_linkage(bundle / item["binary"], destination / "qt")
+        audit_runtime(bundle / item["binary"], destination / "qt")
         item.update({"package": "Qt/" + entry["contract"], "name": entry["name"], "kind": "qt-contract",
                      "args": [portable(value, mappings) for value in entry["args"]],
                      "env": {key: portable(value, mappings) for key, value in entry["env"].items()},
                      "timeout": entry["timeout"]})
         item["env_path_prepend"] = {key: [portable(value, mappings) for value in values]
                                     for key, values in entry.get("env_path_prepend", {}).items()}
-        runtime = "{root}/" + RELATIVE + "/qt"
+        runtime = "{root}/" + relative + "/qt"
         item["env"].update({"QT_PLUGIN_PATH": runtime + "/plugins",
                             "QT_QPA_PLATFORM_PLUGIN_PATH": runtime + "/plugins/platforms"})
         manifest["tests"].append(item)

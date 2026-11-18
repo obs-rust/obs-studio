@@ -1,4 +1,4 @@
-//! Split the four published-SDK contracts into Linux preparation and macOS execution.
+//! Split the four published-SDK contracts into Linux preparation and target execution.
 //! Every graph/CMake assertion stays in its original test. Only target process
 //! execution is deferred; a successful preparation receipt is not a runtime pass.
 use std::path::{Path, PathBuf};
@@ -15,14 +15,18 @@ impl Directory {
     }
 }
 
+fn preparation_directory() -> Option<std::ffi::OsString> {
+    std::env::var_os("OBS_QT_CONTRACT_PREPARE").or_else(|| std::env::var_os("OBS_MACOS_QT_PREPARE"))
+}
+
 pub(super) fn preparing() -> bool {
-    std::env::var_os("OBS_MACOS_QT_PREPARE").is_some()
+    preparation_directory().is_some()
 }
 
 pub(super) fn relocatable(
     interfaces: &mut std::collections::BTreeMap<String, obs_build::validation::graph::Dependency>,
 ) {
-    if preparing() {
+    if preparing() && target().contains("apple") {
         for dependency in interfaces.values_mut() {
             // The native linker adds search rpaths for dependency artifacts,
             // including static archives. Keep the same real archive on the
@@ -46,16 +50,22 @@ pub(super) fn relocatable(
 
 pub(super) fn target() -> String {
     if preparing() {
-        "aarch64-apple-darwin".into()
+        std::env::var("OBS_QT_CONTRACT_TARGET").unwrap_or_else(|_| "aarch64-apple-darwin".into())
     } else {
         obs_build::BUILD_TARGET.into()
     }
 }
 
 pub(super) fn directory() -> Directory {
-    if let Some(work) = std::env::var_os("OBS_MACOS_QT_PREPARE") {
+    if let Some(work) = preparation_directory() {
         let thread = std::thread::current();
-        let path = PathBuf::from(work).join(thread.name().expect("named contract test"));
+        let name = thread.name().expect("named contract test");
+        let name = if target().contains("windows") {
+            name.replace("::", "--")
+        } else {
+            name.into()
+        };
+        let path = PathBuf::from(work).join(name);
         std::fs::create_dir(&path).expect("fresh Qt contract directory");
         Directory {
             path,
@@ -71,7 +81,7 @@ pub(super) fn directory() -> Directory {
 }
 
 pub(super) fn output(mut command: Command) -> std::io::Result<Output> {
-    let Some(work) = std::env::var_os("OBS_MACOS_QT_PREPARE") else {
+    let Some(work) = preparation_directory() else {
         return command.output();
     };
     let program = PathBuf::from(command.get_program());
@@ -87,10 +97,15 @@ pub(super) fn output(mut command: Command) -> std::io::Result<Output> {
         .expect("named contract test")
         .to_owned();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let helper = if target().contains("windows") {
+        "ci/windows_qt_artifact.py"
+    } else {
+        "ci/macos_qt_artifact.py"
+    };
     let mut recorder = Command::new("uv");
     recorder
         .args(["run", "--no-project"])
-        .arg(root.join("ci/macos_qt_artifact.py"))
+        .arg(root.join(helper))
         .arg("record")
         .arg("--work")
         .arg(work)

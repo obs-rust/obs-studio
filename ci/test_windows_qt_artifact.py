@@ -27,6 +27,9 @@ class WindowsQtTest(unittest.TestCase):
         self.assertIn(qt.TARGET_SHA, workflow)
         self.assertEqual(qt.CONTRACTS, shared.CONTRACTS)
         self.assertEqual(qt.HOST_ASSET, shared.HOST_ASSET)
+        # Exact OS imports observed in the pinned Qt Core/Gui/Widgets binaries.
+        system = ["AUTHZ.dll", "MPR.dll", "D3D11.dll", "D3D12.dll", "DWrite.dll", "DwmApi.dll", "UxTheme.dll", "ICUUC.dll"]
+        self.assertEqual(artifact.pe_imports(executable(system)), sorted(name.lower() for name in system))
 
     def test_stage_follows_transitive_imports_and_requires_minimal_plugin(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -64,11 +67,15 @@ class WindowsQtTest(unittest.TestCase):
     def test_preparation_forces_ninja_after_managed_tool_setup(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            tools = root / "work/host-qt/libexec"
+            tools.mkdir(parents=True)
+            for name in ("moc", "uic", "rcc"):
+                (tools / name).write_bytes(b"host generator")
             with mock.patch.object(qt, "fetch"), \
                     mock.patch.object(qt, "configure_tools", return_value=({"CMAKE_GENERATOR": "Unix Makefiles"}, {})), \
                     mock.patch.object(qt, "cmocka", return_value=root / "cmocka"), \
                     mock.patch.object(qt, "append_bundle"), \
-                    mock.patch.object(qt.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "6.11.1")) as run:
+                    mock.patch.object(qt.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "6.11.1", "")) as run:
                 qt.build(root / "work", root / "bundle")
             command = run.call_args
             self.assertIn('env.CMAKE_GENERATOR.value="Ninja"', command.args[0])
@@ -76,6 +83,7 @@ class WindowsQtTest(unittest.TestCase):
             self.assertNotIn("CMAKE_GENERATOR", command.kwargs["env"])
             self.assertTrue(set(qt.CONTRACTS).issubset(command.args[0]))
             self.assertEqual(command.kwargs["env"]["OBS_QT_CONTRACT_TARGET"], artifact.TARGET)
+            self.assertNotIn("STATIC_LIBRARY", (root / "work/producer-tools/windows.cmake").read_text())
 
     def test_incomplete_or_unclaimed_qt_payload_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -86,6 +94,39 @@ class WindowsQtTest(unittest.TestCase):
             (root / "manifest.json").write_text(json.dumps({"qt_contracts_complete": list(qt.CONTRACTS)}))
             with self.assertRaises((ValueError, KeyError)):
                 qt.validate({"qt_contracts_complete": list(qt.CONTRACTS), "tests": []}, root)
+
+    def test_shared_bundle_preserves_every_runtime_entry_and_checks_dll_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bundle, work = root / "bundle", root / "work"
+            contracts = work / "contracts"
+            contracts.mkdir(parents=True)
+            binary = contracts / "answer.exe"
+            binary.write_bytes(executable(["Qt6Core.dll"]))
+            entries = [{"contract": name, "name": "answer", "binary": str(binary), "cwd": str(contracts),
+                        "env": {}, "args": [str(contracts / "resource")], "timeout": 19} for name in qt.CONTRACTS]
+            (contracts / "records.jsonl").write_text("".join(json.dumps(entry) + "\n" for entry in entries))
+            (work / "inputs.json").write_text(json.dumps({"pkg_config": {"version": "test"}}))
+            bundle.mkdir()
+            artifact.shared.finalize(bundle, {"version": 1, "target": qt.TARGET,
+                "build_root": str(shared.ROOT), "coverage": artifact.PREPARED_COVERAGE,
+                "doctests_complete": True, "tests": [], "images": {}, "runtime_dlls": []})
+
+            def stage(sdk, prefix, destination, required):
+                for name in ("bin/Qt6Core.dll", "plugins/platforms/qminimal.dll"):
+                    path = destination / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(dll())
+
+            with mock.patch.object(qt, "stage_runtime", side_effect=stage):
+                qt.append_bundle(bundle, work, root / "sdk")
+            data = artifact.verify(bundle / "manifest.json")
+            self.assertEqual(len(data["tests"]), 4)
+            self.assertEqual(data["tests"][0]["timeout"], 19)
+            self.assertIn("{root}/target/windows-qt/contracts/resource", data["tests"][0]["args"])
+            (bundle / qt.RELATIVE / "qt/bin/Qt6Core.dll").write_bytes(b"corrupt")
+            with self.assertRaisesRegex(ValueError, "checksum"):
+                artifact.verify(bundle / "manifest.json")
 
 
 if __name__ == "__main__":

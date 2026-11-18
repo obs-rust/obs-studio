@@ -4,7 +4,7 @@
     uv run --no-project ci/windows_test_artifact.py build --output build_windows_tests
     uv run --no-project ci/windows_test_artifact.py verify --manifest build_windows_tests/manifest.json
 
-Qt contracts and the Windows source-path handoff remain follow-up slices.
+Qt contracts are appended by windows_qt_artifact; the Windows source-path handoff remains pending.
 This branch infrastructure cannot yet replace the Windows job.
 The shared Darwin collector preserves Cargo's cwd, environment, helpers and
 OUT_DIR; its checksummed transport is reused without changing Darwin policy.
@@ -31,12 +31,15 @@ PREPARED_COVERAGE = "rust-tests-doctests-native-fixtures"
 # Runtime libraries supplied by the supported Windows runner, not by xwin's
 # import-library SDK. Record VC dependencies separately for later consumer setup.
 SYSTEM_DLLS = frozenset({
-    "advapi32.dll", "avrt.dll", "bcrypt.dll", "bcryptprimitives.dll", "cfgmgr32.dll",
-    "comctl32.dll", "comdlg32.dll", "crypt32.dll", "dbghelp.dll", "dxgi.dll", "gdi32.dll",
-    "iphlpapi.dll", "kernel32.dll", "msvcrt.dll", "ncrypt.dll", "netapi32.dll",
-    "ntdll.dll", "ole32.dll", "oleaut32.dll", "pdh.dll", "powrprof.dll", "propsys.dll",
+    "advapi32.dll", "authz.dll", "avrt.dll", "bcrypt.dll", "bcryptprimitives.dll", "cfgmgr32.dll",
+    "comctl32.dll", "comdlg32.dll", "crypt32.dll", "d3d11.dll", "d3d12.dll", "dbghelp.dll",
+    "dwmapi.dll", "dwrite.dll", "dxgi.dll", "gdi32.dll",
+    # Qt's winsdkicu feature imports the Windows system ICU C API (Win10 1703+):
+    # https://learn.microsoft.com/en-us/windows/win32/intl/international-components-for-unicode--icu-
+    "icuuc.dll", "iphlpapi.dll", "kernel32.dll", "msvcrt.dll", "ncrypt.dll", "netapi32.dll",
+    "mpr.dll", "ntdll.dll", "ole32.dll", "oleaut32.dll", "pdh.dll", "powrprof.dll", "propsys.dll",
     "psapi.dll", "rpcrt4.dll", "secur32.dll", "setupapi.dll", "shell32.dll",
-    "shlwapi.dll", "ucrtbase.dll", "user32.dll", "userenv.dll", "version.dll",
+    "shlwapi.dll", "ucrtbase.dll", "user32.dll", "userenv.dll", "uxtheme.dll", "version.dll",
     "winhttp.dll", "winmm.dll", "winspool.drv", "ws2_32.dll", "wtsapi32.dll",
 })
 VC_DLLS = frozenset({"vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll",
@@ -134,6 +137,15 @@ def verify(manifest: Path) -> dict:
     if not data["tests"] and not (data.get("scope_skipped") or data.get("scope_no_tests")):
         raise ValueError("empty test inventory")
     shared.validate_files(data, root)
+    qt_images = data.get("qt_images", {})
+    staged_dlls = set()
+    if ("qt_contracts_complete" in data or qt_images
+            or any(entry.get("kind") == "qt-contract" for entry in data["tests"])
+            or any(name.startswith("target/windows-qt/") for name in data["files"])):
+        from windows_qt_artifact import validate
+
+        validate(data, root)
+        staged_dlls = {Path(name).name.lower() for name in qt_images if name.endswith(".dll")}
     images = data["images"]
     if set(images) != {name for name in data["files"] if name.endswith(".exe")}:
         raise ValueError("PE image inventory mismatch")
@@ -141,9 +153,9 @@ def verify(manifest: Path) -> dict:
         if entry["binary"] not in images:
             raise ValueError("test executable missing from PE inventory")
     for name, dependencies in images.items():
-        if pe_imports(shared.within(root, name).read_bytes()) != dependencies:
+        if pe_imports(shared.within(root, name).read_bytes(), staged_dlls=staged_dlls) != dependencies:
             raise ValueError("PE runtime dependency inventory mismatch")
-    expected = sorted({dll for deps in images.values() for dll in deps if VC_RUNTIME.match(dll)})
+    expected = sorted({dll for deps in [*images.values(), *qt_images.values()] for dll in deps if VC_RUNTIME.match(dll)})
     if data["runtime_dlls"] != expected:
         raise ValueError("VC runtime inventory mismatch")
     return data
