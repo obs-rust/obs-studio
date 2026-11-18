@@ -20,8 +20,8 @@ fn canonical_encoder_defaults_swap_is_registered() {
         fs::read_to_string(root.join("libobs/build/ported-source-sets/encoder-defaults.json"))
             .unwrap();
     assert!(ported.contains("build/libobs.ported-encoder-defaults+.h.c"));
-    let group = fs::read_to_string(root.join("libobs/build/libobs.ported-encoder-defaults+.h.c"))
-        .unwrap();
+    let group =
+        fs::read_to_string(root.join("libobs/build/libobs.ported-encoder-defaults+.h.c")).unwrap();
     assert!(group.contains("#include \"libobs/obs-encoder-defaults.c.h\""));
     let hybrid = fs::read_to_string(root.join("libobs/build/libobs.core-output+.h.c")).unwrap();
     assert!(!hybrid.contains("#include \"libobs/obs-encoder-defaults.c.h\""));

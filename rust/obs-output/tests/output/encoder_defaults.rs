@@ -22,19 +22,31 @@ impl Host for Mock {
     fn create_settings(&self) -> Self::Settings {
         Rc::new(RefCell::new(Settings::default()))
     }
-    fn has_legacy(&self) -> bool { self.mask & 1 != 0 }
-    fn has_modern(&self) -> bool { self.mask & 2 != 0 }
+    fn has_legacy(&self) -> bool {
+        self.mask & 1 != 0
+    }
+    fn has_modern(&self) -> bool {
+        self.mask & 2 != 0
+    }
     fn legacy(&self, settings: &Self::Settings) {
         assert_eq!(self.calls.replace(self.calls.get() + 1), 0);
         *self.callback_settings.borrow_mut() = Some(Rc::clone(settings));
         settings.borrow_mut().winner = Some(11);
         settings.borrow_mut().legacy = true;
     }
-    fn type_data(&self) -> Self::TypeData { self.type_data }
+    fn type_data(&self) -> Self::TypeData {
+        self.type_data
+    }
     fn modern(&self, settings: &Self::Settings, type_data: Self::TypeData) {
-        assert_eq!(self.calls.replace(self.calls.get() + 1), usize::from(self.has_legacy()));
+        assert_eq!(
+            self.calls.replace(self.calls.get() + 1),
+            usize::from(self.has_legacy())
+        );
         if self.has_legacy() {
-            assert!(Rc::ptr_eq(settings, self.callback_settings.borrow().as_ref().unwrap()));
+            assert!(Rc::ptr_eq(
+                settings,
+                self.callback_settings.borrow().as_ref().unwrap()
+            ));
             assert_eq!(settings.borrow().winner, Some(11));
             assert!(settings.borrow().legacy);
         } else {
@@ -50,10 +62,19 @@ fn query_checked(host: &Mock) -> Rc<RefCell<Settings>> {
     host.calls.set(0);
     host.callback_settings.borrow_mut().take();
     let settings = query(Some(host), || panic!("unexpected diagnostic")).unwrap();
-    assert_eq!(host.calls.get(), usize::from(host.has_legacy()) + usize::from(host.has_modern()));
+    assert_eq!(
+        host.calls.get(),
+        usize::from(host.has_legacy()) + usize::from(host.has_modern())
+    );
     if host.mask != 0 {
-        assert!(Rc::ptr_eq(&settings, host.callback_settings.borrow().as_ref().unwrap()));
-        assert_eq!(settings.borrow().winner, Some(if host.has_modern() {22} else {11}));
+        assert!(Rc::ptr_eq(
+            &settings,
+            host.callback_settings.borrow().as_ref().unwrap()
+        ));
+        assert_eq!(
+            settings.borrow().winner,
+            Some(if host.has_modern() { 22 } else { 11 })
+        );
         // A winner is a default, never a user value; user fields remain empty.
     } else {
         assert_eq!(settings.borrow().winner, None);
@@ -64,8 +85,16 @@ fn query_checked(host: &Mock) -> Rc<RefCell<Settings>> {
     settings
 }
 fn fresh_owned(mask: u8, type_data: Option<usize>, instance: bool) {
-    let host = Mock { mask, type_data, calls: Cell::new(0), callback_settings: RefCell::new(None) };
-    let context = Rc::new(RefCell::new(Settings { existing: Some(123), ..Default::default() }));
+    let host = Mock {
+        mask,
+        type_data,
+        calls: Cell::new(0),
+        callback_settings: RefCell::new(None),
+    };
+    let context = Rc::new(RefCell::new(Settings {
+        existing: Some(123),
+        ..Default::default()
+    }));
     let first = query_checked(&host);
     first.borrow_mut().caller_only = Some(99);
     first.borrow_mut().winner = Some(77);
@@ -88,7 +117,9 @@ fn fresh_owned(mask: u8, type_data: Option<usize>, instance: bool) {
 #[test]
 fn by_id() {
     assert!(query::<Mock>(None, || {}).is_none());
-    for mask in 0..4 { fresh_owned(mask, Some(73), false); }
+    for mask in 0..4 {
+        fresh_owned(mask, Some(73), false);
+    }
 }
 #[test]
 fn by_instance() {
