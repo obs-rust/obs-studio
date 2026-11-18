@@ -76,19 +76,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 # a later test directory, after our host-tool binding would have been skipped.
 find_package(Qt6CoreTools REQUIRED)
 find_package(Qt6WidgetsTools REQUIRED)
-foreach(_tool IN ITEMS moc uic rcc)
-  if(TARGET Qt6::${_tool})
-    set_target_properties(
-      Qt6::${_tool}
-      PROPERTIES
-        IMPORTED_LOCATION "${QT_HOST_PATH}/libexec/${_tool}"
-        IMPORTED_LOCATION_RELEASE "${QT_HOST_PATH}/libexec/${_tool}"
-    )
-  endif()
-endforeach()
+include("${OBS_SOURCE_ROOT}/cmake/cross/tier2-host-qt.cmake")
+obs_tier2_bind_host_qt("${QT_HOST_PATH}")
 file(
   GENERATE OUTPUT "${CMAKE_BINARY_DIR}/tier2-host-tools.txt"
-  CONTENT "$<TARGET_FILE:Qt6::moc>\n$<TARGET_FILE:Qt6::uic>\n$<TARGET_FILE:Qt6::rcc>\n"
+  CONTENT
+    "$<TARGET_FILE:Qt6::moc>\n$<TARGET_FILE:Qt6::uic>\n$<TARGET_FILE:Qt6::rcc>\n$<TARGET_FILE:Qt6::cmake_automoc_parser>\n"
 )
 function(_obs_cross_tier2_tests)
   set(CMAKE_SOURCE_DIR "${OBS_SOURCE_ROOT}")
