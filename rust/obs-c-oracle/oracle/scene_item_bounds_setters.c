@@ -59,10 +59,11 @@ size_t oracle_scene_bounds_setters_layout(unsigned field)
  * find their log without any shared state. */
 enum { BOUNDS_EVENTS = 4 };
 struct bounds_event {
-	unsigned kind; /* 1: size_from_absolute, 2: update_transform */
-	unsigned held; /* the parent's video mutex, seen from another thread */
-	unsigned dst;  /* 1: &item->bounds */
-	unsigned src;  /* 1: the caller's size */
+	unsigned kind;      /* 1: size_from_absolute, 2: update_transform */
+	unsigned held;      /* the parent's video mutex, seen from another thread */
+	unsigned dst;       /* 1: &item->bounds */
+	unsigned src;       /* 1: the caller's size */
+	uint32_t alignment; /* Stored alignment at the dependency call. */
 	struct vec2 value;
 };
 struct bounds_item {
@@ -106,6 +107,7 @@ static struct bounds_event *bounds_record(const obs_sceneitem_t *item, unsigned 
 		abort();
 	struct bounds_event *event = &owner->events[owner->count++];
 	event->kind = kind;
+	event->alignment = item->align;
 	event->held = bounds_held(item);
 	return event;
 }
@@ -380,4 +382,39 @@ static unsigned bounds_concurrent(unsigned which, const struct bounds_setters *s
 unsigned oracle_scene_bounds_setters_concurrent(unsigned which, const struct bounds_setters *rust)
 {
 	return bounds_concurrent(which, &oracle_setters) | (bounds_concurrent(which, rust) << 4);
+}
+
+/* Alignment shares the production lock/update boundary, so reuse this recorder
+ * instead of defining a second copy of its symbols in the category binary.
+ * flags: bit 0 parent, bit 1 group, bit 2 initial dirty flag. */
+typedef void (*alignment_setter)(obs_sceneitem_t *, uint32_t);
+unsigned oracle_scene_bounds_alignment_probe(alignment_setter original, alignment_setter rust, uint32_t old,
+					     uint32_t value, int32_t defer, unsigned flags);
+unsigned oracle_scene_bounds_alignment_probe(alignment_setter original, alignment_setter rust, uint32_t old,
+					     uint32_t value, int32_t defer, unsigned flags)
+{
+	struct obs_scene scene = {0};
+	if (pthread_mutex_init_recursive(&scene.video_mutex))
+		abort();
+	scene.is_group = (flags & 2) != 0;
+	struct obs_scene *parent = (flags & 1) ? &scene : NULL;
+	struct bounds_item expected, actual;
+	bounds_item_init(&expected, parent, 0);
+	expected.item.align = old;
+	expected.item.defer_update = defer;
+	expected.item.update_transform = (flags & 4) != 0;
+	memcpy(&actual, &expected, sizeof(actual));
+	original(&expected.item, value);
+	rust(&actual.item, value);
+	unsigned result = 0;
+	if (memcmp(&expected.item, &actual.item, sizeof(expected.item)))
+		result |= 1;
+	if (expected.count != 1 || actual.count != expected.count ||
+	    memcmp(expected.events, actual.events, sizeof(expected.events)))
+		result |= 2;
+	if (parent && bounds_held(&actual.item))
+		result |= 4;
+	if (pthread_mutex_destroy(&scene.video_mutex))
+		abort();
+	return result;
 }

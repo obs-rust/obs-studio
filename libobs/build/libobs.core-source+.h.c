@@ -23,7 +23,6 @@
 #include "libobs/obs-scene-from-source-fields.c.h"
 #include "libobs/obs-scene-group-query-fields.c.h"
 #include "libobs/obs-scene-group-resize-defer-fields.c.h"
-#include "libobs/obs-scene-item-alignment-setter.c.h"
 #include "libobs/obs-scene-item-audio-actions-fields.c.h"
 #include "libobs/obs-scene-item-blending-method-fields.c.h"
 #include "libobs/obs-scene-item-blending-mode-fields.c.h"
