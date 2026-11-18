@@ -1,0 +1,2 @@
+gs_copy_texture
+gs_copy_texture_region
