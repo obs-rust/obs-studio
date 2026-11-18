@@ -1,16 +1,16 @@
 {
   "app": {
     "by_dir": {
-      "frontend": 83348,
-      "libobs": 96964,
-      "plugins": 148640,
+      "frontend": 83349,
+      "libobs": 97352,
+      "plugins": 148646,
       "shared": 15968
     },
-    "percent": 16.97,
-    "ported_lines": 58532,
-    "total_lines": 344920
+    "percent": 17.07,
+    "ported_lines": 58951,
+    "total_lines": 345315
   },
-  "commit": "a3a58f0",
+  "commit": "11c530f",
   "date": "2026-11-18",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,14 +29,14 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 50.73,
-          "ported_lines": 33083,
-          "total_lines": 65215
+          "percent": 50.93,
+          "ported_lines": 33293,
+          "total_lines": 65368
         },
         "graphics": {
-          "percent": 71.65,
-          "ported_lines": 10676,
-          "total_lines": 14901
+          "percent": 71.91,
+          "ported_lines": 10885,
+          "total_lines": 15136
         },
         "media-io": {
           "percent": 83.37,
@@ -49,24 +49,24 @@
           "total_lines": 13379
         }
       },
-      "files": 803,
-      "hybrid_lines": 38432,
-      "percent": 60.36,
-      "ported_lines": 58532,
-      "total_lines": 96964
+      "files": 826,
+      "hybrid_lines": 38401,
+      "percent": 60.55,
+      "ported_lines": 58951,
+      "total_lines": 97352
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 52.68,
-            "ported_lines": 31730,
-            "total_lines": 60226
+            "percent": 52.9,
+            "ported_lines": 31940,
+            "total_lines": 60379
           },
           "graphics": {
-            "percent": 72.18,
-            "ported_lines": 10616,
-            "total_lines": 14707
+            "percent": 72.45,
+            "ported_lines": 10825,
+            "total_lines": 14942
           },
           "media-io": {
             "percent": 83.37,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 768,
-        "hybrid_lines": 34113,
-        "percent": 61.44,
+        "files": 791,
+        "hybrid_lines": 34082,
+        "percent": 61.64,
         "ported_files": [
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-steps.c.h",
@@ -106,6 +106,7 @@
           "graphics/effect-passes.c.h",
           "graphics/effect.c.h",
           "graphics/graphics-device-load.c.h",
+          "graphics/graphics-device-queries.c.h",
           "graphics/graphics-ffmpeg-decode-entry.c.h",
           "graphics/graphics-ffmpeg-decode.c.h",
           "graphics/graphics-ffmpeg-init.c.h",
@@ -116,13 +117,16 @@
           "graphics/graphics-immediate-arguments.c.h",
           "graphics/graphics-immediate-scalars.c.h",
           "graphics/graphics-immediate.c.h",
+          "graphics/graphics-indexbuffer-maintenance.c.h",
           "graphics/graphics-linear-srgb.c.h",
           "graphics/graphics-perspective.c.h",
+          "graphics/graphics-render-target-setters.c.h",
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-shader-params-checks.c.h",
           "graphics/graphics-shader-params.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics-texture-copy.c.h",
           "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
@@ -240,11 +244,14 @@
           "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
           "obs-encoder-module.c.h",
+          "obs-encoder-packet-ownership.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
+          "obs-encoder-preferred-color-setters.c.h",
           "obs-encoder-preferred-color-space.c.h",
           "obs-encoder-preferred-format.c.h",
           "obs-encoder-preferred-range.c.h",
+          "obs-encoder-priming-samples.c.h",
           "obs-encoder-properties.c.h",
           "obs-encoder-reference-init.c.h",
           "obs-encoder-registry-queries.c.h",
@@ -287,6 +294,7 @@
           "obs-hotkey-routing-controls.c.h",
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
+          "obs-hotkey-unregister.c.h",
           "obs-hotkey-update-atomic.c.h",
           "obs-key-combination-host-posix.c.h",
           "obs-missing-files.c.h",
@@ -454,6 +462,7 @@
           "obs-source-audio-active.c.h",
           "obs-source-audio-input-path.c.h",
           "obs-source-audio-input.c.h",
+          "obs-source-audio-mixers-getter.c.h",
           "obs-source-audio-output.c.h",
           "obs-source-audio-place.c.h",
           "obs-source-audio-render.c.h",
@@ -461,8 +470,10 @@
           "obs-source-audio-timing.c.h",
           "obs-source-base-size.c.h",
           "obs-source-boolean-queries.c.h",
+          "obs-source-caption-callbacks.c.h",
           "obs-source-color-space.c.h",
           "obs-source-conversion-plan.c.h",
+          "obs-source-default-flags.c.h",
           "obs-source-deinterlace-draw.c.h",
           "obs-source-deinterlace-getters.c.h",
           "obs-source-deinterlace-pacing.c.h",
@@ -582,20 +593,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 54346,
-        "total_lines": 88459
+        "ported_lines": 54765,
+        "total_lines": 88847
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 51.96,
-            "ported_lines": 28212,
-            "total_lines": 54300
+            "percent": 52.2,
+            "ported_lines": 28422,
+            "total_lines": 54453
           },
           "graphics": {
-            "percent": 72.18,
-            "ported_lines": 10616,
-            "total_lines": 14707
+            "percent": 72.45,
+            "ported_lines": 10825,
+            "total_lines": 14942
           },
           "media-io": {
             "percent": 83.37,
@@ -608,9 +619,9 @@
             "total_lines": 9978
           }
         },
-        "files": 748,
-        "hybrid_lines": 31705,
-        "percent": 61.55,
+        "files": 771,
+        "hybrid_lines": 31674,
+        "percent": 61.77,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -634,6 +645,7 @@
           "graphics/effect-passes.c.h",
           "graphics/effect.c.h",
           "graphics/graphics-device-load.c.h",
+          "graphics/graphics-device-queries.c.h",
           "graphics/graphics-ffmpeg-decode-entry.c.h",
           "graphics/graphics-ffmpeg-decode.c.h",
           "graphics/graphics-ffmpeg-init.c.h",
@@ -644,13 +656,16 @@
           "graphics/graphics-immediate-arguments.c.h",
           "graphics/graphics-immediate-scalars.c.h",
           "graphics/graphics-immediate.c.h",
+          "graphics/graphics-indexbuffer-maintenance.c.h",
           "graphics/graphics-linear-srgb.c.h",
           "graphics/graphics-perspective.c.h",
+          "graphics/graphics-render-target-setters.c.h",
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-shader-params-checks.c.h",
           "graphics/graphics-shader-params.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics-texture-copy.c.h",
           "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
@@ -769,11 +784,14 @@
           "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
           "obs-encoder-module.c.h",
+          "obs-encoder-packet-ownership.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
+          "obs-encoder-preferred-color-setters.c.h",
           "obs-encoder-preferred-color-space.c.h",
           "obs-encoder-preferred-format.c.h",
           "obs-encoder-preferred-range.c.h",
+          "obs-encoder-priming-samples.c.h",
           "obs-encoder-properties.c.h",
           "obs-encoder-reference-init.c.h",
           "obs-encoder-registry-queries.c.h",
@@ -816,6 +834,7 @@
           "obs-hotkey-routing-controls.c.h",
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
+          "obs-hotkey-unregister.c.h",
           "obs-hotkey-update-atomic.c.h",
           "obs-missing-files.c.h",
           "obs-module-failure-info.c.h",
@@ -970,6 +989,7 @@
           "obs-source-audio-active.c.h",
           "obs-source-audio-input-path.c.h",
           "obs-source-audio-input.c.h",
+          "obs-source-audio-mixers-getter.c.h",
           "obs-source-audio-output.c.h",
           "obs-source-audio-place.c.h",
           "obs-source-audio-render.c.h",
@@ -977,8 +997,10 @@
           "obs-source-audio-timing.c.h",
           "obs-source-base-size.c.h",
           "obs-source-boolean-queries.c.h",
+          "obs-source-caption-callbacks.c.h",
           "obs-source-color-space.c.h",
           "obs-source-conversion-plan.c.h",
+          "obs-source-default-flags.c.h",
           "obs-source-deinterlace-draw.c.h",
           "obs-source-deinterlace-getters.c.h",
           "obs-source-deinterlace-pacing.c.h",
@@ -1096,20 +1118,20 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 50749,
-        "total_lines": 82454
+        "ported_lines": 51168,
+        "total_lines": 82842
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 52.12,
-            "ported_lines": 29153,
-            "total_lines": 55931
+            "percent": 52.36,
+            "ported_lines": 29363,
+            "total_lines": 56084
           },
           "graphics": {
-            "percent": 71.72,
-            "ported_lines": 10676,
-            "total_lines": 14886
+            "percent": 71.99,
+            "ported_lines": 10885,
+            "total_lines": 15121
           },
           "media-io": {
             "percent": 83.37,
@@ -1122,9 +1144,9 @@
             "total_lines": 10704
           }
         },
-        "files": 759,
-        "hybrid_lines": 33063,
-        "percent": 61.1,
+        "files": 782,
+        "hybrid_lines": 33032,
+        "percent": 61.31,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1149,6 +1171,7 @@
           "graphics/effect-passes.c.h",
           "graphics/effect.c.h",
           "graphics/graphics-device-load.c.h",
+          "graphics/graphics-device-queries.c.h",
           "graphics/graphics-ffmpeg-decode-entry.c.h",
           "graphics/graphics-ffmpeg-decode.c.h",
           "graphics/graphics-ffmpeg-host-pq.c.h",
@@ -1161,13 +1184,16 @@
           "graphics/graphics-immediate-arguments.c.h",
           "graphics/graphics-immediate-scalars.c.h",
           "graphics/graphics-immediate.c.h",
+          "graphics/graphics-indexbuffer-maintenance.c.h",
           "graphics/graphics-linear-srgb.c.h",
           "graphics/graphics-perspective.c.h",
+          "graphics/graphics-render-target-setters.c.h",
           "graphics/graphics-set-linear-srgb.c.h",
           "graphics/graphics-shader-params-checks.c.h",
           "graphics/graphics-shader-params.c.h",
           "graphics/graphics-sprite.c.h",
           "graphics/graphics-state-stacks.c.h",
+          "graphics/graphics-texture-copy.c.h",
           "graphics/graphics-viewport.c.h",
           "graphics/graphics_effect_file.c.h",
           "graphics/image-file.c.h",
@@ -1285,11 +1311,14 @@
           "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
           "obs-encoder-module.c.h",
+          "obs-encoder-packet-ownership.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
+          "obs-encoder-preferred-color-setters.c.h",
           "obs-encoder-preferred-color-space.c.h",
           "obs-encoder-preferred-format.c.h",
           "obs-encoder-preferred-range.c.h",
+          "obs-encoder-priming-samples.c.h",
           "obs-encoder-properties.c.h",
           "obs-encoder-reference-init.c.h",
           "obs-encoder-registry-queries.c.h",
@@ -1332,6 +1361,7 @@
           "obs-hotkey-routing-controls.c.h",
           "obs-hotkey-save-load.c.h",
           "obs-hotkey-translations.c.h",
+          "obs-hotkey-unregister.c.h",
           "obs-hotkey-update-atomic.c.h",
           "obs-missing-files.c.h",
           "obs-module-failure-info.c.h",
@@ -1486,6 +1516,7 @@
           "obs-source-audio-active.c.h",
           "obs-source-audio-input-path.c.h",
           "obs-source-audio-input.c.h",
+          "obs-source-audio-mixers-getter.c.h",
           "obs-source-audio-output.c.h",
           "obs-source-audio-place.c.h",
           "obs-source-audio-render.c.h",
@@ -1493,8 +1524,10 @@
           "obs-source-audio-timing.c.h",
           "obs-source-base-size.c.h",
           "obs-source-boolean-queries.c.h",
+          "obs-source-caption-callbacks.c.h",
           "obs-source-color-space.c.h",
           "obs-source-conversion-plan.c.h",
+          "obs-source-default-flags.c.h",
           "obs-source-deinterlace-draw.c.h",
           "obs-source-deinterlace-getters.c.h",
           "obs-source-deinterlace-pacing.c.h",
@@ -1617,12 +1650,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 51927,
-        "total_lines": 84990
+        "ported_lines": 52346,
+        "total_lines": 85378
       }
     }
   },
   "rust": {
-    "lines": 221946
+    "lines": 223333
   }
 }
