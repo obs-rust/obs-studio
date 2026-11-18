@@ -79,6 +79,10 @@ class NextestDownloadResilienceTest(unittest.TestCase):
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
+        # These cases cover the anonymous download a local run makes; a CI
+        # job's token must not switch them to the API path (#4209).
+        for name in ('GITHUB_TOKEN', 'GH_TOKEN'):
+            nextest_tool.os.environ.pop(name, None)
         self.addCleanup(self.tmp.cleanup)
 
     def transport(self, *outcomes):
@@ -146,6 +150,113 @@ class NextestDownloadResilienceTest(unittest.TestCase):
         with patch:
             self.assertNotEqual(nextest_tool.ensure_nextest(), binary)
         self.assertEqual(len(calls), 1)
+
+
+
+class NextestAuthenticatedDownloadTest(unittest.TestCase):
+    """With a workflow token, nextest comes through the authenticated API (#4209).
+
+    GitHub can answer anonymous release downloads with 504 for hours while
+    authenticated requests work, so a CI job must not depend on the
+    anonymous URL when it has a token.
+    """
+
+    TOKEN = 'ghs_test-token-value'
+    NAME = f'cargo-nextest-{nextest_tool.VERSION}-x86_64-unknown-linux-musl.tar.gz'
+    API = 'https://api.github.com/repos/nextest-rs/nextest/releases'
+    ASSET = API + '/assets/4209'
+
+    def setUp(self):
+        NextestDownloadResilienceTest.setUp(self)
+        nextest_tool.os.environ['GITHUB_TOKEN'] = self.TOKEN
+        # Anonymous release downloads are down, as in the 2026-11-09 incident.
+        self.anonymous = []
+
+        def blocked(url, timeout):
+            import urllib.error
+            self.anonymous.append(url)
+            raise urllib.error.HTTPError(url, 504, 'Gateway Timeout', {}, None)
+        patch = self.mock.patch.object(nextest_tool, 'urlopen', side_effect=blocked)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def api(self, *asset_outcomes):
+        import json
+        import urllib.error
+        requests = []
+        served = []
+
+        def fake(request, timeout):
+            requests.append(request)
+            if request.full_url == f'{self.API}/tags/cargo-nextest-{nextest_tool.VERSION}':
+                body = {'assets': [{'name': 'other.tar.gz', 'url': self.API + '/assets/1'},
+                                   {'name': self.NAME, 'url': self.ASSET}]}
+                return io.BytesIO(json.dumps(body).encode())
+            if request.full_url == self.ASSET:
+                served.append(request)
+                outcome = asset_outcomes[min(len(served), len(asset_outcomes)) - 1]
+                if isinstance(outcome, int):
+                    raise urllib.error.HTTPError(request.full_url, outcome, 'status', {}, None)
+                return io.BytesIO(outcome)
+            raise AssertionError(f'unexpected request {request.full_url}')
+        # create=True: the RED run on master shows the behaviour (the anonymous 504),
+        # not a missing attribute.
+        return self.mock.patch.object(nextest_tool, 'authenticated_open', side_effect=fake, create=True), requests
+
+    def test_token_fetches_the_asset_through_the_api_not_the_anonymous_url(self):
+        patch, requests = self.api(self.payload)
+        with patch:
+            output = nextest_tool.ensure_nextest()
+        self.assertEqual(output.read_bytes(), b'verified executable bytes')
+        self.assertEqual(self.anonymous, [])
+        self.assertEqual([r.full_url for r in requests],
+                         [f'{self.API}/tags/cargo-nextest-{nextest_tool.VERSION}', self.ASSET])
+        for request in requests:
+            self.assertEqual(request.get_header('Authorization'), f'Bearer {self.TOKEN}')
+            self.assertNotIn(self.TOKEN, request.full_url)
+        self.assertEqual(requests[1].get_header('Accept'), 'application/octet-stream')
+
+    def test_gh_token_is_used_when_github_token_is_absent(self):
+        del nextest_tool.os.environ['GITHUB_TOKEN']
+        nextest_tool.os.environ['GH_TOKEN'] = 'gh-cli-token'
+        patch, requests = self.api(self.payload)
+        with patch:
+            nextest_tool.ensure_nextest()
+        self.assertEqual(self.anonymous, [])
+        self.assertEqual(requests[-1].get_header('Authorization'), 'Bearer gh-cli-token')
+
+    def test_api_5xx_is_retried_and_the_digest_still_checked(self):
+        patch, requests = self.api(504, b'tampered bytes')
+        with patch, self.assertRaisesRegex(ValueError, 'checksum'):
+            nextest_tool.ensure_nextest()
+        self.assertEqual(self.anonymous, [])
+        self.assertEqual(len(requests), 4)  # tag + asset (504), then tag + asset
+
+    def test_failure_message_never_contains_the_token(self):
+        patch, _ = self.api(503)
+        with patch, self.assertRaises(RuntimeError) as raised:
+            nextest_tool.ensure_nextest()
+        self.assertNotIn(self.TOKEN, str(raised.exception))
+        self.assertIn('HTTP 503', str(raised.exception))
+
+    def test_without_a_token_the_api_is_not_used(self):
+        del nextest_tool.os.environ['GITHUB_TOKEN']
+        patch, requests = self.api(self.payload)
+        with patch, self.assertRaisesRegex(RuntimeError, 'HTTP 504'):
+            nextest_tool.ensure_nextest()
+        self.assertEqual(requests, [])
+        self.assertEqual(len(self.anonymous), nextest_tool.ATTEMPTS)
+
+    def test_redirect_to_another_host_drops_the_authorization_header(self):
+        from urllib.request import Request
+        handler = nextest_tool.SameHostAuthRedirect()
+        request = Request(self.ASSET, headers={'Authorization': f'Bearer {self.TOKEN}',
+                                               'Accept': 'application/octet-stream'})
+        signed = 'https://release-assets.githubusercontent.com/github-production-release-asset/1?sig=x'
+        moved = handler.redirect_request(request, None, 302, 'Found', {}, signed)
+        self.assertIsNone(moved.get_header('Authorization'))
+        same = handler.redirect_request(request, None, 302, 'Found', {}, self.API + '/assets/4210')
+        self.assertEqual(same.get_header('Authorization'), f'Bearer {self.TOKEN}')
 
 
 if __name__ == '__main__':
