@@ -13,9 +13,9 @@ MANIFEST = ROOT / 'libobs/build/source-sets.d/LIBOBS_TEST_SOURCES.json'
 class SetLocaleRegistrationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('cmake'), 'cmake is required')
     def test_fixture_sources_match_on_every_host(self):
-        expected = sorted(str((ROOT / 'libobs' / source).resolve())
+        expected = sorted((ROOT / 'libobs' / source).resolve()
                           for source in json.loads(MANIFEST.read_text()))
-        self.assertIn(str(ROOT / 'test/cmocka/core_set_locale_fixture.c'), expected)
+        self.assertIn(ROOT / 'test/cmocka/core_set_locale_fixture.c', expected)
         fragment = ROOT / 'test/cmocka/tests.d/test_set_locale.cmake'
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
@@ -52,7 +52,8 @@ include("${FRAGMENT}")
                         text=True, capture_output=True, check=False)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     for library in ('libobs', 'libobs-c-reference'):
-                        actual = sorted((build / f'{library}.sources').read_text().splitlines())
+                        actual = sorted(Path(line).resolve() for line in
+                                        (build / f'{library}.sources').read_text().splitlines())
                         self.assertEqual(actual, expected)
 
 
