@@ -79,6 +79,90 @@ older `windows_tier2_probe.py stage` remains a schema-1 four-test diagnostic and
 cannot enable hosted execution. No complete compressed size or successful full
 producer timing is claimed.
 
+### CMake-only schema-2 transport
+
+`ci/windows_tier2_pack.py` stages the entire built CMake registry and its PE
+dependency closure, generated runtime fixtures, libobs effects, plugin data and
+locale trees. It includes both source-relative data and the native Windows
+`build/data/libobs` / `build/core/<owner>/data` layout. The empty metadata-module
+directory is intentional and remains in the explicit directory inventory.
+
+```sh
+uv run --python 3.14 --no-project ci/windows_tier2_pack.py \
+  --build build_windows_tier2 --output windows-tier2-cmake \
+  --archive windows-tier2-cmake.tar.zst \
+  --dll-root .deps/obs-deps-2026-10-25-x64/bin \
+  --dll-root .deps/obs-deps-qt6-2026-10-25-x64/bin
+```
+
+The full producer compiles runtime path literals relative to the unchanged
+`build/test/cmocka` working directory, remaps C/C++ and Rust source diagnostics,
+and embeds PDB basenames. Linked PE strings are never shortened or patched:
+suffix merging can leave other pointers into them. Staging scans every PE and
+every other copied file for the producer source/build/home roots in UTF-8 and
+UTF-16; any survivor fails. CTest commands/properties use distinct source/build
+tokens and PATH-resolved tool identities. Test names, including `:`, remain
+metadata rather than filenames. All filenames and directory entries use `/`.
+
+The archive is **not runnable as a full suite**: `schema=2`, `complete=false`,
+`coverage=cmake-part-only`, and `pending[0]="cargo parts pending"`. The existing
+full consumer rejects it before execution. Its remaining markers retain native
+same-commit registry qualification and hosted execution. The command runs the
+unchanged stale-manifest producer fixture and seals its receipt; it does not
+replace that test with compilation on Windows. `verify()` in the packer checks
+partial transport only. It cannot grant full-suite admission.
+
+### Kept Windows cross tree and handoff
+
+Reuse `ci/tier2_kept_tree.py` (#4954), with a **separate** Windows namespace and
+one fixed absolute build path per runner. Configure the cross tree as
+`$WIN_BUILD/tree`; its `.clean` marker, source snapshot/replay, crash recovery,
+fsync and locking follow the existing helper. Retain the Rust target inside
+that same tree with the producer-only option added here:
+
+```sh
+uv run --no-project ci/tier2_kept_tree.py restore \
+  --kept "$WIN_KEPT" --build "$WIN_BUILD" --src "$GITHUB_WORKSPACE"
+cmake -S cmake/cross -B "$WIN_BUILD/tree" -G Ninja \
+  -DOBS_CROSS_TARGET=win-x64 -DOBS_CROSS_WINDOWS_TIER2=ON \
+  -DOBS_CROSS_WINDOWS_TIER2_FULL=ON \
+  -DOBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR="$WIN_BUILD/tree/rust-target"
+cmake --build "$WIN_BUILD/tree" --target tier2-cross-full --parallel 6
+# Stage and seal the payload while the tree is present; save only on success.
+uv run --no-project ci/tier2_kept_tree.py save \
+  --kept "$WIN_KEPT" --build "$WIN_BUILD" --src "$GITHUB_WORKSPACE"
+```
+
+Admission must remain restricted to the existing trusted queue/runner path.
+Choose a runner-specific `$WIN_KEPT` (for example, an adjacent
+`windows-tier2-kept` directory under its existing tmpfs area); never share it
+with Linux Tier 2 or another concurrent runner. The pinned toolchain, dependency
+archives and source identity still enter normal CMake/Cargo freshness. Keeping
+the tree is a cache, never proof of passing tests or native parity. No Dell host
+or workflow setting is changed by this prototype.
+
+For a second **Linux job pinned to the same Dell**, publish the sealed archive
+and its SHA256 through the existing `handoff-put --root "$WIN_HANDOFF" --key
+"$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --pack "$WIN_PACK" --labels "$LINUX_LABELS"
+--marker "$HOST_MARKER"`; use `handoff-get` and fall back to the same immutable
+Actions artifact on a miss. Its `local` output can suppress only that pinned
+Linux job's download/upload. **Hosted Windows always needs artifact delivery**;
+it cannot read the Dell filesystem, so never suppress its upload based on the
+Linux handoff result. Use a Windows-specific handoff namespace, bounded by the
+helper's existing age/byte limits. No new network share or Windows host is needed.
+
+Observed CMake-only preparation before relocation was 1,108.020 s with empty
+outputs and 22.275 s with the retained warm tree. Hosted Linux without the kept
+tree pays fresh preparation plus packing/upload; these local timings are not
+hosted measurements. The same-SHA source/dependency/toolchain caches can reduce
+that cost, but a warm compiler cache does not imply a retained Ninja tree. At
+20 MB/s, artifact upload alone costs compressed bytes / 20,000,000 seconds;
+add hosted download and Windows extraction. The 250 MiB target is 13.1 s and
+the 500 MiB ceiling is 26.2 s at that rate, before contention/service overhead.
+The 18.5-minute fresh producer can exceed the historical 15.3-minute Windows
+job median. Warm retention is therefore central to the Dell design; a queue
+latency reduction and full Cargo-inclusive cost remain unqualified.
+
 ## Consumer contract
 
 `ci/windows_tier2_run.py` downloads nothing itself. The optional job in the

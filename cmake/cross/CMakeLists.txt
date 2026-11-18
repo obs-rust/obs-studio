@@ -269,6 +269,15 @@ function(_obs_cross_shared_libobs name)
   if(OBS_CROSS_TARGET STREQUAL "win-x64")
     set(_rust_triple "x86_64-pc-windows-msvc")
     set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/libobs_rust.lib")
+    if(OBS_CROSS_WINDOWS_TIER2)
+      set(
+        OBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR
+        "${OBS_SOURCE_ROOT}/target"
+        CACHE PATH
+        "Retained Windows Tier 2 Rust output directory"
+      )
+      set(_rust_archive "${OBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR}/${_rust_triple}/release/libobs_rust.lib")
+    endif()
   elseif(OBS_CROSS_TARGET STREQUAL "mac-arm64")
     set(_rust_triple "aarch64-apple-darwin")
     set(_rust_archive "${OBS_SOURCE_ROOT}/target/${_rust_triple}/release/liblibobs_rust.a")
@@ -283,8 +292,10 @@ function(_obs_cross_shared_libobs name)
       # Preserve native compiler options. Only this GNU/MSVC producer needs
       # source-seam FFI modules in separate release archive members.
       COMMAND
-        soldr cargo build --release --locked --target "${_rust_triple}" -p libobs-rust --config
-        profile.release.package.obs-source-seam.codegen-units=256
+        "${CMAKE_COMMAND}" -E env
+        "RUSTFLAGS=--remap-path-prefix=$ENV{HOME}=toolchain --remap-path-prefix=${OBS_SOURCE_ROOT}=../../../source"
+        soldr cargo build --release --locked --target-dir "${OBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR}" --target
+        "${_rust_triple}" -p libobs-rust --config profile.release.package.obs-source-seam.codegen-units=256
       BYPRODUCTS "${_rust_archive}"
       WORKING_DIRECTORY "${OBS_SOURCE_ROOT}"
       USES_TERMINAL

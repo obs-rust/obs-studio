@@ -40,18 +40,39 @@ class CMakePackTests(unittest.TestCase):
         (build / "test/cmocka/empty space").mkdir()
         products = sorted(build.rglob("*.exe")) + sorted(build.rglob("*.dll"))
         (build / "tier2-runtime.txt").write_text("\n".join(map(str, products)) + "\n")
-        tests = [{
-            "name": "suite: empty dir",
-            "command": [str(build / "test/cmocka/test.exe"), str(source / "test/cmocka/data/input.dat")],
-            "properties": [{"name": "WORKING_DIRECTORY", "value": str(build / "test/cmocka/empty space")},
-                           {"name": "RUN_SERIAL", "value": True}],
-        }]
+        tests = [
+            {
+                "name": "suite: empty dir",
+                "command": [
+                    str(build / "test/cmocka/test.exe"),
+                    str(source / "test/cmocka/data/input.dat"),
+                ],
+                "properties": [
+                    {
+                        "name": "WORKING_DIRECTORY",
+                        "value": str(build / "test/cmocka/empty space"),
+                    },
+                    {"name": "RUN_SERIAL", "value": True},
+                ],
+            }
+        ]
         return source, build, deps, tests
 
     def stage(self, root):
         h = self.helper()
         source, build, deps, tests = self.fixture(root)
-        with patch.object(h.registry, "inventory", return_value={"tests": tests, "unbuilt_tests": [], "missing_native_tests": []}), patch.object(h.consumer, "coff_exports", return_value={"api"}):
+        with (
+            patch.object(
+                h.registry,
+                "inventory",
+                return_value={
+                    "tests": tests,
+                    "unbuilt_tests": [],
+                    "missing_native_tests": [],
+                },
+            ),
+            patch.object(h.consumer, "coff_exports", return_value={"api"}),
+        ):
             manifest = h.stage(build, source, root / "bundle", [deps], "a" * 40)
         return manifest
 
@@ -65,7 +86,12 @@ class CMakePackTests(unittest.TestCase):
             self.assertEqual("cargo parts pending", manifest["pending"][0])
             self.assertEqual("suite: empty dir", manifest["tests"][0]["name"])
             self.assertIn("build/test/cmocka/empty space", manifest["directories"])
-            for path in ["deps/dependency.dll", "source/libobs/data/default.effect", "source/plugins/example/data/locale/en-US.ini", "build/test/cmocka/corrupt.png"]:
+            for path in [
+                "deps/dependency.dll",
+                "source/libobs/data/default.effect",
+                "source/plugins/example/data/locale/en-US.ini",
+                "build/test/cmocka/corrupt.png",
+            ]:
                 self.assertIn(path, manifest["files"])
             h.verify(root / "bundle")
             report = h.archive(root / "bundle", root / "bundle.tar.zst")
@@ -74,7 +100,9 @@ class CMakePackTests(unittest.TestCase):
             h.verify(root / "extracted")
             with self.assertRaisesRegex(ValueError, "complete"):
                 h.consumer.verify(root / "extracted", "a" * 40)
-            (root / "extracted/build/test/cmocka/empty space").rename(root / "extracted/build/test/cmocka/renamed")
+            (root / "extracted/build/test/cmocka/empty space").rename(
+                root / "extracted/build/test/cmocka/renamed"
+            )
             with self.assertRaisesRegex(ValueError, "director"):
                 h.verify(root / "extracted")
 
@@ -96,7 +124,9 @@ class CMakePackTests(unittest.TestCase):
             self.stage(root)
             (root / "bundle/deps/dependency.dll").write_bytes(pe(["unprovided.dll"]))
             manifest = json.loads((root / "bundle/manifest.json").read_text())
-            manifest["files"]["deps/dependency.dll"] = h.probe.digest(root / "bundle/deps/dependency.dll")
+            manifest["files"]["deps/dependency.dll"] = h.probe.digest(
+                root / "bundle/deps/dependency.dll"
+            )
             (root / "bundle/manifest.json").write_text(json.dumps(manifest))
             with self.assertRaisesRegex(ValueError, "unresolved"):
                 h.verify(root / "bundle")
@@ -111,24 +141,46 @@ class CMakePackTests(unittest.TestCase):
             source = root / "source"
             source.mkdir()
             (source / "payload").write_text("relocated")
-            (source / "probe.c").write_text('#include <stdio.h>\nconst char *file = __FILE__;\nint main(void) { FILE *f = fopen(DATA, "r"); if (!f) return 3; fclose(f); puts(file); return 0; }\n')
+            (source / "probe.c").write_text(
+                '#include <stdio.h>\nconst char *file = __FILE__;\nint main(void) { FILE *f = fopen(DATA, "r"); if (!f) return 3; fclose(f); puts(file); return 0; }\n'
+            )
             (source / "CMakeLists.txt").write_text(
-                'cmake_minimum_required(VERSION 3.30)\nproject(relocation C)\n'
+                "cmake_minimum_required(VERSION 3.30)\nproject(relocation C)\n"
                 'set(OBS_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")\n'
-                'add_executable(probe probe.c)\n'
+                "add_executable(probe probe.c)\n"
                 'target_compile_definitions(probe PRIVATE DATA="${OBS_SOURCE_ROOT}/payload")\n'
                 f'include("{ROOT}/cmake/cross/windows-tier2-relocation.cmake")\n'
                 'obs_windows_tier2_relocate("${CMAKE_CURRENT_SOURCE_DIR}")\n'
             )
             build = root / "build"
-            subprocess.run(["cmake", "-S", str(source), "-B", str(build), "-G", "Ninja", "-DCMAKE_C_COMPILER=clang"], check=True, capture_output=True)
-            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True)
+            subprocess.run(
+                [
+                    "cmake",
+                    "-S",
+                    str(source),
+                    "-B",
+                    str(build),
+                    "-G",
+                    "Ninja",
+                    "-DCMAKE_C_COMPILER=clang",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["cmake", "--build", str(build)], check=True, capture_output=True
+            )
             self.assertNotIn(str(root).encode(), (build / "probe").read_bytes())
             relocated = root / "relocated space"
             (relocated / "build/test/cmocka").mkdir(parents=True)
             shutil.copytree(source, relocated / "source")
-            shutil.copyfile(build / "probe", relocated / "build/probe")
-            subprocess.run([str(relocated / "build/probe")], cwd=relocated / "build/test/cmocka", check=True, capture_output=True)
+            shutil.copy2(build / "probe", relocated / "build/probe")
+            subprocess.run(
+                [str(relocated / "build/probe")],
+                cwd=relocated / "build/test/cmocka",
+                check=True,
+                capture_output=True,
+            )
 
 
 if __name__ == "__main__":

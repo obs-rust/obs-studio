@@ -217,3 +217,5 @@ endforeach()
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/tier2-runtime.txt" CONTENT "${_runtime}")
 
 obs_windows_tier2_native_layout()
+include("${CMAKE_CURRENT_LIST_DIR}/windows-tier2-relocation.cmake")
+cmake_language(DEFER CALL obs_windows_tier2_relocate "${CMAKE_CURRENT_SOURCE_DIR}")

@@ -143,7 +143,8 @@ target_include_directories(
 add_library(libobs_rust-static STATIC IMPORTED GLOBAL)
 set_target_properties(
   libobs_rust-static
-  PROPERTIES IMPORTED_LOCATION "${OBS_SOURCE_ROOT}/target/x86_64-pc-windows-msvc/release/libobs_rust.lib"
+  PROPERTIES
+    IMPORTED_LOCATION "${OBS_CROSS_WINDOWS_TIER2_RUST_TARGET_DIR}/x86_64-pc-windows-msvc/release/libobs_rust.lib"
 )
 add_dependencies(libobs_rust-static libobs-cross-shared-rust)
 target_link_directories(libobs_rust-static INTERFACE "${CMAKE_BINARY_DIR}/cross-case-libs")
