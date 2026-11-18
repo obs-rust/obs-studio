@@ -3148,10 +3148,10 @@ fn swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds() {
     if native_answer_probe() {
         return;
     }
-    let _fixtures = prebuilt::Scope::enter();
     if !prebuilt::target().contains("apple-darwin") {
         return;
     }
+    let _fixtures = prebuilt::Scope::enter();
     let selector = format!(
         "{}::swift_bridge_preserves_native_linkage_header_flags_and_source_rebuilds",
         module_path!().split_once("::").unwrap().1
@@ -3738,11 +3738,11 @@ fn assert_windows_function(library: &Path, symbol: &str, expected: i32, target: 
 
 #[test]
 fn pch_preserves_mixed_languages_unity_and_header_flag_invalidation() {
-    let _fixtures = prebuilt::Scope::enter();
     if !prebuilt::target().contains("linux") && !prebuilt::target().contains("apple") {
         eprintln!("compiled PCH integration covers Linux GCC/Clang and Apple Clang");
         return;
     }
+    let _fixtures = prebuilt::Scope::enter();
     let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     let header = root.join("common.h");

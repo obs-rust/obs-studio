@@ -42,7 +42,10 @@ fn nonmatching_target_contracts_need_no_fixture_manifest() {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
-        assert!(!missing.exists(), "skipped contract created fixture evidence: {selector}");
+        assert!(
+            !missing.exists(),
+            "skipped contract created fixture evidence: {selector}"
+        );
         if !native_applies {
             // Replay sets this variable for the entire category. Inapplicable
             // tests must still return without requesting an omitted fixture.
