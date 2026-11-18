@@ -1819,6 +1819,8 @@ jobs:
         if: needs.check-event.outputs.deferred == 'true' && (github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')
         env:
           BASE: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          # nextest comes through the authenticated API, not the anonymous URL (#4209).
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git fetch -q --depth=1 origin "${BASE}"
           uv run --no-project ci/local_gate.py --test-diff "${BASE}"
@@ -1922,6 +1924,9 @@ jobs:
       # Skipped when a trusted run already passed these exact inputs.
       - name: Local Gate (rust-test) 🧪
         if: needs.check-event.outputs.deferred != 'true' && (github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')
+        env:
+          # nextest comes through the authenticated API, not the anonymous URL (#4209).
+          GITHUB_TOKEN: ${{ github.token }}
         run: uv run --no-project ci/local_gate.py --lane rust-test
 
       # Publish the pass as a lane proof (ci/lane_proof.py), only for a lane
@@ -2075,6 +2080,8 @@ jobs:
       - name: Cross Compile 🧰
         env:
           CROSS_TARGETS: ${{ needs.check-event.outputs.cross_targets }}
+          # The host Qt comes through the authenticated API, not the anonymous URL (#4209).
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           IFS=, read -ra aliases <<< "${CROSS_TARGETS}"
           for alias in "${aliases[@]}"; do

@@ -473,6 +473,7 @@ endfunction()
 # pinned Linux Qt of the same version (build-project.yaml's QT_TAG/QT_ASSET,
 # kept equal by ci/test_cross_qt.py). Nothing is moc'd: moc output is compiled
 # on its own, never included, and this check links nothing.
+include(${CMAKE_CURRENT_LIST_DIR}/release-download.cmake)
 set(OBS_CROSS_HOST_QT_TAG qt6-6.11.1)
 set(OBS_CROSS_HOST_QT_ASSET qt6-6.11.1-linux-x86_64-glibc2.28-release.tar.zst)
 set(OBS_CROSS_HOST_QT_SHA256 f0edfc3432bd57058bbb9a2cf18aacceb55a2564b018346778c34eb0e3369dbf)
@@ -480,17 +481,14 @@ function(_obs_cross_uic out)
   set(dir "${OBS_SOURCE_ROOT}/.deps/host-${OBS_CROSS_HOST_QT_TAG}")
   if(NOT EXISTS "${dir}/.sha256")
     set(archive "${OBS_SOURCE_ROOT}/.deps/${OBS_CROSS_HOST_QT_ASSET}")
-    file(
-      DOWNLOAD
-        "https://github.com/obs-rust/obs-studio-libs/releases/download/${OBS_CROSS_HOST_QT_TAG}/${OBS_CROSS_HOST_QT_ASSET}"
+    obs_cross_release_download(
+      "host Qt for uic"
+      obs-rust/obs-studio-libs
+      ${OBS_CROSS_HOST_QT_TAG}
+      ${OBS_CROSS_HOST_QT_ASSET}
       "${archive}"
-      EXPECTED_HASH SHA256=${OBS_CROSS_HOST_QT_SHA256}
-      STATUS status
+      ${OBS_CROSS_HOST_QT_SHA256}
     )
-    list(GET status 0 code)
-    if(NOT code EQUAL 0)
-      message(FATAL_ERROR "Downloading the host Qt for uic failed: ${status}")
-    endif()
     file(REMOVE_RECURSE "${dir}")
     file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${dir}")
     file(REMOVE "${archive}")
