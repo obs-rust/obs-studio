@@ -77,9 +77,16 @@ void obs_canvas_insert_source(obs_canvas_t *canvas, obs_source_t *source)
 	canvas_move_event(2, source, index);
 }
 
-void obs_scene_enum_items(obs_scene_t *scene, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *), void *param)
+/* Called by the shared obs_scene_enum_items() stand-in
+ * (oracle/scene_enum_items.c); false when no canvas-move probe is running. */
+bool oracle_canvas_move_enum_items(obs_scene_t *scene, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),
+				   void *param);
+bool oracle_canvas_move_enum_items(obs_scene_t *scene, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),
+				   void *param)
 {
 	struct canvas_move_fixture *f = canvas_move_current;
+	if (!f)
+		return false;
 	f->valid = f->valid && scene == &f->scene;
 	canvas_move_event(3, NULL, 0);
 	for (unsigned i = 0; i < f->length; ++i) {
@@ -88,6 +95,7 @@ void obs_scene_enum_items(obs_scene_t *scene, bool (*callback)(obs_scene_t *, ob
 			break;
 		}
 	}
+	return true;
 }
 
 typedef void (*canvas_move_fn)(obs_scene_t *, obs_canvas_t *);

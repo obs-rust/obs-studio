@@ -49,11 +49,16 @@ static bool group_enum_record(obs_scene_t *scene, obs_sceneitem_t *item, void *p
 	return f->trace.visits != f->stop;
 }
 
-/* Instrumented dependency, shared by the original wrapper and Rust FFI. It is
- * not a second implementation of scene snapshot/lifetime management. */
-void obs_scene_enum_items(obs_scene_t *scene, group_enum_callback callback, void *param)
+/* Instrumented dependency, shared by the original wrapper and Rust FFI, reached
+ * through the shared obs_scene_enum_items() stand-in (oracle/scene_enum_items.c).
+ * It is not a second implementation of scene snapshot/lifetime management.
+ * False when no group-enumeration probe is running. */
+bool oracle_group_enum_enum_items(obs_scene_t *scene, group_enum_callback callback, void *param);
+bool oracle_group_enum_enum_items(obs_scene_t *scene, group_enum_callback callback, void *param)
 {
 	struct group_enum_fixture *f = group_enum_current;
+	if (!f)
+		return false;
 	f->trace.calls++;
 	f->trace.scene = scene;
 	f->trace.callback = callback;
@@ -62,6 +67,7 @@ void obs_scene_enum_items(obs_scene_t *scene, group_enum_callback callback, void
 		for (unsigned i = 0; i < f->count; i++)
 			if (!callback(scene, &f->children[i], param))
 				break;
+	return true;
 }
 
 unsigned oracle_scene_group_enum_probe(unsigned bits, long id, group_enum_port port);

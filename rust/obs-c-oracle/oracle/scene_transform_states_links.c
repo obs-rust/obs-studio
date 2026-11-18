@@ -1,7 +1,7 @@
 /* Test-only link stand-ins: obs_get_source_by_uuid(),
  * obs_sceneitem_get_info2(), obs_sceneitem_set_info2(),
- * obs_sceneitem_defer_update_begin(), obs_sceneitem_defer_update_end() and
- * obs_sceneitem_group_enum_items() under libobs's own names, for the test
+ * obs_sceneitem_defer_update_begin() and obs_sceneitem_defer_update_end()
+ * under libobs's own names, for the test
  * binaries that link the obs-scene shims without libobs.
  *
  * The transform snapshot/restore shims
@@ -43,12 +43,4 @@ void obs_sceneitem_defer_update_begin(obs_sceneitem_t *item)
 void obs_sceneitem_defer_update_end(obs_sceneitem_t *item)
 {
 	UNUSED_PARAMETER(item);
-}
-
-void obs_sceneitem_group_enum_items(obs_sceneitem_t *group, bool (*callback)(obs_scene_t *, obs_sceneitem_t *, void *),
-				    void *param)
-{
-	UNUSED_PARAMETER(group);
-	UNUSED_PARAMETER(callback);
-	UNUSED_PARAMETER(param);
 }

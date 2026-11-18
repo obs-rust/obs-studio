@@ -5,7 +5,9 @@ use core::{ffi::c_void, ptr::NonNull};
 pub type SceneCallback = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void) -> bool;
 
 unsafe extern "C" {
-    fn obs_scene_enum_items(
+    /// The crate's one declaration of the C scene enumerator (one signature
+    /// for every caller, so the extern declarations never clash).
+    pub(super) fn obs_scene_enum_items(
         scene: *mut c_void,
         callback: Option<SceneCallback>,
         param: *mut c_void,
