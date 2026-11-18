@@ -95,11 +95,12 @@ bool oracle_source_missing_files_check(source_missing_files_getter proc, source_
 			equal = equal && log.level == LOG_DEBUG &&
 				strcmp(log.message, "obs_source_get_missing_files: Null 'source' parameter") == 0;
 		set_log(previous, param);
+		bool destroy_extra = state.result && state.result != results[0] && state.result != results[1];
 		if (results[1] && results[1] != results[0])
 			obs_missing_files_destroy(results[1]);
 		if (results[0])
 			obs_missing_files_destroy(results[0]);
-		if (state.result && state.result != results[0] && state.result != results[1])
+		if (destroy_extra)
 			obs_missing_files_destroy(state.result);
 	}
 	return equal;
