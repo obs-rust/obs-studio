@@ -11,6 +11,14 @@ pub trait BackgroundPress {
 }
 
 /// Store the inverted disable bit and notify exactly once per transition.
-pub fn enable<B: BackgroundPress>(_background: &mut B, _enabled: bool) {
-    todo!("hotkey background press Rust swap #5137")
+pub fn enable<B: BackgroundPress>(background: &mut B, enabled: bool) {
+    if !background.lock() {
+        return;
+    }
+    let changed = background.disabled() == enabled;
+    background.set_disabled(!enabled);
+    background.unlock();
+    if changed {
+        background.signal(enabled);
+    }
 }
