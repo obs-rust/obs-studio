@@ -76,6 +76,19 @@ Windows budget**, retaining all fixtures and assertions. Record archive bytes,
 packing/unpacking time and separate WAN publication evidence. A budget overrun
 needs transport/measurement work before activation, never coverage removal.
 
+Use the shared transport's optional zstd format for the complete Windows payload:
+
+```sh
+uv run --no-project --python 3.14 ci/macos_test_workspace.py pack --bundle build_windows_test_slice --archive windows-tests.tar.zst --compression zst
+```
+
+Packing and extraction of this format require Python 3.14 or newer. The existing
+shared `unpack` command detects the format after verifying its SHA256 sidecar.
+Level 8 with a 128 MiB window and long-distance matching shares repeated Rust
+code and native PCH snapshots across archive members. Every file, hidden input,
+permission and checksum remains present. The shared helper's default is gzip;
+no Darwin workflow or default changes.
+
 The hosted proof run must show all of the following before activation:
 
 1. A demonstrated Linux-to-Windows root/drive mapping for embedded
@@ -105,3 +118,26 @@ all native assertions and unchanged C compatibility tests remain required.
 Then enrich the existing Linux Windows-link producer rather than cross-building
 twice; require its successful artifact in CI Gate and measure native execution
 and transfer costs before claiming a speedup. Windows Tier 2 is separate work.
+
+Linux qualification on 2026-11-18 used CI-pinned soldr 0.9.45. The complete
+producer passed in 112.60 s: eight categories, three helpers, 55 additional native
+PE images, 15 completed histories and 1,356 checksummed files. All images passed
+PE/import verification. The manifests record Linux BUILD_HOST and MSVC
+BUILD_TARGET; RC has 18 events and MSVC PCH has 22, including deferred runtime
+assertions. The current workspace has no runnable doctests; a separate real
+four-case probe retained a verified PE harness. Compile-fail/no-run mutations
+failed preparation; equivalent Linux execution rejected broken runnable and
+should-panic assertions. Native Windows replay remains unverified.
+
+The same complete 299,744,188-byte payload measured 84,238,817 bytes with gzip
+(80.34 MiB, 47.53 s packing) and **36,377,903 bytes with zstd** (34.69 MiB,
+5.33 s packing, 1.42 s unpacking plus full verification). The zstd archive is
+within budget without omitting fixtures. These are local observations, not WAN
+or hosted speedup evidence.
+
+The Application category regression also checks that omitted target-specific
+contracts return before entering fixture mode. RED `5c3348095` created empty
+evidence for an inapplicable Swift contract; GREEN `36d787fd8` moves Swift/GNU
+PCH target guards before fixture entry. All eight Rust prepare/replay tests pass. The new
+test takes at most 39 ms with 14.5 MiB peak RSS over 20 runs, starts no threads,
+and re-executes three child tests on Linux. No category executable was added.
