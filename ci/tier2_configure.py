@@ -51,7 +51,7 @@ def option(args: list[str], flag: str) -> str | None:
 
 def configure_tools(args: list[str]) -> dict:
     tools = {}
-    commands = [args[0], 'ninja', 'cc', 'c++', 'soldr', 'pkg-config', 'git', 'uv', 'python3', 'ld', 'ar']
+    commands = [args[0], 'ninja', 'cc', 'c++', 'soldr', 'pkg-config', 'git', 'uv', sys.executable, 'ld', 'ar']
     for name in ('CC', 'CXX'):
         if os.environ.get(name):
             commands.append(shlex.split(os.environ[name])[0])
