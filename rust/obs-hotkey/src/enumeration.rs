@@ -23,16 +23,41 @@ pub trait Context {
 }
 
 /// Enumerate hash insertion order while holding the recursive hotkey mutex.
-pub fn hotkeys<R: Registry>(_registry: &mut R, _callback: impl FnMut(usize, R::Hotkey) -> bool) {
-    todo!()
+pub fn hotkeys<R: Registry>(registry: &mut R, mut callback: impl FnMut(usize, R::Hotkey) -> bool) {
+    if !registry.lock() {
+        return;
+    }
+    let mut current = registry.first();
+    while let Some(key) = current {
+        // HASH_ITER saves next before the callback, which may remove key.
+        current = registry.next(key);
+        if !callback(registry.id(key), key) {
+            break;
+        }
+    }
+    registry.unlock();
 }
 
 /// Enumerate binding indices under the same mutex as public hotkey enumeration.
-pub fn bindings<R: Registry>(_registry: &mut R, _callback: impl FnMut(usize, R::Binding) -> bool) {
-    todo!()
+pub fn bindings<R: Registry>(
+    registry: &mut R,
+    mut callback: impl FnMut(usize, R::Binding) -> bool,
+) {
+    if !registry.lock() {
+        return;
+    }
+    registry.bindings(&mut callback);
+    registry.unlock();
 }
 
 /// Enumerate a context under its caller's lock, skipping IDs no longer live.
-pub fn context<C: Context>(_context: &C, _callback: impl FnMut(C::Hotkey) -> bool) {
-    todo!()
+pub fn context<C: Context>(context: &C, mut callback: impl FnMut(C::Hotkey) -> bool) {
+    let (count, snapshot) = context.snapshot();
+    for index in 0..count {
+        if let Some(key) = context.find(context.id(&snapshot, index))
+            && !callback(key)
+        {
+            break;
+        }
+    }
 }

@@ -98,7 +98,8 @@
         "libobs/obs-nix-portal-shortcut-ids.c.h",
         "libobs/obs-nix-portal-shortcut-sets.c.h",
         "libobs/obs-nix-portal-shortcut-status.c.h",
-        "libobs/obs-nix-portal-shortcuts.c.h"
+        "libobs/obs-nix-portal-shortcuts.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "requires": {
         "all": [
@@ -137,7 +138,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "test/cmocka/test_portal_shortcuts.c"

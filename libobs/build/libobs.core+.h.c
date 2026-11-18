@@ -19,7 +19,7 @@
 #include "libobs/obs-hotkey-background-control-fields.c.h"
 #include "libobs/obs-hotkey-background-enum-fields.c.h"
 #include "libobs/obs-hotkey-background-error-fields.c.h"
-#include "libobs/obs-hotkey-enum.c.h"
+#include "libobs/obs-hotkey-enum-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
 #include "libobs/obs-hotkey-identity-setter-fields.c.h"
 #include "libobs/obs-hotkey-object-fields.c.h"

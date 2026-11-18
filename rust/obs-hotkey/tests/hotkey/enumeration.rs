@@ -87,9 +87,21 @@ fn enumeration_contract_mirrors_c() {
         state.keys = vec![0, 2];
         state.ids = vec![0, 1, 2];
         state.bindings = vec![
-            Binding { id: 0, key: 1, modifiers: 2 },
-            Binding { id: 0, key: 2, modifiers: 4 },
-            Binding { id: 2, key: 2, modifiers: 4 },
+            Binding {
+                id: 0,
+                key: 1,
+                modifiers: 2,
+            },
+            Binding {
+                id: 0,
+                key: 2,
+                modifiers: 4,
+            },
+            Binding {
+                id: 2,
+                key: 2,
+                modifiers: 4,
+            },
         ];
     }
     let mut ids = Vec::new();
@@ -102,7 +114,10 @@ fn enumeration_contract_mirrors_c() {
     });
     assert_eq!(ids, [0, 2]);
     ids.clear();
-    enumeration::hotkeys(&mut world, |id, _| { ids.push(id); false });
+    enumeration::hotkeys(&mut world, |id, _| {
+        ids.push(id);
+        false
+    });
     assert_eq!(ids, [0]);
     let mut bindings = Vec::new();
     enumeration::bindings(&mut world, |index, binding| {
@@ -114,10 +129,16 @@ fn enumeration_contract_mirrors_c() {
     assert_eq!(bindings, world.0.borrow().bindings);
     assert_eq!(bindings.iter().map(|b| b.id).collect::<Vec<_>>(), [0, 0, 2]);
     bindings.clear();
-    enumeration::bindings(&mut world, |_, binding| { bindings.push(binding); false });
+    enumeration::bindings(&mut world, |_, binding| {
+        bindings.push(binding);
+        false
+    });
     assert_eq!(bindings.len(), 1);
     ids.clear();
-    enumeration::context(&world, |key| { ids.push(key); true });
+    enumeration::context(&world, |key| {
+        ids.push(key);
+        true
+    });
     assert_eq!(ids, [0, 2]);
     world.0.borrow_mut().keys.clear();
     world.0.borrow_mut().bindings.clear();
@@ -161,7 +182,10 @@ fn context_looks_up_later_ids_after_callback_and_stops_early() {
     });
     assert_eq!(visited, [1, 3]);
     visited.clear();
-    enumeration::context(&world, |key| { visited.push(key); false });
+    enumeration::context(&world, |key| {
+        visited.push(key);
+        false
+    });
     assert_eq!(visited, [1]);
     assert_eq!(world.0.borrow().locks, 0);
 }

@@ -5449,7 +5449,8 @@
         "libobs/obs-hotkey-bindings.c.h",
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h"
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -5477,7 +5478,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -5648,7 +5650,8 @@
         "libobs/obs-hotkey-bindings.c.h",
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h"
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -5674,7 +5677,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "test/cmocka/test_hotkey_binding_press_steps.c"
@@ -5790,7 +5794,8 @@
         "libobs/obs-hotkey-bindings.c.h",
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h"
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -5813,7 +5818,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -5891,7 +5897,8 @@
         "libobs/obs-hotkey-bindings.c.h",
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h"
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -5914,7 +5921,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -6020,7 +6028,8 @@
         "libobs/obs-hotkey-bindings.c.h",
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h"
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6046,7 +6055,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -6096,7 +6106,8 @@
         "libobs/obs-hotkey-bindings.c.h",
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
-        "libobs/obs-hotkey-pair.c.h"
+        "libobs/obs-hotkey-pair.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6122,7 +6133,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
@@ -10768,7 +10780,8 @@
         "libobs/obs-nix-portal-shortcut-ids.c.h",
         "libobs/obs-nix-portal-shortcut-sets.c.h",
         "libobs/obs-nix-portal-shortcut-status.c.h",
-        "libobs/obs-nix-portal-shortcuts.c.h"
+        "libobs/obs-nix-portal-shortcuts.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "requires": {
         "all": [
@@ -10807,7 +10820,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "test/cmocka/test_portal_shortcuts.c"
@@ -18911,7 +18925,8 @@
         "libobs/obs-hotkey-translations.c.h",
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
-        "libobs/obs-nix-hotkey-state.c.h"
+        "libobs/obs-nix-hotkey-state.c.h",
+        "test/cmocka/hotkey-enum-link-support.c"
       ],
       "requires": {
         "any": [
@@ -18947,7 +18962,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "test/cmocka/test_wayland_hotkeys.c"

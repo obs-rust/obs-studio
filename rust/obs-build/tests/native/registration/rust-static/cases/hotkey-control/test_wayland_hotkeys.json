@@ -53,7 +53,8 @@
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
-          "libobs/obs-hotkey.c.h"
+          "libobs/obs-hotkey.c.h",
+          "test/cmocka/hotkey-enum-link-support.c"
         ],
         "source_0": [
           "test/cmocka/test_wayland_hotkeys.c"
