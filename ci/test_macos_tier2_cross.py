@@ -19,7 +19,7 @@ class MacosTier2CrossTest(unittest.TestCase):
                 [
                     "cmake",
                     "-S",
-                    str(ROOT / "cmake/cross"),
+                    str(ROOT),
                     "-B",
                     directory,
                     "-DOBS_CROSS_TARGET=win-x64",
@@ -45,7 +45,7 @@ class MacosTier2CrossTest(unittest.TestCase):
                 [
                     "cmake",
                     "-S",
-                    str(ROOT / "cmake/cross"),
+                    str(ROOT),
                     "-B",
                     directory,
                     "-DOBS_CROSS_TIER2=ON",

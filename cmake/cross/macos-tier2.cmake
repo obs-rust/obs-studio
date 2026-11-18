@@ -1,5 +1,6 @@
 # Opt-in Linux-produced macOS runtime graph (#5009). This is infrastructure,
 # not permission to replace the native validator's renderer/capture contracts.
+set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL TRUE)
 include("${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.cmake")
 obs_rust_hidden_lists(
   "${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.d"
@@ -124,6 +125,73 @@ function(_obs_cross_tier2_tests)
   find_package(jansson REQUIRED)
   find_package(ZLIB REQUIRED)
   target_link_libraries(libobs-cross-reference PRIVATE ZLIB::ZLIB)
+  # Configure the real native owner recipes. Their aliases gate the unchanged
+  # registry; stand-ins would register tests without their link/data closure.
+  include(helpers_common)
+  include("${OBS_SOURCE_ROOT}/cmake/macos/helpers.cmake")
+  set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+  # SDK package exports belong to native installation. The cross producer
+  # transports the built runtime graph and does not install CMake packages.
+  function(target_export target)
+  endfunction()
+  function(set_target_properties_obs target)
+    cmake_parse_arguments(PARSE_ARGV 1 _props "" "" "PROPERTIES")
+    while(_props_PROPERTIES)
+      list(POP_FRONT _props_PROPERTIES _key _value)
+      set_property(TARGET ${target} PROPERTY ${_key} "${_value}")
+    endwhile()
+    get_target_property(_kind ${target} TYPE)
+    if(_kind MATCHES "^(EXECUTABLE|SHARED_LIBRARY|MODULE_LIBRARY)$")
+      target_link_options(${target} PRIVATE "LINKER:-adhoc_codesign")
+    endif()
+    get_target_property(_arc ${target} XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC)
+    if(_arc)
+      target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:OBJC,OBJCXX>:-fobjc-arc>")
+    endif()
+    get_target_property(_modules ${target} XCODE_ATTRIBUTE_CLANG_ENABLE_MODULES)
+    if(_modules)
+      target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:OBJC,OBJCXX>:-fmodules>")
+    endif()
+    if(_kind STREQUAL "MODULE_LIBRARY")
+      set_target_properties(${target} PROPERTIES BUNDLE TRUE BUNDLE_EXTENSION plugin)
+      target_link_options(${target} PRIVATE "LINKER:-adhoc_codesign")
+      if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
+        add_custom_command(
+          TARGET ${target}
+          POST_BUILD
+          COMMAND
+            "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/data"
+            "$<TARGET_BUNDLE_CONTENT_DIR:${target}>/Resources"
+        )
+      endif()
+    endif()
+  endfunction()
+  add_subdirectory("${OBS_SOURCE_ROOT}/frontend/api" "${CMAKE_BINARY_DIR}/frontend/api")
+  # The native plugin dispatcher owns platform/option selection and records
+  # enabled modules through target_enable. Do not synthesize its name list.
+  # This configures plugins/obs-outputs (RTMP/AMF and happy-eyeballs),
+  # shared/media-playback, shared/file-updater, plugins/image-source,
+  # plugins/obs-transitions, plugins/obs-filters and plugins/text-freetype2
+  # along with the other genuinely enabled native owners.
+  add_library(libobs ALIAS libobs-cross-shared)
+  add_library(libobs-core-modules ALIAS libobs-cross-generated)
+  function(set_obs_core_modules)
+    get_property(_enabled GLOBAL PROPERTY OBS_MODULES_ENABLED)
+    list(LENGTH _enabled OBS_CORE_MODULE_COUNT)
+    if(NOT OBS_CORE_MODULE_COUNT)
+      message(FATAL_ERROR "Tier 2 requires the enabled native core-module graph")
+    endif()
+    string(REPLACE ";" "\",\n\t\"" _array "${_enabled}")
+    set(OBS_CORE_MODULE_LIST "\t\"${_array}\"")
+    configure_file(
+      "${OBS_SOURCE_ROOT}/libobs/obs-core-modules.c.in"
+      "${CMAKE_BINARY_DIR}/config/obs-core-modules.c"
+      @ONLY
+    )
+    string(REPLACE ";" "\n" _lines "${_enabled}")
+    file(WRITE "${CMAKE_BINARY_DIR}/tier2-modules.txt" "${_lines}\n")
+  endfunction()
+  add_subdirectory("${OBS_SOURCE_ROOT}/plugins" "${CMAKE_BINARY_DIR}/plugins")
   # The run host must not compile cmocka. Build the pinned source for Darwin.
   include(FetchContent)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build cmocka into the test executables" FORCE)

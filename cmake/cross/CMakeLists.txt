@@ -35,6 +35,12 @@ if(OBS_CROSS_LINK AND (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "Debug"
 endif()
 
 get_filename_component(OBS_SOURCE_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+if(OBS_CROSS_TIER2 AND NOT CMAKE_SOURCE_DIR STREQUAL OBS_SOURCE_ROOT)
+  message(
+    FATAL_ERROR
+    "Configure Tier 2 from the checkout root: cmake -S ${OBS_SOURCE_ROOT} -B <build> -DOBS_CROSS_TIER2=ON -DOBS_CROSS_TARGET=mac-arm64"
+  )
+endif()
 list(APPEND CMAKE_MODULE_PATH "${OBS_SOURCE_ROOT}/cmake/common")
 include(soldr)
 

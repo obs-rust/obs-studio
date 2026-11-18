@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.28...3.30)
 
+if(OBS_CROSS_TIER2)
+  # Native plugin recipes use CMAKE_SOURCE_DIR for their shared owners. Keep
+  # the real checkout root while reusing the Linux-hosted Darwin toolchain.
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/cross/CMakeLists.txt")
+  return()
+endif()
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
 
 project(obs-studio VERSION ${OBS_VERSION_CANONICAL})
