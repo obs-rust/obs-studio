@@ -3,6 +3,8 @@ import hashlib
 import importlib.util
 import argparse
 import json
+import io
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -31,11 +33,13 @@ class RuntimeTest(unittest.TestCase):
             download.assert_not_called()
             command.assert_not_called()
 
-    def test_unavailable_asset_falls_back_without_docker(self):
+    def test_unavailable_asset_falls_back_without_docker_load(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(runtime.urllib.request, 'urlopen',
-                side_effect=urllib.error.URLError('offline')), patch.object(runtime, 'command') as command:
+                side_effect=urllib.error.URLError('offline')), patch.object(runtime, 'command',
+                side_effect=subprocess.CalledProcessError(1, 'inspect')) as command:
             self.assertIsNone(runtime.prepared_image(self.descriptor(), 'a=1\n', Path(tmp)))
-            command.assert_not_called()
+            command.assert_called_once_with('docker', 'image', 'inspect', '--format', '{{.Id}}',
+                                            self.descriptor()['image_id'])
 
     def test_corrupt_archive_fails_before_docker_load(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -84,6 +88,95 @@ class RuntimeTest(unittest.TestCase):
                 self.assertEqual(commands.call_args.args, ('docker', 'stop', '--timeout', '1', ident))
                 report = json.loads((root / 'state/runtime-measurement.json').read_text())
                 self.assertEqual(report['variant'], 'prepared')
+
+
+class RuntimeReuseTest(unittest.TestCase):
+    descriptor = RuntimeTest.descriptor
+
+    def setUp(self):
+        env = patch.dict(os.environ, {}, clear=True)
+        env.start()
+        self.addCleanup(env.stop)
+
+    def deliver(self, root, first_inspect='sha256:' + 'b' * 64):
+        descriptor = self.descriptor()
+        calls = []
+
+        def command(*args):
+            calls.append(args)
+            if len(calls) == 1:
+                if isinstance(first_inspect, Exception):
+                    raise first_inspect
+                return first_inspect
+            return descriptor['image_id']
+
+        with patch.object(runtime, 'command', side_effect=command), \
+                patch.object(runtime.urllib.request, 'urlopen', return_value=io.BytesIO(b'good')) as download:
+            self.assertEqual(runtime.download_prepared(descriptor, root), descriptor['image_id'])
+        return calls, download
+
+    def test_matching_image_skips_network_verification_and_load(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(runtime, 'verify_archive') as verify:
+            calls, download = self.deliver(Path(tmp), self.descriptor()['image_id'])
+            self.assertEqual(calls, [('docker', 'image', 'inspect', '--format', '{{.Id}}',
+                                     self.descriptor()['image_id'])])
+            download.assert_not_called()
+            verify.assert_not_called()
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+
+    def test_mismatching_or_missing_image_downloads_and_checks_loaded_identity(self):
+        for first in ('sha256:' + 'b' * 64, subprocess.CalledProcessError(1, 'inspect')):
+            with self.subTest(first=first), tempfile.TemporaryDirectory() as tmp:
+                calls, download = self.deliver(Path(tmp), first)
+                download.assert_called_once_with(self.descriptor()['url'], timeout=60)
+                self.assertEqual(calls[1][0], 'zstd')
+                self.assertEqual(calls[2][:3], ('docker', 'image', 'load'))
+                self.assertEqual(calls[-1], calls[0])
+
+    def test_verified_cache_avoids_network_and_corrupt_cache_is_replaced(self):
+        for contents in (b'good', b'evil'):
+            with self.subTest(contents=contents), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                cache = root / 'cache'
+                cache.mkdir()
+                os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+                cached = cache / (self.descriptor()['archive_sha256'] + '.tar.zst')
+                cached.write_bytes(contents)
+                calls, download = self.deliver(root)
+                self.assertEqual(download.call_count, int(contents != b'good'))
+                self.assertEqual((root / 'runtime.tar.zst').read_bytes(), b'good')
+                self.assertEqual(cached.read_bytes(), b'good')
+                self.assertEqual(list(cache.iterdir()), [cached])
+                self.assertEqual(calls[2][:3], ('docker', 'image', 'load'))
+
+    def test_cold_cache_publishes_atomically(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'new-cache'
+            os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+            replace = os.replace
+
+            def publish(source, destination):
+                self.assertEqual(Path(source).read_bytes(), b'good')
+                self.assertFalse(Path(destination).exists())
+                self.assertEqual(Path(source).parent.parent, cache)
+                replace(source, destination)
+
+            with patch.object(os, 'replace', side_effect=publish) as atomic:
+                _, download = self.deliver(root)
+            download.assert_called_once()
+            atomic.assert_called_once()
+            self.assertEqual(len(list(cache.iterdir())), 1)
+
+    def test_cache_io_errors_fall_back_to_download(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = root / 'not-a-directory'
+            cache.write_bytes(b'file')
+            os.environ['OBS_ASSET_CACHE_DIR'] = str(cache)
+            _, download = self.deliver(root)
+            download.assert_called_once()
+            self.assertEqual(cache.read_bytes(), b'file')
 
 
 class PrebakedRuntimeTest(unittest.TestCase):
