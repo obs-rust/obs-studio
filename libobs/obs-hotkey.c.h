@@ -566,24 +566,6 @@ char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 	return id.array;
 }
 
-char *obs_hotkey_combination_get_background_trigger(obs_key_combination_t combo)
-{
-	if (!lock())
-		return NULL;
-
-	struct dstr trigger = {0};
-	struct obs_hotkeys_background *background = &obs->hotkeys.background;
-	bool found = background->shortcut_trigger &&
-		     background->shortcut_trigger(background->wake_data, combo, &trigger);
-	unlock();
-
-	if (!found) {
-		dstr_free(&trigger);
-		return NULL;
-	}
-	return trigger.array;
-}
-
 struct obs_query_hotkeys_helper {
 	uint32_t modifiers;
 	bool no_press;

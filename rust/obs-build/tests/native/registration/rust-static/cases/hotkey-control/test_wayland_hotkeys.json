@@ -19,7 +19,8 @@
         "libobs/obs-hotkey-press.c.h",
         "libobs/obs-hotkey-pair.c.h",
         "libobs/obs-nix-hotkey-state.c.h",
-        "test/cmocka/hotkey-enum-link-support.c"
+        "test/cmocka/hotkey-enum-link-support.c",
+        "libobs/obs-hotkey-background-trigger.c.h"
       ],
       "requires": {
         "any": [
@@ -95,6 +96,9 @@
         ],
         "hotkey_enumeration_fields": [
           "test/cmocka/hotkey-enum-link-support.c"
+        ],
+        "hotkey_background_trigger": [
+          "libobs/obs-hotkey-background-trigger.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
