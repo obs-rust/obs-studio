@@ -126,15 +126,46 @@ class CMakePackTests(unittest.TestCase):
             data.mkdir(parents=True)
             (data / "locale.ini").write_text("Name=Capture")
             products = []
-            for name in ("win-capture.dll", "graphics-hook/graphics-hook64.dll", "inject-helper/inject-helper64.exe", "get-graphics-offsets/get-graphics-offsets64.exe"):
+            for name in (
+                "win-capture.dll",
+                "graphics-hook/graphics-hook64.dll",
+                "inject-helper/inject-helper64.exe",
+                "get-graphics-offsets/get-graphics-offsets64.exe",
+            ):
                 path = build / "plugins/win-capture" / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(pe([]))
                 products.append(path)
             h.stage_data(build, source, root / "bundle", products)
             for product in products[1:]:
-                for base in ("build/core/win-capture/data", "source/plugins/win-capture/data"):
-                    self.assertEqual(product.read_bytes(), (root / "bundle" / base / product.name).read_bytes())
+                for base in (
+                    "build/core/win-capture/data",
+                    "source/plugins/win-capture/data",
+                ):
+                    self.assertEqual(
+                        product.read_bytes(),
+                        (root / "bundle" / base / product.name).read_bytes(),
+                    )
+
+    def test_qt_plugin_search_paths_retain_dynamic_modules_and_their_imports(self):
+        h = self.helper()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, build, deps, tests = self.fixture(root)
+            qt = source / ".deps/target-qt"
+            (qt / "plugins/platforms").mkdir(parents=True)
+            (qt / "bin").mkdir()
+            (qt / "plugins/platforms/qminimal.dll").write_bytes(pe(["Qt6Gui.dll"]))
+            (qt / "plugins/platforms/qminimal.pdb").write_bytes(b"debug symbols")
+            (qt / "bin/Qt6Gui.dll").write_bytes(pe([]))
+            tests[0]["properties"].append({"name": "ENVIRONMENT_MODIFICATION", "value": [f"QT_PLUGIN_PATH=path_list_prepend:{qt / 'plugins'}", f"PATH=path_list_prepend:{qt / 'bin'}"]})
+            with patch.object(h.registry, "inventory", return_value={"tests": tests, "unbuilt_tests": [], "missing_native_tests": []}), patch.object(h.consumer, "coff_exports", return_value={"api"}):
+                manifest = h.stage(build, source, root / "bundle", [deps, qt / "bin"], "a" * 40)
+            self.assertIn("source/.deps/target-qt/plugins/platforms/qminimal.dll", manifest["files"])
+            self.assertIn("source/.deps/target-qt/bin/Qt6Gui.dll", manifest["files"])
+            self.assertFalse(any(name.endswith(".pdb") for name in manifest["files"]))
+            prop = next(p for p in manifest["tests"][0]["properties"] if p["name"] == "ENVIRONMENT_MODIFICATION")
+            self.assertEqual("QT_PLUGIN_PATH=path_list_prepend:@OBS_TIER2_SOURCE@/.deps/target-qt/plugins", prop["value"][0])
 
     def test_missing_transitive_dependency_and_case_collision_fail(self):
         h = self.helper()
