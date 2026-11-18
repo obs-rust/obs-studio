@@ -2536,6 +2536,13 @@ area.
 
 ### Stability
 
+- **Video reset keeps its locks.** Changing the base or output resolution
+  or the FPS in Settings > Video while audio runs no longer risks a crash:
+  the video reset no longer destroys and re-creates locks that the audio
+  thread, queued graphics tasks and encoders keep using. *All*, pending
+  merge. Issue [#5096](https://github.com/obs-rust/obs-studio/issues/5096),
+  upstream
+  [obsproject/obs-studio#14192](https://github.com/obsproject/obs-studio/issues/14192).
 - **Loaded module log without a core.** An embedder, plugin or script that
   calls obs_log_loaded_modules before obs_startup or after obs_shutdown no
   longer crashes OBS; with no core it logs nothing. *All*, 2026-11-10. Issue

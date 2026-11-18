@@ -475,13 +475,6 @@ static int obs_init_video(struct obs_video_info *ovi)
 	video->video_frame_interval_ns = util_mul_div64(1000000000ULL, ovi->fps_den, ovi->fps_num);
 	video->video_half_frame_interval_ns = util_mul_div64(500000000ULL, ovi->fps_den, ovi->fps_num);
 
-	if (pthread_mutex_init(&video->task_mutex, NULL) != 0)
-		return OBS_VIDEO_FAIL;
-	if (pthread_mutex_init(&video->encoder_group_mutex, NULL) != 0)
-		return OBS_VIDEO_FAIL;
-	if (pthread_mutex_init(&video->mixes_mutex, NULL) != 0)
-		return OBS_VIDEO_FAIL;
-
 	/* Reset main canvas mix first so it remains first in the rendering order. */
 	if (!obs_canvas_reset_video_internal(obs->data.main_canvas, ovi))
 		return OBS_VIDEO_FAIL;
@@ -610,19 +603,10 @@ static void obs_free_video(void)
 		blog(LOG_WARNING, "Number of remaining views: %ld", num_views);
 	pthread_mutex_unlock(&obs->video.mixes_mutex);
 
-	pthread_mutex_destroy(&obs->video.mixes_mutex);
-	pthread_mutex_init_value(&obs->video.mixes_mutex);
-
 	for (size_t i = 0; i < obs->video.ready_encoder_groups.num; i++) {
 		obs_weak_encoder_release(obs->video.ready_encoder_groups.array[i]);
 	}
 	da_free(obs->video.ready_encoder_groups);
-
-	pthread_mutex_destroy(&obs->video.encoder_group_mutex);
-	pthread_mutex_init_value(&obs->video.encoder_group_mutex);
-
-	pthread_mutex_destroy(&obs->video.task_mutex);
-	pthread_mutex_init_value(&obs->video.task_mutex);
 	deque_free(&obs->video.tasks);
 }
 
@@ -1084,6 +1068,15 @@ static bool obs_init(const char *locale, const char *module_config_path, profile
 	pthread_mutex_init_value(&obs->video.encoder_group_mutex);
 	pthread_mutex_init_value(&obs->video.mixes_mutex);
 
+	/* The audio thread, task producers and encoders use these during a
+	 * video reset, so they live as long as the core, not the video. */
+	if (pthread_mutex_init(&obs->video.task_mutex, NULL) != 0 ||
+	    pthread_mutex_init(&obs->video.encoder_group_mutex, NULL) != 0 ||
+	    pthread_mutex_init(&obs->video.mixes_mutex, NULL) != 0) {
+		blog(LOG_ERROR, "obs_startup: failed to create the video core mutexes");
+		return false;
+	}
+
 	obs->name_store_owned = !store;
 	obs->name_store = store ? store : profiler_name_store_create();
 	if (!obs->name_store) {
@@ -1315,6 +1308,9 @@ void obs_shutdown(void)
 	os_task_queue_destroy(obs->destruction_task_thread);
 	obs_free_hotkeys();
 	obs_free_graphics();
+	pthread_mutex_destroy(&obs->video.mixes_mutex);
+	pthread_mutex_destroy(&obs->video.encoder_group_mutex);
+	pthread_mutex_destroy(&obs->video.task_mutex);
 	proc_handler_destroy(obs->procs);
 	signal_handler_destroy(obs->signals);
 	obs->procs = NULL;
