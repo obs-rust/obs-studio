@@ -26,7 +26,7 @@ fn configured_headers_match_with_crlf_template_input() {
 }
 
 fn checked(command: &mut Command) -> std::process::Output {
-    let output = command.output().unwrap();
+    let output = prebuilt::compiler_output(command).unwrap();
     assert!(
         output.status.success(),
         "{command:?}\n{}\n{}",
@@ -84,7 +84,8 @@ fn configured_headers_reject_escaping_paths_and_invalid_values() {
 
 #[test]
 fn configured_headers_match_consumers_and_rebuild_after_template_or_value_changes() {
-    let directory = tempfile::tempdir().unwrap();
+    let _fixtures = prebuilt::Scope::enter();
+    let directory = prebuilt::tempdir().unwrap();
     let root = directory.path();
     fs::write(root.join("probe.c"), "#include <settings.h>\n#include <stdio.h>\nint main(void) {printf(\"%d\", ANSWER + HEADER_IMPORTED - 7); return 0;}\n").unwrap();
     fs::write(
@@ -111,7 +112,7 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRE
     .unwrap();
     let build = NativeBuild {
         host: obs_build::BUILD_HOST.into(),
-        target: obs_build::BUILD_TARGET.into(),
+        target: prebuilt::target().into(),
         output: root.join("native"),
         profile: Default::default(),
     };
@@ -137,11 +138,10 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRE
         fs::write(root.join("graph.json"), graph.to_string()).unwrap();
         let parsed = Graph::parse(&graph.to_string()).unwrap();
         let artifacts = parsed
-            .compile(&build, root, &Default::default(), &interfaces)
+            .fixture_compile(&build, root, &Default::default(), &interfaces)
             .unwrap();
-        let native = checked(&mut Command::new(&artifacts["probe"]));
         let expected = if step == 1 { b"43" } else { b"42" };
-        assert_eq!(native.stdout, expected);
+        prebuilt::assert_runtime(&mut Command::new(&artifacts["probe"]), Some(expected), &[]);
         checked(
             Command::new("cmake")
                 .arg("-S")
@@ -151,13 +151,18 @@ obs_native_test_graph("${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" "${{CMAKE_CURRE
                 .args(["-G", "Ninja"]),
         );
         checked(Command::new("cmake").arg("--build").arg(root.join("cmake")));
-        let cmake = checked(&mut Command::new(root.join("cmake/probe")));
-        assert_eq!(cmake.stdout, expected);
-        checked(
+        prebuilt::assert_runtime(
+            &mut Command::new(root.join("cmake/probe")),
+            Some(expected),
+            &[],
+        );
+        prebuilt::assert_runtime(
             Command::new("ctest")
                 .arg("--test-dir")
                 .arg(root.join("cmake"))
                 .args(["--no-tests=error", "--output-on-failure"]),
+            None,
+            &[],
         );
         assert!(configured_headers_match(
             &fs::read_to_string(root.join("native/native-tests/probe/configured/settings.h"))

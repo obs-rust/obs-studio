@@ -22,7 +22,7 @@ def job(name: str) -> str:
 
 def step(name: str) -> str:
     return re.search(rf"      - name: {name}[^\n]*\n(.*?)(?=      - |\Z)",
-                     job("rust-tests-macos"), re.S)[1]
+                      job("rust-tests-macos-build"), re.S)[1]
 
 
 def runs(condition: str, event: str, selected: str, flatpak: bool = False, native: bool = False) -> bool:
@@ -99,8 +99,10 @@ class MacosAnalysis(unittest.TestCase):
                     self.assertEqual(gate_jobs.blocking([*rest, record], expected=expected), [name])
 
     def test_native_runtime_tests_are_still_selected(self):
-        self.assertIn("run: soldr cargo test --workspace --locked", step("Run Rust Tests 🧪"))
-        self.assertIn("github.event_name == 'merge_group'", step("Run Rust Tests 🧪"))
+        preparation = step("Prepare workspace Darwin tests and fixtures")
+        self.assertIn("ci/macos_test_artifact.py build", preparation)
+        self.assertIn("github.event_name == 'merge_group'", preparation)
+        self.assertIn("ci/macos_test_artifact.py run", job("rust-tests-macos"))
         cross = job("rust-cross-lint")
         self.assertIn("aarch64-apple-darwin", cross)
         self.assertIn("--cross-target ${{ matrix.target }}", cross)

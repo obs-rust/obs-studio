@@ -106,7 +106,7 @@ class MergeQueue(unittest.TestCase):
         self.assertIn("github.event.merge_group.base_sha", job_block(BUILD, "check-event"))
 
     def test_queue_heavy_jobs_ignore_proofs_and_attestation(self):
-        for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos",
+        for name in ("rust-tests-linux", "rust-cross-lint", "rust-tests-macos", "rust-tests-macos-build",
                      "rust-tests-windows", "rust-tier2-macos", "rust-tier2-windows",
                      "rust-linux-tier2-build"):
             with self.subTest(job=name):
@@ -124,6 +124,7 @@ class MergeQueue(unittest.TestCase):
                                   lambda m: repr(values[m[1]]), expr)
                     expr = re.sub(r"needs\.ci-mode\.outputs\.[\w_-]+", repr("true"), expr)
                     expr = expr.replace("needs.rust-tests-linux.result", repr("success"))
+                    expr = expr.replace("needs.rust-tests-macos-build.result", repr("success"))
                     expr = re.sub(r"inputs\.[\w_-]+", "False", expr)
                     expr = expr.replace("always()", "True").replace("cancelled()", "False")
                     expr = expr.replace("&&", " and ").replace("||", " or ")

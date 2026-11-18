@@ -314,7 +314,7 @@ class CiScopeTest(unittest.TestCase):
         import re
 
         heavy = {
-            "rust-cross-lint", "rust-cross-lint-release",
+            "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
             "rust-linux-tier2-build", "rust-linux-tier2",
         }
         light = {
@@ -364,7 +364,9 @@ class CiScopeTest(unittest.TestCase):
         cross = build.split("  rust-cross-lint:\n", 1)[1].split("  rust-cross-proof:\n", 1)[0]
         targets = re.search(r"target: \[(.*?)\]", cross)[1].split(",")
         tier2 = matrix("merge_group")
-        demand = 1 + len(tier2["mode"]) * len(tier2["part"]) + len(targets) + 1
+        # Tier 2's build and tests are sequential. The Darwin artifact producer
+        # may overlap the larger phase and all three Cross Lint jobs (#5008).
+        demand = max(1, len(tier2["mode"]) * len(tier2["part"])) + len(targets) + 1 + 1
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn(
             f"MQ_RUNNER_DEMAND: ${{{{ vars.MQ_RUNNER_DEMAND || '{demand}' }}}}", ci,
