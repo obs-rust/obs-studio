@@ -38,8 +38,8 @@
  * - obs_scene_duplicate_item_route(): how it copies each item;
  * - obs_scene_duplicate_reuse(): which earlier item's source dup_child()
  *   reuses for a repeated source;
- * - obs_scene_duplicate_keeps_name(): whether dup_child() and dup_group()
- *   name the copy;
+ * - obs_scene_duplicate_keeps_name(): whether dup_child()
+ *   names the copy;
  * - obs_scene_duplicate_resizes(): whether the new scene is resized.
  *
  * obs-source.c and obs-scene.c keep every lookup (obs_scene_from_source(),

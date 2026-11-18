@@ -2431,6 +2431,11 @@ area.
   gets no name instead of a read past the key table. *Linux, FreeBSD*,
   2026-10-30. Issue
   [#3098](https://github.com/obs-rust/obs-studio/issues/3098).
+- Duplicating a scene that holds a group no longer names the group's copy
+  `__unnamed0000`, `__unnamed0001`, ...: the copy of group "G" is "G 2".
+  *All*, 2026-11-18. Issue
+  [#4991](https://github.com/obs-rust/obs-studio/issues/4991), upstream
+  [obsproject/obs-studio#14145](https://github.com/obsproject/obs-studio/issues/14145).
 
 ### Scripting
 

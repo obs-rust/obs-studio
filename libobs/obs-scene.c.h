@@ -1606,12 +1606,12 @@ static inline obs_source_t *dup_child(obs_scene_item_ptr_array_t *old_items, obs
 
 /* A group is copied with the duplicate type asked for, so that a private copy
  * of a scene (Studio Mode with "Duplicate Sources") also gets private copies of
- * the sources inside its groups. */
-static inline obs_source_t *dup_group(obs_source_t *group, enum obs_scene_duplicate_type type, bool private)
+ * the sources inside its groups. The copy is named after the group: a public
+ * copy then gets a unique name ("G 2"), not "__unnamedNNNN"
+ * (obsproject/obs-studio#14145). */
+static inline obs_source_t *dup_group(obs_source_t *group, enum obs_scene_duplicate_type type)
 {
-	obs_scene_t *new_group =
-		obs_scene_duplicate(obs_group_from_source(group),
-				    obs_scene_duplicate_keeps_name(private) ? obs_source_get_name(group) : NULL, type);
+	obs_scene_t *new_group = obs_scene_duplicate(obs_group_from_source(group), obs_source_get_name(group), type);
 	return obs_scene_get_source(new_group);
 }
 
@@ -1756,7 +1756,7 @@ obs_scene_t *obs_scene_duplicate(obs_scene_t *scene, const char *name, enum obs_
 		item = items.array[i];
 		int route = obs_scene_duplicate_item_route(item->is_group, make_unique);
 		if (route == OBS_SCENE_DUPLICATE_ITEM_GROUP)
-			source = dup_group(item->source, type, make_private);
+			source = dup_group(item->source, type);
 		else if (route == OBS_SCENE_DUPLICATE_ITEM_CHILD)
 			source = dup_child(&items, copies.array, i, new_scene, make_private);
 		else
