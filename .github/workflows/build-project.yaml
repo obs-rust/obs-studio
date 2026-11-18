@@ -2469,8 +2469,8 @@ jobs:
   # slice each against one libobs (OFF: C reference, ON: hybrid libobs via
   # LD_LIBRARY_PATH) on the same paths; rust-linux-tier2-done publishes the
   # lane proof.
-  # Qualification only. No required job depends on these opt-in experiments.
   windows-run-only-proof-build:
+    # Qualification only. No required job depends on this manual experiment.
     name: Windows Run-only Proof Producer (optional)
     timeout-minutes: 60
     continue-on-error: true

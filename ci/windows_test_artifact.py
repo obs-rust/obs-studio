@@ -4,8 +4,8 @@
     uv run --no-project ci/windows_test_artifact.py build --output build_windows_tests
     uv run --no-project ci/windows_test_artifact.py verify --manifest build_windows_tests/manifest.json
 
-Qt contracts are appended by windows_qt_artifact; the Windows source-path handoff remains pending.
-This branch infrastructure cannot yet replace the Windows job.
+Qt contracts are appended by windows_qt_artifact. windows_test_proof provides
+optional hosted root/receipt qualification; the required Windows job is unchanged.
 The shared Darwin collector preserves Cargo's cwd, environment, helpers and
 OUT_DIR; its checksummed transport is reused without changing Darwin policy.
 """

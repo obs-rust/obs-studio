@@ -1,7 +1,8 @@
-# Windows Rust test artifacts (slices 1, 3, 4 and 5)
+# Windows Rust test artifacts and optional hosted proof (slices 1–5)
 
-`ci/windows_test_artifact.py` prepares Windows tests on Linux. Workflow activation,
-and native Windows qualification remain separate work:
+`ci/windows_test_artifact.py` prepares Windows tests on Linux. An optional hosted
+qualification is described below; replacing the required Windows job remains
+separate work:
 
 ```sh
 uv run --no-project ci/windows_test_artifact.py build --output build_windows_test_slice
@@ -32,7 +33,8 @@ is not evidence of successful execution on Windows.
 
 The producer declares `coverage: rust-tests-doctests-native-fixtures` after all
 selected compilation succeeds. The older `rust-test-executables` format remains
-explicitly partial. No workflow job, check name, scope or gate is changed.
+explicitly partial. Required job names, coverage and scope remain unchanged;
+the manual qualification jobs below provide no admission evidence.
 
 Stable cross-doctests reuse #5019's capture and execution code with an explicit
 MSVC target/verifier. A small link.exe-syntax adapter resolves soldr's managed
@@ -232,3 +234,74 @@ harnesses with LTO while the shared eight-job broker reported over 100 in-flight
 requests. These are local contention measurements with cached SDK inputs, not
 hosted timings or evidence of a speedup. Hosted Windows must still qualify OS
 UCRT/ICU and the five recorded VC 14.x runtime DLLs before activation.
+
+## Optional hosted root and transport qualification (slice 2)
+
+`ci/windows_test_proof.py` adds a fail-closed consumer and two **manual-only,
+non-required jobs in the existing `build-project.yaml`**. They are disabled
+unless `WINDOWS_RUN_ONLY_PROOF_REF` equals the dispatch's complete Git ref, and
+retain the existing non-docs Windows-link path gate. PRs and merge groups never
+allocate these jobs. The existing required Windows Rust/Tier 2 and macOS jobs
+are unchanged. Only the two exact optional proof names are outside CI Gate's
+failure aggregation; every required Windows failure still blocks.
+
+Linux moves the real checkout to `/opt/obs-win-<run-id>-<attempt>/src` before
+compiling. Windows moves the exact producer source to
+`C:\opt\obs-win-<run-id>-<attempt>\src` and runs from C:. Its TEMP/TMP directories
+also stay on C:, so child processes and CTest cannot accidentally resolve rooted
+embedded `/opt/...` constants against the hosted checkout's normal D: drive.
+The original Actions checkout remains an alias and is restored before post steps.
+Linux cleanup reuses #5019's non-recursive privileged empty-parent removal.
+
+The existing Application category now checks compiled CARGO_MANIFEST_DIR,
+CARGO_BIN_EXE helper invocation, exact compile-time source bytes, arguments,
+CMake/CTest configuration without a language/build and child re-execution from
+an empty space-named directory. The existing Utilities category checks the real
+compiled MSVC OUT_DIR against its transported build-script archive. A positive
+probe runs before the full suite; a deliberately wrong runtime root must produce
+the specific compiled-root assertion. Runtime environment rewriting cannot
+relocate those constants. Other drives, mismatched real roots, traversal,
+Windows filename aliases and case collisions fail.
+
+Publication binds the complete archive SHA256, logical root, exact source SHA,
+source tree and every tracked source file's bytes to the original producer run
+and attempt. The download uses the upload action's immutable artifact ID,
+never an artifact name or a latest-run search. Consumer-only reruns reuse the
+original job outputs, including the producer attempt and root. Python 3.14
+verifies the externally supplied archive digest before safe extraction, then
+requires exact file inventories, hashes, MSVC target/PE/import and Qt closure,
+eight category owners, three Cargo helpers, all 48 Qt observations, and all
+154 events of the 15 native histories. Native file/directory destinations must
+remain under the recorded compiled fixture roots. No payload is installed or
+executed until the whole source, root and inventory contract has passed.
+
+The consumer executes the original category, doctest, native and Qt entries
+through the shared runner and preserves nonzero status. No compiler, soldr,
+Qt SDK, vcpkg or pkgconf installation/build fallback is added. Failure metadata
+and proptest cases are retained by the optional job. Hosted Windows execution,
+DLL loading and no-build qualification remain pending; Linux PE/transport tests
+are not native execution evidence.
+
+A maintainer can run the experiment from the published branch:
+
+```sh
+gh variable set WINDOWS_RUN_ONLY_PROOF_REF --repo obs-rust/obs-studio --body refs/heads/ci/windows-run-only-rust-tests
+gh workflow run ci.yml --repo obs-rust/obs-studio --ref ci/windows-run-only-rust-tests
+# After the planned qualification, restore the default-off setting:
+gh variable delete WINDOWS_RUN_ONLY_PROOF_REF --repo obs-rust/obs-studio
+```
+
+That dispatch also retains the ordinary manual workflow's coverage; this switch
+does not trim unrelated jobs or replace a required check. Inspect both optional
+job steps and `windows-proof-diagnostics-<run>-<consumer-attempt>`; an optional
+failure cannot grant admission. Do not infer success from CI Gate alone.
+
+Remaining activation work: obtain hosted evidence for the root contract across
+all eight categories/three helpers, all native/Qt recipes and original test
+counts; poison compiler/SDK discovery and prove zero build fallback; qualify
+OS UCRT/ICU, VC runtime and transitive/delay loads; execute the retained four-case
+doctest probe and its negative controls. Then perform slice 6: enrich the
+existing Windows-link producer with affected-crate/Qt selection, require it and
+Linux Windows-target analysis in CI Gate, switch the required consumer to run
+only, retain rerun receipts and diagnostics, and measure four comparable hosted
+runs before claiming savings. Windows Tier 2 remains separate work.
