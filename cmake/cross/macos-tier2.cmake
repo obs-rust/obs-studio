@@ -70,7 +70,12 @@ endforeach()
 # Its paths are repository-relative and its fragments use CMAKE_SOURCE_DIR.
 # Scope that variable to this function instead of copying any test declaration.
 set(QT_HOST_PATH "${OBS_SOURCE_ROOT}/.deps/host-${OBS_CROSS_HOST_QT_TAG}")
+_obs_cross_uic(_host_uic)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+# These executable targets are otherwise imported lazily by AUTOMOC/UIC inside
+# a later test directory, after our host-tool binding would have been skipped.
+find_package(Qt6CoreTools REQUIRED)
+find_package(Qt6WidgetsTools REQUIRED)
 foreach(_tool IN ITEMS moc uic rcc)
   if(TARGET Qt6::${_tool})
     set_target_properties(
@@ -81,6 +86,10 @@ foreach(_tool IN ITEMS moc uic rcc)
     )
   endif()
 endforeach()
+file(
+  GENERATE OUTPUT "${CMAKE_BINARY_DIR}/tier2-host-tools.txt"
+  CONTENT "$<TARGET_FILE:Qt6::moc>\n$<TARGET_FILE:Qt6::uic>\n$<TARGET_FILE:Qt6::rcc>\n"
+)
 function(_obs_cross_tier2_tests)
   set(CMAKE_SOURCE_DIR "${OBS_SOURCE_ROOT}")
   set(OS_MACOS TRUE)
