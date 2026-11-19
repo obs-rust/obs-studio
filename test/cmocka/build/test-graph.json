@@ -14283,6 +14283,28 @@
         "libobs/obs-scene-item-alignment-setter.c.h"
       ]
     },
+    "test_sceneitem_matrix_getters": {
+      "sources": [
+        "test/cmocka/test_sceneitem_matrix_getters.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-scene-item-matrix-getters.c.h"
+      ]
+    },
     "test_sceneitem_private_settings": {
       "sources": [
         "test/cmocka/test_sceneitem_private_settings.c"
@@ -25900,6 +25922,14 @@
     },
     "test_sceneitem_alignment_setter": {
       "target": "test_sceneitem_alignment_setter",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
+    "test_sceneitem_matrix_getters": {
+      "target": "test_sceneitem_matrix_getters",
       "command": [
         "${target}"
       ],
