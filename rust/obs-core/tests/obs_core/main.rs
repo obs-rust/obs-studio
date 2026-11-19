@@ -148,6 +148,7 @@ mod video_frame_copy_parity;
 mod video_frame_timing;
 mod video_frame_timing_parity;
 mod video_graphics_tasks;
+mod video_info_query;
 mod video_graphics_tasks_parity;
 mod video_output_step;
 mod video_output_step_parity;
