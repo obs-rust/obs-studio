@@ -1,2 +1,2 @@
-/* The production service registry lookup called by the Rust service implementation. */
-#include "libobs/obs-service-find.c.h"
+#include "libobs/build/libobs.pch.h"
+#include "libobs/obs-service-find-fields.c.h"
