@@ -1703,46 +1703,6 @@ void obs_set_video_levels(float sdr_white_level, float hdr_nominal_peak_level)
 		     (double)hdr_nominal_peak_level, (double)video->hdr_nominal_peak_level);
 }
 
-bool obs_get_audio_info(struct obs_audio_info *oai)
-{
-	/* no core (before obs_startup): no audio (#2566) */
-	if (!obs)
-		return false;
-
-	struct obs_core_audio *audio = &obs->audio;
-	const struct audio_output_info *info;
-
-	if (!oai || !audio->audio)
-		return false;
-
-	info = audio_output_get_info(audio->audio);
-
-	oai->samples_per_sec = info->samples_per_sec;
-	oai->speakers = info->speakers;
-	return true;
-}
-
-bool obs_get_audio_info2(struct obs_audio_info2 *oai2)
-{
-	/* no core (before obs_startup): no audio (#3363) */
-	if (!obs)
-		return false;
-
-	struct obs_core_audio *audio = &obs->audio;
-	struct obs_audio_info oai;
-
-	if (!obs_get_audio_info(&oai) || !oai2 || !audio->audio) {
-		return false;
-	} else {
-		oai2->samples_per_sec = oai.samples_per_sec;
-		oai2->speakers = oai.speakers;
-		oai2->fixed_buffering = audio->fixed_buffer;
-		oai2->max_buffering_ms =
-			(uint32_t)obs_core_setup_rules_buffer_ms(audio->max_buffering_ticks, oai2->samples_per_sec);
-		return true;
-	}
-}
-
 const char *obs_get_latest_input_type_id(const char *unversioned_id)
 {
 	struct obs_source_info *latest = NULL;
@@ -2852,21 +2812,6 @@ profiler_name_store_t *obs_get_profiler_name_store(void)
 	return obs->name_store;
 }
 
-uint64_t obs_get_video_frame_time(void)
-{
-	return obs_video_stats_frame_time(&obs->video.stats);
-}
-
-double obs_get_active_fps(void)
-{
-	return obs_video_stats_fps(&obs->video.stats);
-}
-
-uint64_t obs_get_average_frame_time_ns(void)
-{
-	return obs_video_stats_avg_frame_time_ns(&obs->video.stats);
-}
-
 void *obs_obj_get_data(void *obj)
 {
 	struct obs_context_data *context = obj;
@@ -2935,16 +2880,6 @@ bool obs_set_audio_monitoring_device(const char *name, const char *id)
 	obs_enum_sources(check_all_aoc_sources, NULL);
 
 	return true;
-}
-
-uint32_t obs_get_total_frames(void)
-{
-	return obs_video_stats_total_frames(&obs->video.stats);
-}
-
-uint32_t obs_get_lagged_frames(void)
-{
-	return obs_video_stats_lagged_frames(&obs->video.stats);
 }
 
 /* An encoder that rescales on the GPU encodes from an encoder-only mix of
