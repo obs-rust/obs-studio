@@ -34,6 +34,10 @@
 #define obs_fader_db_to_def oracle_obs_fader_db_to_def
 #define signal_handler_connect oracle_audio_controls_signal_handler_connect
 #define signal_handler_disconnect oracle_audio_controls_signal_handler_disconnect
+/* Rust obs-source exports the real registration (#5243); keep these no-op
+ * stand-ins private to this oracle. */
+#define obs_source_add_audio_capture_callback oracle_audio_controls_add_audio_capture_callback
+#define obs_source_remove_audio_capture_callback oracle_audio_controls_remove_audio_capture_callback
 
 size_t oracle_obs_audio_info_size(void);
 size_t oracle_obs_audio_info_align(void);

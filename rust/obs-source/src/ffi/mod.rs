@@ -1,5 +1,7 @@
 //! C ABI shims, one module per C file.
 
+mod callback_list;
+
 pub mod source_async_compensation;
 pub mod source_async_flag_getters;
 pub mod source_async_pacing;
@@ -7,6 +9,7 @@ pub mod source_async_rotation;
 pub mod source_async_upload;
 pub mod source_audio_active;
 pub mod source_audio_active_setter;
+pub mod source_audio_capture_callbacks;
 pub mod source_audio_input;
 pub mod source_audio_mixers_getter;
 pub mod source_audio_pause_callbacks;
