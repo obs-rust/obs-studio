@@ -55,6 +55,7 @@ mod pair;
 mod pair_meta;
 mod pair_meta_parity;
 mod pair_parity;
+mod pair_register;
 mod parity;
 mod portal_shortcut_ids;
 mod portal_shortcut_ids_parity;
