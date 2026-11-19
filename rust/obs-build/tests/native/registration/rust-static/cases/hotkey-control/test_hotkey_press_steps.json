@@ -10,6 +10,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-unregister-entry.c.h",
         "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
@@ -56,6 +57,9 @@
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
+        ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
         ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
