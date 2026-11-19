@@ -24,6 +24,7 @@
 #include "libobs/obs-hotkey-enum-fields.c.h"
 #include "libobs/obs-hotkey-identity-fields.c.h"
 #include "libobs/obs-hotkey-identity-setter-fields.c.h"
+#include "libobs/obs-hotkey-inject-entry.c.h"
 #include "libobs/obs-hotkey-object-fields.c.h"
 #include "libobs/obs-hotkey-owned-translations-fields.c.h"
 #include "libobs/obs-hotkey-pair-meta-setter-calls.c.h"

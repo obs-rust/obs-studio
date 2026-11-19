@@ -5638,6 +5638,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -5675,6 +5676,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -5764,6 +5768,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -5801,6 +5806,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -5875,6 +5883,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -5912,6 +5921,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -6047,6 +6059,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -6082,6 +6095,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -6206,6 +6222,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-pair-meta.c.h",
@@ -6239,6 +6256,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -6317,6 +6337,30 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_inject_entry": {
+      "sources": [
+        "test/cmocka/test_hotkey_inject_entry.c",
+        "libobs/obs-hotkey-inject-entry.c.h"
+      ],
+      "definitions": [
+        "obs=inject_test_obs",
+        "obs_hotkey_inject_event=inject_test_event",
+        "obs_hotkey_binding_inject=inject_test_binding",
+        "obs_hotkey_seam_lock=inject_test_lock",
+        "obs_hotkey_seam_unlock=inject_test_unlock",
+        "obs_hotkey_seam_enum_bindings=inject_test_enum_bindings"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_hotkey_load": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -6326,6 +6370,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -6358,6 +6403,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -6473,6 +6521,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -6508,6 +6557,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -6567,6 +6619,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -6602,6 +6655,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -11302,6 +11358,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -11355,6 +11412,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -19923,6 +19983,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
+        "libobs/obs-hotkey-inject-entry.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -19969,6 +20030,9 @@
         ],
         "hotkey_identity_setters": [
           "libobs/obs-hotkey-identity-setters.c.h"
+        ],
+        "hotkey_inject_entry": [
+          "libobs/obs-hotkey-inject-entry.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",
@@ -23273,6 +23337,12 @@
         "${target}"
       ],
       "suite": "core"
+    },
+    "test_hotkey_inject_entry": {
+      "target": "test_hotkey_inject_entry",
+      "command": [
+        "${target}"
+      ]
     },
     "test_hotkey_load": {
       "target": "test_hotkey_load"
