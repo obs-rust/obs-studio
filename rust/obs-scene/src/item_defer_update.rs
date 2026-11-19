@@ -9,10 +9,12 @@ pub trait TransformDeferral {
     fn update_transform(&self);
 }
 
-pub fn begin(_item: &impl TransformDeferral) {
-    todo!("port obs_sceneitem_defer_update_begin");
+pub fn begin(item: &impl TransformDeferral) {
+    item.increment();
 }
 
-pub fn end(_item: &impl TransformDeferral) {
-    todo!("port obs_sceneitem_defer_update_end");
+pub fn end(item: &impl TransformDeferral) {
+    if item.decrement() == 0 {
+        item.update_transform();
+    }
 }

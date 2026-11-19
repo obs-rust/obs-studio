@@ -38,12 +38,13 @@
     "test/cmocka/encoder-get-name-link-support.c",
     "test/cmocka/output-interleave-name-link-support.c",
     "test/cmocka/graphics-device-queries-link-support.c",
-    "test/cmocka/output-encoder-getters-link-support.c",
+    "test/cmocka/audio-info-queries-link-support.c",
+    "test/cmocka/canvas-valid-video-info-link-support.c",
     "test/cmocka/encoder-last-error-link-support.c",
     "test/cmocka/hotkey-key-translation-link-support.c",
+    "test/cmocka/output-encoder-getters-link-support.c",
     "test/cmocka/output-get-name-link-support.c",
-    "test/cmocka/canvas-valid-video-info-link-support.c",
-    "test/cmocka/audio-info-queries-link-support.c",
+    "test/cmocka/sceneitem-defer-update-link-support.c",
     "test/cmocka/video-stats-queries-link-support.c"
   ],
   "platform_sources": {
