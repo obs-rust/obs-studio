@@ -59,6 +59,7 @@ mod render_target_setters;
 mod render_target_setters_parity;
 mod samplerstate_lifecycle;
 mod samplerstate_lifecycle_parity;
+mod shader_matrix_queries;
 mod sprite;
 mod sprite_parity;
 mod state_stacks;
