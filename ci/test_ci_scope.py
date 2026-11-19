@@ -315,7 +315,7 @@ class CiScopeTest(unittest.TestCase):
 
         heavy = {
             "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
-            "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link",
+            "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link", "cmocka-link",
         }
         light = {
             "ci.yml": {
@@ -434,6 +434,26 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("needs.check-event.outputs.windows_link == 'true'", job)
         self.assertIn('echo "windows_link=${windows_link:-true}"', text)
         self.assertIn("(github.event_name == 'merge_group' || needs.ci-mode.outputs.rust-test_hit != 'true')", text)
+
+    def test_both_cmocka_aliases_are_independent_selected_jobs(self):
+        from test_windows_link_check import job_block
+
+        block = job_block("cmocka-link")
+        self.assertIn("alias: [win-x64, mac-arm64]", block)
+        self.assertIn("fail-fast: false", block)
+        self.assertIn("needs: [check-event, ci-mode]", block)
+        condition = next(line for line in block.splitlines() if line.startswith("    if:"))
+        self.assertIn("outputs.cmocka_link == 'true'", condition)
+        self.assertNotIn("fast_path", condition)
+        self.assertNotIn("apt-get", block)
+        self.assertIn("--with cmake==3.31.10 --with ninja==1.13.0", block)
+        self.assertIn("ci/cmocka_link_check.py --alias ${{ matrix.alias }}", block)
+        gate = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("build-project", gate.split("  ci-gate:", 1)[1].split("    steps:", 1)[0])
+        for event in ("pull_request", "merge_group"):
+            for path in ("libobs/obs.c.h", "ci/cmocka_link_check.py", "ci/tier2_front_cache.py"):
+                with self.subTest(event=event, path=path):
+                    self.assertTrue(scope([path], event=event).cmocka_link)
 
     def test_core_file_content_is_not_read(self):
         # Core files carry no platform defines (the ratchet lint enforces

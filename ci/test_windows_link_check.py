@@ -44,9 +44,18 @@ class LinkArgsTest(unittest.TestCase):
         calls = []
         with mock.patch.object(windows_link_check.local_gate, "add_target", lambda t: calls.append(("add", t))), \
              mock.patch.object(windows_link_check.local_gate, "soldr_cargo", lambda a: calls.append(("cargo", a))), \
-             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "false"}):
+             mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "false"}):
             self.assertEqual(windows_link_check.main(), 0)
         self.assertEqual(calls, [("add", "x86_64-pc-windows-msvc"), ("cargo", windows_link_check.link_args())])
+
+    def test_categories_do_not_serialize_cmocka_passes(self):
+        with mock.patch.object(windows_link_check.local_gate, "add_target"), \
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo") as cargo, \
+             mock.patch("cmocka_link_check.link") as link, \
+             mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "false"}):
+            self.assertEqual(windows_link_check.main(), 0)
+        cargo.assert_called_once_with(windows_link_check.link_args())
+        link.assert_not_called()
 
     def test_selected_tier2_pass_links_after_categories(self):
         with mock.patch.object(windows_link_check.local_gate, "add_target"), \
@@ -90,6 +99,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_runs_the_script_in_one_line(self):
         self.assertIn("run: uv run --no-project ci/windows_link_check.py", self.block)
+        self.assertIn("OBS_CMOCKA_LINK: 'false'", self.block)
 
     def test_selected_on_the_deferred_pr_tier(self):
         self.assertIn("needs.check-event.outputs.deferred == 'true'", self.condition)
@@ -101,7 +111,8 @@ class WorkflowTest(unittest.TestCase):
         for skip in ("cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows =="):
             self.assertNotIn(skip, self.condition)
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
-        self.assertIn("|| needs.check-event.outputs.cmocka_link == 'true'", self.condition)
+        self.assertNotIn("outputs.cmocka_link", self.condition)
+        self.assertNotIn("apt-get", self.block)
 
     def test_is_linux_hosted_and_bounded(self):
         self.assertIn("inputs.mq-heavy-labels", self.block)

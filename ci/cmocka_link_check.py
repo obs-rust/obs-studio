@@ -15,9 +15,11 @@ import os
 import shlex
 import subprocess
 import time
+import tempfile
 from pathlib import Path
 
 import local_gate
+import tier2_front_cache
 
 ROOT = Path(__file__).resolve().parent.parent
 TRIPLES = {"win-x64": "x86_64-pc-windows-msvc", "mac-arm64": "aarch64-apple-darwin"}
@@ -77,13 +79,45 @@ def windows_toolchain(work: Path, target: str) -> Path:
     return path
 
 
+def cache_env(work: Path, tools: Path | None = None) -> dict[str, str]:
+    """Fresh per-pass cache: share identical support compiles, never link results."""
+    # Keep the launcher command stable for kept Ninja trees; only cached objects
+    # and policy are ephemeral. The installer re-verifies its pinned binary.
+    binary = tier2_front_cache.install(tools or work)
+    config = work / "ccache.conf"
+    config.write_text("")
+    env = {key: value for key, value in local_gate.soldr_env().items() if not key.startswith("CCACHE_")}
+    env.update(CCACHE_CONFIGPATH=str(config), CCACHE_DIR=str(work / "objects"),
+               CCACHE_MAXSIZE="512M", CCACHE_COMPILERCHECK="content",
+               CMAKE_C_COMPILER_LAUNCHER=str(binary), CMAKE_CXX_COMPILER_LAUNCHER=str(binary))
+    return env
+
+
+def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
+    targets = discover_targets(work / ".cmake/api/v1/reply")
+    (work / "link-targets.json").write_text(json.dumps(targets, indent=2) + "\n")
+    print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} Rust fixtures ({jobs} Ninja workers)", flush=True)
+    subprocess.run(["cmake", "--build", str(work), "--parallel", str(jobs), "--target", *targets,
+                    "--", "-k", "0"], cwd=ROOT, env=env, check=True)
+
+
 def link(alias: str, work: Path, jobs: int) -> None:
+    with tempfile.TemporaryDirectory(prefix="cmocka-link-cache-") as directory:
+        env = cache_env(Path(directory), work / "compiler-cache")
+        try:
+            _link(alias, work, jobs, env)
+        finally:
+            subprocess.run([env["CMAKE_C_COMPILER_LAUNCHER"], "--show-stats"], env=env, check=False)
+
+
+def _link(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
     started = time.monotonic()
     target = TRIPLES[alias]
     local_gate.add_target(target)
     # Invoke Cargo even on a warm tree: the cross project's legacy custom
     # command only depends on manifests, which cannot detect a Rust source edit.
     local_gate.soldr_cargo(["build", "--release", "--locked", "--target", target, "-p", "libobs-rust"])
+    print(f"Tier 2 {alias}: Rust archive ready in {time.monotonic() - started:.2f}s", flush=True)
     work.mkdir(parents=True, exist_ok=True)
     wrappers = work / "soldr-tools"
     wrappers.mkdir(exist_ok=True)
@@ -97,18 +131,18 @@ def link(alias: str, work: Path, jobs: int) -> None:
     query.touch()
     archiver = subprocess.run(["soldr", "cc", "--target", target, "--print-ar"],
                               cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
-    env = local_gate.soldr_env({"OBS_CROSS_TARGET": alias, "SOLDR_PORCELAIN": "0",
-                               f"AR_{target.replace('-', '_')}": archiver})
+    env = dict(env, OBS_CROSS_TARGET=alias, SOLDR_PORCELAIN="0")
+    env[f"AR_{target.replace('-', '_')}"] = archiver
+    configured = time.monotonic()
     subprocess.run(["cmake", "-S", str(ROOT), "-B", str(work), "-G", "Ninja",
                     f"-DOBS_CROSS_TARGET={alias}", "-DOBS_CROSS_LINK=ON", "-DOBS_CROSS_TIER2=ON",
                     "-DCMAKE_BUILD_TYPE=Release", f"-DRust_CARGO={wrappers / 'cargo'}",
                     f"-DRust_COMPILER={wrappers / 'rustc'}", f"-DRust_CARGO_TARGET={target}",
-                    "-DOBS_TEST_SANITIZE_PER_TARGET=OFF", *toolchain_args], cwd=ROOT, env=env, check=True)
-    targets = discover_targets(work / ".cmake/api/v1/reply")
-    (work / "link-targets.json").write_text(json.dumps(targets, indent=2) + "\n")
-    print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} Rust fixtures", flush=True)
-    subprocess.run(["cmake", "--build", str(work), "--parallel", str(jobs), "--target", *targets,
-                    "--", "-k", "0"], cwd=ROOT, env=env, check=True)
+                    "-DOBS_TEST_SANITIZE_PER_TARGET=OFF",
+                    f"-DCMAKE_C_COMPILER_LAUNCHER={env['CMAKE_C_COMPILER_LAUNCHER']}",
+                    f"-DCMAKE_CXX_COMPILER_LAUNCHER={env['CMAKE_CXX_COMPILER_LAUNCHER']}", *toolchain_args], cwd=ROOT, env=env, check=True)
+    print(f"Tier 2 {alias}: configured in {time.monotonic() - configured:.2f}s", flush=True)
+    build_targets(alias, work, jobs, env)
     print(f"Tier 2 {alias}: linked in {time.monotonic() - started:.2f}s", flush=True)
 
 
@@ -116,7 +150,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--alias", choices=TRIPLES, default="win-x64")
     parser.add_argument("--build", type=Path)
-    parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1))
+    parser.add_argument("--jobs", type=int, default=min(4, os.process_cpu_count() or 1))
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error("--jobs must be positive")

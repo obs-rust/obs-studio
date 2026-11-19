@@ -6,6 +6,8 @@
 
     uv run --no-project ci/windows_link_check.py
 
+CI runs categories independently with OBS_CMOCKA_LINK=false; the two required
+cmocka-link matrix jobs own Tier 2 coverage. Local default coverage is unchanged.
 Every non-docs fallback PR and merge group links the eight category binaries,
 including the C oracle (#3919). For libobs and registration/support changes,
 LANES["cmocka_link"] also selects Windows and Darwin hybrid libobs and every configured cmocka

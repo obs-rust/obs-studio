@@ -36,6 +36,8 @@ class CookProfilesTest(unittest.TestCase):
             "rust-cross-lint": "--profile dev -- --tests",
             "rust-cross-lint-release": "--profile dev -- --tests",
             "rust-tests-macos-build": "--profile dev -- --tests",
+            "rust-windows-link": "--profile dev -- --tests",
+            "cmocka-link": None,
             "rust-tests-windows": "--profile dev -- --tests",
             # Corrosion-only build, its own target dir: no cook (#3027).
             "rust-linux-tier2-build": None,

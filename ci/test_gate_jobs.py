@@ -102,7 +102,14 @@ class GateJobs(unittest.TestCase):
         plan = pr_attestation.admission(result, files, event="pull_request")
         windows_link = "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)"
         expected = gate_jobs.pr_expected_jobs(selected, files, plan)
-        self.assertEqual(expected, {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂", windows_link})
+        cmocka = {f"Build 🧱 / Tier 2 Link Check 🔗 ({alias})" for alias in ("win-x64", "mac-arm64")}
+        self.assertEqual(expected, {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂", *cmocka})
+        for name in cmocka:
+            healthy = [job(n, "success") for n in expected if n != name]
+            for conclusion in ("skipped", "cancelled", "failure"):
+                self.assertEqual(blocking([*healthy, job(name, conclusion)], expected=expected), [name])
+            self.assertEqual(blocking(healthy, expected=expected), [name])
+        expected = gate_jobs.pr_expected_jobs(selected, files, {})
         healthy = [job(name, "success") for name in expected if name != windows_link]
         self.assertEqual(blocking(healthy, expected=expected), [windows_link])
         self.assertEqual(blocking([*healthy, job(windows_link, "skipped")], expected=expected), [windows_link])
@@ -121,6 +128,8 @@ class GateJobs(unittest.TestCase):
         selected = scope(["libobs/obs.c.h", ".github/workflows/build-project.yaml"], event="merge_group")
         expected = gate_jobs.expected_jobs(selected)
         required = {
+            "Build 🧱 / Tier 2 Link Check 🔗 (win-x64)",
+            "Build 🧱 / Tier 2 Link Check 🔗 (mac-arm64)",
             "Build 🧱 / Cross Compile 🧰 (mac-arm64,win-x64)",
             "Build 🧱 / Rust Tests 🦀 (macos-26)",
             "Build 🧱 / Rust Tests 🦀 (windows-2025-vs2026)",
