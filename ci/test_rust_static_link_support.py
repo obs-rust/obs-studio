@@ -97,6 +97,7 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "host.c": "int host_value(void) { return 10; }\n",
                 "eager-link-support.c": "int unavailable(void); int unused_eager_adapter(void) { return unavailable(); }\n",
                 "fixture-link-support.c": "int host_value(void); int private_adapter(void) { return host_value() + 1; }\n",
+                "reference-link-support.c": "int bmalloc(void); int dll_counter(void) { return bmalloc(); }\n",
             }
             for name, content in files.items():
                 (source / name).write_text(content)
@@ -126,9 +127,9 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "target_link_libraries(direct_copy PRIVATE libobs_rust-static)\n"
                 "target_link_libraries(indirect_consumer PRIVATE indirect)\n"
                 'target_link_libraries(conditional_consumer PRIVATE "$<$<BOOL:ON>:indirect>")\n'
-                "file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/reference.c \"int main(void) { return 0; }\\n\")\n"
-                "add_executable(reference ${CMAKE_CURRENT_BINARY_DIR}/reference.c)\n"
-                'target_link_libraries(reference PRIVATE "$<$<BOOL:OFF>:libobs_rust-static>")\n'
+                "file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/reference.c \"int dll_counter(void); int main(void) { return dll_counter() != 100; }\\n\")\n"
+                "add_executable(reference ${CMAKE_CURRENT_BINARY_DIR}/reference.c reference-link-support.c)\n"
+                'target_link_libraries(reference PRIVATE OBS::libobs "$<$<BOOL:OFF>:libobs_rust-static>")\n'
                 f'include("{HELPER.as_posix()}" OPTIONAL)\n'
                 f'include("{(ROOT / "test/cmocka/shared-link-support.cmake").as_posix()}")\n'
                 'cmake_language(DEFER CALL obs_share_test_link_support)\n'
@@ -152,7 +153,8 @@ class RustStaticLinkSupport(unittest.TestCase):
             self.assertNotIn("libobs_rust-static", reference_links)
             self.assertNotIn("support", reference_links)
             targets = ("direct",) if baseline_host else ("direct", "direct_copy", "indirect_consumer", "conditional_consumer")
-            self.run_command(["cmake", "--build", str(build), "--parallel", "2", "--target", *targets])
+            self.run_command(["cmake", "--build", str(build), "--parallel", "2", "--target", "reference", *targets])
+            self.run_command([str(build / "reference")])
             for name in targets:
                 self.run_command([str(build / name)])
                 if msvc:
