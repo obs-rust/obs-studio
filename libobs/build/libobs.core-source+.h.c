@@ -70,7 +70,7 @@
 #include "libobs/obs-source-filter-count-fields.c.h"
 #include "libobs/obs-source-filter-index-fields.c.h"
 #include "libobs/obs-source-filter-relationship-fields.c.h"
-#include "libobs/obs-source-get-weak.c.h"
+#include "libobs/obs-source-get-weak-fields.c.h"
 #include "libobs/obs-source-handler-getters-fields.c.h"
 #include "libobs/obs-source-hidden-setter-fields.c.h"
 #include "libobs/obs-source-icon-type-fields.c.h"
