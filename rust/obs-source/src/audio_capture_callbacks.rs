@@ -9,6 +9,14 @@ pub fn update<R: Registry>(
     add: bool,
     log: impl FnOnce(&'static CStr),
 ) {
-    // RED stub: the registration is not ported yet.
-    let _ = (registry, pair, add, log);
+    crate::callback_registry::update(
+        registry,
+        pair,
+        add,
+        [
+            c"obs_source_add_audio_capture_callback",
+            c"obs_source_remove_audio_capture_callback",
+        ],
+        log,
+    );
 }

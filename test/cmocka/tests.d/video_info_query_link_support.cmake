@@ -11,6 +11,7 @@ function(_video_info_query_link_support)
     "${CMAKE_CURRENT_SOURCE_DIR}/output-interleave-name-link-support.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/encoder-video-tex-active-fields-link-support.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/encoder-video-tex-active-mix-link-support.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source-audio-capture-callback-link-support.c"
   )
   target_include_directories(
     video_info_query_link_support

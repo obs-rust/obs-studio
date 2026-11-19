@@ -605,6 +605,35 @@
         "m"
       ]
     },
+    "test_audio_capture_callbacks_rust": {
+      "sources": [
+        "test/cmocka/test_source_audio_capture_callbacks.c",
+        "test/cmocka/source-audio-capture-callback-record-support.c",
+        "libobs/util/base-variadic.c.h",
+        "test/cmocka/source-identity-getter-link-stubs.c"
+      ],
+      "definitions": [
+        "SOURCE_AUDIO_CAPTURE_EXTERNAL",
+        "obs_source_add_audio_capture_callback=obs_source_add_audio_capture_callback_rust",
+        "obs_source_remove_audio_capture_callback=obs_source_remove_audio_capture_callback_rust"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_audio_capture_mix_race": {
       "sources": [
         "test/cmocka/test_audio_capture_mix_race.c"
@@ -22259,6 +22288,13 @@
     },
     "test_audio_buffering_subsample": {
       "target": "test_audio_buffering_subsample"
+    },
+    "test_audio_capture_callbacks_rust": {
+      "target": "test_audio_capture_callbacks_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_audio_capture_mix_race": {
       "target": "test_audio_capture_mix_race",
