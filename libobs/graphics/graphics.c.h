@@ -334,58 +334,6 @@ const char *gs_get_device_name(void)
 	return gs_valid("gs_get_device_name") ? thread_graphics->exports.device_get_name() : NULL;
 }
 
-const char *gs_get_driver_version(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_driver_version"))
-		return NULL;
-
-	if (graphics->exports.gpu_get_driver_version)
-		return (graphics->exports.gpu_get_driver_version());
-	else
-		return NULL;
-}
-
-const char *gs_get_renderer(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_renderer"))
-		return NULL;
-
-	if (graphics->exports.gpu_get_renderer)
-		return (graphics->exports.gpu_get_renderer());
-	else
-		return NULL;
-}
-
-uint64_t gs_get_gpu_dmem(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_gpu_dmem"))
-		return 0;
-
-	if (graphics->exports.gpu_get_dmem)
-		return (graphics->exports.gpu_get_dmem());
-	else
-		return 0;
-}
-
-uint64_t gs_get_gpu_smem(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_gpu_smem"))
-		return 0;
-
-	if (graphics->exports.gpu_get_smem)
-		return (graphics->exports.gpu_get_smem());
-	else
-		return 0;
-}
-
 static inline void reset_immediate_arrays(graphics_t *graphics)
 {
 	da_init(graphics->verts);

@@ -7,6 +7,7 @@
 #include "libobs/graphics/effect-parser.c.h"
 #include "libobs/graphics/graphics-device-load-fields.c.h"
 #include "libobs/graphics/graphics-device-queries-fields.c.h"
+#include "libobs/graphics/graphics-gpu-metadata.c.h"
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics-indexbuffer-maintenance-fields.c.h"
 #include "libobs/graphics/graphics-render-target-setters-fields.c.h"
