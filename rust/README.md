@@ -635,4 +635,3 @@ done
 
 Published binaries go on the app's `obs-studio-rust-v*` releases; the
 `obs-stream-rust-v0.1.0` tag is retired.
-

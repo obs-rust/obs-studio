@@ -10,6 +10,8 @@ function(_source_update_properties_link_support)
     source_update_properties_link_support
     STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/source-update-properties-link-support.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source-update-properties-base-log-link-support.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/source-update-properties-base-crash-link-support.c"
   )
   target_include_directories(
     source_update_properties_link_support
