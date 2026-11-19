@@ -33,6 +33,8 @@ mod base_size;
 mod base_size_parity;
 mod boolean_queries;
 mod boolean_queries_parity;
+mod canvas_getter;
+mod canvas_getter_parity;
 mod caption_callbacks;
 mod caption_callbacks_parity;
 mod color_space;
