@@ -410,7 +410,7 @@ class CiScopeTest(unittest.TestCase):
             "MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token"
             " || secrets.MQ_RUNNER_STATUS_TOKEN }}", steps["Check Runner Availability"],
         )
-        for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE"):
+        for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE", "MQ_RUNNER_MAX_RUNS"):
             self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
         self.assertIn('run: uv run --no-project ci/run_base_runner_selector.py', probe)
         self.assertIn("heavy-labels: ${{ steps.select.outputs.heavy-labels }}", probe)
