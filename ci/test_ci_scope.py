@@ -317,6 +317,7 @@ class CiScopeTest(unittest.TestCase):
             "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
             "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link", "cmocka-link",
         }
+        pr_only = {"rust-tests-linux", "cross-compile", "linux-qt-frontend"}
         light = {
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-latest",
@@ -324,8 +325,7 @@ class CiScopeTest(unittest.TestCase):
                 "tier2-lane-proof": "ubuntu-26.04",
             },
             "build-project.yaml": dict.fromkeys((
-                "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
-                "rust-cross-proof", "linux-qt-frontend",
+                "check-event", "ci-mode", "rust-cross-proof",
             ), "ubuntu-26.04"),
             "check-format.yaml": {"checks": "ubuntu-latest"},
         }
@@ -343,16 +343,17 @@ class CiScopeTest(unittest.TestCase):
                 if not runner:
                     continue
                 selected = "inputs.mq-heavy-labels" in runner[1]
-                self.assertEqual(selected, name == "build-project.yaml" and job in heavy, job)
+                self.assertEqual(selected, name == "build-project.yaml" and job in heavy | pr_only, job)
                 if selected:
                     selected_jobs.add(job)
+                    prefix = "github.event_name == 'pull_request' && " if job in pr_only else ""
                     self.assertIn(
-                        "runs-on: ${{ inputs.mq-heavy-labels != '' && "
+                        "runs-on: ${{ " + prefix + "inputs.mq-heavy-labels != '' && "
                         "fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}", block,
                     )
                 else:
                     self.assertNotIn("mq-", runner[1])
-            self.assertEqual(selected_jobs, heavy if name == "build-project.yaml" else set())
+            self.assertEqual(selected_jobs, (heavy | pr_only) if name == "build-project.yaml" else set())
             self.assertNotIn("mq-runner-labels", text)
             if name == "build-project.yaml":
                 self.assertIn("runs-on: ${{ matrix.os }}", blocks["ubuntu-build"])
@@ -386,7 +387,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", probe)
         self.assertIn("if: github.event_name != 'pull_request'", probe)
         self.assertIn("!cancelled()", blocks["build-project"].split("    uses:", 1)[0])
-        self.assertIn("github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''", probe)
+        self.assertIn("(github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''", probe)
         steps = dict(re.findall(
             r"^      - name: ([^\n]+)\n(.*?)(?=^      - |\Z)", probe, re.MULTILINE | re.DOTALL
         ))
@@ -395,7 +396,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("id: mq-probe-app", app)
         self.assertIn("continue-on-error: true", app)
         self.assertIn(
-            "if: github.event_name == 'merge_group' && vars.MQ_RUNNER_LABELS != ''"
+            "if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''"
             " && vars.MQ_PROBE_APP_ID != ''\n", app,
         )
         for setting in (
@@ -411,7 +412,7 @@ class CiScopeTest(unittest.TestCase):
         )
         for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE"):
             self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
-        self.assertIn("run: uv run --no-project ci/select_mq_runner.py", probe)
+        self.assertIn('uv run --no-project "$trusted/select_mq_runner.py"', probe)
         self.assertIn("heavy-labels: ${{ steps.select.outputs.heavy-labels }}", probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
         self.assertEqual(probe.count("continue-on-error: true"), 4)

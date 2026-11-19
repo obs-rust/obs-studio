@@ -3040,6 +3040,12 @@ area.
 
 ## Development builds
 
+- **Idle Dell capacity for member PRs.** Maintainers can opt in with
+  `DELL_PR_ROUTING=on`; only same-repository PRs by verified active obs-rust
+  members qualify. `MQ_PR_RESERVE` keeps queue capacity free, and uncertain
+  eligibility or capacity stays hosted. Default off. *Linux CI*, 2026-11-19.
+  Issue [#4896](https://github.com/obs-rust/obs-studio/issues/4896).
+
 - **Dated conversion tracker.** The README shows the libobs Rust percentage,
   source date and refresh workflow status beside the conversion graph, making
   a stalled tracker visible. *All*, 2026-11-08.

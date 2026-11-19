@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""Probe opt-in queue runners; every unavailable/unknown state uses hosted CI."""
+"""Probe opt-in queue/member PR runners; unknown states always use hosted CI."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ class Probe:
                         pass
         return min(MAX_RETRY_AFTER, max(0, delay))
 
-    def get(self, path: str, *, token: str | None = None) -> dict:
+    def get(self, path: str, *, token: str | None = None, retry: bool = True) -> dict:
         request = Request(
             f"{self.api_url}/{path}",
             headers={
@@ -111,14 +111,19 @@ class Probe:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        for attempt in range(MAX_RETRIES + 1):
+        public_login = path.split("/public_members/", 1)[1] if "/public_members/" in path else None
+        retries = MAX_RETRIES if retry else 0
+        for attempt in range(retries + 1):
             timeout = min(API_TIMEOUT, self.time_left())
             if self.remaining <= 0:
                 raise RequestBudgetExhausted("request budget exhausted")
             self.remaining -= 1  # Retries consume the same shared budget.
             try:
                 with urlopen(request, timeout=timeout) as response:
-                    result = json.load(response)
+                    if public_login and getattr(response, "status", None) == 204:
+                        result = {"public_member": True, "user": {"login": public_login}}
+                    else:
+                        result = json.load(response)
                 self.time_left()
                 return result
             except SelectionDeadline:
@@ -126,12 +131,14 @@ class Probe:
             except (HTTPError, URLError, TimeoutError, ConnectionError) as error:
                 if isinstance(error, HTTPError):
                     error.close()
+                    if public_login and error.code == 404:
+                        return {"public_member": False}
                     if error.code != 429 and not 500 <= error.code < 600:
                         raise
                 self.time_left()
                 if self.remaining <= 0:
                     raise RequestBudgetExhausted("request budget exhausted") from error
-                if attempt == MAX_RETRIES:
+                if attempt == retries:
                     raise
                 self.sleep(min(self.retry_delay(error, attempt), self.time_left()))
 
@@ -307,14 +314,14 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
     return queued, dell, decided
 
 
-def active_runs(repo: str, probe: Probe, token: str) -> dict:
+def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group") -> dict:
     """Keep only active run snapshots; terminal snapshots release reservations."""
     runs = {}
     finished = set()
     for status in ("queued", "in_progress"):
         try:
             entries = probe.entries(
-                f"repos/{repo}/actions/workflows/ci.yml/runs?event=merge_group&status={status}",
+                f"repos/{repo}/actions/workflows/ci.yml/runs?event={event}&status={status}",
                 "workflow_runs",
                 token,
             )
@@ -338,7 +345,7 @@ def active_runs(repo: str, probe: Probe, token: str) -> dict:
             if (
                 type(run_id) is not int
                 or run_id < 1
-                or run["event"] != "merge_group"
+                or run["event"] != event
                 or run["status"] not in ("queued", "in_progress")
             ):
                 raise ValueError(f"runs probe ({status}): invalid active run")
@@ -364,6 +371,12 @@ def inflight_commitments(
     if current_id < 1 or not token:
         raise ValueError("missing Actions probe identity")
     runs = active_runs(repo, probe, token)
+    if os.environ.get("DELL_PR_ROUTING") == "on":
+        # Queue runs sort before every PR, even a PR created earlier. Inspect
+        # live PR jobs for both events so the queue sees their queued demand.
+        runs = {key: ((0, *value[0]), value[1]) for key, value in runs.items()}
+        prs = active_runs(repo, probe, token, "pull_request")
+        runs.update({key: ((1, *value[0]), value[1]) for key, value in prs.items()})
     current = runs[current_id]  # An incomplete/eventually consistent list is unsafe.
     queued = committed = unprobed = 0
     current = current[0]
@@ -403,17 +416,18 @@ def inflight_commitments(
 
 
 def admission_available(
-    repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int
+    repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int,
+    reserve: int = 0,
 ) -> tuple[bool, str]:
     """The idle floor and in-flight run cap must both admit this run."""
-    if idle < required:
+    if idle - reserve < required:
         return False, ""
     queued, committed = inflight_commitments(repo, wanted, probe, required)
-    idle_slots = (idle - queued) // required
+    idle_slots = (idle - queued - reserve) // required
     # The total cap includes runs whose running jobs already reduce idle. Using
     # idle for this cap would charge those busy runners twice. Idle slots below
     # independently limit how much new work this snapshot can admit.
-    limit = online // required
+    limit = (online - reserve) // required
     counts = (
         f"; queued={queued}, committed={committed}, run_limit={limit}"
         f", idle_run_slots={max(0, idle_slots)}"
@@ -443,6 +457,34 @@ def requested_labels(labels: str) -> list[str]:
     return requested
 
 
+def eligible_pr(repo: str, probe: Probe) -> bool:
+    """Read identity only from the Actions payload and authenticated membership.
+
+    The workflow extracts this module and pr_attestation from immutable BASE.
+    Public membership's authenticated 204 and private membership's active state
+    follow the admission verifier's contract; failures never grant access.
+    """
+    from pr_attestation import LOGIN, member
+
+    payload = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+    pr = payload["pull_request"]
+    base = pr["base"]["repo"]
+    head = pr["head"]["repo"]
+    repository = payload["repository"]
+    if repo.split("/", 1)[0] != "obs-rust" or any(
+        value["full_name"] != repo for value in (base, head, repository)
+    ):
+        return False
+    if type(base["id"]) is not int or base["id"] < 1 or not (
+        base["id"] == head["id"] == repository["id"]
+    ):
+        return False
+    login = pr["user"]["login"]
+    if not isinstance(login, str) or not LOGIN.fullmatch(login):
+        return False
+    return member(login, lambda path: probe.get(path, retry=False)) is None
+
+
 def select_labels(
     event: str,
     labels: str,
@@ -460,7 +502,8 @@ def select_labels(
     each HTTP request stay bounded; runners visible in both scopes count only
     once. In-flight commitments and older undecided runs reserve capacity.
     """
-    if event != "merge_group" or not labels:
+    is_pr = event == "pull_request"
+    if (event != "merge_group" and not (is_pr and os.environ.get("DELL_PR_ROUTING") == "on")) or not labels:
         return decision("opt-in merge-group runner selection is disabled")
     step = "configuration"
     try:
@@ -471,6 +514,15 @@ def select_labels(
             return decision("runner probe token is missing")
         wanted = {label.casefold() for label in requested}
         probe = Probe(token, api_url)
+        reserve = 0
+        if is_pr:
+            step = "PR eligibility"
+            if not eligible_pr(repo, probe):
+                return decision("PR author is not a verified same-repository active member")
+            step = "PR reserve configuration"
+            reserve = int(os.environ.get("MQ_PR_RESERVE") or demand or "1")
+            if reserve < 0:
+                raise ValueError("PR reserve must be nonnegative")
         matched = {}
         unavailable = []
         owner = repo.split("/", 1)[0]
@@ -497,11 +549,14 @@ def select_labels(
         busy = sum(matched.values())
         idle = len(matched) - busy
         counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
+        if is_pr:
+            counts += f", pr_reserve={reserve}"
         if unavailable:
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
         step = "in-flight commitments probe"
+        options = {"reserve": reserve} if is_pr else {}
         admitted, commitments = admission_available(
-            repo, wanted, probe, len(matched), idle, required
+            repo, wanted, probe, len(matched), idle, required, **options
         )
         probe.time_left()
         counts += commitments

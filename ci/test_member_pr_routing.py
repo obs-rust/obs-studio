@@ -150,7 +150,16 @@ class MemberPrWorkflowTest(unittest.TestCase):
             for line in block.splitlines():
                 if "secrets." in line and "secrets.GITHUB_TOKEN" not in line:
                     with self.subTest(job=name, line=line):
-                        self.assertIn("github.event_name != 'pull_request' && secrets.", line)
+                        self.assertIn("(github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.", line)
+
+    def test_caller_strips_secrets_before_dell_pr_reusable_workflow(self):
+        ci = (ROOT / ".github/workflows/ci.yml").read_text()
+        block = ci.split("  build-project:\n", 1)[1].split("  flatpak-runtime-reuse:\n", 1)[0]
+        self.assertNotIn("secrets: inherit", block)
+        build = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        names = set(re.findall(r"secrets\.([A-Z0-9_]+)", build))
+        for name in names:
+            self.assertIn(name + ": ${{ (github.event_name != 'pull_request' || needs.select-mq-runner.outputs.heavy-labels == '') && secrets." + name + " || '' }}", block)
 
     def test_fast_gate_pr_routing_keeps_queue_hosted(self):
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
