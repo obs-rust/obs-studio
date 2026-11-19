@@ -6,6 +6,16 @@ include(ccache)
 include(zccache)
 include(compiler_common)
 
+# Test builds compute floats strictly (#3422): no multiply-add contraction into
+# an FMA. The hosted runners' gcc contracts by default and the Tier 2 image's
+# gcc does not, while Rust never does, so exact C-vs-Rust and golden float
+# comparisons would depend on the host. The C oracle and the sanitizer passes
+# pass the same flag; app and release builds keep the compiler default.
+# test_float_contraction fails when this is missing on a host that contracts.
+if(ENABLE_UNIT_TESTS)
+  add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-ffp-contract=off>")
+endif()
+
 option(ENABLE_COMPILER_TRACE "Enable Clang time-trace (requires Clang and Ninja)" OFF)
 mark_as_advanced(ENABLE_COMPILER_TRACE)
 

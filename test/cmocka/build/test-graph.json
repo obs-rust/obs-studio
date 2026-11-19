@@ -4770,6 +4770,14 @@
         "frontend/utility/FirstRunWizard.hpp"
       ]
     },
+    "test_float_contraction": {
+      "sources": [
+        "test/cmocka/test_float_contraction.c"
+      ],
+      "libraries": [
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_flv_mux": {
       "sources": [
         "test/cmocka/test_flv_mux.c",
@@ -24053,6 +24061,12 @@
     "test_first_run_wizard": {
       "target": "test_first_run_wizard",
       "requires": "HAVE_FRONTEND_PLAIN_TEST_OWNER",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_float_contraction": {
+      "target": "test_float_contraction",
       "command": [
         "${target}"
       ]
