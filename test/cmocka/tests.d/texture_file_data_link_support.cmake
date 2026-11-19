@@ -1,9 +1,11 @@
 # Real image conversion and session glue for every standalone Rust consumer.
+# Keep the unused private graphics callback in its own lazy archive member.
 function(_texture_file_data_link_support)
   add_library(
     texture_file_data_link_support
     STATIC
     "${CMAKE_SOURCE_DIR}/libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+    "${CMAKE_SOURCE_DIR}/test/cmocka/texture-file-data-max-size-link-stub.c"
   )
   target_include_directories(texture_file_data_link_support PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
   target_link_libraries(
