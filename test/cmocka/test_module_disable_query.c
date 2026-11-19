@@ -1,6 +1,7 @@
 /* C characterization for #5166. Record the real wrapper's dependency calls,
  * then check the public API against this build's generated core-module list.
- * The Rust swap must relink the unchanged dispatch fixture to the replacement. */
+ * The dispatch spy is a C-source baseline/oracle; the generated-list cases
+ * exercise the shared-library implementation and stay unchanged for the swap. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

@@ -7943,7 +7943,8 @@
       ],
       "watch_inputs": [
         "libobs/obs-module-disable-query.c.h"
-      ]
+      ],
+      "requires": "ENABLE_CORE_MODULES"
     },
     "test_module_failure_info": {
       "sources": [
@@ -23652,7 +23653,8 @@
       "target": "test_module_disable_query",
       "command": [
         "${target}"
-      ]
+      ],
+      "requires": "ENABLE_CORE_MODULES"
     },
     "test_module_failure_info": {
       "target": "test_module_failure_info",
