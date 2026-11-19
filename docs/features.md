@@ -2397,13 +2397,16 @@ area.
   the saved layout is restored again at each new window size, and a quit
   writes that layout, not the one squeezed into a smaller window (for
   example after leaving full screen). Hiding, moving, floating or adding a
-  dock counts as a change and is kept (#3740). *All*,
+  dock counts as a change and is kept (#3740), also when the window manager
+  resizes the window at the same time, and Reset Docks stays reset (#5230).
+  *All*,
   2026-10-24 (column: pending merge). Issue
   [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
   [#2731](https://github.com/obs-rust/obs-studio/pull/2731),
   [#2743](https://github.com/obs-rust/obs-studio/pull/2743),
-  [#3796](https://github.com/obs-rust/obs-studio/pull/3796).
+  [#3796](https://github.com/obs-rust/obs-studio/pull/3796),
+  [#4841](https://github.com/obs-rust/obs-studio/pull/4841).
 
 - Importing a profile from a folder path that ends in a slash (as the
   macOS folder dialog returns it) creates the profile in a folder of its
