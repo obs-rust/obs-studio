@@ -16,6 +16,7 @@ mod audio_active;
 mod audio_active_parity;
 mod audio_active_setter;
 mod audio_active_setter_parity;
+mod audio_capture_callbacks;
 mod audio_input;
 mod audio_input_parity;
 mod audio_input_path;
