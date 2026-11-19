@@ -184,6 +184,7 @@ pub mod video_frame_copy;
 pub mod video_frame_timing;
 pub mod video_graphics_tasks;
 pub mod video_info_query;
+pub mod video_level_queries;
 pub mod video_output_step;
 pub mod video_pacing;
 pub mod video_plan;

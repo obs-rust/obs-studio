@@ -20038,9 +20038,14 @@
     "test_video_level_queries": {
       "sources": [
         "test/cmocka/test_video_level_queries.c",
-        "libobs/obs-video-level-queries.c.h"
+        "libobs/obs-video-level-queries-fields.c.h"
+      ],
+      "definitions": [
+        "obs_get_video_sdr_white_level=obs_video_level_queries_sdr_white_level_request",
+        "obs_get_video_hdr_nominal_peak_level=obs_video_level_queries_hdr_nominal_peak_level_request"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "Uthash::Uthash",

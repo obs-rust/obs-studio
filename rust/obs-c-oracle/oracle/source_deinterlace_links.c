@@ -5,10 +5,12 @@
  * are oracle/source_deinterlace_getters.c's), and do-nothing definitions
  * of the libobs calls the deinterlace shims
  * (rust/obs-source-seam/src/ffi/source_deinterlace.rs) name under libobs's
- * own names: the frame cache, the async texture upload, the effect load,
- * the SDR white level and the framebuffer sRGB calls. The deinterlace
- * texture size is obs-source's own Rust export
- * (rust/obs-source/src/ffi/source_deinterlace_texture.rs).
+ * own names: the frame cache, the async texture upload, the effect load
+ * and the framebuffer sRGB calls. The SDR white level is obs-core's own
+ * Rust export (rust/obs-core/src/ffi/video_level_queries.rs), which reads
+ * oracle/video_level_queries.c's core: NULL outside its parity test, so
+ * the default 300. The deinterlace texture size is obs-source's own Rust
+ * export (rust/obs-source/src/ffi/source_deinterlace_texture.rs).
  *
  * The seam stays C in libobs.core-source, so the shims call it in the test
  * binary as they do in the hybrid libobs. Its core reads go to
@@ -65,11 +67,6 @@ gs_effect_t *obs_load_effect(gs_effect_t **effect, const char *file)
 {
 	UNUSED_PARAMETER(file);
 	return *effect;
-}
-
-float obs_get_video_sdr_white_level(void)
-{
-	return 300.0f;
 }
 
 bool gs_framebuffer_srgb_enabled(void)

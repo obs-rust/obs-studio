@@ -153,6 +153,8 @@ mod video_graphics_tasks;
 mod video_graphics_tasks_parity;
 mod video_info_query;
 mod video_info_query_parity;
+mod video_level_queries;
+mod video_level_queries_parity;
 mod video_output_step;
 mod video_output_step_parity;
 mod video_pacing;

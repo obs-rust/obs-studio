@@ -55,7 +55,7 @@
 #include "libobs/obs-type-catalog-enum.c.h"
 #include "libobs/obs-ui-task-handler-fields.c.h"
 #include "libobs/obs-video-info-query-fields.c.h"
-#include "libobs/obs-video-level-queries.c.h"
+#include "libobs/obs-video-level-queries-fields.c.h"
 #include "libobs/obs-video-stats-queries.c.h"
 #include "libobs/obs-weak-object-expired-fields.c.h"
 #include "libobs/obs-weak-object-identity-fields.c.h"

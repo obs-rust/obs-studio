@@ -26,6 +26,12 @@ fn read(path: &Path) -> Result<Value, String> {
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// Families whose C tests keep their own names (no `_rust` twin) while
+/// selecting the real Rust code and C adapter. Hotkey fixtures predate the
+/// `_rust` naming convention; core-relinked fixtures are C-source
+/// characterizations relinked in place by their swap (#5187).
+const UNSUFFIXED: [&str; 2] = ["hotkey-control", "core-relinked"];
+
 struct Entries {
     graph: Graph,
     families: BTreeMap<String, Vec<String>>,
@@ -54,6 +60,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
                 | "private-parser"
                 | "windows-keys"
                 | "hotkey-control"
+                | "core-relinked"
         ) {
             return Err(format!("unknown registration family {family_name}"));
         }
@@ -62,7 +69,7 @@ fn load(directory: &Path) -> Result<Entries, String> {
             let entry = read(&path)?;
             let graph = Graph::parse(&entry.to_string())?;
             let base = path.file_stem().unwrap().to_str().unwrap().to_owned();
-            let name = if family_name == "hotkey-control" {
+            let name = if UNSUFFIXED.contains(&family_name.as_str()) {
                 base.clone()
             } else {
                 format!("{base}_rust")
@@ -235,9 +242,10 @@ fn entries_cover_every_rust_static_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let actual = Graph::load(&root.join("test/cmocka/build/test-graph.json")).unwrap();
     assert_coverage(&entries.graph, &actual);
-    // Hotkey fixtures predate the `_rust` naming convention. Their C tests
-    // keep their names while selecting the real Rust control and C adapter.
-    for name in &entries.families["hotkey-control"] {
+    for name in UNSUFFIXED
+        .iter()
+        .flat_map(|family| &entries.families[*family])
+    {
         assert_eq!(
             format!("{:#?}", entries.graph.targets[name]),
             format!("{:#?}", actual.targets[name]),
