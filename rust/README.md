@@ -633,3 +633,5 @@ done
 
 Published binaries go on the app's `obs-studio-rust-v*` releases; the
 `obs-stream-rust-v0.1.0` tag is retired.
+
+| `libobs/obs-source-update-properties.c.h` | `obs-source::update_properties` | Swapped in hybrid libobs. Validate before one synchronous source-only notification with the exact source pointer, including private sources and repeated calls. C-owned validation and signal adapters preserve the NULL diagnostic and settings. The unchanged `test_source_update_properties` runs OFF/ON; original-C parity also covers calldata mutation and reentrancy. No intentional differences. |

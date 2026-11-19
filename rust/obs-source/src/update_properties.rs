@@ -8,6 +8,8 @@ pub trait Source {
     fn signal_update_properties(&self);
 }
 
-pub fn update_properties(_source: &impl Source) {
-    todo!("port obs_source_update_properties")
+pub fn update_properties(source: &impl Source) {
+    if source.valid() {
+        source.signal_update_properties();
+    }
 }

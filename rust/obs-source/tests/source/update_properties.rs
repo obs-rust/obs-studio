@@ -31,16 +31,18 @@ impl Source for Probe {
 
     fn signal_update_properties(&self) {
         assert!(self.present);
-        self.events.borrow_mut().push(Event::Signal(
-            None, "update_properties".into(), self.token,
-        ));
+        self.events
+            .borrow_mut()
+            .push(Event::Signal(None, "update_properties".into(), self.token));
     }
-
 }
 
 fn probe(present: bool, private: bool) -> Probe {
     Probe {
-        present, _private: private, token: 0x5204, settings: "{\"marker\":\"kept\"}".into(),
+        present,
+        _private: private,
+        token: 0x5204,
+        settings: "{\"marker\":\"kept\"}".into(),
         events: RefCell::new(Vec::new()),
     }
 }
@@ -49,9 +51,13 @@ fn probe(present: bool, private: bool) -> Probe {
 fn test_source_update_properties_null_source() {
     let source = probe(false, false);
     update_properties(&source);
-    assert_eq!(*source.events.borrow(), [Event::Validate, Event::Log(
-        400, "obs_source_update_properties: Null 'source' parameter",
-    )]);
+    assert_eq!(
+        *source.events.borrow(),
+        [
+            Event::Validate,
+            Event::Log(400, "obs_source_update_properties: Null 'source' parameter",)
+        ]
+    );
 }
 
 fn signals_source_only(private: bool) {
@@ -59,9 +65,13 @@ fn signals_source_only(private: bool) {
     for count in 1..=3 {
         update_properties(&source);
         assert_eq!(source.events.borrow().len(), count * 2);
-        assert_eq!(&source.events.borrow()[(count - 1) * 2..], [
-            Event::Validate, Event::Signal(None, "update_properties".into(), source.token),
-        ]);
+        assert_eq!(
+            &source.events.borrow()[(count - 1) * 2..],
+            [
+                Event::Validate,
+                Event::Signal(None, "update_properties".into(), source.token),
+            ]
+        );
     }
 }
 
