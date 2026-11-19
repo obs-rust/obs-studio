@@ -1,8 +1,13 @@
 //! Opt-in integration against real native dependencies and libobs-rust.
 use obs_build::{NativeBuild, frontend, graphics, libobs, plugins, scripting};
-use std::{ffi::c_void, path::PathBuf};
+use std::{
+    ffi::c_void,
+    path::{Path, PathBuf},
+};
 #[path = "libobs/application.rs"]
 mod application;
+#[path = "libobs/core_module_manifest.rs"]
+mod core_module_manifest;
 #[path = "libobs/macos_capture.rs"]
 mod macos_capture;
 #[path = "libobs/macos_graphics.rs"]
@@ -1337,6 +1342,12 @@ fn macos_core_builds_from_the_canonical_manifest() {
     let options = libobs::Options {
         native_dependencies: Some(dependencies.into()),
         test_support: std::env::var_os("OBS_BUILD_MACOS_REFERENCE").is_some(),
+        core_modules: core_module_manifest::for_reference(
+            std::env::var_os("OBS_BUILD_MACOS_REFERENCE")
+                .as_deref()
+                .map(Path::new),
+        )
+        .expect("read the CMake reference core-module manifest"),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
         pulseaudio: false,
         gio: false,

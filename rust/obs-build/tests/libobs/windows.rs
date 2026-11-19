@@ -28,6 +28,12 @@ fn core_builds_from_the_canonical_manifest() {
     let options = libobs::Options {
         native_dependencies: Some(dependencies.into()),
         test_support: std::env::var_os("OBS_BUILD_WINDOWS_REFERENCE").is_some(),
+        core_modules: super::core_module_manifest::for_reference(
+            std::env::var_os("OBS_BUILD_WINDOWS_REFERENCE")
+                .as_deref()
+                .map(Path::new),
+        )
+        .expect("read the CMake reference core-module manifest"),
         hevc: std::env::var_os("OBS_BUILD_DISABLE_HEVC").is_none(),
         unity: std::env::var_os("OBS_BUILD_WINDOWS_SEPARATE").is_none(),
         pch: std::env::var_os("OBS_BUILD_WINDOWS_PCH").is_some(),
