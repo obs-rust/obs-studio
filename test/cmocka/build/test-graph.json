@@ -7204,6 +7204,50 @@
         "libobs/data"
       ]
     },
+    "test_main_render_callbacks": {
+      "sources": [
+        "test/cmocka/test_main_render_callbacks.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-main-render-callbacks.c.h"
+      ]
+    },
+    "test_main_rendered_callbacks": {
+      "sources": [
+        "test/cmocka/test_main_rendered_callbacks.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-main-rendered-callbacks.c.h"
+      ]
+    },
     "test_math_extra": {
       "sources": [
         "test/cmocka/test_math_extra.c"
@@ -23595,6 +23639,22 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_main_render_callbacks": {
+      "target": "test_main_render_callbacks",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
+    },
+    "test_main_rendered_callbacks": {
+      "target": "test_main_rendered_callbacks",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_math_extra": {
       "target": "test_math_extra",
