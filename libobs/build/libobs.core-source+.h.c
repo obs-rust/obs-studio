@@ -82,7 +82,7 @@
 #include "libobs/obs-source-missing-files-getter-fields.c.h"
 #include "libobs/obs-source-module-fields.c.h"
 #include "libobs/obs-source-module-roots.c.h"
-#include "libobs/obs-source-mute-monitor-hotkeys.c.h"
+#include "libobs/obs-source-mute-monitor-hotkey-registration.c.h"
 #include "libobs/obs-source-name-fields.c.h"
 #include "libobs/obs-source-properties-fields.c.h"
 #include "libobs/obs-source-push-hotkey-fields.c.h"

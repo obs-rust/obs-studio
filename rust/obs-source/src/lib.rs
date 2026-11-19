@@ -229,6 +229,7 @@ pub mod interaction;
 pub mod media_admission;
 pub mod missing_files_getter;
 pub mod monitoring;
+pub mod mute_monitor_hotkeys;
 pub mod own_clock_drift;
 pub mod private_settings;
 pub mod properties;
