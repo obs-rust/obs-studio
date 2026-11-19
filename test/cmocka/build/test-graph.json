@@ -6525,6 +6525,24 @@
         "frontend/settings/OBSHotkeyCapture.hpp"
       ]
     },
+    "test_hotkey_combination_background_id": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_hotkey_combination_background_id.c"
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_hotkey_context_data": {
       "sources": [
         "test/cmocka/test_hotkey_context_data.c"
@@ -24351,6 +24369,12 @@
       "resource_locks": [
         "timing"
       ]
+    },
+    "test_hotkey_combination_background_id": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_hotkey_combination_background_id"
     },
     "test_hotkey_context_data": {
       "target": "test_hotkey_context_data",
