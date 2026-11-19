@@ -19120,6 +19120,22 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_video_info_query": {
+      "sources": [
+        "test/cmocka/test_video_info_query.c",
+        "libobs/obs-video-info-query.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_video_io_hidden": {
       "sources": [
         "test/cmocka/test_video_io_hidden.c",
@@ -27579,6 +27595,12 @@
     },
     "test_video_frame_timing_steps": {
       "target": "test_video_frame_timing_steps",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_video_info_query": {
+      "target": "test_video_info_query",
       "command": [
         "${target}"
       ]
