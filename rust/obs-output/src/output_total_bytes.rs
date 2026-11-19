@@ -14,6 +14,16 @@ pub trait Host {
 
 /// Preserve the C order: NULL diagnostic, callback presence before the delay
 /// loads, short-circuit delay reads, then exactly one dispatch.
-pub fn query<H: Host>(_host: Option<&H>, _null_output: impl FnOnce()) -> u64 {
-    0
+pub fn query<H: Host>(host: Option<&H>, null_output: impl FnOnce()) -> u64 {
+    let Some(host) = host else {
+        null_output();
+        return 0;
+    };
+    if !host.has_callback() {
+        return 0;
+    }
+    if host.delay_active() && !host.delay_capturing() {
+        return 0;
+    }
+    host.dispatch()
 }
