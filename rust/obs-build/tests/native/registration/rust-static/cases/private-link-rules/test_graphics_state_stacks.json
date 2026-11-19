@@ -9,7 +9,8 @@
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "libobs/obs-graphics-effect-file-fields.c.h",
-        "test/cmocka/source-update-properties-link-support.c"
+        "test/cmocka/source-update-properties-link-support.c",
+        "test/cmocka/output-starting-queries-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [

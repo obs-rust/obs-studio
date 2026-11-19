@@ -244,6 +244,7 @@ int main(void) {
                     "test/cmocka/source-update-properties-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                     "libobs/build/libobs.image-decode-adapter+.h.c",
+                    "test/cmocka/output-starting-queries-link-support.c",
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):

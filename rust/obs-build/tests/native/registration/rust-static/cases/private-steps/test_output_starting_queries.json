@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_output_starting_queries_rust": {
+      "sources": [
+        "test/cmocka/test_output_starting_queries.c",
+        "test/cmocka/output-starting-queries-recording-adapter.c"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "definitions": [
+        "OUTPUT_STARTING_QUERIES_EXTERNAL"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_output_starting_queries_rust": {
+      "target": "test_output_starting_queries_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

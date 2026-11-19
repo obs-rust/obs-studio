@@ -77,6 +77,8 @@ and compares their exported symbols. `OBS_LIBOBS_BACKEND=C` is temporary rollbac
 
 ## Ported so far
 
+The private output starting/encoder-demand queries use lazy safe Rust decisions with C-owned atomic loads (`obs-output::output_starting_queries`); the original C unit remains the reference and differential oracle.
+
 | C source | Rust | Notes |
 |---|---|---|
 | `libobs/obs-enum-modules.c.h` | `obs-core::enum_modules` | Live module enumeration through the existing module-list seam. Preserves absent-core and empty-list no-ops, reverse opening order, exact callback parameter and borrowed module pointers, no lock or snapshot, nested enumeration and callback-time prepending. Reads each successor after the callback. Tier 1 mirrors unchanged `test_enum_modules`; Tier 3 compares the original C and live-link mutation. No private layout mirror or intentional behavior difference. |
