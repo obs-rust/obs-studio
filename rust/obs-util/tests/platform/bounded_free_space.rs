@@ -89,24 +89,39 @@ fn a_volume_that_recovers_answers_fresh_values_again() {
 
 #[test]
 fn paths_do_not_block_each_other() {
-    let (tx, rx) = mpsc::channel::<()>();
-    let rx = Arc::new(Mutex::new(rx));
-    // #5299: model a helper that has not reached its answer before the
-    // caller's deadline, as can happen when the shared host is overloaded.
-    let (_home_tx, home_rx) = mpsc::channel::<()>();
-    let home_rx = Mutex::new(home_rx);
+    let (release_tx, release_rx) = mpsc::channel::<()>();
+    let release_rx = Mutex::new(release_rx);
+    let (started_tx, started_rx) = mpsc::channel();
     let query = Arc::new(move |path: &[u8]| {
         if path == b"/nas" {
-            let _ = rx.lock().unwrap().recv();
-        } else {
-            let _ = home_rx.lock().unwrap().recv();
+            started_tx.send(()).unwrap();
+            let _ = release_rx.lock().unwrap().recv();
         }
         42
     });
-    let space = BoundedFreeSpace::new(query, DEADLINE);
-    let _ = space.get(b"/nas");
-    let (value, took) = timed(&space, b"/home");
-    assert_eq!(value, 42);
-    assert!(took < LATE);
-    drop(tx);
+    // #5299: the 100 ms query deadline also includes helper scheduling time.
+    // This test checks path isolation; the tests above check bounded waits.
+    let watchdog = Duration::from_secs(10);
+    let space = Arc::new(BoundedFreeSpace::new(query, Duration::from_secs(60)));
+    let nas_space = space.clone();
+    let nas = std::thread::spawn(move || nas_space.get(b"/nas"));
+    let started = started_rx.recv_timeout(watchdog);
+
+    let (home_tx, home_rx) = mpsc::channel();
+    let home = std::thread::spawn(move || home_tx.send(space.get(b"/home")).unwrap());
+    // /home must answer while /nas is still blocked. The timeout is only a
+    // deadlock watchdog, not an assertion about how quickly a helper runs.
+    let home_value = home_rx.recv_timeout(watchdog);
+
+    // Unblock and join both callers even when isolation fails.
+    drop(release_tx);
+    let nas_value = nas.join().unwrap();
+    home.join().unwrap();
+    assert_eq!(started, Ok(()), "the /nas query never started");
+    assert_eq!(
+        home_value,
+        Ok(42),
+        "/home did not answer while /nas was blocked"
+    );
+    assert_eq!(nas_value, 42);
 }
