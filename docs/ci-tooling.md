@@ -397,6 +397,16 @@ LLVM-tools 20.1.7 payload. The fallback reuses soldr's verified installed tool o
 downloads the pinned 474,401,547-byte archive and extracts only dsymutil; this is
 producer setup cost, not consumer payload. Python 3.14 supplies zstd extraction.
 Missing tools or invalid checksums fail preparation; no Swift assertion is skipped.
+The pinned Swift installation is reused across clean checkouts under
+`$RUNNER_TOOL_CACHE/obs-darwin-swift/<archive-sha256>` when Actions supplies its
+tool cache; local runs fall back to `target/macos-native-toolchains/` with the
+same content key. Download and extraction happen in a private staging directory;
+only a checksum-verified extraction containing the compiler is atomically
+published. Interrupted installs cannot become cache hits. The archive is discarded
+after installation. This caches only the immutable compiler distribution: every
+fixture, mutation and snapshot is still prepared on every run. Logs distinguish
+Swift installation/cache hits and time toolchain preparation, the host Application
+category build, and fixture contracts with snapshots separately.
 Compiler-discovery assertions therefore describe
 the Linux-hosted Darwin toolchain. Every successful test writes a completed
 manifest with `BUILD_HOST` (Linux), `BUILD_TARGET` (`aarch64-apple-darwin`), the

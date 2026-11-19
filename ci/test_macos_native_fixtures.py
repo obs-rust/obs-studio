@@ -1,7 +1,9 @@
 """Fail-closed contracts for Linux-prepared Darwin native fixtures."""
 import json
 import io
+import hashlib
 import subprocess
+import tarfile
 import tempfile
 import threading
 import unittest
@@ -146,6 +148,120 @@ class NativeFixtureTest(unittest.TestCase):
 
 
 class FixtureInventoryTest(unittest.TestCase):
+    def swift_archive(self, contents=b"pinned swift compiler"):
+        output = io.BytesIO()
+        with tarfile.open(fileobj=output, mode="w:gz") as archive:
+            member = tarfile.TarInfo(f"{fixtures.SWIFT_RELEASE}/usr/bin/swiftc")
+            member.size = len(contents)
+            member.mode = 0o755
+            archive.addfile(member, io.BytesIO(contents))
+        return output.getvalue()
+
+    def test_swift_install_is_shared_across_checkouts_and_keyed_by_checksum(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = self.swift_archive()
+            digest = hashlib.sha256(payload).hexdigest()
+            environment = {"RUNNER_TOOL_CACHE": str(root / "tools")}
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(fixtures, "SWIFT_SHA256", digest), \
+                    patch.object(fixtures.urllib.request, "urlretrieve",
+                                 side_effect=lambda url, path: Path(path).write_bytes(payload)) as download:
+                first = fixtures.swift_compiler(root / "checkout-a", environment)
+                second = fixtures.swift_compiler(root / "checkout-b", environment)
+                self.assertEqual(first, second)
+                self.assertTrue(first.is_relative_to(root / "tools"))
+                self.assertIn(digest, first.parts)
+                self.assertEqual(first.read_bytes(), b"pinned swift compiler")
+                self.assertEqual(first.stat().st_mode & 0o111, 0o111)
+                download.assert_called_once()
+                changed = self.swift_archive(b"updated swift compiler")
+                with patch.object(fixtures, "SWIFT_SHA256", hashlib.sha256(changed).hexdigest()), \
+                        patch.object(fixtures.urllib.request, "urlretrieve",
+                                     side_effect=lambda url, path: Path(path).write_bytes(changed)):
+                    third = fixtures.swift_compiler(root / "checkout-c", environment)
+                self.assertNotEqual(first, third)
+                self.assertEqual(third.read_bytes(), b"updated swift compiler")
+
+    def test_swift_failed_extraction_cannot_publish_or_reuse_a_partial_install(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = self.swift_archive()
+            environment = {"RUNNER_TOOL_CACHE": str(root / "tools")}
+            original = fixtures.tarfile.TarFile.extractall
+
+            def interrupted(archive, destination, **kwargs):
+                original(archive, destination, **kwargs)
+                raise OSError("interrupted after compiler extraction")
+
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(fixtures, "SWIFT_SHA256", hashlib.sha256(payload).hexdigest()), \
+                    patch.object(fixtures.urllib.request, "urlretrieve",
+                                 side_effect=lambda url, path: Path(path).write_bytes(payload)) as download:
+                with patch.object(fixtures.tarfile.TarFile, "extractall", interrupted):
+                    with self.assertRaisesRegex(OSError, "interrupted"):
+                        fixtures.swift_compiler(root, environment)
+                compiler = fixtures.swift_compiler(root, environment)
+                self.assertTrue(compiler.is_relative_to(root / "tools"))
+                self.assertEqual(download.call_count, 2, "partial compiler must never count as a cache hit")
+
+    def test_swift_corrupt_download_fails_before_extracting(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(fixtures.urllib.request, "urlretrieve",
+                                 side_effect=lambda url, path: Path(path).write_bytes(b"corrupt")), \
+                    patch.object(fixtures.tarfile, "open") as extract:
+                with self.assertRaisesRegex(ValueError, "Swift toolchain checksum mismatch"):
+                    fixtures.swift_compiler(root, {"RUNNER_TOOL_CACHE": str(root / "tools")})
+                extract.assert_not_called()
+
+    def test_concurrent_swift_installs_publish_one_complete_toolchain(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = self.swift_archive()
+            digest = hashlib.sha256(payload).hexdigest()
+            ready = threading.Barrier(2)
+
+            def download(url, path):
+                ready.wait(3)
+                Path(path).write_bytes(payload)
+
+            environment = {"RUNNER_TOOL_CACHE": str(root / "tools")}
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(fixtures, "SWIFT_SHA256", digest), \
+                    patch.object(fixtures.urllib.request, "urlretrieve", side_effect=download), \
+                    ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(lambda name: fixtures.swift_compiler(root / name, environment), ("a", "b")))
+            self.assertEqual(results[0], results[1])
+            self.assertEqual(results[0].read_bytes(), b"pinned swift compiler")
+            self.assertEqual([path.name for path in results[0].parents[4].iterdir()], [digest])
+
+    def test_swift_cache_can_appear_during_the_initial_probe(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / "tools/obs-darwin-swift" / fixtures.SWIFT_SHA256
+            compiler = cache / fixtures.SWIFT_RELEASE / "usr/bin/swiftc"
+            exists = Path.exists
+
+            def published(path):
+                if path == cache:
+                    compiler.parent.mkdir(parents=True)
+                    compiler.write_bytes(b"compiler published by another producer")
+                    return True
+                return exists(path)
+
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(Path, "exists", published), \
+                    patch.object(fixtures.urllib.request, "urlretrieve") as download:
+                self.assertEqual(fixtures.swift_compiler(root, {"RUNNER_TOOL_CACHE": str(root / "tools")}), compiler)
+                download.assert_not_called()
+
     def test_swift_tools_provision_dsymutil_without_ambient_host_tool(self):
         import macos_native_fixtures as fixtures
         with tempfile.TemporaryDirectory() as temporary:
