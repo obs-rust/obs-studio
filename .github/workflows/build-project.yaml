@@ -2278,8 +2278,10 @@ jobs:
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       # uv wheels avoid the 165 s apt mirror setup observed in run 44495240642.
+      # CMake 3.31 retains clang-cl /showIncludes, understood by pinned ccache;
+      # 4.3 forwards -clang:-M* dependency flags which ccache cannot cache.
       - name: Link Tier 2 Fixtures 🔗
-        run: uv run --no-project --with cmake==4.3.4 --with ninja==1.13.0 ci/cmocka_link_check.py --alias ${{ matrix.alias }}
+        run: uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias ${{ matrix.alias }}
 
   rust-cross-lint-release:
     timeout-minutes: 45

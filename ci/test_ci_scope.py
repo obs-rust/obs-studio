@@ -446,6 +446,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("outputs.cmocka_link == 'true'", condition)
         self.assertNotIn("fast_path", condition)
         self.assertNotIn("apt-get", block)
+        self.assertIn("--with cmake==3.31.10 --with ninja==1.13.0", block)
         self.assertIn("ci/cmocka_link_check.py --alias ${{ matrix.alias }}", block)
         gate = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("build-project", gate.split("  ci-gate:", 1)[1].split("    steps:", 1)[0])

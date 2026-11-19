@@ -286,7 +286,9 @@ the cache never stores link results. The matrix disables fail-fast so one failin
 cancel the other. Both aliases are independently required by `ci/gate_jobs.py`,
 including attested PRs; CI Gate waits for the entire reusable build workflow.
 The jobs retain the 30-minute deadline and existing Linux heavy-pool routing.
-Pinned CMake/Ninja uv wheels avoid apt setup on this path (#5224).
+Pinned CMake 3.31.10/Ninja 1.13.0 uv wheels avoid apt setup on this path
+(#5224). CMake 3.31 uses clang-cl `/showIncludes`; CMake 4.3
+forwards dependency flags that the pinned ccache rejects as uncacheable.
 Darwin uses the production hidden-symbol list and the Rust crate's existing SDK
 framework imports. Library discovery stays in the Apple SDK and target deps;
 host Linux libraries cannot satisfy Darwin probes. A successful link does not
