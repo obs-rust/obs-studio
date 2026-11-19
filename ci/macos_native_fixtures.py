@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import platform
 import shlex
 import shutil
 import struct
 import subprocess
+import sys
 import tarfile
 import urllib.request
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 TARGET = "aarch64-apple-darwin"
 SWIFT_RELEASE = "swift-6.1.2-RELEASE-ubuntu22.04"
@@ -172,9 +175,51 @@ def signed_fixtures(directory: Path) -> list[str]:
     return signed
 
 
+def fixture_workers(env: dict) -> int:
+    """Share the producer with other jobs; explicit budgets still obey CPU limits."""
+    cpus = max(1, os.cpu_count() or 1)
+    value = env.get("OBS_NATIVE_FIXTURE_WORKERS")
+    if value is None:
+        return min(2, cpus)
+    try:
+        workers = int(value)
+        if workers < 1:
+            raise ValueError
+    except ValueError as error:
+        raise ValueError("OBS_NATIVE_FIXTURE_WORKERS must be a positive integer") from error
+    return min(workers, cpus, len(TESTS))
+
+
+def prepare_fixtures(binary: str, names: list[str], root: Path, directory: Path, env: dict, workers: int) -> None:
+    """A fixture's rebuild/mutation sequence remains one indivisible subprocess."""
+    def one(name: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([binary, "--exact", name, "--nocapture"], cwd=root, env=env,
+                              capture_output=True, text=True, errors="replace", check=True)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(one, name): name for name in names}
+        try:
+            for future in as_completed(futures):
+                result = future.result()
+                print(result.stdout, end="", flush=True)
+                print(result.stderr, end="", file=sys.stderr, flush=True)
+                name = futures[future]
+                manifest = json.loads((directory / name.replace("::", "--") / "manifest.json").read_text())
+                if manifest.get("complete") is not True:
+                    raise ValueError(f"incomplete native fixture: {name}")
+        except BaseException as error:
+            for future in futures:
+                future.cancel()
+            if isinstance(error, subprocess.CalledProcessError):
+                print(error.stdout or "", end="", flush=True)
+                print(error.stderr or "", end="", file=sys.stderr, flush=True)
+            raise
+
+
 def prepare(root: Path, bundle: Path, env: dict) -> None:
     if platform.system() != "Linux":
         raise ValueError("native fixture compilation is permitted only on the Linux producer")
+    workers = fixture_workers(env)
     directory = bundle / "native-fixtures"
     directory.mkdir(parents=True)
     environment = dict(env)
@@ -202,12 +247,11 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
     if len(binaries) != 1:
         raise ValueError("missing unique host Application category binary")
     names = ["native_build::" + name for name in TESTS]
-    for name in names:
-        subprocess.run([binaries[0], "--exact", name, "--nocapture"], cwd=root, env=environment, check=True)
-        manifest = json.loads((directory / name.replace("::", "--") / "manifest.json").read_text())
-        if manifest.get("complete") is not True:
-            raise ValueError(f"incomplete native fixture: {name}")
+    prepare_fixtures(binaries[0], names, root, directory, environment, workers)
     signed = signed_fixtures(directory)
+    # Directory creation now races; preserve fixture inventory order in the index.
+    order = {name.replace("::", "--"): index for index, name in enumerate(names)}
+    signed.sort(key=lambda path: (order.get(Path(path).parts[0], len(names)), path))
     (directory / "index.json").write_text(json.dumps({"version": 1, "target": TARGET,
         "tests": names, "signed": signed, "complete": True}, indent=2) + "\n")
 

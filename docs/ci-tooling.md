@@ -319,6 +319,31 @@ platform gates. Configuration-only fixtures use `project(... NONE)` or explicitl
 disable compiler probing; they still run on macOS. Qt integration contracts use
 the preparation helper below.
 
+Independent native fixtures use a thread pool on the Linux producer, with at most
+two workers by default (one on a single-CPU host). Set
+`OBS_NATIVE_FIXTURE_WORKERS` to a positive integer to override this budget; it is
+capped by `os.cpu_count()` and the fixture count. Use `1` for serial measurements.
+Each fixture's ordered rebuild/mutation sequence stays in one subprocess. The
+first observed failure reports that fixture's captured output, cancels pending
+work and prevents a completed index; already running fixtures finish before exit.
+The test inventory retains its existing order and signed-image paths are sorted
+in fixture order, then by path, regardless of worker completion order.
+
+For serial/parallel comparisons, reuse the same absolute bundle/work paths.
+Existing toolchain nondeterminism affects snapshot blobs for `prefix.pch`
+(serialized header metadata/order), `CMakeDetermineCompilerABI_C.bin` and
+`CMakeDetermineCompilerABI_CXX.bin` (random `cmTC_*` probe names),
+`CMakeConfigureLog.yaml` (random probe paths), `.ninja_deps`, `.ninja_log` and
+`LastTest.log` (timestamps/timings), and `NativeSwiftFixture.swiftmodule`,
+`NativeSwiftFixture.swiftsourceinfo` and `libfixture-swift.dylib` (temporary
+Swift/PCH paths and derived debug data/UUID/signature). Those files' snapshot
+`file`/`sha256` fields and corresponding `index.json` signed-image references
+may differ. Compiler-command stdout also records CMake's elapsed configure time.
+Normalize only these fields when comparing evidence; retain requests, inputs,
+recipes, rebuild decisions, event order, destinations and all other file hashes.
+Transport and replay always verify the original hashes and signatures, without
+normalization.
+
 Preparation discovers soldr's Darwin C/C++ drivers, archiver, LLVM linker and Apple
 SDK on Linux. Swift uses an explicit `SWIFTC` override or the SHA256-pinned Linux
 Swift 6.1.2 distribution, with soldr's LLVM tools for linking. Its Darwin bridge
