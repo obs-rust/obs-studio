@@ -21,7 +21,7 @@ LABELS = '["self-hosted","linux","x64","obs-mq"]'
 
 class MemberPrRoutingTest(unittest.TestCase):
     def select(self, *, head="obs-rust/obs-studio", author="alice", state="active",
-               error=False, capacity=12, reserve="", enabled="on", event="pull_request",
+               error=False, capacity=19, reserve="", enabled="on", event="pull_request",
                peers=(), jobs=None, payload=None, busy=0, max_runs="", missing_peer_ids=False, mq_demand="6"):
         self.paths = []
         current = {"id": 20, "event": event, "status": "in_progress",
@@ -72,7 +72,7 @@ class MemberPrRoutingTest(unittest.TestCase):
                 "GITHUB_RUN_ID": "20", "GITHUB_TOKEN": "actions-token",
                 "DELL_PR_ROUTING": enabled, "MQ_PR_RESERVE": reserve,
                 "MQ_RUNNER_MAX_RUNS": max_runs,
-                "MQ_PR_DEMAND": getattr(self, "pr_demand", "6"),
+                "MQ_PR_DEMAND": getattr(self, "pr_demand", "13"),
             }, clear=True), patch.object(selector, "urlopen", side_effect=respond), patch.object(selector.time, "sleep"):
                 return selector.select_labels(event, LABELS, "probe-token", "obs-rust/obs-studio", demand=mq_demand)
 
@@ -85,11 +85,19 @@ class MemberPrRoutingTest(unittest.TestCase):
         self.assertEqual(self.select(capacity=15, reserve="3", mq_demand="3"), "")
         self.assertEqual(self.select(capacity=16, reserve="3", mq_demand="3"), LABELS)
 
+    def test_small_override_cannot_underweight_an_existing_pr_for_queue(self):
+        self.pr_demand = "2"
+        peer = {"id": 10, "event": "pull_request", "status": "in_progress",
+                "created_at": "2026-11-19T11:59:00Z"}
+        jobs = {10: [{"name": "Build", "status": "in_progress", "labels": json.loads(LABELS)}]}
+        self.assertEqual(self.select(event="merge_group", capacity=6, mq_demand="3",
+                                     peers=[peer], jobs=jobs), "")
+
     def test_busy_queue_overcommit_never_relaxes_pr_idle_reserve(self):
         self.assertEqual(self.select(event="merge_group", capacity=6, busy=6), LABELS)
-        self.assertEqual(self.select(capacity=12, busy=1, max_runs="100"), "")
-        self.assertEqual(self.select(capacity=12, max_runs="bad"), LABELS)
-        self.assertEqual(self.select(capacity=6, busy=1, reserve="0", max_runs="100"), "")
+        self.assertEqual(self.select(capacity=19, busy=1, max_runs="100"), "")
+        self.assertEqual(self.select(capacity=19, max_runs="bad"), LABELS)
+        self.assertEqual(self.select(capacity=13, busy=1, reserve="0", max_runs="100"), "")
 
     def test_missing_ids_across_queue_and_pr_keep_both_weighted_reservations(self):
         peers = [{"id": index, "event": event, "status": "in_progress",
@@ -135,11 +143,11 @@ class MemberPrRoutingTest(unittest.TestCase):
         self.assertFalse(any(path.endswith("/runners") for path in self.paths))
 
     def test_capacity_below_default_reserve_uses_hosted(self):
-        self.assertEqual(self.select(capacity=11), "")
+        self.assertEqual(self.select(capacity=18), "")
 
     def test_reserve_can_be_configured(self):
-        self.assertEqual(self.select(capacity=8, reserve="2"), LABELS)
-        self.assertEqual(self.select(capacity=7, reserve="2"), "")
+        self.assertEqual(self.select(capacity=15, reserve="2"), LABELS)
+        self.assertEqual(self.select(capacity=14, reserve="2"), "")
 
     def test_invalid_reserve_uses_hosted(self):
         for reserve in ("-1", "oops"):
@@ -172,7 +180,7 @@ class MemberPrRoutingTest(unittest.TestCase):
         jobs = {10: [{"name": "Fast Gate ⚡", "status": "queued", "conclusion": None,
                       "labels": json.loads(LABELS)} for _ in range(7)]}
         self.assertEqual(self.select(event="pull_request", peers=[peer], jobs=jobs), "")
-        self.assertEqual(self.select(event="merge_group", peers=[peer], jobs=jobs), LABELS)
+        self.assertEqual(self.select(event="merge_group", peers=[peer], jobs=jobs, max_runs="4"), LABELS)
 
     def test_mixed_demands_admit_only_one_queue_run_beside_large_pr(self):
         self.pr_demand = "13"

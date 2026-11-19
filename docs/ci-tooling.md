@@ -1367,17 +1367,27 @@ hosted without expanding permissions. Probe credentials remain on hosted runners
 after queued commitments and this reserve are subtracted. Unset/empty uses the
 default; a nonnegative integer overrides it, and invalid values select hosted.
 PRs have a separate `MQ_PR_DEMAND`: unset/empty defaults to `13`, the complete
-expanded PR job inventory, including both sequential Tier 2 phases. The PR's
-requirement is the maximum of this value and the existing MQ requirement.
-Invalid/nonpositive values use hosted. This conservative default covers Fast
-Gate, Cross Compile, Qt and link jobs in addition to the existing heavy jobs;
-the inventory regression must change when that topology changes. A maintainer
-may tune it to measured scoped PR concurrency, but must not set it below the
-actual concurrent job demand. With default PR demand thirteen and reserve six,
-nineteen matching idle runners are needed. A six-runner Dell stays hosted until
-the maintainer explicitly tunes both PR settings for its workload or expands
-the pool. `MQ_RUNNER_LABELS`,
-`MQ_RUNNER_MIN_IDLE`, `MQ_RUNNER_DEMAND` and `MQ_RUNNER_MODE` retain their meanings.
+expanded PR job inventory, including both sequential Tier 2 phases. This count
+is a **hard admission floor**, checked against every expanded job that can
+receive Dell labels for `pull_request` in `build-project.yaml`. Selection does
+not throttle or restrict jobs after admission: Fast Gate, Cross Compile, Qt,
+link jobs and the existing heavy jobs can all receive those labels. A smaller
+positive override is clamped to the full inventory (and logged); it cannot turn
+that thirteen-job graph into a two-job allocation. Larger overrides reserve
+more capacity. Invalid/nonpositive values use hosted. The effective PR demand
+is the maximum of this inventory, `MQ_PR_DEMAND` and the MQ requirement, and is
+also used for in-flight PR commitments. Update the inventory floor and its
+regression whenever the workflow graph changes.
+
+**Six-runner Dell:** keep `DELL_PR_ROUTING=off`, `MQ_PR_RESERVE=3` and
+`MQ_PR_DEMAND=13`. There is no PR-demand setting that safely admits the current
+thirteen-job graph with a three-runner queue reserve on six runners; at least
+sixteen online/idle runners are needed. In particular, the reported
+`MQ_PR_DEMAND=2`, `MQ_PR_RESERVE=3` configuration must select hosted. Useful PR
+routing on six runners needs a separately bounded job subset or execution
+limit before reducing the inventory floor. With reserve six, nineteen matching
+idle runners are needed. `MQ_RUNNER_LABELS`, `MQ_RUNNER_MIN_IDLE`,
+`MQ_RUNNER_DEMAND` and `MQ_RUNNER_MODE` retain their meanings.
 No variable is changed by merging this default-off feature.
 
 When enabled, both selectors account for live PR and queue job commitments.

@@ -34,7 +34,7 @@ MAX_ACTIVE_RUNS = 5 * 2
 # Two runner scopes, two run statuses, and a jobs collection for each active run.
 # Include pagination and retries, while retaining the shared wall-clock deadline.
 MAX_REQUESTS = (4 + MAX_ACTIVE_RUNS) * MAX_PAGES * (MAX_RETRIES + 1)
-# All expanded PR-routable jobs, including both sequential Tier 2 phases.
+# Hard admission floor: all expanded PR-routable jobs, including both Tier 2 phases.
 # ci/test_member_pr_routing.py checks this bound against the workflow inventory.
 PR_RUNNER_DEMAND = 13
 
@@ -628,7 +628,15 @@ def routing_capacity(event: str, min_idle: str, demand: str, mode: str) -> dict[
     capacity = {"required": required, "queue": event == "merge_group"}
     if os.environ.get("DELL_PR_ROUTING") != "on":
         return capacity
-    pr_required = max(required, required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND)))
+    requested = required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND))
+    # Selection labels reach the entire PR routing graph; a variable cannot
+    # shrink that graph. Keep both admission and peer weights above its count.
+    pr_required = max(required, PR_RUNNER_DEMAND, requested)
+    if event == "pull_request" and requested < PR_RUNNER_DEMAND:
+        warning(
+            f"MQ_PR_DEMAND={requested} is below the PR-routed job count "
+            f"{PR_RUNNER_DEMAND}; reserving the full inventory", hosted=False,
+        )
     capacity.update(mq_required=required, pr_required=pr_required)
     if event == "pull_request":
         reserve = int(os.environ.get("MQ_PR_RESERVE") or demand or "1")
