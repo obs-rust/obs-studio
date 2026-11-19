@@ -130,6 +130,7 @@ mod output_slots;
 mod output_slots_parity;
 mod output_start;
 mod output_start_parity;
+mod output_starting_queries;
 mod output_stop;
 mod output_stop_parity;
 mod output_supported_codecs;
