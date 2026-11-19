@@ -9,6 +9,7 @@
     "test/cmocka/core-initialized-link-support.c",
     "test/cmocka/source-save-load-link-support.c",
     "test/cmocka/source-settings-getter-link-support.c",
+    "test/cmocka/source-audio-capture-callback-link-support.c",
     "test/cmocka/encoder-video-tex-active-fields-link-support.c",
     "test/cmocka/encoder-video-tex-active-mix-link-support.c",
     "test/cmocka/hotkey-fields-link-support.c",
