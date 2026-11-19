@@ -1,0 +1,2 @@
+gs_indexbuffer_get_data
+gs_indexbuffer_get_type

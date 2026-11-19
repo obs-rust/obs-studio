@@ -40,10 +40,21 @@ pub trait Host {
     fn index_type(&mut self, buffer: Self::Buffer) -> u32;
 }
 
-pub fn get_data<H: Host>(_host: &mut H, _buffer: Option<H::Buffer>) -> Option<H::Data> {
-    todo!("indexbuffer query port")
+fn valid<H: Host>(host: &mut H, entry: Entry, buffer: Option<H::Buffer>) -> Option<H::Buffer> {
+    if !host.has_context() {
+        host.debug(entry, Rejection::Context);
+        return None;
+    }
+    if buffer.is_none() {
+        host.debug(entry, Rejection::Buffer);
+    }
+    buffer
 }
 
-pub fn get_type<H: Host>(_host: &mut H, _buffer: Option<H::Buffer>) -> u32 {
-    todo!("indexbuffer query port")
+pub fn get_data<H: Host>(host: &mut H, buffer: Option<H::Buffer>) -> Option<H::Data> {
+    valid(host, Entry::Data, buffer).and_then(|buffer| host.data(buffer))
+}
+
+pub fn get_type<H: Host>(host: &mut H, buffer: Option<H::Buffer>) -> u32 {
+    valid(host, Entry::Type, buffer).map_or(0, |buffer| host.index_type(buffer))
 }

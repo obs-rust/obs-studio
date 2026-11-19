@@ -18,7 +18,8 @@ impl Host for Fake {
         self.context
     }
     fn debug(&mut self, entry: Entry, reason: Rejection) {
-        self.logs.push(format!("{}: {}", entry.name(), reason.message()));
+        self.logs
+            .push(format!("{}: {}", entry.name(), reason.message()));
     }
     fn data(&mut self, buffer: usize) -> Option<usize> {
         assert!(self.context, "no projection without context");
@@ -45,24 +46,50 @@ fn test_graphics_indexbuffer_queries_context_before_pointers() {
     let mut host = Fake::default();
     for (i, buffer) in [None, Some(0)].into_iter().enumerate() {
         assert_eq!(get_data(&mut host, buffer), None);
-        diagnostic(&host, "gs_indexbuffer_get_data", "called while not in a graphics context", i * 2 + 1);
+        diagnostic(
+            &host,
+            "gs_indexbuffer_get_data",
+            "called while not in a graphics context",
+            i * 2 + 1,
+        );
         assert_eq!(get_type(&mut host, buffer), 0);
-        diagnostic(&host, "gs_indexbuffer_get_type", "called while not in a graphics context", i * 2 + 2);
+        diagnostic(
+            &host,
+            "gs_indexbuffer_get_type",
+            "called while not in a graphics context",
+            i * 2 + 2,
+        );
     }
 }
 
 #[test]
 fn test_graphics_indexbuffer_queries_pointer_guards() {
-    let mut host = Fake { context: true, ..Fake::default() };
+    let mut host = Fake {
+        context: true,
+        ..Fake::default()
+    };
     assert_eq!(get_data(&mut host, None), None);
-    diagnostic(&host, "gs_indexbuffer_get_data", "Null 'indexbuffer' parameter", 1);
+    diagnostic(
+        &host,
+        "gs_indexbuffer_get_data",
+        "Null 'indexbuffer' parameter",
+        1,
+    );
     assert_eq!(get_type(&mut host, None), 0);
-    diagnostic(&host, "gs_indexbuffer_get_type", "Null 'indexbuffer' parameter", 2);
+    diagnostic(
+        &host,
+        "gs_indexbuffer_get_type",
+        "Null 'indexbuffer' parameter",
+        2,
+    );
 }
 
 #[test]
 fn test_graphics_indexbuffer_queries_backend_results_and_buffer_routing() {
-    let mut host = Fake { context: true, ..Fake::default() };
+    let mut host = Fake {
+        context: true,
+        ..Fake::default()
+    };
     for buffer in 0..2 {
         host.expected_buffer = buffer;
         for data in [None, Some(0), Some(1)] {
