@@ -152,6 +152,8 @@ class RustStaticLinkSupport(unittest.TestCase):
                 if msvc:
                     links = (build / f"{name}-links.txt").read_text().split(";")
                     self.assertEqual(links[:2], ["libobs_rust-static", "support"])
+                    self.assertNotIn("OBS::libobs", links,
+                                     "standalone MSVC Rust must not mix its objects with the full OBS import provider")
 
     def run_command(self, command):
         result = subprocess.run(command, capture_output=True, text=True, check=False, timeout=60)

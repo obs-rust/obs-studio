@@ -44,8 +44,13 @@ def discover_targets(reply: Path) -> list[str]:
         return any(uses_rust(by_id[dep["id"]], visited | {name})
                    for dep in target.get("dependencies", []) if dep["id"] in by_id)
 
+    def links_rust(target: dict) -> bool:
+        # Imported Corrosion archives do not have codemodel target entries.
+        return any(Path(part["fragment"].strip('"')).name in ("libobs_rust.lib", "liblibobs_rust.a")
+                   for part in target.get("link", {}).get("commandFragments", []))
+
     rust = sorted(t["name"] for t in targets if t["type"] == "EXECUTABLE"
-                  and (t["name"].endswith("_rust") or uses_rust(t)))
+                  and (t["name"].endswith("_rust") or uses_rust(t) or links_rust(t)))
     if not rust or not any(t["name"] == "libobs-cross-shared" and t["type"] == "SHARED_LIBRARY" for t in targets):
         raise ValueError("Tier 2 cross-link inventory needs Rust executables and hybrid libobs")
     return ["libobs-cross-shared", *rust]

@@ -121,18 +121,21 @@ class DiscoveryTest(unittest.TestCase):
                                ("test_new_steps_rust", "EXECUTABLE"),
                                 ("test_plain", "EXECUTABLE"), ("support_rust", "STATIC_LIBRARY"),
                                 ("test_hotkey_background_enum", "EXECUTABLE"),
+                                ("test_video_level_queries", "EXECUTABLE"),
                                 ("libobs_rust-static", "STATIC_LIBRARY"),
                                ("libobs-cross-shared", "SHARED_LIBRARY")):
                 filename = name + ".json"
                 target = {"id": name, "name": name, "type": kind}
                 if name == "test_hotkey_background_enum":
                     target["dependencies"] = [{"id": "libobs_rust-static"}]
+                if name == "test_video_level_queries":
+                    target["link"] = {"commandFragments": [{"fragment": '"/build/libobs_rust.lib"', "role": "libraries"}]}
                 (reply / filename).write_text(json.dumps(target))
                 refs.append({"id": name, "name": name, "jsonFile": filename})
             (reply / "codemodel.json").write_text(json.dumps({"configurations": [{"targets": refs}]}))
             (reply / "index-1.json").write_text(json.dumps({"reply": {"codemodel-v2": {"jsonFile": "codemodel.json"}}}))
             self.assertEqual(cmocka_link_check.discover_targets(reply),
-                              ["libobs-cross-shared", "test_existing_rust", "test_hotkey_background_enum", "test_new_steps_rust"])
+                              ["libobs-cross-shared", "test_existing_rust", "test_hotkey_background_enum", "test_new_steps_rust", "test_video_level_queries"])
 
     def test_existing_reply_without_rust_executables_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
