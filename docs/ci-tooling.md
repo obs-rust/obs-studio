@@ -309,6 +309,17 @@ these are build-tree cold timings, excluding first-host downloads. The original
 eight Windows category binaries also linked (128.53 s with partial Cargo reuse).
 These local timings are not a hosted critical-path guarantee.
 
+Standalone Rust-static support is selected for every consumer, including tests
+that also link shared libobs or inherit Rust through an interface target.
+`test/cmocka/build/rust-static-support.json` owns the real private adapter members
+for both CMake and Cargo-native fixtures. Add new shared adapters there as separate
+lazy archive members; fixture-owned definitions retain precedence. CMake inherits
+the native owner (`libobs-objects`) link interface rather than maintaining host
+libraries per test. Cargo's production Rust-archive dependency carries its native
+package interface. Both paths put Rust before shared/import providers so allocator
+and parser symbols are selected consistently. Link checks prove linking only;
+native runtime checks still own recording callbacks and allocator behavior.
+
 #### macOS Rust execution artifacts (#5008)
 
 The maintainer chose **STRICT** on 2026-11-17: nothing compiles on hosted

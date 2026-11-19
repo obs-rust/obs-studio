@@ -6,6 +6,7 @@
 use crate::{NativeBuild, SharedLibrary};
 #[path = "configured_headers.rs"]
 mod configured_headers;
+mod rust_static_support;
 use configured_headers::ConfiguredHeader;
 use serde::Deserialize;
 use std::{
@@ -358,6 +359,12 @@ impl Target {
                 names.push(name.into());
             }
         }
+        // The Rust provider must precede shared/import libraries that export
+        // the same allocators and parser helpers (MSVC import members collide).
+        if let Some(index) = names.iter().position(|name| name == "libobs_rust-static") {
+            let rust = names.remove(index);
+            names.insert(0, rust);
+        }
         Ok(names)
     }
 
@@ -542,6 +549,8 @@ pub struct Selection<'a> {
 /// have no artifacts; they still carry required headers and definitions.
 #[derive(Clone, Debug, Default)]
 pub struct Dependency {
+    /// Production Rust archives also select the shared demand-linked C bridge.
+    pub rust_static_support: bool,
     pub runtime_path_prepend: BTreeMap<String, Vec<String>>,
     pub artifacts: Vec<PathBuf>,
     pub include_dirs: Vec<PathBuf>,
@@ -555,6 +564,7 @@ pub struct Dependency {
 impl From<SharedLibrary> for Dependency {
     fn from(library: SharedLibrary) -> Self {
         Self {
+            rust_static_support: false,
             runtime_path_prepend: BTreeMap::new(),
             artifacts: library.dependencies,
             include_dirs: library.include_dirs,
@@ -578,11 +588,16 @@ impl Dependency {
                 archive.display()
             ));
         }
-        Ok(Self {
-            artifacts: vec![archive],
-            link_options: crate::platform::native_test_rust_static_options(target)?,
-            ..Default::default()
-        })
+        let mut native = SharedLibrary::default();
+        crate::platform::configure_rust_static_dependencies(target, &mut native)?;
+        let mut dependency = Self::from(native);
+        dependency.rust_static_support = true;
+        dependency.artifacts.push(archive);
+        dependency.link_options.splice(
+            0..0,
+            crate::platform::native_test_rust_static_options(target)?,
+        );
+        Ok(dependency)
     }
 
     /// Resolve a native SDK package into its compile and link interface.
@@ -753,6 +768,7 @@ impl Graph {
         let root = dunce::canonicalize(root).map_err(|error| error.to_string())?;
         let selected = self.select(facts)?;
         let mut artifacts = BTreeMap::new();
+        let mut rust_support: Option<PathBuf> = None;
         let mut watched_inputs = BTreeSet::new();
         for (name, spec) in selected.targets {
             let mut target = SharedLibrary {
@@ -798,7 +814,12 @@ impl Graph {
                     &root.join(&import.definition),
                     &output,
                 )?;
-                target.dependencies.insert(0, library);
+                let index = usize::from(
+                    spec.library_names(facts)?
+                        .first()
+                        .is_some_and(|name| name == "libobs_rust-static"),
+                );
+                target.dependencies.insert(index, library);
             }
             for source in &spec.sources {
                 if !source.selected(facts)? {
@@ -895,6 +916,25 @@ impl Graph {
                 target.definitions.push((key.into(), value));
             }
             spec.add_header_libraries(&mut target, libraries)?;
+            if spec.library_names(facts)?.iter().any(|name| {
+                name == "libobs_rust-static"
+                    && libraries
+                        .get(name)
+                        .is_some_and(|dep| dep.rust_static_support)
+            }) {
+                let support = match &rust_support {
+                    Some(support) => support,
+                    None => {
+                        rust_support.insert(rust_static_support::prepare(build, &root, libraries)?)
+                    }
+                };
+                // Private adapters follow Rust, ahead of shared/import providers.
+                target.dependencies.insert(1, support.clone());
+                // Legacy registrations may still name these eager wrappers.
+                // The manifest now owns their real implementations lazily.
+                let shared_sources = rust_static_support::sources(&root)?;
+                target.sources.retain(|path| !shared_sources.contains(path));
+            }
             for package in &spec.packages {
                 crate::libobs::add_package(&mut target, &build.target, package)?;
             }

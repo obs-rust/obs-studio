@@ -1,5 +1,3 @@
-use super::*;
-
 #[test]
 fn rust_static_precedes_import_providers_and_their_host_closure() {
     use obs_build::validation::graph::{Dependency, Graph};
@@ -10,10 +8,33 @@ fn rust_static_precedes_import_providers_and_their_host_closure() {
     )
     .unwrap();
     let dependencies = [
-        ("OBS::libobs".into(), Dependency { artifacts: vec!["obs.lib".into()], ..Default::default() }),
-        ("host_consumer".into(), Dependency { artifacts: vec!["consumer.a".into(), "host.so".into()], ..Default::default() }),
-        ("libobs_rust-static".into(), Dependency { artifacts: vec!["rust.lib".into()], ..Default::default() }),
-    ].into();
-    assert_eq!(graph.targets["fixture"].dependency_artifacts(&Default::default(), &dependencies).unwrap(),
-        ["rust.lib", "obs.lib", "consumer.a", "host.so"].map(std::path::PathBuf::from));
+        (
+            "OBS::libobs".into(),
+            Dependency {
+                artifacts: vec!["obs.lib".into()],
+                ..Default::default()
+            },
+        ),
+        (
+            "host_consumer".into(),
+            Dependency {
+                artifacts: vec!["consumer.a".into(), "host.so".into()],
+                ..Default::default()
+            },
+        ),
+        (
+            "libobs_rust-static".into(),
+            Dependency {
+                artifacts: vec!["rust.lib".into()],
+                ..Default::default()
+            },
+        ),
+    ]
+    .into();
+    assert_eq!(
+        graph.targets["fixture"]
+            .dependency_artifacts(&Default::default(), &dependencies)
+            .unwrap(),
+        ["rust.lib", "obs.lib", "consumer.a", "host.so"].map(std::path::PathBuf::from)
+    );
 }

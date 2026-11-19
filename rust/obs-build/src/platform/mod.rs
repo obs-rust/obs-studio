@@ -997,6 +997,21 @@ pub fn native_test_rust_static_options(target: &str) -> Result<Vec<String>, Stri
     .into())
 }
 
+/// Native libraries used by the production Rust archive, independent of which
+/// exported function first causes the linker to extract an archive member.
+pub fn configure_rust_static_dependencies(
+    target: &str,
+    library: &mut crate::SharedLibrary,
+) -> Result<(), String> {
+    crate::libobs::add_package(library, target, "jansson")?;
+    if target.contains("linux") {
+        for package in ["uuid", "gio-2.0"] {
+            crate::libobs::add_package(library, target, package)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn native_test_math_options(target: &str) -> Vec<String> {
     if target.contains("msvc") {
         vec![]

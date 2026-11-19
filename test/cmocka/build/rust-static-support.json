@@ -1,0 +1,12 @@
+{
+  "sources": [
+    "test/cmocka/core-state-link-support.c",
+    "test/cmocka/video-info-query-link-support.c",
+    "test/cmocka/base-variadic-link-support.c",
+    "test/cmocka/core-initialized-link-support.c",
+    "test/cmocka/source-save-load-link-support.c",
+    "test/cmocka/source-settings-getter-link-support.c",
+    "test/cmocka/encoder-video-tex-active-fields-link-support.c",
+    "test/cmocka/encoder-video-tex-active-mix-link-support.c"
+  ]
+}
