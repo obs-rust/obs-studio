@@ -23,6 +23,7 @@ mod group_enum;
 mod group_enum_parity;
 mod item_audio_actions;
 mod item_audio_actions_parity;
+mod item_defer_update;
 mod item_id;
 mod item_id_parity;
 mod item_names;
