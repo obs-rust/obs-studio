@@ -1026,26 +1026,6 @@ void gs_load_pixelshader(gs_shader_t *pixelshader)
 	graphics->exports.device_load_pixelshader(graphics->device, pixelshader);
 }
 
-gs_shader_t *gs_get_vertex_shader(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_vertex_shader"))
-		return NULL;
-
-	return graphics->exports.device_get_vertex_shader(graphics->device);
-}
-
-gs_shader_t *gs_get_pixel_shader(void)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid("gs_get_pixel_shader"))
-		return NULL;
-
-	return graphics->exports.device_get_pixel_shader(graphics->device);
-}
-
 enum gs_color_space gs_get_color_space(void)
 {
 	graphics_t *graphics = thread_graphics;
