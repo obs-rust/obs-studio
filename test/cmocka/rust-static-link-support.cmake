@@ -59,7 +59,9 @@ function(obs_rust_static_consumers support native_owner)
   if(NOT MSVC AND (CMAKE_C_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED))
     # Resolve the complete Rust/C callback component, including newly extracted
     # members that introduce another callback in the opposite direction.
-    set(support_link "$<LINK_GROUP:RESCAN,libobs_rust-static,${support}>")
+    # Keep the direct support edge visible to existing graph assertions. CMake
+    # replaces its non-group occurrence with this same group during generation.
+    set(support_link "${support};$<LINK_GROUP:RESCAN,libobs_rust-static,${support}>")
   endif()
   if(TARGET "${native_owner}")
     # Inherit the owner's full native closure, including host-selected libraries
