@@ -303,6 +303,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -423,6 +425,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -531,6 +535,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -688,6 +694,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -1607,6 +1615,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -1699,6 +1709,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -1965,6 +1977,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -2059,6 +2073,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -2130,6 +2146,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -8424,6 +8442,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -8482,6 +8502,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -8541,6 +8563,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -12271,6 +12295,8 @@
         "test/cmocka/output-pause-query-link-stubs.c",
         "test/cmocka/output-service-getter-link-stub.c",
         "test/cmocka/source-handler-getter-link-support.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c"
       ],
@@ -14788,7 +14814,9 @@
       "sources": [
         "test/cmocka/test_service_handler_getters.c",
         "test/cmocka/service-handler-getters-link-support.c",
-        "libobs/util/base-variadic.c.h"
+        "libobs/util/base-variadic.c.h",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14806,7 +14834,9 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        }
+        },
+        "OBS::caption",
+        "Uthash::Uthash"
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -15436,6 +15466,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -15520,6 +15552,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -15610,6 +15644,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -15713,6 +15749,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -15828,6 +15866,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -15983,6 +16023,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -16206,6 +16248,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -16459,6 +16503,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -16583,6 +16629,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -16744,6 +16792,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -16856,6 +16906,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -16951,6 +17003,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -17326,6 +17380,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -17400,6 +17456,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -18212,6 +18270,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -18327,6 +18387,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -18538,6 +18600,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/core-state-link-support.c",
         "test/cmocka/weak-encoder-identity-link-stub.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
@@ -19479,6 +19543,52 @@
           "requires": "OS_WINDOWS"
         }
       ]
+    },
+    "test_video_info_query_rust": {
+      "sources": [
+        "test/cmocka/test_video_info_query.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "libobs/util/base-variadic.c.h"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": "OS_LINUX"
+        },
+        {
+          "name": "gio::gio",
+          "requires": "HAVE_PORTAL_TEST_GIO"
+        },
+        {
+          "name": "PkgConfig::PORTAL_TEST_GLIB",
+          "requires": "HAVE_PORTAL_TEST_GIO"
+        },
+        {
+          "name": "Rpcrt4",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "winmm",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_video_io_hidden": {
       "sources": [
@@ -28068,6 +28178,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_video_info_query_rust": {
+      "target": "test_video_info_query_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_video_io_hidden": {
       "target": "test_video_io_hidden",

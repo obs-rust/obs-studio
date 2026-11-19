@@ -843,6 +843,12 @@ extern struct obs_core_texture_activity_fields obs_core_texture_activity_fields(
 /* Borrowed argument snapshot; setter/shutdown retain allocation ownership. */
 extern struct obs_cmdline_args *obs_core_cmdline_args_field(void);
 
+/* Core video-info seam: every owner must be checked before field access. */
+extern const struct obs_core *obs_video_info_query_core(void);
+extern graphics_t *const *obs_video_info_query_graphics_field(const struct obs_core *core);
+extern struct obs_core_video_mix *const *obs_video_info_query_mix_field(const struct obs_core *core);
+extern const struct obs_video_info *obs_video_info_query_value_field(const struct obs_core_video_mix *mix);
+
 /* Frame interval seam: check core presence before obtaining the member address. */
 extern const struct obs_core *obs_core_frame_interval_core(void);
 extern const uint64_t *obs_core_frame_interval_field(const struct obs_core *core);

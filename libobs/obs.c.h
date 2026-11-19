@@ -17,8 +17,6 @@
 
 #include "libobs/build/libobs.pch.h"
 
-struct obs_core *obs = NULL;
-
 extern char *find_libobs_data_file(const char *file);
 
 static void obs_free_render_textures(struct obs_core_video_mix *video);
