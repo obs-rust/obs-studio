@@ -22,7 +22,7 @@ LABELS = '["self-hosted","linux","x64","obs-mq"]'
 class MemberPrRoutingTest(unittest.TestCase):
     def select(self, *, head="obs-rust/obs-studio", author="alice", state="active",
                error=False, capacity=12, reserve="", enabled="on", event="pull_request",
-               peers=(), jobs=None, payload=None, busy=0, max_runs="", missing_peer_ids=False):
+               peers=(), jobs=None, payload=None, busy=0, max_runs="", missing_peer_ids=False, mq_demand="6"):
         self.paths = []
         current = {"id": 20, "event": event, "status": "in_progress",
                    "created_at": "2026-11-19T12:00:00Z"}
@@ -74,7 +74,16 @@ class MemberPrRoutingTest(unittest.TestCase):
                 "MQ_RUNNER_MAX_RUNS": max_runs,
                 "MQ_PR_DEMAND": getattr(self, "pr_demand", "6"),
             }, clear=True), patch.object(selector, "urlopen", side_effect=respond), patch.object(selector.time, "sleep"):
-                return selector.select_labels(event, LABELS, "probe-token", "obs-rust/obs-studio", demand="6")
+                return selector.select_labels(event, LABELS, "probe-token", "obs-rust/obs-studio", demand=mq_demand)
+
+    def test_manager_two_job_override_cannot_admit_thirteen_job_pr(self):
+        self.pr_demand = "2"
+        self.assertEqual(self.select(capacity=6, reserve="3", mq_demand="3"), "")
+
+    def test_low_override_still_requires_full_pr_inventory_plus_reserve(self):
+        self.pr_demand = "2"
+        self.assertEqual(self.select(capacity=15, reserve="3", mq_demand="3"), "")
+        self.assertEqual(self.select(capacity=16, reserve="3", mq_demand="3"), LABELS)
 
     def test_busy_queue_overcommit_never_relaxes_pr_idle_reserve(self):
         self.assertEqual(self.select(event="merge_group", capacity=6, busy=6), LABELS)
@@ -180,22 +189,37 @@ class MemberPrRoutingTest(unittest.TestCase):
 
 
 class MemberPrWorkflowTest(unittest.TestCase):
-    def test_default_pr_demand_covers_expanded_routed_jobs(self):
+    def routed_pr_jobs(self):
         from tier2_matrix import matrix
 
         text = (ROOT / ".github/workflows/build-project.yaml").read_text()
         blocks = dict(re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.M | re.S))
-        count = 0
+        jobs = {}
         for name, block in blocks.items():
             if not re.search(r"runs-on: .*inputs.mq-heavy-labels", block):
                 continue
             if name == "rust-linux-tier2":
                 scheduling = matrix("pull_request")
-                count += len(scheduling["mode"]) * len(scheduling["part"])
+                jobs[name] = len(scheduling["mode"]) * len(scheduling["part"])
             else:
                 variants = re.search(r"^        (?:target|alias): \[([^\]]+)\]", block, re.M)
-                count += len(variants[1].split(",")) if variants else 1
-        self.assertEqual(selector.PR_RUNNER_DEMAND, count)
+                jobs[name] = len(variants[1].split(",")) if variants else 1
+        return jobs
+
+    def test_default_pr_demand_covers_expanded_routed_jobs(self):
+        self.assertEqual(selector.PR_RUNNER_DEMAND, sum(self.routed_pr_jobs().values()))
+
+    def test_configured_pr_admission_demand_covers_actual_job_graph(self):
+        count = sum(self.routed_pr_jobs().values())
+        for configured in ("", "2", "3", "13", "20"):
+            with self.subTest(configured=configured), patch.dict(os.environ, {
+                "DELL_PR_ROUTING": "on", "MQ_PR_DEMAND": configured,
+                "MQ_PR_RESERVE": "3",
+            }, clear=True):
+                capacity = selector.routing_capacity("pull_request", "1", "3", "")
+                self.assertGreaterEqual(capacity["required"], count)
+                self.assertEqual(capacity["reserve"], 3)
+                self.assertGreater(capacity["required"] + capacity["reserve"], 6)
 
     def test_base_owned_selector_and_membership_helper(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
