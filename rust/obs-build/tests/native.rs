@@ -495,6 +495,9 @@ mod canonical_undo_stack_is_registered;
 mod canonical_vaapi_device_select_is_registered;
 #[path = "native/registration/canonical_video_info_query_is_registered.rs"]
 mod canonical_video_info_query_is_registered;
+
+#[path = "native/registration/shared_rust_static_support.rs"]
+mod shared_rust_static_support;
 #[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
 mod canonical_video_output_compatibility_is_registered;
 #[path = "native/registration/canonical_video_scaler_direct_is_registered.rs"]
@@ -5518,7 +5521,6 @@ mod canonical_source_update_properties_swap_is_registered;
 #[path = "native/registration/canonical_type_catalog_enum_swap_is_registered.rs"]
 mod canonical_type_catalog_enum_swap_is_registered;
 
+
 #[path = "native/registration/canonical_object_id_swap_is_registered.rs"]
 mod canonical_object_id_swap_is_registered;
-#[path = "native/registration/shared_rust_static_support.rs"]
-mod shared_rust_static_support;
