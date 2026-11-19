@@ -29,6 +29,8 @@ static void callback_a(void *param, obs_source_t *owner, const struct audio_data
 
 static void callback_b(void *param, obs_source_t *owner, const struct audio_data *audio, bool muted)
 {
+	/* Keep distinct callback addresses even with identical-code folding. */
+	calls += 2;
 	callback_a(param, owner, audio, muted);
 }
 
