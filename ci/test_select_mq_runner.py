@@ -987,6 +987,53 @@ class InflightAdmissionTest(unittest.TestCase):
         self.assertLessEqual(http.call_count, selector.MAX_REQUESTS)
         return selected
 
+    def test_busy_dell_under_default_max_runs_queues_on_dell(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = self.fixture["queued_jobs"]
+        self.assertTrue(self.select(self.runs[1]["id"], busy=6))
+        self.assertIn("committed=1, run_limit=3", self.output)
+
+    def test_at_default_max_runs_uses_hosted_even_when_idle(self):
+        for run in self.runs[:3]:
+            self.jobs[run["id"]] = self.fixture["queued_jobs"][:1]
+        self.assertEqual(self.select(self.runs[3]["id"]), "")
+        self.assertIn("committed=3, run_limit=3", self.output)
+
+    def test_configured_max_runs_caps_busy_admission(self):
+        self.runs = self.runs[:3]
+        for run in self.runs[:2]:
+            self.jobs[run["id"]] = self.fixture["queued_jobs"][:1]
+        self.assertEqual(self.select(
+            self.runs[2]["id"], busy=6, environment={"MQ_RUNNER_MAX_RUNS": "2"}
+        ), "")
+        self.assertIn("committed=2, run_limit=2", self.output)
+
+    def test_recorded_retry_without_current_run_reserves_all_peers(self):
+        # 44586086466 / 135779273252: entries=2, total_count=3, then an
+        # unwrapped KeyError. The bare lookup is runs[current_id]; job/run
+        # field failures are wrapped with their probe step before reaching it.
+        current = self.runs[2]["id"]
+        self.runs = self.runs[:2]
+
+        def stale_count(path, payload):
+            if path.endswith("/runs") and payload["workflow_runs"]:
+                return dict(payload, total_count=3)
+            return payload
+
+        self.assertTrue(self.select(current, transform=stale_count))
+        self.assertIn("collection changed (entries=2, total_count=3)", self.output)
+        self.assertIn(str(current), self.output)
+        self.assertIn("committed=2, run_limit=3", self.output)
+        self.assertNotIn("probe failed", self.output)
+
+    def test_missing_job_labels_reserve_peer_without_probe_failure(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = [{"name": "Build", "status": "queued"}]
+        self.assertTrue(self.select(self.runs[1]["id"]))
+        self.assertIn("labels", self.output)
+        self.assertIn("committed=1", self.output)
+        self.assertNotIn("probe failed", self.output)
+
     def test_four_simultaneous_recorded_runs_admit_oldest_two(self):
         # Each probe sees the same idle census and no heavy jobs yet. Reverse
         # probe order too: priority follows creation, not which probe ran first.
