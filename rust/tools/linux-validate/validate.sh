@@ -204,7 +204,15 @@ if [ "$stage" = test ]; then
 else
   uv run --script "$SRC/rust/tools/linux-validate/stale_build.py" "$build" "$rustc_version" "$SRC"
   echo "== configure + build (libobs and libobs-c-reference)"
-  cmake -S "$SRC" -B "$build" -G Ninja \
+  # Kept-tree configure: opt-in only; hosted always runs the original command.
+  tier2_configure() {
+    if [ "${OBS_TIER2_KEEP_CONFIGURE:-}" = 1 ]; then
+      OBS_TIER2_RUSTC_VERSION="$rustc_version" uv run --no-project "$SRC/ci/tier2_configure.py" "$build" -- cmake "$@"
+    else
+      cmake "$@"
+    fi
+  }
+  tier2_configure -S "$SRC" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID \
     "${launcher_args[@]}" \
