@@ -1679,16 +1679,6 @@ bool obs_reset_audio(const struct obs_audio_info *oai)
 	return obs_reset_audio2(&oai2);
 }
 
-bool obs_get_video_info(struct obs_video_info *ovi)
-{
-	/* no core (before obs_startup): no video (#1509) */
-	if (!obs || !obs->video.graphics || !obs->data.main_canvas->mix)
-		return false;
-
-	*ovi = obs->data.main_canvas->mix->ovi;
-	return true;
-}
-
 /* With no core, the levels are the no-video defaults (#2566). */
 float obs_get_video_sdr_white_level(void)
 {
