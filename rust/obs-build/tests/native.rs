@@ -289,6 +289,8 @@ mod canonical_dock_proportions_is_registered;
 mod canonical_effect_lookups_is_registered;
 #[path = "native/registration/canonical_encoder_audio_getters_is_registered.rs"]
 mod canonical_encoder_audio_getters_is_registered;
+#[path = "native/registration/canonical_encoder_defaults_swap_is_registered.rs"]
+mod canonical_encoder_defaults_swap_is_registered;
 #[path = "native/registration/canonical_encoder_dimensions_is_registered.rs"]
 mod canonical_encoder_dimensions_is_registered;
 #[path = "native/registration/canonical_encoder_extra_data_swap_is_registered.rs"]
