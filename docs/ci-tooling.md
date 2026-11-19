@@ -408,6 +408,15 @@ LLVM-tools 20.1.7 payload. The fallback reuses soldr's verified installed tool o
 downloads the pinned 474,401,547-byte archive and extracts only dsymutil; this is
 producer setup cost, not consumer payload. Python 3.14 supplies zstd extraction.
 Missing tools or invalid checksums fail preparation; no Swift assertion is skipped.
+The dsymutil fallback persists under
+`$RUNNER_TOOL_CACHE/obs-darwin-dsymutil/<archive-sha256>` (locally,
+`target/macos-native-toolchains/obs-darwin-dsymutil/<archive-sha256>`).
+Both archive and executable checksums must pass before atomic publication;
+every reuse verifies the executable again. The archive is discarded, and
+interrupted extraction cannot expose a cache hit. Separate log timings cover
+the soldr driver/SDK queries, Swift version probe and dsymutil provisioning,
+including its download, to distinguish network/setup cost from compilation.
+
 The pinned Swift installation is reused across clean checkouts under
 `$RUNNER_TOOL_CACHE/obs-darwin-swift/<archive-sha256>` when Actions supplies its
 tool cache; local runs fall back to `target/macos-native-toolchains/` with the
