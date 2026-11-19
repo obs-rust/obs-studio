@@ -8,6 +8,8 @@
 #define gs_indexbuffer_flush oracle_gs_indexbuffer_flush
 #define gs_indexbuffer_flush_direct oracle_gs_indexbuffer_flush_direct
 #define gs_indexbuffer_get_num_indices oracle_gs_indexbuffer_get_num_indices
+#define gs_indexbuffer_get_data oracle_gs_indexbuffer_get_data
+#define gs_indexbuffer_get_type oracle_gs_indexbuffer_get_type
 #include "graphics/graphics-internal.h"
 #include "util/base.h"
 
@@ -15,6 +17,8 @@ void oracle_gs_indexbuffer_destroy(gs_indexbuffer_t *buffer);
 void oracle_gs_indexbuffer_flush(gs_indexbuffer_t *buffer);
 void oracle_gs_indexbuffer_flush_direct(gs_indexbuffer_t *buffer, const void *data);
 size_t oracle_gs_indexbuffer_get_num_indices(const gs_indexbuffer_t *buffer);
+void *oracle_gs_indexbuffer_get_data(const gs_indexbuffer_t *buffer);
+enum gs_index_type oracle_gs_indexbuffer_get_type(const gs_indexbuffer_t *buffer);
 
 static THREAD_LOCAL struct graphics_subsystem ibm_graphics;
 static THREAD_LOCAL unsigned ibm_calls, ibm_logs;
@@ -38,6 +42,7 @@ static void ibm_blog(int level, const char *format, ...)
 
 #define blog ibm_blog
 #include "graphics-indexbuffer-maintenance.inc"
+#include "graphics-indexbuffer-queries.inc"
 
 /* Original graphics.c.h validators, verbatim. */
 static inline bool gs_valid(const char *f)
@@ -156,7 +161,41 @@ const char *oracle_indexbuffer_maintenance_log(void)
 	return ibm_log;
 }
 
+/* The two queries share the same real adapter, TLS and recorder as maintenance. */
+static THREAD_LOCAL void *ibm_query_data;
+static THREAD_LOCAL enum gs_index_type ibm_query_type;
+
+static void *ibm_get_data(const gs_indexbuffer_t *buffer)
+{
+	ibm_record(4, buffer, NULL);
+	return ibm_query_data;
+}
+
+static enum gs_index_type ibm_get_type(const gs_indexbuffer_t *buffer)
+{
+	ibm_record(5, buffer, NULL);
+	return ibm_query_type;
+}
+
+void oracle_indexbuffer_queries_reset(bool context, void *data, bool long_indices);
+void oracle_indexbuffer_queries_reset(bool context, void *data, bool long_indices)
+{
+	oracle_indexbuffer_maintenance_reset(context, 0);
+	ibm_query_data = data;
+	ibm_query_type = long_indices ? GS_UNSIGNED_LONG : GS_UNSIGNED_SHORT;
+	ibm_graphics.exports.gs_indexbuffer_get_data = ibm_get_data;
+	ibm_graphics.exports.gs_indexbuffer_get_type = ibm_get_type;
+}
+
+unsigned oracle_indexbuffer_queries_type(bool long_indices);
+unsigned oracle_indexbuffer_queries_type(bool long_indices)
+{
+	return (unsigned)(long_indices ? GS_UNSIGNED_LONG : GS_UNSIGNED_SHORT);
+}
+
 #undef gs_indexbuffer_destroy
 #undef gs_indexbuffer_flush
 #undef gs_indexbuffer_flush_direct
 #undef gs_indexbuffer_get_num_indices
+#undef gs_indexbuffer_get_data
+#undef gs_indexbuffer_get_type

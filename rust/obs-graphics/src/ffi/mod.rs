@@ -32,6 +32,7 @@ pub mod immediate_arguments;
 pub mod immediate_scalars;
 pub mod indexbuffer_create;
 pub mod indexbuffer_maintenance;
+pub mod indexbuffer_queries;
 pub mod linear_srgb;
 pub mod lzw;
 pub mod math_extra;

@@ -36,3 +36,15 @@ size_t obs_graphics_indexbuffer_maintenance_count(graphics_t *graphics, const gs
 {
 	return graphics->exports.gs_indexbuffer_get_num_indices(buffer);
 }
+
+void *obs_graphics_indexbuffer_maintenance_data(graphics_t *graphics, const gs_indexbuffer_t *buffer);
+void *obs_graphics_indexbuffer_maintenance_data(graphics_t *graphics, const gs_indexbuffer_t *buffer)
+{
+	return graphics->exports.gs_indexbuffer_get_data(buffer);
+}
+
+enum gs_index_type obs_graphics_indexbuffer_maintenance_type(graphics_t *graphics, const gs_indexbuffer_t *buffer);
+enum gs_index_type obs_graphics_indexbuffer_maintenance_type(graphics_t *graphics, const gs_indexbuffer_t *buffer)
+{
+	return graphics->exports.gs_indexbuffer_get_type(buffer);
+}

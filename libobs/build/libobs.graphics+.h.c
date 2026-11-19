@@ -10,7 +10,6 @@
 #include "libobs/graphics/graphics-device-queries-fields.c.h"
 #include "libobs/graphics/graphics-imports.c.h"
 #include "libobs/graphics/graphics-indexbuffer-maintenance-fields.c.h"
-#include "libobs/graphics/graphics-indexbuffer-queries.c.h"
 #include "libobs/graphics/graphics-render-target-setters-fields.c.h"
 #include "libobs/graphics/graphics-samplerstate-lifecycle-fields.c.h"
 #include "libobs/graphics/graphics-shader-matrix-queries-fields.c.h"
