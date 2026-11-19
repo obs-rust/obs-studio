@@ -19,16 +19,6 @@
 
 #define get_weak(service) ((obs_weak_service_t *)service->context.control)
 
-const struct obs_service_info *find_service(const char *id)
-{
-	size_t i;
-	for (i = 0; i < obs->service_types.num; i++)
-		if (strcmp(obs->service_types.array[i].id, id) == 0)
-			return obs->service_types.array + i;
-
-	return NULL;
-}
-
 /* The service's lifecycle, references, module lookup and activation moved
  * to obs-service-getters.c (#1920). These are the steps they take on struct
  * obs_service, its context and its reference counts, which stay here with

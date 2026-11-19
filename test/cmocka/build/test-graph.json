@@ -15375,6 +15375,21 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_service_find": {
+      "sources": [
+        "test/cmocka/test_service_find.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_service_getters": {
       "sources": [
         "test/cmocka/test_service_getters.c"
@@ -27342,6 +27357,12 @@
     },
     "test_serializer": {
       "target": "test_serializer"
+    },
+    "test_service_find": {
+      "target": "test_service_find",
+      "command": [
+        "${target}"
+      ]
     },
     "test_service_getters": {
       "target": "test_service_getters",
