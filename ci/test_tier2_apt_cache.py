@@ -52,6 +52,28 @@ class AptCacheTest(unittest.TestCase):
             self.assertIn("path: ${{ runner.temp }}/apt-archives", j, name)
             self.assertIn("hashFiles('rust/tools/linux-validate/apt-packages.txt')", j, name)
 
+    def test_consumers_request_the_master_producers_exact_key(self):
+        build = job("rust-linux-tier2-build")
+        producer = build.split("- name: Save apt Downloads", 1)[1].split("\n      - ", 1)[0]
+        key = re.search(r"^          key: (.+)$", producer, re.M)[1]
+        self.assertIn("github.event_name == 'push' && github.ref == 'refs/heads/master'", producer)
+        self.assertIn("mode: save", producer)
+        self.assertNotIn("github.", key, "apt contents must not be keyed by the run or PR")
+        for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
+            with self.subTest(job=name):
+                restore = job(name).split("id: apt-cache", 1)[1].split("\n      - ", 1)[0]
+                self.assertIn("mode: restore", restore)
+                self.assertEqual(re.search(r"^          key: (.+)$", restore, re.M)[1], key)
+
+    def test_archive_version_is_portable_between_hosted_container_and_dell(self):
+        # actions/cache hashes the literal input paths into its hidden version.
+        # Absolute runner.temp paths differ across the container and Dell slots;
+        # identical visible keys cannot compensate for those version mismatches.
+        for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
+            with self.subTest(job=name):
+                paths = re.findall(r"^          path: (.+apt[^\n]*)$", job(name), re.M)
+                self.assertEqual(paths, [".tier2-apt/*.deb"] * (2 if name.endswith("-build") else 1))
+
     def test_tier2_archive_directories_are_job_local(self):
         # Hosted jobs retain separate archives and cache extraction. The build
         # may select Dell's shared apt-locked archives, skipping Actions restore.
