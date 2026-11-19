@@ -13,7 +13,9 @@ static struct obs_output output;
 static const volatile bool *expected_reads[4];
 static size_t expected_count, read_count;
 
-static bool recording_load_bool(const volatile bool *ptr)
+bool output_starting_recording_load_bool(const volatile bool *ptr);
+
+bool output_starting_recording_load_bool(const volatile bool *ptr)
 {
 	assert_true(read_count < expected_count);
 	assert_ptr_equal(ptr, expected_reads[read_count]);
@@ -21,25 +23,29 @@ static bool recording_load_bool(const volatile bool *ptr)
 	return os_atomic_load_bool(ptr);
 }
 
+/* A later swap selects external predicates and links the real atomic adapter
+ * to output_starting_recording_load_bool without changing these assertions. */
+#ifndef OUTPUT_STARTING_QUERIES_EXTERNAL
 /* The three same-group helpers retain their original atomic-load behavior. */
 static inline bool active(const struct obs_output *out)
 {
-	return recording_load_bool(&out->active);
+	return output_starting_recording_load_bool(&out->active);
 }
 
 static inline bool reconnecting(const struct obs_output *out)
 {
-	return recording_load_bool(&out->reconnecting);
+	return output_starting_recording_load_bool(&out->reconnecting);
 }
 
 static inline bool delay_active(const struct obs_output *out)
 {
-	return recording_load_bool(&out->delay_active);
+	return output_starting_recording_load_bool(&out->delay_active);
 }
 
-#define os_atomic_load_bool recording_load_bool
+#define os_atomic_load_bool output_starting_recording_load_bool
 #include "libobs/obs-output-starting-queries.c.h"
 #undef os_atomic_load_bool
+#endif
 
 static void flag_matrix(void **state)
 {
