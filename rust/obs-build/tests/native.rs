@@ -496,8 +496,6 @@ mod canonical_vaapi_device_select_is_registered;
 #[path = "native/registration/canonical_video_info_query_is_registered.rs"]
 mod canonical_video_info_query_is_registered;
 
-#[path = "native/registration/shared_rust_static_support.rs"]
-mod shared_rust_static_support;
 #[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
 mod canonical_video_output_compatibility_is_registered;
 #[path = "native/registration/canonical_video_scaler_direct_is_registered.rs"]
@@ -518,6 +516,8 @@ mod canonical_x11_keymap_is_registered;
 mod canonical_xcomposite_decisions_are_registered;
 #[path = "native/registration/canonical_youtube_broadcast_settings_is_registered.rs"]
 mod canonical_youtube_broadcast_settings_is_registered;
+#[path = "native/registration/shared_rust_static_support.rs"]
+mod shared_rust_static_support;
 
 /// #1390: the libobs built from this checkout for real-libobs graph runtimes.
 /// `OBS_GRAPH_LIBOBS` selects the Tier 2 implementation explicitly: `hybrid`
