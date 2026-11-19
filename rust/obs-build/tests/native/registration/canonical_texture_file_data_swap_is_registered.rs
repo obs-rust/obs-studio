@@ -28,3 +28,27 @@ fn canonical_texture_file_data_swap_is_registered() {
     let media = fs::read_to_string(root.join("libobs/build/libobs.media+.h.c")).unwrap();
     assert!(!media.contains("libobs/graphics/graphics-texture-file-data.c.h"));
 }
+
+#[test]
+fn standalone_texture_file_data_adapters_supply_private_max_size_callback() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let adapter = "libobs/build/libobs.media-texture-file-data-adapter+.h.c";
+    let callback = "test/cmocka/texture-file-data-max-size-link-stub.c";
+    let mut consumers = 0;
+    for (name, target) in graph["targets"].as_object().unwrap() {
+        let sources = target["sources"].as_array().unwrap();
+        if sources.contains(&serde_json::json!(adapter)) {
+            consumers += 1;
+            assert!(sources.contains(&serde_json::json!(callback)), "{name}");
+        }
+    }
+    assert!(consumers > 0);
+    let fragment = fs::read_to_string(
+        root.join("test/cmocka/tests.d/texture_file_data_link_support.cmake"),
+    )
+    .unwrap();
+    assert!(fragment.contains(callback));
+}
