@@ -48,12 +48,21 @@ pub trait Host {
     fn world(&mut self, shader: Self::Shader) -> Option<Self::Param>;
 }
 
+fn checked<H: Host>(host: &mut H, entry: Entry, shader: Option<H::Shader>) -> Option<H::Shader> {
+    if !host.has_context() {
+        host.debug(entry, Rejection::Context);
+        return None;
+    }
+    if shader.is_none() {
+        host.debug(entry, Rejection::Shader);
+    }
+    shader
+}
+
 pub fn get_viewproj_matrix<H: Host>(host: &mut H, shader: Option<H::Shader>) -> Option<H::Param> {
-    let _ = (host, shader);
-    todo!("gs_shader_get_viewproj_matrix")
+    checked(host, Entry::ViewProj, shader).and_then(|shader| host.viewproj(shader))
 }
 
 pub fn get_world_matrix<H: Host>(host: &mut H, shader: Option<H::Shader>) -> Option<H::Param> {
-    let _ = (host, shader);
-    todo!("gs_shader_get_world_matrix")
+    checked(host, Entry::World, shader).and_then(|shader| host.world(shader))
 }
