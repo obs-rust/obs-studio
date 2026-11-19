@@ -12,6 +12,13 @@ pub trait Registry {
     fn unlock(&mut self);
 }
 
-pub fn unregister(_registry: &mut impl Registry, _id: usize, _removal: Removal) {
-    todo!("hotkey unregistration entry swap")
+pub fn unregister(registry: &mut impl Registry, id: usize, removal: Removal) {
+    if !registry.lock() {
+        return;
+    }
+    match removal {
+        Removal::Single => registry.single(id),
+        Removal::Pair => registry.pair(id),
+    }
+    registry.unlock();
 }

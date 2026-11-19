@@ -76,6 +76,7 @@ mod translations;
 mod translations_parity;
 mod unregister;
 mod unregister_entry;
+mod unregister_entry_parity;
 mod update_atomic;
 mod update_atomic_parity;
 mod windows_keys;

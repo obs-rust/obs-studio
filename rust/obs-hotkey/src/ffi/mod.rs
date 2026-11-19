@@ -39,5 +39,6 @@ pub mod routing_controls;
 pub mod save_load;
 pub mod translations;
 pub mod unregister;
+pub mod unregister_entry;
 pub mod update_atomic;
 pub mod windows_keys;
