@@ -55,5 +55,41 @@ class JobTimeoutTest(unittest.TestCase):
         self.assertEqual(timeout_line(job_block(self.text, "rust-tier2-windows")), "25")
 
 
+class Tier2AptTimeoutTest(unittest.TestCase):
+    def test_all_tier2_apt_calls_have_command_and_step_bounds(self):
+        """A mirror stall must not consume the build's 45-minute budget (#5213)."""
+        calls = 0
+        for workflow in (WORKFLOW, WORKFLOW.with_name("ci.yml")):
+            text = workflow.read_text(encoding="utf-8")
+            for job in re.finditer(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:\n|\Z)", text, re.M | re.S):
+                name, body = job.groups()
+                if "tier2" not in name:
+                    continue
+                for step in re.split(r"^      - ", body, flags=re.M)[1:]:
+                    apt_calls = list(re.finditer(r"^([^#\n]*?)\bapt-get\b", step, re.M))
+                    if not apt_calls:
+                        continue
+                    with self.subTest(workflow=workflow.name, job=name, step=step.splitlines()[0]):
+                        bound = re.search(r"^        timeout-minutes: (\d+)$", step, re.M)
+                        self.assertIsNotNone(bound, "apt step has no timeout-minutes")
+                        self.assertTrue(0 < int(bound[1]) <= 10, "apt step must finish within 10 minutes")
+                    for call in apt_calls:
+                        calls += 1
+                        with self.subTest(workflow=workflow.name, job=name, command=call[0].strip()):
+                            bound = re.search(r"\btimeout (?:--kill-after=\d+s? )?([1-9]\d*)\b", call[1])
+                            self.assertIsNotNone(bound, "apt-get has no command timeout")
+                            self.assertLessEqual(int(bound[1]), 300, "apt command exceeds five minutes")
+        self.assertGreater(calls, 0, "Tier 2 apt calls disappeared from the workflow scan")
+
+    def test_acquire_bounds_are_set_before_the_prebaked_fast_path(self):
+        bootstrap = job_block(WORKFLOW.read_text(encoding="utf-8"), "rust-linux-tier2-build")
+        bootstrap = bootstrap.split("name: Install Git", 1)[1].split("\n      - ", 1)[0]
+        config = bootstrap.split('if [ "$TIER2_PREBAKED" = true ]; then', 1)[0]
+        for option in ('Acquire::http::Timeout "20";', 'Acquire::https::Timeout "20";',
+                       'Acquire::Retries "3";'):
+            self.assertIn(option, config)
+        self.assertIn("> /etc/apt/apt.conf.d/99-ci-acquire-bounds", config)
+
+
 if __name__ == "__main__":
     unittest.main()
