@@ -79,9 +79,11 @@ def windows_toolchain(work: Path, target: str) -> Path:
     return path
 
 
-def cache_env(work: Path) -> dict[str, str]:
+def cache_env(work: Path, tools: Path | None = None) -> dict[str, str]:
     """Fresh per-pass cache: share identical support compiles, never link results."""
-    binary = tier2_front_cache.install(work)
+    # Keep the launcher command stable for kept Ninja trees; only cached objects
+    # and policy are ephemeral. The installer re-verifies its pinned binary.
+    binary = tier2_front_cache.install(tools or work)
     config = work / "ccache.conf"
     config.write_text("")
     env = {key: value for key, value in local_gate.soldr_env().items() if not key.startswith("CCACHE_")}
@@ -101,7 +103,7 @@ def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str]) -> Non
 
 def link(alias: str, work: Path, jobs: int) -> None:
     with tempfile.TemporaryDirectory(prefix="cmocka-link-cache-") as directory:
-        env = cache_env(Path(directory))
+        env = cache_env(Path(directory), work / "compiler-cache")
         try:
             _link(alias, work, jobs, env)
         finally:

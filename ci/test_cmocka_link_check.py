@@ -88,6 +88,16 @@ class BuildTest(unittest.TestCase):
                     with self.assertRaises(subprocess.CalledProcessError):
                         cmocka_link_check.build_targets(alias, work, 2, {})
 
+    def test_kept_tree_uses_a_stable_verified_launcher_with_a_fresh_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            tools = work / "build" / "compiler-cache"
+            with mock.patch.object(cmocka_link_check.tier2_front_cache, "install", return_value=tools / "ccache") as install:
+                env = cmocka_link_check.cache_env(work, tools)
+            install.assert_called_once_with(tools)
+            self.assertEqual(env["CMAKE_C_COMPILER_LAUNCHER"], str(tools / "ccache"))
+            self.assertEqual(env["CCACHE_DIR"], str(work / "objects"))
+
     def test_cache_is_fresh_and_cannot_inherit_relaxed_or_remote_policy(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
