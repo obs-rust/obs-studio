@@ -473,34 +473,6 @@ void obs_hotkey_dispatch(obs_hotkey_t *hotkey, bool pressed)
 		obs->hotkeys.router_func(obs->hotkeys.router_func_data, hotkey->id, pressed);
 }
 
-struct obs_hotkey_internal_inject {
-	obs_key_combination_t hotkey;
-	bool pressed;
-	bool strict_modifiers;
-};
-
-static inline bool inject_hotkey(void *data, size_t idx, obs_hotkey_binding_t *binding)
-{
-	UNUSED_PARAMETER(idx);
-	struct obs_hotkey_internal_inject *event = data;
-	obs_hotkey_binding_inject(binding, event->hotkey, event->pressed, event->strict_modifiers);
-	return true;
-}
-
-void obs_hotkey_inject_event(obs_key_combination_t hotkey, bool pressed)
-{
-	if (!lock())
-		return;
-
-	struct obs_hotkey_internal_inject event = {
-		{hotkey.modifiers, hotkey.key},
-		pressed,
-		obs->hotkeys.strict_modifiers,
-	};
-	enum_bindings(inject_hotkey, &event);
-	unlock();
-}
-
 void obs_hotkeys_background_clear_shortcuts(struct obs_hotkeys_background *background)
 {
 	for (size_t i = 0; i < background->shortcuts.num; i++)
