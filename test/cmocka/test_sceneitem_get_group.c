@@ -1,5 +1,5 @@
 /* Characterize wrapper locking and the real linked parent-group walk (#5276).
- * Stack-owned native layouts need no OBS startup, sources or worker threads. */
+ * Native layouts need no OBS startup, devices or worker threads. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

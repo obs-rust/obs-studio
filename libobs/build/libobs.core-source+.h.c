@@ -45,6 +45,7 @@
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
 #include "libobs/obs-sceneitem-defer-update.c.h"
+#include "libobs/obs-sceneitem-get-group.c.h"
 #include "libobs/obs-shader-param-introspection-fields.c.h"
 #include "libobs/obs-source-async-compensation-fields.c.h"
 #include "libobs/obs-source-async-decoupled-fields.c.h"
