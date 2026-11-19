@@ -25,6 +25,9 @@ MAX_ACTIVE_RUNS = 5 * 2
 # Two runner scopes, two run statuses, and a jobs collection for each active run.
 # Include pagination and retries, while retaining the shared wall-clock deadline.
 MAX_REQUESTS = (4 + MAX_ACTIVE_RUNS) * MAX_PAGES * (MAX_RETRIES + 1)
+# All expanded PR-routable jobs, including both sequential Tier 2 phases.
+# ci/test_member_pr_routing.py checks this bound against the workflow inventory.
+PR_RUNNER_DEMAND = 13
 
 
 class RequestBudgetExhausted(ValueError):
@@ -357,7 +360,8 @@ def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group")
 
 
 def inflight_commitments(
-    repo: str, wanted: set[str], probe: Probe, demand: int = 1
+    repo: str, wanted: set[str], probe: Probe, demand: int = 1,
+    *, mq_required: int = 0, pr_required: int = 0,
 ) -> tuple[int, int]:
     """Count queued Dell jobs and active Dell/older undecided runs.
 
@@ -371,7 +375,8 @@ def inflight_commitments(
     if current_id < 1 or not token:
         raise ValueError("missing Actions probe identity")
     runs = active_runs(repo, probe, token)
-    if os.environ.get("DELL_PR_ROUTING") == "on":
+    mixed = os.environ.get("DELL_PR_ROUTING") == "on"
+    if mixed:
         # Queue runs sort before every PR, even a PR created earlier. Inspect
         # live PR jobs for both events so the queue sees their queued demand.
         runs = {key: ((0, *value[0]), value[1]) for key, value in runs.items()}
@@ -383,6 +388,8 @@ def inflight_commitments(
     for run_id, (priority, _) in sorted(runs.items(), key=lambda item: item[1][0]):
         if run_id == current_id:
             continue
+        weight = (pr_required if priority[0] == 1 else mq_required) if mixed else 1
+        peer_demand = weight if mixed else demand
         try:
             jobs = probe.entries(
                 f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
@@ -391,8 +398,8 @@ def inflight_commitments(
         except RequestBudgetExhausted as error:
             unprobed += 1
             observed, _, _ = job_commitments(error.entries, wanted)
-            queued += max(observed, demand)
-            committed += 1
+            queued += max(observed, peer_demand)
+            committed += weight
             continue
         except ValueError as error:
             raise ValueError(f"jobs probe (run {run_id}): {error}") from error
@@ -405,11 +412,15 @@ def inflight_commitments(
         queued += pending
         # Count known Dell runs regardless of age. Unknown older runs also
         # reserve slots; hosted or finished Dell work releases their reservation.
-        committed += dell or (not decided and priority < current)
+        committed += weight * (dell or (not decided and priority < current))
     if unprobed:
+        reservation = (
+            "reserving each unprobed active run's required capacity"
+            if mixed else f"reserving at least {demand} runners per unprobed active run"
+        )
         warning(
             f"jobs probe: request budget exhausted; unprobed={unprobed}; "
-            f"reserving at least {demand} runners per unprobed active run",
+            f"{reservation}",
             hosted=False,
         )
     return queued, committed
@@ -417,21 +428,26 @@ def inflight_commitments(
 
 def admission_available(
     repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int,
-    reserve: int = 0,
+    reserve: int = 0, mq_required: int = 0, pr_required: int = 0,
 ) -> tuple[bool, str]:
     """The idle floor and in-flight run cap must both admit this run."""
     if idle - reserve < required:
         return False, ""
-    queued, committed = inflight_commitments(repo, wanted, probe, required)
+    mixed = os.environ.get("DELL_PR_ROUTING") == "on"
+    options = {"mq_required": mq_required, "pr_required": pr_required} if mixed else {}
+    queued, committed = inflight_commitments(repo, wanted, probe, required, **options)
     idle_slots = (idle - queued - reserve) // required
     # The total cap includes runs whose running jobs already reduce idle. Using
     # idle for this cap would charge those busy runners twice. Idle slots below
     # independently limit how much new work this snapshot can admit.
-    limit = (online - reserve) // required
+    limit = online - reserve if mixed else (online - reserve) // required
     counts = (
         f"; queued={queued}, committed={committed}, run_limit={limit}"
         f", idle_run_slots={max(0, idle_slots)}"
     )
+    if mixed:
+        counts += "; commitments measured in runner capacity"
+        return idle_slots >= 1 and committed + required <= limit, counts
     return idle_slots >= 1 and committed < limit, counts
 
 
@@ -509,6 +525,12 @@ def select_labels(
     try:
         requested = requested_labels(labels)
         required = required_capacity(min_idle, demand, mode)
+        mq_required = required
+        pr_required = required
+        if os.environ.get("DELL_PR_ROUTING") == "on":
+            pr_required = max(required, required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND)))
+        if is_pr:
+            required = pr_required
         if not token:
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
             return decision("runner probe token is missing")
@@ -555,6 +577,8 @@ def select_labels(
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
         step = "in-flight commitments probe"
         options = {"reserve": reserve} if is_pr else {}
+        if os.environ.get("DELL_PR_ROUTING") == "on":
+            options.update(mq_required=mq_required, pr_required=pr_required)
         admitted, commitments = admission_available(
             repo, wanted, probe, len(matched), idle, required, **options
         )

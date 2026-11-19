@@ -67,12 +67,23 @@ class MemberPrRoutingTest(unittest.TestCase):
                 "GITHUB_EVENT_NAME": event, "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_RUN_ID": "20", "GITHUB_TOKEN": "actions-token",
                 "DELL_PR_ROUTING": enabled, "MQ_PR_RESERVE": reserve,
+                "MQ_PR_DEMAND": getattr(self, "pr_demand", "6"),
             }, clear=True), patch.object(selector, "urlopen", side_effect=respond), patch.object(selector.time, "sleep"):
                 return selector.select_labels(event, LABELS, "probe-token", "obs-rust/obs-studio", demand="6")
 
     def test_member_with_idle_capacity_uses_dell(self):
         self.assertEqual(self.select(), LABELS)
         self.assertIn("/orgs/obs-rust/memberships/alice", self.paths)
+
+    def test_default_pr_demand_preserves_reserve_for_full_inventory(self):
+        self.pr_demand = ""
+        self.assertEqual(self.select(capacity=18), "")
+        self.assertEqual(self.select(capacity=19), LABELS)
+
+    def test_invalid_pr_demand_uses_hosted(self):
+        for demand in ("0", "-1", "bad"):
+            self.pr_demand = demand
+            self.assertEqual(self.select(), "")
 
     def test_fork_uses_hosted_without_api(self):
         self.assertEqual(self.select(head="fork/obs-studio"), "")
@@ -128,8 +139,38 @@ class MemberPrRoutingTest(unittest.TestCase):
         for event in ("pull_request", "merge_group"):
             self.assertEqual(self.select(event=event, peers=[peer], jobs=jobs), "")
 
+    def test_mixed_demands_admit_only_one_queue_run_beside_large_pr(self):
+        self.pr_demand = "13"
+        pr = {"id": 10, "event": "pull_request", "status": "in_progress",
+              "created_at": "2026-11-19T11:59:00Z"}
+        mq = {"id": 15, "event": "merge_group", "status": "in_progress",
+              "created_at": "2026-11-19T11:59:30Z"}
+        # Idle census can lag a routing choice: charge the PR's full 13-slot
+        # commitment, not one six-slot queue run, even before its jobs start.
+        jobs = {10: [{"name": "Fast Gate ⚡", "status": "in_progress",
+                      "conclusion": None, "labels": json.loads(LABELS)}]}
+        self.assertEqual(self.select(event="merge_group", capacity=19, peers=[pr], jobs=jobs), LABELS)
+        self.assertEqual(self.select(event="merge_group", capacity=19, peers=[pr, mq], jobs=jobs), "")
+
 
 class MemberPrWorkflowTest(unittest.TestCase):
+    def test_default_pr_demand_covers_expanded_routed_jobs(self):
+        from tier2_matrix import matrix
+
+        text = (ROOT / ".github/workflows/build-project.yaml").read_text()
+        blocks = dict(re.findall(r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.M | re.S))
+        count = 0
+        for name, block in blocks.items():
+            if not re.search(r"runs-on: .*inputs.mq-heavy-labels", block):
+                continue
+            if name == "rust-linux-tier2":
+                scheduling = matrix("pull_request")
+                count += len(scheduling["mode"]) * len(scheduling["part"])
+            else:
+                variants = re.search(r"^        (?:target|alias): \[([^\]]+)\]", block, re.M)
+                count += len(variants[1].split(",")) if variants else 1
+        self.assertEqual(selector.PR_RUNNER_DEMAND, count)
+
     def test_base_owned_selector_and_membership_helper(self):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         probe = ci.split("  select-mq-runner:\n", 1)[1].split("  cancel-superseded:\n", 1)[0]

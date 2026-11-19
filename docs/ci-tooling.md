@@ -1366,16 +1366,26 @@ hosted without expanding permissions. Probe credentials remain on hosted runners
 `MQ_RUNNER_DEMAND` (currently `6`). A PR must fit its entire required capacity
 after queued commitments and this reserve are subtracted. Unset/empty uses the
 default; a nonnegative integer overrides it, and invalid values select hosted.
-On a six-runner Dell with demand six and the default reserve six, PRs therefore
-remain hosted even when idle. A maintainer must explicitly tune the reserve or
-increase the pool to enable useful PR capacity. `MQ_RUNNER_LABELS`,
+PRs have a separate `MQ_PR_DEMAND`: unset/empty defaults to `13`, the complete
+expanded PR job inventory, including both sequential Tier 2 phases. The PR's
+requirement is the maximum of this value and the existing MQ requirement.
+Invalid/nonpositive values use hosted. This conservative default covers Fast
+Gate, Cross Compile, Qt and link jobs in addition to the existing heavy jobs;
+the inventory regression must change when that topology changes. A maintainer
+may tune it to measured scoped PR concurrency, but must not set it below the
+actual concurrent job demand. With default PR demand thirteen and reserve six,
+nineteen matching idle runners are needed. A six-runner Dell stays hosted until
+the maintainer explicitly tunes both PR settings for its workload or expands
+the pool. `MQ_RUNNER_LABELS`,
 `MQ_RUNNER_MIN_IDLE`, `MQ_RUNNER_DEMAND` and `MQ_RUNNER_MODE` retain their meanings.
 No variable is changed by merging this default-off feature.
 
 When enabled, both selectors account for live PR and queue job commitments.
 Undecided queue runs have priority over every PR, regardless of creation time;
-undecided PRs use oldest-first ordering. Queue admission does not subtract the
-PR reserve. This remains a bounded snapshot, with the same API visibility and
+undecided PRs use oldest-first ordering. Commitments are weighted by each
+event's required runner capacity, so a large PR cannot count as one small MQ
+run. Queue admission does not subtract the PR reserve. This remains a bounded
+snapshot, with the same API visibility and
 simultaneous-selection limitations as queue admission, not a preemption system.
 Already-running PR jobs finish normally. Turning the kill switch off stops new
 PR routing; allow existing PR jobs to drain before relying on queue-only census.

@@ -120,6 +120,7 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.sha }}
           DELL_PR_ROUTING: ${{ vars.DELL_PR_ROUTING || 'off' }}
           MQ_PR_RESERVE: ${{ vars.MQ_PR_RESERVE }}
+          MQ_PR_DEMAND: ${{ vars.MQ_PR_DEMAND }}
           MQ_RUNNER_LABELS: ${{ vars.MQ_RUNNER_LABELS }}
           MQ_RUNNER_MODE: ${{ vars.MQ_RUNNER_MODE }}
           MQ_RUNNER_MIN_IDLE: ${{ vars.MQ_RUNNER_MIN_IDLE }}
