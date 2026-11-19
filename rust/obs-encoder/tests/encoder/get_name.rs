@@ -6,8 +6,15 @@ use std::ffi::CStr;
 #[test]
 fn null_encoder_logs_and_returns_null() {
     let mut logs = Vec::new();
-    assert_eq!(get::<usize>(None::<fn() -> usize>, |level, text| logs.push((level, text))), None);
-    assert_eq!(logs, [(400, c"obs_encoder_get_name: Null 'encoder' parameter")]);
+    assert_eq!(
+        get::<usize>(None::<fn() -> usize>, |level, text| logs
+            .push((level, text))),
+        None
+    );
+    assert_eq!(
+        logs,
+        [(400, c"obs_encoder_get_name: Null 'encoder' parameter")]
+    );
 }
 
 fn name<'a>(value: &'a Cell<&'a CStr>) -> &'a CStr {
@@ -44,7 +51,13 @@ fn follows_a_rename() {
 #[test]
 fn projects_exactly_once_even_for_an_absent_name() {
     let calls = Cell::new(0);
-    let current = get(Some(|| { calls.set(calls.get() + 1); None::<usize> }), |_, _| panic!("valid encoder logged"));
+    let current = get(
+        Some(|| {
+            calls.set(calls.get() + 1);
+            None::<usize>
+        }),
+        |_, _| panic!("valid encoder logged"),
+    );
     assert_eq!(current, Some(None));
     assert_eq!(calls.get(), 1);
 }

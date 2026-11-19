@@ -32,8 +32,9 @@ BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 # Identity getters are absent: #3924 exports their real Rust shims.
 # The encoder packet copy and release are absent: #4650 exports them from
 # obs-encoder, which the bench links through obs-data.
+# The encoder name getter is absent too: #5253 exports it from obs-encoder;
+# the synthetic interleaver replaces only its private name seam.
 SYMBOLS = (
-    "obs_encoder_get_name",
     "obs_encoder_group_num_started",
     "obs_encoder_interleave_info",
     "obs_hotkey_binding_fields",
@@ -70,6 +71,7 @@ SYMBOLS = (
     "obs_output_initialize_encoders",
     "obs_output_interleave_active",
     "obs_output_interleave_add_caption",
+    "obs_output_interleave_encoder_name",
     "obs_output_interleave_fields",
     "obs_output_interleave_first_audio_encoder_index",
     "obs_output_interleave_first_video_encoder_index",

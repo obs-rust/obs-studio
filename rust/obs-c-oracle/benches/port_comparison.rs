@@ -89,8 +89,8 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_encoder_get_name() -> ! {
-        called("obs_encoder_get_name")
+    pub extern "C" fn obs_output_interleave_encoder_name() -> ! {
+        called("obs_output_interleave_encoder_name")
     }
 
     #[unsafe(no_mangle)]

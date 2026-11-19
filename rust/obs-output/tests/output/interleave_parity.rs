@@ -917,13 +917,15 @@ pub unsafe extern "C" fn obs_output_get_name(output: *const c_void) -> *const c_
     unsafe { fixture(output) }.name
 }
 
-/// `obs_encoder_get_name`.
+/// `obs_output_interleave_encoder_name`.
 ///
 /// # Safety
 ///
 /// `encoder` is one of a live fixture's encoders.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_encoder_get_name(encoder: *const c_void) -> *const c_char {
+pub unsafe extern "C" fn obs_output_interleave_encoder_name(
+    encoder: *const c_void,
+) -> *const c_char {
     // SAFETY: caller contract.
     unsafe { (*encoder.cast::<Encoder>()).name.as_ptr() }
 }
