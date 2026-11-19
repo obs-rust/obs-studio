@@ -2960,6 +2960,14 @@ static obs_sceneitem_t *get_sceneitem_parent_group(obs_scene_t *scene, obs_scene
 	return NULL;
 }
 
+/* Private callable seam: the shared walk stays here for reorder callers. */
+obs_sceneitem_t *obs_sceneitem_parent_group_lookup(obs_scene_t *scene, obs_sceneitem_t *group_subitem);
+
+obs_sceneitem_t *obs_sceneitem_parent_group_lookup(obs_scene_t *scene, obs_sceneitem_t *group_subitem)
+{
+	return get_sceneitem_parent_group(scene, group_subitem);
+}
+
 static void obs_sceneitem_move_hotkeys(obs_scene_t *parent, obs_sceneitem_t *item)
 {
 	obs_data_array_t *data0 = NULL;
@@ -3079,18 +3087,6 @@ bool obs_scene_reorder_items2(obs_scene_t *scene, struct obs_sceneitem_order_inf
 	signal_reorder(scene->first_item);
 	obs_scene_release(scene);
 	return true;
-}
-
-obs_sceneitem_t *obs_sceneitem_get_group(obs_scene_t *scene, obs_sceneitem_t *group_subitem)
-{
-	if (!scene || !group_subitem || group_subitem->is_group)
-		return NULL;
-
-	full_lock(scene);
-	obs_sceneitem_t *group = get_sceneitem_parent_group(scene, group_subitem);
-	full_unlock(scene);
-
-	return group;
 }
 
 void obs_sceneitem_force_update_transform(obs_sceneitem_t *item)

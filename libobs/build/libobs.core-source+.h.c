@@ -31,6 +31,7 @@
 #include "libobs/obs-scene-item-blending-method-fields.c.h"
 #include "libobs/obs-scene-item-blending-mode-fields.c.h"
 #include "libobs/obs-scene-item-bounds-setters-fields.c.h"
+#include "libobs/obs-scene-item-get-group.c.h"
 #include "libobs/obs-scene-item-group-scene-fields.c.h"
 #include "libobs/obs-scene-item-hotkey-bridge.c.h"
 #include "libobs/obs-scene-item-hotkeys-fields.c.h"
