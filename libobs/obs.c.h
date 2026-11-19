@@ -1745,14 +1745,6 @@ bool obs_get_audio_info2(struct obs_audio_info2 *oai2)
 	}
 }
 
-bool obs_enum_input_types(size_t idx, const char **id)
-{
-	if (idx >= obs->input_types.num)
-		return false;
-	*id = obs->input_types.array[idx].id;
-	return true;
-}
-
 const char *obs_get_latest_input_type_id(const char *unversioned_id)
 {
 	struct obs_source_info *latest = NULL;
@@ -1775,46 +1767,6 @@ const char *obs_get_latest_input_type_id(const char *unversioned_id)
 		return NULL;
 
 	return latest->id;
-}
-
-bool obs_enum_filter_types(size_t idx, const char **id)
-{
-	if (idx >= obs->filter_types.num)
-		return false;
-	*id = obs->filter_types.array[idx].id;
-	return true;
-}
-
-bool obs_enum_transition_types(size_t idx, const char **id)
-{
-	if (idx >= obs->transition_types.num)
-		return false;
-	*id = obs->transition_types.array[idx].id;
-	return true;
-}
-
-bool obs_enum_output_types(size_t idx, const char **id)
-{
-	if (idx >= obs->output_types.num)
-		return false;
-	*id = obs->output_types.array[idx].id;
-	return true;
-}
-
-bool obs_enum_encoder_types(size_t idx, const char **id)
-{
-	if (idx >= obs->encoder_types.num)
-		return false;
-	*id = obs->encoder_types.array[idx].id;
-	return true;
-}
-
-bool obs_enum_service_types(size_t idx, const char **id)
-{
-	if (idx >= obs->service_types.num)
-		return false;
-	*id = obs->service_types.array[idx].id;
-	return true;
 }
 
 void obs_enter_graphics(void)
