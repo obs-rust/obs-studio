@@ -147,6 +147,90 @@ class NativeFixtureTest(unittest.TestCase):
                 artifacts.verify_macho(path, allowed_filetypes=(2, 6, 8))
 
 
+class DsymutilCacheTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.env = {"RUNNER_TOOL_CACHE": str(self.root / "tools")}
+        self.contents = b"pinned debug tool"
+        output = io.BytesIO()
+        with tarfile.open(fileobj=output, mode="w:gz") as archive:
+            member = tarfile.TarInfo("./package/bin/dsymutil")
+            member.size = len(self.contents)
+            member.mode = 0o755
+            archive.addfile(member, io.BytesIO(self.contents))
+        self.payload = output.getvalue()
+        self.digest = hashlib.sha256(self.payload).hexdigest()
+        for target, name, value in (
+                (fixtures.platform, "system", lambda: "Linux"),
+                (fixtures.platform, "machine", lambda: "x86_64"),
+                (Path, "home", lambda: self.root),
+                (fixtures, "LLVM_TOOLS_SHA256", self.digest),
+                (fixtures, "DSYMUTIL_SHA256", hashlib.sha256(self.contents).hexdigest())):
+            self.enterContext(patch.object(target, name, value))
+
+    def download(self, url, destination):
+        self.assertEqual(url, fixtures.LLVM_TOOLS_URL)
+        Path(destination).write_bytes(self.payload)
+
+    def test_clean_checkouts_share_verified_executable_without_retaining_archive(self):
+        with patch.object(fixtures.urllib.request, "urlretrieve", side_effect=self.download) as download:
+            first = fixtures.provision_dsymutil(self.root / "checkout-a", self.env)
+            second = fixtures.provision_dsymutil(self.root / "checkout-b", self.env)
+        self.assertEqual(first, second)
+        self.assertTrue(first.is_relative_to(self.root / "tools"))
+        self.assertIn(self.digest, first.parts)
+        self.assertEqual(first.read_bytes(), self.contents)
+        self.assertEqual(first.stat().st_mode & 0o111, 0o111)
+        self.assertEqual(list((self.root / "tools").rglob("*.zst")), [])
+        download.assert_called_once()
+
+    def test_interrupted_extraction_never_publishes_partial_tool(self):
+        extract = fixtures.tarfile.TarFile.extract
+
+        def interrupted(archive, member, path, **kwargs):
+            extract(archive, member, path, **kwargs)
+            raise OSError("interrupted extraction")
+
+        with patch.object(fixtures.urllib.request, "urlretrieve", side_effect=self.download) as download:
+            with patch.object(fixtures.tarfile.TarFile, "extract", interrupted):
+                with self.assertRaisesRegex(OSError, "interrupted"):
+                    fixtures.provision_dsymutil(self.root, self.env)
+            tool = fixtures.provision_dsymutil(self.root, self.env)
+        self.assertEqual(tool.read_bytes(), self.contents)
+        self.assertEqual(download.call_count, 2)
+
+    def test_corrupt_shared_tool_is_rejected_without_network(self):
+        with patch.object(fixtures.urllib.request, "urlretrieve", side_effect=self.download):
+            tool = fixtures.provision_dsymutil(self.root, self.env)
+        tool.write_bytes(b"corrupt")
+        with patch.object(fixtures.urllib.request, "urlretrieve") as download:
+            with self.assertRaisesRegex(ValueError, "dsymutil checksum mismatch"):
+                fixtures.provision_dsymutil(self.root, self.env)
+            download.assert_not_called()
+
+    def test_invalid_extracted_tool_never_publishes(self):
+        with patch.object(fixtures.urllib.request, "urlretrieve", side_effect=self.download), \
+                patch.object(fixtures, "DSYMUTIL_SHA256", "0" * 64):
+            with self.assertRaisesRegex(ValueError, "dsymutil checksum mismatch"):
+                fixtures.provision_dsymutil(self.root, self.env)
+        self.assertEqual(list((self.root / "tools/obs-darwin-dsymutil").iterdir()), [])
+
+    def test_concurrent_publishers_return_same_complete_executable(self):
+        ready = threading.Barrier(2)
+
+        def download(url, destination):
+            ready.wait(3)
+            self.download(url, destination)
+
+        with patch.object(fixtures.urllib.request, "urlretrieve", side_effect=download), \
+                ThreadPoolExecutor(max_workers=2) as pool:
+            tools = list(pool.map(lambda name: fixtures.provision_dsymutil(self.root / name, self.env), ("a", "b")))
+        self.assertEqual(tools[0], tools[1])
+        self.assertEqual(tools[0].read_bytes(), self.contents)
+
+
 class FixtureInventoryTest(unittest.TestCase):
     def swift_archive(self, contents=b"pinned swift compiler"):
         output = io.BytesIO()
