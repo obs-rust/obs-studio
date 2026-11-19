@@ -7968,6 +7968,26 @@
         "test/cmocka"
       ]
     },
+    "test_module_disable_query": {
+      "sources": [
+        "test/cmocka/test_module_disable_query.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::libobs-core-modules",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-disable-query.c.h"
+      ],
+      "requires": "ENABLE_CORE_MODULES"
+    },
     "test_module_failure_info": {
       "sources": [
         "test/cmocka/test_module_failure_info.c"
@@ -23703,6 +23723,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_module_disable_query": {
+      "target": "test_module_disable_query",
+      "command": [
+        "${target}"
+      ],
+      "requires": "ENABLE_CORE_MODULES"
     },
     "test_module_failure_info": {
       "target": "test_module_failure_info",

@@ -5500,3 +5500,6 @@ mod canonical_source_properties_is_registered;
 
 #[path = "native/registration/canonical_ui_task_handler_is_registered.rs"]
 mod canonical_ui_task_handler_is_registered;
+
+#[path = "native/core_module_manifest.rs"]
+pub(crate) mod core_module_manifest;
