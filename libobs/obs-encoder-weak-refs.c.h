@@ -29,5 +29,4 @@ obs_weak_encoder_t *obs_encoder_get_weak_encoder(obs_encoder_t *encoder)
 	return weak;
 }
 
-
 #undef get_weak
