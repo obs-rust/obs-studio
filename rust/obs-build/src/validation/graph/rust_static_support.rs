@@ -15,7 +15,8 @@ pub(super) fn sources(root: &Path) -> Result<Vec<PathBuf>, String> {
     }
     let manifest: Manifest = serde_json::from_str(MANIFEST)
         .map_err(|error| format!("Rust-static support manifest: {error}"))?;
-    Ok(manifest.sources
+    Ok(manifest
+        .sources
         .iter()
         .map(|path| root.join(path))
         .collect())

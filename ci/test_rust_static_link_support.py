@@ -46,12 +46,16 @@ class RustStaticLinkSupport(unittest.TestCase):
                 +
                 "add_library(indirect INTERFACE)\n"
                 "target_link_libraries(indirect INTERFACE libobs_rust-static)\n"
-                "foreach(name IN ITEMS direct indirect_consumer)\n"
+                "foreach(name IN ITEMS direct indirect_consumer conditional_consumer)\n"
                 "  add_executable(${name} main.c)\n"
                 "  target_link_libraries(${name} PRIVATE OBS::libobs)\n"
                 "endforeach()\n"
                 "target_link_libraries(direct PRIVATE libobs_rust-static)\n"
                 "target_link_libraries(indirect_consumer PRIVATE indirect)\n"
+                'target_link_libraries(conditional_consumer PRIVATE "$<$<BOOL:ON>:indirect>")\n'
+                "file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/reference.c \"int main(void) { return 0; }\\n\")\n"
+                "add_executable(reference ${CMAKE_CURRENT_BINARY_DIR}/reference.c)\n"
+                'target_link_libraries(reference PRIVATE "$<$<BOOL:OFF>:libobs_rust-static>")\n'
                 f'include("{HELPER.as_posix()}" OPTIONAL)\n'
                 "if(COMMAND obs_rust_static_consumers)\n"
                 "  obs_rust_static_consumers(support host_owner)\n"
@@ -60,10 +64,14 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "  target_link_libraries(direct PRIVATE support)\n"
                 "  target_link_libraries(indirect_consumer PRIVATE support)\n"
                 "endif()\n"
+                'file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/reference-links.txt" CONTENT "$<TARGET_GENEX_EVAL:reference,$<TARGET_PROPERTY:reference,LINK_LIBRARIES>>")\n'
             )
             build = source / "build"
             self.run_command(["cmake", "-S", str(source), "-B", str(build)])
-            targets = ("direct",) if baseline_host else ("direct", "indirect_consumer")
+            reference_links = (build / "reference-links.txt").read_text()
+            self.assertNotIn("libobs_rust-static", reference_links)
+            self.assertNotIn("support", reference_links)
+            targets = ("direct",) if baseline_host else ("direct", "indirect_consumer", "conditional_consumer")
             self.run_command(["cmake", "--build", str(build), "--parallel", "2", "--target", *targets])
             for name in targets:
                 self.run_command([str(build / name)])

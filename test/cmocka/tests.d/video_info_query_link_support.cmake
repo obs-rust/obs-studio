@@ -23,6 +23,6 @@ function(_video_info_query_link_support)
     video_info_query_link_support
     PRIVATE OBS::caption Uthash::Uthash $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>
   )
-  obs_rust_static_consumers(video_info_query_link_support libobs-objects)
+  obs_rust_static_consumers(video_info_query_link_support OBS::libobs-native-dependencies)
 endfunction()
 cmake_language(DEFER CALL _video_info_query_link_support)

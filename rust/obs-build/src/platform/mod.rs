@@ -1005,8 +1005,15 @@ pub fn configure_rust_static_dependencies(
 ) -> Result<(), String> {
     crate::libobs::add_package(library, target, "jansson")?;
     if target.contains("linux") {
-        for package in ["uuid", "gio-2.0"] {
-            crate::libobs::add_package(library, target, package)?;
+        crate::libobs::add_package(library, target, "uuid")?;
+        // Match the optional native owner: no-GIO archives remain usable on
+        // hosts without GIO. Archives that actually need it still fail to link.
+        if pkg_config::Config::new()
+            .cargo_metadata(false)
+            .probe("gio-2.0")
+            .is_ok()
+        {
+            crate::libobs::add_package(library, target, "gio-2.0")?;
         }
     }
     Ok(())
