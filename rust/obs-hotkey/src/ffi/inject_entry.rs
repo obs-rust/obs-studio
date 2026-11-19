@@ -2,8 +2,8 @@
 //! seam lock. The field adapter has no global or runtime-symbol dependencies.
 use core::ffi::c_void;
 
-use super::nix_hotkey_state::obs_key_combination;
 use super::binding_press::obs_hotkey_binding;
+use super::nix_hotkey_state::obs_key_combination;
 use crate::inject_entry::{self, Event, Registry};
 use crate::press::KeyCombination;
 

@@ -1,9 +1,9 @@
 //! Tier 3: extracted original C, the production ABI conversion/dispatch, and
 //! safe-core recorder. No intentional differences or excluded defined inputs.
 use core::ffi::c_void;
+use obs_hotkey::ffi::binding_press::obs_hotkey_binding;
 use obs_hotkey::ffi::inject_entry::{self as ffi, Visitor};
 use obs_hotkey::ffi::nix_hotkey_state::obs_key_combination;
-use obs_hotkey::ffi::binding_press::obs_hotkey_binding;
 use obs_hotkey::inject_entry::inject;
 use obs_hotkey::name_map::{KEY_NONE, OBS_KEY_A, OBS_KEY_MOUSE3};
 use obs_hotkey::press::KeyCombination;
