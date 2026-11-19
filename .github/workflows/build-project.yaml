@@ -3260,8 +3260,8 @@ jobs:
     timeout-minutes: 30
     env:
       QT_TAG: qt6-6.11.1
-      QT_ASSET: qt6-6.11.1-linux-x86_64-glibc2.28-release.tar.zst
-      QT_SHA256: f0edfc3432bd57058bbb9a2cf18aacceb55a2564b018346778c34eb0e3369dbf
+      QT_ASSET: qt6-6.11.1-linux-x86_64-glibc2.28-release-testlib.tar.zst
+      QT_SHA256: 021cb3b0f3890851a6787c127f2b94ad0da7c5a20bc3402f09a76656c277dc6e
       FFMPEG_TAG: ffmpeg-8.1.2
       FFMPEG_ASSET: ffmpeg-8.1.2-linux-x86_64-glibc2.28-release.tar.zst
       FFMPEG_SHA256: 8796ecdb273688c21f90b75a4e84acfc84ab35e69cacb551a6d8ed452961fcb4
