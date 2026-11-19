@@ -13,6 +13,8 @@ function(_source_update_properties_link_support)
     "${CMAKE_CURRENT_SOURCE_DIR}/source-update-properties-base-log-link-support.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/source-update-properties-base-crash-link-support.c"
   )
+  # Each real service must remain independently demand-linked.
+  set_target_properties(source_update_properties_link_support PROPERTIES UNITY_BUILD OFF)
   target_include_directories(
     source_update_properties_link_support
     PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_BINARY_DIR}/config"
