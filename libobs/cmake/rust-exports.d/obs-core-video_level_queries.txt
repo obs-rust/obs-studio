@@ -1,0 +1,2 @@
+obs_get_video_hdr_nominal_peak_level
+obs_get_video_sdr_white_level

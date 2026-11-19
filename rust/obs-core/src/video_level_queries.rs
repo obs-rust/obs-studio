@@ -20,12 +20,16 @@ pub struct VideoLevels {
 
 /// `obs_get_video_sdr_white_level`: `None` is a NULL core.
 pub fn sdr_white_level(levels: Option<VideoLevels>) -> f32 {
-    let _ = levels;
-    todo!("#5187")
+    match levels {
+        Some(levels) if levels.graphics => levels.sdr_white_level,
+        _ => DEFAULT_SDR_WHITE_LEVEL,
+    }
 }
 
 /// `obs_get_video_hdr_nominal_peak_level`: `None` is a NULL core.
 pub fn hdr_nominal_peak_level(levels: Option<VideoLevels>) -> f32 {
-    let _ = levels;
-    todo!("#5187")
+    match levels {
+        Some(levels) if levels.graphics => levels.hdr_nominal_peak_level,
+        _ => DEFAULT_HDR_NOMINAL_PEAK_LEVEL,
+    }
 }

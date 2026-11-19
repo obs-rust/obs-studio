@@ -20003,9 +20003,10 @@
     "test_video_level_queries": {
       "sources": [
         "test/cmocka/test_video_level_queries.c",
-        "libobs/obs-video-level-queries.c.h"
+        "libobs/obs-video-level-queries-fields.c.h"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "Uthash::Uthash",
