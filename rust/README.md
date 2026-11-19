@@ -594,6 +594,8 @@ and compares their exported symbols. `OBS_LIBOBS_BACKEND=C` is temporary rollbac
 
 | `libobs/obs-source-audio-mixers-getter.c.h` | `obs-source::audio_mixers_getter` | Swapped in hybrid libobs; NULL logs the exact debug diagnostic and returns zero. Sources without audio return zero silently unless they own their info ID. The getter preserves all 32 mixer bits and field-read order through live scalar adapters. Unchanged Tier 2: `test_source_audio_mixers_getter`. Tier 3 compares the original C getter and predicate, return values, whole source bytes, scalar ABI and isolated diagnostics. No intentional differences. |
 
+| `libobs/obs-source-update-properties.c.h` | `obs-source::update_properties` | Swapped in hybrid libobs. Validate before one synchronous source-only notification with the exact source pointer, including private sources and repeated calls. C-owned validation and signal adapters preserve the NULL diagnostic and settings. The unchanged `test_source_update_properties` runs OFF/ON; original-C parity also covers calldata mutation and reentrancy. No intentional differences. |
+
 ## obs-studio-rust
 
 `obs-studio-rust` is a small client for a running OBS (Tools → WebSocket
@@ -634,4 +636,3 @@ done
 Published binaries go on the app's `obs-studio-rust-v*` releases; the
 `obs-stream-rust-v0.1.0` tag is retired.
 
-| `libobs/obs-source-update-properties.c.h` | `obs-source::update_properties` | Swapped in hybrid libobs. Validate before one synchronous source-only notification with the exact source pointer, including private sources and repeated calls. C-owned validation and signal adapters preserve the NULL diagnostic and settings. The unchanged `test_source_update_properties` runs OFF/ON; original-C parity also covers calldata mutation and reentrancy. No intentional differences. |
