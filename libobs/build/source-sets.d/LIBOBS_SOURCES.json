@@ -228,11 +228,15 @@
   "build/libobs.effect-parser-funcs+.h.c",
   "build/libobs.util-cf+.h.c",
   "build/libobs.graphics+.h.c",
+  "build/libobs.graphics-image-max-size+.h.c",
   "build/libobs.graphics-linear-srgb+.h.c",
   "build/libobs.graphics-stencil-adapter+.h.c",
   "build/libobs.graphics-texture-creators-fields+.h.c",
   "build/libobs.image-decode-adapter+.h.c",
   "build/libobs.media+.h.c",
+  "build/libobs.media-image-orientation-fields+.h.c",
+  "build/libobs.media-texture-file-data-convert+.h.c",
+  "build/libobs.media-texture-file-data-session+.h.c",
   "build/libobs.media-resampler-kernel+.h.c",
   "build/libobs.source-private-settings+.h.c"
 ]
