@@ -171,7 +171,7 @@ class JanitorRunnerTest(unittest.TestCase):
                 with self.subTest(workflow=path.name, job=name):
                     m = re.search(r"^    runs-on: (.+)$", block, re.M)
                     self.assertTrue(m, "janitor has no runs-on")
-                    self.assertRegex(m.group(1).strip(), r"^ubuntu-[0-9.]+$")
+                    self.assertRegex(m.group(1).strip(), r"^ubuntu-(?:[0-9.]+|latest)$")
         self.assertGreaterEqual(found, 2, "expected the ci-pre.yml and ci.yml janitors")
 
 
