@@ -15,41 +15,38 @@ pub enum Monitor {}
 
 /// `obs_audio_monitoring_available()`: always false.
 #[must_use]
-pub fn available() -> bool {
-    todo!("null monitoring: available")
+pub const fn available() -> bool {
+    false
 }
 
 /// `obs_enum_audio_monitoring_devices()`: lists no device, so `visit` (the
 /// callback and its data) is never called or touched.
 pub fn enum_devices<V>(visit: V) {
-    let _ = visit;
-    todo!("null monitoring: enum_devices")
+    drop(visit);
 }
 
 /// `audio_monitor_create()`: no monitor for any source, NULL or not.
 #[must_use]
 pub fn create<S>(source: S) -> Option<Monitor> {
-    let _ = source;
-    todo!("null monitoring: create")
+    drop(source);
+    None
 }
 
 /// `audio_monitor_reset()`: does nothing with any handle, NULL or not.
 pub fn reset<M>(monitor: M) {
-    let _ = monitor;
-    todo!("null monitoring: reset")
+    drop(monitor);
 }
 
 /// `audio_monitor_destroy()`: does nothing with any handle, NULL or not; it
 /// owns nothing to free.
 pub fn destroy<M>(monitor: M) {
-    let _ = monitor;
-    todo!("null monitoring: destroy")
+    drop(monitor);
 }
 
 /// `devices_match()`: false for every pair of IDs, NULL, equal or not. The
 /// IDs are never read, so they need not be terminated.
 #[must_use]
 pub fn devices_match<I, J>(id1: I, id2: J) -> bool {
-    let _ = (id1, id2);
-    todo!("null monitoring: devices_match")
+    drop((id1, id2));
+    false
 }

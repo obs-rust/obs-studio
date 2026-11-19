@@ -140,6 +140,7 @@ pub mod nix_wayland_seats;
 pub mod nix_x11_hotkeys;
 pub mod nix_x11_input;
 pub mod nix_x11_keys;
+pub mod null_monitoring;
 pub mod obs_nvenc;
 pub mod obs_properties;
 pub mod output_begin;

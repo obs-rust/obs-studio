@@ -62,3 +62,6 @@
 /* access() in log_system_info; came with util/platform-nix-inhibit.c,
  * which is in its own group now. */
 #include <unistd.h>
+
+/* audio-monitoring/null/null-audio-monitoring.c */
+#include "audio-monitoring/null/null-audio-monitoring.h"

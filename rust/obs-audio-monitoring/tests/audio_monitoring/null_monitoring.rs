@@ -34,7 +34,10 @@ fn enumeration_never_calls_back_or_writes_data() {
     };
     enum_devices((Some(unexpected), Some(&mut data)));
     enum_devices((Some(unexpected), None::<&mut [u8; 4]>));
-    enum_devices((None::<fn(&mut [u8; 4], &[u8], &[u8]) -> bool>, Some(&mut data)));
+    enum_devices((
+        None::<fn(&mut [u8; 4], &[u8], &[u8]) -> bool>,
+        Some(&mut data),
+    ));
     enum_devices((
         None::<fn(&mut [u8; 4], &[u8], &[u8]) -> bool>,
         None::<&mut [u8; 4]>,

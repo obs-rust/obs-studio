@@ -9361,6 +9361,7 @@
         "libobs"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "Uthash::Uthash",
@@ -9368,6 +9369,7 @@
       ],
       "watch_inputs": [
         "libobs/audio-monitoring/null/null-audio-monitoring.c.h",
+        "libobs/audio-monitoring/null/null-audio-monitoring.h",
         "libobs/build/libobs-nix.pch.h"
       ],
       "requires": {

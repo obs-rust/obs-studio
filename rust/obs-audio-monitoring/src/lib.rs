@@ -14,8 +14,10 @@
 //! `audio-monitoring/osx/coreaudio-pacing.c.h` (the queue pacing of the
 //! CoreAudio monitor's `coreaudio-output.c`), and [`coreaudio_devices`] that
 //! of `audio-monitoring/osx/coreaudio-device-rules.c.h` (the device rules of
-//! the CoreAudio monitoring device list, `coreaudio-enum-devices.c`). Their C
-//! ABI shims live in [`ffi`].
+//! the CoreAudio monitoring device list, `coreaudio-enum-devices.c`), and
+//! [`null_monitoring`] that of `audio-monitoring/null/null-audio-monitoring.c.h`
+//! (the backend Linux and FreeBSD select without PulseAudio). Their C ABI
+//! shims live in [`ffi`].
 
 #![deny(unsafe_code)]
 

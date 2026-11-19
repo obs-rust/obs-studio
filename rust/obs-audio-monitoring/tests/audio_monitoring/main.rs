@@ -8,6 +8,7 @@ mod coreaudio_pacing_parity;
 mod monitor_delay;
 mod monitor_delay_parity;
 mod null_monitoring;
+mod null_monitoring_parity;
 mod pulse_backlog;
 mod pulse_flags;
 mod pulse_format;
