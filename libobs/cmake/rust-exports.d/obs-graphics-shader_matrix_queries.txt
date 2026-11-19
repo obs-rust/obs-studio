@@ -1,0 +1,2 @@
+gs_shader_get_viewproj_matrix
+gs_shader_get_world_matrix
