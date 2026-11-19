@@ -103,6 +103,8 @@ pub(super) fn select(
     target
         .dependencies
         .insert(index + 1, support.archive.clone());
+    // A support member can introduce a previously unseen Rust callback.
+    target.dependencies.insert(index + 2, archive.clone());
     target.include_dirs.push(root.join("deps/libcaption"));
     target
         .link_options

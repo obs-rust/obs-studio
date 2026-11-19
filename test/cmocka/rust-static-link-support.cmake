@@ -52,6 +52,9 @@ function(_obs_uses_rust_static target visited output)
 endfunction()
 
 function(obs_rust_static_consumers support native_owner)
+  # Real C adapters call back into Rust. Retain that return edge so ELF archive
+  # selection searches Rust again after extracting a lazy support member.
+  target_link_libraries("${support}" PRIVATE libobs_rust-static)
   if(TARGET "${native_owner}")
     # Inherit the owner's full native closure, including host-selected libraries
     # and their transitive interfaces. Never copy GObject/Jansson lists per test.
