@@ -45,6 +45,7 @@ mod indexbuffer_create;
 mod indexbuffer_create_parity;
 mod indexbuffer_maintenance;
 mod indexbuffer_maintenance_parity;
+mod indexbuffer_queries;
 mod lzw;
 mod lzw_parity;
 mod matrix_entrypoints;
