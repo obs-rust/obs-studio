@@ -11,6 +11,7 @@ function(_hotkey_background_press_link_support)
       test_hotkey_load
       test_hotkey_pair_steps
       test_hotkey_press_steps
+      test_hotkey_unregister_entry
       test_portal_shortcuts
       test_wayland_hotkeys
     )
