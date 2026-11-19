@@ -15,6 +15,14 @@ include(compiler_common)
 
 add_compile_options("$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fopenmp-simd>")
 
+# Test builds compute floats strictly (#3422): clang contracts a multiply and an
+# add into an FMA by default on arm64 and Rust never does, so exact C-vs-Rust
+# and golden float comparisons would depend on the host. Linux does the same
+# (cmake/linux/compilerconfig.cmake); app and release builds keep the default.
+if(ENABLE_UNIT_TESTS)
+  add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX,OBJC,OBJCXX>:-ffp-contract=off>")
+endif()
+
 if(CMAKE_CXX_STANDARD GREATER_EQUAL 20)
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-char8_t>)
 endif()
