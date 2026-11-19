@@ -1,4 +1,6 @@
-# Keep global-dependent adapters in an archive: unrelated consumers need no core.
+# Keep global-dependent adapters in an archive: fixture-owned cores take precedence.
+# Shared libobs hides these private adapters; every Rust-static consumer needs
+# the support archive, including consumers that also link OBS::libobs.
 function(_video_info_query_link_support)
   add_library(
     video_info_query_link_support
@@ -17,7 +19,7 @@ function(_video_info_query_link_support)
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
   foreach(_target IN LISTS _targets)
     get_target_property(_links ${_target} LINK_LIBRARIES)
-    if("libobs_rust-static" IN_LIST _links AND NOT "OBS::libobs" IN_LIST _links)
+    if("libobs_rust-static" IN_LIST _links)
       target_link_libraries(${_target} PRIVATE video_info_query_link_support)
     endif()
   endforeach()

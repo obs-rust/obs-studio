@@ -88,7 +88,10 @@ function(check_support)
 endfunction()
 cmake_language(DEFER CALL check_support)
 "#,
-            root = root.canonicalize().unwrap().to_string_lossy().replace('\\', "/"),
+            root = dunce::canonicalize(&root)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/"),
             source = source.to_string_lossy().replace('\\', "/"),
         ),
     )
