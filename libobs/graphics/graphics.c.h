@@ -1144,26 +1144,6 @@ void gs_shader_destroy(gs_shader_t *shader)
 	graphics->exports.gs_shader_destroy(shader);
 }
 
-gs_sparam_t *gs_shader_get_viewproj_matrix(const gs_shader_t *shader)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_shader_get_viewproj_matrix", shader))
-		return NULL;
-
-	return graphics->exports.gs_shader_get_viewproj_matrix(shader);
-}
-
-gs_sparam_t *gs_shader_get_world_matrix(const gs_shader_t *shader)
-{
-	graphics_t *graphics = thread_graphics;
-
-	if (!gs_valid_p("gs_shader_get_world_matrix", shader))
-		return NULL;
-
-	return graphics->exports.gs_shader_get_world_matrix(shader);
-}
-
 void gs_shader_set_texture(gs_sparam_t *param, gs_texture_t *val)
 {
 	graphics_t *graphics = thread_graphics;

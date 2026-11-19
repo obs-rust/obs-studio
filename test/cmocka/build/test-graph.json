@@ -14612,6 +14612,19 @@
         "test/cmocka/settings-ui-stubs"
       ]
     },
+    "test_shader_matrix_queries": {
+      "sources": [
+        "test/cmocka/test_shader_matrix_queries.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_shader_number_defaults": {
       "sources": [
         "test/cmocka/test_shader_number_defaults.c"
@@ -26071,6 +26084,12 @@
       "suite": "qt",
       "timeout_seconds": 120,
       "qt_runtime": "Qt6::Core"
+    },
+    "test_shader_matrix_queries": {
+      "target": "test_shader_matrix_queries",
+      "command": [
+        "${target}"
+      ]
     },
     "test_shader_number_defaults": {
       "target": "test_shader_number_defaults",
