@@ -14,6 +14,37 @@ HELPER = ROOT / "test/cmocka/rust-static-link-support.cmake"
 
 @unittest.skipUnless(shutil.which("cmake") and shutil.which("cc"), "requires CMake and C compiler")
 class RustStaticLinkSupport(unittest.TestCase):
+    def test_independent_cmake_inherits_physical_windows_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            manifest = source / "test/cmocka/build/rust-static-support.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(json.dumps({"sources": ["common.c"], "platform_sources": {
+                "OS_WINDOWS": ["windows.c"], "UNIX": ["posix.c"]}}))
+            for name, body in {
+                "common.c": "int common_support(void) { return 0; }\n",
+                "rust.c": "int rust_support(void) { return 0; }\n",
+                "windows.c": "int platform_value(void) { return 13; }\n",
+                "posix.c": "int platform_value(void) { return 27; }\n",
+                "main.c": "int platform_value(void); int main(void) { return platform_value() != 13; }\n",
+            }.items():
+                (source / name).write_text(body)
+            (source / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.28)\nproject(independent_support C)\n"
+                "set(MSVC TRUE)\nset(WIN32 TRUE)\nset(UNIX FALSE)\nunset(OS_WINDOWS)\n"
+                "add_library(libobs_rust-static STATIC rust.c)\n"
+                "add_library(caption INTERFACE)\nadd_library(OBS::caption ALIAS caption)\n"
+                "add_library(uthash INTERFACE)\nadd_library(Uthash::Uthash ALIAS uthash)\n"
+                "add_library(host_owner INTERFACE)\nadd_executable(consumer main.c)\n"
+                "target_link_libraries(consumer PRIVATE libobs_rust-static)\n"
+                f'include("{HELPER.as_posix()}")\n'
+                'obs_add_rust_static_support("${CMAKE_CURRENT_SOURCE_DIR}" host_owner)\n'
+            )
+            build = source / "build"
+            self.run_command(["cmake", "-S", str(source), "-B", str(build)])
+            self.run_command(["cmake", "--build", str(build), "--target", "consumer"])
+            self.run_command([str(build / "consumer")])
+
     def test_shared_consumer_transitive_host_and_static_allocator(self):
         self.check_fixture(False)
 
