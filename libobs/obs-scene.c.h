@@ -2274,27 +2274,6 @@ void obs_sceneitem_set_order(obs_sceneitem_t *item, enum obs_order_movement move
 	obs_scene_release(scene);
 }
 
-int obs_sceneitem_get_order_position(obs_sceneitem_t *item)
-{
-	if (!obs_scene_item_order_item_attached(item != NULL, item && item->parent))
-		return 0;
-
-	struct obs_scene *scene = item->parent;
-	struct obs_scene_item *next = scene->first_item;
-
-	full_lock(scene);
-
-	int index = 0;
-	while (next && next != item) {
-		next = next->next;
-		++index;
-	}
-
-	full_unlock(scene);
-
-	return index;
-}
-
 void obs_sceneitem_set_order_position(obs_sceneitem_t *item, int position)
 {
 	if (!item)
