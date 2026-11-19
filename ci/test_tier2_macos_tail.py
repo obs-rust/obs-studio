@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import re
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,27 @@ spec.loader.exec_module(tail)
 
 
 class MacosTailTest(unittest.TestCase):
+    def test_workflow_sets_up_uv_before_every_overlap_validator(self):
+        workflow = Path(__file__).resolve().parent.parent / ".github/workflows/build-project.yaml"
+        jobs = re.split(r"(?m)^  ([\w-]+):\n", workflow.read_text())
+        consumers = []
+        for name, job in zip(jobs[1::2], jobs[2::2]):
+            steps = job.split("\n      - ")
+            for index, step in enumerate(steps):
+                if "bash rust/tools/tier2-validate/validate.sh" not in step:
+                    continue
+                consumers.append(name)
+                with self.subTest(job=name):
+                    setup = [prior for prior in steps[:index]
+                             if re.search(r"uses: astral-sh/setup-uv@[0-9a-f]{40}\b", prior)]
+                    self.assertTrue(setup, "overlap validator requires a preceding pinned uv setup step")
+                    # A macOS-only setup also covers the dormant macOS step in
+                    # the Windows job; unrelated step conditions must not pass.
+                    for prior in setup:
+                        condition = re.search(r"(?m)^        if: (.+)$", prior)
+                        self.assertIn(condition.group(1) if condition else "", ("", "runner.os == 'macOS'"))
+        self.assertIn("rust-tier2-macos", consumers)
+
     def test_phase_reentry_selects_cmake_framework_among_native_outputs(self):
         validator = Path(__file__).resolve().parent.parent / "rust/tools/tier2-validate/validate.sh"
         discovery = next(line for line in validator.read_text().splitlines() if line.startswith("rust_lib="))
