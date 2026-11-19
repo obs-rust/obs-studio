@@ -286,6 +286,18 @@ host Linux libraries cannot satisfy Darwin probes. A successful link does not
 prove runtime recording/allocator behavior or every binding/order error whose
 final link succeeds.
 
+Local measurements on a shared Linux worker (four Ninja jobs, 2026-11-19):
+
+| Target | Fresh CMake/Corrosion tree | Warm tree |
+|---|---:|---:|
+| Windows MSVC x86_64 | 367.80 s | 82.49 s |
+| Darwin arm64 | 418.54 s | 73.69 s |
+
+SDKs, prebuilt target dependencies and the Cargo registry were already installed;
+these are build-tree cold timings, excluding first-host downloads. The original
+eight Windows category binaries also linked (128.53 s with partial Cargo reuse).
+These local timings are not a hosted critical-path guarantee.
+
 #### macOS Rust execution artifacts (#5008)
 
 The maintainer chose **STRICT** on 2026-11-17: nothing compiles on hosted
