@@ -9,12 +9,13 @@
 #include <stdint.h>
 #include <string.h>
 #include "obs-internal.h"
+#include "graphics/graphics-internal.h"
 
 _Static_assert(sizeof(float) == sizeof(uint32_t), "level queries use binary32 floats");
 
 struct obs_core *obs;
 static struct obs_core core;
-static char graphics_token;
+static graphics_t graphics_token;
 
 static uint32_t float_bits(float value)
 {
@@ -64,7 +65,7 @@ static void no_core_before_and_after(void **state)
 	obs = NULL;
 	expect_levels(UINT32_C(0x43960000), UINT32_C(0x447a0000));
 	obs = &core;
-	core.video.graphics = (graphics_t *)&graphics_token;
+	core.video.graphics = &graphics_token;
 	store_bits(&core.video.sdr_white_level, UINT32_C(0x43234567));
 	store_bits(&core.video.hdr_nominal_peak_level, UINT32_C(0x45abcdef));
 	expect_levels(UINT32_C(0x43234567), UINT32_C(0x45abcdef));
@@ -94,7 +95,7 @@ static void graphics_returns_exact_field_bits(void **state)
 		{0x80000000, 0x00000000}, {0xbf800000, 0xc0200000}, {0x7f800000, 0xff800000},
 		{0x7fc12345, 0xffc54321}, {0xffc54321, 0x7fc12345}, {0x00800000, 0x7f7fffff},
 	};
-	core.video.graphics = (graphics_t *)&graphics_token;
+	core.video.graphics = &graphics_token;
 	for (size_t i = 0; i < sizeof(pairs) / sizeof(pairs[0]); i++) {
 		store_bits(&core.video.sdr_white_level, pairs[i][0]);
 		store_bits(&core.video.hdr_nominal_peak_level, pairs[i][1]);
