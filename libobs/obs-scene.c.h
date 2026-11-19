@@ -2363,33 +2363,6 @@ void obs_sceneitem_set_info2(obs_sceneitem_t *item, const struct obs_transform_i
 	}
 }
 
-void obs_sceneitem_get_draw_transform(const obs_sceneitem_t *item, struct matrix4 *transform)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		matrix4_copy(transform, &item->draw_transform);
-		item_fields_unlock(scene);
-	}
-}
-
-void obs_sceneitem_get_box_transform(const obs_sceneitem_t *item, struct matrix4 *transform)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		matrix4_copy(transform, &item->box_transform);
-		item_fields_unlock(scene);
-	}
-}
-
-void obs_sceneitem_get_box_scale(const obs_sceneitem_t *item, struct vec2 *scale)
-{
-	if (item) {
-		obs_scene_t *scene = item_fields_lock(item);
-		*scale = item->box_scale;
-		item_fields_unlock(scene);
-	}
-}
-
 static bool group_item_transition(obs_scene_t *scene, obs_sceneitem_t *item, void *param)
 {
 	if (!param || !item)

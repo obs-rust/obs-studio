@@ -33,6 +33,7 @@
 #include "libobs/obs-scene-item-hotkey-bridge.c.h"
 #include "libobs/obs-scene-item-hotkeys-fields.c.h"
 #include "libobs/obs-scene-item-locked-fields.c.h"
+#include "libobs/obs-scene-item-matrix-getters.c.h"
 #include "libobs/obs-scene-item-parent-fields.c.h"
 #include "libobs/obs-scene-item-select-fields.c.h"
 #include "libobs/obs-scene-item-set-visibility-fields.c.h"
