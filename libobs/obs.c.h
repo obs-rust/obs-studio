@@ -2922,24 +2922,6 @@ void obs_get_video_frame_counts(uint32_t *total, uint32_t *skipped)
 		*skipped = skipped_frames;
 }
 
-struct obs_core_video_mix *get_mix_for_video(video_t *v)
-{
-	struct obs_core_video_mix *result = NULL;
-
-	pthread_mutex_lock(&obs->video.mixes_mutex);
-	for (size_t i = 0, num = obs->video.mixes.num; i < num; i++) {
-		struct obs_core_video_mix *mix = obs->video.mixes.array[i];
-
-		if (v == mix->video) {
-			result = mix;
-			break;
-		}
-	}
-	pthread_mutex_unlock(&obs->video.mixes_mutex);
-
-	return result;
-}
-
 void start_raw_video(video_t *v, const struct video_scale_info *conversion, uint32_t frame_rate_divisor,
 		     void (*callback)(void *param, struct video_data *frame), void *param)
 {

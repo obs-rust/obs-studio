@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_video_tex_active_rust": {
+      "sources": [
+        "test/cmocka/test_encoder_video_tex_active.c",
+        "test/cmocka/encoder-video-tex-active-fields-link-support.c"
+      ],
+      "definitions": [
+        "get_mix_for_video=tex_active_recording_mix_lookup"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_encoder_video_tex_active_rust": {
+      "target": "test_encoder_video_tex_active_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

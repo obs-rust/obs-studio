@@ -4124,6 +4124,31 @@
         }
       ]
     },
+    "test_encoder_video_tex_active_rust": {
+      "sources": [
+        "test/cmocka/test_encoder_video_tex_active.c",
+        "test/cmocka/encoder-video-tex-active-fields-link-support.c"
+      ],
+      "definitions": [
+        "get_mix_for_video=tex_active_recording_mix_lookup"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "includes": [
+        ".",
+        "libobs"
+      ]
+    },
     "test_encoding_lag_rescale": {
       "sources": [
         "test/cmocka/test_encoding_lag_rescale.c"
@@ -23460,6 +23485,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_encoder_video_tex_active_rust": {
+      "target": "test_encoder_video_tex_active_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_encoding_lag_rescale": {
       "target": "test_encoding_lag_rescale",

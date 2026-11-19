@@ -10,6 +10,12 @@ pub fn video_tex_active<M>(
     nv12: impl FnOnce(M) -> bool,
     p010: impl FnOnce(M) -> bool,
 ) -> bool {
-    let _ = (format, lookup, nv12, p010);
-    todo!("swap the characterized texture-active query")
+    let Some(mix) = lookup() else {
+        return false;
+    };
+    match format {
+        NV12 => nv12(mix),
+        P010 => p010(mix),
+        _ => false,
+    }
 }

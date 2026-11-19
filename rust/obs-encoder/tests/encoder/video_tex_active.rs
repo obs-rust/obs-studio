@@ -27,7 +27,10 @@ fn check(format: i32, media: Option<usize>, mixed: bool, flags: [bool; 2]) {
             selected.get()[1]
         },
     );
-    assert_eq!(result, mixed && ((format == NV12 && flags[0]) || (format == P010 && flags[1])));
+    assert_eq!(
+        result,
+        mixed && ((format == NV12 && flags[0]) || (format == P010 && flags[1]))
+    );
     let mut expected = vec!["lookup"];
     if mixed && format == NV12 {
         expected.push("nv12");

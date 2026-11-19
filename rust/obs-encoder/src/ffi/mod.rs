@@ -3,3 +3,4 @@ pub mod last_error;
 pub mod media_getters;
 pub mod packet_ownership;
 pub mod type_info;
+pub mod video_tex_active;

@@ -11,3 +11,4 @@ mod encoder_module_parity;
 mod type_info;
 mod type_info_parity;
 mod video_tex_active;
+mod video_tex_active_parity;
