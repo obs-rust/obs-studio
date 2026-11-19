@@ -2180,15 +2180,14 @@ jobs:
   # lanes, so COFF-only link defects reached master (`undefined symbol:
   # obs_encoder_get_caps`, merge_group 42390201886 green, push 42393067345
   # red). This is only the cross lane's link step for Windows x64: no clippy,
-  # Dylint; selected Tier 2 links also cover Darwin, nothing executed.
+  # Dylint. Selected Tier 2 links run in the independent alias matrix below.
   rust-windows-link:
     timeout-minutes: 30
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
-    # Every fallback non-docs PR links categories. Tier 2 selections always run
-    # before the queue: existing client proofs do not attest these CMake links.
-    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true' || needs.check-event.outputs.cmocka_link == 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows_link == 'true' }}
+    # Category links retain their existing member-admission policy.
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows_link == 'true' }}
     defaults:
       run:
         shell: bash
@@ -2225,13 +2224,60 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
-      - name: Set Up Native Link Tools
-        run: sudo apt-get update -qq && sudo apt-get install -y cmake ninja-build pkg-config
-
       - name: Link Windows Test Binaries 🔗
-        env:
-          OBS_CMOCKA_LINK: ${{ needs.check-event.outputs.cmocka_link }}
         run: uv run --no-project ci/windows_link_check.py
+
+  cmocka-link:
+    timeout-minutes: 30
+    name: Tier 2 Link Check 🔗 (${{ matrix.alias }})
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    needs: [check-event, ci-mode]
+    # Both full inventories are required independently, including attested PRs.
+    # No category or other alias dependency: the three link legs can overlap.
+    if: ${{ !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.cmocka_link == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        alias: [win-x64, mac-arm64]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set Up soldr 🦀
+        uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
+        with:
+          # Same scope and layer as rust-cross-lint, so it replays master's cache.
+          verdict-scope: build-project
+          version: 0.9.45
+          build-cache: false
+          prebuild-deps: none
+          cache-key-suffix: linux-host-v3
+          save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
+          # The Windows target is added mid-job (see rust-cross-lint, #969).
+          solo-toolchain-cache: false
+          # S3 remote cache: bucket forge-ci on DO Spaces nyc3; the 50G watermark is
+          # enforced only on the merge_group singleton. No bucket/creds = feature off.
+          s3-bucket: forge-ci
+          s3-endpoint: nyc3.digitaloceanspaces.com
+          s3-region: nyc3
+          s3-cache-limit: 50G
+        env:
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+
+      - name: Set Up uv 🐍
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+
+      # uv wheels avoid the 165 s apt mirror setup observed in run 44495240642.
+      - name: Link Tier 2 Fixtures 🔗
+        run: uv run --no-project --with cmake==4.3.4 --with ninja==1.13.0 ci/cmocka_link_check.py --alias ${{ matrix.alias }}
 
   rust-cross-lint-release:
     timeout-minutes: 45

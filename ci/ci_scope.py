@@ -171,7 +171,7 @@ LANES: dict[str, tuple[str, ...]] = {
     "cmocka_link": (
         "libobs/**", "rust/libobs-rust/**", "rust/obs-build/**", "test/cmocka/**", "deps/**",
         "cmake/cross/**", "cmake/common/soldr.cmake", "ci/cmocka_link_check.py",
-        "ci/windows_link_check.py", "ci/ci_scope.py", ".github/workflows/build-project.yaml",
+        "ci/windows_link_check.py", "ci/tier2_front_cache.py", "ci/ci_scope.py", ".github/workflows/build-project.yaml",
         "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "CMakeLists.txt",
     ),
     "tier2": (

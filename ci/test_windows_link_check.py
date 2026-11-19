@@ -44,7 +44,7 @@ class LinkArgsTest(unittest.TestCase):
         calls = []
         with mock.patch.object(windows_link_check.local_gate, "add_target", lambda t: calls.append(("add", t))), \
              mock.patch.object(windows_link_check.local_gate, "soldr_cargo", lambda a: calls.append(("cargo", a))), \
-             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "false"}):
+             mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "false"}):
             self.assertEqual(windows_link_check.main(), 0)
         self.assertEqual(calls, [("add", "x86_64-pc-windows-msvc"), ("cargo", windows_link_check.link_args())])
 

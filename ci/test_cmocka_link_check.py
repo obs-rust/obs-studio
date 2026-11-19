@@ -76,6 +76,18 @@ class BuildTest(unittest.TestCase):
                 self.assertEqual(args[args.index("--target") + 1:args.index("--")], inventory)
                 self.assertEqual(json.loads((work / "link-targets.json").read_text()), inventory)
 
+    def test_alias_link_failures_propagate(self):
+        import subprocess
+
+        for alias in cmocka_link_check.TRIPLES:
+            with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
+                with mock.patch.object(cmocka_link_check, "discover_targets", return_value=["libobs-cross-shared", "test_existing_rust"]), \
+                     mock.patch.object(cmocka_link_check.subprocess, "run", side_effect=failure):
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        cmocka_link_check.build_targets(alias, work, 2, {})
+
     def test_cache_is_fresh_and_cannot_inherit_relaxed_or_remote_policy(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)

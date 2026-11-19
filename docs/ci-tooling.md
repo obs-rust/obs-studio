@@ -257,12 +257,12 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 
 #### Tier 2 pre-queue links (#5189)
 
-The existing Linux-hosted Windows Link Check also links hybrid libobs and every
-configured cmocka `*_rust` executable for Windows MSVC x86_64 and Darwin arm64
+The Linux-hosted Tier 2 Link Check matrix links hybrid libobs and every
+configured cmocka `*_rust` executable independently for Windows MSVC x86_64 and Darwin arm64
 when `LANES["cmocka_link"]` selects the
 change. This includes libobs, its linked crates, obs-build registration/support,
 cmocka, Cargo inputs and the check's own implementation. Unrelated changes keep
-the eight Rust category links. The same check runs on PRs and merge groups;
+the eight Rust category links in the independent Windows Link Check. The same check runs on PRs and merge groups;
 selected cmocka links also run on fully attested member PRs because existing
 client proofs do not attest this CMake pass. Category-only work keeps its
 existing admission policy.
@@ -278,8 +278,15 @@ conditions have been evaluated; an empty Rust inventory fails. The check builds
 against real target cmocka and SDK libraries, never executes target programs,
 and saves `link-targets.json` in its build tree. It always refreshes the Rust
 archive through soldr so source-only edits cannot reuse the cross project's
-manifest-only custom-command result. Ninja parallelism defaults to four and the
-existing job retains its 30-minute deadline and Linux heavy-pool routing.
+manifest-only custom-command result. Ninja uses the process CPU budget, capped at
+four workers. Each alias uses a fresh 512M ccache from the checksum-pinned
+`ci/tier2_front_cache.py` installer to share identical support-file compiles
+within that pass. No cache is uploaded, no relaxed policy is inherited, and
+links always run. The matrix disables fail-fast so one failing alias cannot
+cancel the other. Both aliases are independently required by `ci/gate_jobs.py`,
+including attested PRs; CI Gate waits for the entire reusable build workflow.
+The jobs retain the 30-minute deadline and existing Linux heavy-pool routing.
+Pinned CMake/Ninja uv wheels avoid apt setup on this path (#5224).
 Darwin uses the production hidden-symbol list and the Rust crate's existing SDK
 framework imports. Library discovery stays in the Apple SDK and target deps;
 host Linux libraries cannot satisfy Darwin probes. A successful link does not
