@@ -49,24 +49,7 @@ void sceneitem_group_record_unlock(obs_scene_t *scene)
 #define obs_scene_atomic_full_lock sceneitem_group_record_lock
 #define obs_scene_atomic_full_unlock sceneitem_group_record_unlock
 #define obs_sceneitem_parent_group_lookup sceneitem_group_record_lookup
-/* Original wrapper snapshot; the next RED commit requires its extraction. */
-#define full_lock obs_scene_atomic_full_lock
-#define full_unlock obs_scene_atomic_full_unlock
-#define get_sceneitem_parent_group obs_sceneitem_parent_group_lookup
-obs_sceneitem_t *obs_sceneitem_get_group(obs_scene_t *scene, obs_sceneitem_t *group_subitem)
-{
-	if (!scene || !group_subitem || group_subitem->is_group)
-		return NULL;
-
-	full_lock(scene);
-	obs_sceneitem_t *group = get_sceneitem_parent_group(scene, group_subitem);
-	full_unlock(scene);
-
-	return group;
-}
-#undef get_sceneitem_parent_group
-#undef full_unlock
-#undef full_lock
+#include "libobs/obs-sceneitem-get-group.c.h"
 #undef obs_sceneitem_parent_group_lookup
 #undef obs_scene_atomic_full_unlock
 #undef obs_scene_atomic_full_lock
