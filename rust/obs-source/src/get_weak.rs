@@ -11,7 +11,10 @@ pub trait Host {
 }
 
 /// `None` is a NULL source, which returns NULL without touching the host.
+/// Otherwise the control is returned after one addref, as in the C, which
+/// passes even an absent control to the no-op addref.
 pub fn get_weak_source<H: Host>(host: &H, source: Option<H::Source>) -> Option<H::Weak> {
-    let _ = (host, source);
-    todo!("RED: source weak-handle acquisition")
+    let weak = host.control(source?);
+    host.addref(weak);
+    weak
 }

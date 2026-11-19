@@ -71,6 +71,7 @@ mod filter_relationship_getters_parity;
 mod frame_copy;
 mod frame_copy_parity;
 mod get_weak;
+mod get_weak_parity;
 mod handler_getters;
 mod handler_getters_parity;
 mod hidden_setter;
