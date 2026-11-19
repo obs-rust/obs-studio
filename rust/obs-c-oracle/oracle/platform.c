@@ -201,7 +201,7 @@ bool obs_get_video_info(struct obs_video_info *ovi)
  * filename fixture only as a fallback in the utility-only harness. */
 #if defined(_MSC_VER)
 #pragma comment(linker, "/alternatename:obs_get_video_info=oracle_obs_get_video_info")
-#else
+#elif !defined(_WIN32)
 bool obs_get_video_info(struct obs_video_info *ovi);
 __attribute__((weak)) bool obs_get_video_info(struct obs_video_info *ovi)
 {

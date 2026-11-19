@@ -935,10 +935,10 @@ fn main() {
         _ => {}
     }
     oracle.compile("obs_c_oracle");
-    if windows && oracle.get_compiler().is_like_msvc() {
-        // MSVC cannot discover an /alternatename directive in an unselected
-        // platform.o. Carry this directive-only archive into every consumer;
-        // a real Rust definition still takes precedence over the fallback.
+    if windows {
+        // COFF cannot discover a fallback in an unselected platform.o.
+        // Carry its directive/weak definition into every consumer; a real
+        // Rust definition still takes precedence over the fallback.
         let source = manifest.join("link-support/video-info-query-fallback.c");
         println!("cargo:rerun-if-changed={}", source.display());
         cc::Build::new()
