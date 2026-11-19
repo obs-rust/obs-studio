@@ -3117,6 +3117,7 @@
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/util/cf-lexer.c.h",
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "test/cmocka/source-update-properties-link-support.c",
@@ -3128,10 +3129,10 @@
         "libobs"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
-        "libobs_rust-static",
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
@@ -20012,10 +20013,10 @@
         "libobs"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
-        "libobs_rust-static",
         {
           "name": "m",
           "requires": {
