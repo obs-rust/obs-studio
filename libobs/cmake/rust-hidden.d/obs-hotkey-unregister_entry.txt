@@ -1,0 +1,2 @@
+obs_hotkey_pair_unregister_entry_request
+obs_hotkey_unregister_entry_request
