@@ -6,8 +6,7 @@
         "test/cmocka/test_window_match_steps.c",
         "libobs/util/base-variadic.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "test/cmocka/source-update-properties-link-support.c",
-        "test/cmocka/output-starting-queries-link-support.c"
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "includes": [
         ".",
