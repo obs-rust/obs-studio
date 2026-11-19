@@ -2812,21 +2812,6 @@ profiler_name_store_t *obs_get_profiler_name_store(void)
 	return obs->name_store;
 }
 
-uint64_t obs_get_video_frame_time(void)
-{
-	return obs_video_stats_frame_time(&obs->video.stats);
-}
-
-double obs_get_active_fps(void)
-{
-	return obs_video_stats_fps(&obs->video.stats);
-}
-
-uint64_t obs_get_average_frame_time_ns(void)
-{
-	return obs_video_stats_avg_frame_time_ns(&obs->video.stats);
-}
-
 void *obs_obj_get_data(void *obj)
 {
 	struct obs_context_data *context = obj;
@@ -2895,16 +2880,6 @@ bool obs_set_audio_monitoring_device(const char *name, const char *id)
 	obs_enum_sources(check_all_aoc_sources, NULL);
 
 	return true;
-}
-
-uint32_t obs_get_total_frames(void)
-{
-	return obs_video_stats_total_frames(&obs->video.stats);
-}
-
-uint32_t obs_get_lagged_frames(void)
-{
-	return obs_video_stats_lagged_frames(&obs->video.stats);
 }
 
 /* An encoder that rescales on the GPU encodes from an encoder-only mix of
