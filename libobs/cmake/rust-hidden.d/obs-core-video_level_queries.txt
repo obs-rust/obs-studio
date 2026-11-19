@@ -1,0 +1,2 @@
+obs_video_level_queries_hdr_nominal_peak_level_request
+obs_video_level_queries_sdr_white_level_request

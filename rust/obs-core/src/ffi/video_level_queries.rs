@@ -38,12 +38,34 @@ fn current_levels() -> Option<VideoLevels> {
 /// The current core, when not NULL, must be live for the call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_get_video_sdr_white_level() -> f32 {
-    sdr_white_level(current_levels())
+    // SAFETY: forwarded unchanged; the caller upholds the same contract.
+    unsafe { obs_video_level_queries_sdr_white_level_request() }
 }
 
 /// # Safety
 /// The current core, when not NULL, must be live for the call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_get_video_hdr_nominal_peak_level() -> f32 {
+    // SAFETY: forwarded unchanged; the caller upholds the same contract.
+    unsafe { obs_video_level_queries_hdr_nominal_peak_level_request() }
+}
+
+/// Explicit static entry for fixtures with their own private core. Hidden
+/// from libobs's ABI, so a macOS fixture cannot bind it to libobs.dylib's
+/// copy, which reads the dylib's own core (two-level namespace).
+///
+/// # Safety
+/// The current core, when not NULL, must be live for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_video_level_queries_sdr_white_level_request() -> f32 {
+    sdr_white_level(current_levels())
+}
+
+/// Explicit static entry; see `obs_video_level_queries_sdr_white_level_request`.
+///
+/// # Safety
+/// The current core, when not NULL, must be live for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_video_level_queries_hdr_nominal_peak_level_request() -> f32 {
     hdr_nominal_peak_level(current_levels())
 }
