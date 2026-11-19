@@ -71,6 +71,27 @@ static void output_packet(void *data, struct encoder_packet *packet)
 	(void)packet;
 }
 
+static void *encoder_create(obs_data_t *settings, obs_encoder_t *owner)
+{
+	(void)settings;
+	return owner;
+}
+
+static bool encoder_encode(void *data, struct encoder_frame *frame, struct encoder_packet *packet, bool *received)
+{
+	(void)data;
+	(void)frame;
+	(void)packet;
+	*received = false;
+	return true;
+}
+
+static size_t encoder_frame_size(void *data)
+{
+	(void)data;
+	return 1024;
+}
+
 static int setup(void **state)
 {
 	(void)state;
@@ -88,8 +109,22 @@ static int setup(void **state)
 	obs_register_output(&info);
 	output = obs_output_create(info.id, "last-error output", NULL, NULL);
 	assert_non_null(output);
-	/* Unregistered IDs still create real, inactive C encoder objects. There
-	 * is no encoding, media setup or plugin callback in this query test. */
+	struct obs_encoder_info encoder_info = {
+		.id = "last_error_video",
+		.type = OBS_ENCODER_VIDEO,
+		.codec = "h264",
+		.get_name = type_name,
+		.create = encoder_create,
+		.destroy = output_destroy,
+		.encode = encoder_encode,
+	};
+	obs_register_encoder(&encoder_info);
+	encoder_info.id = "last_error_audio";
+	encoder_info.type = OBS_ENCODER_AUDIO;
+	encoder_info.codec = "aac";
+	encoder_info.get_frame_size = encoder_frame_size;
+	obs_register_encoder(&encoder_info);
+	/* Real, inactive objects: no encoding or media setup is needed. */
 	for (size_t i = 0; i < MAX_OUTPUT_VIDEO_ENCODERS; i++) {
 		video[i] = obs_video_encoder_create("last_error_video", "video", NULL, NULL);
 		assert_non_null(video[i]);
@@ -186,7 +221,7 @@ static void fallback_order_and_borrowing(void **state)
 		check_query(output, video[i]->last_error_message);
 		obs_encoder_set_last_error(video[i], NULL);
 		check_query(output, i + 1 < MAX_OUTPUT_VIDEO_ENCODERS ? video[i + 1]->last_error_message
-								  : audio[0]->last_error_message);
+								      : audio[0]->last_error_message);
 		obs_output_set_video_encoder2(output, NULL, i);
 	}
 	for (size_t i = 0; i < MAX_OUTPUT_AUDIO_ENCODERS; i++) {
