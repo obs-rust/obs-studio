@@ -867,6 +867,7 @@ fn main() {
         .join("cmocka/video-scale-effects-caller.c");
     let roots = [
         manifest.join("oracle"),
+        manifest.join("link-support"),
         manifest.join("legacy"),
         manifest.join("vendor"),
         libobs.clone(),
@@ -934,6 +935,18 @@ fn main() {
         _ => {}
     }
     oracle.compile("obs_c_oracle");
+    if windows && oracle.get_compiler().is_like_msvc() {
+        // MSVC cannot discover an /alternatename directive in an unselected
+        // platform.o. Carry this directive-only archive into every consumer;
+        // a real Rust definition still takes precedence over the fallback.
+        let source = manifest.join("link-support/video-info-query-fallback.c");
+        println!("cargo:rerun-if-changed={}", source.display());
+        cc::Build::new()
+            .file(source)
+            .cargo_metadata(false)
+            .compile("obs_video_info_query_fallback");
+        println!("cargo:rustc-link-lib=static:+whole-archive=obs_video_info_query_fallback");
+    }
 
     // Jansson 2.14.1 for cargo test. libobs links its own copy, so this
     // staticlib stays on the oracle and is not a rustc-link-lib of obs-data.
