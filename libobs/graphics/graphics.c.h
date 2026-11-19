@@ -1317,28 +1317,6 @@ enum gs_index_type gs_indexbuffer_get_type(const gs_indexbuffer_t *indexbuffer)
 	return thread_graphics->exports.gs_indexbuffer_get_type(indexbuffer);
 }
 
-bool gs_nv12_available(void)
-{
-	if (!gs_valid("gs_nv12_available"))
-		return false;
-
-	if (!thread_graphics->exports.device_nv12_available)
-		return false;
-
-	return thread_graphics->exports.device_nv12_available(thread_graphics->device);
-}
-
-bool gs_p010_available(void)
-{
-	if (!gs_valid("gs_p010_available"))
-		return false;
-
-	if (!thread_graphics->exports.device_p010_available)
-		return false;
-
-	return thread_graphics->exports.device_p010_available(thread_graphics->device);
-}
-
 bool gs_is_monitor_hdr(void *monitor)
 {
 	if (!gs_valid("gs_is_monitor_hdr"))
