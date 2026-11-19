@@ -149,3 +149,88 @@ include("{root}/test/cmocka/tests.d/texture_file_data_link_support.cmake")
         }
     }
 }
+
+#[test]
+fn standalone_graphics_fixtures_bind_the_static_implementation() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    for name in [
+        "test_texture_file_data_steps_rust",
+        "test_effect_parser_lifecycle_rust",
+    ] {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            directory.path().join("shared.c"),
+            "int implementation(void) { return 1; }\n",
+        )
+        .unwrap();
+        fs::write(
+            directory.path().join("static.c"),
+            "int implementation(void) { return 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            directory.path().join("main.c"),
+            "int implementation(void); int main(void) { return implementation(); }\n",
+        )
+        .unwrap();
+        let libraries: Vec<_> = graph["targets"][name]["libraries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|library| match library.as_str() {
+                Some("OBS::libobs") => Some("shared_provider"),
+                Some("libobs_rust-static") => Some("static_provider"),
+                _ => None,
+            })
+            .collect();
+        fs::write(
+            directory.path().join("CMakeLists.txt"),
+            format!(
+                r#"cmake_minimum_required(VERSION 3.28)
+project(static-implementation-binding C)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+add_library(shared_provider SHARED shared.c)
+add_library(static_provider STATIC static.c)
+add_executable(probe main.c)
+target_link_libraries(probe PRIVATE {})
+"#,
+                libraries.join(" ")
+            ),
+        )
+        .unwrap();
+        let output = std::process::Command::new("cmake")
+            .args(["-S", ".", "-B", "build", "-G", "Ninja"])
+            .current_dir(directory.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let output = std::process::Command::new("cmake")
+            .args(["--build", "build"])
+            .current_dir(directory.path())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let status = std::process::Command::new(
+            directory
+                .path()
+                .join(format!("build/probe{}", std::env::consts::EXE_SUFFIX)),
+        )
+        .status()
+        .unwrap();
+        assert!(
+            status.success(),
+            "{name} selected shared libobs ahead of the Rust archive"
+        );
+    }
+}
