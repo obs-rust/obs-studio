@@ -135,23 +135,61 @@ class Probe:
                     raise
                 self.sleep(min(self.retry_delay(error, attempt), self.time_left()))
 
+    def page(self, path: str, key: str, token: str) -> tuple[list[dict], int]:
+        """Read and validate one REST collection page."""
+        data = self.get(path, token=token)
+        entries = data[key]
+        total = data["total_count"]
+        if not isinstance(entries, list) or type(total) is not int or total < 0:
+            raise ValueError("invalid collection")
+        return entries, total
+
     def entries(self, path: str, key: str, token: str) -> list[dict]:
-        result = []
-        for page in range(1, MAX_PAGES + 1):
-            try:
-                data = self.get(f"{path}&per_page=100&page={page}", token=token)
-            except RequestBudgetExhausted as error:
-                raise RequestBudgetExhausted(str(error), entries=result) from error
-            entries = data[key]
-            total = data["total_count"]
-            if not isinstance(entries, list) or type(total) is not int or total < 0:
-                raise ValueError("invalid collection")
-            result.extend(entries)
-            if len(result) >= total:
-                return result
-            if len(entries) < 100:
-                raise ValueError("incomplete collection")
-        raise ValueError("collection exceeds probe limit")
+        # Active runs change status while GitHub counts and pages them. A short
+        # page ends a traversal; total_count alone cannot end a full page. Retry
+        # a mismatch from page one, accepting either a consistent count or two
+        # consecutive traversals with the same IDs despite a stale count.
+        mutable = key == "workflow_runs"
+        previous = None
+        for attempt in range(MAX_RETRIES + 1):
+            result = []
+            totals = set()
+            for page in range(1, MAX_PAGES + 1):
+                try:
+                    entries, total = self.page(
+                        f"{path}&per_page=100&page={page}", key, token
+                    )
+                except RequestBudgetExhausted as error:
+                    raise RequestBudgetExhausted(str(error), entries=result) from error
+                result.extend(entries)
+                totals.add(total)
+                if not mutable:
+                    if len(result) >= total:
+                        return result
+                    if len(entries) < 100:
+                        raise ValueError("incomplete collection")
+                elif len(entries) < 100:
+                    ids = frozenset(entry["id"] for entry in result)
+                    if (
+                        totals == {len(ids)} and len(ids) == len(result)
+                    ) or ids == previous:
+                        # Retain duplicate observations: active_runs makes any
+                        # terminal observation win over a stale active one.
+                        return result
+                    previous = ids
+                    break
+            else:
+                raise ValueError("collection exceeds probe limit")
+            if attempt < MAX_RETRIES:
+                warning(
+                    f"runs probe: collection changed (entries={len(ids)}, "
+                    f"total_count={total}); retrying snapshot {attempt + 1}/{MAX_RETRIES}",
+                    hosted=False,
+                )
+                self.sleep(
+                    min(self.retry_delay(ValueError(), attempt), self.time_left())
+                )
+        raise ValueError("run collection did not stabilize")
 
 
 def warning(reason: str, *, hosted: bool = True) -> None:
@@ -209,23 +247,21 @@ def online_runners(path: str, wanted: set[str], probe: Probe) -> dict[int, bool]
     return matched
 
 
-def selector_hosted_fallback(jobs: list[dict]) -> bool:
-    """Without heavy-job labels, only a skipped selector proves hosted routing."""
+def selector_finished(jobs: list[dict]) -> bool:
+    """A finished selector without visible live Dell jobs holds no reservation."""
     for job in jobs:
         if job["name"] != "Select Merge Queue Runner":
             continue
-        if job.get("conclusion") == "skipped":
-            return True  # A skipped selector cannot publish Dell labels.
         if job["status"] == "completed" or job.get("conclusion") is not None:
-            # REST jobs do not expose outputs. A successful selector alone
-            # proves neither route. Fail closed during the visibility gap,
-            # rather than treating a decided run as an undecided reservation.
-            raise ValueError("completed selector has no visible heavy-pool decision")
+            # Outputs are internal to Actions and heavy jobs may appear much
+            # later. Only their live labels commit Dell capacity; completion
+            # ends the older-undecided reservation even in that visibility gap.
+            return True
     return False
 
 
 def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool]:
-    """Return queued Dell jobs, live Dell work and a known heavy-pool route."""
+    """Return queued Dell jobs, live Dell work and resolved reservations."""
     queued = 0
     dell = decided = False
     for job in jobs:
@@ -267,7 +303,7 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
         ):
             decided = True
     if not decided:
-        decided = selector_hosted_fallback(jobs)
+        decided = selector_finished(jobs)
     return queued, dell, decided
 
 
@@ -284,6 +320,10 @@ def active_runs(repo: str, probe: Probe, token: str) -> dict:
             )
         except ValueError as error:
             raise ValueError(f"runs probe ({status}): {error}") from error
+        except SelectionDeadline:
+            raise
+        except Exception as error:
+            raise ValueError(f"runs probe ({status}): {probe_error(error)}") from error
         for run in entries:
             run_id = run["id"]
             if (
@@ -343,6 +383,12 @@ def inflight_commitments(
             continue
         except ValueError as error:
             raise ValueError(f"jobs probe (run {run_id}): {error}") from error
+        except SelectionDeadline:
+            raise
+        except Exception as error:
+            raise ValueError(
+                f"jobs probe (run {run_id}): {probe_error(error)}"
+            ) from error
         queued += pending
         # Count known Dell runs regardless of age. Unknown older runs also
         # reserve slots; hosted or finished Dell work releases their reservation.

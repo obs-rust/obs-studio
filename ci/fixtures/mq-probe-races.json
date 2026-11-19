@@ -1,0 +1,55 @@
+{
+  "source": "Refs #5181 and e640-measure/report-17.md. Recorded run/job identities, times and labels from GitHub REST, read 2026-11-19. Selector logs 135252064776, 135255344431, 135255351789 and 135255359883 prove short pages with total_count greater than entries; original response bodies/counts were not retained. Counts below replay that shape, not exact historical payloads. Peer 44435792436 selected Dell at 01:18; heavy jobs started 01:26, after probe 135263147877 failed at 01:22. Jobs below replay the pre-heavy visibility window.",
+  "short_runs_page": {
+    "total_count": 3,
+    "workflow_runs": [
+      {
+        "created_at": "2026-11-19T01:15:15Z",
+        "event": "merge_group",
+        "id": 44435484311,
+        "name": "gh-readonly-queue/master/pr-5176-a72e94ec8c805f4b12cb6d7de674303e0b40be2c pull request run \ud83d\ude80",
+        "status": "in_progress",
+        "workflow_id": 386287070
+      },
+      {
+        "created_at": "2026-11-19T01:17:37Z",
+        "event": "merge_group",
+        "id": 44435792436,
+        "name": "gh-readonly-queue/master/pr-5178-d0b981019b9669ac87369a3e46ccfa74942bac6d pull request run \ud83d\ude80",
+        "status": "in_progress",
+        "workflow_id": 386287070
+      }
+    ]
+  },
+  "empty_runs_page": {
+    "total_count": 1,
+    "workflow_runs": []
+  },
+  "peer_jobs_before_heavy": {
+    "total_count": 2,
+    "jobs": [
+      {
+        "id": 135264195444,
+        "name": "Select Merge Queue Runner",
+        "status": "completed",
+        "conclusion": "success",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "started_at": "2026-11-19T01:17:58Z",
+        "completed_at": "2026-11-19T01:18:12Z"
+      },
+      {
+        "id": 135264633205,
+        "name": "Format \ud83d\udd0d / checks",
+        "status": "completed",
+        "conclusion": "success",
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "started_at": "2026-11-19T01:20:36Z",
+        "completed_at": "2026-11-19T01:22:30Z"
+      }
+    ]
+  }
+}

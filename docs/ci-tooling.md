@@ -1250,7 +1250,13 @@ with short jittered backoff; Retry-After (seconds or HTTP date) is capped at fiv
 seconds. Other HTTP 4xx responses are never retried. A shared 45-second deadline
 caps requests and backoff across the selection, well inside the job's two-minute
 timeout; an expired deadline discards even an earlier matching scope.
-An incomplete commitment list falls back to hosted. If the jobs budget runs out
+Active-run pagination ends at a short page, rather than trusting a changing
+`total_count` to end a full page. A count mismatch or duplicate ID retries the
+traversal from page one, at most twice within the same request budget/deadline.
+A traversal with consistent counts, or two consecutive short-ended traversals
+with identical unique run IDs, completes the collection even if the count is
+stale. Collections that keep changing or exceed the page limit select hosted;
+incomplete job lists still select hosted. If the jobs budget runs out
 after active runs are listed, each unprobed active run instead reserves the
 required runner capacity (or its larger observed queued-job count) and one run slot.
 Warnings name the failed probe step
@@ -1334,14 +1340,16 @@ subtraction also protects against a run queuing more work than its configured
 demand. Unknown older choices conservatively hold slots while their selector has
 not completed. The existing jobs read is the cheapest routing evidence: REST
 does not expose job outputs, so no extra log/artifact read is needed. A completed
-selector with no visible heavy-job routing fails closed during the API visibility
-gap; success alone cannot distinguish an empty hosted output from Dell labels.
-A skipped selector has no output and releases its reservation. Completed/cancelled
+selector with no visible live Dell jobs releases its reservation during the API
+visibility gap; success alone cannot distinguish an empty hosted output from
+Dell labels. Heavy-job creation may lag selector completion by minutes while
+hosted prerequisites wait. Live Dell-labelled jobs still commit capacity regardless
+of selector status. A skipped selector also releases its reservation. Completed/cancelled
 runs release reservations. Terminal jobs never commit Dell capacity, but their
 labels retain the route so a run waiting only on hosted work cannot regain an
 undecided reservation. Queued Dell jobs still hold a slot while waiting for build
 dependencies. A hosted backlog therefore cannot retain undecided reservations.
-Actions API errors, missing identity/token and incomplete lists select hosted;
+Actions API errors, missing identity/token and unresolved collections select hosted;
 jobs-budget exhaustion uses the conservative reservations above. Capacity-driven
 hosted decisions are identified explicitly in the log and job summary for later
 measurement. This is a bounded snapshot, not an
@@ -1355,8 +1363,10 @@ and only 3 of 19 queue runs used the Dell. Read-only selector logs for
 and [44367435932](https://github.com/obs-rust/obs-studio/actions/runs/44367435932/job/135024874840)
 show committed counts five and three despite six idle runners. Run
 [44367448224](https://github.com/obs-rust/obs-studio/actions/runs/44367448224/job/135024915358)
-instead fell back on an incomplete queued-runs collection; that fail-closed
-behavior is preserved. Improved hosted timing and utilization still require
+instead fell back on a short queued-runs page with a mismatching count; bounded
+snapshot retries now cover that race. The response-shape fixtures and peer job
+timings in `ci/fixtures/mq-probe-races.json` reproduce #5181's collection failures
+and the completed-selector visibility gap. Improved hosted timing and utilization still require
 measurement after deployment.
 
 The intended host is a NixOS netbooted Dell PowerEdge, which may be powered off.
