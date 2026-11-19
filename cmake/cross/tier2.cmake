@@ -31,6 +31,8 @@ target_include_directories(libobs-cross-shared PUBLIC "${OBS_SOURCE_ROOT}/libobs
 # Rust object directives retain Windows case on Linux (MSVCRT/OLDNAMES).
 if(OS_WINDOWS)
   link_directories("${CMAKE_BINARY_DIR}/cross-case-libs")
+  # Match soldr's MSVC driver CRT compatibility library (Rust libc snprintf).
+  link_libraries(legacy_stdio_definitions)
   file(
     CREATE_LINK "${CMAKE_FIND_ROOT_PATH}/sdk/lib/um/x86_64/rpcrt4.lib" "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib"
     SYMBOLIC
