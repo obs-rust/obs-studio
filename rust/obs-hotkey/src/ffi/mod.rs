@@ -29,6 +29,7 @@ pub mod object_getters;
 pub mod owned_translations;
 pub mod pair;
 pub mod pair_meta;
+pub mod pair_register;
 pub mod portal_shortcut_ids;
 pub mod portal_shortcut_sets;
 pub mod portal_shortcut_status;
