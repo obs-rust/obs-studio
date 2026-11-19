@@ -31,6 +31,8 @@
 //! `obs-video.c.h`), the frame pacing decisions of `video_sleep()`;
 //! `libobs/obs-video-stop-requested.c.h` (from `obs-video.c.h`), the graphics
 //! thread's check that every mix's output has stopped;
+//! `libobs/obs-video-unmap-last-surface.c.h` (from `obs-video.c.h`), the
+//! staging cleanup at the start of each output stage;
 //! `libobs/obs-video-graphics-tasks.c.h` (from `obs-video.c.h`), the
 //! graphics thread's drain of its task queue;
 //! `libobs/obs-video-frame-timing.c.h` (from `obs-video.c.h`), the tick time
@@ -59,6 +61,7 @@
 //! [`source_load`],
 //! [`canvas_draw`], [`canvas_rules`], [`audio_discard`], [`audio_min_ts`],
 //! [`audio_render`], [`video_pacing`], [`video_stop_requested`],
+//! [`video_unmap_last_surface`],
 //! [`video_graphics_tasks`],
 //! [`video_frame_timing`],
 //! [`shutdown_detach`],
@@ -73,7 +76,9 @@
 //! is cleared; [`canvas_rules`] holds the flags a canvas is created with and
 //! the checks of its setters; [`video_pacing`] steps the frame time after the
 //! sleep at the end of each frame; [`video_stop_requested`] tells the
-//! graphics thread when every mix's output has stopped; [`video_graphics_tasks`]
+//! graphics thread when every mix's output has stopped;
+//! [`video_unmap_last_surface`] unmaps the staging surfaces the last frame's
+//! download left mapped; [`video_graphics_tasks`]
 //! runs the tasks queued for the graphics thread, each once and oldest
 //! first, with the queue unlocked while each one runs; [`shutdown_detach`] removes, at shutdown, the items of every scene and
 //! group still in the source table, holding every one of them until all
@@ -194,6 +199,7 @@ pub mod video_render_passes;
 pub mod video_render_size;
 pub mod video_scale_effects;
 pub mod video_stop_requested;
+pub mod video_unmap_last_surface;
 pub mod view;
 pub mod weak_object_expired;
 pub mod weak_object_identity;

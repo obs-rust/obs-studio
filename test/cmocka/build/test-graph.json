@@ -20612,7 +20612,8 @@
     },
     "test_video_unmap_last_surface": {
       "sources": [
-        "test/cmocka/test_video_unmap_last_surface.c"
+        "test/cmocka/test_video_unmap_last_surface.c",
+        "libobs/obs-video-unmap-last-surface-reference.c.h"
       ],
       "compile_options": [
         {
@@ -20639,6 +20640,40 @@
             "not": "MSVC"
           }
         }
+      ]
+    },
+    "test_video_unmap_last_surface_rust": {
+      "sources": [
+        "test/cmocka/test_video_unmap_last_surface.c",
+        "test/cmocka/source-update-properties-link-support.c",
+        "test/cmocka/output-starting-queries-link-support.c"
+      ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption",
+        "."
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
       ]
     },
     "test_view": {
@@ -29164,6 +29199,13 @@
     },
     "test_video_unmap_last_surface": {
       "target": "test_video_unmap_last_surface",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_video_unmap_last_surface_rust": {
+      "target": "test_video_unmap_last_surface_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
       "command": [
         "${target}"
       ]

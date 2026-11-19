@@ -161,6 +161,9 @@
 /* obs-video-stop-requested.c */
 #include "obs-video-stop-requested.h"
 
+/* obs-video-unmap-last-surface.c */
+#include "obs-video-unmap-last-surface.h"
+
 /* obs-video.c */
 #include <time.h>
 #include <stdlib.h>
