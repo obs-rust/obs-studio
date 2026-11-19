@@ -71,21 +71,134 @@ function(obs_rust_static_consumers support native_owner)
       if(uses_rust STREQUAL "1")
         if(MSVC)
           list(REMOVE_ITEM links libobs_rust-static)
-          set(links "libobs_rust-static;${links}")
+          set(links "libobs_rust-static;${support};${links}")
         elseif(NOT "libobs_rust-static" IN_LIST links)
           # Preserve intentional ELF/Darwin DSO selection. Make an indirect
           # Rust edge explicit before support so the archive is searched first.
           list(APPEND links libobs_rust-static)
         endif()
-        set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};${support}")
+        if(MSVC)
+          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links}")
+        else()
+          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};${support}")
+        endif()
       else()
         if(MSVC)
-          set(links "$<${uses_rust}:libobs_rust-static>;${links}")
+          set(links "$<${uses_rust}:libobs_rust-static>;$<${uses_rust}:${support}>;${links}")
         else()
           set(links "${links};$<${uses_rust}:libobs_rust-static>")
         endif()
-        set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};$<${uses_rust}:${support}>")
+        if(MSVC)
+          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links}")
+        else()
+          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};$<${uses_rust}:${support}>")
+        endif()
       endif()
     endif()
   endforeach()
+endfunction()
+
+# Shared by the complete cmocka project and independent graph fixture projects.
+function(obs_add_rust_static_support root native_owner)
+  if(NOT TARGET video_info_query_link_support)
+    file(READ "${root}/test/cmocka/build/rust-static-support.json" manifest)
+    string(JSON count LENGTH "${manifest}" sources)
+    math(EXPR last "${count} - 1")
+    set(sources)
+    foreach(index RANGE ${last})
+      string(JSON source GET "${manifest}" sources ${index})
+      list(APPEND sources "${root}/${source}")
+    endforeach()
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${root}/test/cmocka/build/rust-static-support.json")
+    add_library(video_info_query_link_support STATIC ${sources})
+    target_include_directories(
+      video_info_query_link_support
+      PRIVATE "${root}" "${root}/libobs" "${CMAKE_BINARY_DIR}/config"
+    )
+    if(TARGET OBS::libobs)
+      target_include_directories(
+        video_info_query_link_support
+        PRIVATE "$<TARGET_PROPERTY:OBS::libobs,INTERFACE_INCLUDE_DIRECTORIES>"
+      )
+    endif()
+    target_link_libraries(
+      video_info_query_link_support
+      PRIVATE OBS::caption Uthash::Uthash $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>
+    )
+  endif()
+  obs_rust_static_consumers(video_info_query_link_support "${native_owner}")
+endfunction()
+
+function(obs_rust_static_fixture_support root)
+  # Real archive replays need the same owners as the full project. Configuration
+  # models with an INTERFACE placeholder keep their dependency-free contract.
+  if(
+    NOT CMAKE_C_COMPILER_LOADED
+    OR NOT TARGET libobs_rust-static
+    OR TARGET OBS::libobs-native-dependencies
+    OR OBS_CROSS_TIER2
+  )
+    return()
+  endif()
+  get_target_property(type libobs_rust-static TYPE)
+  get_target_property(archive libobs_rust-static IMPORTED_LOCATION)
+  if(NOT type STREQUAL "STATIC_LIBRARY" OR NOT EXISTS "${archive}")
+    return()
+  endif()
+  get_directory_property(targets BUILDSYSTEM_TARGETS)
+  set(has_consumer FALSE)
+  foreach(target IN LISTS targets)
+    get_target_property(type "${target}" TYPE)
+    if(type STREQUAL "EXECUTABLE")
+      _obs_uses_rust_static("${target}" "" uses_rust)
+      if(NOT uses_rust STREQUAL "0")
+        set(has_consumer TRUE)
+      endif()
+    endif()
+  endforeach()
+  if(NOT has_consumer)
+    return()
+  endif()
+  list(APPEND CMAKE_MODULE_PATH "${root}/cmake/finders")
+  if(NOT TARGET OBS::caption)
+    add_subdirectory("${root}/deps/libcaption" "${CMAKE_BINARY_DIR}/rust-static-caption")
+  endif()
+  find_package(Uthash REQUIRED)
+  find_package(SIMDe REQUIRED)
+  find_package(jansson REQUIRED)
+  find_package(ZLIB REQUIRED)
+  find_package(Threads REQUIRED)
+  find_package(
+    FFmpeg
+    REQUIRED
+    COMPONENTS avcodec avformat avutil swscale swresample
+  )
+  add_library(obs-rust-static-fixture-native INTERFACE)
+  add_library(OBS::libobs-native-dependencies ALIAS obs-rust-static-fixture-native)
+  target_link_libraries(
+    obs-rust-static-fixture-native
+    INTERFACE
+      OBS::caption
+      Uthash::Uthash
+      SIMDe::SIMDe
+      jansson::jansson
+      ZLIB::ZLIB
+      Threads::Threads
+      FFmpeg::avcodec
+      FFmpeg::avformat
+      FFmpeg::avutil
+      FFmpeg::swscale
+      FFmpeg::swresample
+      ${CMAKE_DL_LIBS}
+  )
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(LibUUID REQUIRED)
+    find_package(Gio QUIET)
+    target_link_libraries(obs-rust-static-fixture-native INTERFACE LibUUID::LibUUID m rt util)
+    if(TARGET gio::gio)
+      target_link_libraries(obs-rust-static-fixture-native INTERFACE gio::gio)
+    endif()
+  endif()
+  target_link_libraries(libobs_rust-static INTERFACE OBS::libobs-native-dependencies)
+  obs_add_rust_static_support("${root}" OBS::libobs-native-dependencies)
 endfunction()

@@ -72,6 +72,9 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "  target_link_libraries(indirect_consumer PRIVATE support)\n"
                 "endif()\n"
                 'file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/reference-links.txt" CONTENT "$<TARGET_GENEX_EVAL:reference,$<TARGET_PROPERTY:reference,LINK_LIBRARIES>>")\n'
+                'foreach(name IN ITEMS direct indirect_consumer conditional_consumer)\n'
+                '  file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${name}-links.txt" CONTENT "$<TARGET_GENEX_EVAL:${name},$<TARGET_PROPERTY:${name},LINK_LIBRARIES>>")\n'
+                'endforeach()\n'
             )
             build = source / "build"
             self.run_command(["cmake", "-S", str(source), "-B", str(build)])
@@ -82,6 +85,9 @@ class RustStaticLinkSupport(unittest.TestCase):
             self.run_command(["cmake", "--build", str(build), "--parallel", "2", "--target", *targets])
             for name in targets:
                 self.run_command([str(build / name)])
+                if msvc:
+                    links = (build / f"{name}-links.txt").read_text().split(";")
+                    self.assertEqual(links[:2], ["libobs_rust-static", "support"])
 
     def run_command(self, command):
         result = subprocess.run(command, capture_output=True, text=True, check=False, timeout=60)

@@ -282,12 +282,16 @@ function(_obs_cross_shared_libobs name)
     swresample
     jansson
   )
+  add_library(${name}-native INTERFACE)
+  add_library(OBS::libobs-native-dependencies ALIAS ${name}-native)
+  target_link_directories(${name}-native INTERFACE "${OBS_CROSS_DEPS}/lib")
+  target_link_libraries(${name} PRIVATE ${name}-native)
   if(_host STREQUAL WINDOWS)
     # The Rust standard library pulls winsock and NT APIs in through its
     # objects; the shipped libobs link gets these from the same system libs.
     target_link_libraries(
-      ${name}
-      PRIVATE ${_common_deps} avrt dwmapi dxgi winmm rpcrt4 ws2_32 ntdll bcrypt userenv
+      ${name}-native
+      INTERFACE ${_common_deps} avrt dwmapi dxgi winmm rpcrt4 ws2_32 ntdll bcrypt userenv
     )
     # The Rust staticlib's object directives request MSVCRT.lib / OLDNAMES.lib
     # with Windows' case, while the Linux-side xwin SDK ships msvcrt.lib /
@@ -308,6 +312,7 @@ function(_obs_cross_shared_libobs name)
       )
     endforeach()
     target_link_directories(${name} PRIVATE "${_case_lib_dir}")
+    target_link_directories(${name}-native INTERFACE "${_case_lib_dir}")
     # Rust no_mangle shims in a staticlib are not dllexport, so name them, as
     # libobs/cmake/rust-os-windows.cmake does for the native build.
     file(GLOB _obs_rust_export_fragments "${OBS_SOURCE_ROOT}/libobs/cmake/rust-exports.d/*.txt")
@@ -333,12 +338,12 @@ function(_obs_cross_shared_libobs name)
       ${name}-pthreads
       PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED TRUE PREFIX "" OUTPUT_NAME w32-pthreads
     )
-    target_link_libraries(${name} PRIVATE ${name}-pthreads)
+    target_link_libraries(${name}-native INTERFACE ${name}-pthreads)
     set_target_properties(${name} PROPERTIES IMPORT_PREFIX "" IMPORT_SUFFIX ".lib")
   else()
     target_link_libraries(
-      ${name}
-      PRIVATE
+      ${name}-native
+      INTERFACE
         ${_common_deps}
         "-framework AppKit"
         "-framework AudioToolbox"

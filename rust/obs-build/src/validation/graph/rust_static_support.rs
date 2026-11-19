@@ -22,11 +22,16 @@ pub(super) fn sources(root: &Path) -> Result<Vec<PathBuf>, String> {
         .collect())
 }
 
-pub(super) fn prepare(
+pub(super) struct Support {
+    archive: PathBuf,
+    caption: PathBuf,
+}
+
+fn prepare(
     build: &NativeBuild,
     root: &Path,
     libraries: &BTreeMap<String, Dependency>,
-) -> Result<PathBuf, String> {
+) -> Result<Support, String> {
     let mut support = SharedLibrary {
         name: "rust-static-link-support".into(),
         sources: sources(root)?,
@@ -58,7 +63,10 @@ pub(super) fn prepare(
         root.join("test/cmocka/build/rust-static-support.json")
             .display()
     );
-    build.static_library(&support)
+    Ok(Support {
+        archive: build.static_library(&support)?,
+        caption: crate::libobs::build_caption(build, root)?,
+    })
 }
 
 pub(super) fn select(
@@ -67,7 +75,7 @@ pub(super) fn select(
     libraries: &BTreeMap<String, Dependency>,
     names: &[String],
     target: &mut SharedLibrary,
-    cached: &mut Option<PathBuf>,
+    cached: &mut Option<Support>,
 ) -> Result<(), String> {
     if !names.iter().any(|name| {
         name == "libobs_rust-static"
@@ -92,7 +100,13 @@ pub(super) fn select(
         .iter()
         .position(|path| path == archive)
         .ok_or("Rust-static archive missing from native link")?;
-    target.dependencies.insert(index + 1, support.clone());
+    target
+        .dependencies
+        .insert(index + 1, support.archive.clone());
+    target.include_dirs.push(root.join("deps/libcaption"));
+    target
+        .link_options
+        .push(support.caption.to_string_lossy().into_owned());
     // Legacy registrations may still name these eager wrappers. The manifest
     // now owns their real implementations lazily.
     let shared_sources = sources(root)?;

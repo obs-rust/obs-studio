@@ -1003,7 +1003,7 @@ pub fn configure_rust_static_dependencies(
     target: &str,
     library: &mut crate::SharedLibrary,
 ) -> Result<(), String> {
-    crate::libobs::add_package(library, target, "jansson")?;
+    configure_core_dependencies(target, &crate::libobs::Options::default(), library)?;
     if target.contains("linux") {
         crate::libobs::add_package(library, target, "uuid")?;
         // Match the optional native owner: no-GIO archives remain usable on
