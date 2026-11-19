@@ -6,7 +6,8 @@
         "test/cmocka/test_effect_parser_lifecycle.c",
         "libobs/graphics/effect-parser-lifecycle-adapter.c.h",
         "libobs/graphics/obs-graphics-adapter.c.h",
-        "libobs/graphics/graphics-linear-srgb-fields.c.h"
+        "libobs/graphics/graphics-linear-srgb-fields.c.h",
+        "libobs/util/cf-lexer.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14,10 +15,10 @@
         "libobs"
       ],
       "libraries": [
+        "libobs_rust-static",
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
-        "libobs_rust-static",
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"

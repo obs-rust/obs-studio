@@ -2,7 +2,8 @@
   "description": "libobs/media-io.",
   "groups": [
     "media",
-    "media-resampler-kernel"
+    "media-resampler-kernel",
+    "media-texture-file-data-adapter"
   ],
   "depends": []
 }

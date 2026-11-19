@@ -4,7 +4,9 @@
     "test_hotkey_background_control": {
       "sources": [
         "test/cmocka/test_hotkey_background_control.c",
-        "libobs/obs-hotkey-background-control-fields.c.h"
+        "libobs/obs-hotkey-background-control-fields.c.h",
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=control_test_obs",
@@ -21,7 +23,15 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         },
-        "libobs_rust-static"
+        "libobs_rust-static",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale"
+      ],
+      "includes": [
+        ".",
+        "libobs"
       ]
     }
   },

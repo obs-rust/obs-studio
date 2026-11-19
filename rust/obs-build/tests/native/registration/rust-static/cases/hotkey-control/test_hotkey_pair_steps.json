@@ -20,13 +20,19 @@
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
-        "test/cmocka/hotkey-background-press-link-support.c"
+        "test/cmocka/hotkey-background-press-link-support.c",
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "libraries": [
         "OBS::libobs",
         "OBS::caption",
         "OBS::native-test-cmocka",
-        "libobs_rust-static"
+        "libobs_rust-static",
+        "FFmpeg::avcodec",
+        "FFmpeg::avformat",
+        "FFmpeg::avutil",
+        "FFmpeg::swscale"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -37,7 +43,8 @@
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request"
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "unity_groups": {
         "background-control": [
@@ -91,6 +98,12 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "texture_file_data_support": [
+          "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

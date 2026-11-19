@@ -33,6 +33,8 @@ mod canonical_source_canvas_getter_swap_is_registered;
 mod canonical_source_configurable_swap_is_registered;
 #[path = "native/registration/canonical_source_missing_files_getter_swap_is_registered.rs"]
 mod canonical_source_missing_files_getter_swap_is_registered;
+#[path = "native/registration/canonical_texture_file_data_swap_is_registered.rs"]
+mod canonical_texture_file_data_swap_is_registered;
 #[path = "native/registration/canonical_websocket_helpers_is_registered.rs"]
 mod canonical_websocket_helpers_is_registered;
 #[path = "native/graph_host_configurations.rs"]
