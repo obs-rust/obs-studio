@@ -48,28 +48,14 @@ class LinkArgsTest(unittest.TestCase):
             self.assertEqual(windows_link_check.main(), 0)
         self.assertEqual(calls, [("add", "x86_64-pc-windows-msvc"), ("cargo", windows_link_check.link_args())])
 
-    def test_selected_tier2_pass_links_after_categories(self):
+    def test_categories_do_not_serialize_cmocka_passes(self):
         with mock.patch.object(windows_link_check.local_gate, "add_target"), \
-             mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
-             mock.patch.object(windows_link_check.cmocka_link_check, "link") as link, \
-             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo") as cargo, \
+             mock.patch("cmocka_link_check.link"), \
+             mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "true"}):
             self.assertEqual(windows_link_check.main(), 0)
-            root = windows_link_check.cmocka_link_check.ROOT
-            self.assertEqual(link.call_args_list, [
-                mock.call("win-x64", root / "build_cmocka_link_win-x64", 4),
-                mock.call("mac-arm64", root / "build_cmocka_link_mac-arm64", 4),
-            ])
-
-    def test_tier2_link_failure_propagates(self):
-        import subprocess
-
-        failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
-        with mock.patch.object(windows_link_check.local_gate, "add_target"), \
-             mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
-             mock.patch.object(windows_link_check.cmocka_link_check, "link", side_effect=[None, failure]), \
-             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
-            with self.assertRaises(subprocess.CalledProcessError):
-                windows_link_check.main()
+        cargo.assert_called_once_with(windows_link_check.link_args())
+        self.assertNotIn("cmocka_link_check", Path(windows_link_check.__file__).read_text())
 
     def test_link_failure_propagates(self):
         import subprocess
@@ -101,7 +87,8 @@ class WorkflowTest(unittest.TestCase):
         for skip in ("cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows =="):
             self.assertNotIn(skip, self.condition)
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
-        self.assertIn("|| needs.check-event.outputs.cmocka_link == 'true'", self.condition)
+        self.assertNotIn("outputs.cmocka_link", self.condition)
+        self.assertNotIn("apt-get", self.block)
 
     def test_is_linux_hosted_and_bounded(self):
         self.assertIn("inputs.mq-heavy-labels", self.block)

@@ -62,6 +62,34 @@ class ToolchainTest(unittest.TestCase):
             self.assertIn("--target=x86_64-pc-windows-msvc", wrapper)
 
 
+class BuildTest(unittest.TestCase):
+    def test_each_alias_builds_the_full_inventory_at_the_cpu_budget(self):
+        inventory = ["libobs-cross-shared", "test_existing_rust", "test_new_steps_rust"]
+        for alias in cmocka_link_check.TRIPLES:
+            with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
+                     mock.patch.object(cmocka_link_check.subprocess, "run") as run:
+                    cmocka_link_check.build_targets(alias, work, 3, {})
+                args = run.call_args.args[0]
+                self.assertEqual(args[args.index("--parallel") + 1], "3")
+                self.assertEqual(args[args.index("--target") + 1:args.index("--")], inventory)
+                self.assertEqual(json.loads((work / "link-targets.json").read_text()), inventory)
+
+    def test_cache_is_fresh_and_cannot_inherit_relaxed_or_remote_policy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            with mock.patch.object(cmocka_link_check.tier2_front_cache, "install", return_value=work / "ccache"), \
+                 mock.patch.dict("os.environ", {"CCACHE_SLOPPINESS": "time_macros", "CCACHE_REMOTE_STORAGE": "remote", "CCACHE_PREFIX": "unsafe"}):
+                env = cmocka_link_check.cache_env(work)
+            self.assertNotIn("CCACHE_SLOPPINESS", env)
+            self.assertNotIn("CCACHE_REMOTE_STORAGE", env)
+            self.assertNotIn("CCACHE_PREFIX", env)
+            self.assertEqual(Path(env["CCACHE_CONFIGPATH"]).read_text(), "")
+            self.assertEqual(env["CCACHE_MAXSIZE"], "512M")
+            self.assertEqual(env["CCACHE_COMPILERCHECK"], "content")
+
+
 class DiscoveryTest(unittest.TestCase):
     def test_uses_generated_target_types_and_names_not_source_regexes(self):
         with tempfile.TemporaryDirectory() as temporary:
