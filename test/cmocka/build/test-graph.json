@@ -20566,8 +20566,7 @@
     "test_video_unmap_last_surface_rust": {
       "sources": [
         "test/cmocka/test_video_unmap_last_surface.c",
-        "test/cmocka/source-update-properties-link-support.c",
-        "test/cmocka/output-starting-queries-link-support.c"
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "compile_options": [
         {
