@@ -16,6 +16,7 @@ function(_texture_file_data_link_support)
       FFmpeg::avformat
       FFmpeg::avutil
       FFmpeg::swscale
+      "$<$<PLATFORM_ID:Windows>:rpcrt4>"
       "$<$<PLATFORM_ID:Windows>:winmm>"
   )
   get_directory_property(_targets BUILDSYSTEM_TARGETS)

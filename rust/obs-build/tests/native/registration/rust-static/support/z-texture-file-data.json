@@ -1262,7 +1262,11 @@
   "test_video_stop_requested_rust": {
     "sources": [
       "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
-      "test/cmocka/texture-file-data-max-size-link-stub.c"
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      {
+        "path": "libobs/util/base-variadic.c.h",
+        "requires": "OS_WINDOWS"
+      }
     ],
     "includes": [
       ".",
