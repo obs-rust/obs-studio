@@ -1,0 +1,6 @@
+obs_enum_encoder_types
+obs_enum_filter_types
+obs_enum_input_types
+obs_enum_output_types
+obs_enum_service_types
+obs_enum_transition_types

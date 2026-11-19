@@ -52,7 +52,7 @@
 #include "libobs/obs-set-locale.c.h"
 #include "libobs/obs-set-output-source-fields.c.h"
 #include "libobs/obs-shutdown-detach.c.h"
-#include "libobs/obs-type-catalog-enum.c.h"
+#include "libobs/obs-type-catalog-enum-fields.c.h"
 #include "libobs/obs-ui-task-handler-fields.c.h"
 #include "libobs/obs-video-info-query-fields.c.h"
 #include "libobs/obs-video-level-queries-fields.c.h"
