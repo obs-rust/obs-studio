@@ -21,7 +21,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -101,6 +102,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h",

@@ -46,9 +46,8 @@ fn standalone_texture_file_data_adapters_supply_private_max_size_callback() {
         }
     }
     assert!(consumers > 0);
-    let fragment = fs::read_to_string(
-        root.join("test/cmocka/tests.d/texture_file_data_link_support.cmake"),
-    )
-    .unwrap();
+    let fragment =
+        fs::read_to_string(root.join("test/cmocka/tests.d/texture_file_data_link_support.cmake"))
+            .unwrap();
     assert!(fragment.contains(callback));
 }

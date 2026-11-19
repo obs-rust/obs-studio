@@ -1,7 +1,8 @@
 {
   "test_async_conversion_plan_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -16,7 +17,8 @@
   },
   "test_async_frame_pacing_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -31,7 +33,8 @@
   },
   "test_async_upload_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -46,7 +49,8 @@
   },
   "test_audio_monitor_delay_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -61,7 +65,8 @@
   },
   "test_coreaudio_device_rules_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -76,7 +81,8 @@
   },
   "test_coreaudio_pacing_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -91,7 +97,8 @@
   },
   "test_deinterlace_draw_plan_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -106,7 +113,8 @@
   },
   "test_deinterlace_pacing_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -121,7 +129,8 @@
   },
   "test_deinterlace_select_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -136,7 +145,9 @@
   },
   "test_effect_param_types_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -146,12 +157,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_effect_parser_blocks_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -161,12 +187,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_effect_parser_compile_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -176,12 +217,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_effect_parser_lifecycle_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -191,12 +247,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_effect_parser_params_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -206,12 +277,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_effect_parser_passes_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -221,12 +307,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_effect_parser_shader_call_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -236,12 +337,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_graphics_ffmpeg_pq_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -251,12 +367,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_graphics_ffmpeg_route_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -266,12 +397,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_graphics_ffmpeg_wic_checks_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -281,12 +427,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_graphics_immediate_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -296,12 +457,27 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_graphics_state_stacks_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -311,12 +487,26 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_hotkey_background_control": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -331,7 +521,8 @@
   },
   "test_hotkey_background_enum": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -346,7 +537,8 @@
   },
   "test_hotkey_background_press": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -361,7 +553,8 @@
   },
   "test_hotkey_background_trigger": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -376,7 +569,8 @@
   },
   "test_hotkey_binding_press_steps": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -391,7 +585,8 @@
   },
   "test_hotkey_getters_characterization": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -406,7 +601,8 @@
   },
   "test_hotkey_load": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -421,7 +617,8 @@
   },
   "test_hotkey_pair_steps": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -436,7 +633,8 @@
   },
   "test_hotkey_press_steps": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -451,7 +649,8 @@
   },
   "test_monitor_speaker_layout_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -466,7 +665,8 @@
   },
   "test_monitor_video_sync_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -481,7 +681,8 @@
   },
   "test_monitor_wasapi_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -496,7 +697,9 @@
   },
   "test_nsgif_decode_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -506,12 +709,26 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_portal_shortcuts": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -526,7 +743,8 @@
   },
   "test_pulse_monitor_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -553,7 +771,8 @@
   },
   "test_scene_bounds_place_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -568,7 +787,8 @@
   },
   "test_scene_item_crop_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -583,7 +803,8 @@
   },
   "test_scene_item_names_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -598,7 +819,8 @@
   },
   "test_scene_item_order_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -613,7 +835,8 @@
   },
   "test_scene_item_transform_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -640,22 +863,8 @@
   },
   "test_scene_transform_update_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
-    ],
-    "includes": [
-      ".",
-      "libobs"
-    ],
-    "libraries": [
-      "FFmpeg::avcodec",
-      "FFmpeg::avformat",
-      "FFmpeg::avutil",
-      "FFmpeg::swscale"
-    ]
-  },
-  "test_service_handler_getters_rust": {
-    "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -670,7 +879,8 @@
   },
   "test_source_audio_input_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -685,7 +895,8 @@
   },
   "test_source_audio_place_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -700,7 +911,8 @@
   },
   "test_source_audio_render_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -715,7 +927,8 @@
   },
   "test_source_audio_timing_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -730,7 +943,8 @@
   },
   "test_source_color_space_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -745,7 +959,8 @@
   },
   "test_source_draw_plan_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -760,7 +975,8 @@
   },
   "test_source_duplicate_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -775,7 +991,8 @@
   },
   "test_source_filter_chain_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -790,7 +1007,8 @@
   },
   "test_source_frame_copy_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -805,7 +1023,8 @@
   },
   "test_source_init_context_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -820,7 +1039,8 @@
   },
   "test_source_media_admission_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -835,7 +1055,8 @@
   },
   "test_source_monitoring_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -850,7 +1071,8 @@
   },
   "test_source_ptm_gate_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -865,7 +1087,8 @@
   },
   "test_source_render_route_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -880,7 +1103,8 @@
   },
   "test_source_size_route_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -895,7 +1119,8 @@
   },
   "test_source_video_tick_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -910,7 +1135,8 @@
   },
   "test_source_volume_apply_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -925,7 +1151,9 @@
   },
   "test_sprite_geometry_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c",
+      "libobs/util/base-variadic.c.h"
     ],
     "includes": [
       ".",
@@ -935,12 +1163,26 @@
       "FFmpeg::avcodec",
       "FFmpeg::avformat",
       "FFmpeg::avutil",
-      "FFmpeg::swscale"
+      "FFmpeg::swscale",
+      {
+        "name": "PkgConfig::_window_match_test_gio",
+        "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+      },
+      {
+        "name": "LibUUID::LibUUID",
+        "requires": {
+          "any": [
+            "OS_LINUX",
+            "OS_FREEBSD"
+          ]
+        }
+      }
     ]
   },
   "test_transition_clock_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -955,7 +1197,8 @@
   },
   "test_transition_load_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -970,7 +1213,8 @@
   },
   "test_transition_render_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -985,7 +1229,8 @@
   },
   "test_transition_sample_time_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -1000,7 +1245,8 @@
   },
   "test_transition_start_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -1015,7 +1261,8 @@
   },
   "test_video_stop_requested_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -1030,7 +1277,8 @@
   },
   "test_wayland_hotkeys": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -1045,7 +1293,8 @@
   },
   "test_window_match_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",
@@ -1060,7 +1309,8 @@
   },
   "test_windows_keys_steps_rust": {
     "sources": [
-      "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+      "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+      "test/cmocka/texture-file-data-max-size-link-stub.c"
     ],
     "includes": [
       ".",

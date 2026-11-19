@@ -307,7 +307,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -429,7 +430,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -539,7 +541,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -696,7 +699,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -1545,7 +1549,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -1639,7 +1644,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -1909,7 +1915,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -2005,7 +2012,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2078,7 +2086,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2587,7 +2596,9 @@
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2612,7 +2623,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -2668,7 +2692,9 @@
         },
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2694,7 +2720,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "compile_options": [
         {
@@ -2750,7 +2789,9 @@
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2776,7 +2817,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined",
       "definitions": [
@@ -2870,7 +2924,9 @@
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2889,7 +2945,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -2933,7 +3002,9 @@
         },
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -2959,7 +3030,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "compile_options": [
         {
@@ -3013,7 +3097,9 @@
         },
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -3039,7 +3125,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "compile_options": [
         {
@@ -3097,7 +3196,9 @@
         },
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -3123,7 +3224,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "compile_options": [
         {
@@ -4870,7 +4984,9 @@
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4895,7 +5011,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined",
       "definitions": [
@@ -4951,7 +5080,9 @@
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -4976,7 +5107,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -5007,7 +5151,9 @@
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -5032,7 +5178,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -5101,7 +5260,9 @@
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -5129,7 +5290,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -5243,7 +5417,9 @@
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "libobs/obs-graphics-effect-file-fields.c.h",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -5271,7 +5447,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined",
       "conditional_link_options": [
@@ -5580,7 +5769,8 @@
       "sources": [
         "test/cmocka/test_hotkey_background_control.c",
         "libobs/obs-hotkey-background-control-fields.c.h",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=control_test_obs",
@@ -5628,7 +5818,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -5708,6 +5899,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h",
@@ -5766,7 +5960,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -5846,6 +6041,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h",
@@ -5889,7 +6087,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -5969,6 +6168,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h",
@@ -6073,7 +6275,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6152,6 +6355,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6242,7 +6448,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -6320,6 +6527,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h",
@@ -6373,7 +6583,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -6448,6 +6659,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h",
@@ -6532,7 +6746,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6611,6 +6826,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6635,7 +6853,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -6714,6 +6933,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -8242,7 +8464,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -8302,7 +8525,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -8363,7 +8587,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -8695,7 +8920,9 @@
         "libobs/obs-graphics-effect-file-fields.c.h",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -8720,7 +8947,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined",
       "definitions": [
@@ -11372,7 +11612,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -11491,6 +11732,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -12098,7 +12342,8 @@
         "test/cmocka/source-handler-getter-link-support.c",
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "all": [
@@ -13460,7 +13705,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -13796,7 +14042,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-support.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -13903,7 +14150,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -13954,7 +14202,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -14103,7 +14352,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "libraries": [
@@ -14373,7 +14623,8 @@
         "test/cmocka/scene-item-visible-link-support.c",
         "test/cmocka/scene-source-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14607,8 +14858,7 @@
       "sources": [
         "test/cmocka/test_service_handler_getters.c",
         "test/cmocka/service-handler-getters-link-support.c",
-        "libobs/util/base-variadic.c.h",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -14626,11 +14876,7 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
-        },
-        "FFmpeg::avcodec",
-        "FFmpeg::avformat",
-        "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        }
       ],
       "header_libraries": [
         "OBS::libobs",
@@ -15251,7 +15497,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15337,7 +15584,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -15429,7 +15677,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15534,7 +15783,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15651,7 +15901,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -15808,7 +16059,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -15874,7 +16126,8 @@
         "test/cmocka/source-state-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -15950,7 +16203,8 @@
         "test/cmocka/source-state-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -16037,7 +16291,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -16161,7 +16416,8 @@
         "test/cmocka/source-identity-getter-link-stubs.c",
         "test/cmocka/source-push-query-link-stubs.c",
         "test/cmocka/source-state-getter-link-stubs.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "header_libraries": [
         "OBS::source-init-context-rust-headers",
@@ -16298,7 +16554,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -16424,7 +16681,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -16587,7 +16845,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -16701,7 +16960,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -16798,7 +17058,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -17175,7 +17436,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -17251,7 +17513,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -17393,7 +17656,9 @@
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/obs-graphics-effect-file-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c",
+        "libobs/util/base-variadic.c.h"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -17418,7 +17683,20 @@
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
         "FFmpeg::avutil",
-        "FFmpeg::swscale"
+        "FFmpeg::swscale",
+        {
+          "name": "PkgConfig::_window_match_test_gio",
+          "requires": "HAVE_WINDOW_MATCH_TEST_GIO"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          }
+        }
       ],
       "sanitizers": "address,undefined"
     },
@@ -18017,7 +18295,8 @@
         "test/cmocka/source-state-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -18120,7 +18399,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -18237,7 +18517,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -18314,7 +18595,8 @@
         "test/cmocka/source-state-getter-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -18452,7 +18734,8 @@
         "test/cmocka/weak-object-identity-link-stub.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
         "test/cmocka/source-icon-type-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         "libobs",
@@ -19632,7 +19915,8 @@
     "test_video_stop_requested_rust": {
       "sources": [
         "test/cmocka/test_video_stop_requested.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "compile_options": [
         {
@@ -20059,7 +20343,8 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "requires": {
         "any": [
@@ -20151,6 +20436,9 @@
         ],
         "texture_file_data_support": [
           "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        ],
+        "texture_file_data_max_size_support": [
+          "test/cmocka/texture-file-data-max-size-link-stub.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -20461,7 +20749,8 @@
         "test/cmocka/test_window_match_steps.c",
         "libobs/util/base-variadic.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "includes": [
         ".",
@@ -20517,7 +20806,8 @@
         "test/cmocka/module-name-lookup-link-stubs.c",
         "test/cmocka/object-validity-query-link-stubs.c",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/build/libobs.media-texture-file-data-adapter+.h.c"
+        "libobs/build/libobs.media-texture-file-data-adapter+.h.c",
+        "test/cmocka/texture-file-data-max-size-link-stub.c"
       ],
       "watch_inputs": [
         "Cargo.toml"
