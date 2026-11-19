@@ -817,6 +817,95 @@ class RetryDeadlineTest(unittest.TestCase):
             )
 
 
+class CollectionRaceTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-probe-races.json").read_text()
+        )
+
+    def collect(self, pages):
+        responses = [io.BytesIO(json.dumps(page).encode()) for page in pages]
+        probe = selector.Probe(
+            "runner-token", "https://api.github.com", sleep=lambda _: None
+        )
+        with (
+            patch.object(selector, "urlopen", side_effect=responses) as http,
+            redirect_stdout(io.StringIO()) as output,
+        ):
+            result = probe.entries(
+                "repos/obs-rust/obs-studio/actions/workflows/ci.yml/runs?status=queued",
+                "workflow_runs",
+                "actions-token",
+            )
+        self.http = http
+        self.output = output.getvalue()
+        return result
+
+    def test_recorded_short_page_retries_then_accepts_matching_ids(self):
+        for name in ("short_runs_page", "empty_runs_page"):
+            with self.subTest(page=name):
+                page = self.fixture[name]
+                self.assertEqual(self.collect([page, page]), page["workflow_runs"])
+                self.assertEqual(self.http.call_count, 2)
+                self.assertIn("retry", self.output)
+
+    def test_count_mismatch_retries_from_first_page(self):
+        page = self.fixture["short_runs_page"]
+        settled = dict(page, total_count=len(page["workflow_runs"]))
+        self.assertEqual(self.collect([page, settled]), page["workflow_runs"])
+        self.assertEqual(self.http.call_count, 2)
+        self.assertTrue(
+            all("page=1" in call.args[0].full_url for call in self.http.call_args_list)
+        )
+
+    def test_full_page_does_not_stop_at_unstable_total(self):
+        template = self.fixture["short_runs_page"]["workflow_runs"][0]
+        runs = [dict(template, id=index + 1) for index in range(101)]
+        pages = [
+            {"total_count": 100, "workflow_runs": runs[:100]},
+            {"total_count": 101, "workflow_runs": runs[100:]},
+            {"total_count": 101, "workflow_runs": runs[:100]},
+            {"total_count": 101, "workflow_runs": runs[100:]},
+        ]
+        self.assertEqual(self.collect(pages), runs)
+        self.assertEqual(self.http.call_count, 4)
+
+    def test_page_shift_deduplicates_and_retries(self):
+        template = self.fixture["short_runs_page"]["workflow_runs"][0]
+        runs = [dict(template, id=index + 1) for index in range(101)]
+        pages = [
+            {"total_count": 101, "workflow_runs": runs[:100]},
+            {"total_count": 101, "workflow_runs": runs[99:]},
+            {"total_count": 102, "workflow_runs": runs[:100]},
+            {"total_count": 102, "workflow_runs": runs[100:]},
+        ]
+        self.assertEqual(self.collect(pages), runs)
+        self.assertEqual(self.http.call_count, 4)
+
+    def test_changing_short_pages_are_bounded(self):
+        page = self.fixture["short_runs_page"]
+        pages = [
+            dict(page, workflow_runs=[dict(page["workflow_runs"][0], id=i + 1)])
+            for i in range(selector.MAX_RETRIES + 1)
+        ]
+        with self.assertRaisesRegex(ValueError, "did not stabilize"):
+            self.collect(pages)
+
+    def test_full_pages_exceed_limit_even_with_small_total(self):
+        template = self.fixture["short_runs_page"]["workflow_runs"][0]
+        pages = [
+            {
+                "total_count": 1,
+                "workflow_runs": [
+                    dict(template, id=i + page * 100 + 1) for i in range(100)
+                ],
+            }
+            for page in range(selector.MAX_PAGES)
+        ]
+        with self.assertRaisesRegex(ValueError, "exceeds probe limit"):
+            self.collect(pages)
+
+
 class InflightAdmissionTest(unittest.TestCase):
     def setUp(self):
         self.enterContext(patch.object(selector.time, "sleep"))
@@ -923,6 +1012,11 @@ class InflightAdmissionTest(unittest.TestCase):
                     self.assertEqual(
                         self.select(self.runs[0]["id"], api_error=error), ""
                     )
+                    self.assertIn("runs probe (queued)", self.output)
+                    self.assertIn(type(error).__name__, self.output)
+                    self.assertNotIn("private server text", self.output)
+                    if isinstance(error, HTTPError):
+                        self.assertIn("403", self.output)
             finally:
                 if isinstance(error, HTTPError):
                     error.close()
@@ -934,6 +1028,9 @@ class InflightAdmissionTest(unittest.TestCase):
             return payload
 
         self.assertEqual(self.select(self.runs[0]["id"], transform=fail_jobs), "")
+        self.assertIn("jobs probe (run", self.output)
+        self.assertIn("URLError", self.output)
+        self.assertNotIn("private server text", self.output)
 
     def test_missing_identity_or_actions_token_uses_hosted(self):
         for config in (
@@ -1002,7 +1099,7 @@ class InflightAdmissionTest(unittest.TestCase):
             ]
         self.assertTrue(self.select(self.runs[-1]["id"]))
 
-    def test_completed_selector_without_route_fails_closed(self):
+    def test_completed_selector_without_live_dell_jobs_releases_slot(self):
         for conclusion in ("success", "failure", "cancelled"):
             with self.subTest(conclusion=conclusion):
                 self.jobs[self.runs[0]["id"]] = [
@@ -1013,8 +1110,38 @@ class InflightAdmissionTest(unittest.TestCase):
                         "labels": ["ubuntu-latest"],
                     }
                 ]
-                self.assertEqual(self.select(self.runs[1]["id"]), "")
-                self.assertIn("completed selector has no visible", self.output)
+                self.assertTrue(self.select(self.runs[1]["id"], capacity=3))
+                self.assertIn("queued=0, committed=0", self.output)
+
+    def test_recorded_peer_before_heavy_jobs_does_not_fail_probe(self):
+        fixture = json.loads(
+            (Path(__file__).parent / "fixtures/mq-probe-races.json").read_text()
+        )
+        self.runs = fixture["short_runs_page"]["workflow_runs"]
+        self.jobs = {
+            run["id"]: fixture["peer_jobs_before_heavy"]["jobs"] for run in self.runs
+        }
+        for run in self.runs:
+            with self.subTest(current=run["id"]):
+                self.assertTrue(self.select(run["id"], capacity=3))
+                self.assertIn("queued=0, committed=0", self.output)
+                self.assertNotIn("probe failed", self.output)
+
+    def test_completed_selector_still_counts_live_dell_jobs(self):
+        self.runs = self.runs[:2]
+        for status in ("queued", "waiting", "pending", "requested", "in_progress"):
+            with self.subTest(status=status):
+                self.jobs[self.runs[0]["id"]] = [
+                    {
+                        "name": "Select Merge Queue Runner",
+                        "status": "completed",
+                        "conclusion": "success",
+                        "labels": ["ubuntu-latest"],
+                    },
+                    dict(self.fixture["queued_jobs"][0], status=status),
+                ]
+                self.assertEqual(self.select(self.runs[1]["id"], capacity=3), "")
+                self.assertIn("committed=1", self.output)
 
     def test_skipped_selectors_release_reservations(self):
         for run in self.runs[:-1]:
@@ -1079,8 +1206,8 @@ class InflightAdmissionTest(unittest.TestCase):
         ]
         self.assertEqual(self.select(self.runs[1]["id"]), "")
 
-    def test_incomplete_jobs_or_runs_use_hosted(self):
-        for endpoint in ("/jobs", "/runs"):
+    def test_incomplete_jobs_use_hosted(self):
+        for endpoint in ("/jobs",):
 
             def incomplete(path, payload):
                 return (
@@ -1226,11 +1353,15 @@ class InflightAdmissionTest(unittest.TestCase):
 
     def test_warning_names_runs_probe_and_value_error(self):
         def incomplete_runs(path, payload):
-            return dict(payload, total_count=999) if path.endswith("/runs") else payload
+            return (
+                dict(payload, total_count="invalid")
+                if path.endswith("/runs")
+                else payload
+            )
 
         self.assertEqual(self.select(self.runs[0]["id"], transform=incomplete_runs), "")
         self.assertIn("runs probe (queued)", self.output)
-        self.assertIn("incomplete collection", self.output)
+        self.assertIn("invalid collection", self.output)
 
     def test_malformed_job_labels_use_hosted(self):
         self.jobs[self.runs[0]["id"]] = [
