@@ -1,5 +1,13 @@
 #!/usr/bin/env -S uv run --script
-"""Probe opt-in queue/member PR runners; unknown states always use hosted CI."""
+"""Prefer bounded queueing on the opt-in Dell over slower hosted completion.
+
+MQ_RUNNER_MAX_RUNS defaults to 3 concurrent runs on six runners. Reports 22/23
+(2026-11-19) measured Dell/hosted medians of 27.8/46.3 minutes and Dell job waits
+of p90 349 s, max 615 s: even the observed maximum wait leaves Dell ahead by
+8.25 minutes. Keep the idle-capacity path, then allow busy-Dell admission below
+that configurable run cap; online capacity must still cover one run's demand.
+Older undecided runs reserve slots to bound simultaneous selector decisions.
+"""
 
 from __future__ import annotations
 
@@ -9,8 +17,9 @@ import random
 import signal
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from itertools import count
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -173,7 +182,12 @@ class Probe:
                     if len(entries) < 100:
                         raise ValueError("incomplete collection")
                 elif len(entries) < 100:
-                    ids = frozenset(entry["id"] for entry in result)
+                    # A missing identity still occupies a conservative run
+                    # slot; active_runs normalizes it without a jobs lookup.
+                    ids = frozenset(
+                        entry.get("id", ("missing", index))
+                        for index, entry in enumerate(result)
+                    )
                     if (
                         totals == {len(ids)} and len(ids) == len(result)
                     ) or ids == previous:
@@ -204,7 +218,7 @@ def warning(reason: str, *, hosted: bool = True) -> None:
 def probe_error(error: Exception) -> str:
     """Include validation reasons, escaping Actions annotation control characters."""
     detail = ""
-    if isinstance(error, ValueError):
+    if isinstance(error, (ValueError, KeyError)):
         detail = ": " + str(error).replace("%", "%25").replace("\r", "%0D").replace(
             "\n", "%0A"
         )
@@ -311,10 +325,32 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
     return queued, dell, decided
 
 
+# Unknown timestamps sort before every real run, conservatively holding slots.
+UNKNOWN_CREATED = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def run_snapshot(run: dict, status: str, missing_id: int, event: str) -> dict:
+    """Normalize missing routing fields conservatively within a filtered list."""
+    if "id" in run and (type(run["id"]) is not int or run["id"] < 1):
+        raise ValueError("invalid active run ID")
+    defaults = {
+        "id": missing_id,
+        "event": event,
+        "status": status,
+        "created_at": UNKNOWN_CREATED.isoformat(),
+    }
+    for key, value in defaults.items():
+        if key not in run:
+            warning(f"runs probe: missing key '{key}'; reserving run", hosted=False)
+            run = {key: value, **run}
+    return run
+
+
 def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group") -> dict:
     """Keep only active run snapshots; terminal snapshots release reservations."""
     runs = {}
     finished = set()
+    missing_ids = count(-1, -1)
     for status in ("queued", "in_progress"):
         try:
             entries = probe.entries(
@@ -329,6 +365,7 @@ def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group")
         except Exception as error:
             raise ValueError(f"runs probe ({status}): {probe_error(error)}") from error
         for run in entries:
+            run = run_snapshot(run, status, next(missing_ids), event)
             run_id = run["id"]
             if (
                 run.get("status") in ("completed", "cancelled")
@@ -341,7 +378,6 @@ def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group")
                 continue
             if (
                 type(run_id) is not int
-                or run_id < 1
                 or run["event"] != event
                 or run["status"] not in ("queued", "in_progress")
             ):
@@ -350,6 +386,48 @@ def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group")
             if created.tzinfo is None:
                 raise ValueError(f"runs probe ({status}): missing run timezone")
             runs[run_id] = ((created, run_id), run["status"])
+    return runs
+
+
+def observed_job_commitments(
+    jobs: list[dict], wanted: set[str], demand: int, run_id: int
+) -> tuple[int, bool, bool]:
+    """An incomplete job snapshot holds one run rather than aborting admission."""
+    try:
+        return job_commitments(jobs, wanted)
+    except KeyError as error:
+        warning(
+            f"jobs probe (run {run_id}): {probe_error(error)}; reserving run",
+            hosted=False,
+        )
+        return demand, True, True
+
+
+def current_priority(runs: dict, current_id: int):
+    """Unknown current ordering must never outrank an undecided peer."""
+    current = runs.get(current_id)
+    if current is None:
+        # A stable retried page can omit this run. Without its timestamp every
+        # undecided peer must rank ahead of us; do not guess its priority.
+        warning(
+            f"runs probe: missing key {current_id} (current run); "
+            "reserving all undecided peers", hosted=False,
+        )
+    current = current[0] if current and UNKNOWN_CREATED not in current[0] else None
+    return current
+
+
+def commitment_runs(repo: str, probe: Probe, token: str, mixed: bool) -> dict:
+    """Queue priorities precede PRs, retaining distinct unknown-identity slots."""
+    runs = active_runs(repo, probe, token)
+    if mixed:
+        # Queue runs sort before every PR, even a PR created earlier. Inspect
+        # live PR jobs for both events so the queue sees their queued demand.
+        runs = {key: ((0, *value[0]), value[1]) for key, value in runs.items()}
+        prs = active_runs(repo, probe, token, "pull_request")
+        offset = min(0, min(runs, default=0))
+        runs.update({key if key > 0 else key + offset: ((1, *value[0]), value[1])
+                     for key, value in prs.items()})
     return runs
 
 
@@ -368,30 +446,27 @@ def inflight_commitments(
     token = os.environ["GITHUB_TOKEN"]
     if current_id < 1 or not token:
         raise ValueError("missing Actions probe identity")
-    runs = active_runs(repo, probe, token)
     mixed = os.environ.get("DELL_PR_ROUTING") == "on"
-    if mixed:
-        # Queue runs sort before every PR, even a PR created earlier. Inspect
-        # live PR jobs for both events so the queue sees their queued demand.
-        runs = {key: ((0, *value[0]), value[1]) for key, value in runs.items()}
-        prs = active_runs(repo, probe, token, "pull_request")
-        runs.update({key: ((1, *value[0]), value[1]) for key, value in prs.items()})
-    current = runs[current_id]  # An incomplete/eventually consistent list is unsafe.
+    runs = commitment_runs(repo, probe, token, mixed)
+    current = current_priority(runs, current_id)
     queued = committed = unprobed = 0
-    current = current[0]
     for run_id, (priority, _) in sorted(runs.items(), key=lambda item: item[1][0]):
         if run_id == current_id:
             continue
         weight = (pr_required if priority[0] == 1 else mq_required) if mixed else 1
         peer_demand = weight if mixed else demand
+        if run_id < 0:  # Missing identity: cannot safely probe or release this peer.
+            queued += peer_demand
+            committed += weight
+            continue
         try:
             jobs = probe.entries(
                 f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
             )
-            pending, dell, decided = job_commitments(jobs, wanted)
+            pending, dell, decided = observed_job_commitments(jobs, wanted, peer_demand, run_id)
         except RequestBudgetExhausted as error:
             unprobed += 1
-            observed, _, _ = job_commitments(error.entries, wanted)
+            observed, _, _ = observed_job_commitments(error.entries, wanted, peer_demand, run_id)
             queued += max(observed, peer_demand)
             committed += weight
             continue
@@ -406,7 +481,7 @@ def inflight_commitments(
         queued += pending
         # Count known Dell runs regardless of age. Unknown older runs also
         # reserve slots; hosted or finished Dell work releases their reservation.
-        committed += weight * (dell or (not decided and priority < current))
+        committed += weight * (dell or (not decided and (current is None or priority < current)))
     if unprobed:
         reservation = (
             "reserving each unprobed active run's required capacity"
@@ -420,20 +495,48 @@ def inflight_commitments(
     return queued, committed
 
 
+def queue_admission(
+    repo: str, wanted: set[str], probe: Probe, online: int, idle: int,
+    required: int, options: dict,
+) -> tuple[bool, str]:
+    """Allow busy MQ work; mixed traffic retains PR capacity weights."""
+    max_runs = int(os.environ.get("MQ_RUNNER_MAX_RUNS") or "3")
+    if max_runs < 1:
+        raise ValueError("MQ_RUNNER_MAX_RUNS must be positive")
+    if online < required:
+        return False, f"; run_limit={max_runs}"
+    queued, committed = inflight_commitments(repo, wanted, probe, required, **options)
+    idle_slots = max(0, (idle - queued) // required)
+    # With PR routing on, commitments retain each event's full runner demand:
+    # the MQ budget is max_runs * required, so a large PR is never one small MQ.
+    weight = required if options else 1
+    limit = max_runs * weight
+    counts = (
+        f"; queued={queued}, committed={committed}, run_limit={limit}"
+        f", idle_run_slots={idle_slots}"
+    )
+    if options:
+        counts += f"; commitments measured in runner capacity, max_runs={max_runs}"
+    if committed + weight > limit:
+        return False, counts
+    if idle_slots >= 1:
+        return True, counts + "; admission=idle"
+    return True, counts + "; admission=busy queue (expected faster than hosted)"
+
+
 def admission_available(
     repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int,
-    reserve: int = 0, mq_required: int = 0, pr_required: int = 0,
+    reserve: int = 0, mq_required: int = 0, pr_required: int = 0, queue: bool = True,
 ) -> tuple[bool, str]:
-    """The idle floor and in-flight run cap must both admit this run."""
-    if idle - reserve < required:
-        return False, ""
+    """Queue overcommit is MQ-only; PRs retain their idle floor and MQ reserve."""
     mixed = os.environ.get("DELL_PR_ROUTING") == "on"
     options = {"mq_required": mq_required, "pr_required": pr_required} if mixed else {}
+    if queue:
+        return queue_admission(repo, wanted, probe, online, idle, required, options)
+    if idle - reserve < required:
+        return False, ""
     queued, committed = inflight_commitments(repo, wanted, probe, required, **options)
     idle_slots = (idle - queued - reserve) // required
-    # The total cap includes runs whose running jobs already reduce idle. Using
-    # idle for this cap would charge those busy runners twice. Idle slots below
-    # independently limit how much new work this snapshot can admit.
     limit = online - reserve if mixed else (online - reserve) // required
     counts = (
         f"; queued={queued}, committed={committed}, run_limit={limit}"
@@ -520,9 +623,9 @@ def selection_enabled(event: str, labels: str) -> bool:
 
 
 def routing_capacity(event: str, min_idle: str, demand: str, mode: str) -> dict[str, int]:
-    """Keep MQ-only arithmetic unchanged; enabled PRs have their own demand."""
+    """Only MQs may overcommit; enabled PRs retain their own demand and reserve."""
     required = required_capacity(min_idle, demand, mode)
-    capacity = {"required": required}
+    capacity = {"required": required, "queue": event == "merge_group"}
     if os.environ.get("DELL_PR_ROUTING") != "on":
         return capacity
     pr_required = max(required, required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND)))
@@ -563,7 +666,7 @@ def select_labels(
 ) -> str:
     """Return compact label JSON or an empty Actions output (hosted fallback).
 
-    Require spare capacity in both threshold and prefer modes. Pagination and
+    Both threshold and prefer modes allow bounded busy-Dell queueing. Pagination and
     each HTTP request stay bounded; runners visible in both scopes count only
     once. In-flight commitments and older undecided runs reserve capacity.
     """
@@ -617,12 +720,12 @@ def select_labels(
         counts += commitments
         prefix = {"prefer": "prefer mode: "}.get(mode, "")
         if admitted:
-            reason = f"{prefix}sufficient idle capacity"
+            reason = f"{prefix}Dell capacity available"
             return decision(
                 f"{reason} ({counts})",
                 json.dumps(requested, separators=(",", ":")),
             )
-        reason = f"{prefix}insufficient idle capacity"
+        reason = f"{prefix}Dell capacity unavailable"
         reason = (
             f"{reason} after in-flight commitments within the probe limit ({counts})"
         )

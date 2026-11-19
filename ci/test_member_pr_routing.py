@@ -22,7 +22,7 @@ LABELS = '["self-hosted","linux","x64","obs-mq"]'
 class MemberPrRoutingTest(unittest.TestCase):
     def select(self, *, head="obs-rust/obs-studio", author="alice", state="active",
                error=False, capacity=12, reserve="", enabled="on", event="pull_request",
-               peers=(), jobs=None, payload=None):
+               peers=(), jobs=None, payload=None, busy=0, max_runs="", missing_peer_ids=False):
         self.paths = []
         current = {"id": 20, "event": event, "status": "in_progress",
                    "created_at": "2026-11-19T12:00:00Z"}
@@ -46,7 +46,7 @@ class MemberPrRoutingTest(unittest.TestCase):
                     raise HTTPError(url.geturl(), 503, "unavailable", {}, None)
                 result = {"state": state, "user": {"login": author}}
             elif url.path.endswith("/runners"):
-                entries = [{"id": i + 1, "status": "online", "busy": False,
+                entries = [{"id": i + 1, "status": "online", "busy": i < busy,
                             "labels": [{"name": name} for name in json.loads(LABELS)]}
                            for i in range(capacity)]
                 result = {"total_count": len(entries), "runners": entries}
@@ -54,6 +54,9 @@ class MemberPrRoutingTest(unittest.TestCase):
                 query = parse_qs(url.query)
                 entries = [r for r in runs if r["event"] == query["event"][0]
                            and r["status"] == query["status"][0]]
+                if missing_peer_ids:
+                    entries = [{key: value for key, value in run.items() if key != "id"}
+                               if run["id"] != 20 else run for run in entries]
                 result = {"total_count": len(entries), "workflow_runs": entries}
             else:
                 run_id = int(url.path.split("/runs/")[1].split("/")[0])
@@ -68,9 +71,31 @@ class MemberPrRoutingTest(unittest.TestCase):
                 "GITHUB_EVENT_NAME": event, "GITHUB_EVENT_PATH": str(event_path),
                 "GITHUB_RUN_ID": "20", "GITHUB_TOKEN": "actions-token",
                 "DELL_PR_ROUTING": enabled, "MQ_PR_RESERVE": reserve,
+                "MQ_RUNNER_MAX_RUNS": max_runs,
                 "MQ_PR_DEMAND": getattr(self, "pr_demand", "6"),
             }, clear=True), patch.object(selector, "urlopen", side_effect=respond), patch.object(selector.time, "sleep"):
                 return selector.select_labels(event, LABELS, "probe-token", "obs-rust/obs-studio", demand="6")
+
+    def test_busy_queue_overcommit_never_relaxes_pr_idle_reserve(self):
+        self.assertEqual(self.select(event="merge_group", capacity=6, busy=6), LABELS)
+        self.assertEqual(self.select(capacity=12, busy=1, max_runs="100"), "")
+        self.assertEqual(self.select(capacity=12, max_runs="bad"), LABELS)
+        self.assertEqual(self.select(capacity=6, busy=1, reserve="0", max_runs="100"), "")
+
+    def test_missing_ids_across_queue_and_pr_keep_both_weighted_reservations(self):
+        peers = [{"id": index, "event": event, "status": "in_progress",
+                  "created_at": "2026-11-19T11:59:00Z"}
+                 for index, event in ((10, "merge_group"), (11, "pull_request"))]
+        self.assertEqual(self.select(event="merge_group", capacity=6,
+                                     peers=peers, max_runs="2", missing_peer_ids=True), "")
+        self.assertFalse(any("/runs/-" in path for path in self.paths))
+
+    def test_mixed_queue_at_run_cap_uses_hosted(self):
+        peer = {"id": 10, "event": "merge_group", "status": "in_progress",
+                "created_at": "2026-11-19T11:59:00Z"}
+        jobs = {10: [{"name": "Build", "status": "in_progress", "labels": json.loads(LABELS)}]}
+        self.assertEqual(self.select(event="merge_group", capacity=6, busy=6,
+                                     peers=[peer], jobs=jobs, max_runs="1"), "")
 
     def test_member_with_idle_capacity_uses_dell(self):
         self.assertEqual(self.select(), LABELS)
@@ -137,8 +162,8 @@ class MemberPrRoutingTest(unittest.TestCase):
                 "created_at": "2026-11-19T11:59:00Z"}
         jobs = {10: [{"name": "Fast Gate ⚡", "status": "queued", "conclusion": None,
                       "labels": json.loads(LABELS)} for _ in range(7)]}
-        for event in ("pull_request", "merge_group"):
-            self.assertEqual(self.select(event=event, peers=[peer], jobs=jobs), "")
+        self.assertEqual(self.select(event="pull_request", peers=[peer], jobs=jobs), "")
+        self.assertEqual(self.select(event="merge_group", peers=[peer], jobs=jobs), LABELS)
 
     def test_mixed_demands_admit_only_one_queue_run_beside_large_pr(self):
         self.pr_demand = "13"
@@ -150,8 +175,8 @@ class MemberPrRoutingTest(unittest.TestCase):
         # commitment, not one six-slot queue run, even before its jobs start.
         jobs = {10: [{"name": "Fast Gate ⚡", "status": "in_progress",
                       "conclusion": None, "labels": json.loads(LABELS)}]}
-        self.assertEqual(self.select(event="merge_group", capacity=19, peers=[pr], jobs=jobs), LABELS)
-        self.assertEqual(self.select(event="merge_group", capacity=19, peers=[pr, mq], jobs=jobs), "")
+        self.assertEqual(self.select(event="merge_group", capacity=19, peers=[pr], jobs=jobs, max_runs="4"), LABELS)
+        self.assertEqual(self.select(event="merge_group", capacity=19, peers=[pr, mq], jobs=jobs, max_runs="4"), "")
 
 
 class MemberPrWorkflowTest(unittest.TestCase):
