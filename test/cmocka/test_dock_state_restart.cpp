@@ -41,6 +41,9 @@ struct Window {
 	QMainWindow window;
 	DockProportions proportions{&window};
 	QList<QDockWidget *> docks;
+	/* What Reset Docks restores: OBSBasic saves it before the user's
+	 * layout is restored (startingDockLayout). */
+	QByteArray startingLayout;
 
 	Window()
 	{
@@ -56,6 +59,7 @@ struct Window {
 			}
 			docks.append(dock);
 		}
+		startingLayout = window.saveState();
 		window.resize(1600, 900);
 	}
 
@@ -420,6 +424,75 @@ static void moved_and_floated_docks_stay_after_a_window_resize(void **)
 	}
 }
 
+/* A layout the user arranged: Controls in the left area, the other docks in
+ * the bottom row at their own widths. */
+static QByteArray arranged_layout()
+{
+	Window original;
+	original.show();
+	original.window.addDockWidget(Qt::LeftDockWidgetArea, original.docks[2]);
+	original.window.resizeDocks({original.docks[0], original.docks[1], original.docks[3], original.docks[4]},
+				    {500, 300, 300, 200}, Qt::Horizontal);
+	settle(original.window);
+	return persist(original.proportions.StateToSave());
+}
+
+/* #5230: on a tiling window manager a dock change and a window resize often
+ * come together (a dock dragged out of the window becomes a new window, and
+ * the compositor retiles). The change is the user's: the resize must not put
+ * the start layout back over it, and quit saves it. */
+static void floated_dock_stays_when_the_window_resizes_at_the_same_time(void **)
+{
+	const QByteArray state = arranged_layout();
+	{
+		Window first;
+		first.window.resize(1000, 600);
+		first.show();
+		first.restore(state);
+		settle(first.window);
+		first.docks[0]->setFloating(true);
+		first.window.resize(1200, 700);
+		settle(first.window);
+		print_message("floated dock after the resize: floating=%d\n", first.docks[0]->isFloating());
+		assert_true(first.docks[0]->isFloating());
+		const QByteArray saved = persist(first.proportions.StateToSave());
+		Window restarted;
+		restarted.restore(saved);
+		restarted.show();
+		print_message("floated dock after restart: floating=%d\n", restarted.docks[0]->isFloating());
+		assert_true(restarted.docks[0]->isFloating());
+	}
+}
+
+/* #5230: Reset Docks restores the default layout (startingDockLayout). When
+ * the window resizes at the same time, the reset stays, and quit saves the
+ * reset layout, not the one the session started with. */
+static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
+{
+	const QByteArray state = arranged_layout();
+	{
+		Window first;
+		first.window.resize(1000, 600);
+		first.show();
+		first.restore(state);
+		settle(first.window);
+		assert_int_equal(first.window.dockWidgetArea(first.docks[2]), Qt::LeftDockWidgetArea);
+		first.window.restoreState(first.startingLayout);
+		first.window.resize(1200, 700);
+		settle(first.window);
+		print_message("dock 2 area after reset and resize: %d\n",
+			      int(first.window.dockWidgetArea(first.docks[2])));
+		assert_int_equal(first.window.dockWidgetArea(first.docks[2]), Qt::BottomDockWidgetArea);
+		const QByteArray saved = persist(first.proportions.StateToSave());
+		Window restarted;
+		restarted.restore(saved);
+		restarted.show();
+		print_message("dock 2 area after restart: %d\n",
+			      int(restarted.window.dockWidgetArea(restarted.docks[2])));
+		assert_int_equal(restarted.window.dockWidgetArea(restarted.docks[2]), Qt::BottomDockWidgetArea);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -432,6 +505,8 @@ int main(int argc, char **argv)
 		cmocka_unit_test(layout_survives_a_session_at_a_smaller_size),
 		cmocka_unit_test(hidden_dock_stays_hidden_after_a_window_resize),
 		cmocka_unit_test(moved_and_floated_docks_stay_after_a_window_resize),
+		cmocka_unit_test(floated_dock_stays_when_the_window_resizes_at_the_same_time),
+		cmocka_unit_test(reset_docks_stays_when_the_window_resizes_at_the_same_time),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
 }
