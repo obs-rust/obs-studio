@@ -31,6 +31,7 @@
 #include "libobs/obs-hotkey-register-fields.c.h"
 #include "libobs/obs-hotkey-routed-callback-fields.c.h"
 #include "libobs/obs-hotkey-routing-controls-fields.c.h"
+#include "libobs/obs-hotkey-unregister-entry.c.h"
 #include "libobs/obs-hotkey-unregister-fields.c.h"
 #include "libobs/obs-hotkey.c.h"
 #include "libobs/obs-module-disable-query.c.h"

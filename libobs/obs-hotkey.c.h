@@ -354,22 +354,11 @@ static inline void unregister_hotkey_pair(obs_hotkey_pair_id id)
 	bfree(pair);
 }
 
-void obs_hotkey_unregister(obs_hotkey_id id)
+/* Private call seam: retain pair teardown in this translation unit. */
+void obs_hotkey_unregister_pair_call(obs_hotkey_pair_id id);
+void obs_hotkey_unregister_pair_call(obs_hotkey_pair_id id)
 {
-	if (!lock())
-		return;
-
-	unregister_hotkey(id);
-	unlock();
-}
-
-void obs_hotkey_pair_unregister(obs_hotkey_pair_id id)
-{
-	if (!lock())
-		return;
-
 	unregister_hotkey_pair(id);
-	unlock();
 }
 
 static void context_release_hotkeys(struct obs_context_data *context)
