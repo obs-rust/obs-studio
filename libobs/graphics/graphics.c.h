@@ -1297,22 +1297,6 @@ void gs_vertexbuffer_flush_direct(gs_vertbuffer_t *vertbuffer, const struct gs_v
 	thread_graphics->exports.gs_vertexbuffer_flush_direct(vertbuffer, data);
 }
 
-void *gs_indexbuffer_get_data(const gs_indexbuffer_t *indexbuffer)
-{
-	if (!gs_valid_p("gs_indexbuffer_get_data", indexbuffer))
-		return NULL;
-
-	return thread_graphics->exports.gs_indexbuffer_get_data(indexbuffer);
-}
-
-enum gs_index_type gs_indexbuffer_get_type(const gs_indexbuffer_t *indexbuffer)
-{
-	if (!gs_valid_p("gs_indexbuffer_get_type", indexbuffer))
-		return (enum gs_index_type)0;
-
-	return thread_graphics->exports.gs_indexbuffer_get_type(indexbuffer);
-}
-
 bool gs_is_monitor_hdr(void *monitor)
 {
 	if (!gs_valid("gs_is_monitor_hdr"))
