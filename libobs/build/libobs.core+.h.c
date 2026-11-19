@@ -13,6 +13,7 @@
 #include "libobs/obs-core-state.c.h"
 #include "libobs/obs-core-texture-activity-fields.c.h"
 #include "libobs/obs-core-tick-callbacks-fields.c.h"
+#include "libobs/obs-encoder-video-tex-active-mix.c.h"
 #include "libobs/obs-enum-scenes-fields.c.h"
 #include "libobs/obs-get-audio-fields.c.h"
 #include "libobs/obs-get-main-canvas-fields.c.h"
