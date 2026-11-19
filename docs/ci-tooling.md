@@ -1294,8 +1294,9 @@ queued/in-progress `ci.yml` merge-group runs and their latest-attempt jobs:
   runs fit. The total run cap uses online capacity because running Dell jobs
   already reduce idle; using idle for that cap would charge busy runners twice.
   For example, three busy and three idle runners can admit a second run alongside
-  one running Dell group. A routed heavy job's labels establish Dell or hosted
-  selection, including the macOS Rust artifact producer and completed heavy jobs.
+  one running Dell group. Only live Dell jobs (queued or in progress, without a
+  conclusion) commit a run slot. A routed heavy job's labels establish Dell or
+  hosted selection, including the macOS Rust artifact producer and completed jobs.
   Inspect latest-attempt jobs even for workflows reporting `queued`: that status
   does not prove their selector has yet to run. Before heavy jobs appear, older
   unresolved runs reserve a slot, ordered by creation time then run ID; a visible
@@ -1311,9 +1312,10 @@ does not expose job outputs, so no extra log/artifact read is needed. A complete
 selector with no visible heavy-job routing fails closed during the API visibility
 gap; success alone cannot distinguish an empty hosted output from Dell labels.
 A skipped selector has no output and releases its reservation. Completed/cancelled
-runs release reservations. Terminal jobs never add queued capacity, but their
-labels retain the route of an active run, including a Dell run between its build
-and test stages. A hosted backlog therefore cannot retain undecided reservations.
+runs release reservations. Terminal jobs never commit Dell capacity, but their
+labels retain the route so a run waiting only on hosted work cannot regain an
+undecided reservation. Queued Dell jobs still hold a slot while waiting for build
+dependencies. A hosted backlog therefore cannot retain undecided reservations.
 Actions API errors, missing identity/token and incomplete lists select hosted;
 jobs-budget exhaustion uses the conservative reservations above. Capacity-driven
 hosted decisions are identified explicitly in the log and job summary for later

@@ -1168,19 +1168,53 @@ class InflightAdmissionTest(unittest.TestCase):
                 self.assertTrue(self.select(current, transform=finish_runs))
                 self.assertEqual(self.http.call_count, 4)
 
-    def test_terminal_dell_jobs_retain_route_without_queued_capacity(self):
+    def test_terminal_dell_jobs_release_capacity_without_undecided_reservation(self):
         for terminal in (
             {"status": "completed"},
             {"status": "queued", "conclusion": "cancelled"},
             {"status": "in_progress", "conclusion": "success"},
         ):
-            for run in self.runs[1:]:
+            for run in self.runs[:-1]:
                 self.jobs[run["id"]] = [
                     dict(job, **terminal) for job in self.fixture["queued_jobs"]
                 ]
             with self.subTest(terminal=terminal):
-                self.assertEqual(self.select(self.runs[0]["id"]), "")
-                self.assertIn("queued=0, committed=3", self.output)
+                self.assertTrue(self.select(self.runs[-1]["id"]))
+                self.assertIn("queued=0, committed=0", self.output)
+
+    def test_completed_dell_jobs_waiting_only_for_hosted_macos_release_slot(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = [
+            {
+                "name": "Select Merge Queue Runner",
+                "status": "completed",
+                "conclusion": "success",
+                "labels": ["ubuntu-latest"],
+            },
+            *[
+                dict(job, status="completed", conclusion="success")
+                for job in self.fixture["queued_jobs"]
+            ],
+            {
+                "name": "Build 🧱 / Rust Tests 🦀 (macos-26)",
+                "status": "queued",
+                "conclusion": None,
+                "labels": ["macos-26"],
+            },
+        ]
+        self.assertTrue(self.select(self.runs[1]["id"], capacity=3))
+        self.assertIn("queued=0, committed=0, run_limit=1", self.output)
+
+    def test_live_dell_jobs_retain_slot_after_other_dell_jobs_finish(self):
+        self.runs = self.runs[:2]
+        for status in ("queued", "waiting", "pending", "requested", "in_progress"):
+            with self.subTest(status=status):
+                self.jobs[self.runs[0]["id"]] = [
+                    dict(job, status="completed", conclusion="success")
+                    for job in self.fixture["queued_jobs"]
+                ] + [dict(self.fixture["queued_jobs"][0], status=status)]
+                self.assertEqual(self.select(self.runs[1]["id"], capacity=3), "")
+                self.assertIn("committed=1, run_limit=1", self.output)
 
     def test_warning_names_probe_step_and_value_error(self):
         def incomplete_jobs(path, payload):

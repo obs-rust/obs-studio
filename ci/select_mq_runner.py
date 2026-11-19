@@ -225,9 +225,9 @@ def selector_hosted_fallback(jobs: list[dict]) -> bool:
 
 
 def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool]:
-    """Retain routing evidence after jobs finish; count only live queued work."""
+    """Return queued Dell jobs, live Dell work and a known heavy-pool route."""
     queued = 0
-    dell = hosted = False
+    dell = decided = False
     for job in jobs:
         raw_labels = job["labels"]
         if (
@@ -247,7 +247,9 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
             raise ValueError("invalid job routing data")
         labels = {label.casefold() for label in raw_labels}
         if wanted.issubset(labels):
-            dell = True
+            decided = True
+            if job.get("conclusion") is None and job["status"] != "completed":
+                dell = True
             if job.get("conclusion") is None and job["status"] in (
                 "queued",
                 "waiting",
@@ -263,10 +265,10 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
                 "macOS Rust Artifacts 🐧",
             )
         ):
-            hosted = True
-    if not dell and not hosted:
-        hosted = selector_hosted_fallback(jobs)
-    return queued, dell, hosted
+            decided = True
+    if not decided:
+        decided = selector_hosted_fallback(jobs)
+    return queued, dell, decided
 
 
 def active_runs(repo: str, probe: Probe, token: str) -> dict:
@@ -312,10 +314,10 @@ def inflight_commitments(
 ) -> tuple[int, int]:
     """Count queued Dell jobs and active Dell/older undecided runs.
 
-    Outputs aren't exposed by the jobs API. Heavy-job labels prove the choice,
-    including completed jobs. Inspect queued workflows too: their selector may
-    already have finished. Older genuinely undecided runs reserve a slot, giving
-    identical empty-pool snapshots the same deterministic winners.
+    Outputs aren't exposed by the jobs API. Completed heavy-job labels still
+    prove the route, but only live Dell jobs commit capacity. Inspect queued
+    workflows too: their selector may already have finished. Older genuinely
+    undecided runs reserve a slot, giving identical snapshots the same winners.
     """
     current_id = int(os.environ["GITHUB_RUN_ID"])
     token = os.environ["GITHUB_TOKEN"]
@@ -332,7 +334,7 @@ def inflight_commitments(
             jobs = probe.entries(
                 f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
             )
-            pending, dell, hosted = job_commitments(jobs, wanted)
+            pending, dell, decided = job_commitments(jobs, wanted)
         except RequestBudgetExhausted as error:
             unprobed += 1
             observed, _, _ = job_commitments(error.entries, wanted)
@@ -343,8 +345,8 @@ def inflight_commitments(
             raise ValueError(f"jobs probe (run {run_id}): {error}") from error
         queued += pending
         # Count known Dell runs regardless of age. Unknown older runs also
-        # reserve slots; an observed hosted choice releases their reservation.
-        committed += dell or (not hosted and priority < current)
+        # reserve slots; hosted or finished Dell work releases their reservation.
+        committed += dell or (not decided and priority < current)
     if unprobed:
         warning(
             f"jobs probe: request budget exhausted; unprobed={unprobed}; "
