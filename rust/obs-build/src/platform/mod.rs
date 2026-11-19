@@ -1019,6 +1019,20 @@ pub fn configure_rust_static_dependencies(
     Ok(())
 }
 
+pub fn native_test_static_rescan_options(target: &str, archives: &[&Path]) -> Vec<String> {
+    if !target.contains("-linux-") {
+        return Vec::new();
+    }
+    let mut options = vec!["-Wl,--start-group".into()];
+    options.extend(
+        archives
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned()),
+    );
+    options.push("-Wl,--end-group".into());
+    options
+}
+
 pub fn native_test_math_options(target: &str) -> Vec<String> {
     if target.contains("msvc") {
         vec![]

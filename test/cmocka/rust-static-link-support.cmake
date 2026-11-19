@@ -55,6 +55,12 @@ function(obs_rust_static_consumers support native_owner)
   # Real C adapters call back into Rust. Retain that return edge so ELF archive
   # selection searches Rust again after extracting a lazy support member.
   target_link_libraries("${support}" PRIVATE libobs_rust-static)
+  set(support_link "${support}")
+  if(NOT MSVC AND (CMAKE_C_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED))
+    # Resolve the complete Rust/C callback component, including newly extracted
+    # members that introduce another callback in the opposite direction.
+    set(support_link "$<LINK_GROUP:RESCAN,libobs_rust-static,${support}>")
+  endif()
   if(TARGET "${native_owner}")
     # Inherit the owner's full native closure, including host-selected libraries
     # and their transitive interfaces. Never copy GObject/Jansson lists per test.
@@ -83,7 +89,7 @@ function(obs_rust_static_consumers support native_owner)
         if(MSVC)
           set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links}")
         else()
-          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};${support}")
+          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};${support_link}")
         endif()
       else()
         if(MSVC)
@@ -94,7 +100,7 @@ function(obs_rust_static_consumers support native_owner)
         if(MSVC)
           set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links}")
         else()
-          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};$<${uses_rust}:${support}>")
+          set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};$<${uses_rust}:${support_link}>")
         endif()
       endif()
     endif()

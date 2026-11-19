@@ -134,9 +134,11 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "  target_link_libraries(indirect_consumer PRIVATE support)\n"
                 "endif()\n"
                 'file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/reference-links.txt" CONTENT "$<TARGET_GENEX_EVAL:reference,$<TARGET_PROPERTY:reference,LINK_LIBRARIES>>")\n'
+                'if(MSVC)\n'
                 'foreach(name IN ITEMS direct indirect_consumer conditional_consumer)\n'
                 '  file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${name}-links.txt" CONTENT "$<TARGET_GENEX_EVAL:${name},$<TARGET_PROPERTY:${name},LINK_LIBRARIES>>")\n'
                 'endforeach()\n'
+                'endif()\n'
             )
             build = source / "build"
             self.run_command(["cmake", "-S", str(source), "-B", str(build)])

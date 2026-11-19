@@ -105,6 +105,12 @@ pub(super) fn select(
         .insert(index + 1, support.archive.clone());
     // A support member can introduce a previously unseen Rust callback.
     target.dependencies.insert(index + 2, archive.clone());
+    target
+        .link_options
+        .extend(crate::platform::native_test_static_rescan_options(
+            &build.target,
+            &[archive.as_path(), support.archive.as_path()],
+        ));
     target.include_dirs.push(root.join("deps/libcaption"));
     target
         .link_options
