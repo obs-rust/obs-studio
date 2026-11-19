@@ -33,7 +33,19 @@ def discover_targets(reply: Path) -> list[str]:
     model = json.loads((reply / index["reply"]["codemodel-v2"]["jsonFile"]).read_text())
     targets = [json.loads((reply / target["jsonFile"]).read_text())
                for target in model["configurations"][0]["targets"]]
-    rust = sorted(t["name"] for t in targets if t["type"] == "EXECUTABLE" and t["name"].endswith("_rust"))
+    by_id = {t.get("id", t["name"]): t for t in targets}
+
+    def uses_rust(target: dict, visited: frozenset[str] = frozenset()) -> bool:
+        name = target["name"]
+        if name == "libobs_rust-static":
+            return True
+        if name in visited or target["type"] in ("SHARED_LIBRARY", "MODULE_LIBRARY"):
+            return False
+        return any(uses_rust(by_id[dep["id"]], visited | {name})
+                   for dep in target.get("dependencies", []) if dep["id"] in by_id)
+
+    rust = sorted(t["name"] for t in targets if t["type"] == "EXECUTABLE"
+                  and (t["name"].endswith("_rust") or uses_rust(t)))
     if not rust or not any(t["name"] == "libobs-cross-shared" and t["type"] == "SHARED_LIBRARY" for t in targets):
         raise ValueError("Tier 2 cross-link inventory needs Rust executables and hybrid libobs")
     return ["libobs-cross-shared", *rust]
@@ -136,7 +148,7 @@ def _link(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
     configured = time.monotonic()
     subprocess.run(["cmake", "-S", str(ROOT), "-B", str(work), "-G", "Ninja",
                     f"-DOBS_CROSS_TARGET={alias}", "-DOBS_CROSS_LINK=ON", "-DOBS_CROSS_TIER2=ON",
-                    "-DCMAKE_BUILD_TYPE=Release", f"-DRust_CARGO={wrappers / 'cargo'}",
+                    "-DCMAKE_BUILD_TYPE=RelWithDebInfo", f"-DRust_CARGO={wrappers / 'cargo'}",
                     f"-DRust_COMPILER={wrappers / 'rustc'}", f"-DRust_CARGO_TARGET={target}",
                     "-DOBS_TEST_SANITIZE_PER_TARGET=OFF",
                     f"-DCMAKE_C_COMPILER_LAUNCHER={env['CMAKE_C_COMPILER_LAUNCHER']}",

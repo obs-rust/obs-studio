@@ -119,15 +119,20 @@ class DiscoveryTest(unittest.TestCase):
             refs = []
             for name, kind in (("test_existing_rust", "EXECUTABLE"),
                                ("test_new_steps_rust", "EXECUTABLE"),
-                               ("test_plain", "EXECUTABLE"), ("support_rust", "STATIC_LIBRARY"),
+                                ("test_plain", "EXECUTABLE"), ("support_rust", "STATIC_LIBRARY"),
+                                ("test_hotkey_background_enum", "EXECUTABLE"),
+                                ("libobs_rust-static", "STATIC_LIBRARY"),
                                ("libobs-cross-shared", "SHARED_LIBRARY")):
                 filename = name + ".json"
-                (reply / filename).write_text(json.dumps({"name": name, "type": kind}))
-                refs.append({"name": name, "jsonFile": filename})
+                target = {"id": name, "name": name, "type": kind}
+                if name == "test_hotkey_background_enum":
+                    target["dependencies"] = [{"id": "libobs_rust-static"}]
+                (reply / filename).write_text(json.dumps(target))
+                refs.append({"id": name, "name": name, "jsonFile": filename})
             (reply / "codemodel.json").write_text(json.dumps({"configurations": [{"targets": refs}]}))
             (reply / "index-1.json").write_text(json.dumps({"reply": {"codemodel-v2": {"jsonFile": "codemodel.json"}}}))
             self.assertEqual(cmocka_link_check.discover_targets(reply),
-                             ["libobs-cross-shared", "test_existing_rust", "test_new_steps_rust"])
+                              ["libobs-cross-shared", "test_existing_rust", "test_hotkey_background_enum", "test_new_steps_rust"])
 
     def test_existing_reply_without_rust_executables_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
