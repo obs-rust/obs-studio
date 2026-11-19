@@ -1010,6 +1010,19 @@ sweep is what keeps live usage under it. Fork PR tokens cannot delete
 repository caches, so PR pushes must skip both janitor jobs. Keep cache deletion out of untrusted PR
 events; do not switch to `pull_request_target` to obtain a write token.
 
+The Tier 2 apt family has one master-push writer in `rust-linux-tier2-build`.
+Its restore/save and the OFF/ON consumers use the same image/package-list key
+and literal relative path `../../_temp/apt-archives/*.deb`. The default checkout
+layout puts that directory under `RUNNER_TEMP` on host and container runners;
+apt scratch stays outside the checkout. Actions also versions entries by
+their input paths: an absolute `runner.temp` path changes between hosted and
+Dell runners even with an identical visible key. The previous writer added a
+trailing hyphen that the test consumers did not request. The first hosted master
+build after this correction seeds the portable version; until then consumers
+install normally. Only completed packages travel, and apt locks stay job-local.
+Dell builds retain their marker-backed shared archive and skip remote saves.
+The existing `tier2-apt` 400MB allowance and janitor policy are unchanged.
+
 The app builds keep no Actions cache (phase A of #1801): the macOS Xcode
 compilation cache, the Windows ccache, the Ubuntu zccache and the Flatpak
 builder state held 5.71 GiB and served only nightly, dispatch and release

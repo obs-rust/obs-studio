@@ -98,7 +98,7 @@ runpath_flags=()
         self.assertIn("github.event_name == 'push' && github.ref == 'refs/heads/master'", save)
         self.assertIn("steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == ''", save)
         for cache in (restore, save):
-            self.assertIn("path: ${{ runner.temp }}/apt-archives", cache)
+            self.assertIn("path: ../../_temp/apt-archives/*.deb", cache)
 
     def test_hosted_zccache_path_and_cache_gates_are_preserved(self):
         job = build_job()
