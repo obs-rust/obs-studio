@@ -2186,9 +2186,9 @@ jobs:
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
     runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
-    # Every fallback non-docs PR runs the link check without proof/attestation skips.
-    # Complete member PRs defer it; every selected queue group links again.
-    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows_link == 'true' }}
+    # Every fallback non-docs PR links categories. Tier 2 selections always run
+    # before the queue: existing client proofs do not attest these CMake links.
+    if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true' || needs.check-event.outputs.cmocka_link == 'true') && !inputs.flatpak-measurement-only && !inputs.native-cache-measurement-only && needs.check-event.outputs.deferred == 'true' && needs.check-event.outputs.docs_only != 'true' && needs.check-event.outputs.windows_link == 'true' }}
     defaults:
       run:
         shell: bash

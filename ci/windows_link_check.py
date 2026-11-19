@@ -13,7 +13,8 @@ LANES["cmocka_link"] also selects hybrid libobs and every configured cmocka
 support fragments, soldr's clang-cl/LLD and Windows SDK. Nothing is executed.
 
 OBS_CMOCKA_LINK=false keeps category-only coverage for unrelated changes.
-Complete member admission may defer the PR job; selected queue jobs still run.
+Existing client proofs cover category links only; selected cmocka links always
+run on PRs, including trusted member PRs, and on merge groups.
 """
 
 from __future__ import annotations

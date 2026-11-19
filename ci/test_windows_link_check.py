@@ -98,6 +98,7 @@ class WorkflowTest(unittest.TestCase):
         for skip in ("cross_hit", "skip_rust-cross-lint", "cross_lint", "outputs.windows =="):
             self.assertNotIn(skip, self.condition)
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
+        self.assertIn("|| needs.check-event.outputs.cmocka_link == 'true'", self.condition)
 
     def test_is_linux_hosted_and_bounded(self):
         self.assertIn("inputs.mq-heavy-labels", self.block)

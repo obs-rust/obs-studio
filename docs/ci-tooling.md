@@ -262,7 +262,9 @@ configured cmocka `*_rust` executable when `LANES["cmocka_link"]` selects the
 change. This includes libobs, its linked crates, obs-build registration/support,
 cmocka, Cargo inputs and the check's own implementation. Unrelated changes keep
 the eight Rust category links. The same check runs on PRs and merge groups;
-complete member admission can defer PR work to the queue as before.
+selected cmocka links also run on fully attested member PRs because existing
+client proofs do not attest this CMake pass. Category-only work keeps its
+existing admission policy.
 
 ```sh
 uv run --no-project ci/cmocka_link_check.py
