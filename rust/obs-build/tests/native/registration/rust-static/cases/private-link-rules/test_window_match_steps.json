@@ -5,7 +5,8 @@
       "sources": [
         "test/cmocka/test_window_match_steps.c",
         "libobs/util/base-variadic.c.h",
-        "libobs/build/libobs.image-decode-adapter+.h.c"
+        "libobs/build/libobs.image-decode-adapter+.h.c",
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "includes": [
         ".",
@@ -22,7 +23,13 @@
         },
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
-        "FFmpeg::avutil"
+        "FFmpeg::avutil",
+        "OBS::caption",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "requires": {
         "all": [
@@ -30,7 +37,11 @@
           "OS_LINUX"
         ]
       },
-      "sanitizers": "address,undefined"
+      "sanitizers": "address,undefined",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     }
   },
   "tests": {

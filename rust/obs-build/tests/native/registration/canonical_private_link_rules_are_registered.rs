@@ -66,6 +66,8 @@ fn canonical_private_link_rules_are_registered() {
                 for name in [
                     "OBS::libobs",
                     "OBS::caption",
+                    "Uthash::Uthash",
+                    "SIMDe::SIMDe",
                     "OBS::native-test-cmocka",
                     "libobs_rust-static",
                     "m",
@@ -98,14 +100,21 @@ fn canonical_private_link_rules_are_registered() {
                 );
                 let window = &graph.targets[CASES[1]];
                 let artifacts = window.dependency_artifacts(&facts, &interfaces).unwrap();
-                // The FFmpeg adapter libraries follow the host dependency.
+                // The FFmpeg adapter libraries follow the host dependency;
+                // unrelated private adapter support may follow that sequence.
+                let host = Path::new(if gio {
+                    "PkgConfig::_window_match_test_gio"
+                } else {
+                    "LibUUID::LibUUID"
+                });
+                let host_index = artifacts.iter().position(|path| path == host).unwrap();
                 assert_eq!(
-                    artifacts[artifacts.len() - 4],
-                    PathBuf::from(if gio {
-                        "PkgConfig::_window_match_test_gio"
-                    } else {
-                        "LibUUID::LibUUID"
-                    })
+                    &artifacts[host_index + 1..host_index + 4],
+                    &[
+                        PathBuf::from("FFmpeg::avcodec"),
+                        PathBuf::from("FFmpeg::avformat"),
+                        PathBuf::from("FFmpeg::avutil"),
+                    ]
                 );
             }
         }
