@@ -91,9 +91,15 @@ fn a_volume_that_recovers_answers_fresh_values_again() {
 fn paths_do_not_block_each_other() {
     let (tx, rx) = mpsc::channel::<()>();
     let rx = Arc::new(Mutex::new(rx));
+    // #5299: model a helper that has not reached its answer before the
+    // caller's deadline, as can happen when the shared host is overloaded.
+    let (_home_tx, home_rx) = mpsc::channel::<()>();
+    let home_rx = Mutex::new(home_rx);
     let query = Arc::new(move |path: &[u8]| {
         if path == b"/nas" {
             let _ = rx.lock().unwrap().recv();
+        } else {
+            let _ = home_rx.lock().unwrap().recv();
         }
         42
     });
