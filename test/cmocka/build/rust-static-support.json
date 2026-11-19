@@ -28,7 +28,9 @@
     "test/cmocka/effect-parser-funcs-link-support.c",
     "test/cmocka/texture-creators-fields-link-support.c",
     "test/cmocka/graphics-image-convert-link-support.c",
-    "test/cmocka/graphics-preprocessor-link-support.c"
+    "test/cmocka/graphics-preprocessor-link-support.c",
+    "test/cmocka/output-starting-queries-link-support.c",
+    "test/cmocka/graphics-indexbuffer-maintenance-link-support.c"
   ],
   "platform_sources": {
     "OS_WINDOWS": [
