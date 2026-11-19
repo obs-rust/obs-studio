@@ -30,6 +30,7 @@
 #include "libobs/obs-hotkey-object-fields.c.h"
 #include "libobs/obs-hotkey-owned-translations-fields.c.h"
 #include "libobs/obs-hotkey-pair-meta-setter-calls.c.h"
+#include "libobs/obs-hotkey-pair-register-fields.c.h"
 #include "libobs/obs-hotkey-register-fields.c.h"
 #include "libobs/obs-hotkey-routed-callback-fields.c.h"
 #include "libobs/obs-hotkey-routing-controls-fields.c.h"

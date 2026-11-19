@@ -43,6 +43,9 @@ pub fn register<B: Registry<R>, R>(
     owner: Option<B::Owner>,
     request: R,
 ) -> usize {
-    let _ = (registry, kind, owner, request);
-    todo!("port object-bound hotkey-pair registration")
+    let Some(owner) = owner else {
+        return INVALID_PAIR_ID;
+    };
+    let fields = registry.fields(kind, owner);
+    registry.register(kind, owner, fields, request)
 }

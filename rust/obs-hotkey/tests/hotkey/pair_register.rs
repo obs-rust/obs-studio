@@ -212,7 +212,7 @@ impl Registry<Request> for Engine {
             },
         );
         let mut ids = [0; 2];
-        for half in 0..2 {
+        for (half, slot) in ids.iter_mut().enumerate() {
             // Each half acquires its own weak reference through the helper.
             assert_eq!(helper, self.owners[&owner].kind);
             let registerer = self.weak(owner);
@@ -239,7 +239,7 @@ impl Registry<Request> for Engine {
                     bindings,
                 },
             );
-            ids[half] = id;
+            *slot = id;
         }
         self.keys.get_mut(&ids[0]).unwrap().partner = ids[1];
         self.keys.get_mut(&ids[1]).unwrap().partner = ids[0];
@@ -264,6 +264,35 @@ fn check_saved(engine: &Engine, owner: usize, other: usize) {
     let saved = engine.save(other);
     assert!(!saved.contains_key("object.on"));
     assert!(!saved.contains_key("object.off"));
+}
+
+// One half's identity, partner and routed callback, as in the C loop.
+fn check_half(
+    engine: &mut Engine,
+    kind: Kind,
+    weak: usize,
+    pair: usize,
+    ids: [usize; 2],
+    data: [usize; 2],
+    half: usize,
+) {
+    let (id, partner) = (ids[half], ids[1 - half]);
+    let (mine, other) = (data[half], data[1 - half]);
+    let key = &engine.keys[&id];
+    assert_eq!(key.kind, kind);
+    assert_eq!(key.registerer, weak);
+    assert_eq!(key.partner, partner);
+    let mut calls = engine.calls[&mine];
+    calls.pair = pair;
+    calls.key = id;
+    engine.set_calls(mine, calls);
+    engine.trigger(id, true);
+    assert_eq!(engine.calls[&mine].calls, 1);
+    assert!(engine.calls[&mine].pressed);
+    assert_eq!(engine.calls[&other].calls, if half == 0 { 0 } else { 2 });
+    engine.trigger(id, false);
+    assert_eq!(engine.calls[&mine].calls, 2);
+    assert!(!engine.calls[&mine].pressed);
 }
 
 #[test]
@@ -323,26 +352,7 @@ fn test_hotkey_pair_register_object_registration() {
         }
         assert_eq!(engine.owners[&owner].weak_refs, 3);
         for half in 0..2 {
-            let key = &engine.keys[&ids[half]];
-            assert_eq!(key.kind, kind);
-            assert_eq!(key.registerer, weak);
-            assert_eq!(key.partner, ids[1 - half]);
-            let data = [data0, data1][half];
-            let mut calls = engine.calls[&data];
-            calls.pair = pair;
-            calls.key = ids[half];
-            engine.set_calls(data, calls);
-            engine.trigger(ids[half], true);
-            assert_eq!(engine.calls[&data].calls, 1);
-            assert!(engine.calls[&data].pressed);
-            let other_data = [data0, data1][1 - half];
-            assert_eq!(
-                engine.calls[&other_data].calls,
-                if half == 0 { 0 } else { 2 }
-            );
-            engine.trigger(ids[half], false);
-            assert_eq!(engine.calls[&data].calls, 2);
-            assert!(!engine.calls[&data].pressed);
+            check_half(&mut engine, kind, weak, pair, ids, [data0, data1], half);
         }
         assert_eq!(engine.keys[&ids[0]].name, "object.on");
         assert_eq!(engine.keys[&ids[1]].name, "object.off");
