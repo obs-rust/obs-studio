@@ -19174,6 +19174,22 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_video_level_queries": {
+      "sources": [
+        "test/cmocka/test_video_level_queries.c",
+        "libobs/obs-video-level-queries.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_video_levels_range": {
       "sources": [
         "test/cmocka/test_video_levels_range.c"
@@ -27621,6 +27637,12 @@
     },
     "test_video_io_inlines": {
       "target": "test_video_io_inlines"
+    },
+    "test_video_level_queries": {
+      "target": "test_video_level_queries",
+      "command": [
+        "${target}"
+      ]
     },
     "test_video_levels_range": {
       "target": "test_video_levels_range",
