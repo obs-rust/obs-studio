@@ -22,7 +22,6 @@ pub trait Dependencies<N> {
 
 /// `obs_get_module_allow_disable(name)` over its two dependencies.
 pub fn get_module_allow_disable<N, D: Dependencies<N>>(deps: &mut D, name: N) -> bool {
-    // RED stub (#5183): replaced by the port.
-    let _ = (deps, name);
-    false
+    let core_name = deps.in_core_module_list(name);
+    deps.allow_disable(core_name)
 }
