@@ -114,7 +114,6 @@ class Probe:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        public_login = path.split("/public_members/", 1)[1] if "/public_members/" in path else None
         retries = MAX_RETRIES if retry else 0
         for attempt in range(retries + 1):
             timeout = min(API_TIMEOUT, self.time_left())
@@ -123,10 +122,7 @@ class Probe:
             self.remaining -= 1  # Retries consume the same shared budget.
             try:
                 with urlopen(request, timeout=timeout) as response:
-                    if public_login and getattr(response, "status", None) == 204:
-                        result = {"public_member": True, "user": {"login": public_login}}
-                    else:
-                        result = json.load(response)
+                    result = response_data(path, response)
                 self.time_left()
                 return result
             except SelectionDeadline:
@@ -134,8 +130,6 @@ class Probe:
             except (HTTPError, URLError, TimeoutError, ConnectionError) as error:
                 if isinstance(error, HTTPError):
                     error.close()
-                    if public_login and error.code == 404:
-                        return {"public_member": False}
                     if error.code != 429 and not 500 <= error.code < 600:
                         raise
                 self.time_left()
@@ -498,7 +492,55 @@ def eligible_pr(repo: str, probe: Probe) -> bool:
     login = pr["user"]["login"]
     if not isinstance(login, str) or not LOGIN.fullmatch(login):
         return False
-    return member(login, lambda path: probe.get(path, retry=False)) is None
+    return member(login, lambda path: membership_read(probe, path)) is None
+
+
+def response_data(path: str, response) -> dict:
+    """The authenticated public-membership endpoint returns no JSON on 204."""
+    if "/public_members/" in path and getattr(response, "status", None) == 204:
+        return {"public_member": True, "user": {"login": path.rsplit("/", 1)[1]}}
+    return json.load(response)
+
+
+def membership_read(probe: Probe, path: str) -> dict:
+    """A public 404 needs the private active-state check; other errors deny."""
+    try:
+        return probe.get(path, retry=False)
+    except HTTPError as error:
+        if error.code == 404 and "/public_members/" in path:
+            return {"public_member": False}
+        raise
+
+
+def selection_enabled(event: str, labels: str) -> bool:
+    return bool(labels) and (
+        event == "merge_group"
+        or (event == "pull_request" and os.environ.get("DELL_PR_ROUTING") == "on")
+    )
+
+
+def routing_capacity(event: str, min_idle: str, demand: str, mode: str) -> dict[str, int]:
+    """Keep MQ-only arithmetic unchanged; enabled PRs have their own demand."""
+    required = required_capacity(min_idle, demand, mode)
+    capacity = {"required": required}
+    if os.environ.get("DELL_PR_ROUTING") != "on":
+        return capacity
+    pr_required = max(required, required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND)))
+    capacity.update(mq_required=required, pr_required=pr_required)
+    if event == "pull_request":
+        reserve = int(os.environ.get("MQ_PR_RESERVE") or demand or "1")
+        if reserve < 0:
+            raise ValueError("PR reserve must be nonnegative")
+        capacity.update(required=pr_required, reserve=reserve)
+    return capacity
+
+
+def capacity_summary(event: str, capacity: dict[str, int]) -> str:
+    return f", pr_reserve={capacity['reserve']}" if event == "pull_request" else ""
+
+
+def routing_eligible(event: str, repo: str, probe: Probe) -> bool:
+    return event != "pull_request" or eligible_pr(repo, probe)
 
 
 def select_labels(
@@ -518,33 +560,21 @@ def select_labels(
     each HTTP request stay bounded; runners visible in both scopes count only
     once. In-flight commitments and older undecided runs reserve capacity.
     """
-    is_pr = event == "pull_request"
-    if (event != "merge_group" and not (is_pr and os.environ.get("DELL_PR_ROUTING") == "on")) or not labels:
+    if not selection_enabled(event, labels):
         return decision("opt-in merge-group runner selection is disabled")
     step = "configuration"
     try:
         requested = requested_labels(labels)
-        required = required_capacity(min_idle, demand, mode)
-        mq_required = required
-        pr_required = required
-        if os.environ.get("DELL_PR_ROUTING") == "on":
-            pr_required = max(required, required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND)))
-        if is_pr:
-            required = pr_required
+        capacity = routing_capacity(event, min_idle, demand, mode)
+        required = capacity["required"]
         if not token:
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
             return decision("runner probe token is missing")
         wanted = {label.casefold() for label in requested}
         probe = Probe(token, api_url)
-        reserve = 0
-        if is_pr:
-            step = "PR eligibility"
-            if not eligible_pr(repo, probe):
-                return decision("PR author is not a verified same-repository active member")
-            step = "PR reserve configuration"
-            reserve = int(os.environ.get("MQ_PR_RESERVE") or demand or "1")
-            if reserve < 0:
-                raise ValueError("PR reserve must be nonnegative")
+        step = "PR eligibility"
+        if not routing_eligible(event, repo, probe):
+            return decision("PR author is not a verified same-repository active member")
         matched = {}
         unavailable = []
         owner = repo.split("/", 1)[0]
@@ -571,16 +601,12 @@ def select_labels(
         busy = sum(matched.values())
         idle = len(matched) - busy
         counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
-        if is_pr:
-            counts += f", pr_reserve={reserve}"
+        counts += capacity_summary(event, capacity)
         if unavailable:
             counts += f"; unavailable scopes: {', '.join(unavailable)}"
         step = "in-flight commitments probe"
-        options = {"reserve": reserve} if is_pr else {}
-        if os.environ.get("DELL_PR_ROUTING") == "on":
-            options.update(mq_required=mq_required, pr_required=pr_required)
         admitted, commitments = admission_available(
-            repo, wanted, probe, len(matched), idle, required, **options
+            repo, wanted, probe, len(matched), idle, **capacity
         )
         probe.time_left()
         counts += commitments
