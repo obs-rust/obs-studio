@@ -5515,3 +5515,6 @@ mod canonical_source_update_properties_swap_is_registered;
 
 #[path = "native/registration/canonical_type_catalog_enum_swap_is_registered.rs"]
 mod canonical_type_catalog_enum_swap_is_registered;
+
+#[path = "native/registration/canonical_object_id_swap_is_registered.rs"]
+mod canonical_object_id_swap_is_registered;

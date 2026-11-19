@@ -11,7 +11,10 @@ fn unknown_kinds() {
     for kind in [0, 5, 6, i32::MAX, -1, i32::MIN] {
         let before = kind;
         for _ in 0..2 {
-            assert_eq!(query::<()>(Some(kind), |_| panic!("unsupported projection")), None);
+            assert_eq!(
+                query::<()>(Some(kind), |_| panic!("unsupported projection")),
+                None
+            );
         }
         assert_eq!(kind, before);
     }

@@ -11,6 +11,13 @@ pub enum Kind {
 
 /// Read only the ID selected by a supported kind. Missing objects and all
 /// other kinds leave the projection closure untouched.
-pub fn query<T>(_kind: Option<i32>, _read: impl FnOnce(Kind) -> T) -> Option<T> {
-    todo!("generic object ID swap")
+pub fn query<T>(kind: Option<i32>, read: impl FnOnce(Kind) -> T) -> Option<T> {
+    let kind = match kind? {
+        1 => Kind::Source,
+        2 => Kind::Output,
+        3 => Kind::Encoder,
+        4 => Kind::Service,
+        _ => return None,
+    };
+    Some(read(kind))
 }
