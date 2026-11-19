@@ -104,7 +104,8 @@
         "libobs/obs-nix-portal-shortcuts.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
-        "test/cmocka/hotkey-background-press-link-support.c"
+        "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "requires": {
         "all": [
@@ -123,10 +124,16 @@
         "gio::gio",
         "PkgConfig::PORTAL_TEST_GLIB",
         "OBS::native-test-cmocka",
-        "libobs_rust-static"
+        "libobs_rust-static",
+        "Uthash::Uthash",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
       ],
       "includes": [
-        "libobs"
+        "libobs",
+        "."
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -222,9 +229,16 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "source_update_properties": [
+          "test/cmocka/source-update-properties-link-support.c"
         ]
       },
-      "pch": "libobs/build/libobs.pch.h"
+      "pch": "libobs/build/libobs.pch.h",
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ]
     },
     "test_output_stop_while_reconnecting": {
       "sources": [

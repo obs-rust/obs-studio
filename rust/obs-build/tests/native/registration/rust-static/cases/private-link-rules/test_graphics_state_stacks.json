@@ -8,7 +8,8 @@
         "libobs/graphics/obs-graphics-adapter.c.h",
         "libobs/graphics/graphics-linear-srgb-fields.c.h",
         "libobs/build/libobs.image-decode-adapter+.h.c",
-        "libobs/obs-graphics-effect-file-fields.c.h"
+        "libobs/obs-graphics-effect-file-fields.c.h",
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "requires": "HAVE_LIBOBS_RUST_STATIC",
       "includes": [
@@ -35,7 +36,8 @@
         },
         "FFmpeg::avcodec",
         "FFmpeg::avformat",
-        "FFmpeg::avutil"
+        "FFmpeg::avutil",
+        "Uthash::Uthash"
       ],
       "sanitizers": "address,undefined",
       "conditional_link_options": [
@@ -59,6 +61,10 @@
           "name": "/IGNORE:4075",
           "requires": "MSVC"
         }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
       ]
     }
   },

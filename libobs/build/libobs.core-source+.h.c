@@ -97,7 +97,7 @@
 #include "libobs/obs-source-type-data-fields.c.h"
 #include "libobs/obs-source-type-id-fields.c.h"
 #include "libobs/obs-source-type-info-fields.c.h"
-#include "libobs/obs-source-update-properties.c.h"
+#include "libobs/obs-source-update-properties-fields.c.h"
 #include "libobs/obs-source-update.c.h"
 #include "libobs/obs-source-weak-predicates-fields.c.h"
 #include "libobs/obs-source.c.h"

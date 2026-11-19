@@ -23,7 +23,8 @@
         "libobs/obs-hotkey-pair.c.h",
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
-        "test/cmocka/hotkey-background-press-link-support.c"
+        "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
         "obs=hotkey_test_obs",
@@ -101,6 +102,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "source_update_properties": [
+          "test/cmocka/source-update-properties-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

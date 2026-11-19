@@ -241,6 +241,7 @@ int main(void) {
                     "test/cmocka/scene-item-visible-link-support.c",
                     "test/cmocka/scene-source-getter-link-stubs.c",
                     "test/cmocka/source-handler-getter-link-support.c",
+                    "test/cmocka/source-update-properties-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                     "libobs/build/libobs.image-decode-adapter+.h.c",
                 ])

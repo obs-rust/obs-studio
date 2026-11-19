@@ -66,6 +66,7 @@ pub mod source_transition_sample_time;
 pub mod source_transition_start;
 pub mod source_type_data;
 pub mod source_type_lookup;
+pub mod source_update_properties;
 pub mod source_video_tick;
 pub mod source_volume;
 pub mod source_volume_mul;

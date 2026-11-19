@@ -5507,3 +5507,6 @@ mod canonical_ui_task_handler_is_registered;
 
 #[path = "native/core_module_manifest.rs"]
 pub(crate) mod core_module_manifest;
+
+#[path = "native/registration/canonical_source_update_properties_swap_is_registered.rs"]
+mod canonical_source_update_properties_swap_is_registered;

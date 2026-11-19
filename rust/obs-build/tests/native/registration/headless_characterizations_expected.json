@@ -23,7 +23,8 @@
                 "libobs/obs-nix-hotkey-state.c.h",
                 "test/cmocka/hotkey-enum-link-support.c",
                 "test/cmocka/hotkey-background-trigger-link-support.c",
-                "test/cmocka/hotkey-background-press-link-support.c"
+                "test/cmocka/hotkey-background-press-link-support.c",
+                "test/cmocka/source-update-properties-link-support.c"
             ],
             "requires": {
                 "any": [
@@ -41,7 +42,8 @@
                 "obs_hotkey_inject_event=obs_hotkey_inject_entry_request"
             ],
             "includes": [
-                "libobs"
+                "libobs",
+                "."
             ],
             "watch_inputs": [
                 "libobs/build/libobs.pch.h",
@@ -51,7 +53,12 @@
                 "OBS::libobs",
                 "OBS::caption",
                 "OBS::native-test-cmocka",
-                "libobs_rust-static"
+                "libobs_rust-static",
+                "Uthash::Uthash",
+                {
+                    "name": "OBS::w32-pthreads",
+                    "requires": "OS_WINDOWS"
+                }
             ],
             "unity_groups": {
                 "background-control": [
@@ -114,9 +121,16 @@
                 ],
                 "hotkey_background_press": [
                     "test/cmocka/hotkey-background-press-link-support.c"
+                ],
+                "source_update_properties": [
+                    "test/cmocka/source-update-properties-link-support.c"
                 ]
             },
-            "pch": "libobs/build/libobs.pch.h"
+            "pch": "libobs/build/libobs.pch.h",
+            "header_libraries": [
+                "OBS::libobs",
+                "SIMDe::SIMDe"
+            ]
         },
         "test_service_state": {
             "sources": [
