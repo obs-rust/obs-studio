@@ -100,8 +100,16 @@ class GateJobs(unittest.TestCase):
         result = {"trusted": True, "reasons": [],
                   "gates": dict.fromkeys(pr_attestation.CLIENT_GATES, "valid")}
         plan = pr_attestation.admission(result, files, event="pull_request")
-        self.assertEqual(gate_jobs.pr_expected_jobs(selected, files, plan),
-                         {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂"})
+        windows_link = "Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)"
+        expected = gate_jobs.pr_expected_jobs(selected, files, plan)
+        self.assertEqual(expected, {gate_jobs.SCOPE_JOB, "Build 🧱 / CI Mode 🛂", windows_link})
+        healthy = [job(name, "success") for name in expected if name != windows_link]
+        self.assertEqual(blocking(healthy, expected=expected), [windows_link])
+        self.assertEqual(blocking([*healthy, job(windows_link, "skipped")], expected=expected), [windows_link])
+        unrelated = ["frontend/obs-app.cpp"]
+        self.assertNotIn(windows_link, gate_jobs.pr_expected_jobs(
+            scope(unrelated, event="pull_request"), unrelated,
+            pr_attestation.admission(result, unrelated, event="pull_request")))
         for field in ("queue_policy", "gates", "admission_version"):
             invalid = dict(plan)
             invalid.pop(field)

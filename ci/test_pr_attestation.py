@@ -407,7 +407,9 @@ class TrustContract(unittest.TestCase):
                     expression = expression.replace("&&", " and ").replace("||", " or ")
                     expression = re.sub(r"!(?!=)", " not ", expression)
                     allocated = eval(expression, {"__builtins__": {}, "fromJSON": json.loads})
-                    self.assertEqual(bool(allocated), case != "complete", (case, name, condition, plan))
+                    # Category deferral cannot stand down the selected CMake pass.
+                    must_run = case != "complete" or (name == "rust-windows-link" and selected.cmocka_link)
+                    self.assertEqual(bool(allocated), must_run, (case, name, condition, plan))
                 swift = job_block(formatting, "swift-format")
                 self.assertIn("inputs.swift", swift)
                 self.assertEqual(full["jobs"]["check-format.yaml:swift-format"]["skip"], True)

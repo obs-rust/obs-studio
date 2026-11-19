@@ -255,6 +255,49 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 - **No `win-arm64`:** `util/threading-windows.h` uses MSVC-only ARM64 intrinsics that clang lacks.
 - **Cost, measured 2026-10-31:** a cold cross build *with* the link — a fresh build tree, `ZCCACHE_DISABLE=1`, including that alias's `libobs-rust` staticlib — took `win-x64` 32 s / 41 s, `mac-arm64` 117 s / 32 s and `mac-x64` 134 s / 26 s (two samples each, `-j 4` on a 16-thread host shared with other worker checkouts; the slower sample in each pair is the one that also rebuilt 14–18 workspace crates, and the rest of the spread is co-tenant load). The native `Build OBS-Studio-Rust` steps it stands in for are 12m25 (Windows x64), 8m01 (macOS arm64) and 7m50 (macOS x86_64) in release run 41007587429; signing and packaging stay native.
 
+#### Tier 2 pre-queue links (#5189)
+
+The existing Linux-hosted Windows Link Check also links hybrid libobs and every
+configured cmocka `*_rust` executable for Windows MSVC x86_64 and Darwin arm64
+when `LANES["cmocka_link"]` selects the
+change. This includes libobs, its linked crates, obs-build registration/support,
+cmocka, Cargo inputs and the check's own implementation. Unrelated changes keep
+the eight Rust category links. The same check runs on PRs and merge groups;
+selected cmocka links also run on fully attested member PRs because existing
+client proofs do not attest this CMake pass. Category-only work keeps its
+existing admission policy.
+
+```sh
+uv run --no-project ci/cmocka_link_check.py
+uv run --no-project ci/cmocka_link_check.py --alias mac-arm64
+```
+
+The root CMake cross-link mode includes the unchanged cmocka graph and deferred
+support fragments. CMake's file-api discovers executable targets after host
+conditions have been evaluated; an empty Rust inventory fails. The check builds
+against real target cmocka and SDK libraries, never executes target programs,
+and saves `link-targets.json` in its build tree. It always refreshes the Rust
+archive through soldr so source-only edits cannot reuse the cross project's
+manifest-only custom-command result. Ninja parallelism defaults to four and the
+existing job retains its 30-minute deadline and Linux heavy-pool routing.
+Darwin uses the production hidden-symbol list and the Rust crate's existing SDK
+framework imports. Library discovery stays in the Apple SDK and target deps;
+host Linux libraries cannot satisfy Darwin probes. A successful link does not
+prove runtime recording/allocator behavior or every binding/order error whose
+final link succeeds.
+
+Local measurements on a shared Linux worker (four Ninja jobs, 2026-11-19):
+
+| Target | Fresh CMake/Corrosion tree | Warm tree |
+|---|---:|---:|
+| Windows MSVC x86_64 | 367.80 s | 82.49 s |
+| Darwin arm64 | 418.54 s | 73.69 s |
+
+SDKs, prebuilt target dependencies and the Cargo registry were already installed;
+these are build-tree cold timings, excluding first-host downloads. The original
+eight Windows category binaries also linked (128.53 s with partial Cargo reuse).
+These local timings are not a hosted critical-path guarantee.
+
 #### macOS Rust execution artifacts (#5008)
 
 The maintainer chose **STRICT** on 2026-11-17: nothing compiles on hosted
@@ -1268,9 +1311,9 @@ and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
 Rust Tier 2 Linux build, its OFF/ON test jobs, Rust Cross Lint
 (two main targets plus the release-target job), and the Linux macOS Rust artifact
-producer use that selection.
+producer and Windows Link Check use that selection.
 Build and tests share the selected pool so local handoff remains valid.
-Event Data, CI Mode, Format, Fast Gate, Windows Link Check, Cross Compile,
+Event Data, CI Mode, Format, Fast Gate, Cross Compile,
 Qt, app builds, proof publication, queue cancellation and CI Gate use hosted
 runners. Empty outputs and probe/setup errors keep every heavy job hosted.
 

@@ -42,6 +42,10 @@ option(OBS_CROSS_WERROR "Treat warnings as errors in the cross-compile check" OF
 # import libraries. The default stays compile-only: the link needs the deps'
 # link inputs and a working cross linker, which not every host has.
 option(OBS_CROSS_LINK "Link a shared libobs per alias from the cross-compile check" OFF)
+option(OBS_CROSS_TIER2 "Link the unchanged Tier 2 Rust fixtures" OFF)
+if(OBS_CROSS_TIER2 AND NOT OBS_CROSS_LINK)
+  message(FATAL_ERROR "OBS_CROSS_TIER2 requires OBS_CROSS_LINK")
+endif()
 
 # The generated toolchain is rewritten when soldr.cmake (how it is made) or the
 # alias changes, so a fix there reaches an existing build tree. A toolchain
@@ -90,7 +94,11 @@ function(_obs_cross_dependencies)
   set(prebuilt_destination "obs-deps-VERSION-ARCH")
   set(qt6_filename "${_qt_file}")
   set(qt6_destination "obs-deps-qt6-VERSION-ARCH")
-  _check_dependencies(prebuilt qt6)
+  if(OBS_CROSS_TIER2)
+    _check_dependencies(prebuilt)
+  else()
+    _check_dependencies(prebuilt qt6)
+  endif()
   _get_dependency_data(all)
   string(JSON data GET ${all} prebuilt)
   string(JSON version GET ${data} version)
@@ -110,10 +118,12 @@ endif()
 
 # The Qt version of the prebuilt, for its private header directories.
 file(GLOB_RECURSE _qt_version_files "${OBS_CROSS_QT}/lib/cmake/Qt6/Qt6ConfigVersionImpl.cmake")
-if(NOT _qt_version_files)
+if(NOT OBS_CROSS_TIER2 AND NOT _qt_version_files)
   message(FATAL_ERROR "Prebuilt Qt6 for ${OBS_CROSS_TARGET} missing: ${OBS_CROSS_QT}")
 endif()
-file(STRINGS "${_qt_version_files}" _qt_version REGEX "^set\\(PACKAGE_VERSION \"")
+if(_qt_version_files)
+  file(STRINGS "${_qt_version_files}" _qt_version REGEX "^set\\(PACKAGE_VERSION \"")
+endif()
 string(REGEX REPLACE ".*\"([0-9.]+)\".*" "\\1" OBS_CROSS_QT_VERSION "${_qt_version}")
 
 # ui-config.h from the frontend's template, without client credentials.
@@ -392,6 +402,11 @@ endif()
 if(_host STREQUAL WINDOWS)
   _obs_cross_c_conversion_ratchet(libobs-cross)
   _obs_cross_c_conversion_ratchet(libobs-cross-rust-shims)
+endif()
+
+if(OBS_CROSS_TIER2)
+  include("${CMAKE_CURRENT_LIST_DIR}/tier2.cmake")
+  return()
 endif()
 
 # The platform-only plugins, compile-only like libobs above: each one's own
