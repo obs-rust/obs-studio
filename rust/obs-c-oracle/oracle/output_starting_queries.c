@@ -75,8 +75,10 @@ bool oracle_output_starting_check(starting_query candidate, unsigned mask, bool 
 	bool actual = candidate(output);
 	starting_current = NULL;
 	bool equal = expected == actual && c.count == rust.count && c.count <= 4 &&
-		     memcmp(c.addresses, rust.addresses, c.count * sizeof(c.addresses[0])) == 0 &&
 		     memcmp(output, after, sizeof(*output)) == 0;
+	/* Compare qualified pointers directly rather than converting their arrays for memcmp. */
+	for (unsigned i = 0; equal && i < c.count; i++)
+		equal = c.addresses[i] == rust.addresses[i];
 	if (!flip)
 		equal = equal && memcmp(output, before, sizeof(*output)) == 0;
 	free(after);
