@@ -46,7 +46,13 @@ class HotkeyRegistrationExtractionTest(unittest.TestCase):
                 self.assertEqual(target.get("pch"), "libobs/build/libobs.pch.h")
                 groups = list(target.get("unity_groups", {}).values())
                 self.assertIn(
-                    [EXTRACTED, "libobs/obs-hotkey-background-state.c.h", ORIGINAL], groups
+                    [
+                        EXTRACTED,
+                        "libobs/obs-hotkey-background-state.c.h",
+                        "libobs/obs-hotkey-combination-background-id.c.h",
+                        ORIGINAL,
+                    ],
+                    groups,
                 )
                 self.assertCountEqual(
                     [source for group in groups for source in group], target["sources"]

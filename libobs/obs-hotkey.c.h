@@ -475,22 +475,6 @@ void obs_hotkeys_background_status_changed(void)
 		signal_handler_signal(obs->hotkeys.signals, "hotkey_background_status_changed", NULL);
 }
 
-char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
-{
-	if (!lock())
-		return NULL;
-
-	struct dstr id = {0};
-	bool (*shortcut_id)(obs_key_combination_t, struct dstr *) = obs->hotkeys.background.shortcut_id;
-	unlock();
-
-	if (!shortcut_id || !shortcut_id(combo, &id)) {
-		dstr_free(&id);
-		return NULL;
-	}
-	return id.array;
-}
-
 struct obs_query_hotkeys_helper {
 	uint32_t modifiers;
 	bool no_press;
