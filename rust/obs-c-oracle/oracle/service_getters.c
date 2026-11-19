@@ -1,11 +1,11 @@
 /* Test-only oracle: the original libobs/obs-service-getters.c.h, unmodified,
  * with its exports renamed to oracle_* so it can link next to the Rust
- * shims (#1899, #1913, #1920). find_service() and the context accessors are
- * test doubles that both sides call. The info-table and plugin-data
- * accessors are the Rust port's (#3840), through the real field adapter in
- * oracle/service_info_accessors.c, and oracle_service_new() builds the
- * struct obs_service both sides read, so the parity tests drive the C and
- * the Rust with the same service. */
+ * shims (#1899, #1913, #1920). The context accessors are
+ * test doubles that both sides call; registry lookup uses its real seam.
+ * The info-table and plugin-data accessors are the Rust port's (#3840),
+ * through the real field adapter in oracle/service_info_accessors.c.
+ * oracle_service_new() builds the struct obs_service both sides read,
+ * so the parity tests drive the C and the Rust with the same service. */
 #ifndef _WIN32
 #define _GNU_SOURCE
 #endif
@@ -231,25 +231,7 @@ void *oracle_service_control(const obs_service_t *service)
 	return service->context.control;
 }
 
-/* obs-service.c's find_service() over obs->service_types, here over one
- * table the test sets (NULL: no types). */
-static const struct obs_service_info *oracle_types;
-static size_t oracle_types_num;
-
-void oracle_service_set_types(const struct obs_service_info *types, size_t num);
-void oracle_service_set_types(const struct obs_service_info *types, size_t num)
-{
-	oracle_types = types;
-	oracle_types_num = num;
-}
-
-const struct obs_service_info *find_service(const char *id)
-{
-	for (size_t i = 0; i < oracle_types_num; i++)
-		if (strcmp(oracle_types[i].id, id) == 0)
-			return oracle_types + i;
-	return NULL;
-}
+/* Registry setup and lookup now use the real service-find C seam. */
 
 /* The context fields #1913 reads; the plugin data and table are set by
  * oracle_service_new(). */

@@ -2,6 +2,7 @@
 
 /// Walk IDs lazily and return the first matching entry without copying it.
 pub fn find<'a, T>(id: &[u8], entries: impl IntoIterator<Item = (&'a [u8], T)>) -> Option<T> {
-    let _ = (id, entries);
-    todo!("port find_service")
+    entries
+        .into_iter()
+        .find_map(|(entry_id, entry)| (entry_id == id).then_some(entry))
 }
