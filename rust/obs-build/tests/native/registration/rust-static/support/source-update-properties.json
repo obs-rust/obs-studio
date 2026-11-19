@@ -1448,6 +1448,27 @@
       }
     ]
   },
+  "test_video_info_query_rust": {
+    "sources": [
+      "test/cmocka/source-update-properties-link-support.c"
+    ],
+    "includes": [
+      ".",
+      "libobs"
+    ],
+    "header_libraries": [
+      "OBS::libobs",
+      "SIMDe::SIMDe"
+    ],
+    "libraries": [
+      "OBS::caption",
+      "Uthash::Uthash",
+      {
+        "name": "OBS::w32-pthreads",
+        "requires": "OS_WINDOWS"
+      }
+    ]
+  },
   "test_video_stop_requested_rust": {
     "sources": [
       "test/cmocka/source-update-properties-link-support.c"

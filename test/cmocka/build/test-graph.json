@@ -19872,7 +19872,8 @@
       "sources": [
         "test/cmocka/test_video_info_query.c",
         "test/cmocka/video-info-query-link-support.c",
-        "libobs/util/base-variadic.c.h"
+        "libobs/util/base-variadic.c.h",
+        "test/cmocka/source-update-properties-link-support.c"
       ],
       "libraries": [
         "libobs_rust-static",
