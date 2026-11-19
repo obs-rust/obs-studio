@@ -203,11 +203,6 @@ static bool is_disabled_module(const char *name)
 	return obs_module_names_listed(obs->disabled_modules.array, obs->disabled_modules.num, name);
 }
 
-bool obs_get_module_allow_disable(const char *name)
-{
-	return obs_module_load_rules_allow_disable(is_core_module(name));
-}
-
 static void load_all_callback(void *param, const struct obs_module_info2 *info)
 {
 	struct fail_info *fail_info = param;

@@ -7940,6 +7940,9 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         }
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-disable-query.c.h"
       ]
     },
     "test_module_failure_info": {
