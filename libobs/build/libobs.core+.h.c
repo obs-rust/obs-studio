@@ -49,6 +49,7 @@
 #include "libobs/obs-shutdown-detach.c.h"
 #include "libobs/obs-ui-task-handler-fields.c.h"
 #include "libobs/obs-video-info-query.c.h"
+#include "libobs/obs-video-level-queries.c.h"
 #include "libobs/obs-weak-object-expired-fields.c.h"
 #include "libobs/obs-weak-object-identity-fields.c.h"
 #include "libobs/obs-weak-object-refs-fields.c.h"
