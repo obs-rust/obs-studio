@@ -2180,7 +2180,7 @@ jobs:
   # lanes, so COFF-only link defects reached master (`undefined symbol:
   # obs_encoder_get_caps`, merge_group 42390201886 green, push 42393067345
   # red). This is only the cross lane's link step for Windows x64: no clippy,
-  # Dylint or macOS, nothing executed (ci/windows_link_check.py).
+  # Dylint; selected Tier 2 links also cover Darwin, nothing executed.
   rust-windows-link:
     timeout-minutes: 30
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)

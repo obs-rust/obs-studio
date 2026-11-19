@@ -258,7 +258,8 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 #### Tier 2 pre-queue links (#5189)
 
 The existing Linux-hosted Windows Link Check also links hybrid libobs and every
-configured cmocka `*_rust` executable when `LANES["cmocka_link"]` selects the
+configured cmocka `*_rust` executable for Windows MSVC x86_64 and Darwin arm64
+when `LANES["cmocka_link"]` selects the
 change. This includes libobs, its linked crates, obs-build registration/support,
 cmocka, Cargo inputs and the check's own implementation. Unrelated changes keep
 the eight Rust category links. The same check runs on PRs and merge groups;
@@ -268,6 +269,7 @@ existing admission policy.
 
 ```sh
 uv run --no-project ci/cmocka_link_check.py
+uv run --no-project ci/cmocka_link_check.py --alias mac-arm64
 ```
 
 The root CMake cross-link mode includes the unchanged cmocka graph and deferred
@@ -278,6 +280,11 @@ and saves `link-targets.json` in its build tree. It always refreshes the Rust
 archive through soldr so source-only edits cannot reuse the cross project's
 manifest-only custom-command result. Ninja parallelism defaults to four and the
 existing job retains its 30-minute deadline and Linux heavy-pool routing.
+Darwin uses the production hidden-symbol list and the Rust crate's existing SDK
+framework imports. Library discovery stays in the Apple SDK and target deps;
+host Linux libraries cannot satisfy Darwin probes. A successful link does not
+prove runtime recording/allocator behavior or every binding/order error whose
+final link succeeds.
 
 #### macOS Rust execution artifacts (#5008)
 

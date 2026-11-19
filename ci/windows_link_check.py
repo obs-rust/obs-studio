@@ -8,9 +8,9 @@
 
 Every non-docs fallback PR and merge group links the eight category binaries,
 including the C oracle (#3919). For libobs and registration/support changes,
-LANES["cmocka_link"] also selects hybrid libobs and every configured cmocka
+LANES["cmocka_link"] also selects Windows and Darwin hybrid libobs and every configured cmocka
 `*_rust` executable (#5189). The latter uses the real registrations, deferred
-support fragments, soldr's clang-cl/LLD and Windows SDK. Nothing is executed.
+support fragments, soldr's LLVM, Windows SDK and Apple SDK. Nothing is executed.
 
 OBS_CMOCKA_LINK=false keeps category-only coverage for unrelated changes.
 Existing client proofs cover category links only; selected cmocka links always
@@ -43,6 +43,7 @@ def main() -> int:
     local_gate.soldr_cargo(link_args())
     if os.environ.get("OBS_CMOCKA_LINK", "true") == "true":
         cmocka_link_check.link("win-x64", cmocka_link_check.ROOT / "build_cmocka_link_win-x64", 4)
+        cmocka_link_check.link("mac-arm64", cmocka_link_check.ROOT / "build_cmocka_link_mac-arm64", 4)
     return 0
 
 

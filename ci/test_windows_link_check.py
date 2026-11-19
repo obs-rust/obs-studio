@@ -54,8 +54,11 @@ class LinkArgsTest(unittest.TestCase):
              mock.patch.object(windows_link_check.cmocka_link_check, "link") as link, \
              mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
             self.assertEqual(windows_link_check.main(), 0)
-            link.assert_called_once_with(
-                "win-x64", windows_link_check.cmocka_link_check.ROOT / "build_cmocka_link_win-x64", 4)
+            root = windows_link_check.cmocka_link_check.ROOT
+            self.assertEqual(link.call_args_list, [
+                mock.call("win-x64", root / "build_cmocka_link_win-x64", 4),
+                mock.call("mac-arm64", root / "build_cmocka_link_mac-arm64", 4),
+            ])
 
     def test_tier2_link_failure_propagates(self):
         import subprocess
@@ -63,7 +66,7 @@ class LinkArgsTest(unittest.TestCase):
         failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
         with mock.patch.object(windows_link_check.local_gate, "add_target"), \
              mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
-             mock.patch.object(windows_link_check.cmocka_link_check, "link", side_effect=failure), \
+             mock.patch.object(windows_link_check.cmocka_link_check, "link", side_effect=[None, failure]), \
              mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
             with self.assertRaises(subprocess.CalledProcessError):
                 windows_link_check.main()

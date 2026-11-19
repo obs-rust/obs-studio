@@ -24,6 +24,39 @@ corrosion_import_crate(
   PROFILE release
 )
 
+if(OS_MACOS)
+  # A host librt must never satisfy a Darwin dependency probe.
+  list(APPEND CMAKE_FIND_ROOT_PATH "${OBS_CROSS_DEPS}")
+  set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+  unset(RT_LIBRARY CACHE)
+  unset(CMOCKA_REQUIRED_LIBRARIES CACHE)
+  unset(CMOCKA_LINK_LIBRARIES CACHE)
+  # These are the crate-declared SDK imports in obs-util's cocoa.rs. Corrosion
+  # 0.5 imports the standard-library link set, not these framework annotations.
+  target_link_libraries(
+    libobs_rust-static
+    INTERFACE "-framework Foundation" "-framework CoreFoundation" "-framework IOKit" objc
+  )
+  # Match production visibility: exporting private Rust shims from the dylib
+  # could otherwise conceal a missing standalone archive/support dependency.
+  include("${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.cmake")
+  obs_rust_hidden_lists(
+    "${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden.d"
+    "${OBS_SOURCE_ROOT}/libobs/cmake/rust-hidden-base.txt"
+    "${CMAKE_BINARY_DIR}/config"
+    "${ENABLE_HEVC}"
+  )
+  target_link_options(
+    libobs-cross-shared
+    PRIVATE "LINKER:-unexported_symbols_list,${CMAKE_BINARY_DIR}/config/rust-unexports-macos.txt"
+  )
+  set_property(
+    TARGET libobs-cross-shared
+    APPEND
+    PROPERTY LINK_DEPENDS "${CMAKE_BINARY_DIR}/config/rust-unexports-macos.txt"
+  )
+endif()
+
 add_library(OBS::libobs ALIAS libobs-cross-shared)
 add_library(libobs-objects ALIAS libobs-cross-shared-objects)
 add_library(OBS::libobs-core-modules ALIAS libobs-cross-generated)
@@ -31,7 +64,8 @@ target_include_directories(libobs-cross-shared PUBLIC "${OBS_SOURCE_ROOT}/libobs
 # Rust object directives retain Windows case on Linux (MSVCRT/OLDNAMES).
 if(OS_WINDOWS)
   link_directories("${CMAKE_BINARY_DIR}/cross-case-libs")
-  # Match soldr's MSVC driver CRT compatibility library (Rust libc snprintf).
+  # Rust libc calls external snprintf; the UCRT C headers inline it. Use
+  # the real SDK compatibility archive when linking with clang-cl/LLD.
   link_libraries(legacy_stdio_definitions)
   file(
     CREATE_LINK "${CMAKE_FIND_ROOT_PATH}/sdk/lib/um/x86_64/rpcrt4.lib" "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib"
@@ -59,7 +93,7 @@ FetchContent_Declare(
   URL https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
   URL_HASH SHA256=810570eb0b8d64804331f82b29ff47c790ce9cd6b163e98d47a4807047ecad82
 )
-set(BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Cross-built cmocka is static" FORCE)
 set(UNIT_TESTING OFF)
 set(WITH_EXAMPLES OFF)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
