@@ -1,5 +1,7 @@
 //! obs-graphics integration tests: rendering helpers over the graphics subsystem.
 
+mod active_shader_queries;
+mod active_shader_queries_parity;
 mod blend_entrypoints;
 mod blend_entrypoints_parity;
 mod cubetexture_access;

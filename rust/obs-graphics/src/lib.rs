@@ -43,6 +43,7 @@
 #[cfg(test)]
 use obs_c_oracle as _; // links the test bmalloc/bfree (oracle/test_bmem.c)
 
+pub mod active_shader_queries;
 pub mod axisang;
 pub mod blend_entrypoints;
 pub mod bounds;

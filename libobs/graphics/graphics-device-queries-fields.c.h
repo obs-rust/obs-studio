@@ -54,3 +54,15 @@ bool obs_graphics_device_queries_p010(graphics_t *graphics)
 {
 	return graphics->exports.device_p010_available(graphics->device);
 }
+
+gs_shader_t *obs_graphics_device_queries_vertex_shader(graphics_t *graphics);
+gs_shader_t *obs_graphics_device_queries_vertex_shader(graphics_t *graphics)
+{
+	return graphics->exports.device_get_vertex_shader(graphics->device);
+}
+
+gs_shader_t *obs_graphics_device_queries_pixel_shader(graphics_t *graphics);
+gs_shader_t *obs_graphics_device_queries_pixel_shader(graphics_t *graphics)
+{
+	return graphics->exports.device_get_pixel_shader(graphics->device);
+}

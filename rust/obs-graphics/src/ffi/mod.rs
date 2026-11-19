@@ -1,5 +1,6 @@
 //! C ABI shims replacing the original libobs `EXPORT` symbols.
 
+pub mod active_shader_queries;
 pub mod axisang;
 pub mod blend_entrypoints;
 pub mod bounds;
