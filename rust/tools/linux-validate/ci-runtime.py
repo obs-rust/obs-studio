@@ -36,8 +36,9 @@ selection = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selection)
 
 
-def command(*args: str) -> str:
-    return subprocess.check_output(args, text=True).strip()
+def command(*args: str, capture_stderr: bool = False) -> str:
+    return subprocess.check_output(args, text=True,
+                                   stderr=subprocess.STDOUT if capture_stderr else None).strip()
 
 
 def verify_archive(path: Path, descriptor: dict) -> None:
@@ -176,6 +177,30 @@ def mounts(source: Path, build: Path, cost: Path, uv: Path, archives: Path) -> l
     return result
 
 
+def install_prepared_delta(ident: str, packages: list[str]) -> None:
+    # Normal delta setup is about 45 s (#5237); allow 4x that per apt command.
+    # apt.conf(5) delegates per-transport Timeout to apt-transport-http/https(1).
+    apt = ('docker', 'exec', ident, 'timeout', '--kill-after=10s', '180s',
+           'env', 'LC_ALL=C', 'apt-get', '-o', 'Acquire::Retries=3',
+           '-o', 'Acquire::http::Timeout=15', '-o', 'Acquire::https::Timeout=15')
+    install = (*apt, 'install', '-y', '--no-install-recommends', *packages)
+    try:
+        command(*apt, 'update', '-qq', capture_stderr=True)
+        try:
+            command(*install, capture_stderr=True)
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 100 or not re.search(
+                    r"E: Version '[^'\n]+' for '[^'\n]+' was not found", error.output or ''):
+                raise
+            # Refresh once for a superseded pin; never substitute newer versions.
+            print('Runtime delta pin unavailable; refreshing package indexes once', flush=True)
+            command(*apt, 'update', '-qq', capture_stderr=True)
+            command(*install, capture_stderr=True)
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(f'Runtime delta apt failed (exit {error.returncode}) for '
+                           f'{" ".join(packages)}:\n{error.output or ""}') from error
+
+
 def install_packages(ident: str, variant: str, requirements: str, changed: list[str]) -> None:
     # Prebaked confirms exact installed versions; stock/prepared retain their installs.
     packages = changed
@@ -189,6 +214,9 @@ def install_packages(ident: str, variant: str, requirements: str, changed: list[
         command('docker', 'exec', ident, 'sh', '-c',
                 'if test -f /etc/apt/apt.conf.d/docker-clean; then '
                 'mv /etc/apt/apt.conf.d/docker-clean /tmp/docker-clean.disabled; fi')
+        if variant == 'prepared':
+            install_prepared_delta(ident, packages)
+            return
         if variant != 'prebaked':
             command('docker', 'exec', ident, 'apt-get', 'update', '-qq')
         command('docker', 'exec', ident, 'apt-get', 'install', '-y', '--no-install-recommends', *packages)

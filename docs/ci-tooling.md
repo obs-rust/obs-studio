@@ -1485,6 +1485,48 @@ for publication. Baked package versions are frozen until an image input changes;
 stock installs resolve current Ubuntu archive versions. Tests continue checking
 the exact runtime package closure from their build artifact.
 
+Prepared-runtime delta installs use APT's native `Acquire::Retries=3` with
+15-second HTTP/HTTPS connection and data timeouts. Each update/install runs
+under `timeout --kill-after=10s 180s`, allowing four times the observed roughly
+45-second normal setup. An unavailable pinned version triggers one index
+refresh and one exact-version install retry; persistent failures report the
+delta packages and fail the job.
+
+The separate prepared release runtime is refreshed manually. Its producer is
+`ci/tier2_setup_probe.py produce`, invoked by the existing `ci.yml`
+`tier2-setup-producer` job; it is not the GHCR `tier2-image` job. Request a
+refresh when the consumer logs show more than four delta packages (the fallback
+limit remains sixteen). A maintainer performs these steps:
+
+1. Dispatch the existing `ci.yml` on `master` with `tier2-setup-probe=true`:
+   `gh workflow run ci.yml --repo obs-rust/obs-studio --ref master -f tier2-setup-probe=true`.
+   This runs normal validation and the setup experiment; do not replace the
+   current runtime until both succeed.
+2. Before their one-day retention expires, download `tier2-setup-image` and
+   `tier2-setup-metadata` from that run. The producer installs the new build's
+   exact `runtime-packages.txt` plus bootstrap tools into the pinned stock base,
+   commits the container, and saves the image. `bundle.json` records its image
+   ID, complete inventory, base, archive checksum/size and producer revision.
+3. Publish a **new, unique prerelease** via the existing `obs-studio-libs`
+   pack/add catalogue process, as in
+   [obs-studio-libs#7](https://github.com/obs-rust/obs-studio-libs/pull/7).
+   Package the Docker-save contents with flavor `ubuntu26.04-docker` and platform
+   `linux/x86_64`; this is an OCI archive, not a host library prefix. Never
+   overwrite the October asset. If repacking changes the compressed bytes,
+   compute the checksum and size of the final published archive.
+4. Open a PR updating `rust/tools/linux-validate/prepared-runtime.json`: use the
+   new immutable release URL, final archive checksum/size, `bundle.json` image
+   ID/base/full inventory/revision/run ID and new catalogue version. Retain
+   `platform: linux/amd64`. Run the runtime selection/delivery self-tests, then
+   qualify both complete OFF/ON suites through ordinary PR/queue validation,
+   checking `inventory_verified` and the remaining delta. Promote the release
+   and catalogue only after qualification, following the original rollout.
+
+The consumer cannot publish or dispatch a refresh. No repository variable
+change is required. Hosted GHCR selection remains deferred while the package
+is private; an anonymous manifest probe alone does not guarantee a subsequent
+job-container pull will succeed.
+
 Prepared release runtimes first inspect the descriptor's pinned Docker image ID
 and reuse an exact match. Dell runners use `/var/cache/obs-runner/assets` only
 when that directory and the `/var/cache/obs-runner/.persistent-cache` file both
