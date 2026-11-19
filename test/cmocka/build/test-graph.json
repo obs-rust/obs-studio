@@ -5688,6 +5688,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -5726,9 +5729,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5822,6 +5822,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -5860,9 +5863,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -5941,6 +5941,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -5979,9 +5982,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6119,6 +6119,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "test/cmocka/test_hotkey_binding_press_steps.c"
         ],
@@ -6157,9 +6160,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6284,6 +6284,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -6325,9 +6328,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6435,6 +6435,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -6473,9 +6476,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6593,6 +6593,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -6631,9 +6634,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6695,6 +6695,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -6733,9 +6736,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -6808,6 +6808,9 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "libobs/obs-hotkey-binding-press.c.h"
         ],
@@ -6846,9 +6849,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -11554,6 +11554,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "test/cmocka/test_portal_shortcuts.c"
         ],
@@ -11619,9 +11622,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
@@ -20176,6 +20176,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "test/cmocka/test_wayland_hotkeys.c"
         ],
@@ -20217,9 +20220,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

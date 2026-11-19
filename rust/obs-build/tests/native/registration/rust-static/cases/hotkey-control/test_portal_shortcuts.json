@@ -80,6 +80,9 @@
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
         ],
+        "hotkey_unregister_entry": [
+          "libobs/obs-hotkey-unregister-entry.c.h"
+        ],
         "source_0": [
           "test/cmocka/test_portal_shortcuts.c"
         ],
@@ -145,9 +148,6 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
-        ],
-        "hotkey_unregister_entry": [
-          "libobs/obs-hotkey-unregister-entry.c.h"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"
