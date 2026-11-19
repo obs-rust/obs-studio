@@ -10,6 +10,7 @@
                 "libobs/obs-hotkey-background-control-fields.c.h",
                 "libobs/obs-hotkey-unregister.c.h",
                 "libobs/obs-hotkey.c.h",
+                "libobs/obs-hotkey-unregister-entry.c.h",
                 "libobs/obs-hotkey-inject-entry.c.h",
                 "libobs/obs-hotkey-identity-setters.c.h",
                 "libobs/obs-hotkey-background-enum.c.h",
@@ -109,6 +110,9 @@
                 ],
                 "hotkey_background_press": [
                     "test/cmocka/hotkey-background-press-link-support.c"
+                ],
+                "hotkey_unregister_entry": [
+                    "libobs/obs-hotkey-unregister-entry.c.h"
                 ]
             },
             "pch": "libobs/build/libobs.pch.h"
