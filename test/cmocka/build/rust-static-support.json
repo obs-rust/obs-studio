@@ -14,6 +14,7 @@
     "test/cmocka/encoder-video-tex-active-mix-link-support.c",
     "test/cmocka/hotkey-fields-link-support.c",
     "test/cmocka/service-runtime-link-support.c",
+    "test/cmocka/service-find-link-support.c",
     "test/cmocka/service-state-link-support.c",
     "test/cmocka/source-weak-control-link-support.c",
     "test/cmocka/context-runtime-link-support.c",
