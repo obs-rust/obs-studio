@@ -641,6 +641,28 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_audio_info_queries": {
+      "sources": [
+        "test/cmocka/test_audio_info_queries.c"
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-audio-info-queries.c.h"
+      ]
+    },
     "test_audio_io_inlines": {
       "sources": [
         "test/cmocka/test_audio_io_inlines.c"
@@ -21590,6 +21612,14 @@
           "-a"
         ]
       ]
+    },
+    "test_audio_info_queries": {
+      "target": "test_audio_info_queries",
+      "command": [
+        "${target}"
+      ],
+      "suite": "core",
+      "timeout_seconds": 30
     },
     "test_audio_io_inlines": {
       "target": "test_audio_io_inlines",
