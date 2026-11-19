@@ -44,3 +44,66 @@ fn canonical_video_info_query_is_registered() {
     assert!(group.contains("obs-video-info-query-fields.c.h"));
     assert!(!group.contains("\"libobs/obs-video-info-query.c.h\""));
 }
+
+/// Private adapters are hidden in shared libobs, so linking it must not exclude
+/// a Rust-static consumer from the demand-linked real-adapter support archive.
+#[test]
+fn video_info_query_support_covers_all_rust_static_consumers() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let temporary = tempfile::tempdir().unwrap();
+    let source = temporary.path();
+    fs::write(source.join("main.c"), "int main(void) { return 0; }\n").unwrap();
+    fs::write(
+        source.join("CMakeLists.txt"),
+        format!(
+            r#"cmake_minimum_required(VERSION 3.28)
+project(video_info_query_support C)
+set(CMAKE_SOURCE_DIR "{root}")
+set(CMAKE_CURRENT_SOURCE_DIR "{root}/test/cmocka")
+add_library(libobs_rust-static INTERFACE)
+add_library(OBS::libobs INTERFACE IMPORTED)
+add_library(OBS::caption INTERFACE IMPORTED)
+add_library(Uthash::Uthash INTERFACE IMPORTED)
+add_library(OBS::w32-pthreads INTERFACE IMPORTED)
+foreach(name IN ITEMS standalone with_shared future_consumer reference)
+  add_executable(${{name}} "{source}/main.c")
+  if(NOT name STREQUAL "reference")
+    target_link_libraries(${{name}} PRIVATE libobs_rust-static)
+  endif()
+endforeach()
+target_link_libraries(with_shared PRIVATE OBS::libobs)
+target_link_libraries(reference PRIVATE OBS::libobs)
+include("{root}/test/cmocka/tests.d/video_info_query_link_support.cmake")
+function(check_support)
+  foreach(name IN ITEMS standalone with_shared future_consumer reference)
+    get_target_property(links ${{name}} LINK_LIBRARIES)
+    if(name STREQUAL "reference")
+      if("video_info_query_link_support" IN_LIST links)
+        message(FATAL_ERROR "${{name}}: unexpected Rust adapter support")
+      endif()
+    elseif(NOT "video_info_query_link_support" IN_LIST links)
+      message(FATAL_ERROR "${{name}}: missing private video-info adapters")
+    endif()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL check_support)
+"#,
+            root = root.canonicalize().unwrap().to_string_lossy().replace('\\', "/"),
+            source = source.to_string_lossy().replace('\\', "/"),
+        ),
+    )
+    .unwrap();
+    let output = std::process::Command::new("cmake")
+        .arg("-S")
+        .arg(source)
+        .arg("-B")
+        .arg(source.join("build"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
