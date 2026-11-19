@@ -142,6 +142,7 @@ mod source_type_enum_parity;
 mod tick_callbacks;
 mod tick_callbacks_parity;
 mod type_catalog_enum;
+mod type_catalog_enum_parity;
 mod ui_task_handler;
 mod ui_task_handler_parity;
 mod video_copy_plan;

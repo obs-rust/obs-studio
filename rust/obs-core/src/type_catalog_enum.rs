@@ -6,6 +6,5 @@ pub fn enumerate<T>(
     read: impl FnOnce(usize) -> T,
     write: impl FnOnce(T),
 ) -> bool {
-    let _ = (count, index, read, write);
-    todo!("#5202: swap type catalog enumeration")
+    crate::source_type_enum::source(count, index, read, write)
 }
