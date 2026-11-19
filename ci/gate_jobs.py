@@ -125,6 +125,12 @@ def data_selected(files) -> bool:
     )) for path in files)
 
 
+def cmocka_jobs(selected: Scope) -> set[str]:
+    """Both alias jobs are required whenever the Tier 2 link lane is selected."""
+    return ({f"Build 🧱 / Tier 2 Link Check 🔗 ({alias})" for alias in ("win-x64", "mac-arm64")}
+            if getattr(selected, "cmocka_link", False) else set())
+
+
 def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> set[str]:
     """The queue execution manifest: exact job names, never proof credit.
 
@@ -137,8 +143,7 @@ def expected_jobs(selected: Scope, files: list[str] | tuple[str, ...] = ()) -> s
         expected.add("Build 🧱 / Fast Gate ⚡")
     if selected.windows_link:
         expected.add("Build 🧱 / Windows Link Check 🔗 (x86_64-pc-windows-msvc)")
-    if selected.cmocka_link:
-        expected.update(f"Build 🧱 / Tier 2 Link Check 🔗 ({alias})" for alias in ("win-x64", "mac-arm64"))
+    expected.update(cmocka_jobs(selected))
     if selected.cross_lint:
         expected.update({
             "Build 🧱 / Rust Cross Lint 🦀 (x86_64-pc-windows-msvc)",
@@ -200,8 +205,7 @@ def pr_expected_jobs(selected: Scope, files: list[str], plan: dict) -> set[str]:
         expected -= heavy
         # Existing client proofs cover category links, not the cmocka CMake
         # pass. The base-owned selector must witness that pass even on fast PRs.
-        if getattr(selected, "cmocka_link", False):
-            expected.update(f"Build 🧱 / Tier 2 Link Check 🔗 ({alias})" for alias in ("win-x64", "mac-arm64"))
+        expected.update(cmocka_jobs(selected))
     for key, job_names in names.items():
         status = plan["jobs"].get(key, {})
         needed = status.get("required_gates", [])
