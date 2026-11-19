@@ -4037,6 +4037,25 @@
         "libobs/data"
       ]
     },
+    "test_encoder_video_tex_active": {
+      "sources": [
+        "test/cmocka/test_encoder_video_tex_active.c",
+        "libobs/obs-encoder-video-tex-active.c.h"
+      ],
+      "definitions": [
+        "get_mix_for_video=tex_active_recording_mix_lookup"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoding_lag_rescale": {
       "sources": [
         "test/cmocka/test_encoding_lag_rescale.c"
@@ -22953,6 +22972,12 @@
       "suite": "graphics",
       "working_directory": "${runtime}",
       "timeout_seconds": 120
+    },
+    "test_encoder_video_tex_active": {
+      "target": "test_encoder_video_tex_active",
+      "command": [
+        "${target}"
+      ]
     },
     "test_encoding_lag_rescale": {
       "target": "test_encoding_lag_rescale",
