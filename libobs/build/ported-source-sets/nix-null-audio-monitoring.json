@@ -1,0 +1,8 @@
+{
+  "LIBOBS_LINUX_PORTED_SOURCES": [
+    "build/libobs.ported-null-audio-monitoring+.h.c"
+  ],
+  "headers": [
+    "audio-monitoring/null/null-audio-monitoring.h"
+  ]
+}

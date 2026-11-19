@@ -1,0 +1,8 @@
+# null-audio-monitoring.c: the null backend's canonical functions forward to
+# these inside libobs (null/null-audio-monitoring.h, no EXPORT).
+obs_null_audio_monitoring_available
+obs_null_audio_monitoring_enum_devices
+obs_null_audio_monitor_create
+obs_null_audio_monitor_reset
+obs_null_audio_monitor_destroy
+obs_null_audio_monitoring_devices_match
