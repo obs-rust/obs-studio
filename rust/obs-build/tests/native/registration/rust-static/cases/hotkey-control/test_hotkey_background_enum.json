@@ -101,6 +101,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "source_update_properties": [
+          "test/cmocka/source-update-properties-link-support.c"
         ]
       },
       "pch": "libobs/build/libobs.pch.h"

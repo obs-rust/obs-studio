@@ -12,7 +12,7 @@ function(_source_update_properties_link_support)
   )
   target_link_libraries(
     source_update_properties_link_support
-    PRIVATE OBS::caption Uthash::Uthash "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
+    PRIVATE OBS::caption Uthash::Uthash SIMDe::SIMDe "$<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>"
   )
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
   foreach(_target IN LISTS _targets)
