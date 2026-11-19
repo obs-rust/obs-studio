@@ -230,6 +230,42 @@ class DsymutilCacheTest(unittest.TestCase):
         self.assertEqual(tools[0], tools[1])
         self.assertEqual(tools[0].read_bytes(), self.contents)
 
+    def test_cache_can_be_published_during_initial_probe(self):
+        cache = self.root / "tools/obs-darwin-dsymutil" / self.digest
+        tool = cache / "package/bin/dsymutil"
+        exists = Path.exists
+
+        def published(path):
+            if path == cache:
+                tool.parent.mkdir(parents=True)
+                tool.write_bytes(self.contents)
+                return True
+            return exists(path)
+
+        with patch.object(Path, "exists", published), \
+                patch.object(fixtures.urllib.request, "urlretrieve") as download:
+            self.assertEqual(fixtures.provision_dsymutil(self.root, self.env), tool)
+            download.assert_not_called()
+
+    def test_incomplete_shared_cache_fails_without_downloading(self):
+        cache = self.root / "tools/obs-darwin-dsymutil" / self.digest
+        cache.mkdir(parents=True)
+        with patch.object(fixtures.urllib.request, "urlretrieve") as download:
+            with self.assertRaisesRegex(ValueError, "incomplete dsymutil toolchain cache"):
+                fixtures.provision_dsymutil(self.root, self.env)
+            download.assert_not_called()
+
+    def test_existing_managed_tool_still_requires_checksum_and_avoids_download(self):
+        managed = self.root / ".soldr/bin/syslib/llvm-tools/20.1.7/linux-x64-gnu/package/bin/dsymutil"
+        managed.parent.mkdir(parents=True)
+        managed.write_bytes(self.contents)
+        with patch.object(fixtures.urllib.request, "urlretrieve") as download:
+            self.assertEqual(fixtures.provision_dsymutil(self.root, self.env), managed)
+            managed.write_bytes(b"corrupt")
+            with self.assertRaisesRegex(ValueError, "dsymutil checksum mismatch"):
+                fixtures.provision_dsymutil(self.root, self.env)
+            download.assert_not_called()
+
 
 class FixtureInventoryTest(unittest.TestCase):
     def swift_archive(self, contents=b"pinned swift compiler"):
@@ -360,7 +396,7 @@ class FixtureInventoryTest(unittest.TestCase):
                 tools = fixtures.swift_tools(root, llvm, {})
             self.assertEqual((tools / "dsymutil").resolve(), dsymutil)
             self.assertEqual((tools / "ld64.lld").resolve(), llvm / "ld64.lld")
-            provision.assert_called_once_with(root)
+            provision.assert_called_once_with(root, {})
 
     def test_missing_dsymutil_cannot_silently_defer_failure_to_swift(self):
         import macos_native_fixtures as fixtures
@@ -375,15 +411,14 @@ class FixtureInventoryTest(unittest.TestCase):
         import macos_native_fixtures as fixtures
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            cache = root / "target/macos-native-toolchains/llvm-tools-20.1.7"
-            cache.mkdir(parents=True)
-            (cache / "bundle.tar.zst").write_bytes(b"corrupt archive")
             with patch.object(fixtures.platform, "system", return_value="Linux"), \
                     patch.object(fixtures.platform, "machine", return_value="x86_64"), \
                     patch.object(Path, "home", return_value=root), \
+                    patch.object(fixtures.urllib.request, "urlretrieve",
+                                 side_effect=lambda url, path: Path(path).write_bytes(b"corrupt archive")), \
                     patch.object(fixtures.tarfile, "open") as extract:
                 with self.assertRaisesRegex(ValueError, "archive checksum mismatch"):
-                    fixtures.provision_dsymutil(root)
+                    fixtures.provision_dsymutil(root, {})
                 extract.assert_not_called()
 
     def test_preparation_rejects_macos_before_starting_any_tool(self):

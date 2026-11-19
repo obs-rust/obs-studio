@@ -104,37 +104,64 @@ def target_setting(env: dict, name: str, value: str) -> None:
         env[f"{name}_{triple}"] = value
 
 
-def provision_dsymutil(root: Path) -> Path:
+def provision_dsymutil(root: Path, env: dict) -> Path:
     """Use the same checksummed LLVM-tools payload soldr provisions on Linux."""
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise ValueError("supply DSYMUTIL for this Linux host architecture")
-    cache = root / "target/macos-native-toolchains/llvm-tools-20.1.7"
+    started = time.monotonic()
+    base = Path(env.get("RUNNER_TOOL_CACHE") or root / "target/macos-native-toolchains")
+    cache = base / "obs-darwin-dsymutil" / LLVM_TOOLS_SHA256
     relative = Path("package/bin/dsymutil")
     tool = cache / relative
     managed = Path.home() / ".soldr/bin/syslib/llvm-tools/20.1.7/linux-x64-gnu" / relative
-    for candidate in (tool, managed):
+    # Probe the published directory once: a concurrent installer may publish
+    # between this check and candidate validation, but never exposes half a tool.
+    candidates = [managed]
+    if cache.exists():
+        if not tool.is_file():
+            raise ValueError(f"incomplete dsymutil toolchain cache: {cache}")
+        candidates.insert(0, tool)
+    for candidate in candidates:
         if candidate.is_file():
             with candidate.open("rb") as stream:
                 if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
                     raise ValueError("managed dsymutil checksum mismatch")
+            print(f"Darwin dsymutil: verified cache hit in {time.monotonic() - started:.2f}s: {candidate}", flush=True)
             return candidate
-    cache.mkdir(parents=True, exist_ok=True)
-    archive = cache / "bundle.tar.zst"
-    if not archive.is_file():
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Darwin dsymutil: installing into {cache}", flush=True)
+    # Keep the large archive and partial executable private until both checksums
+    # pass. Persistent runners reuse only the extracted immutable tool, as Swift
+    # does; clean checkouts must not download the 474 MB payload again.
+    with tempfile.TemporaryDirectory(prefix=".dsymutil-", dir=cache.parent) as temporary:
+        staging = Path(temporary)
+        archive = staging / "bundle.tar.zst"
+        downloaded = time.monotonic()
         urllib.request.urlretrieve(LLVM_TOOLS_URL, archive)
-    with archive.open("rb") as stream:
-        if hashlib.file_digest(stream, "sha256").hexdigest() != LLVM_TOOLS_SHA256:
-            raise ValueError("LLVM-tools archive checksum mismatch")
-    # CI installs Python 3.14, whose tarfile supports zstd. Extract only the
-    # needed regular executable, preserving the archive's executable mode.
-    with tarfile.open(archive) as tar:
-        member = tar.getmember("./" + str(relative))
-        if not member.isfile():
-            raise ValueError("LLVM-tools dsymutil is not a regular file")
-        tar.extract(member, cache, filter="data")
+        print(f"Darwin dsymutil: archive downloaded in {time.monotonic() - downloaded:.2f}s", flush=True)
+        with archive.open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != LLVM_TOOLS_SHA256:
+                raise ValueError("LLVM-tools archive checksum mismatch")
+        install = staging / "install"
+        # Python 3.14 supplies zstd. Keep only the regular executable, with its
+        # archive mode, and validate it before atomic publication.
+        with tarfile.open(archive) as tar:
+            member = tar.getmember("./" + str(relative))
+            if not member.isfile():
+                raise ValueError("LLVM-tools dsymutil is not a regular file")
+            tar.extract(member, install, filter="data")
+        with (install / relative).open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
+                raise ValueError("extracted dsymutil checksum mismatch")
+        try:
+            install.rename(cache)
+        except OSError as error:
+            if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
+                raise
     with tool.open("rb") as stream:
         if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
-            raise ValueError("extracted dsymutil checksum mismatch")
+            raise ValueError("managed dsymutil checksum mismatch")
+    print(f"Darwin dsymutil: installation complete in {time.monotonic() - started:.2f}s", flush=True)
     return tool
 
 
@@ -145,7 +172,7 @@ def swift_tools(root: Path, llvm: Path, env: dict) -> Path:
         (path for path in (llvm / "dsymutil", llvm / "llvm-dsymutil") if path.is_file()), None)
     if dsymutil is None:
         ambient = shutil.which("dsymutil", path=env.get("PATH"))
-        dsymutil = Path(ambient) if ambient else provision_dsymutil(root)
+        dsymutil = Path(ambient) if ambient else provision_dsymutil(root, env)
     if not dsymutil.is_file():
         raise FileNotFoundError(dsymutil)
     identity = hashlib.sha256(f"{llvm}\n{dsymutil}".encode()).hexdigest()[:16]
@@ -164,12 +191,16 @@ def swift_tools(root: Path, llvm: Path, env: dict) -> Path:
 
 def configure_swift(root: Path, env: dict) -> None:
     compiler = swift_compiler(root, env)
+    started = time.monotonic()
     version = subprocess.run([str(compiler), "--version"], cwd=root, env=env,
                              text=True, capture_output=True, check=True).stdout
     if "Swift version 6." not in version and "Swift version 7." not in version:
         raise ValueError(f"Darwin fixtures require Swift 6 or newer: {version}")
+    print(f"Darwin fixtures: Swift version checked in {time.monotonic() - started:.2f}s", flush=True)
+    started = time.monotonic()
     clang = subprocess.run(["soldr", "cc", "--target", TARGET, "--", "-print-prog-name=clang"],
                            cwd=root, env=env, text=True, capture_output=True, check=True).stdout.strip()
+    print(f"Darwin fixtures: soldr clang resolved in {time.monotonic() - started:.2f}s", flush=True)
     tools = Path(clang).parent
     if not (tools / "ld64.lld").is_file():
         raise FileNotFoundError(tools / "ld64.lld")
@@ -252,6 +283,7 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
     print("Darwin fixtures: preparing toolchain", flush=True)
     cc, cxx, ar, sdk = (tool(option, root, env) for option in (
         "--print-cc", "--print-cxx", "--print-ar", "--print-sysroot"))
+    print(f"Darwin fixtures: soldr cc/cxx/ar/SDK resolved in {time.monotonic() - started:.2f}s", flush=True)
     for name, value in (("CC", cc), ("CXX", cxx), ("AR", ar)):
         target_setting(environment, name, value)
     target_setting(environment, "SDKROOT", sdk)
