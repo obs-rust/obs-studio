@@ -147,6 +147,7 @@ mod type_data;
 mod type_data_parity;
 mod type_info;
 mod type_info_parity;
+mod update_properties;
 mod video_tick;
 mod video_tick_parity;
 mod volume_apply;
