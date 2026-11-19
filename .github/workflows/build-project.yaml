@@ -2254,7 +2254,9 @@ jobs:
           verdict-scope: build-project
           version: 0.9.45
           build-cache: false
+          # Cross-release archives and Corrosion use separate target trees (#5224).
           prebuild-deps: none
+          cargo-registry-cache: true
           cache-key-suffix: linux-host-v3
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
           # The Windows target is added mid-job (see rust-cross-lint, #969).

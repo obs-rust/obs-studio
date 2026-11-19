@@ -390,7 +390,7 @@ class TrustContract(unittest.TestCase):
                 scope_values["cross_lint"] = "true"
                 scope_values["cross_targets"] = "win-x64"
                 for name in ("rust-tests-linux", "rust-cross-lint", "rust-cross-lint-release",
-                             "rust-windows-link", "cross-compile", "rust-linux-tier2-build",
+                             "rust-windows-link", "cmocka-link", "cross-compile", "rust-linux-tier2-build",
                              "linux-qt-frontend", "rust-tests-windows", "rust-tier2-windows"):
                     header = job_block(build, name).split("    steps:", 1)[0]
                     condition = re.search(r"^    if: (.+)$", header, re.M)[1]
@@ -408,7 +408,7 @@ class TrustContract(unittest.TestCase):
                     expression = re.sub(r"!(?!=)", " not ", expression)
                     allocated = eval(expression, {"__builtins__": {}, "fromJSON": json.loads})
                     # Category deferral cannot stand down the selected CMake pass.
-                    must_run = case != "complete" or (name == "rust-windows-link" and selected.cmocka_link)
+                    must_run = case != "complete" or (name == "cmocka-link" and selected.cmocka_link)
                     self.assertEqual(bool(allocated), must_run, (case, name, condition, plan))
                 swift = job_block(formatting, "swift-format")
                 self.assertIn("inputs.swift", swift)
