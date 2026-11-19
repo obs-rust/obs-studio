@@ -543,6 +543,13 @@ def routing_eligible(event: str, repo: str, probe: Probe) -> bool:
     return event != "pull_request" or eligible_pr(repo, probe)
 
 
+def availability_summary(online: int, busy: int, idle: int, required: int, unavailable: list[str]) -> str:
+    counts = f"online={online}, busy={busy}, idle={idle}, required={required}"
+    if unavailable:
+        counts += f"; unavailable scopes: {', '.join(unavailable)}"
+    return counts
+
+
 def select_labels(
     event: str,
     labels: str,
@@ -600,10 +607,8 @@ def select_labels(
                 )
         busy = sum(matched.values())
         idle = len(matched) - busy
-        counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
+        counts = availability_summary(len(matched), busy, idle, required, unavailable)
         counts += capacity_summary(event, capacity)
-        if unavailable:
-            counts += f"; unavailable scopes: {', '.join(unavailable)}"
         step = "in-flight commitments probe"
         admitted, commitments = admission_available(
             repo, wanted, probe, len(matched), idle, **capacity
