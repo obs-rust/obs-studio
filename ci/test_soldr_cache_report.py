@@ -145,7 +145,10 @@ class WorkflowWiring(unittest.TestCase):
     def test_s3_size_step_lives_where_its_condition_can_hold(self) -> None:
         self.assertNotIn("Report S3 cache size", job_block("macos-build"))
         job = job_block("rust-tests-linux")
-        self.assertIn("runs-on: ubuntu-26.04\n", job)
+        self.assertIn(
+            "runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' "
+            "&& fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}", job,
+        )
         step = step_block(job, "Report S3 cache size")
         self.assertNotIn("matrix.os", step)
         self.assertIn("command -v aws", step)

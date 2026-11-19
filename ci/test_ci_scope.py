@@ -412,7 +412,7 @@ class CiScopeTest(unittest.TestCase):
         )
         for variable in ("MQ_RUNNER_MODE", "MQ_RUNNER_MIN_IDLE"):
             self.assertIn(f"{variable}: ${{{{ vars.{variable} }}}}", steps["Check Runner Availability"])
-        self.assertIn('uv run --no-project "$trusted/select_mq_runner.py"', probe)
+        self.assertIn('run: uv run --no-project ci/run_base_runner_selector.py', probe)
         self.assertIn("heavy-labels: ${{ steps.select.outputs.heavy-labels }}", probe)
         self.assertNotRegex(probe, r"(?m)^    continue-on-error:")
         self.assertEqual(probe.count("continue-on-error: true"), 4)

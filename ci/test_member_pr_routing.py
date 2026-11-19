@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -175,9 +176,10 @@ class MemberPrWorkflowTest(unittest.TestCase):
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
         probe = ci.split("  select-mq-runner:\n", 1)[1].split("  cancel-superseded:\n", 1)[0]
         self.assertIn("ref: ${{ github.event.pull_request.base.sha || github.sha }}", probe)
-        self.assertIn('git show "$BASE:ci/$script"', probe)
-        self.assertIn("select_mq_runner.py pr_attestation.py", probe)
-        self.assertIn('uv run --no-project "$trusted/select_mq_runner.py"', probe)
+        self.assertIn('run: uv run --no-project ci/run_base_runner_selector.py', probe)
+        launcher = (ROOT / "ci/run_base_runner_selector.py").read_text()
+        self.assertIn('["git", "show", f"{base}:ci/{script}"]', launcher)
+        self.assertIn('("select_mq_runner.py", "pr_attestation.py")', launcher)
         self.assertIn("DELL_PR_ROUTING: ${{ vars.DELL_PR_ROUTING || 'off' }}", probe)
         self.assertIn("MQ_PR_RESERVE: ${{ vars.MQ_PR_RESERVE }}", probe)
         self.assertNotIn("if: github.event_name != 'pull_request'\n", probe)
@@ -207,6 +209,50 @@ class MemberPrWorkflowTest(unittest.TestCase):
         block = text.split("  rust-tests-linux:\n", 1)[1].split("\n  cross-compile:", 1)[0]
         runner = re.search(r"^    runs-on: (.*)$", block, re.M)[1]
         self.assertIn("github.event_name == 'pull_request' && inputs.mq-heavy-labels", runner)
+
+
+class BaseRunnerLauncherTest(unittest.TestCase):
+    def test_selector_and_membership_are_loaded_from_base_objects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ci = root / "ci"
+            ci.mkdir()
+
+            def git(*args):
+                return subprocess.run(["git", *args], cwd=root, check=True,
+                                      capture_output=True, text=True).stdout.strip()
+
+            git("init", "--quiet")
+            (ci / "pr_attestation.py").write_text("identity = 'base-owned'\n")
+            (ci / "select_mq_runner.py").write_text(
+                "import os\nfrom pathlib import Path\nimport pr_attestation\n"
+                "Path(os.environ['GITHUB_OUTPUT']).write_text(pr_attestation.identity)\n"
+            )
+            git("add", "ci")
+            git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                "commit", "--quiet", "--no-gpg-sign", "-m", "trusted base")
+            base = git("rev-parse", "HEAD")
+            # A PR changes both files; executing either working-tree module fails.
+            for path in ci.iterdir():
+                path.write_text("raise RuntimeError('PR-controlled code executed')\n")
+            output = root / "output"
+            result = subprocess.run(
+                ["uv", "run", "--no-project", str(ROOT / "ci/run_base_runner_selector.py")],
+                cwd=root, env={**os.environ, "BASE": base, "RUNNER_TEMP": directory,
+                               "GITHUB_OUTPUT": str(output)},
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(output.read_text(), "base-owned")
+
+    def test_invalid_base_never_launches_selector(self):
+        result = subprocess.run(
+            ["uv", "run", "--no-project", str(ROOT / "ci/run_base_runner_selector.py")],
+            env={**os.environ, "BASE": "HEAD:evil"},
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid immutable base SHA", result.stderr)
 
 
 if __name__ == "__main__":

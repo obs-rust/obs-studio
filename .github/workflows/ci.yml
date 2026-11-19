@@ -128,13 +128,7 @@ jobs:
           MQ_RUNNER_DEMAND: ${{ vars.MQ_RUNNER_DEMAND || '6' }}
           MQ_RUNNER_STATUS_TOKEN: ${{ steps.mq-probe-app.outputs.token || secrets.MQ_RUNNER_STATUS_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          [[ "$BASE" =~ ^[0-9a-f]{40}$ ]]
-          trusted=$(mktemp -d "$RUNNER_TEMP/dell-selector.XXXXXX")
-          for script in select_mq_runner.py pr_attestation.py; do
-            git show "$BASE:ci/$script" > "$trusted/$script" || exit 1
-          done
-          uv run --no-project "$trusted/select_mq_runner.py"
+        run: uv run --no-project ci/run_base_runner_selector.py
       - name: Report Probe Setup Failure
         if: ${{ !cancelled() && (steps.checkout.outcome == 'failure' || steps.uv.outcome == 'failure' || steps.select.outcome == 'failure') }}
         run: echo '::warning::Merge-queue runner probe could not complete; using hosted runners.'
