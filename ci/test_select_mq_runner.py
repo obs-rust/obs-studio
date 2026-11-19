@@ -870,7 +870,7 @@ class CollectionRaceTest(unittest.TestCase):
         self.assertEqual(self.collect(pages), runs)
         self.assertEqual(self.http.call_count, 4)
 
-    def test_page_shift_deduplicates_and_retries(self):
+    def test_page_shift_compares_unique_ids_and_retries(self):
         template = self.fixture["short_runs_page"]["workflow_runs"][0]
         runs = [dict(template, id=index + 1) for index in range(101)]
         pages = [
@@ -1126,6 +1126,28 @@ class InflightAdmissionTest(unittest.TestCase):
                 self.assertTrue(self.select(run["id"], capacity=3))
                 self.assertIn("queued=0, committed=0", self.output)
                 self.assertNotIn("probe failed", self.output)
+
+    def test_retried_duplicate_terminal_run_cannot_regain_reservation(self):
+        self.runs = self.runs[:2]
+        peer, current = self.runs
+
+        def duplicate_snapshots(path, payload):
+            if path.endswith("/runs") and payload["workflow_runs"]:
+                return {
+                    "total_count": 3,
+                    "workflow_runs": [
+                        dict(peer, status="completed", conclusion="cancelled"),
+                        peer,
+                        current,
+                    ],
+                }
+            return payload
+
+        self.assertTrue(
+            self.select(current["id"], capacity=3, transform=duplicate_snapshots)
+        )
+        self.assertIn("queued=0, committed=0", self.output)
+        self.assertIn("retry", self.output)
 
     def test_completed_selector_still_counts_live_dell_jobs(self):
         self.runs = self.runs[:2]
