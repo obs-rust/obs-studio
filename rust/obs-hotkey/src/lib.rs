@@ -49,6 +49,7 @@ pub mod cocoa_keys;
 pub mod enumeration;
 pub mod identity_getters;
 pub mod identity_setters;
+pub mod inject_entry;
 pub mod key_combination;
 mod key_route;
 pub mod name_map;

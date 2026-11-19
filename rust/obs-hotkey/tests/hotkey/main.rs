@@ -29,6 +29,8 @@ mod identity_getters;
 mod identity_getters_parity;
 mod identity_setters;
 mod identity_setters_parity;
+mod inject_entry;
+mod inject_entry_parity;
 mod key_combination;
 mod key_combination_parity;
 mod nix_hotkey_state;
