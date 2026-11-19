@@ -22,6 +22,8 @@ mod audio_input_path;
 mod audio_mixers_getter;
 mod audio_mixers_getter_parity;
 mod audio_output;
+mod audio_pause_callbacks;
+mod audio_pause_callbacks_parity;
 mod audio_place;
 mod audio_place_parity;
 mod audio_render_plan;
