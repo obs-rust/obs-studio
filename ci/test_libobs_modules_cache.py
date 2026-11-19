@@ -20,6 +20,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,6 +32,9 @@ mods = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mods)
 
 CC = shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+GCC = CC and "Free Software Foundation" in subprocess.run(
+    [CC, "--version"], capture_output=True, text=True, check=True
+).stdout
 
 
 def fake_tree(base: Path, build_name: str, launcher: str | None = None, target_suffix: str = "") -> tuple[Path, Path]:
@@ -86,6 +90,51 @@ class KeyTest(unittest.TestCase):
         source, plain = fake_tree(self.tmp, "b1")
         _, probed = fake_tree(self.tmp, "b2", launcher="zccache", target_suffix="-keyprobe")
         self.assertEqual(self.keys(plain, source), self.keys(probed, source))
+
+    def pch_tree(self):
+        source, build = fake_tree(self.tmp, "b")
+        header = source / "libobs" / "pch-only.h"
+        header.write_text("#define PCH_VALUE 1\n")
+        pch = source / "libobs" / "pch.h"
+        pch.write_text('#include "pch-only.h"\n')
+        database = build / "compile_commands.json"
+        entries = json.loads(database.read_text())
+        entries[1]["arguments"][1:1] = ["-fpch-preprocess", "-include", str(pch)]
+        database.write_text(json.dumps(entries))
+        return source, build, header, pch
+
+    def compile_pch(self, source, build, pch):
+        subprocess.run(
+            [CC, f"-I{source}/libobs", f"-I{build}/config", "-O2", "-x", "c-header", str(pch), "-o", str(pch) + ".gch"],
+            capture_output=True, text=True, check=True,
+        )
+
+    @unittest.skipUnless(GCC, "requires GCC PCH dependency behavior")
+    def test_building_a_pch_does_not_change_the_key(self):
+        source, build, _, pch = self.pch_tree()
+        before = self.keys(build, source)
+        self.compile_pch(source, build, pch)
+        self.assertEqual(before, self.keys(build, source))
+
+    @unittest.skipUnless(GCC, "requires GCC PCH dependency behavior")
+    def test_a_built_pch_does_not_hide_header_edits(self):
+        source, build, header, pch = self.pch_tree()
+        self.compile_pch(source, build, pch)
+        before = self.keys(build, source)
+        header.write_text("#define PCH_VALUE 2\n")
+        after = self.keys(build, source)
+        self.assertNotEqual(before["graphics"], after["graphics"])
+        self.assertEqual(before["core"], after["core"])
+
+    @unittest.skipUnless(GCC, "requires GCC preprocessing flag")
+    def test_pch_preprocessing_flag_does_not_change_the_key(self):
+        source, build, _, _ = self.pch_tree()
+        hosted = self.keys(build, source)
+        database = build / "compile_commands.json"
+        entries = json.loads(database.read_text())
+        entries[1]["arguments"].remove("-fpch-preprocess")
+        database.write_text(json.dumps(entries))
+        self.assertEqual(hosted, self.keys(build, source))
 
 
 MANIFESTS = {
