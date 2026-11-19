@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import errno
 import os
 import platform
 import shlex
@@ -12,6 +13,8 @@ import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
+import time
 import urllib.request
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -60,19 +63,39 @@ def swift_compiler(root: Path, env: dict) -> Path:
         return Path(explicit).absolute()  # Preserve swiftc argv[0]; resolving its symlink selects swift-driver.
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise ValueError("supply SWIFTC for this Linux host architecture")
-    cache = root / "target/macos-native-toolchains"
+    # Actions keeps RUNNER_TOOL_CACHE across clean checkouts on persistent
+    # runners. Never cache mutable fixture outputs or bypass their assertions.
+    base = Path(env.get("RUNNER_TOOL_CACHE") or root / "target/macos-native-toolchains")
+    cache = base / "obs-darwin-swift" / SWIFT_SHA256
     compiler = cache / SWIFT_RELEASE / "usr/bin/swiftc"
-    if not compiler.is_file():
-        cache.mkdir(parents=True, exist_ok=True)
-        archive = cache / f"{SWIFT_RELEASE}.tar.gz"
-        if not archive.is_file():
-            urllib.request.urlretrieve(SWIFT_URL, archive)
+    if compiler.is_file():
+        print(f"Darwin Swift toolchain: cache hit {cache}", flush=True)
+        return compiler
+    if cache.exists():
+        raise ValueError(f"incomplete Swift toolchain cache: {cache}")
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Darwin Swift toolchain: installing {SWIFT_RELEASE} into {cache}", flush=True)
+    # A cancelled download/extraction must never expose a partial swiftc as a
+    # hit. Concurrent producers may race to publish the same verified payload.
+    with tempfile.TemporaryDirectory(prefix=".swift-", dir=cache.parent) as temporary:
+        staging = Path(temporary)
+        archive = staging / "swift.tar.gz"
+        urllib.request.urlretrieve(SWIFT_URL, archive)
         with archive.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
         if digest != SWIFT_SHA256:
             raise ValueError("Swift toolchain checksum mismatch")
+        install = staging / "install"
         with tarfile.open(archive) as tar:
-            tar.extractall(cache, filter="data")
+            tar.extractall(install, filter="data")
+        if not (install / SWIFT_RELEASE / "usr/bin/swiftc").is_file():
+            raise ValueError("Swift toolchain archive contains no compiler")
+        try:
+            install.rename(cache)
+        except OSError as error:
+            if error.errno not in (errno.EEXIST, errno.ENOTEMPTY) or not compiler.is_file():
+                raise
+    print("Darwin Swift toolchain: installation complete", flush=True)
     return compiler
 
 
@@ -225,12 +248,15 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
     environment = dict(env)
     environment["OBS_NATIVE_FIXTURES_PREPARE"] = str(directory)
     environment["OBS_NATIVE_HOST_CMAKE"] = shutil.which("cmake") or "cmake"
+    started = time.monotonic()
+    print("Darwin fixtures: preparing toolchain", flush=True)
     cc, cxx, ar, sdk = (tool(option, root, env) for option in (
         "--print-cc", "--print-cxx", "--print-ar", "--print-sysroot"))
     for name, value in (("CC", cc), ("CXX", cxx), ("AR", ar)):
         target_setting(environment, name, value)
     target_setting(environment, "SDKROOT", sdk)
     configure_swift(root, environment)
+    print(f"Darwin fixtures: toolchain ready in {time.monotonic() - started:.2f}s", flush=True)
     toolchain = directory / "darwin.cmake"
     toolchain.write_text("\n".join(f'set({name} "{value}")' for name, value in {
         "CMAKE_SYSTEM_NAME": "Darwin", "CMAKE_OSX_ARCHITECTURES": "arm64",
@@ -238,16 +264,22 @@ def prepare(root: Path, bundle: Path, env: dict) -> None:
         "CMAKE_C_COMPILER": cc, "CMAKE_CXX_COMPILER": cxx, "CMAKE_AR": ar,
     }.items()) + "\n")
     environment["CMAKE_TOOLCHAIN_FILE"] = str(toolchain)
+    started = time.monotonic()
+    print("Darwin fixtures: building host Application category", flush=True)
     result = subprocess.run(["soldr", "cargo", "test", "-p", "obs-studio-rust", "--test", "obs-tests-app",
                              "--no-run", "--locked", "--message-format=json"], cwd=root, env=env,
                             capture_output=True, text=True, check=True)
+    print(f"Darwin fixtures: host Application category built in {time.monotonic() - started:.2f}s", flush=True)
     events = [json.loads(line) for line in result.stdout.splitlines()]
     binaries = [e["executable"] for e in events if e.get("reason") == "compiler-artifact"
                 and e.get("target", {}).get("name") == "obs-tests-app" and e.get("executable")]
     if len(binaries) != 1:
         raise ValueError("missing unique host Application category binary")
     names = ["native_build::" + name for name in TESTS]
+    started = time.monotonic()
+    print(f"Darwin fixtures: preparing {len(names)} contracts with {workers} workers", flush=True)
     prepare_fixtures(binaries[0], names, root, directory, environment, workers)
+    print(f"Darwin fixtures: contracts and snapshots ready in {time.monotonic() - started:.2f}s", flush=True)
     signed = signed_fixtures(directory)
     # Directory creation now races; preserve fixture inventory order in the index.
     order = {name.replace("::", "--"): index for index, name in enumerate(names)}

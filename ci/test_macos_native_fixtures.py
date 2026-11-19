@@ -219,6 +219,28 @@ class FixtureInventoryTest(unittest.TestCase):
                     fixtures.swift_compiler(root, {"RUNNER_TOOL_CACHE": str(root / "tools")})
                 extract.assert_not_called()
 
+    def test_concurrent_swift_installs_publish_one_complete_toolchain(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = self.swift_archive()
+            digest = hashlib.sha256(payload).hexdigest()
+            ready = threading.Barrier(2)
+
+            def download(url, path):
+                ready.wait(3)
+                Path(path).write_bytes(payload)
+
+            environment = {"RUNNER_TOOL_CACHE": str(root / "tools")}
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(fixtures, "SWIFT_SHA256", digest), \
+                    patch.object(fixtures.urllib.request, "urlretrieve", side_effect=download), \
+                    ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(lambda name: fixtures.swift_compiler(root / name, environment), ("a", "b")))
+            self.assertEqual(results[0], results[1])
+            self.assertEqual(results[0].read_bytes(), b"pinned swift compiler")
+            self.assertEqual([path.name for path in results[0].parents[4].iterdir()], [digest])
+
     def test_swift_tools_provision_dsymutil_without_ambient_host_tool(self):
         import macos_native_fixtures as fixtures
         with tempfile.TemporaryDirectory() as temporary:
