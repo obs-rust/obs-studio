@@ -256,12 +256,21 @@ SOLDR_SELF_TESTS = "test_local_gate_probe.py"
 
 SELF_TEST_MAX_WORKERS = 8
 SELF_TEST_TIMEOUT = 600
+# The offline verifier performs many serial Git object lookups. Shared worker
+# hosts can take >600 s even though an isolated run took 160 s (Refs #4896).
+# Leave the pool and ordinary self-test deadlines unchanged.
+SELF_TEST_TIMEOUTS = {"test_pr_attestation.py": 1800}
 
 
 def self_test_workers() -> int:
     """CPUs this process may use (cgroup and affinity aware), at most 8."""
     usable = getattr(os, "process_cpu_count", os.cpu_count)() or 1
     return max(1, min(SELF_TEST_MAX_WORKERS, usable))
+
+
+def subprocess_output(stdout: str | bytes | None, stderr: str | bytes | None) -> str:
+    """TimeoutExpired can carry bytes even when the child runs with text=True."""
+    return "".join(part.decode(errors="replace") if isinstance(part, bytes) else part or "" for part in (stdout, stderr))
 
 
 def self_test() -> None:  # noqa: C901
@@ -284,6 +293,7 @@ def self_test() -> None:  # noqa: C901
 
     def one(path: Path) -> tuple[str, int, str, float]:
         start = time.monotonic()
+        timeout = SELF_TEST_TIMEOUTS.get(path.name, SELF_TEST_TIMEOUT)
         try:
             result = subprocess.run(
                 [sys.executable, "-W", "default::ResourceWarning", "-m", "unittest", "discover", "-s", "ci", "-p", path.name],
@@ -291,16 +301,14 @@ def self_test() -> None:  # noqa: C901
                 capture_output=True,
                 text=True,
                 errors="replace",
-                timeout=SELF_TEST_TIMEOUT,
+                timeout=timeout,
             )
         except subprocess.TimeoutExpired as e:
-            output = (e.stdout or "") + (e.stderr or "")
-            if isinstance(output, bytes):
-                output = output.decode(errors="replace")
-            return path.name, 1, f"{output}\ntimed out after {SELF_TEST_TIMEOUT} s", time.monotonic() - start
+            output = subprocess_output(e.stdout, e.stderr)
+            return path.name, 1, f"{output}\ntimed out after {timeout} s", time.monotonic() - start
         # 5: the file has no tests (as the old single discover allowed).
         code = 0 if result.returncode == 5 else result.returncode
-        output = result.stdout + result.stderr
+        output = subprocess_output(result.stdout, result.stderr)
         # A leaked file or response warns from a destructor, which no -W error
         # can turn into a failure; 781 such lines buried the Checks log (#2235).
         if code == 0 and "ResourceWarning" in output:
@@ -312,8 +320,13 @@ def self_test() -> None:  # noqa: C901
     print(f"+ unittest: {len(files)} ci/test_*.py files, {workers} at a time", flush=True)
     failed = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for future in as_completed([pool.submit(one, path) for path in files]):
-            name, code, output, secs = future.result()
+        futures = {pool.submit(one, path): path for path in files}
+        for future in as_completed(futures):
+            try:
+                name, code, output, secs = future.result()
+            except Exception as e:
+                # A launch/worker error must not discard the other files' results.
+                name, code, output, secs = futures[future].name, 1, f"{type(e).__name__}: {e}", 0.0
             print(f"  {'ok  ' if code == 0 else 'FAIL'} {secs:6.1f}s {name}", flush=True)
             if code:
                 failed.append((name, output))
