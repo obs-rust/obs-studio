@@ -116,6 +116,8 @@ mod nix_log_rules;
 mod nix_log_rules_parity;
 mod nix_system_info;
 mod nix_system_info_parity;
+mod object_id;
+mod object_id_parity;
 mod object_queries;
 mod object_queries_parity;
 mod object_ref;
