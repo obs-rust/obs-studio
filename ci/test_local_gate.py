@@ -113,6 +113,81 @@ class SelfTestTest(unittest.TestCase):
             with mock.patch.object(local_gate.os, "process_cpu_count", create=True, return_value=usable):
                 self.assertEqual(local_gate.self_test_workers(), want, usable)
 
+    def test_timeout_output_is_readable_and_other_failures_are_aggregated(self):
+        for stdout, stderr, expected in (
+            (b"stdout\xff\n", None, "stdout\ufffd"),
+            (None, b"stderr\xff\n", "stderr\ufffd"),
+            (b"stdout\xff\n", b"stderr\xff\n", "stdout\ufffd\nstderr\ufffd"),
+            (None, None, "timed out"),
+            ("text stdout\n", None, "text stdout"),
+            (None, "text stderr\n", "text stderr"),
+            ("text stdout\n", "text stderr\n", "text stdout\ntext stderr"),
+            (b"bytes stdout\n", "text stderr\n", "bytes stdout\ntext stderr"),
+            ("text stdout\n", b"bytes stderr\n", "text stdout\nbytes stderr"),
+        ):
+            with self.subTest(stdout=stdout, stderr=stderr):
+                output = io.StringIO()
+                calls = []
+
+                def invoke(cmd, **kwargs):
+                    name = cmd[cmd.index("-p") + 1]
+                    calls.append(name)
+                    if name == "test_timeout.py":
+                        raise subprocess.TimeoutExpired(cmd, 600, output=stdout, stderr=stderr)
+                    return subprocess.CompletedProcess(cmd, 1, "other failure\n", "diagnostic\n")
+
+                files = [Path("test_timeout.py"), Path("test_other.py")]
+                with (
+                    mock.patch.object(Path, "glob", return_value=files),
+                    mock.patch.object(local_gate.subprocess, "run", side_effect=invoke),
+                    contextlib.redirect_stdout(output),
+                    self.assertRaises(subprocess.CalledProcessError) as failure,
+                ):
+                    local_gate.self_test()
+                self.assertCountEqual(calls, [p.name for p in files])
+                self.assertCountEqual(failure.exception.cmd[1:], calls)
+                self.assertIn(expected, output.getvalue())
+                self.assertIn("timed out after 600 s", output.getvalue())
+                self.assertIn("other failure\ndiagnostic", output.getvalue())
+
+    def test_launch_error_does_not_hide_other_failures(self):
+        output = io.StringIO()
+
+        def invoke(cmd, **kwargs):
+            if cmd[-1] == "test_launch.py":
+                raise OSError("process launch failed")
+            return subprocess.CompletedProcess(cmd, 1, b"other failure\xff\n", None)
+
+        with (
+            mock.patch.object(Path, "glob", return_value=[Path("test_launch.py"), Path("test_other.py")]),
+            mock.patch.object(local_gate.subprocess, "run", side_effect=invoke),
+            contextlib.redirect_stdout(output),
+            self.assertRaises(subprocess.CalledProcessError) as failure,
+        ):
+            local_gate.self_test()
+        self.assertCountEqual(failure.exception.cmd[1:], ["test_launch.py", "test_other.py"])
+        self.assertIn("process launch failed", output.getvalue())
+        self.assertIn("other failure\ufffd", output.getvalue())
+
+    def test_only_git_heavy_verifier_has_a_longer_deadline(self):
+        calls = {}
+        output = io.StringIO()
+
+        def invoke(cmd, **kwargs):
+            calls[cmd[-1]] = kwargs["timeout"]
+            raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+        with (
+            mock.patch.object(Path, "glob", return_value=[Path("test_pr_attestation.py"), Path("test_other.py")]),
+            mock.patch.object(local_gate.subprocess, "run", side_effect=invoke),
+            contextlib.redirect_stdout(output),
+            self.assertRaises(subprocess.CalledProcessError),
+        ):
+            local_gate.self_test()
+        self.assertEqual(calls, {"test_pr_attestation.py": 1800, "test_other.py": 600})
+        self.assertIn("timed out after 1800 s", output.getvalue())
+        self.assertIn("timed out after 600 s", output.getvalue())
+
 
 class EnvironmentHintTest(unittest.TestCase):
     """Environment failures get a one-line hint naming the documented fix
