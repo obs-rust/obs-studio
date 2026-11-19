@@ -1,4 +1,5 @@
 //! Opt-in integration against real native dependencies and libobs-rust.
+use crate::native_build::core_module_manifest;
 use obs_build::{NativeBuild, frontend, graphics, libobs, plugins, scripting};
 use std::{
     ffi::c_void,
@@ -6,8 +7,6 @@ use std::{
 };
 #[path = "libobs/application.rs"]
 mod application;
-#[path = "libobs/core_module_manifest.rs"]
-mod core_module_manifest;
 #[path = "libobs/macos_capture.rs"]
 mod macos_capture;
 #[path = "libobs/macos_graphics.rs"]
@@ -1354,7 +1353,6 @@ fn macos_core_builds_from_the_canonical_manifest() {
         wayland: false,
         unity: std::env::var_os("OBS_BUILD_MACOS_SEPARATE").is_none(),
         pch: std::env::var_os("OBS_BUILD_MACOS_PCH").is_some(),
-        ..libobs::Options::default()
     };
     let library = if let Some(archive) = std::env::var_os("OBS_BUILD_MACOS_RUST_ARCHIVE") {
         let pair = libobs::build_pair(&build, &root, &options, &PathBuf::from(archive)).unwrap();

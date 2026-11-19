@@ -5502,4 +5502,4 @@ mod canonical_source_properties_is_registered;
 mod canonical_ui_task_handler_is_registered;
 
 #[path = "native/core_module_manifest.rs"]
-mod core_module_manifest;
+pub(crate) mod core_module_manifest;
