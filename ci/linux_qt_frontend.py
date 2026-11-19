@@ -82,20 +82,10 @@ def qt_fragments() -> list[str]:
 
 
 # Qt fragments that may have no target, with the reason. Any other fragment
-# without a target fails the job: a missing Qt module hid these 8 tests while
-# the job passed (#4837). A listed fragment that builds fails the job too, so
-# the list cannot go stale.
-QTTEST_MISSING = "#4837: the pinned Qt asset has no QtTest"
-KNOWN_SKIPS = {
-    "test_camera_busy_dialog": QTTEST_MISSING,
-    "test_dock_proportions": QTTEST_MISSING,
-    "test_dock_state_restart": QTTEST_MISSING,
-    "test_fallback_warning_dialog": QTTEST_MISSING,
-    "test_fallback_warning_queue": QTTEST_MISSING,
-    "test_hotkey_edit_backtab": QTTEST_MISSING,
-    "test_properties_dialog_refresh": QTTEST_MISSING,
-    "test_properties_undo_coalesce": QTTEST_MISSING,
-}
+# without a target fails the job: a missing Qt module (QtTest) hid 8 tests
+# while the job passed (#4837). A listed fragment that builds fails the job
+# too, so the list cannot go stale. Empty since the pinned Qt asset has QtTest.
+KNOWN_SKIPS: dict[str, str] = {}
 
 
 def existing(tests: list[str], targets: set[str]) -> tuple[list[str], list[str]]:

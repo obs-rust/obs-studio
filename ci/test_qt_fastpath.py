@@ -30,7 +30,7 @@ class QtFastPathTest(unittest.TestCase):
 
     def test_pins(self):
         job = self.job()
-        for tag, asset in [("qt6-6.11.1", "qt6-6.11.1-linux-x86_64-glibc2.28-release.tar.zst"),
+        for tag, asset in [("qt6-6.11.1", "qt6-6.11.1-linux-x86_64-glibc2.28-release-testlib.tar.zst"),
                            ("ffmpeg-8.1.2", "ffmpeg-8.1.2-linux-x86_64-glibc2.28-release.tar.zst")]:
             self.assertIn(tag, job)
             self.assertIn(asset, job)

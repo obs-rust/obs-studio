@@ -12,13 +12,16 @@ pkg-config, ninja, uv and xvfb-run, so nothing is configured or built.
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "ci" / "linux_qt_frontend.py"
@@ -57,12 +60,17 @@ def qt6_fragments() -> list[str]:
     return sorted(p.stem for p in FRAGMENTS.glob("*.cmake") if "Qt6" in p.read_text(encoding="utf-8"))
 
 
-def known_skips() -> dict[str, str]:
-    """The driver's list of Qt fragments that may have no target (#4837)."""
+def driver():
+    """ci/linux_qt_frontend.py as a module."""
     spec = importlib.util.spec_from_file_location("linux_qt_frontend", SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return getattr(module, "KNOWN_SKIPS", {})
+    return module
+
+
+def known_skips() -> dict[str, str]:
+    """The driver's list of Qt fragments that may have no target (#4837)."""
+    return getattr(driver(), "KNOWN_SKIPS", {})
 
 
 def buildable() -> list[str]:
@@ -217,19 +225,25 @@ class LinuxQtFrontendTest(unittest.TestCase):
 
     def test_a_known_skip_that_builds_fails_the_job(self) -> None:
         """The list cannot go stale: once the Qt asset builds a listed test,
-        the entry must go (#4837)."""
-        skips = known_skips()
-        self.assertTrue(skips)
-        listed = sorted(skips)[0]
-        targets = "\n".join(f"{name}: phony" for name in [*buildable(), listed])
-        result = self.run_script(*self.prefixes(), NINJA_TARGETS=targets)
-        self.assertEqual(result.returncode, 1)
-        self.assertIn(f"{listed}: builds now, remove it from KNOWN_SKIPS", result.stderr)
-        self.assertEqual(self.calls("xvfb-run"), [])
+        the entry must go (#4837). Checked with a patched list, so it holds
+        while the real list is empty."""
+        module = driver()
+        listed, skipped = "test_listed", "test_listed_and_skipped"
+        with mock.patch.dict(module.KNOWN_SKIPS, {listed: "reason", skipped: "reason"}, clear=True):
+            self.assertEqual(module.skip_errors([listed, "test_other"], [skipped]),
+                             [f"{listed}: builds now, remove it from KNOWN_SKIPS"])
+            with redirect_stdout(io.StringIO()) as out, redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as exit_:
+                    module.report_skips([listed], [skipped])
+            self.assertEqual(exit_.exception.code, 1)
+            self.assertIn(f"== skipped (known: reason): {skipped}", out.getvalue())
+
+    def test_every_qt_test_is_built_and_run(self) -> None:
+        """The pinned Qt asset has QtTest (#4837): no Qt test is skipped."""
+        self.assertEqual(known_skips(), {})
 
     def test_each_known_skip_is_a_qt_fragment_with_a_reason(self) -> None:
         skips = known_skips()
-        self.assertTrue(skips)
         for name, reason in skips.items():
             self.assertIn(name, qt6_fragments())
             self.assertTrue(reason.strip(), name)
