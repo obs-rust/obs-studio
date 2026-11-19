@@ -207,7 +207,8 @@ unsafe extern "C" {
     // EXPORT.
     fn obs_encoder_packet_release(packet: *mut encoder_packet);
     fn obs_output_get_name(output: *const c_void) -> *const c_char;
-    fn obs_encoder_get_name(encoder: *const c_void) -> *const c_char;
+    // Private C adapter; synthetic tests replace only this seam.
+    fn obs_output_interleave_encoder_name(encoder: *const c_void) -> *const c_char;
     // libobs's pthread (w32-pthreads on Windows); the mutexes are opaque here.
     fn pthread_mutex_lock(mutex: *mut c_void) -> c_int;
     fn pthread_mutex_unlock(mutex: *mut c_void) -> c_int;
@@ -894,7 +895,7 @@ impl InterleaveOutput for COutput {
                     .as_ptr(),
                 obs_output_get_name(self.output),
                 pts as c_longlong,
-                obs_encoder_get_name(encoder as *const c_void),
+                obs_output_interleave_encoder_name(encoder as *const c_void),
                 track,
             );
         }

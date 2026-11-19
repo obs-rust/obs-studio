@@ -1,3 +1,5 @@
+mod get_name;
+mod get_name_parity;
 mod last_error;
 mod last_error_parity;
 mod media_getters;

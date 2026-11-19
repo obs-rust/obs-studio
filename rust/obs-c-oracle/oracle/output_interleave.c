@@ -10,7 +10,7 @@
  * obs-output.c wrappers (obs_output_interleave_active(), the two first
  * encoder index helpers and obs_output_interleave_add_caption()),
  * obs_encoder_packet_create_instance() and _release(), obs_output_get_name()
- * and obs_encoder_get_name(). The cargo test that links this file defines
+ * and the private obs_output_interleave_encoder_name() seam. The cargo test that links this file defines
  * them, recording each call, and the Rust shim calls the same ones, so both
  * sides are seen through the same stubs; the packet copy and release are
  * obs-encoder's real exports. pthread, blog and the darray come from the
@@ -30,6 +30,7 @@
 #define get_encoder_index oracle_get_encoder_index
 #define free_packets oracle_free_packets
 #define os_gettime_ns oracle_output_interleave_clock_ns
+#define obs_encoder_get_name obs_output_interleave_encoder_name
 
 /* send_interleaved() names itself with __FUNCTION__, a GCC, Clang and MSVC
  * extension that -Wpedantic rejects, and the file converts between signed
@@ -46,6 +47,7 @@
 #pragma GCC diagnostic ignored "-Wformat"
 #endif
 #include "obs-output-interleave.c.h"
+#undef obs_encoder_get_name
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
