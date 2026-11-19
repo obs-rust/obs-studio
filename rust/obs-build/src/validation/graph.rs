@@ -359,9 +359,11 @@ impl Target {
                 names.push(name.into());
             }
         }
-        // The Rust provider must precede shared/import libraries that export
-        // the same allocators and parser helpers (MSVC import members collide).
-        if let Some(index) = names.iter().position(|name| name == "libobs_rust-static") {
+        // MSVC import members collide with Rust allocators/parser helpers.
+        // ELF/Darwin fixtures retain their explicitly declared DSO bindings.
+        if facts.get("MSVC") == Some(&true)
+            && let Some(index) = names.iter().position(|name| name == "libobs_rust-static")
+        {
             let rust = names.remove(index);
             names.insert(0, rust);
         }
@@ -916,25 +918,14 @@ impl Graph {
                 target.definitions.push((key.into(), value));
             }
             spec.add_header_libraries(&mut target, libraries)?;
-            if spec.library_names(facts)?.iter().any(|name| {
-                name == "libobs_rust-static"
-                    && libraries
-                        .get(name)
-                        .is_some_and(|dep| dep.rust_static_support)
-            }) {
-                let support = match &rust_support {
-                    Some(support) => support,
-                    None => {
-                        rust_support.insert(rust_static_support::prepare(build, &root, libraries)?)
-                    }
-                };
-                // Private adapters follow Rust, ahead of shared/import providers.
-                target.dependencies.insert(1, support.clone());
-                // Legacy registrations may still name these eager wrappers.
-                // The manifest now owns their real implementations lazily.
-                let shared_sources = rust_static_support::sources(&root)?;
-                target.sources.retain(|path| !shared_sources.contains(path));
-            }
+            rust_static_support::select(
+                build,
+                &root,
+                libraries,
+                &spec.library_names(facts)?,
+                &mut target,
+                &mut rust_support,
+            )?;
             for package in &spec.packages {
                 crate::libobs::add_package(&mut target, &build.target, package)?;
             }

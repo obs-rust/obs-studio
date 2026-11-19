@@ -316,8 +316,9 @@ for both CMake and Cargo-native fixtures. Add new shared adapters there as separ
 lazy archive members; fixture-owned definitions retain precedence. CMake inherits
 the native owner (`libobs-objects`) link interface rather than maintaining host
 libraries per test. Cargo's production Rust-archive dependency carries its native
-package interface. Both paths put Rust before shared/import providers so allocator
-and parser symbols are selected consistently. Link checks prove linking only;
+package interface. Both paths put Rust before MSVC import providers so allocator
+and parser symbols are selected consistently; ELF/Darwin retain the fixture's
+declared DSO binding order. Link checks prove linking only;
 native runtime checks still own recording callbacks and allocator behavior.
 
 #### macOS Rust execution artifacts (#5008)

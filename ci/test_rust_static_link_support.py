@@ -19,11 +19,15 @@ class RustStaticLinkSupport(unittest.TestCase):
     def test_allocator_member_is_selected_before_shared_import_provider(self):
         self.check_fixture(True)
 
-    def check_fixture(self, baseline_host):
+    def test_non_msvc_preserves_declared_shared_binding(self):
+        self.check_fixture(False, False)
+
+    def check_fixture(self, baseline_host, msvc=True):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
             files = {
-                "main.c": "int rust_entry(void); int bmalloc(void); int main(void) { return rust_entry() != 17 || bmalloc() != 7; }\n",
+                "main.c": "int rust_entry(void); int bmalloc(void); int main(void) { return rust_entry() != "
+                + ("17 || bmalloc() != 7" if msvc else "110 || bmalloc() != 100") + "; }\n",
                 "rust.c": "int private_adapter(void); int error_data_add(void); int rust_entry(void) { return error_data_add() + private_adapter(); }\n",
                 "allocator.c": "int bmalloc(void) { return 7; } int error_data_add(void) { return bmalloc(); }\n",
                 "import.c": "int bmalloc(void) { return 100; } int error_data_add(void) { return bmalloc(); }\n",
@@ -35,6 +39,9 @@ class RustStaticLinkSupport(unittest.TestCase):
                 (source / name).write_text(content)
             (source / "CMakeLists.txt").write_text(
                 "cmake_minimum_required(VERSION 3.28)\nproject(rust_support C)\n"
+                # Model the MSVC import boundary with host-linkable providers.
+                + f"set(MSVC {'TRUE' if msvc else 'FALSE'})\n"
+                +
                 "add_library(host SHARED host.c)\n"
                 "add_library(host_owner INTERFACE)\n"
                 'target_link_libraries(host_owner INTERFACE host "$<$<TARGET_EXISTS:Optional::Host>:Optional::Host>")\n'

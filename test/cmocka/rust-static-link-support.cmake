@@ -66,16 +66,25 @@ function(obs_rust_static_consumers support native_owner)
     _obs_uses_rust_static("${target}" "" uses_rust)
     if(NOT uses_rust STREQUAL "0")
       get_target_property(links "${target}" LINK_LIBRARIES)
-      list(REMOVE_ITEM links libobs_rust-static)
       # Resolve static allocators/parser/logging before OBS's DLL import members.
       # An indirect consumer also needs this explicit first provider.
       if(uses_rust STREQUAL "1")
-        set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "libobs_rust-static;${links};${support}")
+        if(MSVC)
+          list(REMOVE_ITEM links libobs_rust-static)
+          set(links "libobs_rust-static;${links}")
+        elseif(NOT "libobs_rust-static" IN_LIST links)
+          # Preserve intentional ELF/Darwin DSO selection. Make an indirect
+          # Rust edge explicit before support so the archive is searched first.
+          list(APPEND links libobs_rust-static)
+        endif()
+        set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};${support}")
       else()
-        set_property(
-          TARGET "${target}"
-          PROPERTY LINK_LIBRARIES "$<${uses_rust}:libobs_rust-static>;${links};$<${uses_rust}:${support}>"
-        )
+        if(MSVC)
+          set(links "$<${uses_rust}:libobs_rust-static>;${links}")
+        else()
+          set(links "${links};$<${uses_rust}:libobs_rust-static>")
+        endif()
+        set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links};$<${uses_rust}:${support}>")
       endif()
     endif()
   endforeach()

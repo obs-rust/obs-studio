@@ -33,8 +33,14 @@ fn rust_static_precedes_import_providers_and_their_host_closure() {
     .into();
     assert_eq!(
         graph.targets["fixture"]
-            .dependency_artifacts(&Default::default(), &dependencies)
+            .dependency_artifacts(&[("MSVC".into(), true)].into(), &dependencies)
             .unwrap(),
         ["rust.lib", "obs.lib", "consumer.a", "host.so"].map(std::path::PathBuf::from)
+    );
+    assert_eq!(
+        graph.targets["fixture"]
+            .dependency_artifacts(&[("MSVC".into(), false)].into(), &dependencies)
+            .unwrap(),
+        ["obs.lib", "consumer.a", "host.so", "rust.lib"].map(std::path::PathBuf::from)
     );
 }

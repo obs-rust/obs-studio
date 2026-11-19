@@ -60,3 +60,42 @@ pub(super) fn prepare(
     );
     build.static_library(&support)
 }
+
+pub(super) fn select(
+    build: &NativeBuild,
+    root: &Path,
+    libraries: &BTreeMap<String, Dependency>,
+    names: &[String],
+    target: &mut SharedLibrary,
+    cached: &mut Option<PathBuf>,
+) -> Result<(), String> {
+    if !names.iter().any(|name| {
+        name == "libobs_rust-static"
+            && libraries
+                .get(name)
+                .is_some_and(|dep| dep.rust_static_support)
+    }) {
+        return Ok(());
+    }
+    let support = match cached {
+        Some(support) => support,
+        None => cached.insert(prepare(build, root, libraries)?),
+    };
+    // Private adapters follow Rust, including when a fixture deliberately
+    // selects a shared provider before that archive.
+    let archive = libraries["libobs_rust-static"]
+        .artifacts
+        .first()
+        .ok_or("Rust-static dependency has no archive")?;
+    let index = target
+        .dependencies
+        .iter()
+        .position(|path| path == archive)
+        .ok_or("Rust-static archive missing from native link")?;
+    target.dependencies.insert(index + 1, support.clone());
+    // Legacy registrations may still name these eager wrappers. The manifest
+    // now owns their real implementations lazily.
+    let shared_sources = sources(root)?;
+    target.sources.retain(|path| !shared_sources.contains(path));
+    Ok(())
+}
