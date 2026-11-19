@@ -30,7 +30,10 @@
     "test/cmocka/graphics-image-convert-link-support.c",
     "test/cmocka/graphics-preprocessor-link-support.c",
     "test/cmocka/output-starting-queries-link-support.c",
-    "test/cmocka/graphics-indexbuffer-maintenance-link-support.c"
+    "test/cmocka/graphics-indexbuffer-maintenance-link-support.c",
+    "test/cmocka/encoder-get-name-link-support.c",
+    "test/cmocka/output-interleave-name-link-support.c",
+    "test/cmocka/graphics-device-queries-link-support.c"
   ],
   "platform_sources": {
     "OS_WINDOWS": [
