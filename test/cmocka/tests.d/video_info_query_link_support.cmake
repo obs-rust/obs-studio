@@ -9,6 +9,7 @@ function(_video_info_query_link_support)
     "${CMAKE_CURRENT_SOURCE_DIR}/core-state-link-support.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/encoder-video-tex-active-fields-link-support.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/encoder-video-tex-active-mix-link-support.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/sceneitem-defer-update-link-support.c"
   )
   target_include_directories(
     video_info_query_link_support

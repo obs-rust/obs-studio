@@ -52,7 +52,10 @@ fn plain_pair_computes_on_end() {
         assert_eq!(item.count.get(), 0);
         assert_eq!(item.transforms.get(), expected);
     }
-    assert_eq!(*item.calls.borrow(), ["increment", "decrement", "update"].repeat(3));
+    assert_eq!(
+        *item.calls.borrow(),
+        ["increment", "decrement", "update"].repeat(3)
+    );
 }
 
 #[test]
@@ -91,7 +94,10 @@ fn unmatched_end_goes_negative_and_begin_reaching_zero_is_quiet() {
 #[test]
 fn group_child_end_sets_flag_and_parentless_end_reads_nothing() {
     for parent in [Parent::Group, Parent::None] {
-        let item = Item { parent, ..Item::default() };
+        let item = Item {
+            parent,
+            ..Item::default()
+        };
         defer::begin(&item);
         defer::begin(&item);
         defer::end(&item);
@@ -99,7 +105,10 @@ fn group_child_end_sets_flag_and_parentless_end_reads_nothing() {
         defer::end(&item);
         assert!(item.pending.get());
         assert_eq!(item.transforms.get(), 0);
-        assert_eq!(*item.calls.borrow(), ["increment", "increment", "decrement", "decrement", "update"]);
+        assert_eq!(
+            *item.calls.borrow(),
+            ["increment", "increment", "decrement", "decrement", "update"]
+        );
     }
 }
 
@@ -116,13 +125,17 @@ fn group_item_end_computes_like_an_ordinary_item() {
 fn dispatch_uses_the_decrement_result_without_reloading() {
     struct RacingItem(Cell<isize>, Cell<bool>);
     impl TransformDeferral for RacingItem {
-        fn increment(&self) { self.0.set(self.0.get() + 1); }
+        fn increment(&self) {
+            self.0.set(self.0.get() + 1);
+        }
         fn decrement(&self) -> isize {
             let result = self.0.get() - 1;
             self.0.set(77); // another caller can increment after this RMW
             result
         }
-        fn update_transform(&self) { self.1.set(true); }
+        fn update_transform(&self) {
+            self.1.set(true);
+        }
     }
     let item = RacingItem(Cell::new(1), Cell::new(false));
     defer::end(&item);
