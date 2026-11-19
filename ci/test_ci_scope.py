@@ -319,7 +319,8 @@ class CiScopeTest(unittest.TestCase):
         }
         light = {
             "ci.yml": {
-                "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-26.04",
+                "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-latest",
+                "cache-janitor": "ubuntu-latest",
                 "tier2-lane-proof": "ubuntu-26.04",
             },
             "build-project.yaml": dict.fromkeys((
