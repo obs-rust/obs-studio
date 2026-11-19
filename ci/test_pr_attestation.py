@@ -957,6 +957,31 @@ class TrustContract(unittest.TestCase):
                 self.assertIsNotNone(match)
                 self.assertIn(f"  {match[1]}: {{max-age-hours: 24}}", text)
 
+    def test_fixture_setup_reuses_objects_without_sharing_mutable_state(self):
+        other = type(self)("runTest")
+        try:
+            with patch.object(subprocess, "run", wraps=subprocess.run) as run:
+                other.setUp()
+            self.assertEqual(run.call_count, 0)
+            other.write("src/value.txt", "isolated\n")
+            other.facts.clear()
+            other.proof_reports.clear()
+            (other.root / ".git/shallow").write_text(other.head + "\n")
+            self.assertEqual((self.root / "src/value.txt").read_text(), "head\n")
+            self.assertTrue(self.facts)
+            self.assertTrue(self.proof_reports)
+            self.assertFalse((self.root / ".git/shallow").exists())
+            self.assertTrue(self.evaluate()["trusted"])
+        finally:
+            other.doCleanups()
+
+    def test_commit_metadata_uses_one_git_read(self):
+        with patch.object(subprocess, "run", wraps=subprocess.run) as run:
+            commit = subject.Git(self.root).commit(self.head)
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual((commit.sha, commit.tree, commit.parents),
+                         (self.head, self.tree, (self.base,)))
+
 
 if __name__ == "__main__":
     unittest.main()
