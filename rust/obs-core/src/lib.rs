@@ -194,6 +194,7 @@ pub mod video_render_passes;
 pub mod video_render_size;
 pub mod video_scale_effects;
 pub mod video_stop_requested;
+pub mod video_unmap_last_surface;
 pub mod view;
 pub mod weak_object_expired;
 pub mod weak_object_identity;
