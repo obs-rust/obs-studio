@@ -212,6 +212,9 @@ endfunction()
 
 # Shared by the complete cmocka project and independent graph fixture projects.
 function(obs_add_rust_static_support root native_owner)
+  if(NOT DEFINED OS_WINDOWS)
+    set(OS_WINDOWS "${WIN32}")
+  endif()
   if(NOT TARGET video_info_query_link_support)
     file(READ "${root}/test/cmocka/build/rust-static-support.json" manifest)
     string(JSON count LENGTH "${manifest}" sources)
