@@ -83,6 +83,7 @@ pub mod matrix3;
 pub mod matrix4;
 pub mod matrix_entrypoints;
 pub mod perspective;
+pub mod planar_capability_queries;
 pub mod plane;
 mod platform;
 pub mod present_entrypoints;

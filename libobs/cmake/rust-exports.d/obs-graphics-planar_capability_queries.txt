@@ -1,0 +1,2 @@
+gs_nv12_available
+gs_p010_available

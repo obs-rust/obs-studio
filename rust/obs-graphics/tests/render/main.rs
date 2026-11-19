@@ -51,6 +51,8 @@ mod matrix_entrypoints;
 mod matrix_entrypoints_parity;
 mod perspective;
 mod perspective_parity;
+mod planar_capability_queries;
+mod planar_capability_queries_parity;
 mod present_entrypoints;
 mod present_entrypoints_parity;
 mod raster_entrypoints;
