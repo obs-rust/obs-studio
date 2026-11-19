@@ -2124,6 +2124,14 @@ struct obs_output_total_frames_fields {
 	const volatile long *frames;
 };
 extern struct obs_output_total_frames_fields obs_output_total_frames_fields(const obs_output_t *output);
+/* Borrowed total-bytes callback slot, delay flags and data; the output must be non-NULL. */
+struct obs_output_total_bytes_fields {
+	uint64_t (*const *get_total_bytes)(void *data);
+	const volatile bool *delay_active;
+	const volatile bool *delay_capturing;
+	void *const *data;
+};
+extern struct obs_output_total_bytes_fields obs_output_total_bytes_fields(const obs_output_t *output);
 /* Borrowed atomic flag address; NULL output produces a NULL field. */
 struct obs_output_reconnecting_fields {
 	const volatile bool *reconnecting;

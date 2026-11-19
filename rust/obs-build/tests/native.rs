@@ -399,6 +399,8 @@ mod canonical_output_protocols_is_registered;
 mod canonical_output_service_getter_is_registered;
 #[path = "native/registration/canonical_output_supported_codecs_is_registered.rs"]
 mod canonical_output_supported_codecs_is_registered;
+#[path = "native/registration/canonical_output_total_bytes_swap_is_registered.rs"]
+mod canonical_output_total_bytes_swap_is_registered;
 #[path = "native/registration/canonical_output_video_getter_swap_is_registered.rs"]
 mod canonical_output_video_getter_swap_is_registered;
 #[path = "native/registration/canonical_pipe_contracts_are_registered.rs"]
