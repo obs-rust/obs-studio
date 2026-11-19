@@ -85,7 +85,8 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "rust.c": "int private_adapter(void); int error_data_add(void); int rust_entry(void) { return error_data_add() + private_adapter(); }\n",
                 "allocator.c": "int bmalloc(void) { return 7; } int error_data_add(void) { return bmalloc(); }\n",
                 "import.c": "int bmalloc(void) { return 100; } int error_data_add(void) { return bmalloc(); }\n",
-                "adapter.c": "int host_value(void); int private_adapter(void) { return host_value(); }\n",
+                "adapter.c": "int host_value(void); int rust_callback(void); int private_adapter(void) { return host_value() + rust_callback(); }\n",
+                "callback.c": "int rust_callback(void) { return 0; }\n",
                 "unused.c": "int unavailable(void); int unused_adapter(void) { return unavailable(); }\n",
                 "host.c": "int host_value(void) { return 10; }\n",
             }
@@ -99,7 +100,7 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "add_library(host SHARED host.c)\n"
                 "add_library(host_owner INTERFACE)\n"
                 'target_link_libraries(host_owner INTERFACE host "$<$<TARGET_EXISTS:Optional::Host>:Optional::Host>")\n'
-                "add_library(libobs_rust-static STATIC rust.c allocator.c)\n"
+                "add_library(libobs_rust-static STATIC rust.c allocator.c callback.c)\n"
                 "add_library(imported_obs SHARED import.c)\n"
                 "add_library(OBS::libobs ALIAS imported_obs)\n"
                 "add_library(support STATIC adapter.c unused.c)\n"
