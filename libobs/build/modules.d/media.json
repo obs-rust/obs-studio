@@ -2,7 +2,10 @@
   "description": "libobs/media-io.",
   "groups": [
     "media",
-    "media-resampler-kernel"
+    "media-image-orientation-fields",
+    "media-resampler-kernel",
+    "media-texture-file-data-convert",
+    "media-texture-file-data-session"
   ],
   "depends": []
 }

@@ -200,12 +200,8 @@ static bool graphics_init(struct graphics_subsystem *graphics)
 	return true;
 }
 
-static volatile long max_texture_size;
-
-uint32_t gs_image_max_texture_size(void)
-{
-	return (uint32_t)os_atomic_load_long(&max_texture_size);
-}
+/* Private atomic image limit; independently linkable without this runtime. */
+extern void gs_image_set_max_texture_size(uint32_t size);
 
 int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 {
@@ -233,7 +229,7 @@ int gs_create(graphics_t **pgraphics, const char *module, uint32_t adapter)
 		goto error;
 	}
 
-	os_atomic_set_long(&max_texture_size, (long)obs_graphics_device_max_texture_size(graphics));
+	gs_image_set_max_texture_size(obs_graphics_device_max_texture_size(graphics));
 
 	*pgraphics = graphics;
 	return errcode;
@@ -270,7 +266,7 @@ void gs_destroy(graphics_t *graphics)
 			graphics->exports.gs_vertexbuffer_destroy(graphics->sprite_buffers[i - 1]);
 		graphics->exports.gs_vertexbuffer_destroy(graphics->immediate_vertbuffer);
 		graphics->exports.device_destroy(graphics->device);
-		os_atomic_set_long(&max_texture_size, 0);
+		gs_image_set_max_texture_size(0);
 
 		thread_graphics = NULL;
 	}

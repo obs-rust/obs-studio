@@ -3,6 +3,7 @@
   "groups": [
     "effect-parser-funcs",
     "graphics",
+    "graphics-image-max-size",
     "graphics-linear-srgb",
     "graphics-stencil-adapter",
     "graphics-texture-creators-fields"
