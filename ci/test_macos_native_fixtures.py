@@ -241,6 +241,27 @@ class FixtureInventoryTest(unittest.TestCase):
             self.assertEqual(results[0].read_bytes(), b"pinned swift compiler")
             self.assertEqual([path.name for path in results[0].parents[4].iterdir()], [digest])
 
+    def test_swift_cache_can_appear_during_the_initial_probe(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / "tools/obs-darwin-swift" / fixtures.SWIFT_SHA256
+            compiler = cache / fixtures.SWIFT_RELEASE / "usr/bin/swiftc"
+            exists = Path.exists
+
+            def published(path):
+                if path == cache:
+                    compiler.parent.mkdir(parents=True)
+                    compiler.write_bytes(b"compiler published by another producer")
+                    return True
+                return exists(path)
+
+            with patch.object(fixtures.platform, "system", return_value="Linux"), \
+                    patch.object(fixtures.platform, "machine", return_value="x86_64"), \
+                    patch.object(Path, "exists", published), \
+                    patch.object(fixtures.urllib.request, "urlretrieve") as download:
+                self.assertEqual(fixtures.swift_compiler(root, {"RUNNER_TOOL_CACHE": str(root / "tools")}), compiler)
+                download.assert_not_called()
+
     def test_swift_tools_provision_dsymutil_without_ambient_host_tool(self):
         import macos_native_fixtures as fixtures
         with tempfile.TemporaryDirectory() as temporary:
