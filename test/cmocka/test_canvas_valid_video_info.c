@@ -84,11 +84,9 @@ static void output_format(void **state)
 	static const struct {
 		enum video_format value;
 		bool expected;
-	} cases[] = {{VIDEO_FORMAT_NONE, false},
-		     {VIDEO_FORMAT_I420, true},
-		     {VIDEO_FORMAT_RGBA, true},
-		     {(enum video_format)-1, true},
-		     {(enum video_format)INT_MAX, true}};
+	} cases[] = {{VIDEO_FORMAT_NONE, false},      {VIDEO_FORMAT_I420, true},
+		     {VIDEO_FORMAT_RGBA, true},       {(enum video_format)INT_MIN, true},
+		     {(enum video_format) - 1, true}, {(enum video_format)INT_MAX, true}};
 	struct obs_canvas canvas = valid_canvas();
 	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
 		/* Out-of-enum formats pass today: characterized, not endorsed. */
@@ -113,8 +111,8 @@ static void conjunction(void **state)
 
 int main(void)
 {
-	const struct CMUnitTest tests[] = {cmocka_unit_test(base_width), cmocka_unit_test(base_height),
-					 cmocka_unit_test(output_width), cmocka_unit_test(output_height),
-					 cmocka_unit_test(output_format), cmocka_unit_test(conjunction)};
+	const struct CMUnitTest tests[] = {cmocka_unit_test(base_width),    cmocka_unit_test(base_height),
+					   cmocka_unit_test(output_width),  cmocka_unit_test(output_height),
+					   cmocka_unit_test(output_format), cmocka_unit_test(conjunction)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
