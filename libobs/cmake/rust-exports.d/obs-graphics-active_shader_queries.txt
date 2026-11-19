@@ -1,0 +1,2 @@
+gs_get_vertex_shader
+gs_get_pixel_shader

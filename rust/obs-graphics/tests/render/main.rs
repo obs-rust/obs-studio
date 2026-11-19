@@ -1,5 +1,7 @@
 //! obs-graphics integration tests: rendering helpers over the graphics subsystem.
 
+mod active_shader_queries;
+mod active_shader_queries_parity;
 mod blend_entrypoints;
 mod blend_entrypoints_parity;
 mod cubetexture_access;
@@ -8,7 +10,6 @@ mod depth_dispatch;
 mod depth_dispatch_parity;
 mod device_load;
 mod device_load_parity;
-mod active_shader_queries;
 mod device_queries;
 mod device_queries_parity;
 mod gif;

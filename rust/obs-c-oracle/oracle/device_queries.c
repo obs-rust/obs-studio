@@ -42,6 +42,14 @@ bool oracle_gs_p010_available(void);
 #undef gs_p010_available
 #undef gs_nv12_available
 
+#define gs_get_vertex_shader oracle_gs_get_vertex_shader
+#define gs_get_pixel_shader oracle_gs_get_pixel_shader
+gs_shader_t *oracle_gs_get_vertex_shader(void);
+gs_shader_t *oracle_gs_get_pixel_shader(void);
+#include "graphics-active-shader-queries.inc"
+#undef gs_get_pixel_shader
+#undef gs_get_vertex_shader
+
 /* Original graphics.c.h context validator, verbatim. */
 static inline bool gs_valid(const char *f)
 {
@@ -172,4 +180,80 @@ unsigned oracle_planar_capability_last_device(void);
 unsigned oracle_planar_capability_last_device(void)
 {
 	return dq_planar_last_device;
+}
+
+/* Active shader callbacks use the export table's const gs_device_t signature. */
+static THREAD_LOCAL int dq_shader_devices[2], dq_shader_tokens[2];
+static THREAD_LOCAL gs_shader_t *dq_shader_results[2];
+static THREAD_LOCAL unsigned dq_shader_calls[2], dq_shader_last_device;
+
+static gs_shader_t *dq_vertex_shader(const gs_device_t *device)
+{
+	assert(thread_graphics == &dq_graphics);
+	assert(dq_graphics.ref == 1);
+	assert(device == dq_graphics.device);
+	assert(device == (gs_device_t *)&dq_shader_devices[0] || device == (gs_device_t *)&dq_shader_devices[1]);
+	dq_shader_last_device = device == (gs_device_t *)&dq_shader_devices[1] ? 1u : 0u;
+	dq_shader_calls[0]++;
+	return dq_shader_results[0];
+}
+
+static gs_shader_t *dq_pixel_shader(const gs_device_t *device)
+{
+	assert(thread_graphics == &dq_graphics);
+	assert(dq_graphics.ref == 1);
+	assert(device == dq_graphics.device);
+	assert(device == (gs_device_t *)&dq_shader_devices[0] || device == (gs_device_t *)&dq_shader_devices[1]);
+	dq_shader_last_device = device == (gs_device_t *)&dq_shader_devices[1] ? 1u : 0u;
+	dq_shader_calls[1]++;
+	return dq_shader_results[1];
+}
+
+gs_shader_t *oracle_active_shader_token(unsigned token);
+gs_shader_t *oracle_active_shader_token(unsigned token)
+{
+	assert(token <= 2);
+	return token ? (gs_shader_t *)&dq_shader_tokens[token - 1] : NULL;
+}
+
+void oracle_active_shader_context(bool context);
+void oracle_active_shader_context(bool context)
+{
+	thread_graphics = context ? &dq_graphics : NULL;
+	dq_graphics.ref = context ? 1 : 0;
+}
+
+void oracle_active_shader_reset(bool vertex, bool pixel, unsigned vertex_result, unsigned pixel_result, bool device);
+void oracle_active_shader_reset(bool vertex, bool pixel, unsigned vertex_result, unsigned pixel_result, bool device)
+{
+	oracle_device_queries_reset(false, false, false, 0, 0);
+	dq_graphics.device = (gs_device_t *)&dq_shader_devices[device ? 1 : 0];
+	dq_graphics.exports.device_get_vertex_shader = vertex ? dq_vertex_shader : NULL;
+	dq_graphics.exports.device_get_pixel_shader = pixel ? dq_pixel_shader : NULL;
+	dq_shader_tokens[0] = 17;
+	dq_shader_tokens[1] = 29;
+	dq_shader_results[0] = oracle_active_shader_token(vertex_result);
+	dq_shader_results[1] = oracle_active_shader_token(pixel_result);
+	dq_shader_calls[0] = dq_shader_calls[1] = 0;
+	dq_shader_last_device = 2;
+}
+
+unsigned oracle_active_shader_calls(bool pixel);
+unsigned oracle_active_shader_calls(bool pixel)
+{
+	return dq_shader_calls[pixel ? 1 : 0];
+}
+
+unsigned oracle_active_shader_last_device(void);
+unsigned oracle_active_shader_last_device(void)
+{
+	return dq_shader_last_device;
+}
+
+int oracle_active_shader_ref(void);
+int oracle_active_shader_ref(void)
+{
+	assert(dq_shader_tokens[0] == 17 && dq_shader_tokens[1] == 29);
+	assert(dq_graphics.ref == 0 || dq_graphics.ref == 1);
+	return dq_graphics.ref == 1 ? 1 : 0;
 }

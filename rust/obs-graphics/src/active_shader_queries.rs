@@ -24,6 +24,10 @@ pub trait Host {
     fn dispatch(&mut self, entry: Entry) -> Self::Shader;
 }
 
-pub fn shader<H: Host>(_host: &mut H, _entry: Entry) -> H::Shader {
-    todo!("active shader queries")
+pub fn shader<H: Host>(host: &mut H, entry: Entry) -> H::Shader {
+    if !host.has_context() {
+        host.debug(entry);
+        return H::Shader::default();
+    }
+    host.dispatch(entry)
 }

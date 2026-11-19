@@ -21,7 +21,8 @@ impl Fake {
             self.device = device;
             self.reference_count = 1;
         } else {
-            self.logs.push("gs_enter_context: Null 'graphics' parameter".into());
+            self.logs
+                .push("gs_enter_context: Null 'graphics' parameter".into());
         }
     }
 
@@ -37,11 +38,17 @@ impl Host for Fake {
         self.context
     }
     fn debug(&mut self, entry: Entry) {
-        self.logs.push(format!("{}: called while not in a graphics context", entry.name()));
+        self.logs.push(format!(
+            "{}: called while not in a graphics context",
+            entry.name()
+        ));
     }
     fn dispatch(&mut self, entry: Entry) -> Self::Shader {
         assert!(self.context, "NULL checked before any projection");
-        let index = match entry { Entry::Vertex => 0, Entry::Pixel => 1 };
+        let index = match entry {
+            Entry::Vertex => 0,
+            Entry::Pixel => 1,
+        };
         assert!(self.callbacks[index], "mandatory callback");
         self.calls[index] += 1;
         self.devices.push(self.device);
@@ -51,17 +58,26 @@ impl Host for Fake {
 
 #[test]
 fn test_graphics_active_shader_queries_no_context() {
-    let mut host = Fake { callbacks: [true; 2], ..Fake::default() };
+    let mut host = Fake {
+        callbacks: [true; 2],
+        ..Fake::default()
+    };
     host.enter(None);
     assert_eq!(host.logs[0], "gs_enter_context: Null 'graphics' parameter");
     assert_eq!(host.logs.len(), 1);
     assert!(!host.has_context());
     for i in 0..2 {
         assert_eq!(shader(&mut host, Entry::Vertex), None);
-        assert_eq!(host.logs.last().unwrap(), "gs_get_vertex_shader: called while not in a graphics context");
+        assert_eq!(
+            host.logs.last().unwrap(),
+            "gs_get_vertex_shader: called while not in a graphics context"
+        );
         assert_eq!(host.logs.len(), 2 * i + 2);
         assert_eq!(shader(&mut host, Entry::Pixel), None);
-        assert_eq!(host.logs.last().unwrap(), "gs_get_pixel_shader: called while not in a graphics context");
+        assert_eq!(
+            host.logs.last().unwrap(),
+            "gs_get_pixel_shader: called while not in a graphics context"
+        );
         assert_eq!(host.logs.len(), 2 * i + 3);
         assert_eq!(host.calls, [0; 2]);
         assert!(host.devices.is_empty());
@@ -71,11 +87,18 @@ fn test_graphics_active_shader_queries_no_context() {
 
 #[test]
 fn test_graphics_active_shader_queries_callback_results_and_device_routing() {
-    let mut host = Fake { callbacks: [true; 2], tokens: [17, 29], ..Fake::default() };
+    let mut host = Fake {
+        callbacks: [true; 2],
+        tokens: [17, 29],
+        ..Fake::default()
+    };
     for device in 0..2 {
         host.enter(Some(device));
         for results in 0..4 {
-            host.results = [(results & 1 != 0).then_some(device), (results & 2 != 0).then_some(1 - device)];
+            host.results = [
+                (results & 1 != 0).then_some(device),
+                (results & 2 != 0).then_some(1 - device),
+            ];
             let calls = device * 4 + results;
             assert_eq!(shader(&mut host, Entry::Vertex), host.results[0]);
             assert_eq!(host.calls, [calls + 1, calls]);
@@ -93,15 +116,25 @@ fn test_graphics_active_shader_queries_callback_results_and_device_routing() {
 
 #[test]
 fn test_graphics_active_shader_queries_leaving_context_rejects_then_reentry_dispatches() {
-    let mut host = Fake { callbacks: [true; 2], results: [Some(0), Some(1)], ..Fake::default() };
+    let mut host = Fake {
+        callbacks: [true; 2],
+        results: [Some(0), Some(1)],
+        ..Fake::default()
+    };
     host.enter(Some(0));
     assert_eq!(shader(&mut host, Entry::Pixel), Some(1));
     assert_eq!(shader(&mut host, Entry::Vertex), Some(0));
     host.leave();
     assert_eq!(shader(&mut host, Entry::Vertex), None);
-    assert_eq!(host.logs.last().unwrap(), "gs_get_vertex_shader: called while not in a graphics context");
+    assert_eq!(
+        host.logs.last().unwrap(),
+        "gs_get_vertex_shader: called while not in a graphics context"
+    );
     assert_eq!(shader(&mut host, Entry::Pixel), None);
-    assert_eq!(host.logs.last().unwrap(), "gs_get_pixel_shader: called while not in a graphics context");
+    assert_eq!(
+        host.logs.last().unwrap(),
+        "gs_get_pixel_shader: called while not in a graphics context"
+    );
     assert_eq!(host.logs.len(), 2);
     assert_eq!(host.calls, [1; 2]);
     host.enter(Some(0));
