@@ -303,7 +303,7 @@ esac
     def test_package_index_is_fetched_once_per_fresh_container(self):
         for name in ("rust-linux-tier2-build", "rust-linux-tier2"):
             j = job(name)
-            updates = re.findall(r"^\s+(?:sudo )?apt-get update[^\n]*", j, re.M)
+            updates = re.findall(r"^\s+(?:timeout --kill-after=10s \d+ )?(?:sudo )?apt-get update[^\n]*", j, re.M)
             if name.endswith("-build"):
                 self.assertEqual(len(updates), 1, name)
                 self.assertLess(j.index(updates[0].strip()), j.index("actions/checkout@"), name)

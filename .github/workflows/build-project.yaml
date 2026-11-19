@@ -2684,10 +2684,14 @@ jobs:
       # -updates and -security, so the index fetch skips backports,
       # restricted and multiverse (17 -> 9 downloads, ~8% fewer bytes).
       - name: Install Git 📦
+        timeout-minutes: 10
         run: |
+          # Bound mirror stalls in this bootstrap and subsequent package installs.
+          printf '%s\n' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' \
+            'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99-ci-acquire-bounds
           # No index refresh/upgrade: the content-addressed image freezes versions.
           if [ "$TIER2_PREBAKED" = true ]; then
-            apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata
+            timeout --kill-after=10s 180 apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata
             exit 0
           fi
           src=/etc/apt/sources.list.d/ubuntu.sources
@@ -2698,8 +2702,8 @@ jobs:
           # A stale index 404s a just-superseded .deb and an archive host can
           # refuse a connection (run 42755735949): refetch the index and retry.
           for attempt in 1 2 3; do
-            apt-get update -qq &&
-              apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata && break
+            timeout --kill-after=10s 180 apt-get update -qq &&
+              timeout --kill-after=10s 180 apt-get install -y --no-install-recommends --fix-missing git ca-certificates curl sudo zstd eatmydata && break
             [ "$attempt" = 3 ] && exit 1
             echo "apt attempt $attempt failed; retrying in $((attempt * 10)) s"; sleep $((attempt * 10))
           done
@@ -2780,6 +2784,7 @@ jobs:
 
       # The package list is shared with the local Docker harness (run.sh).
       - name: Install Tier 2 Packages 📦
+        timeout-minutes: 10
         env:
           TIER2_APT_SHARED: ${{ steps.pcache.outputs.apt != '' }}
         run: |
@@ -2791,7 +2796,7 @@ jobs:
             grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
               xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" \
                 flock -w 1800 "$TIER2_APT_ARCHIVES/.tier2-install.lock" \
-                sudo apt-get install --download-only -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
+                timeout --kill-after=10s 300 sudo apt-get install --download-only -o "Dir::Cache::archives=$TIER2_APT_ARCHIVES" -y --no-install-recommends
             # apt also writes archives/lock and partial/ during installation.
             # Copy only completed .debs to a private cache; reflink when possible,
             # copy across mounts otherwise. Never share writable package inodes.
@@ -2811,8 +2816,8 @@ jobs:
           grep -v '^#' rust/tools/linux-validate/apt-packages.txt |
             xargs "${GITHUB_WORKSPACE}/.github/scripts/retry" bash -ec '
                 sudo eatmydata dpkg --configure -a || true
-                sudo eatmydata apt-get -f install -y -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES"
-                sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES" -y --no-install-recommends "$@"
+                timeout --kill-after=10s 300 sudo eatmydata apt-get -f install -y -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES"
+                timeout --kill-after=10s 300 sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES" -y --no-install-recommends "$@"
               ' tier2-apt
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
       - name: Save apt Downloads 💾
