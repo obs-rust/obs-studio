@@ -43,6 +43,17 @@ fn rust_static_precedes_import_providers_and_their_host_closure() {
             .unwrap(),
         ["obs.lib", "consumer.a", "host.so", "rust.lib"].map(std::path::PathBuf::from)
     );
+    let mut standalone = dependencies.clone();
+    standalone
+        .get_mut("libobs_rust-static")
+        .unwrap()
+        .rust_static_support = true;
+    assert_eq!(
+        graph.targets["fixture"]
+            .dependency_artifacts(&[("MSVC".into(), true)].into(), &standalone)
+            .unwrap(),
+        ["rust.lib", "consumer.a", "host.so"].map(std::path::PathBuf::from)
+    );
 }
 
 #[test]

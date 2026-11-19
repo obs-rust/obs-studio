@@ -84,7 +84,7 @@ class RustStaticLinkSupport(unittest.TestCase):
             source = Path(directory)
             files = {
                 "main.c": "int rust_entry(void); int bmalloc(void); int main(void) { return rust_entry() != "
-                + ("17 || bmalloc() != 7" if msvc or rust_first else "110 || bmalloc() != 100") + "; }\n",
+                + ("18 || bmalloc() != 7" if msvc else "17 || bmalloc() != 7" if rust_first else "110 || bmalloc() != 100") + "; }\n",
                 "rust.c": "int private_adapter(void); int error_data_add(void); int rust_entry(void) { return error_data_add() + private_adapter(); }\n",
                 "allocator.c": "int bmalloc(void) { return 7; } int error_data_add(void) { return bmalloc(); }\n",
                 "import.c": "int bmalloc(void) { return 100; } int error_data_add(void) { return bmalloc(); }\n",
@@ -95,6 +95,8 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "leaf.c": "int rust_leaf(void) { return 0; }\n",
                 "unused.c": "int unavailable(void); int unused_adapter(void) { return unavailable(); }\n",
                 "host.c": "int host_value(void) { return 10; }\n",
+                "eager-link-support.c": "int unavailable(void); int unused_eager_adapter(void) { return unavailable(); }\n",
+                "fixture-link-support.c": "int host_value(void); int private_adapter(void) { return host_value() + 1; }\n",
             }
             for name, content in files.items():
                 (source / name).write_text(content)
@@ -114,18 +116,22 @@ class RustStaticLinkSupport(unittest.TestCase):
                 +
                 "add_library(indirect INTERFACE)\n"
                 "target_link_libraries(indirect INTERFACE libobs_rust-static)\n"
-                "foreach(name IN ITEMS direct indirect_consumer conditional_consumer)\n"
+                "foreach(name IN ITEMS direct direct_copy indirect_consumer conditional_consumer)\n"
                 "  add_executable(${name} main.c)\n"
+                + ("  target_sources(${name} PRIVATE eager-link-support.c fixture-link-support.c)\n" if msvc else "")
                 + ("  target_link_libraries(${name} PRIVATE libobs_rust-static OBS::libobs)\n" if rust_first else
                    "  target_link_libraries(${name} PRIVATE OBS::libobs)\n") +
                 "endforeach()\n"
                 "target_link_libraries(direct PRIVATE libobs_rust-static)\n"
+                "target_link_libraries(direct_copy PRIVATE libobs_rust-static)\n"
                 "target_link_libraries(indirect_consumer PRIVATE indirect)\n"
                 'target_link_libraries(conditional_consumer PRIVATE "$<$<BOOL:ON>:indirect>")\n'
                 "file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/reference.c \"int main(void) { return 0; }\\n\")\n"
                 "add_executable(reference ${CMAKE_CURRENT_BINARY_DIR}/reference.c)\n"
                 'target_link_libraries(reference PRIVATE "$<$<BOOL:OFF>:libobs_rust-static>")\n'
                 f'include("{HELPER.as_posix()}" OPTIONAL)\n'
+                f'include("{(ROOT / "test/cmocka/shared-link-support.cmake").as_posix()}")\n'
+                'cmake_language(DEFER CALL obs_share_test_link_support)\n'
                 "if(COMMAND obs_rust_static_consumers)\n"
                 "  obs_rust_static_consumers(support host_owner)\n"
                 "else()\n"
@@ -135,7 +141,7 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "endif()\n"
                 'file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/reference-links.txt" CONTENT "$<TARGET_GENEX_EVAL:reference,$<TARGET_PROPERTY:reference,LINK_LIBRARIES>>")\n'
                 'if(MSVC)\n'
-                'foreach(name IN ITEMS direct indirect_consumer conditional_consumer)\n'
+                'foreach(name IN ITEMS direct direct_copy indirect_consumer conditional_consumer)\n'
                 '  file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${name}-links.txt" CONTENT "$<TARGET_GENEX_EVAL:${name},$<TARGET_PROPERTY:${name},LINK_LIBRARIES>>")\n'
                 'endforeach()\n'
                 'endif()\n'
@@ -145,13 +151,13 @@ class RustStaticLinkSupport(unittest.TestCase):
             reference_links = (build / "reference-links.txt").read_text()
             self.assertNotIn("libobs_rust-static", reference_links)
             self.assertNotIn("support", reference_links)
-            targets = ("direct",) if baseline_host else ("direct", "indirect_consumer", "conditional_consumer")
+            targets = ("direct",) if baseline_host else ("direct", "direct_copy", "indirect_consumer", "conditional_consumer")
             self.run_command(["cmake", "--build", str(build), "--parallel", "2", "--target", *targets])
             for name in targets:
                 self.run_command([str(build / name)])
                 if msvc:
                     links = (build / f"{name}-links.txt").read_text().split(";")
-                    self.assertEqual(links[:2], ["libobs_rust-static", "support"])
+                    self.assertEqual(links[:3], ["libobs_rust-static", f"{name}-rust-static-support", "support"])
                     self.assertNotIn("OBS::libobs", links,
                                      "standalone MSVC Rust must not mix its objects with the full OBS import provider")
 
