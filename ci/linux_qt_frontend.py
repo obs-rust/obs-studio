@@ -81,12 +81,49 @@ def qt_fragments() -> list[str]:
     )
 
 
+# Qt fragments that may have no target, with the reason. Any other fragment
+# without a target fails the job: a missing Qt module hid these 8 tests while
+# the job passed (#4837). A listed fragment that builds fails the job too, so
+# the list cannot go stale.
+QTTEST_MISSING = "#4837: the pinned Qt asset has no QtTest"
+KNOWN_SKIPS = {
+    "test_camera_busy_dialog": QTTEST_MISSING,
+    "test_dock_proportions": QTTEST_MISSING,
+    "test_dock_state_restart": QTTEST_MISSING,
+    "test_fallback_warning_dialog": QTTEST_MISSING,
+    "test_fallback_warning_queue": QTTEST_MISSING,
+    "test_hotkey_edit_backtab": QTTEST_MISSING,
+    "test_properties_dialog_refresh": QTTEST_MISSING,
+    "test_properties_undo_coalesce": QTTEST_MISSING,
+}
+
+
 def existing(tests: list[str], targets: set[str]) -> tuple[list[str], list[str]]:
     """(built, skipped): a fragment can skip its target when a Qt module is
     missing from the prebuilt archive (Qt6::Test is: test_hotkey_capture_mnemonic
     is not built, #992)."""
     built = [test for test in tests if test in targets]
     return built, [test for test in tests if test not in targets]
+
+
+def skip_errors(built: list[str], skipped: list[str]) -> list[str]:
+    """Unlisted skips and listed tests that build (#4837)."""
+    errors = [f"{test}: no target (missing Qt module?), not in KNOWN_SKIPS" for test in skipped
+              if test not in KNOWN_SKIPS]
+    errors += [f"{test}: builds now, remove it from KNOWN_SKIPS" for test in built if test in KNOWN_SKIPS]
+    return errors
+
+
+def report_skips(built: list[str], skipped: list[str]) -> None:
+    """Print the known skips; exit 1 on an unlisted skip or a stale entry."""
+    for test in skipped:
+        if test in KNOWN_SKIPS:
+            print(f"== skipped (known: {KNOWN_SKIPS[test]}): {test}")
+    errors = skip_errors(built, skipped)
+    for error in errors:
+        print(error, file=sys.stderr)
+    if errors:
+        sys.exit(1)
 
 
 def ctest_regex(tests: list[str]) -> str:
@@ -145,8 +182,7 @@ def run(qt: Path, ff: Path, build: Path) -> None:
     targets = checked(["ninja", "-C", str(build), "-t", "targets", "all"]).stdout.splitlines()
     have = {next(group for group in match.groups() if group) for match in map(TARGET.match, targets) if match}
     built, skipped = existing(qt_fragments(), have)
-    for test in skipped:
-        print(f"== skipped (no target, missing Qt module?): {test}")
+    report_skips(built, skipped)
     print(f"== Qt-linked tests: {' '.join(built)}")
 
     start = time.monotonic()
