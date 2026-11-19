@@ -314,6 +314,8 @@ that also link shared libobs or inherit Rust through an interface target.
 `test/cmocka/build/rust-static-support.json` owns the real private adapter members
 for both CMake and Cargo-native fixtures. Linux resolves Rust and support as a
 rescan group so newly selected members can call back in either direction.
+Fixture-owned adapters keep their compile definitions and take precedence over
+the shared fallback members.
 Add new shared adapters there as separate
 lazy archive members; fixture-owned definitions retain precedence. CMake inherits
 the native owner (`libobs-objects`) link interface rather than maintaining host

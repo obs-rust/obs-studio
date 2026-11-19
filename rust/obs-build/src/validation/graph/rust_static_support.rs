@@ -115,9 +115,7 @@ pub(super) fn select(
     target
         .link_options
         .push(support.caption.to_string_lossy().into_owned());
-    // Legacy registrations may still name these eager wrappers. The manifest
-    // now owns their real implementations lazily.
-    let shared_sources = sources(root)?;
-    target.sources.retain(|path| !shared_sources.contains(path));
+    // Fixture-owned providers retain their compile definitions and precedence.
+    // The archive supplies only members those providers do not define.
     Ok(())
 }
