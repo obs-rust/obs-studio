@@ -10,7 +10,13 @@ function(_texture_file_data_link_support)
   target_include_directories(texture_file_data_link_support PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs")
   target_link_libraries(
     texture_file_data_link_support
-    PRIVATE OBS::libobs FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil FFmpeg::swscale
+    PRIVATE
+      OBS::libobs
+      FFmpeg::avcodec
+      FFmpeg::avformat
+      FFmpeg::avutil
+      FFmpeg::swscale
+      "$<$<PLATFORM_ID:Windows>:winmm>"
   )
   get_directory_property(_targets BUILDSYSTEM_TARGETS)
   foreach(_target IN LISTS _targets)
