@@ -49,6 +49,7 @@ pub mod bounds;
 pub mod cubetexture_access;
 pub mod depth_dispatch;
 pub mod device_load;
+pub mod active_shader_queries;
 pub mod device_queries;
 pub mod effect_destroy;
 pub mod effect_file;
