@@ -2867,9 +2867,8 @@ jobs:
         if: steps.pcache.outputs.apt == '' && needs.check-event.outputs.tier2_prebaked != 'true'
         with:
           mode: restore
-          path: ${{ runner.temp }}/apt-archives
-          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
-          restore-keys: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
+          path: ../../_temp/apt-archives/*.deb
+          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
       # The package list is shared with the local Docker harness (run.sh).
       - name: Install Tier 2 Packages 📦
@@ -2909,13 +2908,16 @@ jobs:
                 timeout --kill-after=10s 300 sudo eatmydata apt-get install -o "Dir::Cache::archives=$TIER2_INSTALL_ARCHIVES" -y --no-install-recommends "$@"
               ' tier2-apt
       # One saver, master only: per-PR entries overflowed the 10 GB cache.
+      # Actions versions caches by literal path, not just their visible key.
+      # With the default checkout path, ../../_temp is runner.temp on both
+      # host and container runners. Keep apt's root-owned scratch outside git.
       - name: Save apt Downloads 💾
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.apt-cache.outputs.cache-hit != 'true' && steps.pcache.outputs.apt == '' && needs.check-event.outputs.tier2_prebaked != 'true'
         uses: ./.github/actions/cache
         with:
           mode: save
-          path: ${{ runner.temp }}/apt-archives
-          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
+          path: ../../_temp/apt-archives/*.deb
+          key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
       # PRs restore the compiler cache; only master pushes save it (a cache
       # saved from a PR ref is unreachable by other PRs).
@@ -3147,8 +3149,9 @@ jobs:
           version: '0.13.5'
           enable-cache: false
 
-      # Restore the existing apt family for a stock fallback; tests never save it.
-      # Keep host archives per job: self-hosted runners share a Docker daemon.
+      # Match the master build's exact key AND literal relative path: absolute
+      # runner.temp paths change Actions' hidden version across runners. Only
+      # completed .debs travel; tests never save and keep apt locks job-local.
       - name: Prepare apt Archive Directory
         run: |
           command -v zstd
@@ -3160,7 +3163,7 @@ jobs:
         if: needs.check-event.outputs.tier2_prebaked != 'true'
         with:
           mode: restore
-          path: ${{ runner.temp }}/apt-archives
+          path: ../../_temp/apt-archives/*.deb
           key: tier2-apt-ubuntu2604-f144425f-${{ hashFiles('rust/tools/linux-validate/apt-packages.txt') }}
 
       # On the Dell the build job left the pack in the host's handoff dir
