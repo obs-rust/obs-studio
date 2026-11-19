@@ -206,6 +206,18 @@ static size_t count_types(const struct catalog *catalog)
 	return count;
 }
 
+static void expect_source_pointer(const char *expected, const char *borrowed)
+{
+	const char *id;
+	for (size_t index = 0; obs_enum_source_types(index, &id); index++) {
+		if (strcmp(id, expected) == 0) {
+			assert_ptr_equal(id, borrowed);
+			return;
+		}
+	}
+	assert_true(false);
+}
+
 static int setup(void **state)
 {
 	(void)state;
@@ -249,6 +261,12 @@ static void populated_catalogs(void **state)
 			assert_true(catalogs[c].enumerate(base[c] + entry, &id));
 			assert_ptr_equal(id, borrowed[c][entry]);
 			assert_string_equal(id, catalogs[c].ids[entry]);
+			/* Sources own a versioned ID copy shared by both source
+			 * catalogs; the other registries borrow the caller's ID. */
+			if (c < 3)
+				expect_source_pointer(catalogs[c].ids[entry], id);
+			else
+				assert_ptr_equal(id, catalogs[c].ids[entry]);
 		}
 		expect_end(&catalogs[c], base[c] + 2);
 		expect_end(&catalogs[c], base[c] + 3);
