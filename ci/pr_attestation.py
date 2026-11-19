@@ -181,13 +181,14 @@ class Git:
         return self.run("show", f"{rev}:{path}")
 
     def commit(self, rev):
-        sha = self.run("rev-parse", "--verify", f"{rev}^{{commit}}").strip()
-        return Commit(
-            sha,
-            self.run("rev-parse", f"{sha}^{{tree}}").strip(),
-            tuple(self.run("log", "-1", "--format=%P", sha).split()),
-            self.run("log", "-1", "--format=%B", sha),
-        )
+        fields = self.run(
+            "show", "--no-patch", "--format=%H%x00%T%x00%P%x00%B", f"{rev}^{{commit}}", "--"
+        ).split("\0", 3)
+        if len(fields) != 4:
+            raise GitError("commit lookup returned malformed metadata")
+        sha, tree, parents, message = fields
+        return Commit(sha, tree, tuple(parents.split()), message)
+
 
 
 def prooft_api(request):
