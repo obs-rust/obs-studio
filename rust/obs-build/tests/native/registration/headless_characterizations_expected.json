@@ -58,8 +58,10 @@
                 "hotkey_identity_setters": [
                     "libobs/obs-hotkey-identity-setters.c.h"
                 ],
+                "hotkey_inject_entry": [
+                    "libobs/obs-hotkey-inject-entry.c.h"
+                ],
                 "hotkey_registration": [
-                    "libobs/obs-hotkey-inject-entry.c.h",
                     "libobs/obs-hotkey-register.c.h",
                     "libobs/obs-hotkey.c.h"
                 ],
