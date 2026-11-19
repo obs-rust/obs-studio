@@ -1,6 +1,9 @@
 # Link the real field/lock adapters for the unchanged injection recorder.
 function(_hotkey_inject_entry_link_support)
-  if(TARGET libobs_rust-static AND TARGET test_hotkey_inject_entry)
+  if(TARGET libobs_rust-static)
+    if(NOT TARGET test_hotkey_inject_entry)
+      return()
+    endif()
     get_target_property(_links test_hotkey_inject_entry LINK_LIBRARIES)
     get_target_property(_sources test_hotkey_inject_entry SOURCES)
     get_target_property(_graph_sources test_hotkey_inject_entry OBS_NATIVE_TEST_GRAPH_SOURCES)
