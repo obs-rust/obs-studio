@@ -104,6 +104,12 @@ def target_setting(env: dict, name: str, value: str) -> None:
         env[f"{name}_{triple}"] = value
 
 
+def verify_dsymutil(tool: Path) -> None:
+    with tool.open("rb") as stream:
+        if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
+            raise ValueError("dsymutil checksum mismatch")
+
+
 def provision_dsymutil(root: Path, env: dict) -> Path:
     """Use the same checksummed LLVM-tools payload soldr provisions on Linux."""
     if platform.system() != "Linux" or platform.machine() != "x86_64":
@@ -123,9 +129,7 @@ def provision_dsymutil(root: Path, env: dict) -> Path:
         candidates.insert(0, tool)
     for candidate in candidates:
         if candidate.is_file():
-            with candidate.open("rb") as stream:
-                if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
-                    raise ValueError("managed dsymutil checksum mismatch")
+            verify_dsymutil(candidate)
             print(f"Darwin dsymutil: verified cache hit in {time.monotonic() - started:.2f}s: {candidate}", flush=True)
             return candidate
     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -150,17 +154,13 @@ def provision_dsymutil(root: Path, env: dict) -> Path:
             if not member.isfile():
                 raise ValueError("LLVM-tools dsymutil is not a regular file")
             tar.extract(member, install, filter="data")
-        with (install / relative).open("rb") as stream:
-            if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
-                raise ValueError("extracted dsymutil checksum mismatch")
+        verify_dsymutil(install / relative)
         try:
             install.rename(cache)
         except OSError as error:
             if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
                 raise
-    with tool.open("rb") as stream:
-        if hashlib.file_digest(stream, "sha256").hexdigest() != DSYMUTIL_SHA256:
-            raise ValueError("managed dsymutil checksum mismatch")
+    verify_dsymutil(tool)
     print(f"Darwin dsymutil: installation complete in {time.monotonic() - started:.2f}s", flush=True)
     return tool
 
