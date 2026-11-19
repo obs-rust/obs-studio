@@ -282,7 +282,7 @@ manifest-only custom-command result. Ninja uses the process CPU budget, capped a
 four workers. Each alias uses a fresh 512M ccache from the checksum-pinned
 `ci/tier2_front_cache.py` installer to share identical support-file compiles
 within that pass. No cache is uploaded, no relaxed policy is inherited, and
-links always run. The matrix disables fail-fast so one failing alias cannot
+the cache never stores link results. The matrix disables fail-fast so one failing alias cannot
 cancel the other. Both aliases are independently required by `ci/gate_jobs.py`,
 including attested PRs; CI Gate waits for the entire reusable build workflow.
 The jobs retain the 30-minute deadline and existing Linux heavy-pool routing.

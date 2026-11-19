@@ -51,11 +51,11 @@ class LinkArgsTest(unittest.TestCase):
     def test_categories_do_not_serialize_cmocka_passes(self):
         with mock.patch.object(windows_link_check.local_gate, "add_target"), \
              mock.patch.object(windows_link_check.local_gate, "soldr_cargo") as cargo, \
-             mock.patch("cmocka_link_check.link"), \
+             mock.patch("cmocka_link_check.link") as link, \
              mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "true"}):
             self.assertEqual(windows_link_check.main(), 0)
         cargo.assert_called_once_with(windows_link_check.link_args())
-        self.assertNotIn("cmocka_link_check", Path(windows_link_check.__file__).read_text())
+        link.assert_not_called()
 
     def test_link_failure_propagates(self):
         import subprocess
