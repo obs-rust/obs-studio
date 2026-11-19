@@ -62,7 +62,7 @@ static int teardown(void **state)
 static void availability_is_false_without_startup(void **state)
 {
 	(void)state;
-	assert_true(obs_audio_monitoring_available()); /* deliberately wrong RED expectation */
+	assert_false(obs_audio_monitoring_available());
 	assert_false(null_c_available());
 }
 
