@@ -5237,6 +5237,9 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
       ]
     },
     "test_graphics_render_target_setters": {
