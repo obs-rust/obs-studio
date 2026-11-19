@@ -4130,7 +4130,8 @@
         "test/cmocka/encoder-video-tex-active-fields-link-support.c"
       ],
       "definitions": [
-        "get_mix_for_video=tex_active_recording_mix_lookup"
+        "get_mix_for_video=tex_active_recording_mix_lookup",
+        "obs_encoder_video_tex_active=obs_encoder_video_tex_active_rust"
       ],
       "libraries": [
         "libobs_rust-static",

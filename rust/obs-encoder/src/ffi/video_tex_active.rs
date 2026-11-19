@@ -17,6 +17,20 @@ pub unsafe extern "C" fn obs_encoder_video_tex_active(
     encoder: *const c_void,
     format: c_int,
 ) -> bool {
+    // SAFETY: the private entry has the same ownership contract as this API.
+    unsafe { obs_encoder_video_tex_active_rust(encoder, format) }
+}
+
+/// Private static-link entry: shared libobs must never satisfy a fixture's
+/// Rust query before its archive member is selected (notably with frameworks).
+///
+/// # Safety
+/// Identical live-encoder/core/mix contract to obs_encoder_video_tex_active.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_encoder_video_tex_active_rust(
+    encoder: *const c_void,
+    format: c_int,
+) -> bool {
     // Reject an invalid owner before the C adapter can project encoder->media.
     let encoder = NonNull::new(encoder.cast_mut()).expect("the C API requires a live encoder");
     crate::video_tex_active::video_tex_active(
