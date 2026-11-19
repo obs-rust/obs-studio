@@ -98,7 +98,11 @@ def compile_args(args: list[str]) -> list[str]:
         if arg in ("-o", "-MF", "-MT", "-MQ"):
             skip = True
             continue
-        if arg in ("-c", "-MD", "-MMD") or arg.startswith(("-o", "/Fo", "/Fd", "-MF")):
+        # GCC's ccache integration adds this preprocessing-output flag. It
+        # does not change objects, but lets -M load a built PCH and omit its
+        # headers: restore (before the PCH exists) and store then disagree.
+        # Always scan the textual header closure, including when a PCH exists.
+        if arg in ("-c", "-MD", "-MMD", "-fpch-preprocess") or arg.startswith(("-o", "/Fo", "/Fd", "-MF")):
             continue
         out.append(arg)
     return out
