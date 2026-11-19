@@ -272,48 +272,6 @@
       }
     ]
   },
-  "test_scene_audio_window_steps_rust": {
-    "sources": [
-      "test/cmocka/video-info-query-link-support.c",
-      "test/cmocka/core-state-link-support.c"
-    ],
-    "includes": [
-      "."
-    ],
-    "header_libraries": [
-      "OBS::libobs",
-      "SIMDe::SIMDe"
-    ],
-    "libraries": [
-      "OBS::caption",
-      "Uthash::Uthash",
-      {
-        "name": "OBS::w32-pthreads",
-        "requires": "OS_WINDOWS"
-      }
-    ]
-  },
-  "test_scene_render_plan_steps_rust": {
-    "sources": [
-      "test/cmocka/video-info-query-link-support.c",
-      "test/cmocka/core-state-link-support.c"
-    ],
-    "includes": [
-      "."
-    ],
-    "header_libraries": [
-      "OBS::libobs",
-      "SIMDe::SIMDe"
-    ],
-    "libraries": [
-      "OBS::caption",
-      "Uthash::Uthash",
-      {
-        "name": "OBS::w32-pthreads",
-        "requires": "OS_WINDOWS"
-      }
-    ]
-  },
   "test_service_handler_getters_rust": {
     "sources": [
       "test/cmocka/video-info-query-link-support.c",

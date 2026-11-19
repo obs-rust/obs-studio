@@ -5,7 +5,7 @@
       "sources": [
         "test/cmocka/test_video_info_query.c",
         "test/cmocka/video-info-query-link-support.c",
-        "test/cmocka/source-getter-log-link-stub.c"
+        "libobs/util/base-variadic.c.h"
       ],
       "libraries": [
         "libobs_rust-static",
