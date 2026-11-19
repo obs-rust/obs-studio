@@ -8,6 +8,11 @@
 #include "graphics/graphics-internal.h"
 #include "util/base.h"
 
+/* This characterization lands with the extraction, before the Rust swap. */
+#if !__has_include("graphics/graphics-active-shader-queries.c.h")
+#error "graphics active shader query extraction seam is missing"
+#endif
+
 static struct graphics_subsystem graphics;
 static int device_tokens[2];
 static int shader_tokens[2];
