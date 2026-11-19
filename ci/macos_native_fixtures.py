@@ -68,11 +68,11 @@ def swift_compiler(root: Path, env: dict) -> Path:
     base = Path(env.get("RUNNER_TOOL_CACHE") or root / "target/macos-native-toolchains")
     cache = base / "obs-darwin-swift" / SWIFT_SHA256
     compiler = cache / SWIFT_RELEASE / "usr/bin/swiftc"
-    if compiler.is_file():
+    if cache.exists():
+        if not compiler.is_file():
+            raise ValueError(f"incomplete Swift toolchain cache: {cache}")
         print(f"Darwin Swift toolchain: cache hit {cache}", flush=True)
         return compiler
-    if cache.exists():
-        raise ValueError(f"incomplete Swift toolchain cache: {cache}")
     cache.parent.mkdir(parents=True, exist_ok=True)
     print(f"Darwin Swift toolchain: installing {SWIFT_RELEASE} into {cache}", flush=True)
     # A cancelled download/extraction must never expose a partial swiftc as a
