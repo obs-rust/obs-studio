@@ -2,17 +2,29 @@
 # /// script
 # requires-python = ">=3.14"
 # ///
-"""Link every Windows MSVC Rust category binary from Linux, running none.
+"""Link Windows MSVC Rust categories and selected Tier 2 fixtures from Linux.
 
     uv run --no-project ci/windows_link_check.py
 
-Selected Tier 2 fixtures run independently in the two cmocka-link matrix jobs;
-CI Gate requires both aliases even on fully attested member PRs.
+CI runs categories independently with OBS_CMOCKA_LINK=false; the two required
+cmocka-link matrix jobs own Tier 2 coverage. Local default coverage is unchanged.
+Every non-docs fallback PR and merge group links the eight category binaries,
+including the C oracle (#3919). For libobs and registration/support changes,
+LANES["cmocka_link"] also selects Windows and Darwin hybrid libobs and every configured cmocka
+`*_rust` executable (#5189). The latter uses the real registrations, deferred
+support fragments, soldr's LLVM, Windows SDK and Apple SDK. Nothing is executed.
+
+OBS_CMOCKA_LINK=false keeps category-only coverage for unrelated changes.
+Existing client proofs cover category links only; selected cmocka links always
+run on PRs, including trusted member PRs, and on merge groups.
 """
 
 from __future__ import annotations
 
+import os
 import sys
+
+import cmocka_link_check
 
 import local_gate
 
@@ -31,6 +43,9 @@ def link_args(target: str = TARGET) -> list[str]:
 def main() -> int:
     local_gate.add_target(TARGET)
     local_gate.soldr_cargo(link_args())
+    if os.environ.get("OBS_CMOCKA_LINK", "true") == "true":
+        cmocka_link_check.link("win-x64", cmocka_link_check.ROOT / "build_cmocka_link_win-x64", 4)
+        cmocka_link_check.link("mac-arm64", cmocka_link_check.ROOT / "build_cmocka_link_mac-arm64", 4)
     return 0
 
 

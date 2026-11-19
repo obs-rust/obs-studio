@@ -268,8 +268,8 @@ client proofs do not attest this CMake pass. Category-only work keeps its
 existing admission policy.
 
 ```sh
-uv run --no-project ci/cmocka_link_check.py
-uv run --no-project ci/cmocka_link_check.py --alias mac-arm64
+uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py
+uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_check.py --alias mac-arm64
 ```
 
 The root CMake cross-link mode includes the unchanged cmocka graph and deferred
@@ -286,6 +286,8 @@ the cache never stores link results. The matrix disables fail-fast so one failin
 cancel the other. Both aliases are independently required by `ci/gate_jobs.py`,
 including attested PRs; CI Gate waits for the entire reusable build workflow.
 The jobs retain the 30-minute deadline and existing Linux heavy-pool routing.
+The local `ci/windows_link_check.py` default still runs categories and both
+cmocka aliases; CI sets `OBS_CMOCKA_LINK=false` only on the category job.
 Pinned CMake 3.31.10/Ninja 1.13.0 uv wheels avoid apt setup on this path
 (#5224). CMake 3.31 uses clang-cl `/showIncludes`; CMake 4.3
 forwards dependency flags that the pinned ccache rejects as uncacheable.

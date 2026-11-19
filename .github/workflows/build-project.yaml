@@ -2225,6 +2225,8 @@ jobs:
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
       - name: Link Windows Test Binaries 🔗
+        env:
+          OBS_CMOCKA_LINK: 'false'
         run: uv run --no-project ci/windows_link_check.py
 
   cmocka-link:

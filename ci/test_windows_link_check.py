@@ -52,10 +52,33 @@ class LinkArgsTest(unittest.TestCase):
         with mock.patch.object(windows_link_check.local_gate, "add_target"), \
              mock.patch.object(windows_link_check.local_gate, "soldr_cargo") as cargo, \
              mock.patch("cmocka_link_check.link") as link, \
-             mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "true"}):
+             mock.patch.dict("os.environ", {"OBS_CMOCKA_LINK": "false"}):
             self.assertEqual(windows_link_check.main(), 0)
         cargo.assert_called_once_with(windows_link_check.link_args())
         link.assert_not_called()
+
+    def test_selected_tier2_pass_links_after_categories(self):
+        with mock.patch.object(windows_link_check.local_gate, "add_target"), \
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
+             mock.patch.object(windows_link_check.cmocka_link_check, "link") as link, \
+             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
+            self.assertEqual(windows_link_check.main(), 0)
+            root = windows_link_check.cmocka_link_check.ROOT
+            self.assertEqual(link.call_args_list, [
+                mock.call("win-x64", root / "build_cmocka_link_win-x64", 4),
+                mock.call("mac-arm64", root / "build_cmocka_link_mac-arm64", 4),
+            ])
+
+    def test_tier2_link_failure_propagates(self):
+        import subprocess
+
+        failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
+        with mock.patch.object(windows_link_check.local_gate, "add_target"), \
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
+             mock.patch.object(windows_link_check.cmocka_link_check, "link", side_effect=[None, failure]), \
+             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
+            with self.assertRaises(subprocess.CalledProcessError):
+                windows_link_check.main()
 
     def test_link_failure_propagates(self):
         import subprocess
@@ -76,6 +99,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_runs_the_script_in_one_line(self):
         self.assertIn("run: uv run --no-project ci/windows_link_check.py", self.block)
+        self.assertIn("OBS_CMOCKA_LINK: 'false'", self.block)
 
     def test_selected_on_the_deferred_pr_tier(self):
         self.assertIn("needs.check-event.outputs.deferred == 'true'", self.condition)
