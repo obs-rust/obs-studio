@@ -51,3 +51,71 @@ fn standalone_texture_file_data_adapters_supply_private_max_size_callback() {
             .unwrap();
     assert!(fragment.contains(callback));
 }
+
+#[test]
+fn standalone_image_adapter_supplies_windows_timer_imports() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = root.to_string_lossy().replace('\\', "/");
+    for (system, windows) in [("Windows", true), ("Linux", false)] {
+        let directory = tempfile::tempdir().unwrap();
+        fs::write(
+            directory.path().join("probe.c"),
+            "int main(void) { return 0; }\n",
+        )
+        .unwrap();
+        fs::write(
+            directory.path().join("CMakeLists.txt"),
+            format!(
+                r#"cmake_minimum_required(VERSION 3.28)
+project(image-adapter-link-contract C)
+set(CMAKE_SYSTEM_NAME "{system}")
+set(CMAKE_SOURCE_DIR "{root}")
+foreach(dependency IN ITEMS OBS::libobs FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil FFmpeg::swscale)
+  add_library(${{dependency}} INTERFACE IMPORTED)
+endforeach()
+add_library(libobs_rust-static INTERFACE)
+foreach(consumer IN ITEMS test_video_stop_requested_rust test_texture_file_data_steps_rust)
+  add_executable(${{consumer}} "${{CMAKE_CURRENT_SOURCE_DIR}}/probe.c")
+  target_link_libraries(${{consumer}} PRIVATE libobs_rust-static)
+endforeach()
+add_executable(reference_consumer "${{CMAKE_CURRENT_SOURCE_DIR}}/probe.c")
+include("{root}/test/cmocka/tests.d/texture_file_data_link_support.cmake")
+"#
+            ),
+        )
+        .unwrap();
+        let build = directory.path().join("build");
+        let configure = std::process::Command::new("cmake")
+            .arg("-S")
+            .arg(directory.path())
+            .arg("-B")
+            .arg(&build)
+            .args(["-G", "Ninja"])
+            .output()
+            .unwrap();
+        assert!(
+            configure.status.success(),
+            "{}",
+            String::from_utf8_lossy(&configure.stderr)
+        );
+        for consumer in [
+            "test_video_stop_requested_rust",
+            "test_texture_file_data_steps_rust",
+            "reference_consumer",
+        ] {
+            let commands = std::process::Command::new("cmake")
+                .arg("--build")
+                .arg(&build)
+                .args(["--target", consumer, "--", "-n", "-v"])
+                .output()
+                .unwrap();
+            assert!(commands.status.success());
+            let commands = String::from_utf8_lossy(&commands.stdout);
+            assert_eq!(
+                commands.contains("winmm"),
+                windows && consumer != "reference_consumer",
+                "{system}/{consumer}: {commands}"
+            );
+        }
+    }
+}
