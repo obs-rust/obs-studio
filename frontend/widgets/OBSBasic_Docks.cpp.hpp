@@ -73,6 +73,10 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 #undef RESET_DOCKLIST
 
 	restoreState(startingDockLayout);
+	/* The reset layout is the user's now: the layout this session started
+	 * with must not come back on a window resize or be saved at quit
+	 * (obs-rust/obs-studio#5230). */
+	DockStateRestored(QByteArray());
 	ui->sideDocks->setChecked(true);
 
 	int cx = width();
