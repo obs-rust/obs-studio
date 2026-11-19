@@ -23,6 +23,9 @@ class RustStaticLinkSupport(unittest.TestCase):
     def test_non_msvc_preserves_declared_shared_binding(self):
         self.check_fixture(False, False)
 
+    def test_non_msvc_preserves_declared_static_binding(self):
+        self.check_fixture(False, False, True)
+
     def test_real_logger_members_preserve_fixture_owned_guards(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
@@ -76,17 +79,20 @@ class RustStaticLinkSupport(unittest.TestCase):
                 result = subprocess.run([str(executable), "crash"], capture_output=True, timeout=10)
                 self.assertEqual(result.returncode, 77 if guarded else 0, result.stderr)
 
-    def check_fixture(self, baseline_host, msvc=True):
+    def check_fixture(self, baseline_host, msvc=True, rust_first=False):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)
             files = {
                 "main.c": "int rust_entry(void); int bmalloc(void); int main(void) { return rust_entry() != "
-                + ("17 || bmalloc() != 7" if msvc else "110 || bmalloc() != 100") + "; }\n",
+                + ("17 || bmalloc() != 7" if msvc or rust_first else "110 || bmalloc() != 100") + "; }\n",
                 "rust.c": "int private_adapter(void); int error_data_add(void); int rust_entry(void) { return error_data_add() + private_adapter(); }\n",
                 "allocator.c": "int bmalloc(void) { return 7; } int error_data_add(void) { return bmalloc(); }\n",
                 "import.c": "int bmalloc(void) { return 100; } int error_data_add(void) { return bmalloc(); }\n",
                 "adapter.c": "int host_value(void); int rust_callback(void); int private_adapter(void) { return host_value() + rust_callback(); }\n",
-                "callback.c": "int rust_callback(void) { return 0; }\n",
+                "callback.c": ("int rust_callback(void) { return 0; }\n" if msvc else
+                               "int private_callback_adapter(void); int rust_callback(void) { return private_callback_adapter(); }\n"),
+                "callback-adapter.c": "int rust_leaf(void); int private_callback_adapter(void) { return rust_leaf(); }\n",
+                "leaf.c": "int rust_leaf(void) { return 0; }\n",
                 "unused.c": "int unavailable(void); int unused_adapter(void) { return unavailable(); }\n",
                 "host.c": "int host_value(void) { return 10; }\n",
             }
@@ -100,17 +106,18 @@ class RustStaticLinkSupport(unittest.TestCase):
                 "add_library(host SHARED host.c)\n"
                 "add_library(host_owner INTERFACE)\n"
                 'target_link_libraries(host_owner INTERFACE host "$<$<TARGET_EXISTS:Optional::Host>:Optional::Host>")\n'
-                "add_library(libobs_rust-static STATIC rust.c allocator.c callback.c)\n"
+                "add_library(libobs_rust-static STATIC rust.c allocator.c callback.c leaf.c)\n"
                 "add_library(imported_obs SHARED import.c)\n"
                 "add_library(OBS::libobs ALIAS imported_obs)\n"
-                "add_library(support STATIC adapter.c unused.c)\n"
+                "add_library(support STATIC adapter.c callback-adapter.c unused.c)\n"
                 + ("target_link_libraries(support PRIVATE host_owner)\n" if baseline_host else "")
                 +
                 "add_library(indirect INTERFACE)\n"
                 "target_link_libraries(indirect INTERFACE libobs_rust-static)\n"
                 "foreach(name IN ITEMS direct indirect_consumer conditional_consumer)\n"
                 "  add_executable(${name} main.c)\n"
-                "  target_link_libraries(${name} PRIVATE OBS::libobs)\n"
+                + ("  target_link_libraries(${name} PRIVATE libobs_rust-static OBS::libobs)\n" if rust_first else
+                   "  target_link_libraries(${name} PRIVATE OBS::libobs)\n") +
                 "endforeach()\n"
                 "target_link_libraries(direct PRIVATE libobs_rust-static)\n"
                 "target_link_libraries(indirect_consumer PRIVATE indirect)\n"
