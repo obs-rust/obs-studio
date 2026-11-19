@@ -1,4 +1,5 @@
 mod last_error;
+mod get_name;
 mod last_error_parity;
 mod media_getters;
 mod media_getters_parity;

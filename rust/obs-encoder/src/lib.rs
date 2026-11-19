@@ -3,6 +3,7 @@
 pub mod encoder_module;
 #[allow(unsafe_code)]
 pub mod ffi;
+pub mod get_name;
 pub mod last_error;
 pub mod media_getters;
 pub mod packet_ownership;
