@@ -475,20 +475,6 @@ void obs_hotkeys_background_status_changed(void)
 		signal_handler_signal(obs->hotkeys.signals, "hotkey_background_status_changed", NULL);
 }
 
-enum obs_hotkeys_background_state obs_hotkeys_get_background_state(uint32_t *flags)
-{
-	if (flags)
-		*flags = 0;
-	if (!lock())
-		return OBS_HOTKEYS_BACKGROUND_NATIVE;
-
-	enum obs_hotkeys_background_state state = obs->hotkeys.background.state;
-	if (flags)
-		*flags = obs->hotkeys.background.flags;
-	unlock();
-	return state;
-}
-
 char *obs_hotkey_combination_get_background_id(obs_key_combination_t combo)
 {
 	if (!lock())
