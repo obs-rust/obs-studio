@@ -49,7 +49,7 @@ void sceneitem_group_record_unlock(obs_scene_t *scene)
 #define obs_scene_atomic_full_lock sceneitem_group_record_lock
 #define obs_scene_atomic_full_unlock sceneitem_group_record_unlock
 #define obs_sceneitem_parent_group_lookup sceneitem_group_record_lookup
-#include "libobs/obs-sceneitem-get-group.c.h"
+#include "libobs/obs-scene-item-get-group.c.h"
 #undef obs_sceneitem_parent_group_lookup
 #undef obs_scene_atomic_full_unlock
 #undef obs_scene_atomic_full_lock
