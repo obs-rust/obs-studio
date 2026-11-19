@@ -23,6 +23,10 @@ pub trait Host {
     fn dispatch(&mut self, entry: Entry) -> bool;
 }
 
-pub fn available<H: Host>(_host: &mut H, _entry: Entry) -> bool {
-    todo!("planar capability query swap")
+pub fn available<H: Host>(host: &mut H, entry: Entry) -> bool {
+    if !host.has_context() {
+        host.debug(entry);
+        return false;
+    }
+    host.has_callback(entry) && host.dispatch(entry)
 }

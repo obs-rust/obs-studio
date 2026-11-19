@@ -50,10 +50,16 @@ fn test_graphics_planar_capability_queries_no_context() {
     };
     for i in 0..2 {
         assert!(!available(&mut host, Entry::Nv12));
-        assert_eq!(host.logs.last().unwrap(), "gs_nv12_available: called while not in a graphics context");
+        assert_eq!(
+            host.logs.last().unwrap(),
+            "gs_nv12_available: called while not in a graphics context"
+        );
         assert_eq!(host.logs.len(), 2 * i + 1);
         assert!(!available(&mut host, Entry::P010));
-        assert_eq!(host.logs.last().unwrap(), "gs_p010_available: called while not in a graphics context");
+        assert_eq!(
+            host.logs.last().unwrap(),
+            "gs_p010_available: called while not in a graphics context"
+        );
         assert_eq!(host.logs.len(), 2 * i + 2);
         assert_eq!(host.calls, [0, 0]);
         assert!(host.devices.is_empty());

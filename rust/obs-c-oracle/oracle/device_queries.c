@@ -34,6 +34,14 @@ static void dq_blog(int level, const char *format, ...)
 #define blog dq_blog
 #include "graphics-device-queries.inc"
 
+#define gs_nv12_available oracle_gs_nv12_available
+#define gs_p010_available oracle_gs_p010_available
+bool oracle_gs_nv12_available(void);
+bool oracle_gs_p010_available(void);
+#include "graphics-planar-capability-queries.inc"
+#undef gs_p010_available
+#undef gs_nv12_available
+
 /* Original graphics.c.h context validator, verbatim. */
 static inline bool gs_valid(const char *f)
 {
@@ -114,3 +122,54 @@ const char *oracle_device_queries_log(void)
 
 #undef gs_get_adapter_count
 #undef gs_get_device_type
+
+/* Planar queries share the real device-query TLS/logging adapters above. */
+static THREAD_LOCAL int dq_planar_devices[2];
+static THREAD_LOCAL bool dq_planar_results[2];
+static THREAD_LOCAL unsigned dq_planar_calls[2], dq_planar_last_device;
+
+static bool dq_planar_nv12(gs_device_t *device)
+{
+	assert(thread_graphics == &dq_graphics);
+	assert(device == dq_graphics.device);
+	assert(device == (gs_device_t *)&dq_planar_devices[0] || device == (gs_device_t *)&dq_planar_devices[1]);
+	dq_planar_last_device = device == (gs_device_t *)&dq_planar_devices[1] ? 1u : 0u;
+	dq_planar_calls[0]++;
+	return dq_planar_results[0];
+}
+
+static bool dq_planar_p010(gs_device_t *device)
+{
+	assert(thread_graphics == &dq_graphics);
+	assert(device == dq_graphics.device);
+	assert(device == (gs_device_t *)&dq_planar_devices[0] || device == (gs_device_t *)&dq_planar_devices[1]);
+	dq_planar_last_device = device == (gs_device_t *)&dq_planar_devices[1] ? 1u : 0u;
+	dq_planar_calls[1]++;
+	return dq_planar_results[1];
+}
+
+void oracle_planar_capability_reset(bool context, bool nv12, bool p010, bool nv12_result, bool p010_result,
+				    bool device);
+void oracle_planar_capability_reset(bool context, bool nv12, bool p010, bool nv12_result, bool p010_result, bool device)
+{
+	oracle_device_queries_reset(context, false, false, 0, 0);
+	dq_graphics.device = (gs_device_t *)&dq_planar_devices[device ? 1 : 0];
+	dq_graphics.exports.device_nv12_available = nv12 ? dq_planar_nv12 : NULL;
+	dq_graphics.exports.device_p010_available = p010 ? dq_planar_p010 : NULL;
+	dq_planar_results[0] = nv12_result;
+	dq_planar_results[1] = p010_result;
+	dq_planar_calls[0] = dq_planar_calls[1] = 0;
+	dq_planar_last_device = 2;
+}
+
+unsigned oracle_planar_capability_calls(bool p010);
+unsigned oracle_planar_capability_calls(bool p010)
+{
+	return dq_planar_calls[p010 ? 1 : 0];
+}
+
+unsigned oracle_planar_capability_last_device(void);
+unsigned oracle_planar_capability_last_device(void)
+{
+	return dq_planar_last_device;
+}
