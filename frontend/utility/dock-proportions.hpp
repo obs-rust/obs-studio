@@ -91,6 +91,7 @@ public:
 		restoredWindowSize = window->size();
 		/* The snapshot is taken once Qt has placed the docks. */
 		restoredSnapshot.clear();
+		restoredPlacement.clear();
 		if (reapplyRestored && !updateQueued) {
 			updateQueued = true;
 			QMetaObject::invokeMethod(this, [this] { Update(); }, Qt::QueuedConnection);
@@ -187,6 +188,11 @@ private:
 	 * state at the same window size is a change by the user (or a
 	 * plugin): a dock hidden, moved, floated or added. */
 	QByteArray restoredSnapshot;
+	/* Where the docks were when the snapshot was taken. Unlike the
+	 * snapshot, it does not change with the window size: a dock change
+	 * that comes with a window resize (a tiling window manager retiles
+	 * when a dock is floated, #5230) still shows. */
+	QList<QString> restoredPlacement;
 	std::map<QList<QDockWidget *>, Saved> saved;
 	std::map<int, SavedArea> savedAreas;
 	bool updateQueued = false;
@@ -224,6 +230,52 @@ private:
 			});
 			result.append(row);
 		}
+		return result;
+	}
+
+	/* Where each dock is, without its size: its area, its order in that
+	 * area, floating, hidden and the docks it shares tabs with. Only a
+	 * change by the user (or Reset Docks, or a plugin) changes it, not a
+	 * window resize. */
+	QList<QString> Placement() const
+	{
+		const QList<QDockWidget *> docks = window->findChildren<QDockWidget *>(Qt::FindDirectChildrenOnly);
+		std::map<int, QList<QDockWidget *>> byArea;
+		for (QDockWidget *dock : docks) {
+			if (!dock->isFloating() && dock->isVisible()) {
+				byArea[int(window->dockWidgetArea(dock))].append(dock);
+			}
+		}
+		for (auto &entry : byArea) {
+			std::sort(entry.second.begin(), entry.second.end(), [](QDockWidget *a, QDockWidget *b) {
+				if (a->y() != b->y()) {
+					return a->y() < b->y();
+				}
+				if (a->x() != b->x()) {
+					return a->x() < b->x();
+				}
+				return a->objectName() < b->objectName();
+			});
+		}
+		QList<QString> result;
+		for (QDockWidget *dock : docks) {
+			QStringList tabs;
+			for (QDockWidget *tab : window->tabifiedDockWidgets(dock)) {
+				tabs.append(tab->objectName());
+			}
+			tabs.sort();
+			const int area = int(window->dockWidgetArea(dock));
+			const auto it = byArea.find(area);
+			const qsizetype order = it == byArea.end() ? -1 : it->second.indexOf(dock);
+			result.append(QStringLiteral("%1 floating=%2 hidden=%3 area=%4 order=%5 tabs=%6")
+					      .arg(dock->objectName())
+					      .arg(dock->isFloating())
+					      .arg(dock->isHidden())
+					      .arg(area)
+					      .arg(order)
+					      .arg(tabs.join(QLatin1Char(','))));
+		}
+		result.sort();
 		return result;
 	}
 
@@ -278,6 +330,14 @@ private:
 	void Update()
 	{
 		updateQueued = false;
+		if (reapplyRestored && window->isVisible() && !restoredPlacement.isEmpty() &&
+		    Placement() != restoredPlacement) {
+			/* A dock was floated, docked, moved, hidden, shown or
+			 * tabbed, maybe together with a window resize: the user's
+			 * change (or Reset Docks). Their layout counts from now on
+			 * (#5230). */
+			reapplyRestored = false;
+		}
 		if (reapplyRestored) {
 			if (window->size() != restoredWindowSize) {
 				/* The window changed size before the user changed a
@@ -292,6 +352,7 @@ private:
 				/* Look again once Qt has placed the docks, also when
 				 * the restore moved none of them. */
 				restoredSnapshot.clear();
+				restoredPlacement.clear();
 				updateQueued = true;
 				QMetaObject::invokeMethod(this, [this] { Update(); }, Qt::QueuedConnection);
 				return;
@@ -299,6 +360,7 @@ private:
 			const QByteArray now = window->saveState();
 			if (restoredSnapshot.isEmpty()) {
 				restoredSnapshot = now;
+				restoredPlacement = Placement();
 				return;
 			}
 			if (now == restoredSnapshot) {
