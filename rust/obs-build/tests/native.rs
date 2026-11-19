@@ -487,6 +487,8 @@ mod canonical_transport_helpers_are_registered;
 mod canonical_undo_stack_is_registered;
 #[path = "native/registration/canonical_vaapi_device_select_is_registered.rs"]
 mod canonical_vaapi_device_select_is_registered;
+#[path = "native/registration/canonical_video_info_query_is_registered.rs"]
+mod canonical_video_info_query_is_registered;
 #[path = "native/registration/canonical_video_output_compatibility_is_registered.rs"]
 mod canonical_video_output_compatibility_is_registered;
 #[path = "native/registration/canonical_video_scaler_direct_is_registered.rs"]

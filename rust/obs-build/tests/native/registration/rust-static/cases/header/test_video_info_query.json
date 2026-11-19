@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_info_query_rust": {
+      "sources": [
+        "test/cmocka/test_video_info_query.c",
+        "test/cmocka/video-info-query-link-support.c",
+        "test/cmocka/source-getter-log-link-stub.c"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_video_info_query_rust": {
+      "target": "test_video_info_query_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

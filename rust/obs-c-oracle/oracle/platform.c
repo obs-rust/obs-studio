@@ -178,8 +178,8 @@ size_t oracle_timespec_offset_tv_nsec(void)
  * from Rust over FFI (src/platform_filename.rs).
  *
  * Intentionally different from the original: the real obs_get_video_info is
- * in libobs/obs.c, which pulls in the whole video pipeline that the oracle
- * does not build. Both the C (oracle_obs_get_video_info, through the rename
+ * supplied by obs-core when that crate is linked. The utility-only harness
+ * retains a fallback for its filename fixture. Both the C (oracle_obs_get_video_info, through the rename
  * above) and the Rust shim (the plain obs_get_video_info, which libobs
  * provides in libobs-with-rust) read the same fixture: it copies the set
  * struct and returns the set result, and counts its calls. The fixture and
@@ -197,11 +197,17 @@ bool obs_get_video_info(struct obs_video_info *ovi)
 }
 
 #undef obs_get_video_info
+/* The real Rust export wins in core/category consumers. Keep the existing
+ * filename fixture only as a fallback in the utility-only harness. */
+#if defined(_MSC_VER)
+#pragma comment(linker, "/alternatename:obs_get_video_info=oracle_obs_get_video_info")
+#else
 bool obs_get_video_info(struct obs_video_info *ovi);
-bool obs_get_video_info(struct obs_video_info *ovi)
+__attribute__((weak)) bool obs_get_video_info(struct obs_video_info *ovi)
 {
 	return oracle_obs_get_video_info(ovi);
 }
+#endif
 
 void oracle_platform_filename_set_time(int64_t now);
 void oracle_platform_filename_set_video_info(const struct obs_video_info *ovi, bool result);
