@@ -65,6 +65,43 @@ on:
         type: boolean
         required: false
         default: false
+    secrets:
+      GPU_PRIORITY_VAL:
+        required: false
+      MACOS_KEYCHAIN_PASSWORD:
+        required: false
+      MACOS_NOTARIZATION_PASSWORD:
+        required: false
+      MACOS_NOTARIZATION_USERNAME:
+        required: false
+      MACOS_SIGNING_CERT:
+        required: false
+      MACOS_SIGNING_CERT_PASSWORD:
+        required: false
+      MACOS_SIGNING_IDENTITY:
+        required: false
+      MACOS_SIGNING_PROVISIONING_PROFILE:
+        required: false
+      RESTREAM_CLIENTID:
+        required: false
+      RESTREAM_HASH:
+        required: false
+      SOLDR_S3_CACHE_ACCESS_KEY:
+        required: false
+      SOLDR_S3_CACHE_SECRET_KEY:
+        required: false
+      TWITCH_CLIENT_ID:
+        required: false
+      TWITCH_HASH:
+        required: false
+      YOUTUBE_CLIENTID:
+        required: false
+      YOUTUBE_CLIENTID_HASH:
+        required: false
+      YOUTUBE_SECRET:
+        required: false
+      YOUTUBE_SECRET_HASH:
+        required: false
     outputs:
       skip_checks:
         description: Immutable-base client admission skip_checks
@@ -1719,7 +1756,7 @@ jobs:
     # letting it hold the queue for an hour (#2593 A).
     timeout-minutes: 20
     name: Fast Gate ⚡
-    runs-on: ubuntu-26.04
+    runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     # A docs-only PR or queue run changes no Rust, C or CMake: skipped, and
     # passing CI Gate; the Format job still runs the ci/ self-tests (#2079).
@@ -1788,8 +1825,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       # GATE-001 mirror (local-gate.toml): exactly the local gate's lint and
       # rust-test lanes (./lint, ./unittest), i.e. rustfmt, clippy -D warnings,
@@ -1987,8 +2024,8 @@ jobs:
         if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
         shell: bash
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          AWS_SECRET_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
           AWS_DEFAULT_REGION: nyc3
         run: |
           if ! command -v aws >/dev/null; then
@@ -2025,7 +2062,7 @@ jobs:
   cross-compile:
     timeout-minutes: 45
     name: Cross Compile 🧰 (${{ needs.check-event.outputs.cross_targets }})
-    runs-on: ubuntu-26.04
+    runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     if: ${{ (github.event_name != 'pull_request' || needs.ci-mode.outputs.fast_path != 'true') && !inputs.flatpak-measurement-only && needs.check-event.outputs.cross_targets != '' }}
     defaults:
@@ -2058,8 +2095,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       # The mirror step runs before every package install, and it is Python
       # now: soldr does not install uv, so without this the step fails with
@@ -2142,8 +2179,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2215,8 +2252,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2270,8 +2307,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2328,8 +2365,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       - name: Set Up uv 🐍
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -2392,8 +2429,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       - name: Prepare Darwin standard library
         run: uv run --no-project ci/macos_test_artifact.py prepare-target
@@ -2937,8 +2974,8 @@ jobs:
           s3-region: nyc3
           s3-cache-limit: 50G
         env:
-          SOLDR_S3_CACHE_ACCESS_KEY: ${{ secrets.SOLDR_S3_CACHE_ACCESS_KEY }}
-          SOLDR_S3_CACHE_SECRET_KEY: ${{ secrets.SOLDR_S3_CACHE_SECRET_KEY }}
+          SOLDR_S3_CACHE_ACCESS_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_ACCESS_KEY || '' }}
+          SOLDR_S3_CACHE_SECRET_KEY: ${{ (github.event_name != 'pull_request' || inputs.mq-heavy-labels == '') && secrets.SOLDR_S3_CACHE_SECRET_KEY || '' }}
 
       # The libobs lib-module cache (#3264): PRs restore master's modules,
       # only master pushes save (a PR-ref cache is unreachable by other PRs).
@@ -3251,7 +3288,7 @@ jobs:
   # otherwise.
   linux-qt-frontend:
     name: Qt Frontend Linux 🐧
-    runs-on: ubuntu-26.04
+    runs-on: ${{ github.event_name == 'pull_request' && inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     # Independent runner: overlap frontend compilation/tests with Fast Gate.
     # The reusable workflow still fails if either selected job fails; this
     # can spend extra Qt runner time when Fast Gate fails (#1581).

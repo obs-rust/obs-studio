@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run --script
-"""Probe opt-in queue runners; every unavailable/unknown state uses hosted CI."""
+"""Probe opt-in queue/member PR runners; unknown states always use hosted CI."""
 
 from __future__ import annotations
 
@@ -25,6 +25,9 @@ MAX_ACTIVE_RUNS = 5 * 2
 # Two runner scopes, two run statuses, and a jobs collection for each active run.
 # Include pagination and retries, while retaining the shared wall-clock deadline.
 MAX_REQUESTS = (4 + MAX_ACTIVE_RUNS) * MAX_PAGES * (MAX_RETRIES + 1)
+# All expanded PR-routable jobs, including both sequential Tier 2 phases.
+# ci/test_member_pr_routing.py checks this bound against the workflow inventory.
+PR_RUNNER_DEMAND = 13
 
 
 class RequestBudgetExhausted(ValueError):
@@ -102,7 +105,7 @@ class Probe:
                         pass
         return min(MAX_RETRY_AFTER, max(0, delay))
 
-    def get(self, path: str, *, token: str | None = None) -> dict:
+    def get(self, path: str, *, token: str | None = None, retry: bool = True) -> dict:
         request = Request(
             f"{self.api_url}/{path}",
             headers={
@@ -111,14 +114,15 @@ class Probe:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        for attempt in range(MAX_RETRIES + 1):
+        retries = MAX_RETRIES if retry else 0
+        for attempt in range(retries + 1):
             timeout = min(API_TIMEOUT, self.time_left())
             if self.remaining <= 0:
                 raise RequestBudgetExhausted("request budget exhausted")
             self.remaining -= 1  # Retries consume the same shared budget.
             try:
                 with urlopen(request, timeout=timeout) as response:
-                    result = json.load(response)
+                    result = response_data(path, response)
                 self.time_left()
                 return result
             except SelectionDeadline:
@@ -131,7 +135,7 @@ class Probe:
                 self.time_left()
                 if self.remaining <= 0:
                     raise RequestBudgetExhausted("request budget exhausted") from error
-                if attempt == MAX_RETRIES:
+                if attempt == retries:
                     raise
                 self.sleep(min(self.retry_delay(error, attempt), self.time_left()))
 
@@ -307,14 +311,14 @@ def job_commitments(jobs: list[dict], wanted: set[str]) -> tuple[int, bool, bool
     return queued, dell, decided
 
 
-def active_runs(repo: str, probe: Probe, token: str) -> dict:
+def active_runs(repo: str, probe: Probe, token: str, event: str = "merge_group") -> dict:
     """Keep only active run snapshots; terminal snapshots release reservations."""
     runs = {}
     finished = set()
     for status in ("queued", "in_progress"):
         try:
             entries = probe.entries(
-                f"repos/{repo}/actions/workflows/ci.yml/runs?event=merge_group&status={status}",
+                f"repos/{repo}/actions/workflows/ci.yml/runs?event={event}&status={status}",
                 "workflow_runs",
                 token,
             )
@@ -338,7 +342,7 @@ def active_runs(repo: str, probe: Probe, token: str) -> dict:
             if (
                 type(run_id) is not int
                 or run_id < 1
-                or run["event"] != "merge_group"
+                or run["event"] != event
                 or run["status"] not in ("queued", "in_progress")
             ):
                 raise ValueError(f"runs probe ({status}): invalid active run")
@@ -350,7 +354,8 @@ def active_runs(repo: str, probe: Probe, token: str) -> dict:
 
 
 def inflight_commitments(
-    repo: str, wanted: set[str], probe: Probe, demand: int = 1
+    repo: str, wanted: set[str], probe: Probe, demand: int = 1,
+    *, mq_required: int = 0, pr_required: int = 0,
 ) -> tuple[int, int]:
     """Count queued Dell jobs and active Dell/older undecided runs.
 
@@ -364,12 +369,21 @@ def inflight_commitments(
     if current_id < 1 or not token:
         raise ValueError("missing Actions probe identity")
     runs = active_runs(repo, probe, token)
+    mixed = os.environ.get("DELL_PR_ROUTING") == "on"
+    if mixed:
+        # Queue runs sort before every PR, even a PR created earlier. Inspect
+        # live PR jobs for both events so the queue sees their queued demand.
+        runs = {key: ((0, *value[0]), value[1]) for key, value in runs.items()}
+        prs = active_runs(repo, probe, token, "pull_request")
+        runs.update({key: ((1, *value[0]), value[1]) for key, value in prs.items()})
     current = runs[current_id]  # An incomplete/eventually consistent list is unsafe.
     queued = committed = unprobed = 0
     current = current[0]
     for run_id, (priority, _) in sorted(runs.items(), key=lambda item: item[1][0]):
         if run_id == current_id:
             continue
+        weight = (pr_required if priority[0] == 1 else mq_required) if mixed else 1
+        peer_demand = weight if mixed else demand
         try:
             jobs = probe.entries(
                 f"repos/{repo}/actions/runs/{run_id}/jobs?filter=latest", "jobs", token
@@ -378,8 +392,8 @@ def inflight_commitments(
         except RequestBudgetExhausted as error:
             unprobed += 1
             observed, _, _ = job_commitments(error.entries, wanted)
-            queued += max(observed, demand)
-            committed += 1
+            queued += max(observed, peer_demand)
+            committed += weight
             continue
         except ValueError as error:
             raise ValueError(f"jobs probe (run {run_id}): {error}") from error
@@ -392,32 +406,42 @@ def inflight_commitments(
         queued += pending
         # Count known Dell runs regardless of age. Unknown older runs also
         # reserve slots; hosted or finished Dell work releases their reservation.
-        committed += dell or (not decided and priority < current)
+        committed += weight * (dell or (not decided and priority < current))
     if unprobed:
+        reservation = (
+            "reserving each unprobed active run's required capacity"
+            if mixed else f"reserving at least {demand} runners per unprobed active run"
+        )
         warning(
             f"jobs probe: request budget exhausted; unprobed={unprobed}; "
-            f"reserving at least {demand} runners per unprobed active run",
+            f"{reservation}",
             hosted=False,
         )
     return queued, committed
 
 
 def admission_available(
-    repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int
+    repo: str, wanted: set[str], probe: Probe, online: int, idle: int, required: int,
+    reserve: int = 0, mq_required: int = 0, pr_required: int = 0,
 ) -> tuple[bool, str]:
     """The idle floor and in-flight run cap must both admit this run."""
-    if idle < required:
+    if idle - reserve < required:
         return False, ""
-    queued, committed = inflight_commitments(repo, wanted, probe, required)
-    idle_slots = (idle - queued) // required
+    mixed = os.environ.get("DELL_PR_ROUTING") == "on"
+    options = {"mq_required": mq_required, "pr_required": pr_required} if mixed else {}
+    queued, committed = inflight_commitments(repo, wanted, probe, required, **options)
+    idle_slots = (idle - queued - reserve) // required
     # The total cap includes runs whose running jobs already reduce idle. Using
     # idle for this cap would charge those busy runners twice. Idle slots below
     # independently limit how much new work this snapshot can admit.
-    limit = online // required
+    limit = online - reserve if mixed else (online - reserve) // required
     counts = (
         f"; queued={queued}, committed={committed}, run_limit={limit}"
         f", idle_run_slots={max(0, idle_slots)}"
     )
+    if mixed:
+        counts += "; commitments measured in runner capacity"
+        return idle_slots >= 1 and committed + required <= limit, counts
     return idle_slots >= 1 and committed < limit, counts
 
 
@@ -443,6 +467,89 @@ def requested_labels(labels: str) -> list[str]:
     return requested
 
 
+def eligible_pr(repo: str, probe: Probe) -> bool:
+    """Read identity only from the Actions payload and authenticated membership.
+
+    The workflow extracts this module and pr_attestation from immutable BASE.
+    Public membership's authenticated 204 and private membership's active state
+    follow the admission verifier's contract; failures never grant access.
+    """
+    from pr_attestation import LOGIN, member
+
+    payload = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+    pr = payload["pull_request"]
+    base = pr["base"]["repo"]
+    head = pr["head"]["repo"]
+    repository = payload["repository"]
+    if repo.split("/", 1)[0] != "obs-rust" or any(
+        value["full_name"] != repo for value in (base, head, repository)
+    ):
+        return False
+    if type(base["id"]) is not int or base["id"] < 1 or not (
+        base["id"] == head["id"] == repository["id"]
+    ):
+        return False
+    login = pr["user"]["login"]
+    if not isinstance(login, str) or not LOGIN.fullmatch(login):
+        return False
+    return member(login, lambda path: membership_read(probe, path)) is None
+
+
+def response_data(path: str, response) -> dict:
+    """The authenticated public-membership endpoint returns no JSON on 204."""
+    if "/public_members/" in path and getattr(response, "status", None) == 204:
+        return {"public_member": True, "user": {"login": path.rsplit("/", 1)[1]}}
+    return json.load(response)
+
+
+def membership_read(probe: Probe, path: str) -> dict:
+    """A public 404 needs the private active-state check; other errors deny."""
+    try:
+        return probe.get(path, retry=False)
+    except HTTPError as error:
+        if error.code == 404 and "/public_members/" in path:
+            return {"public_member": False}
+        raise
+
+
+def selection_enabled(event: str, labels: str) -> bool:
+    return bool(labels) and (
+        event == "merge_group"
+        or (event == "pull_request" and os.environ.get("DELL_PR_ROUTING") == "on")
+    )
+
+
+def routing_capacity(event: str, min_idle: str, demand: str, mode: str) -> dict[str, int]:
+    """Keep MQ-only arithmetic unchanged; enabled PRs have their own demand."""
+    required = required_capacity(min_idle, demand, mode)
+    capacity = {"required": required}
+    if os.environ.get("DELL_PR_ROUTING") != "on":
+        return capacity
+    pr_required = max(required, required_capacity("1", os.environ.get("MQ_PR_DEMAND") or str(PR_RUNNER_DEMAND)))
+    capacity.update(mq_required=required, pr_required=pr_required)
+    if event == "pull_request":
+        reserve = int(os.environ.get("MQ_PR_RESERVE") or demand or "1")
+        if reserve < 0:
+            raise ValueError("PR reserve must be nonnegative")
+        capacity.update(required=pr_required, reserve=reserve)
+    return capacity
+
+
+def capacity_summary(event: str, capacity: dict[str, int]) -> str:
+    return f", pr_reserve={capacity['reserve']}" if event == "pull_request" else ""
+
+
+def routing_eligible(event: str, repo: str, probe: Probe) -> bool:
+    return event != "pull_request" or eligible_pr(repo, probe)
+
+
+def availability_summary(online: int, busy: int, idle: int, required: int, unavailable: list[str]) -> str:
+    counts = f"online={online}, busy={busy}, idle={idle}, required={required}"
+    if unavailable:
+        counts += f"; unavailable scopes: {', '.join(unavailable)}"
+    return counts
+
+
 def select_labels(
     event: str,
     labels: str,
@@ -460,17 +567,21 @@ def select_labels(
     each HTTP request stay bounded; runners visible in both scopes count only
     once. In-flight commitments and older undecided runs reserve capacity.
     """
-    if event != "merge_group" or not labels:
+    if not selection_enabled(event, labels):
         return decision("opt-in merge-group runner selection is disabled")
     step = "configuration"
     try:
         requested = requested_labels(labels)
-        required = required_capacity(min_idle, demand, mode)
+        capacity = routing_capacity(event, min_idle, demand, mode)
+        required = capacity["required"]
         if not token:
             warning("MQ_RUNNER_STATUS_TOKEN is missing")
             return decision("runner probe token is missing")
         wanted = {label.casefold() for label in requested}
         probe = Probe(token, api_url)
+        step = "PR eligibility"
+        if not routing_eligible(event, repo, probe):
+            return decision("PR author is not a verified same-repository active member")
         matched = {}
         unavailable = []
         owner = repo.split("/", 1)[0]
@@ -496,12 +607,11 @@ def select_labels(
                 )
         busy = sum(matched.values())
         idle = len(matched) - busy
-        counts = f"online={len(matched)}, busy={busy}, idle={idle}, required={required}"
-        if unavailable:
-            counts += f"; unavailable scopes: {', '.join(unavailable)}"
+        counts = availability_summary(len(matched), busy, idle, required, unavailable)
+        counts += capacity_summary(event, capacity)
         step = "in-flight commitments probe"
         admitted, commitments = admission_available(
-            repo, wanted, probe, len(matched), idle, required
+            repo, wanted, probe, len(matched), idle, **capacity
         )
         probe.time_left()
         counts += commitments

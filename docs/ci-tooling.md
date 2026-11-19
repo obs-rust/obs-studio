@@ -1335,8 +1335,8 @@ required runner capacity (or its larger observed queued-job count) and one run s
 Warnings name the failed probe step
 and include validation reasons, including incomplete collections and limits.
 An unset or empty variable skips the
-probe steps. Outside `merge_group` the selection is empty and no API call runs.
-Pull requests, master pushes, manual/release runs,
+probe steps. Outside `merge_group` the selection is empty unless member PR
+routing is explicitly enabled below. Master pushes, manual/release runs,
 and macOS/Windows jobs keep their current hosted runners. Linux matrix entries
 retain their matrix and hosted fallback. Required job/check names are unchanged.
 Rust Tier 2 Linux build, its OFF/ON test jobs, Rust Cross Lint
@@ -1346,6 +1346,59 @@ Build and tests share the selected pool so local handoff remains valid.
 Event Data, CI Mode, Format, Fast Gate, Cross Compile,
 Qt, app builds, proof publication, queue cancellation and CI Gate use hosted
 runners. Empty outputs and probe/setup errors keep every heavy job hosted.
+
+#### Idle Dell capacity for member PRs (default off)
+
+The maintainer approved same-repository member PR routing on 2026-11-19
+(Refs #4839, #4896). Set the repository Actions variable `DELL_PR_ROUTING=on`
+to opt in; unset, `off`, or any other value keeps PR jobs hosted. This change
+does not set any repository variables. Forks, non-members, pending memberships,
+API errors and `pull_request_target` events always stay hosted. Eligibility uses
+the immutable `pull_request` event's head/base repository identities and author,
+then the admission verifier's authenticated public/private active-membership
+check against obs-rust. The hosted selector checks out the PR's BASE SHA and
+extracts both `ci/select_mq_runner.py` and `ci/pr_attestation.py` with `git show`
+into an isolated directory. It never imports the PR's routing code. The runner
+probe App/token must be able to read membership; denied private membership uses
+hosted without expanding permissions. Probe credentials remain on hosted runners.
+
+`MQ_PR_RESERVE` keeps matching idle runners free for the queue, defaulting to
+`MQ_RUNNER_DEMAND` (currently `6`). A PR must fit its entire required capacity
+after queued commitments and this reserve are subtracted. Unset/empty uses the
+default; a nonnegative integer overrides it, and invalid values select hosted.
+PRs have a separate `MQ_PR_DEMAND`: unset/empty defaults to `13`, the complete
+expanded PR job inventory, including both sequential Tier 2 phases. The PR's
+requirement is the maximum of this value and the existing MQ requirement.
+Invalid/nonpositive values use hosted. This conservative default covers Fast
+Gate, Cross Compile, Qt and link jobs in addition to the existing heavy jobs;
+the inventory regression must change when that topology changes. A maintainer
+may tune it to measured scoped PR concurrency, but must not set it below the
+actual concurrent job demand. With default PR demand thirteen and reserve six,
+nineteen matching idle runners are needed. A six-runner Dell stays hosted until
+the maintainer explicitly tunes both PR settings for its workload or expands
+the pool. `MQ_RUNNER_LABELS`,
+`MQ_RUNNER_MIN_IDLE`, `MQ_RUNNER_DEMAND` and `MQ_RUNNER_MODE` retain their meanings.
+No variable is changed by merging this default-off feature.
+
+When enabled, both selectors account for live PR and queue job commitments.
+Undecided queue runs have priority over every PR, regardless of creation time;
+undecided PRs use oldest-first ordering. Commitments are weighted by each
+event's required runner capacity, so a large PR cannot count as one small MQ
+run. Queue admission does not subtract the PR reserve. This remains a bounded
+snapshot, with the same API visibility and
+simultaneous-selection limitations as queue admission, not a preemption system.
+Already-running PR jobs finish normally. Turning the kill switch off stops new
+PR routing; allow existing PR jobs to drain before relying on queue-only census.
+
+Existing heavy Linux jobs accept the selected labels on PR events. Fast Gate,
+Cross Compile and Qt Frontend Linux also accept them for PRs only; their queue
+and other-event placement is unchanged. Event Data, CI Mode and lightweight
+admission/gate jobs stay hosted, and macOS/Windows jobs keep their native hosts.
+The reusable workflow caller passes empty repository secrets to Dell-routed PR
+runs, and selected jobs also suppress credential inputs on that path. They retain
+only the event's `GITHUB_TOKEN`, with `contents: read` and `actions: read`; no
+permission increase or container-isolation change is introduced. Hosted/non-PR
+secret handling stays unchanged. No new workflow files or required checks.
 
 Both the default threshold mode and `MQ_RUNNER_MODE=prefer` now require
 idle capacity. Prefer remains accepted for existing configurations, but no
