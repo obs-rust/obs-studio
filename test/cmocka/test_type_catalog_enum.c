@@ -86,6 +86,19 @@ static void unused_destroy(void *data)
 	assert_true(false);
 }
 
+static bool source_audio_render(void *data, uint64_t *timestamp, struct obs_source_audio_mix *mix, uint32_t mixers,
+				size_t channels, size_t sample_rate)
+{
+	(void)data;
+	(void)timestamp;
+	(void)mix;
+	(void)mixers;
+	(void)channels;
+	(void)sample_rate;
+	assert_true(false);
+	return false;
+}
+
 static void *output_create(obs_data_t *settings, obs_output_t *output)
 {
 	(void)settings;
@@ -150,6 +163,7 @@ static void register_type(size_t catalog, const char *id)
 		info.id = id;
 		info.type = types[catalog];
 		info.get_name = get_name;
+		info.audio_render = source_audio_render;
 		obs_register_source(&info);
 	} else if (catalog == 3) {
 		struct obs_output_info info = {0};
