@@ -53,8 +53,14 @@ fn standalone_texture_file_data_adapters_supply_private_max_size_callback() {
 }
 
 #[test]
-fn standalone_image_adapter_supplies_windows_timer_imports() {
+fn standalone_image_adapter_supplies_windows_host_imports() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let graph: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("test/cmocka/build/test-graph.json")).unwrap())
+            .unwrap();
+    let graph = serde_json::json!({"targets": {
+        "test_video_stop_requested_rust": graph["targets"]["test_video_stop_requested_rust"]
+    }});
     let root = root.to_string_lossy().replace('\\', "/");
     for (system, windows) in [("Windows", true), ("Linux", false)] {
         let directory = tempfile::tempdir().unwrap();
@@ -63,13 +69,15 @@ fn standalone_image_adapter_supplies_windows_timer_imports() {
             "int main(void) { return 0; }\n",
         )
         .unwrap();
+        fs::write(directory.path().join("graph.json"), graph.to_string()).unwrap();
         fs::write(
             directory.path().join("CMakeLists.txt"),
             format!(
-                r#"cmake_minimum_required(VERSION 3.28)
+                r##"cmake_minimum_required(VERSION 3.28)
 project(image-adapter-link-contract C)
 set(CMAKE_SYSTEM_NAME "{system}")
 set(CMAKE_SOURCE_DIR "{root}")
+set(OS_WINDOWS {windows})
 foreach(dependency IN ITEMS OBS::libobs FFmpeg::avcodec FFmpeg::avformat FFmpeg::avutil FFmpeg::swscale)
   add_library(${{dependency}} INTERFACE IMPORTED)
 endforeach()
@@ -79,8 +87,15 @@ foreach(consumer IN ITEMS test_video_stop_requested_rust test_texture_file_data_
   target_link_libraries(${{consumer}} PRIVATE libobs_rust-static)
 endforeach()
 add_executable(reference_consumer "${{CMAKE_CURRENT_SOURCE_DIR}}/probe.c")
+include("{root}/test/cmocka/native-test-graph.cmake")
+file(READ "${{CMAKE_CURRENT_SOURCE_DIR}}/graph.json" graph)
+_obs_test_graph_sources(video_sources "${{graph}}" test_video_stop_requested_rust)
+if("libobs/util/base-variadic.c.h" IN_LIST video_sources)
+  file(WRITE "${{CMAKE_CURRENT_BINARY_DIR}}/base-variadic-provider.c" "#include \"{root}/libobs/util/base-variadic.c.h\"\n")
+  target_sources(test_video_stop_requested_rust PRIVATE "${{CMAKE_CURRENT_BINARY_DIR}}/base-variadic-provider.c")
+endif()
 include("{root}/test/cmocka/tests.d/texture_file_data_link_support.cmake")
-"#
+"##
             ),
         )
         .unwrap();
@@ -111,9 +126,24 @@ include("{root}/test/cmocka/tests.d/texture_file_data_link_support.cmake")
                 .unwrap();
             assert!(commands.status.success());
             let commands = String::from_utf8_lossy(&commands.stdout);
+            let lower = commands.to_ascii_lowercase();
+            let links = |library| {
+                lower.split_whitespace().any(|token| {
+                    let token = token.trim_matches('"');
+                    token == format!("-l{library}") || token == format!("{library}.lib")
+                })
+            };
             assert_eq!(
-                commands.contains("winmm"),
-                windows && consumer != "reference_consumer",
+                (
+                    links("winmm"),
+                    links("rpcrt4"),
+                    commands.contains("base-variadic-provider.c")
+                ),
+                (
+                    windows && consumer != "reference_consumer",
+                    windows && consumer != "reference_consumer",
+                    windows && consumer == "test_video_stop_requested_rust"
+                ),
                 "{system}/{consumer}: {commands}"
             );
         }
