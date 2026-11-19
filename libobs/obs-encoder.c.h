@@ -1545,39 +1545,12 @@ void obs_encoder_release(obs_encoder_t *encoder)
 	}
 }
 
-void obs_weak_encoder_addref(obs_weak_encoder_t *weak)
-{
-	if (!weak)
-		return;
-
-	obs_weak_ref_addref(&weak->ref);
-}
-
-void obs_weak_encoder_release(obs_weak_encoder_t *weak)
-{
-	if (!weak)
-		return;
-
-	if (obs_weak_ref_release(&weak->ref))
-		bfree(weak);
-}
-
 obs_encoder_t *obs_encoder_get_ref(obs_encoder_t *encoder)
 {
 	if (!encoder)
 		return NULL;
 
 	return obs_weak_encoder_get_encoder(get_weak(encoder));
-}
-
-obs_weak_encoder_t *obs_encoder_get_weak_encoder(obs_encoder_t *encoder)
-{
-	if (!encoder)
-		return NULL;
-
-	obs_weak_encoder_t *weak = get_weak(encoder);
-	obs_weak_encoder_addref(weak);
-	return weak;
 }
 
 obs_encoder_t *obs_weak_encoder_get_encoder(obs_weak_encoder_t *weak)

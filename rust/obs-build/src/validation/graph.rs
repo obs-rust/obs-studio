@@ -381,11 +381,22 @@ impl Target {
     ) -> Result<Vec<PathBuf>, String> {
         let facts = inherited_facts(facts, libraries);
         let names = self.library_names(&facts)?;
+        let standalone_msvc = facts.get("MSVC") == Some(&true)
+            && names.iter().any(|name| {
+                name == "libobs_rust-static"
+                    && libraries
+                        .get(name)
+                        .is_some_and(|dep| dep.rust_static_support)
+            });
         let mut artifacts = Vec::new();
         for name in &names {
             let dependency = native_dependency(name, libraries, &names)
                 .ok_or_else(|| format!("unresolved native test library {name}"))?;
-            artifacts.extend(dependency.artifacts.iter().cloned());
+            // Preserve OBS's header interface, but never let its complete DLL
+            // imports compete with the standalone Rust/support component.
+            if !(standalone_msvc && name == "OBS::libobs") {
+                artifacts.extend(dependency.artifacts.iter().cloned());
+            }
         }
         Ok(artifacts)
     }

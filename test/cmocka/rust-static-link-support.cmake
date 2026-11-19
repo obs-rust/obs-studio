@@ -51,7 +51,82 @@ function(_obs_uses_rust_static target visited output)
   endif()
 endfunction()
 
+function(_obs_demand_rust_static_support)
+  get_directory_property(targets BUILDSYSTEM_TARGETS)
+  foreach(target IN LISTS targets)
+    get_target_property(type "${target}" TYPE)
+    if(NOT type STREQUAL "EXECUTABLE")
+      continue()
+    endif()
+    _obs_uses_rust_static("${target}" "" uses_rust)
+    if(uses_rust STREQUAL "0")
+      continue()
+    endif()
+    get_target_property(sources "${target}" SOURCES)
+    set(adapters)
+    set(fixture_sources)
+    foreach(source IN LISTS sources)
+      if(source MATCHES "-link-(support|stubs?)\\.c$" OR source MATCHES "^\\$<TARGET_OBJECTS:obs-test-support-[^>]+>$")
+        list(APPEND adapters "${source}")
+      else()
+        list(APPEND fixture_sources "${source}")
+      endif()
+    endforeach()
+    if(NOT adapters)
+      continue()
+    endif()
+    # Preserve the fixture's definitions, source properties and header order.
+    # Each adapter remains an independent member; unrelated runtime callbacks
+    # must not select Rust objects or DLL imports in an isolated fixture.
+    set(local_support "${target}-rust-static-support")
+    add_library("${local_support}" STATIC ${adapters})
+    set_target_properties("${local_support}" PROPERTIES UNITY_BUILD OFF)
+    foreach(
+      property
+      IN
+      ITEMS
+        COMPILE_DEFINITIONS
+        COMPILE_OPTIONS
+        COMPILE_FLAGS
+        COMPILE_FEATURES
+        INCLUDE_DIRECTORIES
+        SYSTEM_INCLUDE_DIRECTORIES
+        C_STANDARD
+        C_STANDARD_REQUIRED
+        C_EXTENSIONS
+        MSVC_RUNTIME_LIBRARY
+        MSVC_DEBUG_INFORMATION_FORMAT
+    )
+      get_target_property(value "${target}" "${property}")
+      if(NOT value MATCHES "-NOTFOUND$")
+        set_property(TARGET "${local_support}" PROPERTY "${property}" "${value}")
+      endif()
+    endforeach()
+    get_target_property(links "${target}" LINK_LIBRARIES)
+    target_link_libraries("${local_support}" PRIVATE "$<COMPILE_ONLY:${links}>")
+    # Fixture-owned recording adapters precede the generic fallback archive.
+    list(INSERT links 1 "${local_support}")
+    set_property(TARGET "${target}" PROPERTY LINK_LIBRARIES "${links}")
+    set_property(TARGET "${target}" PROPERTY SOURCES "${fixture_sources}")
+  endforeach()
+endfunction()
+
 function(obs_rust_static_consumers support native_owner)
+  if(MSVC AND TARGET OBS::libobs AND NOT TARGET obs-rust-static-headers)
+    # A standalone Rust executable must use one allocator/logger implementation.
+    # Keep the core's header requirements without its competing DLL imports.
+    add_library(obs-rust-static-headers INTERFACE)
+    foreach(
+      property
+      IN
+      ITEMS INCLUDE_DIRECTORIES SYSTEM_INCLUDE_DIRECTORIES COMPILE_DEFINITIONS COMPILE_OPTIONS COMPILE_FEATURES
+    )
+      get_target_property(value OBS::libobs INTERFACE_${property})
+      if(value)
+        set_property(TARGET obs-rust-static-headers PROPERTY INTERFACE_${property} "${value}")
+      endif()
+    endforeach()
+  endif()
   # Real C adapters call back into Rust. Retain that return edge so ELF archive
   # selection searches Rust again after extracting a lazy support member.
   target_link_libraries("${support}" PRIVATE libobs_rust-static)
@@ -77,6 +152,9 @@ function(obs_rust_static_consumers support native_owner)
     _obs_uses_rust_static("${target}" "" uses_rust)
     if(NOT uses_rust STREQUAL "0")
       get_target_property(links "${target}" LINK_LIBRARIES)
+      if(MSVC AND TARGET obs-rust-static-headers)
+        list(TRANSFORM links REPLACE "^(OBS::libobs|libobs)$" "obs-rust-static-headers")
+      endif()
       # Resolve static allocators/parser/logging before OBS's DLL import members.
       # An indirect consumer also needs this explicit first provider.
       if(uses_rust STREQUAL "1")
@@ -107,6 +185,10 @@ function(obs_rust_static_consumers support native_owner)
       endif()
     endif()
   endforeach()
+  if(MSVC)
+    # Run after every legacy deferred fragment has supplied its real adapters.
+    cmake_language(DEFER CALL _obs_demand_rust_static_support)
+  endif()
 endfunction()
 
 # Shared by the complete cmocka project and independent graph fixture projects.
@@ -120,6 +202,21 @@ function(obs_add_rust_static_support root native_owner)
       string(JSON source GET "${manifest}" sources ${index})
       list(APPEND sources "${root}/${source}")
     endforeach()
+    string(JSON platforms ERROR_VARIABLE missing LENGTH "${manifest}" platform_sources)
+    if(NOT missing AND platforms GREATER 0)
+      math(EXPR platform_last "${platforms} - 1")
+      foreach(index RANGE ${platform_last})
+        string(JSON fact MEMBER "${manifest}" platform_sources ${index})
+        if(${fact})
+          string(JSON count LENGTH "${manifest}" platform_sources "${fact}")
+          math(EXPR last "${count} - 1")
+          foreach(member RANGE ${last})
+            string(JSON source GET "${manifest}" platform_sources "${fact}" ${member})
+            list(APPEND sources "${root}/${source}")
+          endforeach()
+        endif()
+      endforeach()
+    endif()
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${root}/test/cmocka/build/rust-static-support.json")
     add_library(video_info_query_link_support STATIC ${sources})
     target_include_directories(

@@ -7,19 +7,26 @@ use std::{
 
 const MANIFEST: &str = include_str!("../../../../../test/cmocka/build/rust-static-support.json");
 
-pub(super) fn sources(root: &Path) -> Result<Vec<PathBuf>, String> {
+pub(super) fn sources(root: &Path, facts: &BTreeMap<String, bool>) -> Result<Vec<PathBuf>, String> {
     #[derive(serde::Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Manifest {
         sources: Vec<String>,
+        #[serde(default)]
+        platform_sources: BTreeMap<String, Vec<String>>,
     }
     let manifest: Manifest = serde_json::from_str(MANIFEST)
         .map_err(|error| format!("Rust-static support manifest: {error}"))?;
-    Ok(manifest
-        .sources
-        .iter()
-        .map(|path| root.join(path))
-        .collect())
+    let mut sources = manifest.sources;
+    for (fact, paths) in manifest.platform_sources {
+        if *facts
+            .get(&fact)
+            .ok_or_else(|| format!("unknown Rust-static support target fact {fact}"))?
+        {
+            sources.extend(paths);
+        }
+    }
+    Ok(sources.iter().map(|path| root.join(path)).collect())
 }
 
 pub(super) struct Support {
@@ -34,7 +41,7 @@ fn prepare(
 ) -> Result<Support, String> {
     let mut support = SharedLibrary {
         name: "rust-static-link-support".into(),
-        sources: sources(root)?,
+        sources: sources(root, &Dependency::target_facts(&build.target))?,
         include_dirs: vec![
             root.into(),
             root.join("libobs"),

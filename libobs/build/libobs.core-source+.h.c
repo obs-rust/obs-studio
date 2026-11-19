@@ -100,6 +100,7 @@
 #include "libobs/obs-source-update-properties-fields.c.h"
 #include "libobs/obs-source-update.c.h"
 #include "libobs/obs-source-weak-predicates-fields.c.h"
+#include "libobs/obs-source-weak-refs.c.h"
 #include "libobs/obs-source.c.h"
 #include "libobs/obs-texture-metadata-fields.c.h"
 #include "libobs/obs-timer-dispatch-fields.c.h"

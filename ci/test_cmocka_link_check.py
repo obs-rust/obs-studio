@@ -69,6 +69,7 @@ class BuildTest(unittest.TestCase):
             with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temporary:
                 work = Path(temporary)
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
+                     mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run") as run:
                     cmocka_link_check.build_targets(alias, work, 3, {})
                 args = run.call_args.args[0]
@@ -84,6 +85,7 @@ class BuildTest(unittest.TestCase):
                 work = Path(temporary)
                 failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=["libobs-cross-shared", "test_existing_rust"]), \
+                     mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run", side_effect=failure):
                     with self.assertRaises(subprocess.CalledProcessError):
                         cmocka_link_check.build_targets(alias, work, 2, {})
@@ -113,6 +115,24 @@ class BuildTest(unittest.TestCase):
 
 
 class DiscoveryTest(unittest.TestCase):
+    def test_msvc_rejects_full_dll_imports_beside_the_rust_archive(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            reply = Path(temporary)
+            target = {"name": "fixture", "type": "EXECUTABLE", "link": {"commandFragments": [
+                {"fragment": "libobs_rust.lib", "role": "libraries"},
+                {"fragment": '"/build/obs.lib"', "role": "libraries"},
+            ]}}
+            (reply / "fixture.json").write_text(json.dumps(target))
+            (reply / "codemodel.json").write_text(json.dumps({"configurations": [{
+                "targets": [{"name": "fixture", "jsonFile": "fixture.json"}]}]}))
+            (reply / "index-1.json").write_text(json.dumps({"reply": {
+                "codemodel-v2": {"jsonFile": "codemodel.json"}}}))
+            with self.assertRaisesRegex(ValueError, "must not mix"):
+                cmocka_link_check.validate_msvc_providers(reply)
+            target["link"]["commandFragments"].pop()
+            (reply / "fixture.json").write_text(json.dumps(target))
+            cmocka_link_check.validate_msvc_providers(reply)
+
     def test_uses_generated_target_types_and_names_not_source_regexes(self):
         with tempfile.TemporaryDirectory() as temporary:
             reply = Path(temporary)

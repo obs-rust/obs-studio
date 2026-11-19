@@ -10,6 +10,32 @@
     "test/cmocka/source-save-load-link-support.c",
     "test/cmocka/source-settings-getter-link-support.c",
     "test/cmocka/encoder-video-tex-active-fields-link-support.c",
-    "test/cmocka/encoder-video-tex-active-mix-link-support.c"
-  ]
+    "test/cmocka/encoder-video-tex-active-mix-link-support.c",
+    "test/cmocka/hotkey-fields-link-support.c",
+    "test/cmocka/service-runtime-link-support.c",
+    "test/cmocka/service-state-link-support.c",
+    "test/cmocka/source-weak-control-link-support.c",
+    "test/cmocka/context-runtime-link-support.c",
+    "test/cmocka/encoder-weak-refs-link-support.c",
+    "test/cmocka/source-weak-refs-link-support.c",
+    "test/cmocka/profiler-variadic-link-support.c",
+    "test/cmocka/cf-preprocessor-link-support.c",
+    "test/cmocka/graphics-runtime-link-support.c",
+    "test/cmocka/dstr-variadic-link-support.c",
+    "test/cmocka/graphics-image-max-size-link-support.c",
+    "test/cmocka/graphics-image-deps-link-support.c",
+    "test/cmocka/graphics-texture-file-data-link-support.c",
+    "test/cmocka/effect-parser-funcs-link-support.c",
+    "test/cmocka/texture-creators-fields-link-support.c",
+    "test/cmocka/graphics-image-convert-link-support.c",
+    "test/cmocka/graphics-preprocessor-link-support.c"
+  ],
+  "platform_sources": {
+    "OS_WINDOWS": [
+      "test/cmocka/hosts/windows/graphics-image-fallback-link-support.c"
+    ],
+    "UNIX": [
+      "test/cmocka/hosts/posix/graphics-image-fallback-link-support.c"
+    ]
+  }
 }

@@ -25,14 +25,33 @@ ROOT = Path(__file__).resolve().parent.parent
 TRIPLES = {"win-x64": "x86_64-pc-windows-msvc", "mac-arm64": "aarch64-apple-darwin"}
 
 
-def discover_targets(reply: Path) -> list[str]:
+def configured_targets(reply: Path) -> list[dict]:
     indexes = sorted(reply.glob("index-*.json"))
     if not indexes:
         raise FileNotFoundError(f"No CMake file-api reply in {reply}")
     index = json.loads(indexes[-1].read_text())
     model = json.loads((reply / index["reply"]["codemodel-v2"]["jsonFile"]).read_text())
-    targets = [json.loads((reply / target["jsonFile"]).read_text())
-               for target in model["configurations"][0]["targets"]]
+    return [json.loads((reply / target["jsonFile"]).read_text())
+            for target in model["configurations"][0]["targets"]]
+
+
+def links_rust_archive(target: dict) -> bool:
+    # Imported Corrosion archives do not have codemodel target entries.
+    return any(Path(part["fragment"].strip('"')).name in ("libobs_rust.lib", "liblibobs_rust.a")
+               for part in target.get("link", {}).get("commandFragments", []))
+
+
+def validate_msvc_providers(reply: Path) -> None:
+    for target in configured_targets(reply):
+        if target["type"] != "EXECUTABLE" or not links_rust_archive(target):
+            continue
+        if any(Path(part["fragment"].strip('"')).name == "obs.lib"
+               for part in target.get("link", {}).get("commandFragments", [])):
+            raise ValueError(f"{target['name']}: standalone Rust/support must not mix with obs.dll's full import library")
+
+
+def discover_targets(reply: Path) -> list[str]:
+    targets = configured_targets(reply)
     by_id = {t.get("id", t["name"]): t for t in targets}
 
     def uses_rust(target: dict, visited: frozenset[str] = frozenset()) -> bool:
@@ -44,13 +63,8 @@ def discover_targets(reply: Path) -> list[str]:
         return any(uses_rust(by_id[dep["id"]], visited | {name})
                    for dep in target.get("dependencies", []) if dep["id"] in by_id)
 
-    def links_rust(target: dict) -> bool:
-        # Imported Corrosion archives do not have codemodel target entries.
-        return any(Path(part["fragment"].strip('"')).name in ("libobs_rust.lib", "liblibobs_rust.a")
-                   for part in target.get("link", {}).get("commandFragments", []))
-
     rust = sorted(t["name"] for t in targets if t["type"] == "EXECUTABLE"
-                  and (t["name"].endswith("_rust") or uses_rust(t) or links_rust(t)))
+                  and (t["name"].endswith("_rust") or uses_rust(t) or links_rust_archive(t)))
     if not rust or not any(t["name"] == "libobs-cross-shared" and t["type"] == "SHARED_LIBRARY" for t in targets):
         raise ValueError("Tier 2 cross-link inventory needs Rust executables and hybrid libobs")
     return ["libobs-cross-shared", *rust]
@@ -111,7 +125,12 @@ def cache_env(work: Path, tools: Path | None = None) -> dict[str, str]:
 
 
 def build_targets(alias: str, work: Path, jobs: int, env: dict[str, str]) -> None:
-    targets = discover_targets(work / ".cmake/api/v1/reply")
+    reply = work / ".cmake/api/v1/reply"
+    targets = discover_targets(reply)
+    if alias == "win-x64":
+        # LLD and native LINK resolve late archive members differently. Enforce
+        # the component boundary even when LLD happens to accept an import mix.
+        validate_msvc_providers(reply)
     (work / "link-targets.json").write_text(json.dumps(targets, indent=2) + "\n")
     print(f"Tier 2 {alias}: linking hybrid libobs and {len(targets) - 1} Rust fixtures ({jobs} Ninja workers)", flush=True)
     subprocess.run(["cmake", "--build", str(work), "--parallel", str(jobs), "--target", *targets,

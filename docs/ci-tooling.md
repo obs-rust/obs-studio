@@ -258,7 +258,7 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 #### Tier 2 pre-queue links (#5189)
 
 The Linux-hosted Tier 2 Link Check matrix links hybrid libobs and every
-configured cmocka `*_rust` executable independently for Windows MSVC x86_64 and Darwin arm64
+configured Rust-static cmocka executable independently for Windows MSVC x86_64 and Darwin arm64
 when `LANES["cmocka_link"]` selects the
 change. This includes libobs, its linked crates, obs-build registration/support,
 cmocka, Cargo inputs and the check's own implementation. Unrelated changes keep
@@ -274,7 +274,13 @@ uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_ch
 
 The root CMake cross-link mode includes the unchanged cmocka graph and deferred
 support fragments. CMake's file-api discovers executable targets after host
-conditions have been evaluated; an empty Rust inventory fails. The check builds
+conditions have been evaluated, including consumers without a `_rust` suffix.
+Imported Corrosion archives are discovered through generated link arguments as
+well as target dependencies; an empty Rust inventory fails. The check uses
+`RelWithDebInfo`, matching native Tier 2. Windows static consumers retain the
+core's headers and demand-linked real C support without its full DLL import
+library. The check rejects that import/static mix even if LLD accepts a link
+that native MSVC LINK would reject (#5246). The check builds
 against real target cmocka and SDK libraries, never executes target programs,
 and saves `link-targets.json` in its build tree. It always refreshes the Rust
 archive through soldr so source-only edits cannot reuse the cross project's
@@ -297,7 +303,8 @@ host Linux libraries cannot satisfy Darwin probes. A successful link does not
 prove runtime recording/allocator behavior or every binding/order error whose
 final link succeeds.
 
-Local measurements on a shared Linux worker (four Ninja jobs, 2026-11-19):
+Earlier Release measurements before #5246's complete inventory and static-only
+Windows support (four Ninja jobs on a shared Linux worker, 2026-11-19):
 
 | Target | Fresh CMake/Corrosion tree | Warm tree |
 |---|---:|---:|
