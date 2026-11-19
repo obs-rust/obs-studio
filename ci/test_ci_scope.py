@@ -315,7 +315,7 @@ class CiScopeTest(unittest.TestCase):
 
         heavy = {
             "rust-cross-lint", "rust-cross-lint-release", "rust-tests-macos-build",
-            "rust-linux-tier2-build", "rust-linux-tier2",
+            "rust-linux-tier2-build", "rust-linux-tier2", "rust-windows-link",
         }
         light = {
             "ci.yml": {
@@ -324,7 +324,7 @@ class CiScopeTest(unittest.TestCase):
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-tests-linux", "cross-compile",
-                "rust-cross-proof", "rust-windows-link", "linux-qt-frontend",
+                "rust-cross-proof", "linux-qt-frontend",
             ), "ubuntu-26.04"),
             "check-format.yaml": {"checks": "ubuntu-latest"},
         }

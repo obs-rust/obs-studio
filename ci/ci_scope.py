@@ -161,12 +161,19 @@ class Scope:
     cross_targets: str = ""
     cross_lint: bool = False
     windows_link: bool = False
+    cmocka_link: bool = False
 
 
 # The path -> lane table (#992). Adding a module is adding a row. Globs use
 # `**` for any depth and `*` within one path segment. Rust crates linked into
 # libobs are added to tier2 at run time (linked_crates).
 LANES: dict[str, tuple[str, ...]] = {
+    "cmocka_link": (
+        "libobs/**", "rust/libobs-rust/**", "rust/obs-build/**", "test/cmocka/**", "deps/**",
+        "cmake/cross/**", "cmake/common/soldr.cmake", "ci/cmocka_link_check.py",
+        "ci/windows_link_check.py", "ci/ci_scope.py", ".github/workflows/build-project.yaml",
+        "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "CMakeLists.txt",
+    ),
     "tier2": (
         "libobs/**",
         "test/cmocka/**",
@@ -598,6 +605,7 @@ def scope(
         docs_only,
         cross_targets(files, read),
         windows_link=bool(files) and not docs_only,
+        cmocka_link=not docs_only and any(lane_hit("cmocka_link", p, linked) for p in files),
         # Exercise the cross lane when its own implementation/orchestration changes.
         cross_lint=(event == "merge_group" and bool(files) and not docs_only) or bool(set(files) & {
             "ci/local_gate.py", "ci/test_local_gate.py", "ci/ci_scope.py",
@@ -719,7 +727,7 @@ def main() -> int:
         result = Scope(
             core=True, macos=True, windows=True, qt=True, tier2=True, full=True,
             qt_sdk=True, cross_targets=",".join(sorted(CROSS_ALIASES.values())),
-            cross_lint=True, windows_link=True,
+            cross_lint=True, windows_link=True, cmocka_link=True,
         )
     lines = [f"{k}={str(v).lower()}" for k, v in vars(result).items()]
     print("\n".join(lines))

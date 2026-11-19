@@ -1,0 +1,78 @@
+# Link the real Tier 2 registrations; keep their host conditions, archive order
+# and deferred support hooks. No CTest execution takes place on the Linux host.
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+set(ENABLE_FRONTEND OFF)
+set(CMAKE_DISABLE_FIND_PACKAGE_Qt6 TRUE)
+set(ENABLE_HEVC ON)
+set(ENABLE_CORE_MODULES ON)
+set(ENABLE_WAYLAND OFF)
+set(OS_${_host} TRUE)
+if(OS_WINDOWS AND NOT MSVC)
+  message(FATAL_ERROR "Tier 2 Windows links require clang-cl; use ci/cmocka_link_check.py")
+endif()
+list(APPEND CMAKE_MODULE_PATH "${OBS_SOURCE_ROOT}/cmake/finders")
+include(helpers_common)
+enable_testing()
+
+include(FetchContent)
+FetchContent_Declare(Corrosion GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git GIT_TAG v0.5.2)
+FetchContent_MakeAvailable(Corrosion)
+corrosion_import_crate(
+  MANIFEST_PATH "${OBS_SOURCE_ROOT}/Cargo.toml"
+  CRATES libobs-rust
+  CRATE_TYPES staticlib
+  PROFILE release
+)
+
+add_library(OBS::libobs ALIAS libobs-cross-shared)
+add_library(libobs-objects ALIAS libobs-cross-shared-objects)
+add_library(OBS::libobs-core-modules ALIAS libobs-cross-generated)
+target_include_directories(libobs-cross-shared PUBLIC "${OBS_SOURCE_ROOT}/libobs" "${CMAKE_BINARY_DIR}/config")
+# Rust object directives retain Windows case on Linux (MSVCRT/OLDNAMES).
+if(OS_WINDOWS)
+  link_directories("${CMAKE_BINARY_DIR}/cross-case-libs")
+  file(
+    CREATE_LINK "${CMAKE_FIND_ROOT_PATH}/sdk/lib/um/x86_64/rpcrt4.lib" "${CMAKE_BINARY_DIR}/cross-case-libs/Rpcrt4.lib"
+    SYMBOLIC
+  )
+  target_include_directories(libobs-cross-shared PUBLIC "${OBS_SOURCE_ROOT}/deps/w32-pthreads")
+  add_library(OBS::w32-pthreads ALIAS libobs-cross-shared-pthreads)
+  target_include_directories(libobs-cross-shared-pthreads PUBLIC "${OBS_SOURCE_ROOT}/deps/w32-pthreads")
+endif()
+find_package(
+  FFmpeg
+  8.0
+  REQUIRED
+  COMPONENTS avcodec avformat avutil swscale swresample
+)
+find_package(jansson REQUIRED)
+find_package(Uthash REQUIRED)
+find_package(SIMDe REQUIRED)
+find_package(ZLIB REQUIRED)
+
+# Same pinned cmocka as the Darwin run-only producer. Build for the target;
+# a host cmocka or a placeholder library would conceal unresolved imports.
+FetchContent_Declare(
+  cmocka
+  URL https://cmocka.org/files/1.1/cmocka-1.1.7.tar.xz
+  URL_HASH SHA256=810570eb0b8d64804331f82b29ff47c790ce9cd6b163e98d47a4807047ecad82
+)
+set(BUILD_SHARED_LIBS OFF)
+set(UNIT_TESTING OFF)
+set(WITH_EXAMPLES OFF)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+# Function-existence probes must link: a static try-compile would claim POSIX
+# sigsetjmp/siglongjmp exist in the Windows SDK merely from declarations.
+set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+find_package(Threads REQUIRED)
+if(OS_WINDOWS)
+  unset(HAVE_SIGSETJMP CACHE)
+  unset(HAVE_SIGLONGJMP CACHE)
+endif()
+FetchContent_MakeAvailable(cmocka)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+set_target_properties(cmocka PROPERTIES OBS_DISABLE_PCH TRUE OBS_DISABLE_UNITY_BUILD TRUE)
+set(CMOCKA_INCLUDE_DIR "${cmocka_SOURCE_DIR}/include")
+set(CMOCKA_LIBRARIES cmocka)
+set(CMocka_DIR "${CMAKE_CURRENT_LIST_DIR}/cmocka")
+add_subdirectory("${OBS_SOURCE_ROOT}/test/cmocka" "${CMAKE_BINARY_DIR}/test/cmocka")

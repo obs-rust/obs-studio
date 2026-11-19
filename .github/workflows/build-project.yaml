@@ -154,6 +154,7 @@ jobs:
       cross_targets: ${{ steps.native.outputs.cross_targets }}
       cross_lint: ${{ steps.native.outputs.cross_lint }}
       windows_link: ${{ steps.native.outputs.windows_link }}
+      cmocka_link: ${{ steps.native.outputs.cmocka_link }}
       swift: ${{ steps.swift.outputs.swift }}
       data: ${{ steps.swift.outputs.data }}
     steps:
@@ -384,6 +385,7 @@ jobs:
             echo "docs_only=${docs_only:-false}"
             echo "cross_targets=${cross_targets:-}"
             echo "windows_link=${windows_link:-true}"
+            echo "cmocka_link=${cmocka_link:-true}"
             echo "platform_os=[$(IFS=,; echo "${os[*]}")]"
           } >> "${GITHUB_OUTPUT}"
           echo "full=${full} core=${core} macos=${macos} windows=${windows} qt=${qt} tier2=${tier2}"
@@ -2182,7 +2184,7 @@ jobs:
   rust-windows-link:
     timeout-minutes: 30
     name: Windows Link Check 🔗 (x86_64-pc-windows-msvc)
-    runs-on: ubuntu-26.04
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
     needs: [check-event, ci-mode]
     # Every fallback non-docs PR runs the link check without proof/attestation skips.
     # Complete member PRs defer it; every selected queue group links again.
@@ -2223,7 +2225,12 @@ jobs:
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           cache-suffix: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
 
+      - name: Set Up Native Link Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y cmake ninja-build pkg-config
+
       - name: Link Windows Test Binaries 🔗
+        env:
+          OBS_CMOCKA_LINK: ${{ needs.check-event.outputs.cmocka_link }}
         run: uv run --no-project ci/windows_link_check.py
 
   rust-cross-lint-release:

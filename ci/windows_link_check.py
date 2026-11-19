@@ -2,27 +2,26 @@
 # /// script
 # requires-python = ">=3.14"
 # ///
-"""Link every workspace test binary for Windows MSVC from Linux (queue tier).
+"""Link Windows MSVC Rust categories and selected Tier 2 fixtures from Linux.
 
     uv run --no-project ci/windows_link_check.py
 
-The cheap pre-merge signal for Windows link defects. The merge queue runs the
-deferred tier, which skips rust-cross-lint, Rust Tests (windows) and Windows
-Tier 2, so a COFF-only link failure passed the queue and reddened master
-twice: `lld-link: error: undefined symbol: obs_encoder_get_caps` (merge_group
-run 42390201886 green, push run 42393067345 red on the same tree; fixed by
-#3919). ELF archive resolution on the Linux Fast Gate cannot see it; a COFF
-link can, and soldr's self-contained lld-link plus xwin SDK does it on a
-Linux runner with no Windows host.
+Every non-docs fallback PR and merge group links the eight category binaries,
+including the C oracle (#3919). For libobs and registration/support changes,
+LANES["cmocka_link"] also selects hybrid libobs and every configured cmocka
+`*_rust` executable (#5189). The latter uses the real registrations, deferred
+support fragments, soldr's clang-cl/LLD and Windows SDK. Nothing is executed.
 
-This runs only the link step of the `cross` lane (ci/local_gate.py
-cross_lint): no clippy, no Dylint, no macOS target, nothing executed. The
-full cross lane, native Windows tests and Tier 2 stay on push/dispatch.
+OBS_CMOCKA_LINK=false keeps category-only coverage for unrelated changes.
+Complete member admission may defer the PR job; selected queue jobs still run.
 """
 
 from __future__ import annotations
 
+import os
 import sys
+
+import cmocka_link_check
 
 import local_gate
 
@@ -41,6 +40,8 @@ def link_args(target: str = TARGET) -> list[str]:
 def main() -> int:
     local_gate.add_target(TARGET)
     local_gate.soldr_cargo(link_args())
+    if os.environ.get("OBS_CMOCKA_LINK", "true") == "true":
+        cmocka_link_check.link("win-x64", cmocka_link_check.ROOT / "build_cmocka_link_win-x64", 4)
     return 0
 
 

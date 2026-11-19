@@ -43,9 +43,30 @@ class LinkArgsTest(unittest.TestCase):
     def test_main_adds_target_then_links_through_soldr(self):
         calls = []
         with mock.patch.object(windows_link_check.local_gate, "add_target", lambda t: calls.append(("add", t))), \
-             mock.patch.object(windows_link_check.local_gate, "soldr_cargo", lambda a: calls.append(("cargo", a))):
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo", lambda a: calls.append(("cargo", a))), \
+             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "false"}):
             self.assertEqual(windows_link_check.main(), 0)
         self.assertEqual(calls, [("add", "x86_64-pc-windows-msvc"), ("cargo", windows_link_check.link_args())])
+
+    def test_selected_tier2_pass_links_after_categories(self):
+        with mock.patch.object(windows_link_check.local_gate, "add_target"), \
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
+             mock.patch.object(windows_link_check.cmocka_link_check, "link") as link, \
+             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
+            self.assertEqual(windows_link_check.main(), 0)
+            link.assert_called_once_with(
+                "win-x64", windows_link_check.cmocka_link_check.ROOT / "build_cmocka_link_win-x64", 4)
+
+    def test_tier2_link_failure_propagates(self):
+        import subprocess
+
+        failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
+        with mock.patch.object(windows_link_check.local_gate, "add_target"), \
+             mock.patch.object(windows_link_check.local_gate, "soldr_cargo"), \
+             mock.patch.object(windows_link_check.cmocka_link_check, "link", side_effect=failure), \
+             mock.patch.dict(windows_link_check.os.environ, {"OBS_CMOCKA_LINK": "true"}):
+            with self.assertRaises(subprocess.CalledProcessError):
+                windows_link_check.main()
 
     def test_link_failure_propagates(self):
         import subprocess
@@ -79,7 +100,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("needs.check-event.outputs.docs_only != 'true'", self.condition)
 
     def test_is_linux_hosted_and_bounded(self):
-        self.assertIn("runs-on: ubuntu-26.04\n", self.block)
+        self.assertIn("inputs.mq-heavy-labels", self.block)
+        self.assertIn("'ubuntu-26.04'", self.block)
         minutes = int(re.search(r"timeout-minutes: (\d+)", self.block).group(1))
         self.assertLessEqual(minutes, 30)  # far inside the queue's 60-minute response timeout
 
