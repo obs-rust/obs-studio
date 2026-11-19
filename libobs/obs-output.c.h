@@ -1045,19 +1045,6 @@ void obs_output_set_service(obs_output_t *output, obs_service_t *service)
 	service->output = output;
 }
 
-uint64_t obs_output_get_total_bytes(const obs_output_t *output)
-{
-	if (!obs_output_valid(output, "obs_output_get_total_bytes"))
-		return 0;
-	if (!output->info.get_total_bytes)
-		return 0;
-
-	if (delay_active(output) && !delay_capturing(output))
-		return 0;
-
-	return output->info.get_total_bytes(output->context.data);
-}
-
 void obs_output_set_preferred_size2(obs_output_t *output, uint32_t width, uint32_t height, size_t idx)
 {
 	if (!obs_output_valid(output, "obs_output_set_preferred_size2"))

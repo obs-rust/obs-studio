@@ -10360,6 +10360,24 @@
         }
       ]
     },
+    "test_output_total_bytes_query": {
+      "sources": [
+        "test/cmocka/test_output_total_bytes_query.c"
+      ],
+      "includes": [
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_output_video_checks_steps": {
       "sources": [
         "test/cmocka/test_output_video_checks_steps.c",
@@ -24987,6 +25005,12 @@
     },
     "test_output_supported_codecs": {
       "target": "test_output_supported_codecs",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_output_total_bytes_query": {
+      "target": "test_output_total_bytes_query",
       "command": [
         "${target}"
       ]
