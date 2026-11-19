@@ -174,6 +174,7 @@ mod video_scale_effects_parity;
 mod video_stop_requested;
 mod video_stop_requested_parity;
 mod video_unmap_last_surface;
+mod video_unmap_last_surface_parity;
 mod view;
 mod view_parity;
 mod weak_object_expired;

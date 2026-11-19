@@ -25,6 +25,10 @@ pub trait MappedSurfaces {
 /// Unmaps every mapped slot in channel order, resetting each slot after its
 /// own unmap has returned.
 pub fn unmap_last_surface(surfaces: &mut impl MappedSurfaces) {
-    let _ = surfaces;
-    todo!("unmap_last_surface")
+    for channel in 0..surfaces.channels() {
+        if let Some(surface) = surfaces.mapped(channel) {
+            surfaces.unmap(surface);
+            surfaces.clear(channel);
+        }
+    }
 }

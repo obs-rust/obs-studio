@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_video_unmap_last_surface_rust": {
+      "sources": [
+        "test/cmocka/test_video_unmap_last_surface.c"
+      ],
+      "compile_options": [
+        {
+          "name": "/O1",
+          "requires": "MSVC"
+        }
+      ],
+      "includes": [
+        "libobs",
+        "deps/libcaption"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  },
+  "tests": {
+    "test_video_unmap_last_surface_rust": {
+      "target": "test_video_unmap_last_surface_rust",
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    }
+  }
+}

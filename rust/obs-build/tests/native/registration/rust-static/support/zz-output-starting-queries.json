@@ -304,6 +304,11 @@
       "test/cmocka/output-starting-queries-link-support.c"
     ]
   },
+  "test_video_unmap_last_surface_rust": {
+    "sources": [
+      "test/cmocka/output-starting-queries-link-support.c"
+    ]
+  },
   "test_window_match_steps_rust": {
     "sources": [
       "test/cmocka/output-starting-queries-link-support.c"
