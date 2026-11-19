@@ -15,6 +15,26 @@
         {
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "LibUUID::LibUUID",
+          "requires": "OS_LINUX"
+        },
+        {
+          "name": "gio::gio",
+          "requires": "HAVE_PORTAL_TEST_GIO"
+        },
+        {
+          "name": "PkgConfig::PORTAL_TEST_GLIB",
+          "requires": "HAVE_PORTAL_TEST_GIO"
+        },
+        {
+          "name": "Rpcrt4",
+          "requires": "OS_WINDOWS"
+        },
+        {
+          "name": "winmm",
+          "requires": "OS_WINDOWS"
         }
       ],
       "header_libraries": [
