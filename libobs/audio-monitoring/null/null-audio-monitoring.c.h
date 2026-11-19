@@ -1,5 +1,9 @@
 #include "build/libobs-nix.pch.h"
 
+/* The PulseAudio backend declares this private caller contract in its wrapper
+ * header. The null backend has no wrapper header, but needs the same prototype. */
+bool devices_match(const char *id1, const char *id2);
+
 bool obs_audio_monitoring_available(void)
 {
 	return false;

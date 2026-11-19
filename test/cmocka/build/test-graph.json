@@ -9352,6 +9352,38 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_null_audio_monitoring": {
+      "sources": [
+        "test/cmocka/test_null_audio_monitoring.c"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka"
+      ],
+      "watch_inputs": [
+        "libobs/audio-monitoring/null/null-audio-monitoring.c.h",
+        "libobs/build/libobs-nix.pch.h"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          {
+            "not": "ENABLE_PULSEAUDIO"
+          }
+        ]
+      }
+    },
     "test_null_output_stop_thread": {
       "sources": [
         "test/cmocka/test_null_output_stop_thread.c"
@@ -25141,6 +25173,25 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_null_audio_monitoring": {
+      "target": "test_null_audio_monitoring",
+      "command": [
+        "${target}"
+      ],
+      "requires": {
+        "all": [
+          {
+            "any": [
+              "OS_LINUX",
+              "OS_FREEBSD"
+            ]
+          },
+          {
+            "not": "ENABLE_PULSEAUDIO"
+          }
+        ]
+      }
     },
     "test_null_output_stop_thread": {
       "target": "test_null_output_stop_thread",
