@@ -7,17 +7,38 @@
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import io
+import subprocess
+import sys
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from ci import tier2_macos_tail as tail
+spec = importlib.util.spec_from_file_location("tier2_macos_tail", Path(__file__).with_name("tier2_macos_tail.py"))
+tail = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tail)
 
 
 class MacosTailTest(unittest.TestCase):
+    def test_phase_reentry_selects_cmake_framework_among_native_outputs(self):
+        validator = Path(__file__).resolve().parent.parent / "rust/tools/tier2-validate/validate.sh"
+        discovery = next(line for line in validator.read_text().splitlines() if line.startswith("rust_lib="))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            expected = root / "libobs/RelWithDebInfo/libobs.framework/Versions/A/libobs"
+            for path in (root / "cargo-native-core/obs/libobs.framework/Versions/A/libobs",
+                         root / "libobs-c-reference/RelWithDebInfo/libobs.framework/Versions/A/libobs", expected):
+                path.parent.mkdir(parents=True)
+                path.touch()
+            result = subprocess.run(
+                ["bash", "-c", 'set -eu\nbuild="$1"\n' + discovery + '\nprintf "%s" "$rust_lib"', "bash", str(root)],
+                capture_output=True, text=True, check=True,
+            )
+            self.assertEqual(result.stdout, str(expected))
+
     def run_fake(self, root: Path, failing: str = "") -> tuple[int, str]:
         validator = root / "validate.sh"
         validator.write_text(
@@ -89,6 +110,19 @@ class MacosTailTest(unittest.TestCase):
                     self.assertNotEqual(tail.run_tail(root / "validate.sh", [], root), 0)
                 self.assertEqual(run.call_count, 2)
             self.assertIn("launch failed", output.getvalue())
+
+    def test_cli_propagates_failure_after_all_runnable_phases(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.run_fake(root, "cmake-tests")
+            result = subprocess.run(
+                [sys.executable, str(Path(tail.__file__)), "--validator", str(root / "validate.sh"),
+                 "--log-dir", str(root / "cli-logs")],
+                capture_output=True, text=True, timeout=20,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(len(list((root / "cli-logs").glob("*.log"))), 3)
+            self.assertIn("cargo-tests: exit 0", result.stdout)
 
 
 if __name__ == "__main__":

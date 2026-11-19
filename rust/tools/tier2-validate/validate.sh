@@ -43,8 +43,15 @@ show_crash_stacks() {
 
 repeat=0
 tests=
+phase=
 while [ $# -gt 0 ]; do
   case "$1" in
+  --phase)
+    # Internal entry points used by ci/tier2_macos_tail.py after the build.
+    phase="${2:-}"
+    case "$phase" in cmake-tests|cargo-build|cargo-tests) ;; *) exit 2 ;; esac
+    shift 2
+    ;;
   --repeat)
     repeat="${2:-}"
     shift 2 || { echo "--repeat needs a count" >&2; exit 2; }
@@ -74,38 +81,43 @@ cd "$(dirname "$0")/../../.."
 export XCODE_CAS_PATH="${XCODE_CAS_PATH:-$PWD/build_rust_xcode_cas}"
 mkdir -p "$XCODE_CAS_PATH"
 
-cmocka_prefix="$(brew --prefix cmocka)"
-
 # OBS_CTEST_JOBS: ctest parallelism for each suite (default 1); CI sets it
 # (#2138). Tests that must not overlap carry RUN_SERIAL or RESOURCE_LOCK.
 ctest_jobs=(-j "${OBS_CTEST_JOBS:-1}")
 
 build="build_rust"
-echo "== configure (libobs and libobs-c-reference)"
-cmake --preset macos-ci -B "$build" \
-  -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID \
-  -DOBS_BUILD_NATIVE_TIER2=ON \
-  -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
-  -DENABLE_WEBSOCKET=OFF \
-  -DCMAKE_PREFIX_PATH="$cmocka_prefix" \
-  >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
-echo "== build (complete native Tier 2 graph)"
-cmake --build "$build" --config RelWithDebInfo --target tier2-native \
-  >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+if [ -z "$phase" ]; then
+  cmocka_prefix="$(brew --prefix cmocka)"
+  echo "== configure (libobs and libobs-c-reference)"
+  cmake --preset macos-ci -B "$build" \
+    -DENABLE_UNIT_TESTS=ON -DOBS_BUILD_C_REFERENCE=ON -DOBS_LIBOBS_BACKEND=HYBRID \
+    -DOBS_BUILD_NATIVE_TIER2=ON \
+    -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_BROWSER=OFF \
+    -DENABLE_WEBSOCKET=OFF \
+    -DCMAKE_PREFIX_PATH="$cmocka_prefix" \
+    >"$build.configure.log" 2>&1 || { tail -40 "$build.configure.log"; exit 1; }
+  echo "== build (complete native Tier 2 graph)"
+  cmake --build "$build" --config RelWithDebInfo --target tier2-native \
+    >"$build.build.log" 2>&1 || { grep -E ": (fatal )?error|BUILD FAILED" "$build.build.log" | sort -u | head -40; exit 1; }
+fi
 
 # libobs.framework twice: libobs (C, what the tests link) and its Rust twin
 # in $build/libobs-c-reference (#1065), same install name.
 c_lib=$(find "$build/libobs-c-reference" -path '*libobs.framework*' -name libobs -type f | head -1)
-rust_lib=$(find "$build" -path "$build/libobs-c-reference" -prune -o -path '*libobs.framework*' -name libobs -type f -print | head -1)
+# Phase reentry must select CMake's hybrid, never a Cargo framework left by
+# this run or a previous one under cargo-native-core.
+rust_lib=$(find "$build/libobs" -path '*libobs.framework*' -name libobs -type f | head -1)
 if [ -z "$c_lib" ] || [ -z "$rust_lib" ]; then
   echo "FAIL: libobs.framework not found (C: '${c_lib}', with Rust: '${rust_lib}') in $build"
   exit 1
 fi
-nm -gU "$c_lib" | awk '{print $3}' | sort >exports-OFF.txt
-nm -gU "$rust_lib" | awk '{print $3}' | sort >exports-ON.txt
-echo "== libobs exported symbols, C vs Rust"
-diff exports-OFF.txt exports-ON.txt
-echo "IDENTICAL ($(wc -l <exports-ON.txt | tr -d ' ') symbols)"
+if [ -z "$phase" ]; then
+  nm -gU "$c_lib" | awk '{print $3}' | sort >exports-OFF.txt
+  nm -gU "$rust_lib" | awk '{print $3}' | sort >exports-ON.txt
+  echo "== libobs exported symbols, C vs Rust"
+  diff exports-OFF.txt exports-ON.txt
+  echo "IDENTICAL ($(wc -l <exports-ON.txt | tr -d ' ') symbols)"
+fi
 
 # libobs in turn loads @rpath/libavcodec.dylib etc. from the pre-built
 # obs-deps that the preset unpacked under .deps.
@@ -115,36 +127,48 @@ if [ -z "$avcodec" ]; then
   exit 1
 fi
 
-for mode in OFF ON; do
-  if [ "$mode" = ON ]; then lib=$rust_lib; else lib=$c_lib; fi
-  # The test executables load @rpath/libobs.framework, and their build rpath
-  # (@executable_path/../Frameworks) only holds it in an app bundle, so point
-  # dyld at the framework's directory (absolute: ctest runs each test from
-  # its own directory). That also picks which libobs the tests run against.
-  framework_dir="$PWD/${lib%%/libobs.framework/*}"
-  dyld=(env DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")")
+probe=$(find "$build/test/cmocka" -name test_bitstream -type f -perm -u+x | head -1)
+if [ -z "$phase" ]; then
+  # Only preparation overlaps: multiple CTest processes would race on their
+  # shared logs, fixtures, fixed ports/temp names and process-local locks.
+  uv run --no-project ci/tier2_macos_tail.py \
+    --validator "$PWD/rust/tools/tier2-validate/validate.sh" \
+    --log-dir "$build/tail-logs" --repeat "$repeat" --tests "$tests"
+  exit 0
+fi
 
-  # Check the loader really took this libobs on one test binary.
-  probe=$(find "$build/test/cmocka" -name test_bitstream -type f -perm -u+x | head -1)
-  if ! "${dyld[@]}" DYLD_PRINT_LIBRARIES=1 "$probe" 2>&1 | grep -qF "$framework_dir/libobs.framework/"; then
-    echo "FAIL: [$mode] tests did not load libobs from $framework_dir"
-    exit 1
-  fi
-  echo "== [$mode] tests load $framework_dir/libobs.framework"
+if [ "$phase" = cmake-tests ]; then
+  for mode in OFF ON; do
+    if [ "$mode" = ON ]; then lib=$rust_lib; else lib=$c_lib; fi
+    # The test executables load @rpath/libobs.framework, and their build rpath
+    # (@executable_path/../Frameworks) only holds it in an app bundle, so point
+    # dyld at the framework's directory (absolute: ctest runs each test from
+    # its own directory). That also picks which libobs the tests run against.
+    framework_dir="$PWD/${lib%%/libobs.framework/*}"
+    dyld=(env DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")")
 
-  echo "== [$mode] ctest"
-  if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}"; then
-    DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")" \
-      show_crash_stacks "$build"
-    exit 1
-  fi
+    # Check the loader really took this libobs on one test binary.
+    if ! "${dyld[@]}" DYLD_PRINT_LIBRARIES=1 "$probe" 2>&1 | grep -qF "$framework_dir/libobs.framework/"; then
+      echo "FAIL: [$mode] tests did not load libobs from $framework_dir"
+      exit 1
+    fi
+    echo "== [$mode] tests load $framework_dir/libobs.framework"
 
-  if [ "$repeat" -gt 0 ]; then
-    echo "== [$mode] ctest --repeat until-fail:$repeat${tests:+ -R $tests}"
-    "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure \
-      --repeat "until-fail:$repeat" ${tests:+-R "$tests"}
-  fi
-done
+    echo "== [$mode] ctest"
+    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}"; then
+      DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")" \
+        show_crash_stacks "$build"
+      exit 1
+    fi
+
+    if [ "$repeat" -gt 0 ]; then
+      echo "== [$mode] ctest --repeat until-fail:$repeat${tests:+ -R $tests}"
+      "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure \
+        --repeat "until-fail:$repeat" ${tests:+-R "$tests"}
+    fi
+  done
+  exit 0
+fi
 
 # Exercise the Cargo native graph on the same macOS machine and dependency
 # bundle as the reference. Build the Rust archive outside build.rs, into an
@@ -177,28 +201,31 @@ capture_reference() {
 reference_capture=$(capture_reference mac-capture mac-capture)
 reference_camera=$(capture_reference mac-avcapture mac-avcapture)
 reference_legacy_camera=$(capture_reference mac-avcapture-legacy mac-avcapture)
-soldr cargo build -p libobs-rust --release --target "$native_target" --target-dir "$native_rust"
-OBS_BUILD_MACOS_DEPENDENCIES="$(dirname "$(dirname "$avcodec")")" \
-  OBS_BUILD_MACOS_TARGET="$native_target" \
-  OBS_BUILD_MACOS_OUTPUT="$native_output" \
-  OBS_BUILD_MACOS_RUST_ARCHIVE="$native_rust/$native_target/release/liblibobs_rust.a" \
-  OBS_BUILD_MACOS_REFERENCE="$PWD/$c_lib" \
-  OBS_BUILD_MACOS_GRAPHICS=1 \
-  OBS_BUILD_MACOS_OPENGL_REFERENCE="$reference_opengl" \
-  OBS_BUILD_MACOS_METAL_REFERENCE="$reference_metal" \
-  OBS_BUILD_MACOS_CAPTURE=1 \
-  OBS_BUILD_MACOS_MAC_CAPTURE_REFERENCE="$reference_capture" \
-  OBS_BUILD_MACOS_MAC_AVCAPTURE_REFERENCE="$reference_camera" \
-  OBS_BUILD_MACOS_MAC_AVCAPTURE_LEGACY_REFERENCE="$reference_legacy_camera" \
-  SWIFTC="$(xcrun --find swiftc)" \
-  SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" \
-  soldr cargo test -p obs-studio-rust --features libobs-integration \
-    --target "$native_target" --target-dir "$native_tests" \
-    --test obs-tests-app native_libobs::macos_core_builds_from_the_canonical_manifest -- --exact
+if [ "$phase" = cargo-build ]; then
+  soldr cargo build -p libobs-rust --release --target "$native_target" --target-dir "$native_rust"
+  OBS_BUILD_MACOS_DEPENDENCIES="$(dirname "$(dirname "$avcodec")")" \
+    OBS_BUILD_MACOS_TARGET="$native_target" \
+    OBS_BUILD_MACOS_OUTPUT="$native_output" \
+    OBS_BUILD_MACOS_RUST_ARCHIVE="$native_rust/$native_target/release/liblibobs_rust.a" \
+    OBS_BUILD_MACOS_REFERENCE="$PWD/$c_lib" \
+    OBS_BUILD_MACOS_GRAPHICS=1 \
+    OBS_BUILD_MACOS_OPENGL_REFERENCE="$reference_opengl" \
+    OBS_BUILD_MACOS_METAL_REFERENCE="$reference_metal" \
+    OBS_BUILD_MACOS_CAPTURE=1 \
+    OBS_BUILD_MACOS_MAC_CAPTURE_REFERENCE="$reference_capture" \
+    OBS_BUILD_MACOS_MAC_AVCAPTURE_REFERENCE="$reference_camera" \
+    OBS_BUILD_MACOS_MAC_AVCAPTURE_LEGACY_REFERENCE="$reference_legacy_camera" \
+    SWIFTC="$(xcrun --find swiftc)" \
+    SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" \
+    soldr cargo test -p obs-studio-rust --features libobs-integration \
+      --target "$native_target" --target-dir "$native_tests" \
+      --test obs-tests-app native_libobs::macos_core_builds_from_the_canonical_manifest -- --exact
 
-OBS_SYS_NATIVE_DEPENDENCIES="$(dirname "$(dirname "$avcodec")")" \
-  OBS_BUILD_RUST_ARCHIVE="$native_rust/$native_target/release/liblibobs_rust.a" \
-  soldr cargo check -p obs-sys --features bundled --target "$native_target" --target-dir "$native_tests"
+  OBS_SYS_NATIVE_DEPENDENCIES="$(dirname "$(dirname "$avcodec")")" \
+    OBS_BUILD_RUST_ARCHIVE="$native_rust/$native_target/release/liblibobs_rust.a" \
+    soldr cargo check -p obs-sys --features bundled --target "$native_target" --target-dir "$native_tests"
+  exit 0
+fi
 
 # Check each generated development framework contains the newly linked core.
 # This is not release packaging. Existing test binaries and their
