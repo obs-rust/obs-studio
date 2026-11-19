@@ -15,6 +15,7 @@ pub mod enumeration;
 pub mod hotkey_name_map;
 pub mod identity_getters;
 pub mod identity_setters;
+pub mod inject_entry;
 #[cfg(not(target_os = "macos"))]
 pub mod key_combination;
 pub mod nix_hotkey_state;

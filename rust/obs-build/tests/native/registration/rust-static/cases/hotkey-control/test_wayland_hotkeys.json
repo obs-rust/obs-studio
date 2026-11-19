@@ -11,7 +11,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry.c.h",
-        "libobs/obs-hotkey-inject-entry.c.h",
+        "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
         "libobs/obs-hotkey-background-enum.c.h",
         "libobs/obs-hotkey-enum.c.h",
@@ -37,7 +37,8 @@
         "obs_hotkeys_configure_background=obs_hotkey_background_control_configure_request",
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
-        "obs_hotkey_enable_background_press=obs_hotkey_background_press_request"
+        "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkey_inject_event=obs_hotkey_inject_entry_request"
       ],
       "includes": [
         "libobs"
@@ -60,7 +61,7 @@
           "libobs/obs-hotkey-identity-setters.c.h"
         ],
         "hotkey_inject_entry": [
-          "libobs/obs-hotkey-inject-entry.c.h"
+          "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
           "libobs/obs-hotkey-register.c.h",

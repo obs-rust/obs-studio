@@ -18,12 +18,20 @@ pub trait Registry {
 
 /// Dispatch even false events; the existing binding engine decides their effect.
 pub fn inject(registry: &mut impl Registry, hotkey: KeyCombination, pressed: bool) {
-    let _ = (registry, hotkey, pressed);
-    todo!()
+    if !registry.lock() {
+        return;
+    }
+    let event = Event {
+        hotkey,
+        pressed,
+        strict_modifiers: registry.strict_modifiers(),
+    };
+    registry.bindings(event);
+    registry.unlock();
 }
 
 /// The binding adapter always continues the current enumeration.
 pub fn forward<B>(event: Event, binding: B, inject: impl FnOnce(B, Event)) -> bool {
-    let _ = (event, binding, inject);
-    todo!()
+    inject(binding, event);
+    true
 }
