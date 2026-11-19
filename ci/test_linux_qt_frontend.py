@@ -11,6 +11,7 @@ pkg-config, ninja, uv and xvfb-run, so nothing is configured or built.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -56,6 +57,19 @@ def qt6_fragments() -> list[str]:
     return sorted(p.stem for p in FRAGMENTS.glob("*.cmake") if "Qt6" in p.read_text(encoding="utf-8"))
 
 
+def known_skips() -> dict[str, str]:
+    """The driver's list of Qt fragments that may have no target (#4837)."""
+    spec = importlib.util.spec_from_file_location("linux_qt_frontend", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, "KNOWN_SKIPS", {})
+
+
+def buildable() -> list[str]:
+    """The Qt fragments the pinned Qt asset can build: all but the known skips."""
+    return [name for name in qt6_fragments() if name not in known_skips()]
+
+
 class LinuxQtFrontendTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -94,7 +108,7 @@ class LinuxQtFrontendTest(unittest.TestCase):
                 "RECORD": str(self.record),
                 "CACHE_LINE": f"Qt6Widgets_DIR:PATH={self.qt}/lib/cmake/Qt6",
                 "PC_PREFIX": str(self.ff),
-                "NINJA_TARGETS": "\n".join(f"{name}: phony" for name in qt6_fragments()[:2]),
+                "NINJA_TARGETS": "\n".join(f"{name}: phony" for name in buildable()),
             }
         )
         environment.update(env)
@@ -166,13 +180,12 @@ class LinuxQtFrontendTest(unittest.TestCase):
         self.assertEqual(self.calls("ninja"), [])
 
     def test_only_qt_targets_that_exist_are_built_and_tested(self) -> None:
-        fragments = qt6_fragments()
-        built, skipped = fragments[:2], fragments[2:]
-        self.assertTrue(built and skipped)
+        built, skipped = buildable(), known_skips()
+        self.assertTrue(built)
         result = self.run_script(*self.prefixes())
         self.assertEqual(result.returncode, 0, result.stderr)
-        for name in skipped:
-            self.assertIn(f"== skipped (no target, missing Qt module?): {name}", result.stdout)
+        for name, reason in skipped.items():
+            self.assertIn(f"== skipped (known: {reason}): {name}", result.stdout)
         build = self.calls("ninja")[-1]
         self.assertEqual(build["argv"], ["-C", str(self.build), "obs-studio", *built])
         self.assertIn(f"== Qt-linked tests: {' '.join(built)}", result.stdout)
@@ -191,6 +204,35 @@ class LinuxQtFrontendTest(unittest.TestCase):
         self.assertEqual(ctest["env"]["QT_PLUGIN_PATH"], f"{self.qt}/plugins")
         self.assertIn("qt-phase phase=build seconds=", result.stdout)
         self.assertIn("qt-phase phase=test seconds=", result.stdout)
+
+    def test_a_qt_fragment_without_a_target_fails_the_job(self) -> None:
+        """#4837: a missing Qt module hid 8 Qt tests while the job passed."""
+        hidden, rest = buildable()[0], buildable()[1:]
+        targets = "\n".join(f"{name}: phony" for name in rest)
+        result = self.run_script(*self.prefixes(), NINJA_TARGETS=targets)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"{hidden}: no target", result.stderr)
+        self.assertEqual([call["argv"][-2:] for call in self.calls("ninja")], [["targets", "all"]])
+        self.assertEqual(self.calls("xvfb-run"), [])
+
+    def test_a_known_skip_that_builds_fails_the_job(self) -> None:
+        """The list cannot go stale: once the Qt asset builds a listed test,
+        the entry must go (#4837)."""
+        skips = known_skips()
+        self.assertTrue(skips)
+        listed = sorted(skips)[0]
+        targets = "\n".join(f"{name}: phony" for name in [*buildable(), listed])
+        result = self.run_script(*self.prefixes(), NINJA_TARGETS=targets)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"{listed}: builds now, remove it from KNOWN_SKIPS", result.stderr)
+        self.assertEqual(self.calls("xvfb-run"), [])
+
+    def test_each_known_skip_is_a_qt_fragment_with_a_reason(self) -> None:
+        skips = known_skips()
+        self.assertTrue(skips)
+        for name, reason in skips.items():
+            self.assertIn(name, qt6_fragments())
+            self.assertTrue(reason.strip(), name)
 
     def test_the_ctest_job_count_is_configurable(self) -> None:
         self.assertEqual(self.run_script(*self.prefixes(), CTEST_JOBS="7").returncode, 0)
