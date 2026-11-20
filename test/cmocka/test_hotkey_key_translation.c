@@ -1,6 +1,5 @@
-/* Characterize the real C query and store against one isolated core, without
- * starting OBS or a desktop. The graph keeps both functions in the same core
- * unity group; the later Rust swap must preserve this callable boundary. */
+/* C-source characterization of the real query and store, without a desktop or
+ * threads. The external seam is reserved for the later Rust swap. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -8,21 +7,35 @@
 #include "libobs/build/libobs.pch.h"
 
 static struct obs_core core;
-struct obs_core *hotkey_test_obs;
+static struct obs_core *selected_core;
+static bool forbid_reads;
+static unsigned reads;
 static long allocations;
 
-bool obs_hotkeys_platform_is_pressed(obs_hotkeys_platform_t *context, obs_key_t key)
+static struct obs_core *record_core(void)
 {
-	(void)context;
-	(void)key;
-	return false;
+	assert_false(forbid_reads);
+	reads++;
+	return selected_core;
 }
+
+#ifndef HOTKEY_KEY_TRANSLATION_EXTERNAL
+#ifndef HOTKEY_KEY_TRANSLATION_SOURCE
+#define HOTKEY_KEY_TRANSLATION_SOURCE "libobs/obs-hotkey-key-translation.c.h"
+#endif
+#undef obs
+#define obs record_core()
+#include HOTKEY_KEY_TRANSLATION_SOURCE
+#undef obs
+#endif
 
 static int setup(void **unused)
 {
 	(void)unused;
 	memset(&core, 0, sizeof(core));
-	hotkey_test_obs = &core;
+	selected_core = &core;
+	forbid_reads = false;
+	reads = 0;
 	allocations = bnum_allocs();
 	return 0;
 }
@@ -35,7 +48,7 @@ static int teardown(void **unused)
 		bfree(core.hotkeys.translations[i]);
 		core.hotkeys.translations[i] = NULL;
 	}
-	hotkey_test_obs = NULL;
+	selected_core = NULL;
 	assert_int_equal(bnum_allocs(), allocations);
 	return 0;
 }
@@ -44,9 +57,11 @@ static void none_without_core(void **unused)
 {
 	(void)unused;
 	char fallback[] = "default";
-	hotkey_test_obs = NULL;
+	selected_core = NULL;
+	forbid_reads = true;
 	assert_null(obs_get_hotkey_translation(OBS_KEY_NONE, fallback));
 	assert_null(obs_get_hotkey_translation(OBS_KEY_NONE, NULL));
+	assert_int_equal(reads, 0);
 }
 
 static void stored_pointer(void **unused)
