@@ -258,6 +258,15 @@
       ],
       "sanitizers": "undefined"
     },
+    "test_apply_private_data": {
+      "sources": [
+        "test/cmocka/test_apply_private_data.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka"
+      ]
+    },
     "test_async_conversion_plan": {
       "sources": [
         "test/cmocka/test_async_conversion_plan.c",
@@ -22413,6 +22422,20 @@
       "target": "test_amf_decode",
       "command": [
         "${target}"
+      ]
+    },
+    "test_apply_private_data": {
+      "target": "test_apply_private_data",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
       ]
     },
     "test_async_conversion_plan": {
