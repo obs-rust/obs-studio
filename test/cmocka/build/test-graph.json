@@ -8079,6 +8079,24 @@
         "-Wl,--wrap=obs_source_get_name,--wrap=obs_source_set_async_compensation,--wrap=obs_source_output_audio"
       ]
     },
+    "test_latest_input_type_id": {
+      "sources": [
+        "test/cmocka/test_latest_input_type_id.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_lexer": {
       "sources": [
         "test/cmocka/test_lexer.c"
@@ -25349,6 +25367,20 @@
       "target": "test_jack_input",
       "requires": "OS_LINUX",
       "timeout_seconds": 60
+    },
+    "test_latest_input_type_id": {
+      "target": "test_latest_input_type_id",
+      "command": [
+        "${target}"
+      ],
+      "optional_prefixes": [
+        [
+          "xvfb-run",
+          "-a",
+          "-s",
+          "-screen 0 1280x1024x24 -noreset"
+        ]
+      ]
     },
     "test_lexer": {
       "target": "test_lexer"
