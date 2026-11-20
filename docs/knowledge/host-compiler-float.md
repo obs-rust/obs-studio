@@ -31,12 +31,22 @@ one place and failed in the other.
 - When a C-vs-Rust or golden comparison of floats differs only in the last bit
   between hosts, suspect FMA contraction first; check the disassembly
   (`objdump -d`) of the C function on both hosts before changing Rust.
-- Rust does not contract `a * b + c` on its own; match the C reference built
-  without contraction (all three sanitizer builds pass `-ffp-contract=off` since
-  #3428, see `TOOL_FLAGS` in `sanitize.py`; Tier 2 and the app builds do not), or
-  compare with a tolerance where the C contract allows it.
-- Follow #3422 for the build-wide decision (pin `-ffp-contract`); this concept
-  is stale once that lands or the runner or Tier 2 image changes its gcc.
+- Rust does not contract `a * b + c` on its own, so every C build that is
+  compared with Rust or with golden floats compiles without contraction
+  (#3422, option B): the CMake test build (`-ffp-contract=off` on every C
+  and C++ target when `ENABLE_UNIT_TESTS` is on, in the Linux and macOS
+  `compilerconfig.cmake`), the test graph that `obs-build`
+  compiles (`configure_c_tests`), the C oracle (`rust/obs-c-oracle/build.rs`)
+  and the three sanitizer passes (`TOOL_FLAGS` in `sanitize.py`, #3428). MSVC
+  does not contract under its default `/fp:precise`.
+- App and release builds keep the compiler default, so the shipped C may round
+  the last bit differently from the Rust port on a host that contracts. Don't
+  pin a shipped-build float result in a test.
+- A new C test, oracle or parity build compiles with `-ffp-contract=off` too.
+  `test_float_contraction` has no flag of its own and fails when the CMake
+  test build loses it on a host that contracts (the hosted runners, macOS
+  arm64). Reproduce it locally with `-mfma`: `gcc -O2 -mfma` gives
+  `839.99994`.
 
 ## Why `stale_after`
 

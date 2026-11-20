@@ -1010,6 +1010,19 @@ sweep is what keeps live usage under it. Fork PR tokens cannot delete
 repository caches, so PR pushes must skip both janitor jobs. Keep cache deletion out of untrusted PR
 events; do not switch to `pull_request_target` to obtain a write token.
 
+The Tier 2 apt family has one master-push writer in `rust-linux-tier2-build`.
+Its restore/save and the OFF/ON consumers use the same image/package-list key
+and literal relative path `../../_temp/apt-archives/*.deb`. The default checkout
+layout puts that directory under `RUNNER_TEMP` on host and container runners;
+apt scratch stays outside the checkout. Actions also versions entries by
+their input paths: an absolute `runner.temp` path changes between hosted and
+Dell runners even with an identical visible key. The previous writer added a
+trailing hyphen that the test consumers did not request. The first hosted master
+build after this correction seeds the portable version; until then consumers
+install normally. Only completed packages travel, and apt locks stay job-local.
+Dell builds retain their marker-backed shared archive and skip remote saves.
+The existing `tier2-apt` 400MB allowance and janitor policy are unchanged.
+
 The app builds keep no Actions cache (phase A of #1801): the macOS Xcode
 compilation cache, the Windows ccache, the Ubuntu zccache and the Flatpak
 builder state held 5.71 GiB and served only nightly, dispatch and release
@@ -1367,24 +1380,36 @@ hosted without expanding permissions. Probe credentials remain on hosted runners
 after queued commitments and this reserve are subtracted. Unset/empty uses the
 default; a nonnegative integer overrides it, and invalid values select hosted.
 PRs have a separate `MQ_PR_DEMAND`: unset/empty defaults to `13`, the complete
-expanded PR job inventory, including both sequential Tier 2 phases. The PR's
-requirement is the maximum of this value and the existing MQ requirement.
-Invalid/nonpositive values use hosted. This conservative default covers Fast
-Gate, Cross Compile, Qt and link jobs in addition to the existing heavy jobs;
-the inventory regression must change when that topology changes. A maintainer
-may tune it to measured scoped PR concurrency, but must not set it below the
-actual concurrent job demand. With default PR demand thirteen and reserve six,
-nineteen matching idle runners are needed. A six-runner Dell stays hosted until
-the maintainer explicitly tunes both PR settings for its workload or expands
-the pool. `MQ_RUNNER_LABELS`,
-`MQ_RUNNER_MIN_IDLE`, `MQ_RUNNER_DEMAND` and `MQ_RUNNER_MODE` retain their meanings.
+expanded PR job inventory, including both sequential Tier 2 phases. This count
+is a **hard admission floor**, checked against every expanded job that can
+receive Dell labels for `pull_request` in `build-project.yaml`. Selection does
+not throttle or restrict jobs after admission: Fast Gate, Cross Compile, Qt,
+link jobs and the existing heavy jobs can all receive those labels. A smaller
+positive override is clamped to the full inventory (and logged); it cannot turn
+that thirteen-job graph into a two-job allocation. Larger overrides reserve
+more capacity. Invalid/nonpositive values use hosted. The effective PR demand
+is the maximum of this inventory, `MQ_PR_DEMAND` and the MQ requirement, and is
+also used for in-flight PR commitments. Update the inventory floor and its
+regression whenever the workflow graph changes.
+
+**Six-runner Dell:** keep `DELL_PR_ROUTING=off`, `MQ_PR_RESERVE=3` and
+`MQ_PR_DEMAND=13`. There is no PR-demand setting that safely admits the current
+thirteen-job graph with a three-runner queue reserve on six runners; at least
+sixteen online/idle runners are needed. In particular, the reported
+`MQ_PR_DEMAND=2`, `MQ_PR_RESERVE=3` configuration must select hosted. Useful PR
+routing on six runners needs a separately bounded job subset or execution
+limit before reducing the inventory floor. With reserve six, nineteen matching
+idle runners are needed. `MQ_RUNNER_LABELS`, `MQ_RUNNER_MIN_IDLE`,
+`MQ_RUNNER_DEMAND` and `MQ_RUNNER_MODE` retain their meanings.
 No variable is changed by merging this default-off feature.
 
 When enabled, both selectors account for live PR and queue job commitments.
 Undecided queue runs have priority over every PR, regardless of creation time;
 undecided PRs use oldest-first ordering. Commitments are weighted by each
 event's required runner capacity, so a large PR cannot count as one small MQ
-run. Queue admission does not subtract the PR reserve. This remains a bounded
+run. For MQ admission the budget is `MQ_RUNNER_MAX_RUNS * required`; PR admission
+keeps the online-capacity limit and idle floor after subtracting the MQ reserve.
+Queue admission does not subtract the PR reserve. This remains a bounded
 snapshot, with the same API visibility and
 simultaneous-selection limitations as queue admission, not a preemption system.
 Already-running PR jobs finish normally. Turning the kill switch off stops new
@@ -1400,10 +1425,9 @@ only the event's `GITHUB_TOKEN`, with `contents: read` and `actions: read`; no
 permission increase or container-isolation change is introduced. Hosted/non-PR
 secret handling stays unchanged. No new workflow files or required checks.
 
-Both the default threshold mode and `MQ_RUNNER_MODE=prefer` now require
-idle capacity. Prefer remains accepted for existing configurations, but no
-longer queues work on busy runners or bypasses the capacity cap. Unknown modes
-fall back to hosted.
+Both the default threshold mode and `MQ_RUNNER_MODE=prefer` use the same
+bounded Dell queue admission. Prefer remains accepted for existing configurations;
+unknown modes fall back to hosted.
 
 Set the optional repository Actions variable `MQ_RUNNER_DEMAND` to tune the
 per-run idle-capacity requirement without a workflow change. Unset or empty
@@ -1430,58 +1454,62 @@ configured demand and actual queued-job labels; it does not hard-code a five-job
 peak or automatically infer future jobs before they appear in the API. The same
 configured requirement applies when path scope skips some heavy jobs.
 `MQ_RUNNER_MIN_IDLE` is an optional repository Actions variable (default `1`);
-required idle capacity is `max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)`. With the
-default demand, a six-runner Dell is selected only when all six matching
-runners are idle. Otherwise the entire heavy pool falls back to hosted,
-preserving the build/test handoff agreement.
+the idle fast case requires `max(MQ_RUNNER_MIN_IDLE, MQ_RUNNER_DEMAND)` runners
+after subtracting queued Dell jobs. Online capacity must cover that requirement
+even for busy admission, so offline or undersized pools still select hosted.
 
-Busy runners do not supply idle capacity, and runner IDs visible in both
-scopes count once (a busy observation wins). Empty threshold inputs use their
-defaults; invalid or nonpositive values fall back to hosted. The job summary
-records the choice, reason, online/busy/idle counts and required capacity,
-plus unavailable scopes. With sufficient idle runners, admission also lists
-queued/in-progress `ci.yml` merge-group runs and their latest-attempt jobs:
+`MQ_RUNNER_MAX_RUNS` caps concurrent committed Dell merge-group runs, including
+the new admission. Unset or empty defaults to **3**; nonpositive or noninteger
+values select hosted. Below this cap, use the idle fast case when available,
+otherwise queue on the busy Dell. At the cap, select hosted even if the runner
+census is idle. This cap replaces `floor(online / required)`; busy runners and
+queued jobs no longer force hosted fallback while a run slot remains.
 
-- Subtract jobs queued for **all** the Dell labels from idle capacity. Running
-  jobs are already represented by busy runner state and are not subtracted again.
-- Cap unfinished Dell-routed runs at `floor(online / required)`, without another
-  variable, and require at least one `idle_run_slots = floor((idle - queued) /
-  required)` for a new admission. Both counts are computed and logged for hosted
-  and Dell decisions. With six idle runners and required capacity three, two
-  runs fit. The total run cap uses online capacity because running Dell jobs
-  already reduce idle; using idle for that cap would charge busy runners twice.
-  For example, three busy and three idle runners can admit a second run alongside
-  one running Dell group. Only live Dell jobs (queued or in progress, without a
-  conclusion) commit a run slot. A routed heavy job's labels establish Dell or
-  hosted selection, including the macOS Rust artifact producer and completed jobs.
-  Inspect latest-attempt jobs even for workflows reporting `queued`: that status
-  does not prove their selector has yet to run. Before heavy jobs appear, older
-  unresolved runs reserve a slot, ordered by creation time then run ID; a visible
-  hosted choice releases that reservation regardless of workflow status. Thus
-  the same four-run idle snapshot admits the oldest two, regardless of probe order.
-  Known Dell commitments count even when newer than the probing run.
+The default comes from the six-runner Dell measurements on 2026-11-19 (reports
+22/23, Refs #4896): 6 of 13 runs went hosted because 4–6 runners were busy with
+required capacity 3. Dell completion had a 27.8-minute median against hosted's
+46.3 minutes, while Dell job queue wait was p90 349 seconds and max 615 seconds.
+Adding even that observed maximum wait to Dell's median gives 38.05 minutes,
+8.25 minutes ahead of hosted's median. Three concurrent runs is a bounded first
+step above the old two-run cap; tune the variable from subsequent completion
+measurements rather than assuming this estimate is a measured overcommit result.
+This queue policy does not authorize PRs to consume their reserved MQ capacity;
+member-PR routing (#5279) retains its separate idle floor and queue reserve.
+With PR routing enabled, retain capacity-weighted commitments and use a queue
+budget of `MQ_RUNNER_MAX_RUNS * required` so a larger PR cannot count as one
+smaller queue run. The cap does not relax PR admission, even with a zero reserve.
 
-The run cap covers the gap between selection and heavy-job creation; queued-job
-subtraction also protects against a run queuing more work than its configured
-demand. Unknown older choices conservatively hold slots while their selector has
-not completed. The existing jobs read is the cheapest routing evidence: REST
-does not expose job outputs, so no extra log/artifact read is needed. A completed
-selector with no visible live Dell jobs releases its reservation during the API
-visibility gap; success alone cannot distinguish an empty hosted output from
-Dell labels. Heavy-job creation may lag selector completion by minutes while
-hosted prerequisites wait. Live Dell-labelled jobs still commit capacity regardless
-of selector status. A skipped selector also releases its reservation. Completed/cancelled
-runs release reservations. Terminal jobs never commit Dell capacity, but their
-labels retain the route so a run waiting only on hosted work cannot regain an
-undecided reservation. Queued Dell jobs still hold a slot while waiting for build
-dependencies. A hosted backlog therefore cannot retain undecided reservations.
-Actions API errors, missing identity/token and unresolved collections select hosted;
-jobs-budget exhaustion uses the conservative reservations above. Capacity-driven
-hosted decisions are identified explicitly in the log and job summary for later
-measurement. This is a bounded snapshot, not an
-atomic reservation: API visibility lag or runners becoming busy/offline after
-selection can still affect capacity. Fixtures reproduce the recorded four-run
-burst and the hosted backlog in `ci/fixtures/mq-hosted-backlog.json`.
+Runner IDs visible in both scopes count once (a busy observation wins). The job
+summary records online/busy/idle counts, required capacity, queued Dell jobs,
+committed runs, run limit, idle run slots and the idle/busy admission reason.
+Queued/in-progress `ci.yml` merge-group runs and latest-attempt jobs establish
+commitments:
+
+- Live Dell-labelled jobs commit one run slot, including newer runs. Completed
+  heavy jobs establish the route but release capacity when no Dell jobs remain,
+  including runs waiting only for hosted macOS work.
+- Older undecided runs reserve a slot, ordered by creation time then run ID.
+  Identical snapshots therefore admit the same oldest runs. Hosted choices,
+  completed/skipped selectors with no live Dell jobs, and terminal runs release
+  reservations. Inspect jobs even for workflows reporting `queued`.
+- A stable retried run listing may omit the current run (run `44586086466`). Without
+  its timestamp, count every undecided peer as older, and log the missing run ID
+  rather than raising `KeyError`. Missing run timestamps sort before known peers;
+  a missing current timestamp reserves every undecided peer. Missing run IDs
+  hold a slot without a jobs lookup. Missing event/status fields use the filtered
+  endpoint's values. Missing job fields similarly reserve that
+  peer's run and required demand, with the missing key named in the warning.
+  Run `44586086466` logged a bare `KeyError` after a snapshot retry; its API
+  response was not retained, so tests reconstruct both missing-current and
+  missing-field shapes rather than claiming an exact historical payload.
+- Jobs-budget exhaustion reserves each unprobed run and at least its required
+  demand (or its larger observed queued-job count). API errors, missing Actions
+  identity/token and unresolved collections still select hosted.
+
+Capacity-driven hosted routing is identified in the log and summary. This is a
+bounded snapshot, not an atomic reservation: API visibility lag or runners going
+offline after selection can still change capacity. Existing fixtures reproduce
+the four-run burst, hosted backlog and collection races in `ci/fixtures/`.
 Report 15 measured 168 idle Dell minutes (six idle runners, required three),
 while 78 Dell-routable hosted jobs waited over five minutes (803 job-minutes),
 and only 3 of 19 queue runs used the Dell. Read-only selector logs for

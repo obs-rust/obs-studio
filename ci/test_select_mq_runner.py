@@ -93,20 +93,20 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
         self.assertEqual(http.call_args.kwargs["timeout"], 10)
 
-    def test_all_six_online_runners_busy_use_hosted(self):
+    def test_all_six_online_runners_busy_with_no_commitments_use_dell(self):
         result, _, output = self.select([runner(busy=True) for _ in range(6)])
-        self.assertEqual(result, "")
+        self.assertEqual(result, LABELS)
         self.assertIn("idle=0", output)
         self.assertIn("busy=6", output)
 
-    def test_prefer_busy_runners_do_not_override_capacity(self):
+    def test_prefer_busy_runners_queue_below_run_cap(self):
         entries = [runner(busy=True) for _ in range(6)]
         for scope in ("repository", "organization"):
             with self.subTest(scope=scope):
                 options = {
                     "runners" if scope == "repository" else "org_runners": entries
                 }
-                self.assertEqual(self.select(mode="prefer", **options)[0], "")
+                self.assertEqual(self.select(mode="prefer", **options)[0], LABELS)
 
     def test_prefer_all_offline_uses_hosted(self):
         result, _, output = self.select([runner("offline", busy=True)], mode="prefer")
@@ -131,8 +131,8 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(result, "")
         http.assert_not_called()
 
-    def test_empty_mode_keeps_idle_threshold_behavior(self):
-        self.assertEqual(self.select([runner(busy=True)], mode="")[0], "")
+    def test_empty_mode_allows_busy_but_requires_online_capacity(self):
+        self.assertEqual(self.select([runner(busy=True)], mode="")[0], LABELS)
         self.assertEqual(self.select([runner()], mode="")[0], LABELS)
         self.assertEqual(self.select([runner()], mode="", min_idle="2")[0], "")
 
@@ -144,7 +144,7 @@ class SelectMqRunnerTest(unittest.TestCase):
                     entries += [runner(busy=True) for _ in range(6 - idle)]
                     self.assertEqual(
                         self.select(entries, mode=mode, demand="6")[0],
-                        LABELS if idle == 6 else "",
+                        LABELS,
                     )
             self.assertEqual(self.select([runner()], mode=mode, min_idle="2")[0], "")
             for option in ("min_idle", "demand"):
@@ -157,27 +157,27 @@ class SelectMqRunnerTest(unittest.TestCase):
         self.assertEqual(result, "")
         http.assert_not_called()
 
-    def test_default_requires_one_idle_runner(self):
+    def test_default_requires_one_online_runner(self):
         self.assertEqual(self.select([runner()])[0], LABELS)
         self.assertEqual(self.select([runner(), runner()])[0], LABELS)
 
     def test_five_busy_runners_do_not_strand_the_last_idle_runner(self):
         entries = [runner(busy=True) for _ in range(5)]
         self.assertEqual(self.select([*entries, runner()])[0], LABELS)
-        self.assertEqual(self.select([*entries, runner("offline")])[0], "")
-        self.assertEqual(self.select([*entries, runner()], demand="2")[0], "")
+        self.assertEqual(self.select([*entries, runner("offline")])[0], LABELS)
+        self.assertEqual(self.select([*entries, runner()], demand="2")[0], LABELS)
 
-    def test_empty_actions_thresholds_use_one_idle_runner(self):
+    def test_empty_actions_thresholds_use_one_online_runner(self):
         self.assertEqual(self.select([runner()], min_idle="", demand="")[0], LABELS)
 
-    def test_busy_offline_and_nonmatching_do_not_supply_idle_capacity(self):
+    def test_only_matching_online_runners_supply_capacity(self):
         entries = [
             runner(),
             runner(busy=True),
             runner("offline"),
             runner(labels=["x64"]),
         ]
-        self.assertEqual(self.select(entries, min_idle="2")[0], "")
+        self.assertEqual(self.select(entries, min_idle="2")[0], LABELS)
         self.assertEqual(self.select([*entries, runner()], min_idle="2")[0], LABELS)
 
     def test_configurable_min_idle_and_demand(self):
@@ -212,12 +212,12 @@ class SelectMqRunnerTest(unittest.TestCase):
 
     def test_disagreeing_busy_state_is_conservative(self):
         same = runner()
-        self.assertEqual(
-            self.select(
-                [same, runner()], org_runners=[{**same, "busy": True}], min_idle="2"
-            )[0],
-            "",
+        selected, _, output = self.select(
+            [same, runner()], org_runners=[{**same, "busy": True}], min_idle="2"
         )
+        self.assertEqual(selected, LABELS)
+        self.assertIn("online=2, busy=1, idle=1", output)
+        self.assertIn("admission=busy queue", output)
 
     def test_unknown_busy_state_is_not_idle(self):
         for busy in (None, "false", 0):
@@ -288,7 +288,7 @@ class SelectMqRunnerTest(unittest.TestCase):
         )
         self.assertEqual(request.get_header("Authorization"), "Bearer fake-token")
         self.assertEqual(http.call_args.kwargs["timeout"], 10)
-        self.assertIn("sufficient idle capacity", output)
+        self.assertIn("admission=idle", output)
 
     def test_org_forbidden_or_missing_preserves_repo_result(self):
         for status in (403, 404):
@@ -507,15 +507,15 @@ class SelectMqRunnerTest(unittest.TestCase):
             (
                 [runner(busy=True) for _ in range(6)],
                 {"MQ_RUNNER_MODE": "prefer"},
-                "",
+                LABELS,
                 "online=6, busy=6, idle=0",
                 None,
             ),
-            ([runner(busy=True)], {"MQ_RUNNER_MODE": ""}, "", "idle=0", None),
+            ([runner(busy=True)], {"MQ_RUNNER_MODE": ""}, LABELS, "idle=0", None),
             (
                 [runner(busy=True) for _ in range(6)],
                 {},
-                "",
+                LABELS,
                 "busy=6, idle=0, required=1",
                 None,
             ),
@@ -967,6 +967,9 @@ class InflightAdmissionTest(unittest.TestCase):
                 {
                     "GITHUB_RUN_ID": str(run_id),
                     "GITHUB_TOKEN": "actions-token",
+                    # Preserve the recorded snapshot's original run bound for
+                    # legacy reservation cases; default-cap tests unset it.
+                    "MQ_RUNNER_MAX_RUNS": str(max(1, capacity // int(demand))),
                     **(environment or {}),
                 },
                 clear=True,
@@ -987,6 +990,94 @@ class InflightAdmissionTest(unittest.TestCase):
         self.assertLessEqual(http.call_count, selector.MAX_REQUESTS)
         return selected
 
+    def test_busy_dell_under_default_max_runs_queues_on_dell(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = self.fixture["queued_jobs"]
+        self.assertTrue(self.select(self.runs[1]["id"], busy=6, environment={"MQ_RUNNER_MAX_RUNS": ""}))
+        self.assertIn("committed=1, run_limit=3", self.output)
+
+    def test_at_default_max_runs_uses_hosted_even_when_idle(self):
+        for run in self.runs[:3]:
+            self.jobs[run["id"]] = self.fixture["queued_jobs"][:1]
+        self.assertEqual(self.select(self.runs[3]["id"], environment={"MQ_RUNNER_MAX_RUNS": ""}), "")
+        self.assertIn("committed=3, run_limit=3", self.output)
+
+    def test_configured_max_runs_caps_busy_admission(self):
+        self.runs = self.runs[:3]
+        for run in self.runs[:2]:
+            self.jobs[run["id"]] = self.fixture["queued_jobs"][:1]
+        self.assertEqual(self.select(
+            self.runs[2]["id"], busy=6, environment={"MQ_RUNNER_MAX_RUNS": "2"}
+        ), "")
+        self.assertIn("committed=2, run_limit=2", self.output)
+
+    def test_invalid_max_runs_uses_hosted(self):
+        for value in ("0", "-1", "oops"):
+            with self.subTest(value=value):
+                self.assertEqual(self.select(
+                    self.runs[0]["id"], environment={"MQ_RUNNER_MAX_RUNS": value}
+                ), "")
+                self.assertIn("ValueError", self.output)
+
+    def test_busy_default_cap_admits_same_oldest_three_on_identical_snapshots(self):
+        actual = [bool(self.select(
+            run["id"], busy=6, environment={"MQ_RUNNER_MAX_RUNS": ""}
+        )) for run in reversed(self.runs)]
+        self.assertEqual(actual, [False, True, True, True])
+
+    def test_recorded_retry_without_current_run_reserves_all_peers(self):
+        # 44586086466 / 135779273252: entries=2, total_count=3, then an
+        # unwrapped KeyError. Reconstruct a stable missing-current snapshot;
+        # the historical log did not retain its API response or missing key.
+        current = self.runs[2]["id"]
+        self.runs = self.runs[:2]
+
+        def stale_count(path, payload):
+            if path.endswith("/runs") and payload["workflow_runs"]:
+                return dict(payload, total_count=3)
+            return payload
+
+        self.assertTrue(self.select(current, transform=stale_count, environment={"MQ_RUNNER_MAX_RUNS": ""}))
+        self.assertIn("collection changed (entries=2, total_count=3)", self.output)
+        self.assertIn(str(current), self.output)
+        self.assertIn("committed=2, run_limit=3", self.output)
+        self.assertNotIn("probe failed", self.output)
+
+    def test_missing_run_fields_reserve_without_probe_failure(self):
+        self.runs = self.runs[:2]
+        peer, current = self.runs
+        for field in ("id", "created_at", "event", "status"):
+            with self.subTest(field=field):
+                def missing_field(path, payload):
+                    if path.endswith("/runs"):
+                        return dict(payload, workflow_runs=[
+                            {key: value for key, value in run.items() if key != field}
+                            if run["id"] == peer["id"] else run
+                            for run in payload["workflow_runs"]
+                        ])
+                    return payload
+
+                self.assertTrue(self.select(current["id"], transform=missing_field))
+                self.assertIn(field, self.output)
+                self.assertIn("committed=1", self.output)
+                self.assertNotIn("probe failed", self.output)
+
+    def test_missing_current_timestamp_reserves_every_undecided_peer(self):
+        current = self.runs[0]["id"]
+        for run in self.runs:
+            run.pop("created_at")
+        self.assertEqual(self.select(current, environment={"MQ_RUNNER_MAX_RUNS": ""}), "")
+        self.assertIn("committed=3", self.output)
+        self.assertNotIn("probe failed", self.output)
+
+    def test_missing_job_labels_reserve_peer_without_probe_failure(self):
+        self.runs = self.runs[:2]
+        self.jobs[self.runs[0]["id"]] = [{"name": "Build", "status": "queued"}]
+        self.assertTrue(self.select(self.runs[1]["id"]))
+        self.assertIn("labels", self.output)
+        self.assertIn("committed=1", self.output)
+        self.assertNotIn("probe failed", self.output)
+
     def test_four_simultaneous_recorded_runs_admit_oldest_two(self):
         # Each probe sees the same idle census and no heavy jobs yet. Reverse
         # probe order too: priority follows creation, not which probe ran first.
@@ -998,9 +1089,11 @@ class InflightAdmissionTest(unittest.TestCase):
                     {run["id"]: index < 2 for index, run in enumerate(self.runs)},
                 )
 
-    def test_queued_dell_jobs_reduce_idle_capacity(self):
+    def test_queued_dell_jobs_reduce_idle_capacity_but_allow_queueing(self):
         self.jobs[self.runs[0]["id"]] = self.fixture["queued_jobs"][:4]
-        self.assertEqual(self.select(self.runs[1]["id"]), "")
+        self.assertTrue(self.select(self.runs[1]["id"]))
+        self.assertIn("queued=4, committed=1", self.output)
+        self.assertIn("idle_run_slots=0; admission=busy queue", self.output)
 
     def test_actions_api_error_uses_hosted(self):
         for error in (
@@ -1226,7 +1319,8 @@ class InflightAdmissionTest(unittest.TestCase):
             dict(job, labels=[label.upper() for label in job["labels"]])
             for job in self.fixture["queued_jobs"][:4]
         ]
-        self.assertEqual(self.select(self.runs[1]["id"]), "")
+        self.assertTrue(self.select(self.runs[1]["id"]))
+        self.assertIn("queued=4, committed=1", self.output)
 
     def test_incomplete_jobs_use_hosted(self):
         for endpoint in ("/jobs",):
@@ -1290,9 +1384,10 @@ class InflightAdmissionTest(unittest.TestCase):
             return dict(payload, total_count=101) if path.endswith("/jobs") else payload
 
         with patch.object(selector, "MAX_REQUESTS", 5):
-            self.assertEqual(self.select(self.runs[0]["id"], transform=more_jobs), "")
+            self.assertTrue(self.select(self.runs[0]["id"], transform=more_jobs))
         self.assertIn("unprobed=1", self.output)
         self.assertIn("queued=100", self.output)
+        self.assertIn("committed=1, run_limit=2", self.output)
         self.assertIn("reserving at least 3 runners", self.output)
         self.assertNotIn("probe failed", self.output)
 

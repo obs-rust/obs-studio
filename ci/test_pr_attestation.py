@@ -14,6 +14,7 @@ from copy import deepcopy
 from dataclasses import dataclass, replace
 import hashlib
 import re
+import shutil
 import io
 import json
 from pathlib import Path
@@ -22,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 from unittest.mock import patch
 
 import pr_attestation as subject
@@ -103,26 +105,153 @@ POLICY = POLICY.replace("gates:\n", "gates:\n" + "".join(
 ))
 
 
+class ObjectFixture:
+    """Write real loose Git objects; fixture construction needs no Git processes.
+
+    Only the test builder uses this. The verifier still reads the resulting
+    repository with real Git, including its real merge-base and shallow logic.
+    """
+
+    def __init__(self, root):
+        self.root = root
+        self.index = {}
+        self.trees = {}
+        self.commits = {}
+
+    def object(self, kind, body):
+        raw = f"{kind} {len(body)}\0".encode() + body
+        sha = hashlib.sha1(raw).hexdigest()
+        path = self.root / ".git/objects" / sha[:2] / sha[2:]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(zlib.compress(raw))
+        return sha
+
+    def tree(self, entries):
+        children = {}
+        for path, sha in entries.items():
+            name, sep, rest = path.partition("/")
+            if sep:
+                children.setdefault(name, {})[rest] = sha
+            else:
+                children[name] = sha
+        body = bytearray()
+        for name, value in sorted(children.items(), key=lambda item: item[0] + ("/" if isinstance(item[1], dict) else "")):
+            mode, sha = ("40000", self.tree(value)) if isinstance(value, dict) else ("100644", value)
+            body.extend(f"{mode} {name}\0".encode() + bytes.fromhex(sha))
+        sha = self.object("tree", body)
+        self.trees[sha] = dict(entries)
+        return sha
+
+    def run(self, *args, input_text=None):
+        command, *values = args
+        if command == "add":
+            paths = sorted(p.relative_to(self.root).as_posix() for p in self.root.rglob("*")
+                           if p.is_file() and ".git" not in p.relative_to(self.root).parts) if values == ["."] else values
+            for path in paths:
+                self.index[path] = self.object("blob", (self.root / path).read_bytes())
+        elif command == "write-tree":
+            return self.tree(self.index)
+        elif command == "commit-tree":
+            tree, *parents = values
+            headers = [f"tree {tree}"] + [f"parent {parent}" for parent in parents[1::2]]
+            identity = "Local fixture <fixture@example.invalid> 1794519000 +0000"
+            headers += [f"author {identity}", f"committer {identity}"]
+            message = input_text + ("" if input_text.endswith("\n") else "\n")
+            sha = self.object("commit", ("\n".join(headers) + "\n\n" + message).encode())
+            self.commits[sha] = tree
+            return sha
+        elif command == "read-tree":
+            tree = self.commits.get(values[0], values[0])
+            self.index = dict(self.trees[tree])
+        elif command == "hash-object":
+            return self.object("blob", input_text.encode())
+        elif command == "update-index":
+            if values[0] == "--force-remove":
+                self.index.pop(values[1], None)
+            else:
+                assert values[:3] == ["--add", "--cacheinfo", "100644"], values
+                self.index[values[4]] = values[3]
+        else:
+            raise AssertionError(f"unsupported fixture operation: {args}")
+        return ""
+
+
+REAL_GIT = subject.Git
+
+
+class FixtureGit(REAL_GIT):
+    """Reuse successful immutable reads across identical fixture copies.
+
+    Keys contain the exact command and full object IDs. Shallow repositories
+    always go through Git: shallow boundaries change ancestry without changing
+    object IDs. Failures are never cached. All distinct queries execute real Git.
+    """
+
+    reads = {}
+
+    def run(self, *args):
+        git_dir = self.root / ".git"
+        if (args[0] not in {"show", "diff"}
+                or any((git_dir / path).exists() for path in
+                       ("shallow", "info/grafts", "refs/replace", "packed-refs", "objects/info/alternates"))):
+            return super().run(*args)
+        ids = re.findall(r"(?<![0-9a-f])[0-9a-f]{40}(?![0-9a-f])", " ".join(args))
+        if not ids or not all((self.root / ".git/objects" / sha[:2] / sha[2:]).is_file() for sha in ids):
+            return super().run(*args)
+        key = (args, (git_dir / "config").read_bytes())
+        if cached := self.reads.get(key):
+            output, objects = cached
+            try:
+                if all(hashlib.sha1(zlib.decompress((git_dir / "objects" / sha[:2] / sha[2:]).read_bytes())).hexdigest() == sha
+                       for sha in objects):
+                    return output
+            except (OSError, zlib.error):
+                pass
+        output = super().run(*args)
+        objects = tuple(path.parent.name + path.name for path in (git_dir / "objects").glob("??/*") if path.is_file())
+        self.reads[key] = (output, objects)
+        return output
+
+
 class TrustContract(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        temp = tempfile.TemporaryDirectory(prefix="pr-attestation-template-")
+        cls.addClassCleanup(temp.cleanup)
+        builder = cls("runTest")
+        builder.root = Path(temp.name)
+        subprocess.run(["git", "init", "-q", "--object-format=sha1", "--template=", str(builder.root)],
+                       check=True, capture_output=True)
+        builder.objects = ObjectFixture(builder.root)
+        builder.write("ci-attestations.yml", POLICY)
+        builder.write("ci/pr_attestation.py", Path(subject.__file__).read_text())
+        builder.write("ci/gh_graphql.py", "# base-owned fixture wrapper\n")
+        builder.write("src/value.txt", "base\n")
+        builder.git("add", ".")
+        builder.base_tree = builder.git("write-tree")
+        builder.base = builder.git("commit-tree", builder.base_tree, input_text="base")
+        builder.write("src/value.txt", "head\n")
+        builder.git("add", "src/value.txt")
+        builder.tree = builder.git("write-tree")
+        builder.proof_reports = {}
+        builder.head = builder.commit([builder.att(FMT)])
+        cls.template = builder
+        FixtureGit.reads = {}
+        patcher = patch.object(subject, "Git", FixtureGit)
+        patcher.start()
+        cls.addClassCleanup(patcher.stop)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="pr-attestation-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.git("init", "-q")
-        self.git("config", "user.name", "Local fixture")
-        self.git("config", "user.email", "fixture@example.invalid")
-        self.write("ci-attestations.yml", POLICY)
-        self.write("ci/pr_attestation.py", Path(subject.__file__).read_text())
-        self.write("ci/gh_graphql.py", "# base-owned fixture wrapper\n")
-        self.write("src/value.txt", "base\n")
-        self.git("add", ".")
-        self.base_tree = self.git("write-tree")
-        self.base = self.git("commit-tree", self.base_tree, input_text="base")
-        self.write("src/value.txt", "head\n")
-        self.git("add", "src/value.txt")
-        self.tree = self.git("write-tree")
-        self.proof_reports = {}
-        self.head = self.commit([self.att(FMT)])
+        # copytree copies bytes, never hardlinks: index, shallow boundaries,
+        # objects and working files are independently mutable in every test.
+        shutil.copytree(self.template.root, self.root, dirs_exist_ok=True)
+        self.objects = deepcopy(self.template.objects)
+        self.objects.root = self.root
+        for name in ("base_tree", "base", "tree", "head", "proof_reports"):
+            setattr(self, name, deepcopy(getattr(self.template, name)))
         self.facts = {
             "data": {
                 "repository": {
@@ -150,14 +279,7 @@ class TrustContract(unittest.TestCase):
         self.public_memberships = {}
 
     def git(self, *args, input_text=None):
-        result = subprocess.run(
-            ["git", "-C", str(self.root), *args],
-            input=input_text,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        return result.stdout.strip()
+        return self.objects.run(*args, input_text=input_text)
 
     def write(self, path, content):
         target = self.root / path
@@ -956,6 +1078,93 @@ class TrustContract(unittest.TestCase):
                 )
                 self.assertIsNotNone(match)
                 self.assertIn(f"  {match[1]}: {{max-age-hours: 24}}", text)
+
+    def test_fixture_setup_reuses_objects_without_sharing_mutable_state(self):
+        other = type(self)("runTest")
+        try:
+            with patch.object(subprocess, "run", wraps=subprocess.run) as run:
+                other.setUp()
+            self.assertEqual(run.call_count, 0)
+            other.write("src/value.txt", "isolated\n")
+            other.facts.clear()
+            other.proof_reports.clear()
+            other.git("update-index", "--force-remove", "src/value.txt")
+            (other.root / ".git/shallow").write_text(other.head + "\n")
+            self.assertEqual((self.root / "src/value.txt").read_text(), "head\n")
+            self.assertTrue(self.facts)
+            self.assertTrue(self.proof_reports)
+            self.assertIn("src/value.txt", self.objects.index)
+            self.assertFalse((self.root / ".git/shallow").exists())
+            self.assertTrue(self.evaluate()["trusted"])
+        finally:
+            other.doCleanups()
+
+    def test_commit_metadata_uses_one_git_read(self):
+        with patch.object(subprocess, "run", wraps=subprocess.run) as run:
+            commit = REAL_GIT(self.root).commit(self.head)
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual((commit.sha, commit.tree, commit.parents),
+                         (self.head, self.tree, (self.base,)))
+
+    def test_fixture_objects_match_git_plumbing(self):
+        def real(*args, input_text=None):
+            return subprocess.run(
+                ["git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false",
+                 "-c", f"core.attributesFile={os.devnull}", "-c", "commit.gpgSign=false",
+                 "-C", str(self.root), *args], input=input_text,
+                text=True, capture_output=True, check=True,
+                env={**os.environ, "GIT_ATTR_NOSYSTEM": "1", "GIT_AUTHOR_NAME": "Local fixture",
+                     "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+                     "GIT_COMMITTER_NAME": "Local fixture",
+                     "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+                     "GIT_AUTHOR_DATE": "1794519000 +0000",
+                     "GIT_COMMITTER_DATE": "1794519000 +0000"},
+            ).stdout.strip()
+
+        real("read-tree", self.tree)
+        for path in ("sort.dir/file", "sort.file", "nested/deep/value"):
+            self.write(path, "fixture\n")
+            self.git("add", path)
+            real("add", path)
+        self.git("update-index", "--force-remove", "src/value.txt")
+        real("update-index", "--force-remove", "src/value.txt")
+        blob = self.git("hash-object", "-w", "--stdin", input_text="blob\n")
+        self.assertEqual(blob, real("hash-object", "-w", "--stdin", input_text="blob\n"))
+        self.git("update-index", "--add", "--cacheinfo", "100644", blob, "cached.txt")
+        real("update-index", "--add", "--cacheinfo", "100644", blob, "cached.txt")
+        tree = self.git("write-tree")
+        self.assertEqual(tree, real("write-tree"))
+        args = ("commit-tree", tree, "-p", self.base, "-p", self.head)
+        commit = self.git(*args, input_text="merge\n\nmessage\n")
+        self.assertEqual(commit, real(*args, input_text="merge\n\nmessage\n"))
+        self.git("read-tree", commit)
+        self.assertEqual(self.git("write-tree"), tree)
+        real("fsck", "--strict", "--no-dangling", commit)
+
+    def test_immutable_read_cache_never_hides_shallow_boundaries_or_missing_objects(self):
+        reader = FixtureGit(self.root)
+        self.assertEqual(reader.commit(self.head), REAL_GIT(self.root).commit(self.head))
+        args = ("diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", f"{self.base}...{self.head}")
+        self.assertEqual(reader.run(*args), REAL_GIT(self.root).run(*args))
+        (self.root / ".git/shallow").write_text(self.head + "\n")
+        with self.assertRaises(subject.GitError):
+            reader.run(*args)
+        with self.assertRaises(subject.GitError):
+            reader.commit("0" * 40)
+
+    def test_immutable_read_cache_never_hides_corrupt_objects(self):
+        reader = FixtureGit(self.root)
+        self.assertEqual(reader.commit(self.head), REAL_GIT(self.root).commit(self.head))
+        path = self.root / ".git/objects" / self.head[:2] / self.head[2:]
+        path.write_bytes(b"corrupt")
+        with self.assertRaises(subject.GitError):
+            reader.commit(self.head)
+        other = type(self)("runTest")
+        try:
+            other.setUp()
+            self.assertEqual(REAL_GIT(other.root).commit(other.head).sha, other.head)
+        finally:
+            other.doCleanups()
 
 
 if __name__ == "__main__":

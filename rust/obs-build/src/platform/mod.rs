@@ -889,6 +889,9 @@ pub fn configure_c_tests(
         "-fno-strict-aliasing".into(),
         "-fvisibility=hidden".into(),
         "-fopenmp-simd".into(),
+        // As the CMake test build (cmake/common/compiler_common.cmake, #3422):
+        // no multiply-add contraction, so float results match Rust's.
+        "-ffp-contract=off".into(),
     ]);
     library
         .definitions
