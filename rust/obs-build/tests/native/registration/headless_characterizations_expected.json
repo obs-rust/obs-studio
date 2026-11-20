@@ -6,6 +6,7 @@
                 "test/cmocka/test_wayland_hotkeys.c",
                 "libobs/obs-hotkey-binding-press.c.h",
                 "libobs/obs-hotkey-background-query.c.h",
+                "libobs/obs-hotkey-key-translation.c.h",
                 "libobs/obs-hotkey-register.c.h",
                 "libobs/obs-hotkey-background-control-fields.c.h",
                 "libobs/obs-hotkey-unregister.c.h",
@@ -76,6 +77,7 @@
                     "libobs/obs-hotkey-inject-entry-fields.c.h"
                 ],
                 "hotkey_registration": [
+                    "libobs/obs-hotkey-key-translation.c.h",
                     "libobs/obs-hotkey-register.c.h",
                     "libobs/obs-hotkey-background-state.c.h",
                     "libobs/obs-hotkey-combination-background-id.c.h",

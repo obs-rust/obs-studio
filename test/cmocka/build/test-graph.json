@@ -5884,6 +5884,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_background_enum.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -5939,6 +5940,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -6039,6 +6041,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_background_press.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -6094,6 +6097,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -6197,6 +6201,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_background_trigger.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -6252,6 +6257,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -6398,6 +6404,7 @@
         "test/cmocka/test_hotkey_binding_press_steps.c",
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -6457,6 +6464,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -6606,6 +6614,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_getters_characterization.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -6662,6 +6671,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -6776,11 +6786,30 @@
         "libobs_rust-static"
       ]
     },
+    "test_hotkey_key_translation": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_hotkey_key_translation.c"
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_hotkey_load": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_load.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -6836,6 +6865,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -6962,6 +6992,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_pair_steps.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -7021,6 +7052,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -7087,6 +7119,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_press_steps.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -7146,6 +7179,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -7227,6 +7261,7 @@
         "libobs/obs-hotkey-binding-press.c.h",
         "test/cmocka/test_hotkey_unregister_entry.c",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-background-state.c.h",
@@ -7284,6 +7319,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -12169,6 +12205,7 @@
         "test/cmocka/hotkey-background-error-link-support.c",
         "libobs/obs-hotkey-background-error.c.h",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -12246,6 +12283,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -21100,6 +21138,7 @@
         "test/cmocka/test_wayland_hotkeys.c",
         "libobs/obs-hotkey-binding-press.c.h",
         "libobs/obs-hotkey-background-query.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey-register.c.h",
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-unregister.c.h",
@@ -21170,6 +21209,7 @@
           "libobs/obs-hotkey-inject-entry-fields.c.h"
         ],
         "hotkey_registration": [
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
@@ -24577,6 +24617,12 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_hotkey_key_translation": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_hotkey_key_translation"
     },
     "test_hotkey_load": {
       "target": "test_hotkey_load"

@@ -47,6 +47,7 @@ class HotkeyRegistrationExtractionTest(unittest.TestCase):
                 groups = list(target.get("unity_groups", {}).values())
                 self.assertIn(
                     [
+                        "libobs/obs-hotkey-key-translation.c.h",
                         EXTRACTED,
                         "libobs/obs-hotkey-background-state.c.h",
                         "libobs/obs-hotkey-combination-background-id.c.h",
