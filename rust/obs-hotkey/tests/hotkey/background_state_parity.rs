@@ -11,8 +11,12 @@ use proptest::prelude::*;
 
 type Getter = unsafe extern "C" fn(*mut u32) -> c_int;
 unsafe extern "C" {
-    fn oracle_hotkey_background_state_probe(bits: u32, value: c_int, flags: u32, getter: Getter)
-    -> u32;
+    fn oracle_hotkey_background_state_probe(
+        bits: u32,
+        value: c_int,
+        flags: u32,
+        getter: Getter,
+    ) -> u32;
     fn oracle_hotkey_background_state_trace(
         bits: u32,
         value: c_int,
@@ -97,9 +101,18 @@ fn original_traces_match_the_characterization() {
         (SUCCESS | OUTPUT, "LRRU", 12345, 0xa5a5_1234),
     ] {
         let want = (expected.to_owned(), state, output);
-        assert_eq!(trace(bits, 12345, 0xa5a5_1234, None), want, "bits={bits:#x}");
         assert_eq!(
-            trace(bits, 12345, 0xa5a5_1234, Some(obs_hotkeys_get_background_state)),
+            trace(bits, 12345, 0xa5a5_1234, None),
+            want,
+            "bits={bits:#x}"
+        );
+        assert_eq!(
+            trace(
+                bits,
+                12345,
+                0xa5a5_1234,
+                Some(obs_hotkeys_get_background_state)
+            ),
             want,
             "bits={bits:#x}"
         );

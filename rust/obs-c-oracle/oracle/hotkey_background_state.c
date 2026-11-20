@@ -60,7 +60,7 @@ void oracle_background_state_unlock(void)
 		state_event('F');
 	state_held = false;
 	/* A read after unlock sees other values, as well as an 'X'. */
-	state_core.hotkeys.background.state = (enum obs_hotkeys_background_state)~(unsigned)state_value;
+	state_core.hotkeys.background.state = (enum obs_hotkeys_background_state) ~(unsigned)state_value;
 	state_core.hotkeys.background.flags = ~state_flags;
 }
 

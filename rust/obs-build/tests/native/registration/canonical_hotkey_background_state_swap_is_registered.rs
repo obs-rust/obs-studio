@@ -38,7 +38,10 @@ fn canonical_hotkey_background_state_swap_is_registered() {
             let target = &selected.targets[rust_test];
             assert!(matches!(target.sources.as_slice(),
                 [Source::Path(a), Source::Path(b)] if a == test_source && b == record));
-            assert_eq!(target.unity_groups["background_state"], [test_source, record]);
+            assert_eq!(
+                target.unity_groups["background_state"],
+                [test_source, record]
+            );
             assert_eq!(target.definitions, ["HOTKEY_BACKGROUND_STATE_EXTERNAL"]);
             assert_eq!(selected.tests[rust_test].target, rust_test);
         }
@@ -59,10 +62,9 @@ fn files_are_wired(root: &Path, test_source: &str, record: &str) {
     )
     .unwrap();
     assert!(ported.contains("build/libobs.ported-hotkey-background-state+.h.c"));
-    let group = fs::read_to_string(
-        root.join("libobs/build/libobs.ported-hotkey-background-state+.h.c"),
-    )
-    .unwrap();
+    let group =
+        fs::read_to_string(root.join("libobs/build/libobs.ported-hotkey-background-state+.h.c"))
+            .unwrap();
     // The C reference gives the original its static lock pair through the seam.
     let lock = "#include \"libobs/obs-hotkey-background-state-lock.c.h\"";
     let original = format!("#include \"{ORIGINAL}\"");
