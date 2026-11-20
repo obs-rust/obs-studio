@@ -2,7 +2,6 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-apply-private-data.c.h"
 #include "libobs/obs-audio-info-queries.c.h"
 #include "libobs/obs-base-effect-fields.c.h"
 #include "libobs/obs-context-runtime.c.h"
@@ -48,7 +47,6 @@
 #include "libobs/obs-main-rendered-callbacks.c.h"
 #include "libobs/obs-module-init-fields.c.h"
 #include "libobs/obs-module-lists-seam.c.h"
-#include "libobs/obs-module-load-all.c.h"
 #include "libobs/obs-module-load-metadata-fields.c.h"
 #include "libobs/obs-module-locale-getters-fields.c.h"
 #include "libobs/obs-module-metadata-adapter.c.h"

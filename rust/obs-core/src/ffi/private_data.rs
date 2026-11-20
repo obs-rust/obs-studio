@@ -41,6 +41,17 @@ pub unsafe extern "C" fn obs_set_private_data(settings: *mut c_void) {
     private_data::set(&mut Calls, NonNull::new(settings).map(NonNull::as_ptr));
 }
 
+/// Merge `settings` into the core's private data without clearing it.
+///
+/// # Safety
+/// `settings` is NULL or a live obs_data_t. NULL returns before any core
+/// access; otherwise the core must be initialized and remain live, and all
+/// access obeys the existing data API's synchronization contract.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_apply_private_data(settings: *mut c_void) {
+    private_data::apply(&mut Calls, NonNull::new(settings).map(NonNull::as_ptr));
+}
+
 /// Return a retained reference to the core's private data.
 ///
 /// # Safety

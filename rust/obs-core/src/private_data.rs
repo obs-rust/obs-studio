@@ -1,4 +1,4 @@
-//! Core private-data replacement and retained access. Storage belongs to the host.
+//! Core private-data replacement, merging and retained access. Storage belongs to the host.
 
 /// The existing core storage and data-object operations, without owning either.
 pub trait Host {
@@ -24,4 +24,13 @@ pub fn get<H: Host>(host: &mut H) -> H::Data {
     let data = host.private_data();
     host.addref(data);
     data
+}
+
+/// Merge `settings` into the existing object without clearing it. With no
+/// settings this returns before reading the core's storage at all.
+pub fn apply<H: Host>(host: &mut H, settings: Option<H::Data>) {
+    if let Some(settings) = settings {
+        let data = host.private_data();
+        host.apply(data, settings);
+    }
 }

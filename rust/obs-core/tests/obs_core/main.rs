@@ -2,6 +2,8 @@
 //! the core category binary (obs-tests-core), not a binary of its own.
 
 mod alloc_count;
+mod apply_private_data;
+mod apply_private_data_parity;
 mod audio_callback;
 mod audio_callback_layout;
 mod audio_callback_parity;
@@ -87,6 +89,8 @@ mod module_init;
 mod module_init_parity;
 mod module_lists;
 mod module_lists_parity;
+mod module_load_all;
+mod module_load_all_parity;
 mod module_load_locale;
 mod module_load_locale_parity;
 mod module_load_metadata;
