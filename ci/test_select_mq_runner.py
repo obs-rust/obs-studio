@@ -1025,6 +1025,63 @@ class InflightAdmissionTest(unittest.TestCase):
         )) for run in reversed(self.runs)]
         self.assertEqual(actual, [False, True, True, True])
 
+    def test_same_second_selectors_reserve_unknown_routes_until_heavy_jobs_appear(self):
+        # Report 25: #5291/#5297/#5298 all saw idle_run_slots=1. Replay
+        # identical pre-heavy snapshots, including the successful-selector gap.
+        candidates = [
+            dict(self.runs[0], id=run_id, created_at="2026-11-19T23:48:30Z")
+            for run_id in (44640669849, 44640670722, 44640672752)
+        ]
+        for status in ("queued", "in_progress"):
+            for phase in ("absent", "in_progress", "success", "unknown"):
+                for committed in range(4):
+                    for limit in (1, 2, 3):
+                        with self.subTest(status=status, phase=phase, committed=committed, limit=limit):
+                            peers = [
+                                dict(candidates[-1], id=44640672753 + index)
+                                for index in range(committed)
+                            ]
+                            self.runs = [dict(run, status=status) for run in candidates] + peers
+                            self.jobs = {run["id"]: [] for run in self.runs}
+                            for run in peers:
+                                self.jobs[run["id"]] = self.fixture["queued_jobs"][:1]
+                            if phase != "absent":
+                                for run in candidates:
+                                    self.jobs[run["id"]] = [{
+                                        "name": "Select Merge Queue Runner",
+                                        "status": "in_progress" if phase == "in_progress" else "completed",
+                                        "conclusion": "success" if phase == "success" else None,
+                                        "labels": ["ubuntu-latest"],
+                                    }]
+                            # Deliberately query newest first; winners cannot depend
+                            # on selector execution order or jobs becoming visible.
+                            winners = [run["id"] for run in reversed(candidates) if self.select(
+                                run["id"], busy=1, environment={"MQ_RUNNER_MAX_RUNS": str(limit)}
+                            )]
+                            free = min(len(candidates), max(0, limit - committed))
+                            self.assertEqual(winners, [run["id"] for run in reversed(candidates[:free])])
+
+    def test_vanished_peer_jobs_use_hosted_instead_of_releasing_reservation(self):
+        self.runs = self.runs[:2]
+        peer, current = self.runs
+
+        def vanish(path, payload):
+            if path.endswith(f"/runs/{peer['id']}/jobs"):
+                raise HTTPError(path, 404, "Not Found", {}, None)
+            return payload
+
+        self.assertEqual(self.select(current["id"], transform=vanish), "")
+        self.assertIn("HTTPError 404", self.output)
+
+    def test_cancelled_same_second_run_releases_provisional_reservation(self):
+        self.runs = self.runs[:3]
+        for run in self.runs:
+            run["created_at"] = self.runs[0]["created_at"]
+        self.runs[0]["conclusion"] = "cancelled"
+        active = self.runs[1:]
+        actual = [bool(self.select(run["id"], environment={"MQ_RUNNER_MAX_RUNS": "1"})) for run in active]
+        self.assertEqual(actual, [True, False])
+
     def test_recorded_retry_without_current_run_reserves_all_peers(self):
         # 44586086466 / 135779273252: entries=2, total_count=3, then an
         # unwrapped KeyError. Reconstruct a stable missing-current snapshot;
@@ -1192,8 +1249,8 @@ class InflightAdmissionTest(unittest.TestCase):
             ]
         self.assertTrue(self.select(self.runs[-1]["id"]))
 
-    def test_completed_selector_without_live_dell_jobs_releases_slot(self):
-        for conclusion in ("success", "failure", "cancelled"):
+    def test_unsuccessful_selector_without_live_dell_jobs_releases_slot(self):
+        for conclusion in ("failure", "cancelled", "skipped", "timed_out"):
             with self.subTest(conclusion=conclusion):
                 self.jobs[self.runs[0]["id"]] = [
                     {
@@ -1216,8 +1273,9 @@ class InflightAdmissionTest(unittest.TestCase):
         }
         for run in self.runs:
             with self.subTest(current=run["id"]):
-                self.assertTrue(self.select(run["id"], capacity=3))
-                self.assertIn("queued=0, committed=0", self.output)
+                older = int(run != self.runs[0])
+                self.assertEqual(bool(self.select(run["id"], capacity=3)), not older)
+                self.assertIn(f"queued=0, committed={older}", self.output)
                 self.assertNotIn("probe failed", self.output)
 
     def test_retried_duplicate_terminal_run_cannot_regain_reservation(self):
