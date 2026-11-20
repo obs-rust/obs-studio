@@ -3512,6 +3512,29 @@
         }
       ]
     },
+    "test_encoder_align_frame_rate_divisor_rust": {
+      "sources": [
+        "test/cmocka/test_encoder_align_frame_rate_divisor_rust.c"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ]
+    },
     "test_encoder_audio_buffers_lifecycle": {
       "sources": [
         "test/cmocka/test_encoder_audio_buffers_lifecycle.c"
@@ -24211,6 +24234,13 @@
     },
     "test_encoder_align_frame_rate_divisor": {
       "target": "test_encoder_align_frame_rate_divisor",
+      "command": [
+        "${target}"
+      ],
+      "timeout_seconds": 30
+    },
+    "test_encoder_align_frame_rate_divisor_rust": {
+      "target": "test_encoder_align_frame_rate_divisor_rust",
       "command": [
         "${target}"
       ],
