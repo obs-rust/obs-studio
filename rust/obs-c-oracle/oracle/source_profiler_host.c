@@ -7,7 +7,9 @@
  * _end, _get_data and their gs_timer_range_* twins) are Rust in
  * obs-graphics, which every binary that links this shim links too; with no
  * graphics context they do nothing and return false, so they are not
- * defined here (a second definition breaks the port_comparison link). The C
+ * defined here (a second definition breaks the port_comparison link), nor is
+ * obs_source_get_output_flags, which is Rust in obs-source (#5340) and
+ * reads a real zeroed source of oracle/source_profiler.c. The C
  * oracle of source-profiler.c (oracle/source_profiler.c) uses its own
  * renamed stand-ins, not these. */
 
@@ -27,12 +29,6 @@ void obs_queue_task(enum obs_task_type type, obs_task_t task, void *param, bool 
 	}
 	UNUSED_PARAMETER(wait);
 	task(param);
-}
-
-uint32_t obs_source_get_output_flags(const obs_source_t *source)
-{
-	UNUSED_PARAMETER(source);
-	return 0;
 }
 
 uint64_t obs_source_get_last_async_ts(const obs_source_t *source)

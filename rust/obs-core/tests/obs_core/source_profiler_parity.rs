@@ -862,9 +862,11 @@ fn profiler_result_layout_matches_c() {
 /// The only test that touches the shim's process-wide profiler.
 #[test]
 fn shim_runs_without_graphics() {
-    let mut a = 0u8;
     let mut b = 0u8;
-    let src: *mut c_void = (&raw mut a).cast();
+    // A real zeroed source: the shim's async check reads its output flags
+    // through the Rust `obs_source_get_output_flags` (#5340).
+    // SAFETY: the oracle allocates it; it is freed at the end of the test.
+    let src: *mut c_void = unsafe { oracle_sp_source_new(0) };
     let other: *mut c_void = (&raw mut b).cast();
     let mut r = profiler_result {
         tick_avg: 7,
@@ -876,8 +878,8 @@ fn shim_runs_without_graphics() {
         fps_den: 1,
     };
 
-    // SAFETY (whole block): the shims with valid locals; the sources are
-    // only keys, never dereferenced by the stand-ins.
+    // SAFETY (whole block): the shims with valid locals; `src` is a live
+    // oracle source until its free, `other` only a key.
     unsafe {
         source_profiler_reset_video(&raw const ovi);
         assert!(!source_profiler_fill_result(src, &raw mut r));
@@ -907,7 +909,7 @@ fn shim_runs_without_graphics() {
 
         assert!(source_profiler_fill_result(src, &raw mut r));
         assert!(r.render_sum >= r.render_avg);
-        assert_eq!(r.async_input, 0.0, "the stand-in has no async flag");
+        assert_eq!(r.async_input, 0.0, "the zeroed source has no async flag");
         assert!(!source_profiler_fill_result(src, ptr::null_mut()));
         let got = source_profiler_get_result(src);
         assert!(!got.is_null());
@@ -928,6 +930,7 @@ fn shim_runs_without_graphics() {
         assert!(!source_profiler_fill_result(src, &raw mut r));
         assert_eq!(r.tick_avg, 7);
         source_profiler_remove_source(src);
+        oracle_sp_source_free(src);
     }
 }
 

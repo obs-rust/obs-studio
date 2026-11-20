@@ -17841,6 +17841,24 @@
         "test/cmocka/test_source_output_flags.c"
       ]
     },
+    "test_source_output_flags_rust": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_source_output_flags.c"
+      ],
+      "definitions": [
+        "SOURCE_OUTPUT_FLAGS_EXTERNAL"
+      ]
+    },
     "test_source_private_settings": {
       "sources": [
         "test/cmocka/test_source_private_settings.c"
@@ -28693,6 +28711,12 @@
         "${target}"
       ],
       "target": "test_source_output_flags"
+    },
+    "test_source_output_flags_rust": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_source_output_flags_rust"
     },
     "test_source_private_settings": {
       "target": "test_source_private_settings",

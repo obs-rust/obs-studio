@@ -5,6 +5,9 @@ use core::ffi::CStr;
 /// anything. Otherwise `read` is called once and its value is returned
 /// unchanged, unknown bits included (characterized, not endorsed).
 pub fn output_flags(source: Option<impl FnOnce() -> u32>, log: impl FnOnce(&'static CStr)) -> u32 {
-    let _ = (source, log);
-    todo!("RED: obs_source_get_output_flags core")
+    let Some(read) = source else {
+        log(c"obs_source_get_output_flags");
+        return 0;
+    };
+    read()
 }
