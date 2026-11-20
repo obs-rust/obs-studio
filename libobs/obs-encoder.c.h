@@ -461,17 +461,6 @@ struct obs_encoder_interleave_info obs_encoder_interleave_info(const obs_encoder
 	return info;
 }
 
-uint32_t obs_encoder_group_num_started(struct obs_encoder_group *group)
-{
-	uint32_t num_started;
-
-	pthread_mutex_lock(&group->mutex);
-	num_started = group->num_encoders_started;
-	pthread_mutex_unlock(&group->mutex);
-
-	return num_started;
-}
-
 void obs_encoder_update(obs_encoder_t *encoder, obs_data_t *settings)
 {
 	if (!obs_encoder_valid(encoder, "obs_encoder_update"))
