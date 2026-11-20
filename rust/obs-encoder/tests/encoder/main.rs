@@ -4,6 +4,8 @@ mod last_error;
 mod last_error_parity;
 mod media_getters;
 mod media_getters_parity;
+mod output_list;
+mod output_list_parity;
 mod packet_ownership;
 mod packet_ownership_parity;
 

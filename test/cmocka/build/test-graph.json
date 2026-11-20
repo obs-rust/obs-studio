@@ -3998,6 +3998,34 @@
         }
       ]
     },
+    "test_encoder_outputs_rust": {
+      "sources": [
+        "test/cmocka/test_encoder_outputs.c",
+        "test/cmocka/encoder-outputs-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "encoder_outputs": [
+          "test/cmocka/test_encoder_outputs.c",
+          "test/cmocka/encoder-outputs-record-support.c"
+        ]
+      },
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_encoder_packet_ts_steps": {
       "sources": [
         "test/cmocka/test_encoder_packet_ts_steps.c",
@@ -24126,6 +24154,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_encoder_outputs_rust": {
+      "target": "test_encoder_outputs_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_encoder_packet_ts_steps": {
       "target": "test_encoder_packet_ts_steps",
