@@ -1087,6 +1087,43 @@
         }
       ]
     },
+    "test_canvas_clear_mix_rust": {
+      "sources": [
+        "test/cmocka/test_canvas_clear_mix.c",
+        "test/cmocka/canvas-clear-mix-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "clear_mix": [
+          "test/cmocka/test_canvas_clear_mix.c",
+          "test/cmocka/canvas-clear-mix-record-support.c"
+        ]
+      },
+      "definitions": [
+        "CANVAS_CLEAR_MIX_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "compile_options": [
+        {
+          "name": "-DCANVAS_CLEAR_MIX_NULL_PROBE",
+          "requires": "OS_LINUX"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_canvas_destroy_scene_refs": {
       "sources": [
         "test/cmocka/test_canvas_destroy_scene_refs.c"
@@ -1315,6 +1352,26 @@
           "requires": "OS_WINDOWS"
         }
       ]
+    },
+    "test_canvas_valid_video_info_rust": {
+      "sources": [
+        "test/cmocka/test_canvas_valid_video_info.c"
+      ],
+      "definitions": [
+        "CANVAS_VALID_INFO_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_canvas_video_getter": {
       "sources": [
@@ -22826,6 +22883,13 @@
         "${target}"
       ]
     },
+    "test_canvas_clear_mix_rust": {
+      "target": "test_canvas_clear_mix_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_canvas_destroy_scene_refs": {
       "target": "test_canvas_destroy_scene_refs",
       "command": [
@@ -22990,6 +23054,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_canvas_valid_video_info_rust": {
+      "target": "test_canvas_valid_video_info_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_canvas_video_getter": {
       "target": "test_canvas_video_getter",

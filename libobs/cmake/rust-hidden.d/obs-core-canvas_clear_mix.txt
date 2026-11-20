@@ -1,0 +1,4 @@
+# obs-canvas-clear-mix.c: obs-canvas.c calls it inside libobs (destroy,
+# free_all_mixes and reset_video_internal). Declared in obs-internal.h
+# without EXPORT, so the shim stays hidden the same way.
+obs_canvas_clear_mix
