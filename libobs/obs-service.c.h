@@ -37,16 +37,6 @@ obs_service_t *obs_service_context_new(const char *name, obs_data_t *settings, o
 	return service;
 }
 
-void obs_service_set_info(obs_service_t *service, const struct obs_service_info *info)
-{
-	service->info = *info;
-}
-
-void obs_service_set_plugin_data(obs_service_t *service, void *data)
-{
-	service->context.data = data;
-}
-
 void obs_service_context_insert(obs_service_t *service)
 {
 	obs_context_init_control(&service->context, service, (obs_destroy_cb)obs_service_destroy);
@@ -65,21 +55,6 @@ void obs_service_context_free(obs_service_t *service)
 	if (service->owns_info_id)
 		bfree((void *)(uintptr_t)service->info.id);
 	bfree(service);
-}
-
-/* For the getters in obs-service-getters.c, which no longer see struct
- * obs_service: the plugin's callback table this service was created with.
- * Hidden; the Rust port calls it and obs_service_get_plugin_data() too
- * (#1899). */
-const struct obs_service_info *obs_service_get_info_table(const obs_service_t *service)
-{
-	return &service->info;
-}
-
-/* The plugin data that create() returned, for the same getters. Hidden. */
-void *obs_service_get_plugin_data(const obs_service_t *service)
-{
-	return service->context.data;
 }
 
 /* File-local macros: keep them out of the next source of a unity build. */
