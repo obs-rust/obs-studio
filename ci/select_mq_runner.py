@@ -266,14 +266,15 @@ def online_runners(path: str, wanted: set[str], probe: Probe) -> dict[int, bool]
 
 
 def selector_finished(jobs: list[dict]) -> bool:
-    """A finished selector without visible live Dell jobs holds no reservation."""
+    """Only an unsuccessful selector proves no unseen Dell work can follow."""
     for job in jobs:
         if job["name"] != "Select Merge Queue Runner":
             continue
-        if job["status"] == "completed" or job.get("conclusion") is not None:
-            # Outputs are internal to Actions and heavy jobs may appear much
-            # later. Only their live labels commit Dell capacity; completion
-            # ends the older-undecided reservation even in that visibility gap.
+        if job.get("conclusion") not in (None, "success"):
+            # Successful outputs are internal to Actions. Heavy-job labels can
+            # appear later, so success (or a missing conclusion) cannot release
+            # an older run's provisional reservation. Retain its rank until
+            # routing is visible; brief under-use is safer than overcommit.
             return True
     return False
 

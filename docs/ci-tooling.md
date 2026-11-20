@@ -1489,9 +1489,13 @@ commitments:
   heavy jobs establish the route but release capacity when no Dell jobs remain,
   including runs waiting only for hosted macOS work.
 - Older undecided runs reserve a slot, ordered by creation time then run ID.
-  Identical snapshots therefore admit the same oldest runs. Hosted choices,
-  completed/skipped selectors with no live Dell jobs, and terminal runs release
-  reservations. Inspect jobs even for workflows reporting `queued`.
+  Identical snapshots therefore admit the same oldest runs, including runs
+  created in the same second. A successful selector still has an unknown route
+  until heavy-job labels appear: its output is not exposed by the jobs API.
+  Keep its provisional reservation through that visibility gap (also when its
+  conclusion is missing), preferring brief under-use over overcommit. Hosted
+  choices, unsuccessful/skipped selectors with no live Dell jobs, and terminal
+  runs release reservations. Inspect jobs even for workflows reporting `queued`.
 - A stable retried run listing may omit the current run (run `44586086466`). Without
   its timestamp, count every undecided peer as older, and log the missing run ID
   rather than raising `KeyError`. Missing run timestamps sort before known peers;
