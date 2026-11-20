@@ -5226,6 +5226,19 @@
         }
       ]
     },
+    "test_graphics_device_identity": {
+      "sources": [
+        "test/cmocka/test_graphics_device_identity.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_graphics_device_queries": {
       "sources": [
         "test/cmocka/test_graphics_device_queries.c"
@@ -24656,6 +24669,12 @@
     },
     "test_graphics_device_load": {
       "target": "test_graphics_device_load",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_graphics_device_identity": {
+      "target": "test_graphics_device_identity",
       "command": [
         "${target}"
       ]
