@@ -36,6 +36,7 @@ mod inject_entry_parity;
 mod key_combination;
 mod key_combination_parity;
 mod key_translation;
+mod key_translation_parity;
 mod nix_hotkey_state;
 mod nix_hotkey_state_parity;
 mod nix_wayland_key_names;
@@ -175,10 +176,11 @@ pub mod hotkey_mutex {
     }
 }
 
-/// Cargo-test stand-in for libobs's hidden
-/// `obs_hotkeys_store_key_translation` (obs-hotkey.c.h), which the
-/// translations shim and its C oracle both call. It records each call per
-/// thread, so each test sees only its own.
+/// Records each call of libobs's hidden `obs_hotkeys_store_key_translation`,
+/// which the translations shim and its C oracle both call. The store is the
+/// real Rust one (`obs_hotkey::ffi::key_translation`); under cargo test its
+/// C adapters run on the key-translation oracle's per-thread core, which
+/// reports each store to this module, so each test sees only its own.
 pub mod hotkey_store {
     use std::cell::RefCell;
     use std::ffi::{CStr, c_char, c_int};
@@ -196,29 +198,36 @@ pub mod hotkey_store {
         static CALLS: RefCell<Vec<Stored>> = const { RefCell::new(Vec::new()) };
     }
 
-    /// The calls on this thread since the last `take`.
-    pub fn take() -> Vec<Stored> {
-        CALLS.with(|c| std::mem::take(&mut *c.borrow_mut()))
+    unsafe extern "C" {
+        fn oracle_hotkey_key_translation_record(
+            hook: Option<unsafe extern "C" fn(c_int, *const c_char)>,
+        );
     }
 
-    /// # Safety
-    ///
-    /// `translation` is null or a NUL-terminated string.
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn obs_hotkeys_store_key_translation(
-        key: c_int,
-        translation: *const c_char,
-    ) {
-        let name = (!translation.is_null()).then(|| {
-            // SAFETY: the caller passes a NUL-terminated string.
-            unsafe { CStr::from_ptr(translation) }.to_bytes().to_vec()
-        });
+    /// The store frees the old name first (`NULL`), then copies the
+    /// caller's string, if any.
+    unsafe extern "C" fn record(key: c_int, translation: *const c_char) {
         CALLS.with(|c| {
-            c.borrow_mut().push(Stored {
-                key,
-                ptr: translation as usize,
-                name,
-            })
+            let mut calls = c.borrow_mut();
+            if translation.is_null() {
+                calls.push(Stored {
+                    key,
+                    ptr: 0,
+                    name: None,
+                });
+            } else if let Some(last) = calls.last_mut() {
+                // SAFETY: the store copies a NUL-terminated string.
+                last.name = Some(unsafe { CStr::from_ptr(translation) }.to_bytes().to_vec());
+                last.ptr = translation as usize;
+            }
         });
+    }
+
+    /// The calls on this thread since the last `take`. Each `take` empties
+    /// the fixture's name store and starts recording again.
+    pub fn take() -> Vec<Stored> {
+        // SAFETY: frees only names this thread's fixture stored.
+        unsafe { oracle_hotkey_key_translation_record(Some(record)) };
+        CALLS.with(|c| std::mem::take(&mut *c.borrow_mut()))
     }
 }

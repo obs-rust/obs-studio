@@ -3,9 +3,9 @@
  * can link next to the Rust shim. Its dstr calls are renamed to the C dstr
  * oracle (oracle/dstr.c, the same renames), so the expansion runs on the
  * original util/dstr.c, not on its Rust port. The store it calls,
- * obs_hotkeys_store_key_translation, keeps its name: under cargo test the
- * test binary defines it and records each call, for this oracle and the
- * shim alike. */
+ * obs_hotkeys_store_key_translation, keeps its name: under cargo test it is
+ * the Rust store, whose adapters run on the key-translation oracle's core
+ * and report each call, for this oracle and the shim alike. */
 #ifndef _WIN32
 #define _GNU_SOURCE
 #endif

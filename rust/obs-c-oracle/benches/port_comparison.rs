@@ -274,11 +274,6 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_hotkeys_store_key_translation() -> ! {
-        called("obs_hotkeys_store_key_translation")
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn obs_output_interleave_first_audio_encoder_index() -> ! {
         called("obs_output_interleave_first_audio_encoder_index")
     }

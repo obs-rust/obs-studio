@@ -19,6 +19,7 @@ pub mod identity_setters;
 pub mod inject_entry;
 #[cfg(not(target_os = "macos"))]
 pub mod key_combination;
+pub mod key_translation;
 pub mod nix_hotkey_state;
 pub mod nix_wayland_key_names;
 pub mod nix_wayland_keys;

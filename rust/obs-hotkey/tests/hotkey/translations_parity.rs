@@ -7,9 +7,9 @@
 //! compares the two directly.
 //!
 //! The oracle expands its templates on the original `util/dstr.c` (the C
-//! dstr oracle), not on the Rust dstr port. Both sides call the same
-//! recording stand-in for the store, `obs_hotkeys_store_key_translation`
-//! (`super::hotkey_store`). Compared, for the same struct and `size`: every
+//! dstr oracle), not on the Rust dstr port. Both sides call the same store,
+//! `obs_hotkeys_store_key_translation`, whose calls `super::hotkey_store`
+//! records. Compared, for the same struct and `size`: every
 //! store call, in order: the key, the bytes of the string, and whether the
 //! pointer passed is one of the caller's members (the C passes a named
 //! key's string on as it is) and which. The struct must be left as it was.

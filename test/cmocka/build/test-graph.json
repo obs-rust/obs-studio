@@ -6892,6 +6892,37 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_hotkey_key_translation_rust": {
+      "sources": [
+        "test/cmocka/test_hotkey_key_translation.c",
+        "test/cmocka/hotkey-key-translation-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "key_translation": [
+          "test/cmocka/test_hotkey_key_translation.c",
+          "test/cmocka/hotkey-key-translation-record-support.c"
+        ]
+      },
+      "definitions": [
+        "HOTKEY_KEY_TRANSLATION_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_hotkey_load": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -24783,6 +24814,13 @@
         "${target}"
       ],
       "target": "test_hotkey_key_translation"
+    },
+    "test_hotkey_key_translation_rust": {
+      "target": "test_hotkey_key_translation_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_hotkey_load": {
       "target": "test_hotkey_load"

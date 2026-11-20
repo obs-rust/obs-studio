@@ -86,12 +86,12 @@ impl KeyTranslations for Table {
             self.arena[handle] = None;
         }
     }
-    fn duplicate(&mut self, value: Handle) -> Handle {
+    fn duplicate(&mut self, value: Handle) -> Option<Handle> {
         let copy = self.text(value).to_vec();
         self.arena.push(Some(copy));
         let handle = self.arena.len() - 1;
         self.owned.push(handle);
-        handle
+        Some(handle)
     }
 }
 
