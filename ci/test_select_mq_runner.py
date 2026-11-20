@@ -5,6 +5,7 @@ import io
 import itertools
 import json
 import os
+import re
 import tempfile
 import unittest
 from contextlib import ExitStack
@@ -18,6 +19,69 @@ import select_mq_runner as selector
 
 LABELS = '["self-hosted","linux","x64","obs-mq"]'
 RUNNER_IDS = itertools.count(1)
+
+
+class HostedRunnerRoutingTest(unittest.TestCase):
+    """Pin phase 1's hosted fallback without changing Dell or native hosts (#5332)."""
+
+    def job(self, workflow, name):
+        path = Path(__file__).resolve().parent.parent / '.github/workflows' / workflow
+        match = re.search(
+            rf'^  {re.escape(name)}:\n(.*?)(?=^  [a-z0-9-]+:\n|\Z)',
+            path.read_text(), re.S | re.M,
+        )
+        self.assertIsNotNone(match, name)
+        return match.group(1)
+
+    def assert_runner(self, workflow, name, expected):
+        match = re.search(r'^    runs-on: (.+)$', self.job(workflow, name), re.M)
+        self.assertIsNotNone(match, name)
+        self.assertEqual(match.group(1), expected, name)
+
+    def test_tier2_selector_fallback_and_dell_route(self):
+        # The selector publishes empty heavy-labels for hosted fallback. Resolve
+        # that contract at the actual consumers, including merge_group runs.
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'output'
+            with patch.dict(os.environ, {
+                'GITHUB_EVENT_NAME': 'merge_group', 'MQ_RUNNER_LABELS': LABELS,
+                'GITHUB_OUTPUT': str(output),
+            }, clear=True), redirect_stdout(io.StringIO()):
+                self.assertEqual(selector.main(), 0)
+            self.assertEqual(output.read_text(), 'heavy-labels=\n')
+        for name in ('rust-linux-tier2-build', 'rust-linux-tier2'):
+            with self.subTest(job=name):
+                self.assert_runner('build-project.yaml', name,
+                    "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}")
+
+    def test_light_jobs_use_latest(self):
+        for workflow, names in (
+            ('build-project.yaml', ('check-event', 'ci-mode', 'rust-cross-proof')),
+            ('ci.yml', ('update-documentation', 'native-cache-consumer', 'tier2-lane-proof')),
+        ):
+            for name in names:
+                with self.subTest(workflow=workflow, job=name):
+                    self.assert_runner(workflow, name, 'ubuntu-latest')
+
+    def test_host_package_jobs_keep_2604(self):
+        for name in ('rust-tests-linux', 'cross-compile', 'linux-qt-frontend',
+                     'rust-cross-lint', 'rust-cross-lint-release', 'rust-windows-link',
+                     'cmocka-link', 'rust-tests-macos-build'):
+            with self.subTest(job=name):
+                pr_only = "github.event_name == 'pull_request' && " if name in (
+                    'rust-tests-linux', 'cross-compile', 'linux-qt-frontend') else ''
+                self.assert_runner('build-project.yaml', name,
+                    "${{ " + pr_only + "inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}")
+
+    def test_packaging_and_setup_probes_keep_2604(self):
+        for workflow, names in (
+            ('build-project.yaml', ('flatpak-build', 'flatpak-compiler-consumer', 'flatpak-runtime-test')),
+            ('ci.yml', ('flatpak-runtime-reuse', 'tier2-setup-producer', 'tier2-setup-consumer')),
+        ):
+            for name in names:
+                with self.subTest(workflow=workflow, job=name):
+                    self.assert_runner(workflow, name, 'ubuntu-26.04')
+        self.assertIn('os: [ubuntu-26.04]', self.job('build-project.yaml', 'ubuntu-build'))
 
 
 def runner(status="online", *, busy=False, labels=None):
