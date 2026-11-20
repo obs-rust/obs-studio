@@ -98,9 +98,13 @@ pub fn build_hybrid_with_options(
     finish(build, &library)
 }
 
-/// Cargo's adjacent depfile identifies the archive's actual local crate closure.
-/// Check their production inputs conservatively, including build-script data and
-/// newly added files; do not invalidate an archive for native build/test edits.
+/// Cargo's adjacent depfile lists the archive's exact inputs. Check each listed
+/// path (a listed directory covers all its children) plus the manifests and
+/// configuration Cargo reads without listing: the workspace manifest, the
+/// manifest of every local crate the depfile references, the lockfile, the
+/// toolchain pin, `.cargo` and the hotkey header. A crate is never walked just
+/// because one of its files is listed (#5323): a vendored header must not make
+/// its crate's build script an archive input.
 /// This is an mtime guard, not a content attestation: preserve source timestamps
 /// honestly and retain the depfile when supplying an external archive.
 fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
@@ -124,16 +128,18 @@ fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
         .ok_or_else(|| format!("invalid Rust archive depfile {}", depfile.display()))?;
     let root = dunce::canonicalize(root).map_err(|error| error.to_string())?;
     let mut crates = std::collections::BTreeSet::new();
+    let mut listed = Vec::new();
     for dependency in depfile_paths(dependencies) {
+        // Canonicalizing rejects a removed input: its absence is stale too.
         let dependency = dunce::canonicalize(&dependency).map_err(|error| format!("read Rust archive input {dependency}: {error}; rebuild with soldr cargo build --locked --release -p libobs-rust"))?;
-        if let Ok(local) = dependency.strip_prefix(root.join("rust")) {
-            if let Some(name) = local.components().next() {
-                crates.insert(root.join("rust").join(name));
-            }
-            // A removed input is stale too; do not silently accept its absence.
-            check_rust_input(&root, &dependency, archive, modified)?;
+        if let Ok(local) = dependency.strip_prefix(root.join("rust"))
+            && let Some(name) = local.components().next()
+        {
+            crates.insert(root.join("rust").join(name));
         }
+        listed.push(dependency);
     }
+    // Reject another checkout's depfile before comparing any of its mtimes.
     if !crates.contains(&root.join("rust/libobs-rust")) {
         return Err(format!(
             "Rust archive depfile {} does not describe this tree {}; rebuild with soldr cargo build --locked --release -p libobs-rust",
@@ -141,8 +147,16 @@ fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
             root.display()
         ));
     }
+    // Every listed input counts, including generated build-script output
+    // outside rust/.
+    for dependency in &listed {
+        check_rust_input(&root, dependency, archive, modified)?;
+    }
     for input in crates {
-        check_rust_input(&root, &input, archive, modified)?;
+        let manifest = input.join("Cargo.toml");
+        if manifest.try_exists().map_err(|error| error.to_string())? {
+            check_rust_input(&root, &manifest, archive, modified)?;
+        }
     }
     for input in [
         "Cargo.toml",
@@ -195,22 +209,9 @@ fn check_rust_input(
     let metadata = fs::metadata(input)
         .map_err(|error| format!("read Rust input {}: {error}", input.display()))?;
     if metadata.is_dir() {
+        // Only explicitly listed directories reach here: check all children.
         for entry in fs::read_dir(input).map_err(|error| error.to_string())? {
             let entry = entry.map_err(|error| error.to_string())?;
-            if [
-                "tests",
-                "benches",
-                "examples",
-                "proptest-regressions",
-                "target",
-                "tools",
-                ".git",
-            ]
-            .iter()
-            .any(|name| entry.file_name() == *name)
-            {
-                continue;
-            }
             check_rust_input(root, &entry.path(), archive, modified)?;
         }
     } else if metadata.modified().map_err(|error| error.to_string())? > modified {
