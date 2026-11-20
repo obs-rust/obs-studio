@@ -8,6 +8,11 @@
 #include <cmocka.h>
 #include "libobs/build/libobs.pch.h"
 
+/* A future swap links these unchanged assertions against the external symbol. */
+#ifndef SOURCE_OUTPUT_FLAGS_EXTERNAL
+#include "libobs/obs-source-output-flags.c.h"
+#endif
+
 struct log_capture {
 	unsigned count;
 	int level;
