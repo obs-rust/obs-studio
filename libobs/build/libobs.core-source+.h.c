@@ -5,7 +5,7 @@
 #include "libobs/obs-canvas-channel-fields.c.h"
 #include "libobs/obs-canvas-clear-mix.c.h"
 #include "libobs/obs-canvas-flags-fields.c.h"
-#include "libobs/obs-canvas-has-valid-video-info.c.h"
+#include "libobs/obs-canvas-has-valid-video-info-fields.c.h"
 #include "libobs/obs-canvas-public-constructors.c.h"
 #include "libobs/obs-canvas-readonly-fields.c.h"
 #include "libobs/obs-canvas-ref-fields.c.h"

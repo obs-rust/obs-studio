@@ -23,6 +23,8 @@
 
 use core::ffi::c_int;
 
+use crate::canvas_rules::{format_set, size_set};
+
 /// The canvas's `ovi` fields the check reads, one read per call.
 pub trait VideoInfoFields {
     fn base_width(&mut self) -> u32;
@@ -34,8 +36,10 @@ pub trait VideoInfoFields {
 }
 
 /// True when all four sizes and the output format are set.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn has_valid_video_info(fields: &mut impl VideoInfoFields) -> bool {
-    let _ = fields;
-    todo!()
+    size_set(fields.base_width())
+        && size_set(fields.base_height())
+        && size_set(fields.output_width())
+        && size_set(fields.output_height())
+        && format_set(fields.output_format())
 }

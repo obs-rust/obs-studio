@@ -29,7 +29,9 @@ fn read(path: &Path) -> Result<Value, String> {
 /// Families whose C tests keep their own names (no `_rust` twin) while
 /// selecting the real Rust code and C adapter. Hotkey fixtures predate the
 /// `_rust` naming convention; core-relinked fixtures are C-source
-/// characterizations relinked in place by their swap (#5187).
+/// characterizations relinked in place by their swap (#5187), or the
+/// `_rust` twin of one that keeps testing its original C source (the canvas
+/// video-info validity and mix-clearing swaps, #5310 and #5326).
 const UNSUFFIXED: [&str; 2] = ["hotkey-control", "core-relinked"];
 
 struct Entries {

@@ -1,0 +1,4 @@
+# obs-canvas-has-valid-video-info.c: obs_reset_video() asks it of each canvas
+# inside libobs. Declared in obs-internal.h without EXPORT, so the shim stays
+# hidden the same way.
+obs_canvas_has_valid_video_info

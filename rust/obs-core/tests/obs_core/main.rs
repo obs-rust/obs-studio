@@ -40,6 +40,7 @@ mod canvas_set_name_parity;
 mod canvas_signals;
 mod canvas_signals_parity;
 mod canvas_valid_video_info;
+mod canvas_valid_video_info_parity;
 mod canvas_video_getter;
 mod canvas_video_getter_parity;
 mod canvas_video_info_getter;
