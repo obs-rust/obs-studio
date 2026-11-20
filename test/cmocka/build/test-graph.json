@@ -1300,6 +1300,22 @@
         }
       ]
     },
+    "test_canvas_valid_video_info": {
+      "sources": [
+        "test/cmocka/test_canvas_valid_video_info.c",
+        "libobs/obs-canvas-rules.c.h"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_canvas_video_getter": {
       "sources": [
         "test/cmocka/test_canvas_video_getter.c"
@@ -22883,6 +22899,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_canvas_valid_video_info": {
+      "target": "test_canvas_valid_video_info",
+      "command": [
+        "${target}"
       ]
     },
     "test_canvas_video_getter": {

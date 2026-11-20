@@ -172,14 +172,6 @@ void obs_free_canvas_mixes(void)
 	pthread_mutex_unlock(&obs->data.canvases_mutex);
 }
 
-bool obs_canvas_has_valid_video_info(obs_canvas_t *canvas)
-{
-	struct obs_video_info *ovi = &canvas->ovi;
-	return obs_canvas_rules_size_set(ovi->base_width) && obs_canvas_rules_size_set(ovi->base_height) &&
-	       obs_canvas_rules_size_set(ovi->output_width) && obs_canvas_rules_size_set(ovi->output_height) &&
-	       obs_canvas_rules_format_set((int)ovi->output_format);
-}
-
 bool obs_canvas_reset_video_internal(obs_canvas_t *canvas, struct obs_video_info *ovi)
 {
 	obs_canvas_clear_mix(canvas);
