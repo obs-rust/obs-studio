@@ -98,6 +98,8 @@ mod output_congestion;
 mod output_congestion_parity;
 mod output_flags;
 mod output_flags_parity;
+mod output_get_last_error;
+mod output_get_last_error_parity;
 mod output_handler_getters;
 mod output_handler_getters_parity;
 mod output_identity;

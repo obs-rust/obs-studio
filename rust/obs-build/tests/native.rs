@@ -387,6 +387,8 @@ mod canonical_object_queries_is_registered;
 mod canonical_object_validity_query_is_registered;
 #[path = "native/registration/canonical_output_flags_is_registered.rs"]
 mod canonical_output_flags_is_registered;
+#[path = "native/registration/canonical_output_get_last_error_swap_is_registered.rs"]
+mod canonical_output_get_last_error_swap_is_registered;
 #[path = "native/registration/canonical_output_handler_getters_is_registered.rs"]
 mod canonical_output_handler_getters_is_registered;
 #[path = "native/registration/canonical_output_identity_getters_is_registered.rs"]
