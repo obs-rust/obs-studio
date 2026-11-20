@@ -315,11 +315,6 @@ void obs_output_destroy(obs_output_t *output)
 	}
 }
 
-const char *obs_output_get_name(const obs_output_t *output)
-{
-	return obs_output_valid(output, "obs_output_get_name") ? output->context.name : NULL;
-}
-
 struct obs_output_delay_fields obs_output_delay_fields(const obs_output_t *output)
 {
 	struct obs_output *o = (struct obs_output *)(uintptr_t)output;

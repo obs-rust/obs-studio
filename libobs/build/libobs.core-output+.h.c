@@ -51,6 +51,7 @@
 #include "libobs/obs-output-flags-fields.c.h"
 #include "libobs/obs-output-frames-dropped-fields.c.h"
 #include "libobs/obs-output-get-last-error.c.h"
+#include "libobs/obs-output-get-name.c.h"
 #include "libobs/obs-output-handler-getters-fields.c.h"
 #include "libobs/obs-output-identity-fields.c.h"
 #include "libobs/obs-output-interleave-name-fields.c.h"
