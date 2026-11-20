@@ -31,7 +31,9 @@ static void other_callback(void *param, struct video_data *frame)
 {
 	(void)param;
 	(void)frame;
-	callback_calls++;
+	/* Keep a distinct body: identical-code folding must not merge the decoy
+	 * address with receive_video in an optimized Windows build. */
+	callback_calls += 2;
 }
 
 static bool record_alignment(video_t *media, uint64_t ts, void (*callback)(void *, struct video_data *), void *param)
