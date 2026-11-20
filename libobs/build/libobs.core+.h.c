@@ -24,7 +24,7 @@
 #include "libobs/obs-hotkey-background-enum-fields.c.h"
 #include "libobs/obs-hotkey-background-error-fields.c.h"
 #include "libobs/obs-hotkey-background-press-fields.c.h"
-#include "libobs/obs-hotkey-background-state.c.h"
+#include "libobs/obs-hotkey-background-state-fields.c.h"
 #include "libobs/obs-hotkey-background-trigger-fields.c.h"
 #include "libobs/obs-hotkey-combination-background-id-fields.c.h"
 #include "libobs/obs-hotkey-enum-fields.c.h"

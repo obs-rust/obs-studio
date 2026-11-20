@@ -6395,6 +6395,37 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_hotkey_background_state_rust": {
+      "sources": [
+        "test/cmocka/test_hotkey_background_state.c",
+        "test/cmocka/hotkey-background-state-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "background_state": [
+          "test/cmocka/test_hotkey_background_state.c",
+          "test/cmocka/hotkey-background-state-record-support.c"
+        ]
+      },
+      "definitions": [
+        "HOTKEY_BACKGROUND_STATE_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_hotkey_background_trigger": {
       "sources": [
         "libobs/obs-hotkey-binding-press.c.h",
@@ -24907,6 +24938,13 @@
         "${target}"
       ],
       "target": "test_hotkey_background_state"
+    },
+    "test_hotkey_background_state_rust": {
+      "target": "test_hotkey_background_state_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_hotkey_background_trigger": {
       "target": "test_hotkey_background_trigger",

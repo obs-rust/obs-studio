@@ -25,7 +25,16 @@ pub trait BackgroundState {
 /// read under the lock, the lock is released once, and the captured state is
 /// returned, unknown values included.
 pub fn query<B: BackgroundState>(backend: &mut B, flags: Option<&Cell<u32>>) -> i32 {
-    // RED stub: the real orchestration lands in the GREEN commit.
-    let _ = (backend, flags);
-    NATIVE
+    if let Some(flags) = flags {
+        flags.set(0);
+    }
+    if !backend.lock() {
+        return NATIVE;
+    }
+    let state = backend.state();
+    if let Some(flags) = flags {
+        flags.set(backend.flags());
+    }
+    backend.unlock();
+    state
 }
