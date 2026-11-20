@@ -67,7 +67,8 @@ static void no_call_guards(void **state)
 	encoder.media = &media;
 	for (uint32_t divisor = 0; divisor < 2; divisor++) {
 		encoder.frame_rate_divisor = divisor;
-		struct obs_encoder before = encoder;
+		struct obs_encoder before;
+		memcpy(&before, &encoder, sizeof(before));
 		obs_encoder_align_frame_rate_divisor(&encoder, UINT64_MAX);
 		assert_memory_equal(&encoder, &before, sizeof(encoder));
 	}
@@ -107,7 +108,8 @@ static void registered_identity_and_forwarding(void **state)
 					root.inputs.array[i].frame_rate_divisor_counter = 1;
 					root.inputs.array[i].start_timestamp = 99;
 				}
-				struct obs_encoder before = encoder;
+				struct obs_encoder before;
+				memcpy(&before, &encoder, sizeof(before));
 				long allocations = bnum_allocs();
 				align_calls = 0;
 				callback_calls = 0;
