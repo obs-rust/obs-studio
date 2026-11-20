@@ -39,7 +39,8 @@
     "test/cmocka/graphics-device-queries-link-support.c",
     "test/cmocka/output-encoder-getters-link-support.c",
     "test/cmocka/encoder-last-error-link-support.c",
-    "test/cmocka/hotkey-key-translation-link-support.c"
+    "test/cmocka/hotkey-key-translation-link-support.c",
+    "test/cmocka/output-get-name-link-support.c"
   ],
   "platform_sources": {
     "OS_WINDOWS": [

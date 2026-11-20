@@ -21,7 +21,9 @@
 /// `None` is the NULL output: `log_null` runs once and nothing is read.
 /// Otherwise `project` reads the live output's name once.
 pub fn get_name<T>(output: Option<impl FnOnce() -> T>, log_null: impl FnOnce()) -> Option<T> {
-    // RED stub: no diagnostic and no projection.
-    let _ = (output, log_null);
-    None
+    let Some(project) = output else {
+        log_null();
+        return None;
+    };
+    Some(project())
 }
