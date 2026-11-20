@@ -35,7 +35,9 @@ BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 # The encoder name getter is absent too: #5253 exports it from obs-encoder;
 # the synthetic interleaver replaces only its private name seam.
 # The key-name store is absent: #5321 exports it from obs-hotkey (hidden in
-# libobs, defined by the workspace).
+# libobs, defined by the workspace). The output name getter is absent as
+# well: #5302 exports it from obs-output, and the interleaver names its
+# output through a private seam too.
 SYMBOLS = (
     "obs_encoder_group_num_started",
     "obs_encoder_interleave_info",
@@ -68,7 +70,6 @@ SYMBOLS = (
     "obs_output_caption_track_fields",
     "obs_output_delay_fields",
     "obs_output_delay_signal",
-    "obs_output_get_name",
     "obs_output_initialize_encoders",
     "obs_output_interleave_active",
     "obs_output_interleave_add_caption",
@@ -76,6 +77,7 @@ SYMBOLS = (
     "obs_output_interleave_fields",
     "obs_output_interleave_first_audio_encoder_index",
     "obs_output_interleave_first_video_encoder_index",
+    "obs_output_interleave_output_name",
 )
 
 

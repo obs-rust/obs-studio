@@ -100,6 +100,8 @@ mod output_flags;
 mod output_flags_parity;
 mod output_get_last_error;
 mod output_get_last_error_parity;
+mod output_get_name;
+mod output_get_name_parity;
 mod output_handler_getters;
 mod output_handler_getters_parity;
 mod output_identity;

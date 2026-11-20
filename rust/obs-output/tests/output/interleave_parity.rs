@@ -906,13 +906,13 @@ pub unsafe extern "C" fn obs_encoder_group_num_started(group: *mut c_void) -> u3
     }
 }
 
-/// `obs_output_get_name`.
+/// `obs_output_interleave_output_name`.
 ///
 /// # Safety
 ///
 /// `output` is a live [`Fixture`].
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_output_get_name(output: *const c_void) -> *const c_char {
+pub unsafe extern "C" fn obs_output_interleave_output_name(output: *const c_void) -> *const c_char {
     // SAFETY: caller contract.
     unsafe { fixture(output) }.name
 }

@@ -49,6 +49,7 @@ pub mod output_congestion;
 pub mod output_delay;
 pub mod output_flags;
 pub mod output_get_last_error;
+pub mod output_get_name;
 pub mod output_handler_getters;
 pub mod output_identity;
 pub mod output_interleave;
