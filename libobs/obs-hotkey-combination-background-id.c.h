@@ -1,6 +1,7 @@
 #include "libobs/build/libobs.pch.h"
 
-/* Defined in obs-hotkey.c.h, later in the same unity group. */
+/* Defined in obs-hotkey.c.h later in a hotkey unity group, or before this
+ * file by obs-hotkey-combination-background-id-lock.c.h in the C reference. */
 static inline bool lock(void);
 static inline void unlock(void);
 

@@ -22,6 +22,8 @@ mod bindings;
 mod bindings_parity;
 mod cocoa_keys;
 mod cocoa_keys_parity;
+mod combination_background_id;
+mod combination_background_id_parity;
 mod enumeration;
 mod enumeration_parity;
 mod hotkey_name_map;
