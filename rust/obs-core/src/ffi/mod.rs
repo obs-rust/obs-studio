@@ -2,6 +2,7 @@
 
 pub mod audio_callback;
 pub mod audio_discard;
+pub mod audio_info_queries;
 pub mod audio_min_ts;
 pub mod audio_mix;
 pub mod audio_render;
@@ -87,6 +88,7 @@ pub mod video_plan;
 pub mod video_render_passes;
 pub mod video_render_size;
 pub mod video_scale_effects;
+pub mod video_stats_queries;
 pub mod video_stop_requested;
 pub mod video_unmap_last_surface;
 pub mod view;
