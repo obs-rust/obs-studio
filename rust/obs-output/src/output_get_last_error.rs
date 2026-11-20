@@ -43,11 +43,22 @@ pub fn last_error<F: LastErrorFields>(
     output: Option<&mut F>,
     log_null: impl FnOnce(),
 ) -> Option<F::Error> {
-    let _ = (
-        output,
-        log_null,
-        MAX_OUTPUT_VIDEO_ENCODERS,
-        MAX_OUTPUT_AUDIO_ENCODERS,
-    );
+    let Some(output) = output else {
+        log_null();
+        return None;
+    };
+    if let Some(error) = output.own() {
+        return Some(error);
+    }
+    for idx in 0..MAX_OUTPUT_VIDEO_ENCODERS {
+        if let Some(error) = output.video(idx).and_then(|e| output.encoder_error(e)) {
+            return Some(error);
+        }
+    }
+    for idx in 0..MAX_OUTPUT_AUDIO_ENCODERS {
+        if let Some(error) = output.audio(idx).and_then(|e| output.encoder_error(e)) {
+            return Some(error);
+        }
+    }
     None
 }
