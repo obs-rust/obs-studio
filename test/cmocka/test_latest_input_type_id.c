@@ -25,18 +25,19 @@ static void null_id_without_core(void **state)
 static void newest_and_borrowed_pointer(void **state)
 {
 	(void)state;
-	char newest[] = "camera_v9";
+	char newest[] = "camera_v9", query[] = "camera";
 	struct obs_source_info entries[] = {
 		{.id = "camera", .unversioned_id = "camera", .version = 0},
 		{.id = "other_v99", .unversioned_id = "other", .version = 99},
-		{.id = newest, .unversioned_id = "camera", .version = 9},
+		{.id = newest, .type = OBS_SOURCE_TYPE_FILTER, .unversioned_id = "camera", .version = 9},
 		{.id = "camera_v3", .unversioned_id = "camera", .version = 3},
 	};
 	struct obs_core core = {0};
 	core.source_types.array = entries;
 	core.source_types.num = sizeof(entries) / sizeof(entries[0]);
 	latest_input_test_core = &core;
-	const char *result = characterized_latest_input_type_id("camera");
+	/* The C query scans all source kinds and compares ID contents. */
+	const char *result = characterized_latest_input_type_id(query);
 	assert_ptr_equal(result, newest);
 	assert_ptr_equal(characterized_latest_input_type_id("camera"), result);
 	newest[0] = 'C';

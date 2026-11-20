@@ -8081,7 +8081,8 @@
     },
     "test_latest_input_type_id": {
       "sources": [
-        "test/cmocka/test_latest_input_type_id.c"
+        "test/cmocka/test_latest_input_type_id.c",
+        "libobs/obs-core-setup-rules.c.h"
       ],
       "includes": [
         "."
@@ -8095,6 +8096,9 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
       ]
     },
     "test_lexer": {
