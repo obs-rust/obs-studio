@@ -29,6 +29,8 @@ pub fn get<H: Host>(host: &mut H) -> H::Data {
 /// Merge `settings` into the existing object without clearing it. With no
 /// settings this returns before reading the core's storage at all.
 pub fn apply<H: Host>(host: &mut H, settings: Option<H::Data>) {
-    let _ = (host, settings);
-    todo!("apply private data")
+    if let Some(settings) = settings {
+        let data = host.private_data();
+        host.apply(data, settings);
+    }
 }

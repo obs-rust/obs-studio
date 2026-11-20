@@ -3,6 +3,7 @@
 
 mod alloc_count;
 mod apply_private_data;
+mod apply_private_data_parity;
 mod audio_callback;
 mod audio_callback_layout;
 mod audio_callback_parity;

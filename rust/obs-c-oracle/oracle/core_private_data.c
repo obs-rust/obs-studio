@@ -21,11 +21,15 @@ void oracle_core_private_data_set(obs_data_t *data)
 
 obs_data_t *oracle_obs_get_private_data(void);
 void oracle_obs_set_private_data(obs_data_t *settings);
+void oracle_obs_apply_private_data(obs_data_t *settings);
 #define obs private_data_current()
 #define obs_get_private_data oracle_obs_get_private_data
 #define obs_set_private_data oracle_obs_set_private_data
 #include "libobs/obs-core-private-data.c.h"
 #undef obs_set_private_data
 #undef obs_get_private_data
+#define obs_apply_private_data oracle_obs_apply_private_data
+#include "libobs/obs-apply-private-data.c.h"
+#undef obs_apply_private_data
 #include "core_private_data_fields.inc"
 #undef obs

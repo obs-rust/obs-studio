@@ -2,7 +2,6 @@
 
 #include "libobs/build/libobs.pch.h"
 
-#include "libobs/obs-apply-private-data.c.h"
 #include "libobs/obs-audio-info-queries.c.h"
 #include "libobs/obs-base-effect-fields.c.h"
 #include "libobs/obs-context-runtime.c.h"
