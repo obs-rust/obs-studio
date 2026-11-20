@@ -8891,6 +8891,24 @@
       ],
       "sanitizers": "address,undefined"
     },
+    "test_module_load_all": {
+      "sources": [
+        "test/cmocka/test_module_load_all.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-module-load-all.c.h"
+      ]
+    },
     "test_module_load_rules_skip_steps": {
       "sources": [
         "test/cmocka/test_module_load_rules_skip_steps.c",
@@ -25272,6 +25290,12 @@
     },
     "test_module_lists_seam": {
       "target": "test_module_lists_seam",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_module_load_all": {
+      "target": "test_module_load_all",
       "command": [
         "${target}"
       ]

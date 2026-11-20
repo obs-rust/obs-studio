@@ -334,13 +334,6 @@ load_failure:
 	}
 }
 
-void obs_load_all_modules(void) {}
-
-void obs_load_all_modules2(struct obs_module_failure_info *mfi)
-{
-	UNUSED_PARAMETER(mfi);
-}
-
 bool obs_load_core_modules(void)
 {
 	if (obs->core_modules_loaded) {
