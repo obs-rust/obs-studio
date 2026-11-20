@@ -10,8 +10,8 @@
 //! tails, and a larger `size` reads only the struct. A `NULL` struct
 //! returns. The safe core (`translations::for_each_store`) then gives each
 //! name, and the shim hands it to libobs's hidden store,
-//! `obs_hotkeys_store_key_translation()` (`obs-internal.h`, still C in
-//! `obs-hotkey.c.h`), which `bstrdup`s it. A named key's string is passed
+//! `obs_hotkeys_store_key_translation()` (`obs-internal.h`, ported in
+//! [`super::key_translation`]), which `bstrdup`s it. A named key's string is passed
 //! on as the caller's pointer, as the C does; an expanded name lives until
 //! the store call returns.
 //!
@@ -20,13 +20,10 @@
 //!
 //! No intentional differences from C.
 
-use std::ffi::{CStr, c_char, c_int};
+use std::ffi::{CStr, c_char};
 
+use super::key_translation::obs_hotkeys_store_key_translation;
 use crate::translations::{self as core, Keypad, MEMBER_COUNT, Translations};
-
-unsafe extern "C" {
-    fn obs_hotkeys_store_key_translation(key: c_int, translation: *const c_char);
-}
 
 /// The keypad members this host applies (`#ifdef __APPLE__` in the C).
 #[cfg(target_os = "macos")]

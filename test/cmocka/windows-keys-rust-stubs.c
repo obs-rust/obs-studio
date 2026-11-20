@@ -72,13 +72,6 @@ bool obs_hotkey_pair_call_func(obs_hotkey_pair_t *pair, size_t half, obs_hotkey_
 	abort();
 }
 
-void obs_hotkeys_store_key_translation(obs_key_t key, const char *translation)
-{
-	(void)key;
-	(void)translation;
-	abort();
-}
-
 void obs_hotkeys_mutex_lock(void)
 {
 	abort();

@@ -11,7 +11,8 @@
 //! `libobs/obs-nix-wayland-keys.c.h`, `libobs/obs-nix-wayland-seats.c.h`,
 //! `libobs/obs-nix-x11-hotkeys.c.h`, `libobs/obs-nix-x11-input.c.h`,
 //! `libobs/obs-nix-x11-keys.c.h`, `libobs/obs-cocoa-keys.c.h`,
-//! `libobs/obs-key-combination-host-posix.c.h` and
+//! `libobs/obs-key-combination-host-posix.c.h`,
+//! `libobs/obs-hotkey-key-translation.c.h` and
 //! `libobs/obs-windows-keys.c.h`.
 //!
 //! The safe cores are [`name_map`], [`bindings`], [`translations`],
@@ -21,7 +22,7 @@
 //! [`portal_shortcut_status`], [`nix_wayland_key_names`],
 //! [`nix_wayland_keys`], [`nix_wayland_seats`],
 //! [`nix_x11_hotkeys`], [`nix_x11_input`], [`nix_x11_keys`], [`cocoa_keys`],
-//! [`key_combination`] and [`windows_keys`].
+//! [`key_combination`], [`key_translation`] and [`windows_keys`].
 //! The X11 and Wayland key names share one crate-private table,
 //! `key_route`. The C ABI shims live in [`ffi`].
 
@@ -53,6 +54,7 @@ pub mod identity_setters;
 pub mod inject_entry;
 pub mod key_combination;
 mod key_route;
+pub mod key_translation;
 pub mod name_map;
 pub mod nix_hotkey_state;
 pub mod nix_wayland_key_names;

@@ -4,7 +4,7 @@
 //! The struct is passed as an untyped pointer: callers pass the shim's
 //! `#[repr(C)]` struct, whose layout `oracle_hotkey_translations_layout`
 //! checks. The store, `obs_hotkeys_store_key_translation`, is the caller's:
-//! the test binary defines it.
+//! the Rust store of obs-hotkey, on oracle/hotkey_key_translation.c's core.
 
 use core::ffi::c_void;
 

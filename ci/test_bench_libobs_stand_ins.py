@@ -34,6 +34,8 @@ BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 # obs-encoder, which the bench links through obs-data.
 # The encoder name getter is absent too: #5253 exports it from obs-encoder;
 # the synthetic interleaver replaces only its private name seam.
+# The key-name store is absent: #5321 exports it from obs-hotkey (hidden in
+# libobs, defined by the workspace).
 SYMBOLS = (
     "obs_encoder_group_num_started",
     "obs_encoder_interleave_info",
@@ -59,7 +61,6 @@ SYMBOLS = (
     "obs_hotkey_seam_unlock",
     "obs_hotkeys_mutex_lock",
     "obs_hotkeys_mutex_unlock",
-    "obs_hotkeys_store_key_translation",
     "obs_output_actual_start",
     "obs_output_actual_stop",
     "obs_output_begin_data_capture",
