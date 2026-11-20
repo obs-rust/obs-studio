@@ -116,6 +116,7 @@
 
 pub mod audio_callback;
 pub mod audio_discard;
+pub mod audio_info_queries;
 pub mod audio_min_ts;
 pub mod audio_mix;
 pub mod audio_render;
