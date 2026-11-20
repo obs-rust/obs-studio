@@ -37,30 +37,25 @@ pub trait VideoStats {
 
 /// `obs_get_video_frame_time`.
 pub fn video_frame_time(stats: &mut impl VideoStats) -> u64 {
-    let _ = stats;
-    todo!("obs_get_video_frame_time port")
+    stats.frame_time()
 }
 
 /// `obs_get_active_fps`.
 pub fn active_fps(stats: &mut impl VideoStats) -> f64 {
-    let _ = stats;
-    todo!("obs_get_active_fps port")
+    stats.fps()
 }
 
 /// `obs_get_average_frame_time_ns`.
 pub fn average_frame_time_ns(stats: &mut impl VideoStats) -> u64 {
-    let _ = stats;
-    todo!("obs_get_average_frame_time_ns port")
+    stats.avg_frame_time_ns()
 }
 
 /// `obs_get_total_frames`.
 pub fn total_frames(stats: &mut impl VideoStats) -> u32 {
-    let _ = stats;
-    todo!("obs_get_total_frames port")
+    stats.total_frames()
 }
 
 /// `obs_get_lagged_frames`.
 pub fn lagged_frames(stats: &mut impl VideoStats) -> u32 {
-    let _ = stats;
-    todo!("obs_get_lagged_frames port")
+    stats.lagged_frames()
 }

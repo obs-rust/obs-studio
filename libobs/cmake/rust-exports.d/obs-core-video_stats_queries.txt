@@ -1,0 +1,5 @@
+obs_get_active_fps
+obs_get_average_frame_time_ns
+obs_get_lagged_frames
+obs_get_total_frames
+obs_get_video_frame_time
