@@ -5,6 +5,7 @@
 #include <QDockWidget>
 #include <QLabel>
 #include <QMainWindow>
+#include <QTabBar>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -493,6 +494,503 @@ static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
 	}
 }
 
+/* Two window-manager profiles (#5230, W2). Every case below runs once under a
+ * floating window manager and once under a tiling one, and both runs must
+ * give the same layout after a restart. The code under test never knows
+ * which profile runs (W1): a tiling window manager only sends more window
+ * changes.
+ *
+ * - floating: the window changes size only when the case asks for it (the
+ *   user drags the window edge).
+ * - tiling: the window starts in a small tile and is retiled twice (#3740);
+ *   a floated dock is a new window, so the main window gets half the tile
+ *   at once (#5230); another window that opens or closes retiles it. */
+enum class Wm { floating, tiling };
+
+static const char *wm_name(Wm wm)
+{
+	return wm == Wm::floating ? "floating" : "tiling";
+}
+
+static const QSize full_size(1600, 900);
+
+struct Session {
+	Wm wm;
+	Window w;
+	/* Windows next to the main window in its tile: floated docks and
+	 * other applications. */
+	int others = 0;
+
+	explicit Session(Wm wm) : wm(wm) {}
+
+	QSize tile() const { return {full_size.width() / (others + 1), full_size.height()}; }
+
+	void retile()
+	{
+		if (wm == Wm::tiling) {
+			w.window.resize(tile());
+		}
+	}
+
+	/* OBSBasic shows the window, then restores the dock state into it. */
+	void start(const QByteArray &state)
+	{
+		if (wm == Wm::tiling) {
+			w.window.resize(1000, 600);
+		}
+		w.show();
+		if (!state.isEmpty()) {
+			w.restore(state);
+		}
+		settle(w.window);
+		/* Restored floating docks are windows of their own. */
+		for (auto *dock : w.docks) {
+			others += dock->isFloating() && dock->isVisible() ? 1 : 0;
+		}
+		if (wm == Wm::tiling) {
+			w.window.resize(800, 900); // tiled next to the terminal
+			settle(w.window);
+			retile(); // the terminal is hidden
+			settle(w.window);
+		}
+	}
+
+	/* A window change: a retile, or the user drags the window edge on a
+	 * floating window manager (D2: the same thing). */
+	void window_change(QSize size)
+	{
+		w.window.resize(size);
+		settle(w.window);
+	}
+
+	void other_window_opens()
+	{
+		++others;
+		if (wm == Wm::tiling) {
+			window_change(tile());
+		}
+	}
+
+	void other_window_closes()
+	{
+		--others;
+		if (wm == Wm::tiling) {
+			window_change(tile());
+		}
+	}
+
+	/* The floated dock is a new window: the tiling window manager retiles
+	 * in the same event loop turn (#5230). */
+	void float_dock(int i)
+	{
+		w.docks[i]->setFloating(true);
+		++others;
+		retile();
+		settle(w.window);
+	}
+
+	/* The real Reset Docks path (OBSBasic::on_resetDocks_triggered). */
+	void reset_docks()
+	{
+		w.window.restoreState(w.startingLayout);
+		w.proportions.SetRestoredState(QByteArray());
+		settle(w.window);
+	}
+
+	/* OBSBasic::saveAll writes what the helper selects. */
+	QByteArray quit() { return persist(w.proportions.StateToSave()); }
+};
+
+struct DockLayout {
+	Qt::DockWidgetArea area;
+	bool floating;
+	bool visible;
+	QSize size;
+};
+
+static QList<DockLayout> capture(const Window &w)
+{
+	QList<DockLayout> result;
+	for (auto *dock : w.docks) {
+		result.append({w.window.dockWidgetArea(dock), dock->isFloating(), dock->isVisible(), dock->size()});
+	}
+	return result;
+}
+
+static void print_layout(const char *what, const QList<DockLayout> &layout)
+{
+	for (qsizetype i = 0; i < layout.size(); ++i) {
+		print_message("%s dock %d: area=%d floating=%d visible=%d %dx%d\n", what, int(i), int(layout[i].area),
+			      layout[i].floating, layout[i].visible, layout[i].size.width(), layout[i].size.height());
+	}
+}
+
+/* Same placement and visibility; sizes within 2 px for docks on screen,
+ * unless the case compares placement only. */
+static void assert_layout(const QList<DockLayout> &expected, const QList<DockLayout> &actual, bool sizes = true)
+{
+	print_layout("expected", expected);
+	print_layout("actual", actual);
+	assert_int_equal(expected.size(), actual.size());
+	for (qsizetype i = 0; i < expected.size(); ++i) {
+		assert_int_equal(expected[i].area, actual[i].area);
+		assert_int_equal(expected[i].floating, actual[i].floating);
+		assert_int_equal(expected[i].visible, actual[i].visible);
+		if (sizes && actual[i].visible && !actual[i].floating) {
+			assert_in_range(actual[i].size.width(), expected[i].size.width() - 2,
+					expected[i].size.width() + 2);
+			assert_in_range(actual[i].size.height(), expected[i].size.height() - 2,
+					expected[i].size.height() + 2);
+		}
+	}
+}
+
+/* The next start under the same window manager: the layout the user gets. */
+static QList<DockLayout> restart(Wm wm, const QByteArray &saved)
+{
+	Session next(wm);
+	next.start(saved);
+	return capture(next.w);
+}
+
+/* A saved layout as a floating window manager shows it at full size: the
+ * same reference window for every profile. */
+static QList<DockLayout> arranged_at_full_size(const QByteArray &state)
+{
+	Session reference(Wm::floating);
+	reference.start(state);
+	return capture(reference.w);
+}
+
+/* A case gives the layout the user expects, the layout after a restart under
+ * the same window manager, and what quit saved. Each profile must give what
+ * the user expects, and both must save the same layout (W2). */
+struct Outcome {
+	QList<DockLayout> expected;
+	QList<DockLayout> restarted;
+	QByteArray saved;
+};
+
+static void run_both(Outcome (*run)(Wm), bool sizes = true)
+{
+	QList<DockLayout> saved[2];
+	for (Wm wm : {Wm::floating, Wm::tiling}) {
+		print_message("== %s window manager\n", wm_name(wm));
+		const Outcome outcome = run(wm);
+		assert_layout(outcome.expected, outcome.restarted, sizes);
+		saved[int(wm)] = arranged_at_full_size(outcome.saved);
+	}
+	print_message("== saved layout, floating vs tiling\n");
+	assert_layout(saved[0], saved[1], sizes);
+}
+
+/* E1, E4: start, quit without a change, start again. Under the tiling
+ * profile the start is in a small tile and retiled twice (#3740). */
+static Outcome e1_unchanged_layout(Wm wm)
+{
+	const QByteArray state = arranged_layout();
+	QByteArray saved;
+	{
+		Session session(wm);
+		session.start(state);
+		saved = session.quit();
+	}
+	return {arranged_at_full_size(state), restart(wm, saved), saved};
+}
+
+/* E2: the window gets narrow and wide again in the same session (#2225):
+ * the docks get their sizes back, and quit saves them. */
+static Outcome e2_narrow_then_wide(Wm wm)
+{
+	const QByteArray state = arranged_layout();
+	QByteArray saved;
+	QList<DockLayout> in_session;
+	{
+		Session session(wm);
+		session.start(state);
+		if (wm == Wm::tiling) {
+			session.other_window_opens();
+			session.other_window_closes();
+		} else {
+			session.window_change({700, 900});
+			session.window_change(full_size);
+		}
+		in_session = capture(session.w);
+		saved = session.quit();
+	}
+	const QList<DockLayout> expected = arranged_at_full_size(state);
+	print_message("in the session, wide again:\n");
+	assert_layout(expected, in_session);
+	return {expected, restart(wm, saved), saved};
+}
+
+/* E3: quit while the window is narrow, start at full size. */
+static Outcome e3_quit_narrow(Wm wm)
+{
+	const QByteArray state = arranged_layout();
+	QByteArray saved;
+	{
+		Session session(wm);
+		session.start(state);
+		if (wm == Wm::tiling) {
+			session.other_window_opens();
+		} else {
+			session.window_change({700, 900});
+		}
+		saved = session.quit();
+	}
+	return {arranged_at_full_size(state), restart(wm, saved), saved};
+}
+
+/* E9: the user floats a dock; a tiling window manager retiles at once
+ * (#5230). The dock stays floating, the other docks keep their place.
+ * Placement only: under the tiling profile quit saves the row as squeezed
+ * into the half tile, and the next full-size start gives one dock all the
+ * extra width (P7, a RED case of the rewrite). */
+static Outcome e9_float_a_dock(Wm wm)
+{
+	QByteArray saved;
+	QList<DockLayout> expected;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		session.float_dock(0);
+		expected = capture(session.w);
+		saved = session.quit();
+	}
+	return {expected, restart(wm, saved), saved};
+}
+
+/* E10: the user drags Controls to its minimum on purpose (#3740). */
+static Outcome e10_dock_at_minimum(Wm wm)
+{
+	QByteArray saved;
+	QList<DockLayout> expected;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		session.w.narrow_controls();
+		expected = capture(session.w);
+		saved = session.quit();
+	}
+	return {expected, restart(wm, saved), saved};
+}
+
+/* E11: the user hides every dock for a preview-only window (F3). */
+static Outcome e11_all_docks_hidden(Wm wm)
+{
+	QByteArray saved;
+	QList<DockLayout> expected;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		for (auto *dock : session.w.docks) {
+			dock->toggleViewAction()->trigger();
+		}
+		settle(session.w.window);
+		session.other_window_opens();
+		session.other_window_closes();
+		expected = capture(session.w);
+		saved = session.quit();
+	}
+	return {expected, restart(wm, saved), saved};
+}
+
+/* The dock whose tab is the current one in the window's tab group. */
+static int current_tab(const Window &w)
+{
+	for (QTabBar *bar : w.window.findChildren<QTabBar *>()) {
+		if (bar->count() < 2) {
+			continue;
+		}
+		const QString title = bar->tabText(bar->currentIndex());
+		for (qsizetype i = 0; i < w.docks.size(); ++i) {
+			if (w.docks[i]->windowTitle() == title) {
+				return int(i);
+			}
+		}
+	}
+	return -1;
+}
+
+/* E13: the user clicks a tab in a tab group; the current tab is kept. */
+static void e13_current_tab(void **)
+{
+	int restarted_tab[2];
+	for (Wm wm : {Wm::floating, Wm::tiling}) {
+		print_message("== %s window manager\n", wm_name(wm));
+		QByteArray state;
+		{
+			Session arrange(Wm::floating);
+			arrange.start(QByteArray());
+			arrange.w.window.tabifyDockWidget(arrange.w.docks[3], arrange.w.docks[4]);
+			settle(arrange.w.window);
+			state = arrange.quit();
+		}
+		QByteArray saved;
+		{
+			Session session(wm);
+			session.start(state);
+			session.w.docks[3]->raise();
+			settle(session.w.window);
+			print_message("current tab after the click: %d\n", current_tab(session.w));
+			assert_int_equal(current_tab(session.w), 3);
+			session.other_window_opens();
+			session.other_window_closes();
+			print_message("current tab after the retile: %d\n", current_tab(session.w));
+			assert_int_equal(current_tab(session.w), 3);
+			saved = session.quit();
+		}
+		Session next(wm);
+		next.start(saved);
+		restarted_tab[int(wm)] = current_tab(next.w);
+		print_message("current tab after restart: %d\n", restarted_tab[int(wm)]);
+		assert_int_equal(restarted_tab[int(wm)], 3);
+	}
+}
+
+/* E23: OBS is hidden to the tray when it quits; saveAll runs while the
+ * window is hidden. */
+static Outcome e23_quit_hidden(Wm wm)
+{
+	const QByteArray state = arranged_layout();
+	QByteArray saved;
+	{
+		Session session(wm);
+		session.start(state);
+		session.w.window.hide();
+		QTest::qWait(50);
+		saved = session.quit();
+	}
+	return {arranged_at_full_size(state), restart(wm, saved), saved};
+}
+
+/* E25: a layout written by plain Qt (upstream OBS) comes back unchanged
+ * after a session without a change, and the layout obs-rust saves restores
+ * the same in plain Qt (upstream OBS reads it back). */
+static Outcome e25_upstream_round_trip(Wm wm)
+{
+	QByteArray upstream;
+	{
+		Window plain;
+		plain.show();
+		plain.window.addDockWidget(Qt::LeftDockWidgetArea, plain.docks[2]);
+		plain.window.resizeDocks({plain.docks[0], plain.docks[1], plain.docks[3], plain.docks[4]},
+					 {500, 300, 300, 200}, Qt::Horizontal);
+		settle(plain.window);
+		upstream = persist(plain.window.saveState());
+	}
+	QByteArray saved;
+	{
+		Session session(wm);
+		session.start(upstream);
+		saved = session.quit();
+	}
+	Window plain;
+	assert_true(plain.window.restoreState(saved));
+	plain.show();
+	return {arranged_at_full_size(upstream), capture(plain), saved};
+}
+
+/* E14: a plugin adds its dock after OBSBasic restored the layout
+ * (OBSBasic::AddDockWidget calls addDockWidget into the plugin's area). The
+ * saved layout has that dock in the left area. Both profiles put it at the
+ * same place, in the session and after a restart, and a retile does not move
+ * it (the current helper restores the start layout again on a retile). */
+static void e14_plugin_dock_after_restore(void **)
+{
+	QByteArray state;
+	{
+		Window original;
+		auto *plugin = new QDockWidget(QStringLiteral("Plugin"));
+		plugin->setObjectName(QStringLiteral("plugin"));
+		plugin->setWidget(new QLabel(QStringLiteral("Contents")));
+		original.window.addDockWidget(Qt::LeftDockWidgetArea, plugin);
+		original.show();
+		state = persist(original.proportions.StateToSave());
+	}
+	Qt::DockWidgetArea in_session[2], restarted[2];
+	for (Wm wm : {Wm::floating, Wm::tiling}) {
+		QByteArray saved;
+		{
+			Session session(wm);
+			if (wm == Wm::tiling) {
+				session.w.window.resize(1000, 600);
+			}
+			session.w.show();
+			session.w.restore(state);
+			auto *plugin = new QDockWidget(QStringLiteral("Plugin"));
+			plugin->setObjectName(QStringLiteral("plugin"));
+			plugin->setWidget(new QLabel(QStringLiteral("Contents")));
+			session.w.window.addDockWidget(Qt::RightDockWidgetArea, plugin);
+			settle(session.w.window);
+			if (wm == Wm::tiling) {
+				session.window_change({800, 900});
+				session.window_change(full_size);
+			}
+			in_session[int(wm)] = session.w.window.dockWidgetArea(plugin);
+			saved = session.quit();
+		}
+		Window next;
+		next.show();
+		next.restore(saved);
+		auto *plugin = new QDockWidget(QStringLiteral("Plugin"));
+		plugin->setObjectName(QStringLiteral("plugin"));
+		plugin->setWidget(new QLabel(QStringLiteral("Contents")));
+		next.window.addDockWidget(Qt::RightDockWidgetArea, plugin);
+		settle(next.window);
+		restarted[int(wm)] = next.window.dockWidgetArea(plugin);
+		print_message("%s: plugin dock area in the session %d, after restart %d\n", wm_name(wm),
+			      int(in_session[int(wm)]), int(restarted[int(wm)]));
+	}
+	/* As upstream: addDockWidget puts a late dock into the plugin's area,
+	 * not into its saved place. */
+	for (int wm = 0; wm < 2; ++wm) {
+		assert_int_equal(in_session[wm], Qt::RightDockWidgetArea);
+		assert_int_equal(restarted[wm], Qt::RightDockWidgetArea);
+	}
+}
+
+static void e1_unchanged_layout_both(void **)
+{
+	run_both(e1_unchanged_layout);
+}
+
+static void e2_narrow_then_wide_both(void **)
+{
+	run_both(e2_narrow_then_wide);
+}
+
+static void e3_quit_narrow_both(void **)
+{
+	run_both(e3_quit_narrow);
+}
+
+static void e9_float_a_dock_both(void **)
+{
+	run_both(e9_float_a_dock, false);
+}
+
+static void e10_dock_at_minimum_both(void **)
+{
+	run_both(e10_dock_at_minimum);
+}
+
+static void e11_all_docks_hidden_both(void **)
+{
+	run_both(e11_all_docks_hidden);
+}
+
+static void e23_quit_hidden_both(void **)
+{
+	run_both(e23_quit_hidden);
+}
+
+static void e25_upstream_round_trip_both(void **)
+{
+	run_both(e25_upstream_round_trip);
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -507,6 +1005,16 @@ int main(int argc, char **argv)
 		cmocka_unit_test(moved_and_floated_docks_stay_after_a_window_resize),
 		cmocka_unit_test(floated_dock_stays_when_the_window_resizes_at_the_same_time),
 		cmocka_unit_test(reset_docks_stays_when_the_window_resizes_at_the_same_time),
+		cmocka_unit_test(e1_unchanged_layout_both),
+		cmocka_unit_test(e2_narrow_then_wide_both),
+		cmocka_unit_test(e3_quit_narrow_both),
+		cmocka_unit_test(e9_float_a_dock_both),
+		cmocka_unit_test(e10_dock_at_minimum_both),
+		cmocka_unit_test(e11_all_docks_hidden_both),
+		cmocka_unit_test(e13_current_tab),
+		cmocka_unit_test(e14_plugin_dock_after_restore),
+		cmocka_unit_test(e23_quit_hidden_both),
+		cmocka_unit_test(e25_upstream_round_trip_both),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
 }
