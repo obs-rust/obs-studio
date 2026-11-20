@@ -2,15 +2,15 @@
   "app": {
     "by_dir": {
       "frontend": 83353,
-      "libobs": 98663,
+      "libobs": 98837,
       "plugins": 148646,
       "shared": 15968
     },
-    "percent": 17.36,
-    "ported_lines": 60178,
-    "total_lines": 346630
+    "percent": 17.4,
+    "ported_lines": 60354,
+    "total_lines": 346804
   },
-  "commit": "f5edeeb1",
+  "commit": "2878c643",
   "date": "2026-11-20",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 51.61,
-          "ported_lines": 34237,
-          "total_lines": 66338
+          "percent": 51.74,
+          "ported_lines": 34413,
+          "total_lines": 66512
         },
         "graphics": {
           "percent": 72.16,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 920,
-      "hybrid_lines": 38485,
-      "percent": 60.99,
-      "ported_lines": 60178,
-      "total_lines": 98663
+      "files": 927,
+      "hybrid_lines": 38483,
+      "percent": 61.06,
+      "ported_lines": 60354,
+      "total_lines": 98837
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 53.6,
-            "ported_lines": 32884,
-            "total_lines": 61349
+            "percent": 53.74,
+            "ported_lines": 33060,
+            "total_lines": 61523
           },
           "graphics": {
             "percent": 72.68,
@@ -79,9 +79,9 @@
             "total_lines": 10057
           }
         },
-        "files": 885,
-        "hybrid_lines": 34166,
-        "percent": 62.1,
+        "files": 892,
+        "hybrid_lines": 34164,
+        "percent": 62.18,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
           "audio-monitoring/pulse/pulseaudio-monitor-format.c.h",
@@ -188,8 +188,10 @@
           "media-io/video-io.c.h",
           "media-io/video-matrices.c.h",
           "media-io/video-scaler-plan.c.h",
+          "obs-apply-private-data.c.h",
           "obs-audio-controls.c.h",
           "obs-audio-discard.c.h",
+          "obs-audio-info-queries.c.h",
           "obs-audio-min-ts.c.h",
           "obs-audio-mix.c.h",
           "obs-audio-render.c.h",
@@ -198,8 +200,10 @@
           "obs-avc.c.h",
           "obs-base-effect.c.h",
           "obs-canvas-channel-getter.c.h",
+          "obs-canvas-clear-mix.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-flags-getter.c.h",
+          "obs-canvas-has-valid-video-info.c.h",
           "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
@@ -299,6 +303,7 @@
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-identity-setters.c.h",
           "obs-hotkey-inject-entry.c.h",
+          "obs-hotkey-key-translation.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
           "obs-hotkey-owned-translations.c.h",
@@ -321,6 +326,7 @@
           "obs-module-failure-info.c.h",
           "obs-module-init.c.h",
           "obs-module-lists.c.h",
+          "obs-module-load-all.c.h",
           "obs-module-load-locale.c.h",
           "obs-module-load-metadata.c.h",
           "obs-module-load-rules-skip.c.h",
@@ -368,6 +374,7 @@
           "obs-output-flags.c.h",
           "obs-output-frames-dropped.c.h",
           "obs-output-get-last-error.c.h",
+          "obs-output-get-name.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -594,6 +601,7 @@
           "obs-video-render-size-reference.c.h",
           "obs-video-scale-effects-dispatch.c.h",
           "obs-video-scale-effects.c.h",
+          "obs-video-stats-queries.c.h",
           "obs-video-stop-requested-reference.c.h",
           "obs-video-unmap-last-surface-reference.c.h",
           "obs-view-api.c.h",
@@ -638,15 +646,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 55992,
-        "total_lines": 90158
+        "ported_lines": 56168,
+        "total_lines": 90332
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 52.95,
-            "ported_lines": 29327,
-            "total_lines": 55384
+            "percent": 53.1,
+            "ported_lines": 29503,
+            "total_lines": 55558
           },
           "graphics": {
             "percent": 72.68,
@@ -664,9 +672,9 @@
             "total_lines": 9978
           }
         },
-        "files": 864,
-        "hybrid_lines": 31758,
-        "percent": 62.24,
+        "files": 871,
+        "hybrid_lines": 31756,
+        "percent": 62.32,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
           "audio-monitoring/osx/coreaudio-pacing.c.h",
@@ -771,8 +779,10 @@
           "media-io/video-io.c.h",
           "media-io/video-matrices.c.h",
           "media-io/video-scaler-plan.c.h",
+          "obs-apply-private-data.c.h",
           "obs-audio-controls.c.h",
           "obs-audio-discard.c.h",
+          "obs-audio-info-queries.c.h",
           "obs-audio-min-ts.c.h",
           "obs-audio-mix.c.h",
           "obs-audio-render.c.h",
@@ -781,8 +791,10 @@
           "obs-avc.c.h",
           "obs-base-effect.c.h",
           "obs-canvas-channel-getter.c.h",
+          "obs-canvas-clear-mix.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-flags-getter.c.h",
+          "obs-canvas-has-valid-video-info.c.h",
           "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
@@ -883,6 +895,7 @@
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-identity-setters.c.h",
           "obs-hotkey-inject-entry.c.h",
+          "obs-hotkey-key-translation.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
           "obs-hotkey-owned-translations.c.h",
@@ -904,6 +917,7 @@
           "obs-module-failure-info.c.h",
           "obs-module-init.c.h",
           "obs-module-lists.c.h",
+          "obs-module-load-all.c.h",
           "obs-module-load-locale.c.h",
           "obs-module-load-metadata.c.h",
           "obs-module-load-rules-skip.c.h",
@@ -939,6 +953,7 @@
           "obs-output-flags.c.h",
           "obs-output-frames-dropped.c.h",
           "obs-output-get-last-error.c.h",
+          "obs-output-get-name.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -1165,6 +1180,7 @@
           "obs-video-render-size-reference.c.h",
           "obs-video-scale-effects-dispatch.c.h",
           "obs-video-scale-effects.c.h",
+          "obs-video-stats-queries.c.h",
           "obs-video-stop-requested-reference.c.h",
           "obs-video-unmap-last-surface-reference.c.h",
           "obs-view-api.c.h",
@@ -1207,15 +1223,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 52356,
-        "total_lines": 84114
+        "ported_lines": 52532,
+        "total_lines": 84288
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 53.09,
-            "ported_lines": 30268,
-            "total_lines": 57015
+            "percent": 53.23,
+            "ported_lines": 30444,
+            "total_lines": 57189
           },
           "graphics": {
             "percent": 72.23,
@@ -1233,9 +1249,9 @@
             "total_lines": 10704
           }
         },
-        "files": 875,
-        "hybrid_lines": 33116,
-        "percent": 61.78,
+        "files": 882,
+        "hybrid_lines": 33114,
+        "percent": 61.86,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
           "audio-monitoring/monitor-speaker-layout.c.h",
@@ -1343,8 +1359,10 @@
           "media-io/video-io.c.h",
           "media-io/video-matrices.c.h",
           "media-io/video-scaler-plan.c.h",
+          "obs-apply-private-data.c.h",
           "obs-audio-controls.c.h",
           "obs-audio-discard.c.h",
+          "obs-audio-info-queries.c.h",
           "obs-audio-min-ts.c.h",
           "obs-audio-mix.c.h",
           "obs-audio-render.c.h",
@@ -1353,8 +1371,10 @@
           "obs-avc.c.h",
           "obs-base-effect.c.h",
           "obs-canvas-channel-getter.c.h",
+          "obs-canvas-clear-mix.c.h",
           "obs-canvas-draw.c.h",
           "obs-canvas-flags-getter.c.h",
+          "obs-canvas-has-valid-video-info.c.h",
           "obs-canvas-move.c.h",
           "obs-canvas-readonly-getters.c.h",
           "obs-canvas-ref.c.h",
@@ -1454,6 +1474,7 @@
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-identity-setters.c.h",
           "obs-hotkey-inject-entry.c.h",
+          "obs-hotkey-key-translation.c.h",
           "obs-hotkey-name-map.c.h",
           "obs-hotkey-object-getters.c.h",
           "obs-hotkey-owned-translations.c.h",
@@ -1475,6 +1496,7 @@
           "obs-module-failure-info.c.h",
           "obs-module-init.c.h",
           "obs-module-lists.c.h",
+          "obs-module-load-all.c.h",
           "obs-module-load-locale.c.h",
           "obs-module-load-metadata.c.h",
           "obs-module-load-rules-skip.c.h",
@@ -1510,6 +1532,7 @@
           "obs-output-flags.c.h",
           "obs-output-frames-dropped.c.h",
           "obs-output-get-last-error.c.h",
+          "obs-output-get-name.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -1736,6 +1759,7 @@
           "obs-video-render-size-reference.c.h",
           "obs-video-scale-effects-dispatch.c.h",
           "obs-video-scale-effects.c.h",
+          "obs-video-stats-queries.c.h",
           "obs-video-stop-requested-reference.c.h",
           "obs-video-unmap-last-surface-reference.c.h",
           "obs-view-api.c.h",
@@ -1783,12 +1807,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 53534,
-        "total_lines": 86650
+        "ported_lines": 53710,
+        "total_lines": 86824
       }
     }
   },
   "rust": {
-    "lines": 227833
+    "lines": 228693
   }
 }
