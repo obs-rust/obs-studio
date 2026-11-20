@@ -17608,6 +17608,21 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_source_output_flags": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_source_output_flags.c"
+      ]
+    },
     "test_source_private_settings": {
       "sources": [
         "test/cmocka/test_source_private_settings.c"
@@ -28404,6 +28419,12 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_source_output_flags": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_source_output_flags"
     },
     "test_source_private_settings": {
       "target": "test_source_private_settings",
