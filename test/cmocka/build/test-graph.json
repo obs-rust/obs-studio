@@ -5921,6 +5921,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -5973,6 +5974,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6074,6 +6076,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6126,6 +6129,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6230,6 +6234,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6282,6 +6287,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6429,6 +6435,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6485,6 +6492,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6635,6 +6643,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6688,6 +6697,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6826,6 +6836,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6878,6 +6889,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7005,6 +7017,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7061,6 +7074,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7128,6 +7142,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7184,6 +7199,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7265,6 +7281,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7320,6 +7337,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister_entry": [
@@ -12165,6 +12183,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -12239,6 +12258,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -21146,6 +21166,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-key-translation.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -21213,6 +21234,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-key-translation.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
