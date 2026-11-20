@@ -44,7 +44,7 @@ void original_encoder_align_frame_rate_divisor(obs_encoder_t *encoder, uint64_t 
 #include "encoder_align_frame_rate_divisor_fields.inc"
 #undef video_output_align_frame_rate_divisor
 
-typedef void (*align_operation)(obs_encoder_t *, uint64_t);
+typedef void (*align_operation)(obs_encoder_t *, uint64_t, void (*)(void *, struct video_data *));
 bool oracle_encoder_align_probe(bool present, bool media, uint32_t divisor, uint64_t timestamp, align_operation rust);
 bool oracle_encoder_align_probe(bool present, bool media, uint32_t divisor, uint64_t timestamp, align_operation rust)
 {
@@ -61,7 +61,7 @@ bool oracle_encoder_align_probe(bool present, bool media, uint32_t divisor, uint
 	memcpy(&original, &f.record, sizeof(original));
 	bool unchanged = memcmp(&before, &f.encoder, sizeof(before)) == 0;
 	memset(&f.record, 0, sizeof(f.record));
-	rust(encoder, timestamp);
+	rust(encoder, timestamp, receive_video);
 	return unchanged && memcmp(&original, &f.record, sizeof(original)) == 0 &&
 	       memcmp(&before, &f.encoder, sizeof(before)) == 0 && f.callback_calls == 0;
 }

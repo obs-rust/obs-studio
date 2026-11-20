@@ -1,6 +1,6 @@
 //! Exact observable call and encoder-byte parity against the immutable C oracle.
 use core::ffi::c_void;
-use obs_output::ffi::encoder_align_frame_rate_divisor::obs_encoder_align_frame_rate_divisor;
+use obs_output::ffi::encoder_align_frame_rate_divisor::obs_encoder_align_frame_rate_divisor_with_callback;
 use proptest::prelude::*;
 
 unsafe extern "C" {
@@ -9,7 +9,11 @@ unsafe extern "C" {
         media: bool,
         divisor: u32,
         timestamp: u64,
-        rust: unsafe extern "C" fn(*mut c_void, u64),
+        rust: unsafe extern "C" fn(
+            *mut c_void,
+            u64,
+            Option<unsafe extern "C" fn(*mut c_void, *mut c_void)>,
+        ),
     ) -> bool;
 }
 
@@ -23,7 +27,7 @@ fn check(present: bool, media: bool, divisor: u32, timestamp: u64) {
                 media,
                 divisor,
                 timestamp,
-                obs_encoder_align_frame_rate_divisor,
+                obs_encoder_align_frame_rate_divisor_with_callback,
             )
         },
         "present={present}, media={media}, divisor={divisor}, timestamp={timestamp}"
