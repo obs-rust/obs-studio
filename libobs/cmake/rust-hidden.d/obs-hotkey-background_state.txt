@@ -1,0 +1,4 @@
+# obs-hotkey-background-state.c.h: the private entry of the exported
+# obs_hotkeys_get_background_state, for standalone fixtures that bind their
+# own recording adapters (test_hotkey_background_state_rust).
+obs_hotkeys_background_state_request

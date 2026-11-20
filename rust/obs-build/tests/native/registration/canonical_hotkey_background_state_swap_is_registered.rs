@@ -1,6 +1,7 @@
 use super::*;
 
 const ORIGINAL: &str = "libobs/obs-hotkey-background-state.c.h";
+const REQUEST: &str = "obs_hotkeys_get_background_state=obs_hotkeys_background_state_request";
 
 /// The unchanged characterization keeps testing the original; its external
 /// twin runs the same assertions on the Rust shim through the real adapters.
@@ -42,7 +43,11 @@ fn canonical_hotkey_background_state_swap_is_registered() {
                 target.unity_groups["background_state"],
                 [test_source, record]
             );
-            assert_eq!(target.definitions, ["HOTKEY_BACKGROUND_STATE_EXTERNAL"]);
+            // The request entry keeps a Darwin call off libobs's export.
+            assert_eq!(
+                target.definitions,
+                ["HOTKEY_BACKGROUND_STATE_EXTERNAL", REQUEST]
+            );
             assert_eq!(selected.tests[rust_test].target, rust_test);
         }
     }
@@ -80,4 +85,12 @@ fn files_are_wired(root: &Path, test_source: &str, record: &str) {
     )
     .unwrap();
     assert_eq!(exports.trim(), "obs_hotkeys_get_background_state");
+    let hidden =
+        fs::read_to_string(root.join("libobs/cmake/rust-hidden.d/obs-hotkey-background_state.txt"))
+            .unwrap();
+    let names: Vec<_> = hidden
+        .lines()
+        .filter(|line| !line.starts_with('#') && !line.trim().is_empty())
+        .collect();
+    assert_eq!(names, ["obs_hotkeys_background_state_request"]);
 }

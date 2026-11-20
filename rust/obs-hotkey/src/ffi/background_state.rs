@@ -39,6 +39,18 @@ impl crate::background_state::BackgroundState for Core {
 /// As for the C API: `flags` is NULL or points to a writable `uint32_t`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_hotkeys_get_background_state(flags: *mut u32) -> c_int {
+    // SAFETY: the same contract, forwarded unchanged.
+    unsafe { obs_hotkeys_background_state_request(flags) }
+}
+
+/// Private entry for isolated C fixtures. The public name is also exported by
+/// libobs, and a Darwin two-level namespace binds a fixture's call to it
+/// there instead of to the fixture's own recording adapters.
+///
+/// # Safety
+/// As for [`obs_hotkeys_get_background_state`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_hotkeys_background_state_request(flags: *mut u32) -> c_int {
     // SAFETY: the caller passes NULL or a valid, writable uint32_t that it
     // does not access during the call.
     let flags = unsafe { flags.as_mut() }.map(Cell::from_mut);

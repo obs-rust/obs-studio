@@ -14,7 +14,8 @@
         ]
       },
       "definitions": [
-        "HOTKEY_BACKGROUND_STATE_EXTERNAL"
+        "HOTKEY_BACKGROUND_STATE_EXTERNAL",
+        "obs_hotkeys_get_background_state=obs_hotkeys_background_state_request"
       ],
       "libraries": [
         "libobs_rust-static",
