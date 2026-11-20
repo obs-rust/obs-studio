@@ -353,24 +353,61 @@ impl Model {
     /// Reset Docks and for a service layout (no record). Whether the record
     /// belongs to this blob and is used.
     pub fn start(&mut self, record: Option<&str>, blob_hash: &str) -> bool {
-        todo!("#5230")
+        self.last = None;
+        self.home.clear();
+        match record.and_then(decode) {
+            Some((hash, sizes)) if hash == blob_hash => {
+                self.sizes = sizes;
+                self.record_ok = true;
+                self.pending = false;
+            }
+            _ => {
+                self.sizes = Sizes::default();
+                self.record_ok = false;
+                self.pending = true;
+            }
+        }
+        self.record_ok
     }
 
     /// The window after a change.
     pub fn observe(&mut self, snap: &Snapshot, cause: Cause) -> Output {
-        todo!("#5230")
+        let snap = &snap.sane();
+        if !snap.visible {
+            return Output::default();
+        }
+        let prev = self.last.replace(snap.clone());
+        let out = match (cause, prev) {
+            (Cause::Restored, _) | (_, None) => self.restored(snap),
+            (Cause::SeparatorDrag, Some(prev))
+                if (prev.width, prev.height) == (snap.width, snap.height) =>
+            {
+                // A press and release that resized nothing is no change.
+                if self.dragged(&prev, snap) {
+                    self.pending = false;
+                }
+                Output::default()
+            }
+            (_, Some(prev)) => self.changed(&prev, snap),
+        };
+        for dock in &snap.docks {
+            if let Some(area) = dock.docked() {
+                self.home.insert(dock.name.clone(), area);
+            }
+        }
+        out
     }
 
     /// Quit (or a save) writes the blob given to [`Model::start`], not the
     /// live layout: the user changed nothing, and the window may show that
     /// blob squeezed into a small tile.
     pub fn saves_restored_blob(&self) -> bool {
-        todo!("#5230")
+        self.pending
     }
 
     /// The `DockSizes` record for the blob saved with it.
     pub fn record(&self, blob_hash: &str) -> String {
-        todo!("#5230")
+        encode(blob_hash, &self.sizes)
     }
 
     /// The sizes the user wants.

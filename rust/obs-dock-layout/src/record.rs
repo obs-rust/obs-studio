@@ -74,13 +74,39 @@ fn unescape(text: &str) -> Option<String> {
 
 /// The record of `sizes` for the blob with hash `hash`.
 pub fn encode(hash: &str, sizes: &Sizes) -> String {
-        todo!("#5230")
+    let mut out = format!("{VERSION};{}", escape(hash));
+    for (area, px) in &sizes.depth {
+        out.push_str(&format!(";a{}={px}", area_code(*area)));
     }
+    for (name, px) in &sizes.length {
+        out.push_str(&format!(";d{}={px}", escape(name)));
+    }
+    out
+}
 
 /// The hash and the sizes of a record. `None` for anything this version
 /// does not write: another version, a malformed entry, a size below 1 px
 /// or above [`LIMIT`].
 /// A record that cannot be read is no record: the start is as upstream's.
 pub fn decode(record: &str) -> Option<(String, Sizes)> {
-        todo!("#5230")
+    let mut parts = record.split(';');
+    if parts.next()? != VERSION {
+        return None;
     }
+    let hash = unescape(parts.next()?)?;
+    let mut sizes = Sizes::default();
+    for entry in parts {
+        let (key, value) = entry.split_once('=')?;
+        let px: i32 = value.parse().ok()?;
+        if !(1..=LIMIT).contains(&px) {
+            return None;
+        }
+        if let Some(code) = key.strip_prefix('a') {
+            sizes.depth.insert(area_from(code)?, px);
+        } else {
+            let name = key.strip_prefix('d')?;
+            sizes.length.insert(unescape(name)?, px);
+        }
+    }
+    Some((hash, sizes))
+}
