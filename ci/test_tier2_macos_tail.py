@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import os
 import re
 import subprocess
 import sys
@@ -60,6 +61,107 @@ class MacosTailTest(unittest.TestCase):
                 capture_output=True, text=True, check=True,
             )
             self.assertEqual(result.stdout, str(expected))
+
+    def validator_fixture(self, root):
+        source = Path(__file__).resolve().parent.parent / "rust/tools/tier2-validate/validate.sh"
+        validator = root / "rust/tools/tier2-validate/validate.sh"
+        validator.parent.mkdir(parents=True)
+        validator.write_text(source.read_text())
+
+        def artifact(name, contents="", executable=False):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(contents)
+            if executable:
+                path.chmod(0o755)
+            return path
+
+        for directory in ("libobs", "libobs-c-reference"):
+            artifact(f"build_rust/{directory}/RelWithDebInfo/libobs.framework/Versions/A/libobs")
+        artifact(".deps/obs-deps/lib/libavcodec.dylib")
+        artifact("build_rust/test/cmocka/test_bitstream", '''#!/bin/bash
+set -e
+printf '%s/libobs.framework/Versions/A/libobs\\n' "${PROBE_WRONG_PATH:-$DYLD_FRAMEWORK_PATH}" >&2
+# More than a pipe buffer after the matching line: grep -q must not kill us.
+head -c 1048576 /dev/zero >&2
+printf 'probe %s\\n' "$DYLD_FRAMEWORK_PATH" >> events
+exit "${PROBE_STATUS:-0}"
+''', executable=True)
+        artifact("bin/ctest", '''#!/bin/bash
+set -eu
+printf 'ctest %s\\n' "$DYLD_FRAMEWORK_PATH" >> events
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --output-log ]; then printf 'suite %s\\n' "$DYLD_FRAMEWORK_PATH" > "$2"; shift; fi
+  shift
+done
+exit "${CTEST_STATUS:-0}"
+''', executable=True)
+        # Native identity probes retain their positive and negative controls.
+        identity = artifact("identity", '''#!/bin/bash
+name=$(basename "$1" .dylib | sed -e s/libobs-opengl/OPENGL/ -e s/libobs-metal/METAL/)
+[ "$name" = "$2" ] || exit 14
+case "${!#}" in */cargo-native-core/*/libobs.framework/Versions/A/libobs) exit 0 ;; *) exit 12 ;; esac
+''', executable=True)
+        graphics, captures = [], []
+        for renderer in ("OPENGL", "METAL"):
+            artifact(f"build_rust/libobs-{renderer.lower()}/libobs-{renderer.lower()}.dylib")
+            module = artifact(f"modules/{renderer}.dylib")
+            graphics.append(f"{renderer}\t{module}\t{identity}\n")
+        for name, directory in (("mac-capture", "mac-capture"), ("mac-avcapture", "mac-avcapture"),
+                                ("mac-avcapture-legacy", "mac-avcapture")):
+            module = artifact(f"build_rust/plugins/{directory}/{name}.plugin/Contents/MacOS/{name}")
+            data = module.parent.parent / "Resources"
+            artifact(str(data.relative_to(root) / "locale/en-US.ini"))
+            captures.append(f"{name}\t{module}\t{data}\t{identity}\n")
+        native = "build_rust/cargo-native-core"
+        artifact(f"{native}/macos-graphics-paths.txt", "".join(graphics))
+        artifact(f"{native}/macos-capture-paths.txt", "".join(captures))
+        for variant in ("obs-c-reference", "obs"):
+            for suffix in ("libobs.dylib", "libobs.framework/Versions/A/libobs", "libobs.framework/libobs"):
+                artifact(f"{native}/{variant}/{suffix}")
+        return validator
+
+    def test_real_validator_retains_suite_local_evidence_after_ctest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            validator = self.validator_fixture(root)
+            for phase in ("cmake-tests", "cargo-tests"):
+                result = subprocess.run(["bash", str(validator), "--phase", phase],
+                    env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}"},
+                    capture_output=True, text=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            events = (root / "events").read_text().splitlines()
+            self.assertEqual(len(events), 8)
+            for ctest, probe in zip(events[::2], events[1::2]):
+                self.assertTrue(ctest.startswith("ctest "), events)
+                self.assertEqual(probe, ctest.replace("ctest ", "probe ", 1))
+            logs = root / "build_rust/tail-logs"
+            for phase, variants in (("cmake-tests", ("OFF", "ON")), ("cargo-tests", ("obs-c-reference", "obs"))):
+                for variant in variants:
+                    suite = logs / phase / variant
+                    self.assertIn("suite ", (suite / "ctest.log").read_text())
+                    self.assertIn("libobs.framework/", (suite / "loader.log").read_text())
+            self.assertEqual(len(list(logs.glob("*/*/loader.log"))), 4)
+
+    def test_real_validator_rejects_bad_loader_or_ctest_without_stale_proof(self):
+        for phase in ("cmake-tests", "cargo-tests"):
+            for failure in ({"PROBE_WRONG_PATH": "/wrong"}, {"PROBE_STATUS": "23"}, {"CTEST_STATUS": "24"}):
+                with self.subTest(phase=phase, failure=failure), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    validator = self.validator_fixture(root)
+                    variant = "OFF" if phase == "cmake-tests" else "obs-c-reference"
+                    proof = root / "build_rust/tail-logs" / phase / variant / "loader.log"
+                    proof.parent.mkdir(parents=True)
+                    framework = (root / "build_rust/libobs-c-reference/RelWithDebInfo" if phase == "cmake-tests"
+                                 else root / "build_rust/cargo-native-core/obs-c-reference")
+                    proof.write_text(f"{framework}/libobs.framework/Versions/A/libobs\n")
+                    result = subprocess.run(["bash", str(validator), "--phase", phase],
+                        env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}", **failure},
+                        capture_output=True, text=True, timeout=20)
+                    self.assertNotEqual(result.returncode, 0)
+                    if "CTEST_STATUS" in failure:
+                        events = root / "events"
+                        self.assertNotIn("probe ", events.read_text() if events.exists() else "")
 
     def run_fake(self, root: Path, failing: str = "") -> tuple[int, str]:
         validator = root / "validate.sh"
