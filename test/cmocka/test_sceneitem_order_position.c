@@ -98,7 +98,7 @@ static void positions_count_siblings(void **state)
 			/* IDs and visibility do not affect position. */
 			items[i].id = 99 - (int64_t)i;
 			items[i].user_visible = i % 2 == 0;
-			assert_position(&items[i], i);
+			assert_position(&items[i], (int)i);
 		}
 	}
 	/* Re-link the same handles in a different order. */
@@ -108,7 +108,7 @@ static void positions_count_siblings(void **state)
 		items[i].prev = i < 5 ? &items[i + 1] : NULL;
 	}
 	for (size_t i = 0; i < 6; i++)
-		assert_position(&items[5 - i], i);
+		assert_position(&items[5 - i], (int)i);
 	free_scene(&scene);
 }
 
@@ -129,11 +129,11 @@ static void nested_groups_count_only_the_parent_list(void **state)
 	/* A group occupies one sibling slot; its descendants never inflate it.
 	 * Each child's parent is the group's own scene, including nested groups. */
 	for (size_t i = 0; i < 3; i++)
-		assert_position(&roots[i], i);
+		assert_position(&roots[i], (int)i);
 	for (size_t i = 0; i < 4; i++)
-		assert_position(&children[i], i);
+		assert_position(&children[i], (int)i);
 	for (size_t i = 0; i < 2; i++)
-		assert_position(&grandchildren[i], i);
+		assert_position(&grandchildren[i], (int)i);
 	free_scene(&nested);
 	free_scene(&group);
 	free_scene(&root);
@@ -150,7 +150,7 @@ static void absent_item_returns_list_length(void **state)
 	 * NULL when the parent list does not contain the requested item. */
 	for (size_t count = 0; count <= 3; count++) {
 		link_items(&scene, items, count);
-		assert_position(&absent, count);
+		assert_position(&absent, (int)count);
 	}
 	free_scene(&scene);
 }
