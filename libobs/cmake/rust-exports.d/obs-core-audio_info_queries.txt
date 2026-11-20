@@ -1,0 +1,2 @@
+obs_get_audio_info
+obs_get_audio_info2

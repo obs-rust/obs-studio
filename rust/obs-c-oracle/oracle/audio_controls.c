@@ -5,7 +5,8 @@
  * stubs them. libobs supplies them when this file is not linked. The signal
  * calls are stubbed under oracle_* names: obs-callback exports the real
  * signal_handler_* symbols, and a test that links both would define them
- * twice. */
+ * twice. obs_get_audio_info is obs-core's export (#5363), which answers false
+ * here: no current core is installed outside its own parity probe. */
 
 #include <stddef.h>
 
@@ -112,12 +113,6 @@ void obs_source_remove_audio_capture_callback(obs_source_t *source, obs_source_a
 	UNUSED_PARAMETER(source);
 	UNUSED_PARAMETER(callback);
 	UNUSED_PARAMETER(param);
-}
-
-bool obs_get_audio_info(struct obs_audio_info *oai)
-{
-	UNUSED_PARAMETER(oai);
-	return false;
 }
 
 void signal_handler_connect(signal_handler_t *handler, const char *signal, signal_callback_t callback, void *data)

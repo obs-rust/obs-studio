@@ -10,6 +10,7 @@ mod audio_callback_parity;
 mod audio_discard;
 mod audio_discard_parity;
 mod audio_info_queries;
+mod audio_info_queries_parity;
 mod audio_min_ts;
 mod audio_min_ts_parity;
 mod audio_mix;

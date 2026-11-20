@@ -59,13 +59,28 @@ pub trait AudioCore {
 /// `obs_get_audio_info`: `core` is `None` for a NULL core, `output` false
 /// for a NULL `oai`. `Some` is a true return with the values to store.
 pub fn get_audio_info<C: AudioCore>(core: Option<&mut C>, output: bool) -> Option<AudioInfo> {
-    let _ = (core, output);
-    todo!("obs_get_audio_info port")
+    let core = core?;
+    if !output || !core.has_output() {
+        return None;
+    }
+    Some(core.output_info())
 }
 
 /// `obs_get_audio_info2`: `core` is `None` for a NULL core, `output` false
 /// for a NULL `oai2`. `Some` is a true return with the values to store.
 pub fn get_audio_info2<C: AudioCore>(core: Option<&mut C>, output: bool) -> Option<AudioInfo2> {
-    let _ = (core, output);
-    todo!("obs_get_audio_info2 port")
+    let core = core?;
+    let info = get_audio_info(Some(&mut *core), true)?;
+    if !output || !core.has_output() {
+        return None;
+    }
+    let fixed_buffering = core.fixed_buffer();
+    let ticks = core.max_buffering_ticks();
+    let max_buffering_ms = core.buffer_ms(ticks, info.samples_per_sec).cast_unsigned();
+    Some(AudioInfo2 {
+        samples_per_sec: info.samples_per_sec,
+        speakers: info.speakers,
+        max_buffering_ms,
+        fixed_buffering,
+    })
 }

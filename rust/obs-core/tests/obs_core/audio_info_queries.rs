@@ -40,7 +40,10 @@ impl Core {
 
     /// The calls the C test's probes log.
     fn c_calls(&self) -> String {
-        self.trace.chars().filter(|c| matches!(c, 'i' | 'm')).collect()
+        self.trace
+            .chars()
+            .filter(|c| matches!(c, 'i' | 'm'))
+            .collect()
     }
 }
 
