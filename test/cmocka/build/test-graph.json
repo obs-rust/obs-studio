@@ -3867,6 +3867,26 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_encoder_outputs": {
+      "sources": [
+        "test/cmocka/test_encoder_outputs.c",
+        "libobs/obs-encoder-outputs.c.h"
+      ],
+      "definitions": [
+        "pthread_mutex_lock=encoder_outputs_lock",
+        "pthread_mutex_unlock=encoder_outputs_unlock"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ]
+    },
     "test_encoder_packet_ts_steps": {
       "sources": [
         "test/cmocka/test_encoder_packet_ts_steps.c",
@@ -23758,6 +23778,12 @@
           "-s",
           "-screen 0 1280x1024x24 -noreset"
         ]
+      ]
+    },
+    "test_encoder_outputs": {
+      "target": "test_encoder_outputs",
+      "command": [
+        "${target}"
       ]
     },
     "test_encoder_packet_ts_steps": {
