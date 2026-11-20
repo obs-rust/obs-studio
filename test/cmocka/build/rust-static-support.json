@@ -28,6 +28,8 @@
     "test/cmocka/graphics-texture-file-data-link-support.c",
     "test/cmocka/hotkey-fields-link-support.c",
     "test/cmocka/hotkey-key-translation-link-support.c",
+    "test/cmocka/hotkey-runtime-link-support.c",
+    "test/cmocka/media-remux-ffmpeg-link-support.c",
     "test/cmocka/output-encoder-getters-link-support.c",
     "test/cmocka/output-get-name-link-support.c",
     "test/cmocka/output-interleave-name-link-support.c",
@@ -45,6 +47,7 @@
     "test/cmocka/source-weak-refs-link-support.c",
     "test/cmocka/texture-creators-fields-link-support.c",
     "test/cmocka/video-info-query-link-support.c",
+    "test/cmocka/video-scaler-ffmpeg-link-support.c",
     "test/cmocka/video-stats-queries-link-support.c"
   ],
   "platform_sources": {
