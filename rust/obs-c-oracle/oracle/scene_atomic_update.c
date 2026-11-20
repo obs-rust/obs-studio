@@ -69,15 +69,20 @@ void oracle_atomic_source_release(obs_source_t *source)
 	struct atomic_fixture *f = source->context.data;
 	atomic_release(&f->scene);
 }
+/* The one real-named full-lock stand-in: a parent-group probe active on this
+ * thread (scene_item_get_group.c) owns the call, otherwise this recorder. */
+bool oracle_scene_get_group_full_lock(obs_scene_t *scene, bool lock);
 void obs_scene_atomic_full_lock(obs_scene_t *scene);
 void obs_scene_atomic_full_unlock(obs_scene_t *scene);
 void obs_scene_atomic_full_lock(obs_scene_t *scene)
 {
-	oracle_atomic_full_lock(scene);
+	if (!oracle_scene_get_group_full_lock(scene, true))
+		oracle_atomic_full_lock(scene);
 }
 void obs_scene_atomic_full_unlock(obs_scene_t *scene)
 {
-	oracle_atomic_full_unlock(scene);
+	if (!oracle_scene_get_group_full_lock(scene, false))
+		oracle_atomic_full_unlock(scene);
 }
 
 static void atomic_callback(void *data, obs_scene_t *scene)
