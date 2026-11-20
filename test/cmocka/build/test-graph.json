@@ -5213,9 +5213,9 @@
         }
       ]
     },
-    "test_graphics_device_load": {
+    "test_graphics_device_identity": {
       "sources": [
-        "test/cmocka/test_graphics_device_load.c"
+        "test/cmocka/test_graphics_device_identity.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -5226,9 +5226,9 @@
         }
       ]
     },
-    "test_graphics_device_identity": {
+    "test_graphics_device_load": {
       "sources": [
-        "test/cmocka/test_graphics_device_identity.c"
+        "test/cmocka/test_graphics_device_load.c"
       ],
       "libraries": [
         "OBS::libobs",
@@ -24667,14 +24667,14 @@
         "${target}"
       ]
     },
-    "test_graphics_device_load": {
-      "target": "test_graphics_device_load",
+    "test_graphics_device_identity": {
+      "target": "test_graphics_device_identity",
       "command": [
         "${target}"
       ]
     },
-    "test_graphics_device_identity": {
-      "target": "test_graphics_device_identity",
+    "test_graphics_device_load": {
+      "target": "test_graphics_device_load",
       "command": [
         "${target}"
       ]
