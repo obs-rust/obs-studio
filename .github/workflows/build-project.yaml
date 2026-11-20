@@ -164,7 +164,7 @@ jobs:
   check-event:
     timeout-minutes: 10
     name: Event Data 🔎
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
@@ -1694,7 +1694,7 @@ jobs:
   # zackees/ci.yml GATE-008/010: single immutable-base verifier. Unknown/old output contracts run real CI.
   ci-mode:
     name: CI Mode 🛂
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       rust-test_hit: 'false'
@@ -2194,7 +2194,7 @@ jobs:
   # A proof represents BOTH targets. Never publish it from a single matrix leg.
   rust-cross-proof:
     name: Rust Cross Lane Proof 🧾
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [ci-mode, rust-cross-lint]
     if: ${{ success() && needs.rust-cross-lint.result == 'success' && needs.ci-mode.outputs.cross_name != '' && needs.ci-mode.outputs.cross_hit != 'true' }}
@@ -2741,7 +2741,9 @@ jobs:
   # lane proof.
   rust-linux-tier2-build:
     name: Rust Tier 2 Linux 🐧 (build)
-    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    # The pinned container supplies Ubuntu 26.04 packages; only the host pool moves.
+    # ubuntu-latest currently maps to 24.04 (actions/runner-images, 2026-11-20).
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
     # Maintainer-approved revisit of #966: prebake packages for Dell only.
     # Same base, root user and install commands; keep #982 runtime coverage.
     # GHCR must be public; anonymous probe errors retain stock Ubuntu.
@@ -3120,7 +3122,7 @@ jobs:
 
   rust-linux-tier2:
     name: Rust Tier 2 Linux 🐧 (tests ${{ matrix.mode }}${{ matrix.part != 'suite' && format(', {0}', matrix.part) || '' }})
-    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}
+    runs-on: ${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}
     # Load a verified prepared runtime, or install the exact closure in the
     # same pinned stock base. The helper retains original artifact paths.
     timeout-minutes: 30

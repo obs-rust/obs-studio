@@ -766,6 +766,8 @@ def main() -> int:
         labels = decision("selection deadline exhausted")
     try:
         with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+            # Empty means each workflow consumer chooses its hosted fallback:
+            # Tier 2 uses ubuntu-latest; host-package jobs retain ubuntu-26.04.
             output.write(f"heavy-labels={labels}\n")
     except Exception as error:
         warning(f"could not publish selection ({type(error).__name__})")
