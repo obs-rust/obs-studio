@@ -228,17 +228,19 @@ def soldr_dylint(args: list[str], buffer: list[str] | None = None, beside_clippy
         # defers to that one otherwise; CI runners have none).
         "SOLDR_FORCE_MANAGED_CARGO_SUBCOMMANDS": "1",
     }
-    if not os.environ.get("RUSTUP_TOOLCHAIN"):
-        # Match setup-soldr's selection in CI. Without it soldr can select
-        # the lint crate's nightly instead of its catalogued driver (#3559).
-        toolchain = tomllib.loads((ROOT / "rust-toolchain.toml").read_text(encoding="utf-8"))
-        env["RUSTUP_TOOLCHAIN"] = toolchain["toolchain"]["channel"]
     if beside_clippy:
         # Its own target root: soldr's no-cache preflight refuses to touch a
         # target dir while the Clippy that runs beside it holds a .cargo-lock.
         # Run alone, Dylint shares target/ and its CI cache instead.
         env["CARGO_TARGET_DIR"] = str(ROOT / "target-dylint")
-    run(["soldr", "dylint", *args], buffer=buffer, env=soldr_env(env))
+    env = soldr_env(env)
+    # The lint libraries' rust-toolchain.toml (dylints/*) pins the Dylint
+    # nightly, and soldr reads it, but only when no RUSTUP_TOOLCHAIN is set.
+    # setup-soldr exports the root channel (1.98.1), which sent soldr to the
+    # version map's nightly, one cargo-dylint 6.2.0 has no driver for
+    # (#5336). SOLDR_DYLINT_TOOLCHAIN still overrides the pin.
+    env.pop("RUSTUP_TOOLCHAIN", None)
+    run(["soldr", "dylint", *args], buffer=buffer, env=env)
 
 
 def toolchain_gcc_ld() -> str:
