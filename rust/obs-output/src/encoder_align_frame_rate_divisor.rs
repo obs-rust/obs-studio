@@ -5,6 +5,9 @@ pub fn align<M>(
     timestamp: u64,
     forward: impl FnOnce(M, u64),
 ) {
-    let _ = (encoder, timestamp, forward);
-    todo!("encoder frame-rate divisor alignment")
+    if let Some((Some(media), divisor)) = encoder
+        && divisor >= 2
+    {
+        forward(media, timestamp);
+    }
 }

@@ -3,6 +3,7 @@
 
 mod caption_text;
 mod encoder_align_frame_rate_divisor;
+mod encoder_align_frame_rate_divisor_parity;
 mod caption_text_parity;
 mod delay;
 mod delay_parity;
