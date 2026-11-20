@@ -3536,7 +3536,8 @@
       "includes": [
         ".",
         "libobs"
-      ]
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_encoder_audio_buffers_lifecycle": {
       "sources": [
@@ -24247,7 +24248,7 @@
       "command": [
         "${target}"
       ],
-      "timeout_seconds": 30
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_encoder_audio_buffers_lifecycle": {
       "target": "test_encoder_audio_buffers_lifecycle",
