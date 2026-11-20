@@ -7,6 +7,7 @@ pub mod audio_mix;
 pub mod audio_render;
 pub mod base_effect;
 pub mod canvas_channel_getter;
+pub mod canvas_clear_mix;
 pub mod canvas_draw;
 pub mod canvas_flags_getter;
 pub mod canvas_move;

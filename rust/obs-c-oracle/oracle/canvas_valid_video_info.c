@@ -6,6 +6,10 @@
  * on the same canvas and reports, instead of aborting, any difference in the
  * result, the canvas bytes or the allocation count, so mutants are
  * observable. */
+/* The MSVC UCRT headers define snprintf and friends inline in every object
+ * that includes them, which lets a COFF link pull this member into an
+ * unrelated test; keep them declarations only. */
+#define _NO_CRT_STDIO_INLINE
 #include "libobs/build/libobs.pch.h"
 #include <stddef.h>
 #include <string.h>

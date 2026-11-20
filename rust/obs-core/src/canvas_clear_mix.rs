@@ -45,8 +45,22 @@ pub trait Mixes {
 }
 
 /// Detach the canvas's mix, freeing it when the list held it.
-#[expect(clippy::todo, reason = "RED: the port lands in the next commit")]
 pub fn clear_mix<M: Mixes>(mixes: &mut M) {
-    let _ = mixes;
-    todo!()
+    if mixes.canvas_mix().is_none() {
+        return;
+    }
+    mixes.lock();
+    let mut index = 0;
+    while index < mixes.count() {
+        let mix = mixes.at(index);
+        if mix == mixes.canvas_mix() {
+            mixes.erase(index);
+            mixes.free(mix);
+            break;
+        }
+        // `index < count()`, a `usize`, so this never wraps.
+        index = index.wrapping_add(1);
+    }
+    mixes.unlock();
+    mixes.detach();
 }
