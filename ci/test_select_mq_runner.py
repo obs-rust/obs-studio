@@ -1269,7 +1269,7 @@ class InflightAdmissionTest(unittest.TestCase):
 
     def test_hosted_heavy_job_releases_older_reservation(self):
         self.jobs[self.runs[0]["id"]] = [
-            dict(self.fixture["queued_jobs"][0], labels=["ubuntu-26.04"])
+            dict(self.fixture["queued_jobs"][0], labels=["ubuntu-latest"])
         ]
         self.assertTrue(self.select(self.runs[2]["id"]))
 

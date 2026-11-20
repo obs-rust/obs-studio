@@ -45,7 +45,7 @@ class TransportWorkflowTest(unittest.TestCase):
         self.assertIn('--require-hit --expected-source', job)
         self.assertIn('native-cache-build-identity/native-cache-identity.json', job)
         self.assertIn('fail-fast: false', job)
-        self.assertIn('runs-on: ubuntu-26.04', job)
+        self.assertIn('runs-on: ubuntu-latest', job)
         gate = workflow.split('  ci-gate:\n', 1)[1]
         needs = next(line.strip() for line in gate.splitlines() if line.strip().startswith('needs: ['))
         self.assertIn('native-cache-consumer', needs.removeprefix('needs: [').removesuffix(']').split(', '))

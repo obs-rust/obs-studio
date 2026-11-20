@@ -441,7 +441,7 @@ jobs:
     timeout-minutes: 20
     name: Update Documentation 📖
     if: ${{ !cancelled() && github.repository_owner == 'obsproject' && github.base_ref == 'master' }}
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -471,7 +471,7 @@ jobs:
     name: Native Cache Consumer (${{ matrix.platform }} ${{ matrix.architecture }})
     if: always() && !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.native-cache-transport-probe && (!inputs.native-cache-measurement-only || needs.build-project.result == 'success')
     needs: build-project
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       actions: read
@@ -571,7 +571,7 @@ jobs:
           (github.event_name == 'merge_group' ||
            (github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository)) }}
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Mark Lane Proof 🧾

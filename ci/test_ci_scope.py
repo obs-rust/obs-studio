@@ -322,11 +322,11 @@ class CiScopeTest(unittest.TestCase):
             "ci.yml": {
                 "cancel-superseded": "ubuntu-latest", "ci-gate": "ubuntu-latest",
                 "cache-janitor": "ubuntu-latest",
-                "tier2-lane-proof": "ubuntu-26.04",
+                "tier2-lane-proof": "ubuntu-latest",
             },
             "build-project.yaml": dict.fromkeys((
                 "check-event", "ci-mode", "rust-cross-proof",
-            ), "ubuntu-26.04"),
+            ), "ubuntu-latest"),
             "check-format.yaml": {"checks": "ubuntu-latest"},
         }
         for name, jobs in light.items():
@@ -347,9 +347,10 @@ class CiScopeTest(unittest.TestCase):
                 if selected:
                     selected_jobs.add(job)
                     prefix = "github.event_name == 'pull_request' && " if job in pr_only else ""
+                    fallback = "ubuntu-latest" if job in {"rust-linux-tier2-build", "rust-linux-tier2"} else "ubuntu-26.04"
                     self.assertIn(
                         "runs-on: ${{ " + prefix + "inputs.mq-heavy-labels != '' && "
-                        "fromJSON(inputs.mq-heavy-labels) || 'ubuntu-26.04' }}", block,
+                        "fromJSON(inputs.mq-heavy-labels) || '" + fallback + "' }}", block,
                     )
                 else:
                     self.assertNotIn("mq-", runner[1])
