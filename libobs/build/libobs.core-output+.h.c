@@ -25,7 +25,6 @@
 #include "libobs/obs-encoder-module-fields.c.h"
 #include "libobs/obs-encoder-module-roots.c.h"
 #include "libobs/obs-encoder-outputs-fields.c.h"
-#include "libobs/obs-encoder-outputs.c.h"
 #include "libobs/obs-encoder-preferred-color-setters-fields.c.h"
 #include "libobs/obs-encoder-preferred-color-space-fields.c.h"
 #include "libobs/obs-encoder-preferred-format-fields.c.h"

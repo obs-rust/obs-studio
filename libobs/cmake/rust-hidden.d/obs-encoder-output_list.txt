@@ -1,0 +1,5 @@
+# obs-encoder-outputs.c: obs-output.c adds and removes itself from an
+# encoder's output list inside libobs. Declared in obs-internal.h without
+# EXPORT, so the shims stay hidden the same way.
+obs_encoder_add_output
+obs_encoder_remove_output

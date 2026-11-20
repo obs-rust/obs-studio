@@ -44,13 +44,24 @@ pub trait Outputs {
 }
 
 /// Append `output` to the encoder's list; nothing without both.
-#[allow(clippy::todo)]
-pub fn add_output<L: Outputs>(_list: Option<&mut L>, _output: Option<L::Output>) {
-    todo!("RED: obs_encoder_add_output")
+pub fn add_output<L: Outputs>(list: Option<&mut L>, output: Option<L::Output>) {
+    let (Some(list), Some(output)) = (list, output) else {
+        return;
+    };
+    list.lock();
+    list.push(output);
+    list.unlock();
 }
 
 /// Erase the first entry equal to `output`; nothing without both.
-#[allow(clippy::todo)]
-pub fn remove_output<L: Outputs>(_list: Option<&mut L>, _output: Option<L::Output>) {
-    todo!("RED: obs_encoder_remove_output")
+pub fn remove_output<L: Outputs>(list: Option<&mut L>, output: Option<L::Output>) {
+    let (Some(list), Some(output)) = (list, output) else {
+        return;
+    };
+    list.lock();
+    let count = list.count();
+    if let Some(index) = (0..count).find(|&index| list.at(index) == Some(output)) {
+        list.erase(index);
+    }
+    list.unlock();
 }
