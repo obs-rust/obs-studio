@@ -152,6 +152,7 @@ pub mod get_audio;
 pub mod get_main_canvas;
 pub mod get_output_source;
 pub mod global_getters;
+pub mod hotkeys_background_status;
 pub mod module_disable_query;
 pub mod module_failure_info;
 pub mod module_init;
