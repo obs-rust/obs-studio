@@ -160,26 +160,6 @@ void obs_canvas_destroy(obs_canvas_t *canvas)
 
 /*** Internal API ***/
 
-/* Free canvas mix (if any) */
-void obs_canvas_clear_mix(obs_canvas_t *canvas)
-{
-	if (!canvas->mix)
-		return;
-
-	pthread_mutex_lock(&obs->video.mixes_mutex);
-	for (size_t i = 0; i < obs->video.mixes.num; i++) {
-		struct obs_core_video_mix *mix = obs->video.mixes.array[i];
-		if (mix == canvas->mix) {
-			da_erase(obs->video.mixes, i);
-			obs_free_video_mix(mix);
-			break;
-		}
-	}
-	pthread_mutex_unlock(&obs->video.mixes_mutex);
-
-	canvas->mix = NULL;
-}
-
 /* Clear mixes attached to canvases */
 void obs_free_canvas_mixes(void)
 {
