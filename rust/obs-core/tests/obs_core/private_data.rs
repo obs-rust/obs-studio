@@ -2,26 +2,26 @@
 use obs_core::private_data::{self, Host};
 use obs_data::data::{Data, Item};
 
-struct Core {
-    objects: Vec<Option<Data>>,
-    held: Vec<(usize, Data)>,
-    calls: Vec<&'static str>,
+pub(super) struct Core {
+    pub(super) objects: Vec<Option<Data>>,
+    pub(super) held: Vec<(usize, Data)>,
+    pub(super) calls: Vec<&'static str>,
 }
 
 impl Core {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             objects: vec![Some(Data::new()), Some(Data::new()), Some(Data::new())],
             held: Vec::new(),
             calls: Vec::new(),
         }
     }
-    fn data(&self, id: usize) -> &Data {
+    pub(super) fn data(&self, id: usize) -> &Data {
         self.objects[id]
             .as_ref()
             .unwrap_or_else(|| &self.held.iter().find(|(index, _)| *index == id).unwrap().1)
     }
-    fn release(&mut self, id: usize) {
+    pub(super) fn release(&mut self, id: usize) {
         let index = self
             .held
             .iter()
