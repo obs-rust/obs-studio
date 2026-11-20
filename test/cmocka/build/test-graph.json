@@ -15923,6 +15923,27 @@
         }
       ]
     },
+    "test_service_info_accessors": {
+      "sources": [
+        "test/cmocka/test_service_info_accessors.c"
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "watch_inputs": [
+        "libobs/obs-service-info-accessors.c.h"
+      ],
+      "includes": [
+        "."
+      ]
+    },
     "test_service_lifecycle": {
       "sources": [
         "test/cmocka/test_service_lifecycle.c"
@@ -27974,6 +27995,12 @@
     "test_service_handler_getters_rust": {
       "target": "test_service_handler_getters_rust",
       "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "command": [
+        "${target}"
+      ]
+    },
+    "test_service_info_accessors": {
+      "target": "test_service_info_accessors",
       "command": [
         "${target}"
       ]
