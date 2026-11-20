@@ -2984,14 +2984,6 @@ void obs_add_raw_audio_callback(size_t mix_idx, const struct audio_convert_info 
 	audio_output_connect(audio->audio, mix_idx, conversion, callback, param);
 }
 
-void obs_apply_private_data(obs_data_t *settings)
-{
-	if (!settings)
-		return;
-
-	obs_data_apply(obs->data.private_data, settings);
-}
-
 extern bool init_gpu_encoding(struct obs_core_video_mix *video);
 extern void stop_gpu_encoding_thread(struct obs_core_video_mix *video);
 extern void free_gpu_encoding(struct obs_core_video_mix *video);
