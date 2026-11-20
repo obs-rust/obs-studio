@@ -94,6 +94,7 @@ mod monitoring;
 mod monitoring_parity;
 mod mute_monitor_hotkeys;
 mod mute_monitor_hotkeys_parity;
+mod output_flags;
 mod own_clock_drift;
 mod private_settings;
 mod private_settings_parity;
