@@ -3537,7 +3537,32 @@
         ".",
         "libobs"
       ],
-      "requires": "HAVE_LIBOBS_RUST_STATIC"
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "compile_options_if_supported": [
+        "-ffunction-sections",
+        "-fdata-sections"
+      ],
+      "conditional_link_options": [
+        {
+          "name": "-Wl,--gc-sections",
+          "requires": {
+            "all": [
+              "UNIX",
+              {
+                "not": "OS_MACOS"
+              }
+            ]
+          }
+        },
+        {
+          "name": "-Wl,-dead_strip",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "/OPT:REF",
+          "requires": "MSVC"
+        }
+      ]
     },
     "test_encoder_audio_buffers_lifecycle": {
       "sources": [
