@@ -98,7 +98,7 @@ char **oracle_kt_fields_slot(obs_key_t key);
 char **obs_hotkey_key_translation_slot(obs_key_t key);
 char **obs_hotkey_key_translation_slot(obs_key_t key)
 {
-	kt_last_key = key;
+	kt_last_key = (int)key;
 	return oracle_kt_fields_slot(key);
 }
 
