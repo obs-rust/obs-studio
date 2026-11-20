@@ -30,8 +30,13 @@ class GateDylintTest(unittest.TestCase):
         policy = (local_gate.ROOT / "ci-attestations.yml").read_text()
         self.assertIn('inputs: ["**"]', policy)
 
-    def test_missing_toolchain_uses_root_pin(self):
-        for inherited in (None, ""):
+    def test_lint_library_pin_selects_the_driver(self):
+        # soldr ranks RUSTUP_TOOLCHAIN above the lint libraries' own
+        # rust-toolchain.toml. setup-soldr exports the root channel (1.98.1),
+        # which made soldr 0.9.54 pick the version map's nightly-2026-05-28,
+        # a nightly cargo-dylint 6.2.0 has no driver for (#5336). The lint
+        # libraries' pin is the one source of truth for the Dylint channel.
+        for inherited in (None, "", "1.98.1", "custom-driver"):
             for beside_clippy in (False, True):
                 with self.subTest(inherited=inherited, beside_clippy=beside_clippy), tempfile.TemporaryDirectory() as tmp:
                     root = Path(tmp)
@@ -44,15 +49,26 @@ class GateDylintTest(unittest.TestCase):
                         if inherited is not None:
                             os.environ["RUSTUP_TOOLCHAIN"] = inherited
                         local_gate.soldr_dylint(["--all"], beside_clippy=beside_clippy)
-                    self.assertEqual(run.call_args.kwargs["env"].get("RUSTUP_TOOLCHAIN"), "1.99.7")
+                    self.assertNotIn("RUSTUP_TOOLCHAIN", run.call_args.kwargs["env"])
 
-    def test_explicit_toolchain_is_preserved(self):
+    def test_soldr_dylint_override_is_preserved(self):
+        # soldr's own knob still overrides the lint libraries' pin.
         with (
-            mock.patch.dict(os.environ, {"RUSTUP_TOOLCHAIN": "custom-driver"}, clear=True),
+            mock.patch.dict(os.environ, {"SOLDR_DYLINT_TOOLCHAIN": "nightly-2099-01-01"}, clear=True),
             mock.patch.object(local_gate, "run") as run,
         ):
             local_gate.soldr_dylint(["--all"])
-        self.assertEqual(run.call_args.kwargs["env"]["RUSTUP_TOOLCHAIN"], "custom-driver")
+        self.assertEqual(run.call_args.kwargs["env"]["SOLDR_DYLINT_TOOLCHAIN"], "nightly-2099-01-01")
+
+    def test_lint_libraries_pin_the_catalogued_nightly(self):
+        # Every lint library pins one dated nightly; soldr reads these files.
+        import tomllib
+        channels = {
+            tomllib.loads(path.read_text(encoding="utf-8"))["toolchain"]["channel"]
+            for path in (local_gate.ROOT / "dylints").glob("*/rust-toolchain.toml")
+        }
+        self.assertEqual(len(channels), 1, channels)
+        self.assertRegex(channels.pop(), r"^nightly-\d{4}-\d{2}-\d{2}$")
 
     def test_no_cargo_dylint_call(self):
         text = GATE.read_text(encoding="utf-8")

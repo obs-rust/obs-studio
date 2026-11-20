@@ -93,7 +93,7 @@ What not to do:
 Known pitfall: zccache has replayed stale Rust compiler output. Both the build
 and release workflows set `SOLDR_RUSTC_WRAPPER=none` for setup/cook and native
 Rust consumers; the local gate sets it too (`OBS_GATE_ZCCACHE=1` opts back in
-locally). Pinned soldr 0.9.45 defaults to the managed wrapper without this
+locally). Pinned soldr 0.9.54 defaults to the managed wrapper without this
 override, and [zccache#1943](https://github.com/zackees/zccache/issues/1943)
 remains unresolved. This safeguard preserves standalone C/C++ compiler
 caching and soldr cook/target archives. All seven setup-soldr callsites also
@@ -115,8 +115,8 @@ Soldr 0.9.38 fixes source mtime truncation during archive replay (#1359).
 Regenerated local `obs-util` full and base plus delta archives preserve the
 exact nanosecond timestamp and report Fresh with the wrapper disabled. The
 pinned setup action's cook keys include the Soldr version, so archives of an
-older Soldr cannot match the new base key or delta restore prefixes. The pinned
-setup-soldr v0.9.88 defaults to Soldr 0.9.42; the workflows still name the
+older Soldr cannot match the new base key or delta restore prefixes.
+The pinned setup-soldr action defaults to Soldr 0.9.52; the workflows name the
 version explicitly. See the [probe and limits](https://github.com/obs-rust/obs-studio/blob/c2af3f9c3e7945566b88440dffb14c255aeebd96/docs/ci-evidence/2026-10-20-soldr-source-mtime.md).
 
 For opt-in Rust compiler-cache qualification, run
@@ -169,7 +169,7 @@ input header's recorded mtime before clang loads it; real content changes
 remain subject to clang's validation. This fixes `#pragma once` redefinitions
 after touches or checkouts without relaxing PCH validation.
 
-The pinned soldr 0.9.45 also embeds zccache 1.15.5, including the wrapper
+The pinned soldr 0.9.54 embeds zccache 1.15.14, including the wrapper
 selected by the optional `ENABLE_ZCCACHE` CMake module. Updating the standalone
 installer alone does not update that embedded wrapper. Matching the versions
 does not establish Rust compiler-cache correctness: the Rust wrapper bypass

@@ -17,14 +17,14 @@ include_guard(GLOBAL)
 
 # Keep in step with `version:` of zackees/setup-soldr in .github/workflows/
 # (ci/test_soldr_pin.py checks it).
-set(OBS_SOLDR_VERSION 0.9.45)
+set(OBS_SOLDR_VERSION 0.9.54)
 # From soldr-v${OBS_SOLDR_VERSION}-SHA256SUMS.txt on the release.
-set(_obs_soldr_sha256_x86_64-unknown-linux-gnu 60ce244f514ab02b20b7e777f48ef29523aac987022b8ca4de58069899b0c4a1)
-set(_obs_soldr_sha256_aarch64-unknown-linux-gnu aeb529f797c9975c28f2ba563a39ef7e1df50d6f8147e8346d3df078415550d6)
-set(_obs_soldr_sha256_x86_64-apple-darwin b03dfee5d40d6e6ae899eca45d21e432e6576b3c4000d28dff37c2315123f620)
-set(_obs_soldr_sha256_aarch64-apple-darwin a0d9e6b6321ccefc8278f51f68d21e85bad794b01674d7d91e3d96a1d8f1cc74)
-set(_obs_soldr_sha256_x86_64-pc-windows-msvc bf61af4fcbbcb4491f47b3f15291ebbebd0a481a835104db163232911bf81897)
-set(_obs_soldr_sha256_aarch64-pc-windows-msvc f2446be23046fca8276f89811eccaceb239f0dc16fa4a8adc904d3ae640ca96c)
+set(_obs_soldr_sha256_x86_64-unknown-linux-gnu 81ff31b911a2d6abb8ba227edba820f73636df4f0738d40502c8a7ce9a5072aa)
+set(_obs_soldr_sha256_aarch64-unknown-linux-gnu 8e7712e70f574de744d461461a32fb0e1b042b9ab3faab592e2a1003d305b082)
+set(_obs_soldr_sha256_x86_64-apple-darwin c8e55affcaf9fcc88f56496c2d6308ac0fa9000299612bcc5608383acc7e442f)
+set(_obs_soldr_sha256_aarch64-apple-darwin e234d440b36369580d866f5fe73481524001e14700ee9681ad3219739c1f3d1e)
+set(_obs_soldr_sha256_x86_64-pc-windows-msvc 4fdb3923af0a3afac11a1d80e1fdd93e937eb54edd8dc5e412169be70e046f24)
+set(_obs_soldr_sha256_aarch64-pc-windows-msvc af0ab5ca21751e7ec6232725653c2b2bf7f7ee72a451d0ea94a05f5a927de6b7)
 
 # Cross aliases: Rust/LLVM triple, CMake system name and processor.
 set(_obs_cross_win-x64 x86_64-pc-windows-msvc Windows AMD64)

@@ -257,7 +257,7 @@ jobs:
       - name: Set up soldr 🦀
         uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         with:
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           prebuild-deps-flags: --release
           cache-key-suffix: ${{ matrix.os == 'linux' && 'linux-host-v3' || '' }}

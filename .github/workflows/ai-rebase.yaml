@@ -112,6 +112,7 @@ jobs:
       - uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         if: env.HAS_TOKEN == 'true'
         with:
+          version: 0.9.54
           build-cache: false
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
       # The conflict resolver: the clud agent, unattended, on DeepSeek Flash
