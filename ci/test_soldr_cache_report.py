@@ -3,8 +3,8 @@
 
     uv run --no-project python -m unittest ci/test_soldr_cache_report.py
 
-The fixture is unedited output of soldr 0.9.45, the version build-project.yaml
-pins, after one real cached rebuild (1 hit, 3653 ms saved). Its counters sit
+The fixture is unedited output of the former soldr 0.9.45 pin, captured
+after one real cached rebuild (1 hit, 3653 ms saved). Its counters sit
 under `last_session`; a top-level parser reads them all as zero.
 """
 

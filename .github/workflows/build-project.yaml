@@ -528,7 +528,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # Cook the workspace dependencies the app build compiles anyway.
           prebuild-deps-flags: --release
@@ -1514,7 +1514,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # Cook the workspace dependencies the app build compiles anyway.
           prebuild-deps-flags: --release
@@ -1804,8 +1804,8 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
-          version: 0.9.45
+          # soldr 0.9.54 embeds zccache 1.15.14+ (has zackees/zccache#1937).
+          version: 0.9.54
           build-cache: false
           # Fast Gate's consumer is `cargo test`, so cook the `test` profile
           # it compiles in: a `--release` cook on core runs left that build
@@ -2079,7 +2079,7 @@ jobs:
         uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         with:
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # Compile-only C/C++ lane; opt-in Rust linking uses a cross-target
           # release tree, not this host dev cook (#3767).
@@ -2157,7 +2157,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # One Linux layer with Fast Gate: a second profile is a second 1.2 GB
           # entry of the `deps` family (#2661).
@@ -2238,7 +2238,7 @@ jobs:
         with:
           # Same scope and layer as rust-cross-lint, so it replays master's cache.
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           cache-key-suffix: linux-host-v3
@@ -2291,7 +2291,7 @@ jobs:
         with:
           # Same scope and layer as rust-cross-lint, so it replays master's cache.
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # Cross-release archives and Corrosion use separate target trees (#5224).
           prebuild-deps: none
@@ -2342,7 +2342,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # One Linux layer with Fast Gate: a second profile is a second 1.2 GB
           # entry of the `deps` family (#2661).
@@ -2418,7 +2418,7 @@ jobs:
         uses: zackees/setup-soldr@db9aa035e488f4dde7d31d5c8cb4ec20ec99c6c1 # merge of forge-ci/setup-soldr#676: persistent-root cook store and recipes (#675)
         with:
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           cache-key-suffix: linux-host-v3
@@ -2601,8 +2601,8 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.45 embeds zccache 1.15.5+ (has zackees/zccache#1937).
-          version: 0.9.45
+          # soldr 0.9.54 embeds zccache 1.15.14+ (has zackees/zccache#1937).
+          version: 0.9.54
           build-cache: false
           prebuild-deps-flags: --profile dev -- --tests
           save-cache-remote: ${{ github.ref == 'refs/heads/master' }}
@@ -2959,7 +2959,7 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # Corrosion builds Rust in its own target dir under the CMake tree,
           # so a cooked workspace target/ is loaded (12 s) and never used
@@ -3477,9 +3477,9 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.45 embeds zccache 1.15.5+, which names MSVC staticlib
+          # soldr 0.9.54 embeds zccache 1.15.14+, which names MSVC staticlib
           # outputs <crate>-<hash>.lib (zackees/zccache#1937).
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # validate.sh/.ps1 build Rust with --target <triple> into
           # build/cargo-native-* and through Corrosion, so a cooked workspace
@@ -3649,9 +3649,9 @@ jobs:
           # One scope for every caller (push.yaml, ci.yml), so PRs replay
           # the verdicts master publishes (forge-ci/setup-soldr#604).
           verdict-scope: build-project
-          # soldr 0.9.45 embeds zccache 1.15.5+, which names MSVC staticlib
+          # soldr 0.9.54 embeds zccache 1.15.14+, which names MSVC staticlib
           # outputs <crate>-<hash>.lib (zackees/zccache#1937).
-          version: 0.9.45
+          version: 0.9.54
           build-cache: false
           # validate.sh/.ps1 build Rust with --target <triple> into
           # build/cargo-native-* and through Corrosion, so a cooked workspace
