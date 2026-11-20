@@ -23,6 +23,7 @@ corrosion_import_crate(
   CRATE_TYPES staticlib
   PROFILE release
 )
+target_link_libraries(libobs_rust-static INTERFACE OBS::libobs-native-dependencies)
 
 if(OS_MACOS)
   # A host librt must never satisfy a Darwin dependency probe.

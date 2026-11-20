@@ -258,7 +258,7 @@ cmake --build build --target cross-win-x64      # cross-mac-arm64, cross-mac-x64
 #### Tier 2 pre-queue links (#5189)
 
 The Linux-hosted Tier 2 Link Check matrix links hybrid libobs and every
-configured cmocka `*_rust` executable independently for Windows MSVC x86_64 and Darwin arm64
+configured Rust-static cmocka executable independently for Windows MSVC x86_64 and Darwin arm64
 when `LANES["cmocka_link"]` selects the
 change. This includes libobs, its linked crates, obs-build registration/support,
 cmocka, Cargo inputs and the check's own implementation. Unrelated changes keep
@@ -274,7 +274,13 @@ uv run --no-project --with cmake==3.31.10 --with ninja==1.13.0 ci/cmocka_link_ch
 
 The root CMake cross-link mode includes the unchanged cmocka graph and deferred
 support fragments. CMake's file-api discovers executable targets after host
-conditions have been evaluated; an empty Rust inventory fails. The check builds
+conditions have been evaluated, including consumers without a `_rust` suffix.
+Imported Corrosion archives are discovered through generated link arguments as
+well as target dependencies; an empty Rust inventory fails. The check uses
+`RelWithDebInfo`, matching native Tier 2. Windows static consumers retain the
+core's headers and demand-linked real C support without its full DLL import
+library. The check rejects that import/static mix even if LLD accepts a link
+that native MSVC LINK would reject (#5246). The check builds
 against real target cmocka and SDK libraries, never executes target programs,
 and saves `link-targets.json` in its build tree. It always refreshes the Rust
 archive through soldr so source-only edits cannot reuse the cross project's
@@ -297,7 +303,8 @@ host Linux libraries cannot satisfy Darwin probes. A successful link does not
 prove runtime recording/allocator behavior or every binding/order error whose
 final link succeeds.
 
-Local measurements on a shared Linux worker (four Ninja jobs, 2026-11-19):
+Earlier Release measurements before #5246's complete inventory and static-only
+Windows support (four Ninja jobs on a shared Linux worker, 2026-11-19):
 
 | Target | Fresh CMake/Corrosion tree | Warm tree |
 |---|---:|---:|
@@ -308,6 +315,22 @@ SDKs, prebuilt target dependencies and the Cargo registry were already installed
 these are build-tree cold timings, excluding first-host downloads. The original
 eight Windows category binaries also linked (128.53 s with partial Cargo reuse).
 These local timings are not a hosted critical-path guarantee.
+
+Standalone Rust-static support is selected for every consumer, including tests
+that also link shared libobs or inherit Rust through an interface target.
+`test/cmocka/build/rust-static-support.json` owns the real private adapter members
+for both CMake and Cargo-native fixtures. Linux resolves Rust and support as a
+rescan group so newly selected members can call back in either direction.
+Fixture-owned adapters keep their compile definitions and take precedence over
+the shared fallback members.
+Add new shared adapters there as separate
+lazy archive members; fixture-owned definitions retain precedence. CMake inherits
+the native owner (`libobs-objects`) link interface rather than maintaining host
+libraries per test. Cargo's production Rust-archive dependency carries its native
+package interface. Both paths put Rust before MSVC import providers so allocator
+and parser symbols are selected consistently; ELF/Darwin retain the fixture's
+declared DSO binding order. Link checks prove linking only;
+native runtime checks still own recording callbacks and allocator behavior.
 
 #### macOS Rust execution artifacts (#5008)
 

@@ -717,23 +717,6 @@ void obs_source_release(obs_source_t *source)
 	}
 }
 
-void obs_weak_source_addref(obs_weak_source_t *weak)
-{
-	if (!weak)
-		return;
-
-	obs_weak_ref_addref(&weak->ref);
-}
-
-void obs_weak_source_release(obs_weak_source_t *weak)
-{
-	if (!weak)
-		return;
-
-	if (obs_weak_ref_release(&weak->ref))
-		bfree(weak);
-}
-
 obs_source_t *obs_source_get_ref(obs_source_t *source)
 {
 	if (!source)

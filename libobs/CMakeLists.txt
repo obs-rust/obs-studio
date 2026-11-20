@@ -264,6 +264,17 @@ if(TARGET libobs-c-reference)
   )
 endif()
 
+# Keep native link requirements in the owner's directory so imported targets and
+# conditional dependencies retain their scope. Standalone Rust consumers inherit
+# this interface without importing the native core's objects or the shared DSO.
+add_library(libobs-native-dependencies INTERFACE)
+add_library(OBS::libobs-native-dependencies ALIAS libobs-native-dependencies)
+get_target_property(_native_libraries libobs-objects INTERFACE_LINK_LIBRARIES)
+target_link_libraries(libobs-native-dependencies INTERFACE ${_native_libraries})
+if(TARGET libobs_rust-static)
+  target_link_libraries(libobs_rust-static INTERFACE OBS::libobs-native-dependencies)
+endif()
+
 # Last, once every source list and host file has filled libobs-objects: split
 # its groups into the lib-modules of build/modules.d (#3259).
 include(cmake/modules.cmake)

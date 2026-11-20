@@ -218,6 +218,8 @@ fn canonical_rust_static_header_steps_run_unchanged() {
         ("HAVE_LIBOBS_RUST_STATIC".into(), true),
         ("MSVC".into(), false),
         ("UNIX".into(), true),
+        // This fixture imports no local portal SDK; Rust owns its native closure.
+        ("HAVE_PORTAL_TEST_GIO".into(), false),
     ]
     .into();
     for target in graph.targets.values() {

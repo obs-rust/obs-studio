@@ -1,32 +1,6 @@
-# Keep global-dependent adapters in an archive: fixture-owned cores take precedence.
-# Shared libobs hides these private adapters; every Rust-static consumer needs
-# the support archive, including consumers that also link OBS::libobs.
+# Real private adapters in separate lazy members, shared by every Rust consumer.
+include("${CMAKE_CURRENT_LIST_DIR}/../rust-static-link-support.cmake")
 function(_video_info_query_link_support)
-  add_library(
-    video_info_query_link_support
-    STATIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/video-info-query-link-support.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/core-state-link-support.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/encoder-get-name-link-support.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/output-interleave-name-link-support.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/encoder-video-tex-active-fields-link-support.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/encoder-video-tex-active-mix-link-support.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/source-audio-capture-callback-link-support.c"
-  )
-  target_include_directories(
-    video_info_query_link_support
-    PRIVATE "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/libobs" "${CMAKE_BINARY_DIR}/config"
-  )
-  target_link_libraries(
-    video_info_query_link_support
-    PRIVATE OBS::caption Uthash::Uthash $<$<PLATFORM_ID:Windows>:OBS::w32-pthreads>
-  )
-  get_directory_property(_targets BUILDSYSTEM_TARGETS)
-  foreach(_target IN LISTS _targets)
-    get_target_property(_links ${_target} LINK_LIBRARIES)
-    if("libobs_rust-static" IN_LIST _links)
-      target_link_libraries(${_target} PRIVATE video_info_query_link_support)
-    endif()
-  endforeach()
+  obs_add_rust_static_support("${CMAKE_SOURCE_DIR}" OBS::libobs-native-dependencies)
 endfunction()
 cmake_language(DEFER CALL _video_info_query_link_support)

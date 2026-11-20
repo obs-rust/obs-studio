@@ -1,11 +1,13 @@
 //! Declarative native test targets and their execution contracts.
 //!
 //! Selection is explicit: callers provide platform, feature and dependency
-//! facts. Unknown facts are errors; the optional HAVE_X11_DISPLAY runtime fact
+//! facts. Production archive owners supply their known platform facts; explicit
+//! caller values override them. Unknown facts are errors; the optional HAVE_X11_DISPLAY runtime fact
 //! alone defaults to false when no X server is declared.
 use crate::{NativeBuild, SharedLibrary};
 #[path = "configured_headers.rs"]
 mod configured_headers;
+mod rust_static_support;
 use configured_headers::ConfiguredHeader;
 use serde::Deserialize;
 use std::{
@@ -241,10 +243,11 @@ impl Target {
         &self,
         target: &mut SharedLibrary,
         libraries: &BTreeMap<String, Dependency>,
+        facts: &BTreeMap<String, bool>,
     ) -> Result<(), String> {
+        let names = self.library_names(facts)?;
         for name in &self.header_libraries {
-            let dependency = libraries
-                .get(name)
+            let dependency = native_dependency(name, libraries, &names)
                 .ok_or_else(|| format!("unresolved native test header library {name}"))?;
             target
                 .include_dirs
@@ -358,6 +361,14 @@ impl Target {
                 names.push(name.into());
             }
         }
+        // MSVC import members collide with Rust allocators/parser helpers.
+        // ELF/Darwin fixtures retain their explicitly declared DSO bindings.
+        if facts.get("MSVC") == Some(&true)
+            && let Some(index) = names.iter().position(|name| name == "libobs_rust-static")
+        {
+            let rust = names.remove(index);
+            names.insert(0, rust);
+        }
         Ok(names)
     }
 
@@ -368,12 +379,24 @@ impl Target {
         facts: &BTreeMap<String, bool>,
         libraries: &BTreeMap<String, Dependency>,
     ) -> Result<Vec<PathBuf>, String> {
+        let facts = inherited_facts(facts, libraries);
+        let names = self.library_names(&facts)?;
+        let standalone_msvc = facts.get("MSVC") == Some(&true)
+            && names.iter().any(|name| {
+                name == "libobs_rust-static"
+                    && libraries
+                        .get(name)
+                        .is_some_and(|dep| dep.rust_static_support)
+            });
         let mut artifacts = Vec::new();
-        for name in self.library_names(facts)? {
-            let dependency = libraries
-                .get(&name)
+        for name in &names {
+            let dependency = native_dependency(name, libraries, &names)
                 .ok_or_else(|| format!("unresolved native test library {name}"))?;
-            artifacts.extend(dependency.artifacts.iter().cloned());
+            // Preserve OBS's header interface, but never let its complete DLL
+            // imports compete with the standalone Rust/support component.
+            if !(standalone_msvc && name == "OBS::libobs") {
+                artifacts.extend(dependency.artifacts.iter().cloned());
+            }
         }
         Ok(artifacts)
     }
@@ -542,6 +565,12 @@ pub struct Selection<'a> {
 /// have no artifacts; they still carry required headers and definitions.
 #[derive(Clone, Debug, Default)]
 pub struct Dependency {
+    /// Production Rust archives also select the shared demand-linked C bridge.
+    pub rust_static_support: bool,
+    /// SDK interfaces provided by this owner rather than redeclared per fixture.
+    pub native_libraries: BTreeMap<String, Dependency>,
+    /// Known archive-target facts. Explicit caller values take precedence.
+    pub native_facts: BTreeMap<String, bool>,
     pub runtime_path_prepend: BTreeMap<String, Vec<String>>,
     pub artifacts: Vec<PathBuf>,
     pub include_dirs: Vec<PathBuf>,
@@ -555,6 +584,9 @@ pub struct Dependency {
 impl From<SharedLibrary> for Dependency {
     fn from(library: SharedLibrary) -> Self {
         Self {
+            rust_static_support: false,
+            native_libraries: BTreeMap::new(),
+            native_facts: BTreeMap::new(),
             runtime_path_prepend: BTreeMap::new(),
             artifacts: library.dependencies,
             include_dirs: library.include_dirs,
@@ -568,6 +600,14 @@ impl From<SharedLibrary> for Dependency {
 }
 
 impl Dependency {
+    /// Facts known from an archive's target. SDK and feature choices stay explicit.
+    pub fn target_facts(target: &str) -> BTreeMap<String, bool> {
+        crate::platform::native_test_facts(target, false, false)
+            .into_iter()
+            .filter(|(name, _)| name == "UNIX" || name == "MSVC" || name.starts_with("OS_"))
+            .collect()
+    }
+
     /// Import the production archive for the scoped Linux pacing characterization.
     pub fn rust_static(target: &str, archive: &Path) -> Result<Self, String> {
         let archive = dunce::canonicalize(archive)
@@ -578,11 +618,40 @@ impl Dependency {
                 archive.display()
             ));
         }
-        Ok(Self {
-            artifacts: vec![archive],
-            link_options: crate::platform::native_test_rust_static_options(target)?,
-            ..Default::default()
-        })
+        let mut native = SharedLibrary::default();
+        crate::platform::configure_rust_static_dependencies(target, &mut native)?;
+        let mut dependency = Self::from(native);
+        dependency.rust_static_support = true;
+        dependency.native_facts = Self::target_facts(target);
+        dependency
+            .native_facts
+            .insert("HAVE_LIBOBS_RUST_STATIC".into(), true);
+        for name in [
+            "OBS::caption",
+            "Uthash::Uthash",
+            "SIMDe::SIMDe",
+            "Threads::Threads",
+            "FFmpeg::avcodec",
+            "FFmpeg::avformat",
+            "FFmpeg::avutil",
+            "FFmpeg::swscale",
+            "FFmpeg::swresample",
+            "jansson::jansson",
+            "ZLIB::ZLIB",
+            "LibUUID::LibUUID",
+            "gio::gio",
+            "m",
+        ] {
+            dependency
+                .native_libraries
+                .insert(name.into(), Self::default());
+        }
+        dependency.artifacts.push(archive);
+        dependency.link_options.splice(
+            0..0,
+            crate::platform::native_test_rust_static_options(target)?,
+        );
+        Ok(dependency)
     }
 
     /// Resolve a native SDK package into its compile and link interface.
@@ -598,6 +667,37 @@ impl Dependency {
         crate::libobs::add_package(&mut library, target, package)?;
         Ok(library.into())
     }
+}
+
+fn inherited_facts(
+    facts: &BTreeMap<String, bool>,
+    libraries: &BTreeMap<String, Dependency>,
+) -> BTreeMap<String, bool> {
+    let mut inherited = libraries
+        .get("libobs_rust-static")
+        .map(|owner| owner.native_facts.clone())
+        .unwrap_or_default();
+    inherited.extend(facts.iter().map(|(name, value)| (name.clone(), *value)));
+    inherited
+}
+
+fn native_dependency<'a>(
+    name: &str,
+    libraries: &'a BTreeMap<String, Dependency>,
+    selected: &[String],
+) -> Option<&'a Dependency> {
+    libraries.get(name).or_else(|| {
+        selected
+            .iter()
+            .any(|name| name == "libobs_rust-static")
+            .then(|| {
+                libraries
+                    .get("libobs_rust-static")?
+                    .native_libraries
+                    .get(name)
+            })
+            .flatten()
+    })
 }
 
 impl Graph {
@@ -751,8 +851,11 @@ impl Graph {
         libraries: &BTreeMap<String, Dependency>,
     ) -> Result<BTreeMap<String, PathBuf>, String> {
         let root = dunce::canonicalize(root).map_err(|error| error.to_string())?;
+        let inherited = inherited_facts(facts, libraries);
+        let facts = &inherited;
         let selected = self.select(facts)?;
         let mut artifacts = BTreeMap::new();
+        let mut rust_support = None;
         let mut watched_inputs = BTreeSet::new();
         for (name, spec) in selected.targets {
             let mut target = SharedLibrary {
@@ -798,7 +901,12 @@ impl Graph {
                     &root.join(&import.definition),
                     &output,
                 )?;
-                target.dependencies.insert(0, library);
+                let index = usize::from(
+                    spec.library_names(facts)?
+                        .first()
+                        .is_some_and(|name| name == "libobs_rust-static"),
+                );
+                target.dependencies.insert(index, library);
             }
             for source in &spec.sources {
                 if !source.selected(facts)? {
@@ -894,7 +1002,15 @@ impl Graph {
                     });
                 target.definitions.push((key.into(), value));
             }
-            spec.add_header_libraries(&mut target, libraries)?;
+            spec.add_header_libraries(&mut target, libraries, facts)?;
+            rust_static_support::select(
+                build,
+                &root,
+                libraries,
+                &spec.library_names(facts)?,
+                &mut target,
+                &mut rust_support,
+            )?;
             for package in &spec.packages {
                 crate::libobs::add_package(&mut target, &build.target, package)?;
             }
@@ -903,9 +1019,9 @@ impl Graph {
             }
             // Static archives precede their dynamic dependencies under
             // --as-needed, as in the existing native compatibility builder.
-            for name in spec.library_names(facts)? {
-                let dependency = libraries
-                    .get(&name)
+            let names = spec.library_names(facts)?;
+            for name in &names {
+                let dependency = native_dependency(name, libraries, &names)
                     .ok_or_else(|| format!("unresolved native test library {name}"))?;
                 target
                     .include_dirs

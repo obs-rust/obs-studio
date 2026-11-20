@@ -222,6 +222,8 @@ int main(void) {
         # pulled by these pure rule tests (#3891, Windows LNK2019).
         graph = json.loads((ROOT / "test/cmocka/build/test-graph.json").read_text())
         stub = "test/cmocka/scene-getter-log-link-stub.c"
+        support = json.loads((ROOT / "test/cmocka/build/rust-static-support.json").read_text())
+        self.assertIn("test/cmocka/output-starting-queries-link-support.c", support["sources"])
         for name in ("test_scene_audio_window_steps_rust", "test_scene_render_plan_steps_rust"):
             with self.subTest(name=name):
                 self.assertEqual(graph["targets"][name]["sources"], [
@@ -244,7 +246,6 @@ int main(void) {
                     "test/cmocka/source-update-properties-link-support.c",
                     "test/cmocka/weak-object-identity-link-stub.c",
                     "libobs/build/libobs.image-decode-adapter+.h.c",
-                    "test/cmocka/output-starting-queries-link-support.c",
                 ])
 
     def test_portal_app_id_getter_uses_live_hotkey_adapters(self):

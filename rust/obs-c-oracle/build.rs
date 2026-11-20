@@ -666,7 +666,7 @@ fn main() {
                 "}",
             ),
             extract_c(
-                &libobs.join("obs-source.c.h"),
+                &libobs.join("obs-source-weak-refs.c.h"),
                 "void obs_weak_source_release(",
                 "}",
             ),

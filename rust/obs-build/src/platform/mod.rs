@@ -1000,6 +1000,42 @@ pub fn native_test_rust_static_options(target: &str) -> Result<Vec<String>, Stri
     .into())
 }
 
+/// Native libraries used by the production Rust archive, independent of which
+/// exported function first causes the linker to extract an archive member.
+pub fn configure_rust_static_dependencies(
+    target: &str,
+    library: &mut crate::SharedLibrary,
+) -> Result<(), String> {
+    configure_core_dependencies(target, &crate::libobs::Options::default(), library)?;
+    if target.contains("linux") {
+        crate::libobs::add_package(library, target, "uuid")?;
+        // Match the optional native owner: no-GIO archives remain usable on
+        // hosts without GIO. Archives that actually need it still fail to link.
+        if pkg_config::Config::new()
+            .cargo_metadata(false)
+            .probe("gio-2.0")
+            .is_ok()
+        {
+            crate::libobs::add_package(library, target, "gio-2.0")?;
+        }
+    }
+    Ok(())
+}
+
+pub fn native_test_static_rescan_options(target: &str, archives: &[&Path]) -> Vec<String> {
+    if !target.contains("-linux-") {
+        return Vec::new();
+    }
+    let mut options = vec!["-Wl,--start-group".into()];
+    options.extend(
+        archives
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned()),
+    );
+    options.push("-Wl,--end-group".into());
+    options
+}
+
 pub fn native_test_math_options(target: &str) -> Vec<String> {
     if target.contains("msvc") {
         vec![]

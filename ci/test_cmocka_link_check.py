@@ -69,6 +69,7 @@ class BuildTest(unittest.TestCase):
             with self.subTest(alias=alias), tempfile.TemporaryDirectory() as temporary:
                 work = Path(temporary)
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=inventory), \
+                     mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run") as run:
                     cmocka_link_check.build_targets(alias, work, 3, {})
                 args = run.call_args.args[0]
@@ -84,6 +85,7 @@ class BuildTest(unittest.TestCase):
                 work = Path(temporary)
                 failure = subprocess.CalledProcessError(1, ["cmake", "--build"])
                 with mock.patch.object(cmocka_link_check, "discover_targets", return_value=["libobs-cross-shared", "test_existing_rust"]), \
+                     mock.patch.object(cmocka_link_check, "validate_msvc_providers"), \
                      mock.patch.object(cmocka_link_check.subprocess, "run", side_effect=failure):
                     with self.assertRaises(subprocess.CalledProcessError):
                         cmocka_link_check.build_targets(alias, work, 2, {})
@@ -113,21 +115,47 @@ class BuildTest(unittest.TestCase):
 
 
 class DiscoveryTest(unittest.TestCase):
+    def test_msvc_rejects_full_dll_imports_beside_the_rust_archive(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            reply = Path(temporary)
+            target = {"name": "fixture", "type": "EXECUTABLE", "link": {"commandFragments": [
+                {"fragment": "libobs_rust.lib", "role": "libraries"},
+                {"fragment": '"/build/obs.lib"', "role": "libraries"},
+            ]}}
+            (reply / "fixture.json").write_text(json.dumps(target))
+            (reply / "codemodel.json").write_text(json.dumps({"configurations": [{
+                "targets": [{"name": "fixture", "jsonFile": "fixture.json"}]}]}))
+            (reply / "index-1.json").write_text(json.dumps({"reply": {
+                "codemodel-v2": {"jsonFile": "codemodel.json"}}}))
+            with self.assertRaisesRegex(ValueError, "must not mix"):
+                cmocka_link_check.validate_msvc_providers(reply)
+            target["link"]["commandFragments"].pop()
+            (reply / "fixture.json").write_text(json.dumps(target))
+            cmocka_link_check.validate_msvc_providers(reply)
+
     def test_uses_generated_target_types_and_names_not_source_regexes(self):
         with tempfile.TemporaryDirectory() as temporary:
             reply = Path(temporary)
             refs = []
             for name, kind in (("test_existing_rust", "EXECUTABLE"),
                                ("test_new_steps_rust", "EXECUTABLE"),
-                               ("test_plain", "EXECUTABLE"), ("support_rust", "STATIC_LIBRARY"),
+                                ("test_plain", "EXECUTABLE"), ("support_rust", "STATIC_LIBRARY"),
+                                ("test_hotkey_background_enum", "EXECUTABLE"),
+                                ("test_video_level_queries", "EXECUTABLE"),
+                                ("libobs_rust-static", "STATIC_LIBRARY"),
                                ("libobs-cross-shared", "SHARED_LIBRARY")):
                 filename = name + ".json"
-                (reply / filename).write_text(json.dumps({"name": name, "type": kind}))
-                refs.append({"name": name, "jsonFile": filename})
+                target = {"id": name, "name": name, "type": kind}
+                if name == "test_hotkey_background_enum":
+                    target["dependencies"] = [{"id": "libobs_rust-static"}]
+                if name == "test_video_level_queries":
+                    target["link"] = {"commandFragments": [{"fragment": '"/build/libobs_rust.lib"', "role": "libraries"}]}
+                (reply / filename).write_text(json.dumps(target))
+                refs.append({"id": name, "name": name, "jsonFile": filename})
             (reply / "codemodel.json").write_text(json.dumps({"configurations": [{"targets": refs}]}))
             (reply / "index-1.json").write_text(json.dumps({"reply": {"codemodel-v2": {"jsonFile": "codemodel.json"}}}))
             self.assertEqual(cmocka_link_check.discover_targets(reply),
-                             ["libobs-cross-shared", "test_existing_rust", "test_new_steps_rust"])
+                              ["libobs-cross-shared", "test_existing_rust", "test_hotkey_background_enum", "test_new_steps_rust", "test_video_level_queries"])
 
     def test_existing_reply_without_rust_executables_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
