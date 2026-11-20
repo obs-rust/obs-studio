@@ -469,12 +469,6 @@ void obs_hotkeys_background_clear_shortcuts(struct obs_hotkeys_background *backg
 	da_resize(background->shortcuts, 0);
 }
 
-void obs_hotkeys_background_status_changed(void)
-{
-	if (obs && obs->hotkeys.signals)
-		signal_handler_signal(obs->hotkeys.signals, "hotkey_background_status_changed", NULL);
-}
-
 struct obs_query_hotkeys_helper {
 	uint32_t modifiers;
 	bool no_press;
