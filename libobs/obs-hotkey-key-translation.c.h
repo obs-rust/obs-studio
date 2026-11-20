@@ -1,5 +1,8 @@
 #include "libobs/build/libobs.pch.h"
 
+/* The key name store (obs->hotkeys.translations[]): obs_hotkeys_set_translations_s()
+ * in obs-hotkey-translations.c.h calls it for each name it sets. Declared in
+ * obs-internal.h; not exported. */
 void obs_hotkeys_store_key_translation(obs_key_t key, const char *translation)
 {
 	bfree(obs->hotkeys.translations[key]);

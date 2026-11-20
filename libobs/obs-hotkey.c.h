@@ -538,9 +538,6 @@ void *obs_hotkey_thread(void *arg)
 	return NULL;
 }
 
-/* The key name store (obs->hotkeys.translations[]): obs_hotkeys_set_translations_s()
- * in obs-hotkey-translations.c.h calls it for each name it sets. Declared in
- * obs-internal.h; not exported. */
 /* This file hashes integer keys (HASH_FUNCTION above); restore util/uthash.h's
  * default for the sources a unity build compiles after it. */
 #undef HASH_FUNCTION
