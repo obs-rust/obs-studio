@@ -34,9 +34,9 @@ pub unsafe extern "C" fn obs_encoder_align_frame_rate_divisor_with_callback(
     // reaches the divisor accessor.
     let divisor = unsafe { obs_encoder_align_divisor(encoder) };
     crate::encoder_align_frame_rate_divisor::align(
-        Some((Some(media), divisor)),
+        Some((Some(media), divisor, (callback, encoder))),
         start_timestamp,
-        |media, timestamp| {
+        |media, timestamp, (callback, encoder)| {
             // SAFETY: the C entry adapter supplies the actual static
             // receive_video used by start_raw_video. Pass it through unchanged.
             unsafe {
