@@ -37,8 +37,8 @@ static bool align_record_call(video_t *media, uint64_t timestamp, void (*callbac
 }
 
 #define video_output_align_frame_rate_divisor align_record_call
-void original_encoder_align_frame_rate_divisor(obs_encoder_t *encoder, uint64_t timestamp);
-#define obs_encoder_align_frame_rate_divisor original_encoder_align_frame_rate_divisor
+void oracle_obs_encoder_align_frame_rate_divisor(obs_encoder_t *encoder, uint64_t timestamp);
+#define obs_encoder_align_frame_rate_divisor oracle_obs_encoder_align_frame_rate_divisor
 #include "encoder_align_frame_rate_divisor_original.inc"
 #undef obs_encoder_align_frame_rate_divisor
 #include "encoder_align_frame_rate_divisor_fields.inc"
@@ -57,7 +57,7 @@ bool oracle_encoder_align_probe(bool present, bool media, uint32_t divisor, uint
 	struct obs_encoder before;
 	memcpy(&before, &f.encoder, sizeof(before));
 	obs_encoder_t *encoder = present ? &f.encoder : NULL;
-	original_encoder_align_frame_rate_divisor(encoder, timestamp);
+	oracle_obs_encoder_align_frame_rate_divisor(encoder, timestamp);
 	struct align_record original;
 	memcpy(&original, &f.record, sizeof(original));
 	bool unchanged = memcmp(&before, &f.encoder, sizeof(before)) == 0;
