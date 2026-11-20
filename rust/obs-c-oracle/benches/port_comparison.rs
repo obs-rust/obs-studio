@@ -144,8 +144,8 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_output_get_name() -> ! {
-        called("obs_output_get_name")
+    pub extern "C" fn obs_output_interleave_output_name() -> ! {
+        called("obs_output_interleave_output_name")
     }
 
     #[unsafe(no_mangle)]

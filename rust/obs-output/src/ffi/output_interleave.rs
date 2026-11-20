@@ -206,7 +206,8 @@ unsafe extern "C" {
     fn obs_encoder_packet_create_instance(dst: *mut encoder_packet, src: *const encoder_packet);
     // EXPORT.
     fn obs_encoder_packet_release(packet: *mut encoder_packet);
-    fn obs_output_get_name(output: *const c_void) -> *const c_char;
+    // Private C adapter; synthetic tests replace only this seam.
+    fn obs_output_interleave_output_name(output: *const c_void) -> *const c_char;
     // Private C adapter; synthetic tests replace only this seam.
     fn obs_output_interleave_encoder_name(encoder: *const c_void) -> *const c_char;
     // libobs's pthread (w32-pthreads on Windows); the mutexes are opaque here.
@@ -893,7 +894,7 @@ impl InterleaveOutput for COutput {
                 LOG_WARNING,
                 c"obs-output '%s': Missing keyframe with pts %lld for encoder '%s' (track: %zu)"
                     .as_ptr(),
-                obs_output_get_name(self.output),
+                obs_output_interleave_output_name(self.output),
                 pts as c_longlong,
                 obs_output_interleave_encoder_name(encoder as *const c_void),
                 track,
