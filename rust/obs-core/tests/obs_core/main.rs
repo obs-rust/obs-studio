@@ -17,6 +17,7 @@ mod base_effect;
 mod base_effect_parity;
 mod canvas_channel_getter;
 mod canvas_channel_getter_parity;
+mod canvas_clear_mix;
 mod canvas_draw;
 mod canvas_draw_parity;
 mod canvas_flags_getter;
