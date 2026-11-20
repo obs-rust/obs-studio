@@ -3498,6 +3498,9 @@
           "name": "OBS::w32-pthreads",
           "requires": "OS_WINDOWS"
         }
+      ],
+      "definitions": [
+        "ENCODER_ALIGN_SOURCE=\"rust/obs-c-oracle/legacy/obs-encoder-align-frame-rate-divisor.c\""
       ]
     },
     "test_encoder_align_frame_rate_divisor_rust": {

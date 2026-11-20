@@ -2,11 +2,11 @@
 //! (`obs-tests-core`, rust/obs-data/tests/core.rs), not a binary of its own.
 
 mod caption_text;
-mod encoder_align_frame_rate_divisor;
-mod encoder_align_frame_rate_divisor_parity;
 mod caption_text_parity;
 mod delay;
 mod delay_parity;
+mod encoder_align_frame_rate_divisor;
+mod encoder_align_frame_rate_divisor_parity;
 mod encoder_audio_buffers;
 mod encoder_audio_buffers_parity;
 mod encoder_audio_getters;
