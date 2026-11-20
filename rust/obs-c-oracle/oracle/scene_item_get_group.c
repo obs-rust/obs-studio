@@ -163,8 +163,8 @@ unsigned oracle_scene_item_get_group_probe(unsigned bits, get_group_fn rust)
 		result |= 4;
 	bool rejected = (bits & 7) != 0;
 	if (rejected ? expected.count != 0
-		     : expected.count != 3 || expected.events[0] != EV_LOCK || expected.events[1] != (EV_LOOKUP | 0x10) ||
-			       expected.events[2] != EV_UNLOCK)
+		     : expected.count != 3 || expected.events[0] != EV_LOCK ||
+			       expected.events[1] != (EV_LOOKUP | 0x10) || expected.events[2] != EV_UNLOCK)
 		result |= 8;
 	return result;
 }

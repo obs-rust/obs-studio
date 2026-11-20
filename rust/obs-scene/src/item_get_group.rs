@@ -17,6 +17,12 @@ pub trait Query {
 /// A missing scene or item, or a group item, is `None` without locking.
 /// Otherwise the walk's result is returned as is, under exactly one lock.
 pub fn get_group<Q: Query>(query: Option<&mut Q>) -> Option<Q::Group> {
-    let _ = query;
-    None // RED stub: the query is not ported yet.
+    let query = query?;
+    if query.is_group() {
+        return None;
+    }
+    query.lock();
+    let group = query.lookup();
+    query.unlock();
+    group
 }

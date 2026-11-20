@@ -37,14 +37,18 @@ impl Query for Live {
     }
 }
 
-/// RED stub: not exported, so the C wrapper still links; always NULL.
+/// The group item holding `item` in `scene`, borrowed (no reference taken).
 ///
 /// # Safety
 /// Non-null arguments must be a live scene and a readable scene item, as in C.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn obs_sceneitem_get_group(
     scene: *mut c_void,
     item: *mut c_void,
 ) -> *mut c_void {
-    let _ = (scene, item, item_get_group::get_group::<Live>);
-    ptr::null_mut()
+    let (Some(scene), Some(item)) = (NonNull::new(scene), NonNull::new(item)) else {
+        return ptr::null_mut();
+    };
+    item_get_group::get_group(Some(&mut Live { scene, item }))
+        .map_or(ptr::null_mut(), NonNull::as_ptr)
 }
