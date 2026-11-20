@@ -147,24 +147,36 @@ if [ "$phase" = cmake-tests ]; then
     framework_dir="$PWD/${lib%%/libobs.framework/*}"
     dyld=(env DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")")
 
-    # Check the loader really took this libobs on one test binary.
-    if ! "${dyld[@]}" DYLD_PRINT_LIBRARIES=1 "$probe" 2>&1 | grep -qF "$framework_dir/libobs.framework/"; then
-      echo "FAIL: [$mode] tests did not load libobs from $framework_dir"
-      exit 1
-    fi
-    echo "== [$mode] tests load $framework_dir/libobs.framework"
-
+    suite_logs="$PWD/$build/tail-logs/$phase/$mode"
+    mkdir -p "$suite_logs"
     echo "== [$mode] ctest"
-    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}"; then
+    if ! "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" \
+      --output-log "$suite_logs/ctest.log"; then
       DYLD_FRAMEWORK_PATH="$framework_dir" DYLD_LIBRARY_PATH="$(dirname "$avcodec")" \
         show_crash_stacks "$build"
       exit 1
     fi
 
+    # Produce and verify this suite's loader evidence here, after CTest.
+    # Never pipe the probe into grep -q under pipefail: an early match closes
+    # the pipe while dyld/the test is still writing and can cause SIGPIPE.
+    probe_log="$suite_logs/loader.log"
+    if ! "${dyld[@]}" DYLD_PRINT_LIBRARIES=1 "$probe" >"$probe_log" 2>&1; then
+      tail -40 "$probe_log"
+      echo "FAIL: [$mode] loader probe failed; see $probe_log"
+      exit 1
+    fi
+    if ! grep -qF "$framework_dir/libobs.framework/" "$probe_log"; then
+      tail -40 "$probe_log"
+      echo "FAIL: [$mode] tests did not load libobs from $framework_dir; see $probe_log"
+      exit 1
+    fi
+    echo "== [$mode] tests load $framework_dir/libobs.framework"
+
     if [ "$repeat" -gt 0 ]; then
       echo "== [$mode] ctest --repeat until-fail:$repeat${tests:+ -R $tests}"
       "${dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure \
-        --repeat "until-fail:$repeat" ${tests:+-R "$tests"}
+        --output-log "$suite_logs/ctest-repeat.log" --repeat "until-fail:$repeat" ${tests:+-R "$tests"}
     fi
   done
   exit 0
@@ -235,15 +247,8 @@ for native_variant in obs-c-reference obs; do
   cmp "$native_output/$native_variant/libobs.dylib" "$native_framework/Versions/A/libobs"
   cmp "$native_output/$native_variant/libobs.dylib" "$native_framework/libobs"
   native_dyld=(env DYLD_FRAMEWORK_PATH="$native_output/$native_variant" DYLD_LIBRARY_PATH="$(dirname "$avcodec")")
-  native_probe_log="$native_output/$native_variant/loader.log"
-  if ! "${native_dyld[@]}" DYLD_PRINT_LIBRARIES=1 "$probe" >"$native_probe_log" 2>&1; then
-    tail -40 "$native_probe_log"
-    exit 1
-  fi
-  if ! grep -qF "$native_framework/" "$native_probe_log"; then
-    echo "FAIL: Cargo [$native_variant] did not load $native_framework" >&2
-    exit 1
-  fi
+  suite_logs="$PWD/$build/tail-logs/$phase/$native_variant"
+  mkdir -p "$suite_logs"
   graphics_count=0
   while IFS=$'\t' read -r renderer renderer_path graphics_probe; do
     case "$renderer" in
@@ -301,9 +306,21 @@ for native_variant in obs-c-reference obs; do
   done <"$native_output/macos-capture-paths.txt"
   [ "$capture_count" -eq 3 ] || { echo 'FAIL: all three capture modules must be checked' >&2; exit 1; }
   echo "== Cargo [$native_variant] unchanged ctest suite"
-  if ! "${native_dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}"; then
+  if ! "${native_dyld[@]}" ctest --test-dir "$build" -C RelWithDebInfo --output-on-failure "${ctest_jobs[@]}" \
+    --output-log "$suite_logs/ctest.log"; then
     DYLD_FRAMEWORK_PATH="$native_output/$native_variant" DYLD_LIBRARY_PATH="$(dirname "$avcodec")" \
       show_crash_stacks "$build"
+    exit 1
+  fi
+  native_probe_log="$suite_logs/loader.log"
+  if ! "${native_dyld[@]}" DYLD_PRINT_LIBRARIES=1 "$probe" >"$native_probe_log" 2>&1; then
+    tail -40 "$native_probe_log"
+    echo "FAIL: Cargo [$native_variant] loader probe failed; see $native_probe_log" >&2
+    exit 1
+  fi
+  if ! grep -qF "$native_framework/" "$native_probe_log"; then
+    tail -40 "$native_probe_log"
+    echo "FAIL: Cargo [$native_variant] did not load $native_framework; see $native_probe_log" >&2
     exit 1
   fi
 done

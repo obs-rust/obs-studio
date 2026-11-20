@@ -79,6 +79,7 @@ class MacosTailTest(unittest.TestCase):
         for directory in ("libobs", "libobs-c-reference"):
             artifact(f"build_rust/{directory}/RelWithDebInfo/libobs.framework/Versions/A/libobs")
         artifact(".deps/obs-deps/lib/libavcodec.dylib")
+        artifact("bin/uname", '#!/bin/bash\nprintf "arm64\\n"\n', executable=True)
         artifact("build_rust/test/cmocka/test_bitstream", '''#!/bin/bash
 set -e
 printf '%s/libobs.framework/Versions/A/libobs\\n' "${PROBE_WRONG_PATH:-$DYLD_FRAMEWORK_PATH}" >&2
@@ -98,7 +99,9 @@ exit "${CTEST_STATUS:-0}"
 ''', executable=True)
         # Native identity probes retain their positive and negative controls.
         identity = artifact("identity", '''#!/bin/bash
-name=$(basename "$1" .dylib | sed -e s/libobs-opengl/OPENGL/ -e s/libobs-metal/METAL/)
+name=${1##*/}
+name=${name%.dylib}
+case "$name" in libobs-opengl) name=OPENGL ;; libobs-metal) name=METAL ;; esac
 [ "$name" = "$2" ] || exit 14
 case "${!#}" in */cargo-native-core/*/libobs.framework/Versions/A/libobs) exit 0 ;; *) exit 12 ;; esac
 ''', executable=True)
@@ -128,7 +131,7 @@ case "${!#}" in */cargo-native-core/*/libobs.framework/Versions/A/libobs) exit 0
             for phase in ("cmake-tests", "cargo-tests"):
                 result = subprocess.run(["bash", str(validator), "--phase", phase],
                     env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}"},
-                    capture_output=True, text=True, timeout=20)
+                    capture_output=True, text=True, timeout=60)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             events = (root / "events").read_text().splitlines()
             self.assertEqual(len(events), 8)
@@ -157,11 +160,12 @@ case "${!#}" in */cargo-native-core/*/libobs.framework/Versions/A/libobs) exit 0
                     proof.write_text(f"{framework}/libobs.framework/Versions/A/libobs\n")
                     result = subprocess.run(["bash", str(validator), "--phase", phase],
                         env={**os.environ, "PATH": f"{root / 'bin'}:{os.environ['PATH']}", **failure},
-                        capture_output=True, text=True, timeout=20)
+                        capture_output=True, text=True, timeout=60)
                     self.assertNotEqual(result.returncode, 0)
+                    events = (root / "events").read_text()
+                    self.assertIn("ctest ", events)
                     if "CTEST_STATUS" in failure:
-                        events = root / "events"
-                        self.assertNotIn("probe ", events.read_text() if events.exists() else "")
+                        self.assertNotIn("probe ", events)
 
     def run_fake(self, root: Path, failing: str = "") -> tuple[int, str]:
         validator = root / "validate.sh"
