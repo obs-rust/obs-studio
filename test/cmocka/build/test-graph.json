@@ -6056,7 +6056,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -6070,6 +6069,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
@@ -6079,6 +6079,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -6109,8 +6110,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -6156,6 +6156,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -6213,7 +6216,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -6227,6 +6229,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
@@ -6236,6 +6239,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -6266,8 +6270,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -6313,6 +6316,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -6373,7 +6379,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -6387,6 +6392,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
@@ -6396,6 +6402,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -6426,8 +6433,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -6473,6 +6479,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -6576,7 +6585,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -6590,6 +6598,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "libraries": [
@@ -6610,6 +6619,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -6633,8 +6643,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -6680,6 +6689,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -6786,7 +6798,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -6801,6 +6812,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
@@ -6810,6 +6822,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -6840,8 +6853,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -6890,6 +6902,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -7012,7 +7027,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -7026,6 +7040,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
@@ -7035,6 +7050,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -7065,8 +7081,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -7112,6 +7127,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -7195,7 +7213,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -7209,6 +7226,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "libraries": [
@@ -7229,6 +7247,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -7252,8 +7271,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -7300,6 +7318,9 @@
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
         ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
+        ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
         ]
@@ -7322,7 +7343,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -7336,6 +7356,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "libraries": [
@@ -7356,6 +7377,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -7379,8 +7401,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -7427,6 +7448,9 @@
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
         ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
+        ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
         ]
@@ -7463,7 +7487,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -7477,6 +7500,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "definitions": [
@@ -7486,6 +7510,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "pthread_mutex_lock=unregister_entry_mutex_lock",
         "pthread_mutex_unlock=unregister_entry_mutex_unlock",
         "obs_hotkey_unregister_one=unregister_entry_remove_one",
@@ -7519,8 +7544,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister_entry": [
           "libobs/obs-hotkey-unregister-entry-fields.c.h"
@@ -7564,6 +7588,9 @@
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
         ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
+        ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
         ]
@@ -7604,6 +7631,37 @@
       "header_libraries": [
         "SIMDe::SIMDe"
       ]
+    },
+    "test_hotkeys_background_status_changed_rust": {
+      "sources": [
+        "test/cmocka/test_hotkeys_background_status_changed.c",
+        "test/cmocka/hotkeys-background-status-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "status_changed": [
+          "test/cmocka/test_hotkeys_background_status_changed.c",
+          "test/cmocka/hotkeys-background-status-record-support.c"
+        ]
+      },
+      "definitions": [
+        "HOTKEY_BACKGROUND_STATUS_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_image_exif_orientation": {
       "sources": [
@@ -12426,7 +12484,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -12445,6 +12502,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "requires": {
@@ -12482,6 +12540,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -12501,8 +12560,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -12575,6 +12633,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -21374,7 +21435,6 @@
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
         "libobs/obs-hotkey.c.h",
-        "libobs/obs-hotkeys-background-status-changed.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
         "libobs/obs-hotkey-identity-setters.c.h",
@@ -21389,6 +21449,7 @@
         "test/cmocka/hotkey-enum-link-support.c",
         "test/cmocka/hotkey-background-trigger-link-support.c",
         "test/cmocka/hotkey-background-press-link-support.c",
+        "test/cmocka/hotkeys-background-status-link-support.c",
         "test/cmocka/source-update-properties-link-support.c"
       ],
       "requires": {
@@ -21404,6 +21465,7 @@
         "obs_hotkeys_set_background_probe=obs_hotkey_background_control_probe_request",
         "obs_hotkey_combination_get_background_trigger=obs_hotkey_background_trigger_request",
         "obs_hotkey_enable_background_press=obs_hotkey_background_press_request",
+        "obs_hotkeys_background_status_changed=obs_hotkeys_background_status_request",
         "obs_hotkey_inject_event=obs_hotkey_inject_entry_request",
         "obs_hotkey_unregister=obs_hotkey_unregister_entry_request",
         "obs_hotkey_pair_unregister=obs_hotkey_pair_unregister_entry_request"
@@ -21442,8 +21504,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
-          "libobs/obs-hotkey.c.h",
-          "libobs/obs-hotkeys-background-status-changed.c.h"
+          "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
           "libobs/obs-hotkey-unregister.c.h"
@@ -21492,6 +21553,9 @@
         ],
         "hotkey_background_press": [
           "test/cmocka/hotkey-background-press-link-support.c"
+        ],
+        "hotkeys_background_status": [
+          "test/cmocka/hotkeys-background-status-link-support.c"
         ],
         "source_update_properties": [
           "test/cmocka/source-update-properties-link-support.c"
@@ -25009,6 +25073,13 @@
         "${target}"
       ],
       "target": "test_hotkeys_background_status_changed"
+    },
+    "test_hotkeys_background_status_changed_rust": {
+      "target": "test_hotkeys_background_status_changed_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_image_exif_orientation": {
       "target": "test_image_exif_orientation",

@@ -369,6 +369,8 @@ mod canonical_hotkey_key_translation_swap_is_registered;
 mod canonical_hotkey_mnemonic_is_registered;
 #[path = "native/registration/canonical_hotkey_pair_latch_is_registered.rs"]
 mod canonical_hotkey_pair_latch_is_registered;
+#[path = "native/registration/canonical_hotkeys_background_status_swap_is_registered.rs"]
+mod canonical_hotkeys_background_status_swap_is_registered;
 #[path = "native/registration/canonical_import_ffmpeg_hosts_are_registered.rs"]
 mod canonical_import_ffmpeg_hosts_are_registered;
 #[path = "native/registration/canonical_libobs_go2_is_registered.rs"]

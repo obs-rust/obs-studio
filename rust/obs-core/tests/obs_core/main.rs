@@ -83,6 +83,8 @@ mod get_output_source;
 mod get_output_source_parity;
 mod global_getters;
 mod global_getters_parity;
+mod hotkeys_background_status;
+mod hotkeys_background_status_parity;
 mod module_disable_query;
 mod module_disable_query_parity;
 mod module_failure_info;
