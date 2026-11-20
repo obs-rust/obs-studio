@@ -47,6 +47,7 @@
 #include "libobs/obs-main-rendered-callbacks.c.h"
 #include "libobs/obs-module-init-fields.c.h"
 #include "libobs/obs-module-lists-seam.c.h"
+#include "libobs/obs-module-load-all.c.h"
 #include "libobs/obs-module-load-metadata-fields.c.h"
 #include "libobs/obs-module-locale-getters-fields.c.h"
 #include "libobs/obs-module-metadata-adapter.c.h"
