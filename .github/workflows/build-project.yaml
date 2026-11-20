@@ -3515,6 +3515,13 @@ jobs:
           key: macos-tier2-xcas-${{ github.sha }}
           restore-keys: macos-tier2-xcas-
 
+      - name: Set Up uv 🐍
+        if: runner.os == 'macOS'
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Validate Tier 2 on macOS (libobs C vs with Rust) 🍏
         if: runner.os == 'macOS'
         shell: bash
@@ -3679,6 +3686,13 @@ jobs:
           path: ${{ github.workspace }}/.tier2-xcas
           key: macos-tier2-xcas-${{ github.sha }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || '' }}
           restore-keys: macos-tier2-xcas-
+
+      - name: Set Up uv 🐍
+        if: runner.os == 'macOS'
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.14'
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Validate Tier 2 on macOS (libobs C vs with Rust) 🍏
         if: runner.os == 'macOS'

@@ -84,7 +84,7 @@ class NativeTier2Target(unittest.TestCase):
             with self.subTest(script=script):
                 text = (HELPER.parent / script).read_text(encoding="utf-8")
                 self.assertIn("-DOBS_BUILD_NATIVE_TIER2=ON", text)
-                command = re.search(r"^cmake --build .*?(?=\n[^ \t]|\Z)", text, re.M | re.S)
+                command = re.search(r"^[ \t]*cmake --build .*?(?=\n[^ \t]|\Z)", text, re.M | re.S)
                 self.assertIsNotNone(command)
                 self.assertRegex(command.group(0), r"--target tier2-native\s*(?:[\\>`\n]|$)")
         root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
