@@ -7,6 +7,9 @@ mod busy_percent;
 mod camera_busy;
 mod classify;
 mod device_cache;
+// obs-dock-layout (#5230): the frontend's other Rust, same category.
+#[path = "../../../obs-dock-layout/tests/dock_layout/main.rs"]
+mod dock_layout;
 mod dxgi;
 // obs-exit-watchdog (#4065): the frontend's other Rust, same category.
 #[path = "../../../obs-exit-watchdog/tests/exit_watchdog/main.rs"]
