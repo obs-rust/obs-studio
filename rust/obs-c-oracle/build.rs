@@ -721,7 +721,11 @@ fn main() {
     // The push-to port keeps the signal builder in obs-source.c.h. Compile the
     // same real builder and forwarding seam in the oracle, not a model signal.
     let source = libobs.join("obs-source.c.h");
-    let mut push_signal = extract_c(&source, "uint32_t obs_source_get_output_flags(", "}");
+    let mut push_signal = extract_c(
+        &libobs.join("obs-source-output-flags.c.h"),
+        "uint32_t obs_source_get_output_flags(",
+        "}",
+    );
     push_signal.push_str(&extract_c(
         &libobs.join("obs-source-get-name.c.h"),
         "const char *obs_source_get_name(",
