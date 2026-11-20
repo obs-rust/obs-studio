@@ -26,6 +26,17 @@ pub trait CombinationBackgroundId {
 /// Capture the callback under the lock and call it with the lock released.
 /// A failed lock returns `None` with no further access.
 pub fn query<B: CombinationBackgroundId>(backend: &mut B) -> Option<B::Owned> {
-    let _ = backend;
-    None
+    if !backend.lock() {
+        return None;
+    }
+    let mut id = backend.empty();
+    let callback = backend.callback();
+    backend.unlock();
+    match callback {
+        Some(callback) if backend.invoke(callback, &mut id) => Some(backend.transfer(id)),
+        _ => {
+            backend.free(id);
+            None
+        }
+    }
 }

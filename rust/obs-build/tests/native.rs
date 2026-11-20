@@ -353,6 +353,8 @@ mod canonical_hotkey_background_query_is_registered;
 mod canonical_hotkey_background_trigger_swap_is_registered;
 #[path = "native/registration/canonical_hotkey_backtab_is_registered.rs"]
 mod canonical_hotkey_backtab_is_registered;
+#[path = "native/registration/canonical_hotkey_combination_background_id_swap_is_registered.rs"]
+mod canonical_hotkey_combination_background_id_swap_is_registered;
 #[path = "native/registration/canonical_hotkey_identity_getters_is_registered.rs"]
 mod canonical_hotkey_identity_getters_is_registered;
 #[path = "native/registration/canonical_hotkey_mnemonic_is_registered.rs"]
