@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83353,
-      "libobs": 98495,
+      "libobs": 98663,
       "plugins": 148646,
       "shared": 15968
     },
-    "percent": 17.34,
-    "ported_lines": 60069,
-    "total_lines": 346462
+    "percent": 17.36,
+    "ported_lines": 60178,
+    "total_lines": 346630
   },
-  "commit": "9d862494",
-  "date": "2026-11-19",
+  "commit": "f5edeeb1",
+  "date": "2026-11-20",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 51.58,
-          "ported_lines": 34128,
-          "total_lines": 66170
+          "percent": 51.61,
+          "ported_lines": 34237,
+          "total_lines": 66338
         },
         "graphics": {
           "percent": 72.16,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 901,
-      "hybrid_lines": 38426,
+      "files": 920,
+      "hybrid_lines": 38485,
       "percent": 60.99,
-      "ported_lines": 60069,
-      "total_lines": 98495
+      "ported_lines": 60178,
+      "total_lines": 98663
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 53.57,
-            "ported_lines": 32775,
-            "total_lines": 61181
+            "percent": 53.6,
+            "ported_lines": 32884,
+            "total_lines": 61349
           },
           "graphics": {
             "percent": 72.68,
@@ -79,8 +79,8 @@
             "total_lines": 10057
           }
         },
-        "files": 866,
-        "hybrid_lines": 34107,
+        "files": 885,
+        "hybrid_lines": 34166,
         "percent": 62.1,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
@@ -293,6 +293,8 @@
           "obs-hotkey-binding-getters.c.h",
           "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
+          "obs-hotkey-combination-background-id-lock.c.h",
+          "obs-hotkey-combination-background-id.c.h",
           "obs-hotkey-enum.c.h",
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-identity-setters.c.h",
@@ -365,6 +367,7 @@
           "obs-output-encoder-getters.c.h",
           "obs-output-flags.c.h",
           "obs-output-frames-dropped.c.h",
+          "obs-output-get-last-error.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -436,6 +439,7 @@
           "obs-scene-item-bounds-setters.c.h",
           "obs-scene-item-crop-fields.c.h",
           "obs-scene-item-crop-setter.c.h",
+          "obs-scene-item-get-group.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
           "obs-scene-item-hotkeys-reference.c.h",
@@ -477,6 +481,7 @@
           "obs-service-state.c.h",
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
+          "obs-set-locale.c.h",
           "obs-set-output-source.c.h",
           "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
@@ -633,15 +638,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 55883,
-        "total_lines": 89990
+        "ported_lines": 55992,
+        "total_lines": 90158
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 52.92,
-            "ported_lines": 29218,
-            "total_lines": 55216
+            "percent": 52.95,
+            "ported_lines": 29327,
+            "total_lines": 55384
           },
           "graphics": {
             "percent": 72.68,
@@ -659,8 +664,8 @@
             "total_lines": 9978
           }
         },
-        "files": 845,
-        "hybrid_lines": 31699,
+        "files": 864,
+        "hybrid_lines": 31758,
         "percent": 62.24,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
@@ -872,6 +877,8 @@
           "obs-hotkey-binding-getters.c.h",
           "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
+          "obs-hotkey-combination-background-id-lock.c.h",
+          "obs-hotkey-combination-background-id.c.h",
           "obs-hotkey-enum.c.h",
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-identity-setters.c.h",
@@ -931,6 +938,7 @@
           "obs-output-encoder-getters.c.h",
           "obs-output-flags.c.h",
           "obs-output-frames-dropped.c.h",
+          "obs-output-get-last-error.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -1002,6 +1010,7 @@
           "obs-scene-item-bounds-setters.c.h",
           "obs-scene-item-crop-fields.c.h",
           "obs-scene-item-crop-setter.c.h",
+          "obs-scene-item-get-group.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
           "obs-scene-item-hotkeys-reference.c.h",
@@ -1043,6 +1052,7 @@
           "obs-service-state.c.h",
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
+          "obs-set-locale.c.h",
           "obs-set-output-source.c.h",
           "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
@@ -1197,15 +1207,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 52247,
-        "total_lines": 83946
+        "ported_lines": 52356,
+        "total_lines": 84114
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 53.05,
-            "ported_lines": 30159,
-            "total_lines": 56847
+            "percent": 53.09,
+            "ported_lines": 30268,
+            "total_lines": 57015
           },
           "graphics": {
             "percent": 72.23,
@@ -1223,8 +1233,8 @@
             "total_lines": 10704
           }
         },
-        "files": 856,
-        "hybrid_lines": 33057,
+        "files": 875,
+        "hybrid_lines": 33116,
         "percent": 61.78,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
@@ -1438,6 +1448,8 @@
           "obs-hotkey-binding-getters.c.h",
           "obs-hotkey-binding-press.c.h",
           "obs-hotkey-bindings.c.h",
+          "obs-hotkey-combination-background-id-lock.c.h",
+          "obs-hotkey-combination-background-id.c.h",
           "obs-hotkey-enum.c.h",
           "obs-hotkey-identity-getters.c.h",
           "obs-hotkey-identity-setters.c.h",
@@ -1497,6 +1509,7 @@
           "obs-output-encoder-getters.c.h",
           "obs-output-flags.c.h",
           "obs-output-frames-dropped.c.h",
+          "obs-output-get-last-error.c.h",
           "obs-output-handler-getters.c.h",
           "obs-output-identity-getters.c.h",
           "obs-output-interleave.c.h",
@@ -1568,6 +1581,7 @@
           "obs-scene-item-bounds-setters.c.h",
           "obs-scene-item-crop-fields.c.h",
           "obs-scene-item-crop-setter.c.h",
+          "obs-scene-item-get-group.c.h",
           "obs-scene-item-group-resize-defer.c.h",
           "obs-scene-item-group-scene.c.h",
           "obs-scene-item-hotkeys-reference.c.h",
@@ -1609,6 +1623,7 @@
           "obs-service-state.c.h",
           "obs-service-weak-acquire.c.h",
           "obs-service-weak-release.c.h",
+          "obs-set-locale.c.h",
           "obs-set-output-source.c.h",
           "obs-shutdown-detach-reference.c.h",
           "obs-source-async-compensation-setter.c.h",
@@ -1768,12 +1783,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 53425,
-        "total_lines": 86482
+        "ported_lines": 53534,
+        "total_lines": 86650
       }
     }
   },
   "rust": {
-    "lines": 227108
+    "lines": 227833
   }
 }
