@@ -48,7 +48,8 @@ typedef void (*align_operation)(obs_encoder_t *, uint64_t, void (*)(void *, stru
 bool oracle_encoder_align_probe(bool present, bool media, uint32_t divisor, uint64_t timestamp, align_operation rust);
 bool oracle_encoder_align_probe(bool present, bool media, uint32_t divisor, uint64_t timestamp, align_operation rust)
 {
-	struct align_fixture f = {0};
+	struct align_fixture f;
+	memset(&f, 0, sizeof(f));
 	f.encoder.media = media ? &f.media : NULL;
 	f.encoder.frame_rate_divisor = divisor;
 	f.encoder.context.data = &f;
