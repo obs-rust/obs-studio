@@ -1,0 +1,6 @@
+# obs-hotkeys-background-status-changed.c: the Linux portal shortcuts call it
+# inside libobs. Declared in obs-internal.h without EXPORT, so the shim stays
+# hidden the same way. The _request entry is the same notification for
+# standalone hotkey fixtures that bind their own core.
+obs_hotkeys_background_status_changed
+obs_hotkeys_background_status_request

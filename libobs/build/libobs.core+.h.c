@@ -42,7 +42,7 @@
 #include "libobs/obs-hotkey-unregister-entry-fields.c.h"
 #include "libobs/obs-hotkey-unregister-fields.c.h"
 #include "libobs/obs-hotkey.c.h"
-#include "libobs/obs-hotkeys-background-status-changed.c.h"
+#include "libobs/obs-hotkeys-background-status-changed-fields.c.h"
 #include "libobs/obs-main-render-callbacks.c.h"
 #include "libobs/obs-main-rendered-callbacks.c.h"
 #include "libobs/obs-module-init-fields.c.h"

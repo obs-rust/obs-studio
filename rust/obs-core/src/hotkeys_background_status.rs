@@ -33,7 +33,12 @@ pub trait Host {
 }
 
 /// Notify the current hotkey signal handler, if the core has one.
-#[allow(clippy::todo)]
-pub fn status_changed<H: Host>(_host: &mut H) {
-    todo!("obs_hotkeys_background_status_changed")
+///
+/// The handler is read once, when the call starts, and nothing is read after
+/// the signal: a callback that replaced the handler or removed the core
+/// affects only the next call (or the one it makes itself).
+pub fn status_changed<H: Host>(host: &mut H) {
+    if let Some(handler) = host.signals() {
+        host.signal(handler, SIGNAL);
+    }
 }
