@@ -183,6 +183,7 @@ mod video_render_size;
 mod video_render_size_parity;
 mod video_scale_effects;
 mod video_scale_effects_parity;
+mod video_stats_queries;
 mod video_stop_requested;
 mod video_stop_requested_parity;
 mod video_unmap_last_surface;

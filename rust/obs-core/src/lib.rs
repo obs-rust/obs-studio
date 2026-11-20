@@ -203,6 +203,7 @@ pub mod video_plan;
 pub mod video_render_passes;
 pub mod video_render_size;
 pub mod video_scale_effects;
+pub mod video_stats_queries;
 pub mod video_stop_requested;
 pub mod video_unmap_last_surface;
 pub mod view;
