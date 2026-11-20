@@ -1,4 +1,6 @@
-//! The original public query, with C owning background status and identifiers.
+//! The public combination query. Its state and identifier getters are this
+//! crate's own shims, reached through their C names; C owns the status and
+//! the identifiers.
 use super::nix_hotkey_state::obs_key_combination;
 use core::ffi::{c_char, c_int};
 use obs_util::ffi::darray::bfree;

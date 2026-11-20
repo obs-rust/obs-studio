@@ -1,13 +1,15 @@
 //! Exact C/Rust query parity. No exclusions or intentional differences.
 //!
-//! The identifier lookup is the real Rust getter on the shared recording
-//! fixture of `combination_background_id_parity`, never a same-named fake:
-//! the getter is defined in this crate, so a second definition would collide.
+//! The state query and the identifier lookup are the real Rust getters on the
+//! shared recording fixtures of `background_state_parity` and
+//! `combination_background_id_parity`, never same-named fakes: both getters
+//! are defined in this crate, so a second definition would collide.
 use core::ffi::{CStr, c_char, c_int, c_void};
 use core::mem::{align_of, offset_of, size_of};
 use obs_hotkey::background_query::NATIVE;
 use obs_hotkey::ffi::{
     background_query::obs_hotkey_combination_is_background,
+    background_state::obs_hotkeys_get_background_state,
     combination_background_id::obs_hotkey_combination_get_background_id,
     nix_hotkey_state::obs_key_combination,
 };
@@ -18,25 +20,13 @@ use std::cell::RefCell;
 
 #[derive(Default)]
 struct World {
-    state: i32,
-    queries: Vec<Option<obs_key_combination>>,
     releases: usize,
 }
 thread_local! { static WORLD: RefCell<World> = RefCell::new(World::default()); }
 
-// The production shim resolves its unported status dependency to this local
-// test hook. It is per-thread; allocation-accounting parity re-execs first.
-#[unsafe(no_mangle)]
-unsafe extern "C" fn obs_hotkeys_get_background_state(flags: *mut u32) -> c_int {
-    assert!(flags.is_null());
-    WORLD.with_borrow_mut(|world| {
-        world.queries.push(None);
-        world.state
-    })
-}
-
 unsafe extern "C" fn query_state(_: *mut c_void, flags: *mut u32) -> c_int {
-    // SAFETY: the original query passes a null optional output.
+    // SAFETY: the original query passes a null optional output; the getter
+    // reaches only the armed per-thread state fixture.
     unsafe { obs_hotkeys_get_background_state(flags) }
 }
 unsafe extern "C" fn query_id(_: *mut c_void, combo: obs_key_combination) -> *mut c_char {
@@ -57,6 +47,8 @@ unsafe extern "C" {
         getter: Getter,
     );
     fn oracle_hotkey_combination_background_id_events(out: *mut c_char, size: usize);
+    fn oracle_hotkey_background_state_arm(bits: u32, value: c_int, flags: u32);
+    fn oracle_hotkey_background_state_events(out: *mut c_char, size: usize);
     fn oracle_hotkey_background_query_layout(out: *mut usize);
     fn oracle_hotkey_background_query(
         combo: obs_key_combination,
@@ -68,10 +60,10 @@ unsafe extern "C" {
 }
 
 fn reset(state: i32, present: bool, combo: obs_key_combination) {
-    WORLD.set(World {
-        state,
-        ..World::default()
-    });
+    WORLD.set(World::default());
+    // The state lock succeeds and holds `state`; no flags are asked for.
+    // SAFETY: arms this thread's state fixture.
+    unsafe { oracle_hotkey_background_state_arm(1, state, u32::MAX) };
     // Lock succeeds and a callback is registered; it fills the identifier
     // ("background-id") or succeeds with none.
     let bits = 3 | if present { 2 << 2 } else { 0 };
@@ -86,13 +78,21 @@ fn reset(state: i32, present: bool, combo: obs_key_combination) {
     }
 }
 
-fn lookups() -> String {
+fn events(read: unsafe extern "C" fn(*mut c_char, usize)) -> String {
     let mut out = [0 as c_char; 64];
     // SAFETY: the oracle writes a terminated trace of at most 63 bytes.
     unsafe {
-        oracle_hotkey_combination_background_id_events(out.as_mut_ptr(), out.len());
+        read(out.as_mut_ptr(), out.len());
         CStr::from_ptr(out.as_ptr()).to_str().unwrap().to_owned()
     }
+}
+
+fn lookups() -> String {
+    events(oracle_hotkey_combination_background_id_events)
+}
+
+fn queries() -> String {
+    events(oracle_hotkey_background_state_events)
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn compare(state: i32, modifiers: u32, key: i32, present: bool) {
     reset(state, present, combo);
     // SAFETY: combo contains a valid key; our hooks provide all C dependencies.
     let rust = unsafe { obs_hotkey_combination_is_background(combo) };
-    let rust_queries = WORLD.with_borrow(|world| world.queries.clone());
+    let rust_queries = queries();
     let rust_lookups = lookups();
     // SAFETY: the returned identifier must have been released by the shim.
     assert_eq!(
@@ -137,13 +137,12 @@ fn compare(state: i32, modifiers: u32, key: i32, present: bool) {
     assert_eq!(lookups(), rust_lookups);
     // The fixture marks a combination that differs from this one with 'K'.
     assert_eq!(rust_lookups, if state == NATIVE { "" } else { "LRUC" });
-    WORLD.with_borrow(|world| {
-        assert_eq!(world.queries, rust_queries);
-        assert_eq!(world.releases, usize::from(state != NATIVE));
-    });
+    assert_eq!(queries(), rust_queries);
+    WORLD.with_borrow(|world| assert_eq!(world.releases, usize::from(state != NATIVE)));
     // SAFETY: the oracle callback returns the identifier to the same allocator.
     assert_eq!(unsafe { bnum_allocs() }, before, "C leaked the identifier");
-    assert_eq!(rust_queries.len(), 1);
+    // One locked state read, with no flags output.
+    assert_eq!(rust_queries, "LRU");
 }
 
 #[test]
