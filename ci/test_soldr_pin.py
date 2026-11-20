@@ -44,16 +44,24 @@ def workflow_pins() -> dict[str, set[str]]:
             # The step's keys (uses:, with:) share this indent; the step ends at
             # a shallower line (the next "- " step or the next job).
             indent = len(line) - len(line.lstrip())
+            version = "implicit action default"
             for follow in lines[i + 1 :]:
                 if follow.strip() and len(follow) - len(follow.lstrip()) < indent:
                     break
                 m = re.match(r"\s+version:\s*['\"]?([0-9.]+)", follow)
                 if m:
-                    pins.setdefault(wf.name, set()).add(m.group(1))
+                    version = m.group(1)
+            pins.setdefault(wf.name, set()).add(version)
     return pins
 
 
 class SoldrPinTest(unittest.TestCase):
+    def test_linux_hosted_darwin_toolchain_is_available(self):
+        self.assertGreaterEqual(
+            tuple(map(int, cmake_pin().split("."))), (0, 9, 54),
+            "macOS run-only preparation requires soldr toolchain darwin (soldr#4168)",
+        )
+
     def test_source_mtimes_keep_nanosecond_precision(self):
         self.assertGreaterEqual(
             tuple(map(int, cmake_pin().split("."))), (0, 9, 38),
