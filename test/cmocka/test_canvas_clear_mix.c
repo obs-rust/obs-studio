@@ -17,6 +17,7 @@ static struct obs_weak_canvas control;
 static struct obs_source source;
 static struct obs_weak_source source_control;
 static struct obs_core_video_mix *expected_mix;
+static unsigned char expected_mix_bytes[sizeof(expected_mix)];
 static size_t expected_count;
 static unsigned locks, unlocks, frees;
 static bool locked, retain_mix;
@@ -37,8 +38,9 @@ static int record_unlock(pthread_mutex_t *mutex)
 {
 	assert_true(locked);
 	assert_ptr_equal(mutex, &core.video.mixes_mutex);
-	/* The owner pointer is cleared only after the list lock is released. */
-	assert_ptr_equal(canvas.mix, expected_mix);
+	/* The owner pointer is cleared only after unlocking. Compare its bytes:
+	 * the pointed-to allocation may already have been freed. */
+	assert_memory_equal(&canvas.mix, expected_mix_bytes, sizeof(canvas.mix));
 	int result = pthread_mutex_unlock(mutex);
 	assert_int_equal(result, 0);
 	locked = false;
@@ -105,10 +107,15 @@ static int setup(void **unused)
 
 static void check_clear(void)
 {
-	struct obs_canvas before = canvas;
-	struct obs_weak_canvas refs_before = control;
-	struct obs_weak_source source_refs_before = source_control;
-	struct obs_source source_before = source;
+	struct obs_canvas before;
+	struct obs_weak_canvas refs_before;
+	struct obs_weak_source source_refs_before;
+	struct obs_source source_before;
+	memcpy(&before, &canvas, sizeof(before));
+	memcpy(&refs_before, &control, sizeof(refs_before));
+	memcpy(&source_refs_before, &source_control, sizeof(source_refs_before));
+	memcpy(&source_before, &source, sizeof(source_before));
+	memcpy(expected_mix_bytes, &canvas.mix, sizeof(canvas.mix));
 	obs_canvas_clear_mix(&canvas);
 	before.mix = NULL;
 	assert_memory_equal(&canvas, &before, sizeof(canvas));
@@ -135,10 +142,22 @@ static void no_mix(void **unused)
 	current_core = NULL;
 	check_clear();
 	current_core = &core;
+	struct obs_core_video_mix *other = bzalloc(sizeof(*other));
+	da_push_back(core.video.mixes, &other);
+	long allocations = bnum_allocs();
+	check_clear();
+	assert_int_equal(core.video.mixes.num, 1);
+	assert_ptr_equal(core.video.mixes.array[0], other);
+	assert_int_equal(bnum_allocs(), allocations);
 	assert_int_equal(pthread_mutex_lock(&core.video.mixes_mutex), 0);
+	/* Make an unexpected recursive lock fail in the recorder before it blocks. */
+	locked = true;
 	obs_canvas_clear_mix(&canvas);
+	assert_true(locked);
+	locked = false;
 	assert_int_equal(pthread_mutex_unlock(&core.video.mixes_mutex), 0);
 	assert_int_equal(locks + unlocks + frees, 0);
+	bfree(other);
 }
 
 static void list_case(size_t count, size_t position)
