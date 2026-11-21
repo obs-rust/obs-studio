@@ -81,6 +81,7 @@ mod get_main_canvas;
 mod get_main_canvas_parity;
 mod get_output_source;
 mod get_output_source_parity;
+mod get_video;
 mod global_getters;
 mod global_getters_parity;
 mod hotkeys_background_status;
