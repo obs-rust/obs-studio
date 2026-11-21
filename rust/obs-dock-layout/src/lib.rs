@@ -139,6 +139,16 @@ impl Dock {
     fn at_min(&self, axis: Axis) -> bool {
         self.size(axis) <= self.min(axis) + TOLERANCE
     }
+
+    /// Held at its minimum by the window along `axis`. Across its area's
+    /// depth that needs the central widget at its minimum too: a column the
+    /// user made as narrow as it goes, beside a preview with room, is the
+    /// user's width, not a clamp.
+    fn clamped(&self, snap: &Snapshot, axis: Axis) -> bool {
+        self.at_min(axis)
+            && !(self.docked().is_some_and(|area| area.depth_axis() == axis)
+                && snap.room(axis) > TOLERANCE)
+    }
 }
 
 /// The main window and its docks after a change.
@@ -464,7 +474,8 @@ impl Model {
 
     fn learn_if_unclamped(&mut self, snap: &Snapshot) -> Output {
         let clamped = snap.docks.iter().any(|d| {
-            d.docked().is_some() && (d.at_min(Axis::Horizontal) || d.at_min(Axis::Vertical))
+            d.docked().is_some()
+                && (d.clamped(snap, Axis::Horizontal) || d.clamped(snap, Axis::Vertical))
         });
         if clamped {
             return Output::default();
@@ -504,7 +515,7 @@ impl Model {
         for area in areas(snap) {
             let axis = area.area.depth_axis();
             if !self.sizes.depth.contains_key(&area.area)
-                && !area.docks.iter().any(|d| d.at_min(axis))
+                && !area.docks.iter().any(|d| d.clamped(snap, axis))
             {
                 self.sizes.depth.insert(area.area, area.docks[0].size(axis));
             }
