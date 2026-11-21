@@ -2,16 +2,16 @@
   "app": {
     "by_dir": {
       "frontend": 83353,
-      "libobs": 98837,
+      "libobs": 98954,
       "plugins": 148646,
       "shared": 15968
     },
-    "percent": 17.4,
-    "ported_lines": 60354,
-    "total_lines": 346804
+    "percent": 17.42,
+    "ported_lines": 60424,
+    "total_lines": 346921
   },
-  "commit": "2878c643",
-  "date": "2026-11-20",
+  "commit": "cbf2fd14",
+  "date": "2026-11-21",
   "excluded": [
     "rust/obs-c-oracle/legacy/ (Tier 3 oracle copy of the original C)",
     "test/ and any tests/ or test/ directory (tests, not product code)",
@@ -29,9 +29,9 @@
     "all": {
       "areas": {
         "core": {
-          "percent": 51.74,
-          "ported_lines": 34413,
-          "total_lines": 66512
+          "percent": 51.75,
+          "ported_lines": 34483,
+          "total_lines": 66629
         },
         "graphics": {
           "percent": 72.16,
@@ -49,19 +49,19 @@
           "total_lines": 13379
         }
       },
-      "files": 927,
-      "hybrid_lines": 38483,
+      "files": 932,
+      "hybrid_lines": 38530,
       "percent": 61.06,
-      "ported_lines": 60354,
-      "total_lines": 98837
+      "ported_lines": 60424,
+      "total_lines": 98954
     },
     "hosts": {
       "linux": {
         "areas": {
           "core": {
-            "percent": 53.74,
-            "ported_lines": 33060,
-            "total_lines": 61523
+            "percent": 53.75,
+            "ported_lines": 33130,
+            "total_lines": 61640
           },
           "graphics": {
             "percent": 72.68,
@@ -79,8 +79,8 @@
             "total_lines": 10057
           }
         },
-        "files": 892,
-        "hybrid_lines": 34164,
+        "files": 897,
+        "hybrid_lines": 34211,
         "percent": 62.18,
         "ported_files": [
           "audio-monitoring/null/null-audio-monitoring-reference.c.h",
@@ -258,6 +258,7 @@
           "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
           "obs-encoder-module.c.h",
+          "obs-encoder-outputs.c.h",
           "obs-encoder-packet-ownership.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
@@ -293,6 +294,8 @@
           "obs-hotkey-background-error.c.h",
           "obs-hotkey-background-press.c.h",
           "obs-hotkey-background-query.c.h",
+          "obs-hotkey-background-state-lock.c.h",
+          "obs-hotkey-background-state.c.h",
           "obs-hotkey-background-trigger.c.h",
           "obs-hotkey-binding-getters.c.h",
           "obs-hotkey-binding-press.c.h",
@@ -319,6 +322,7 @@
           "obs-hotkey-unregister-entry.c.h",
           "obs-hotkey-unregister.c.h",
           "obs-hotkey-update-atomic.c.h",
+          "obs-hotkeys-background-status-changed.c.h",
           "obs-key-combination-host-posix.c.h",
           "obs-missing-files.c.h",
           "obs-module-disable-query-support.c.h",
@@ -549,6 +553,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-output-flags.c.h",
           "obs-source-private-settings.c.h",
           "obs-source-properties.c.h",
           "obs-source-ptm-gate.c.h",
@@ -646,15 +651,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 56168,
-        "total_lines": 90332
+        "ported_lines": 56238,
+        "total_lines": 90449
       },
       "macos": {
         "areas": {
           "core": {
-            "percent": 53.1,
-            "ported_lines": 29503,
-            "total_lines": 55558
+            "percent": 53.12,
+            "ported_lines": 29573,
+            "total_lines": 55675
           },
           "graphics": {
             "percent": 72.68,
@@ -672,8 +677,8 @@
             "total_lines": 9978
           }
         },
-        "files": 871,
-        "hybrid_lines": 31756,
+        "files": 876,
+        "hybrid_lines": 31803,
         "percent": 62.32,
         "ported_files": [
           "audio-monitoring/osx/coreaudio-device-rules.c.h",
@@ -850,6 +855,7 @@
           "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
           "obs-encoder-module.c.h",
+          "obs-encoder-outputs.c.h",
           "obs-encoder-packet-ownership.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
@@ -885,6 +891,8 @@
           "obs-hotkey-background-error.c.h",
           "obs-hotkey-background-press.c.h",
           "obs-hotkey-background-query.c.h",
+          "obs-hotkey-background-state-lock.c.h",
+          "obs-hotkey-background-state.c.h",
           "obs-hotkey-background-trigger.c.h",
           "obs-hotkey-binding-getters.c.h",
           "obs-hotkey-binding-press.c.h",
@@ -911,6 +919,7 @@
           "obs-hotkey-unregister-entry.c.h",
           "obs-hotkey-unregister.c.h",
           "obs-hotkey-update-atomic.c.h",
+          "obs-hotkeys-background-status-changed.c.h",
           "obs-missing-files.c.h",
           "obs-module-disable-query-support.c.h",
           "obs-module-disable-query.c.h",
@@ -1128,6 +1137,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-output-flags.c.h",
           "obs-source-private-settings.c.h",
           "obs-source-properties.c.h",
           "obs-source-ptm-gate.c.h",
@@ -1223,15 +1233,15 @@
           "util/threading-posix.c.h",
           "util/utf8.c.h"
         ],
-        "ported_lines": 52532,
-        "total_lines": 84288
+        "ported_lines": 52602,
+        "total_lines": 84405
       },
       "windows": {
         "areas": {
           "core": {
-            "percent": 53.23,
-            "ported_lines": 30444,
-            "total_lines": 57189
+            "percent": 53.25,
+            "ported_lines": 30514,
+            "total_lines": 57306
           },
           "graphics": {
             "percent": 72.23,
@@ -1249,8 +1259,8 @@
             "total_lines": 10704
           }
         },
-        "files": 882,
-        "hybrid_lines": 33114,
+        "files": 887,
+        "hybrid_lines": 33161,
         "percent": 61.86,
         "ported_files": [
           "audio-monitoring/monitor-delay.c.h",
@@ -1429,6 +1439,7 @@
           "obs-encoder-media-getters.c.h",
           "obs-encoder-metadata-getters.c.h",
           "obs-encoder-module.c.h",
+          "obs-encoder-outputs.c.h",
           "obs-encoder-packet-ownership.c.h",
           "obs-encoder-packet-ts.c.h",
           "obs-encoder-pause.c.h",
@@ -1464,6 +1475,8 @@
           "obs-hotkey-background-error.c.h",
           "obs-hotkey-background-press.c.h",
           "obs-hotkey-background-query.c.h",
+          "obs-hotkey-background-state-lock.c.h",
+          "obs-hotkey-background-state.c.h",
           "obs-hotkey-background-trigger.c.h",
           "obs-hotkey-binding-getters.c.h",
           "obs-hotkey-binding-press.c.h",
@@ -1490,6 +1503,7 @@
           "obs-hotkey-unregister-entry.c.h",
           "obs-hotkey-unregister.c.h",
           "obs-hotkey-update-atomic.c.h",
+          "obs-hotkeys-background-status-changed.c.h",
           "obs-missing-files.c.h",
           "obs-module-disable-query-support.c.h",
           "obs-module-disable-query.c.h",
@@ -1707,6 +1721,7 @@
           "obs-source-monitoring.c.h",
           "obs-source-mute-monitor-hotkeys.c.h",
           "obs-source-mute-monitor-reference.c.h",
+          "obs-source-output-flags.c.h",
           "obs-source-private-settings.c.h",
           "obs-source-properties.c.h",
           "obs-source-ptm-gate.c.h",
@@ -1807,12 +1822,12 @@
           "util/utf8.c.h",
           "util/windows/window-match.c.h"
         ],
-        "ported_lines": 53710,
-        "total_lines": 86824
+        "ported_lines": 53780,
+        "total_lines": 86941
       }
     }
   },
   "rust": {
-    "lines": 228693
+    "lines": 229086
   }
 }
