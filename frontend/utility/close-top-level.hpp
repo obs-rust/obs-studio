@@ -31,3 +31,31 @@ inline bool CloseTopLevel(QWidget *widget)
 
 	return widget->close();
 }
+
+/* An application quit (QEvent::Quit) closes the main window first
+ * (obs-rust/obs-studio#5406).
+ *
+ * Cmd+Q, logoff, shutdown and QCoreApplication::quit() reach the application
+ * as QEvent::Quit. Qt then closes the visible top-level windows in no fixed
+ * order and cancels the quit when one of them refuses its close. The main
+ * docks are not closable: QDockWidget refuses their close while the main
+ * window is visible, so a floating main dock that came first cancelled the
+ * whole quit, and OBS stayed open.
+ *
+ * Installed on the application. */
+class QuitClosesMainWindowFirst : public QObject {
+public:
+	QuitClosesMainWindowFirst(QWidget *main, QObject *parent) : QObject(parent), main(main) {}
+
+protected:
+	bool eventFilter(QObject *obj, QEvent *event) override
+	{
+		(void)obj;
+		(void)event;
+		(void)main;
+		return false;
+	}
+
+private:
+	QWidget *main;
+};

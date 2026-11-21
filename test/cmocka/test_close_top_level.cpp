@@ -10,14 +10,24 @@
  * (frontend/utility/close-top-level.hpp). The test puts a top-level widget
  * into the same state (created, then its platform window destroyed) and
  * checks that it still gets its close event. Qt's offscreen platform (minimal
- * on Windows), no display. */
+ * on Windows), no display.
+ *
+ * Cmd+Q on macOS did nothing when a main dock floated (obs-rust/obs-studio#5406):
+ * an application quit closes the top-level windows in no fixed order, the
+ * floating main dock (not closable) refused while the main window was
+ * visible, and Qt cancelled the quit. The quit cases below check that
+ * QuitClosesMainWindowFirst closes the main window first. */
 
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDir>
+#include <QDockWidget>
 #include <QLibraryInfo>
+#include <QMainWindow>
 #include <QWidget>
 #include <QWindow>
+
+#include <vector>
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -142,6 +152,160 @@ static void window_without_qwindow_closes(void **state)
 	assert_int_equal(w->closeEvents, 1);
 }
 
+/* The main window and floating main docks of OBS: QMainWindow with docks
+ * that are movable and floatable but not closable (OBSBasic's mainFeatures). */
+class Main : public QMainWindow {
+public:
+	int closeEvents = 0;
+	bool accept = true;
+
+protected:
+	void closeEvent(QCloseEvent *event) override
+	{
+		closeEvents++;
+		if (accept) {
+			QMainWindow::closeEvent(event);
+		} else {
+			event->ignore();
+		}
+	}
+};
+
+class MainDock : public QDockWidget {
+public:
+	MainDock(const QString &title, Main *main) : QDockWidget(title, main), main(main) {}
+	int closeEvents = 0;
+	bool mainWasVisible = false;
+
+protected:
+	void closeEvent(QCloseEvent *event) override
+	{
+		closeEvents++;
+		mainWasVisible = mainWasVisible || main->isVisible();
+		QDockWidget::closeEvent(event);
+	}
+
+private:
+	Main *main;
+};
+
+/* Enough floating docks that, in Qt's close order, one of them comes before
+ * the main window in nearly every run. */
+static constexpr int floating_docks = 32;
+
+static Main *main_window;
+static std::vector<MainDock *> docks;
+static QuitClosesMainWindowFirst *quit_filter;
+
+static int quit_setup(void **state)
+{
+	(void)state;
+	main_window = new Main;
+	main_window->setCentralWidget(new QWidget);
+	main_window->resize(800, 600);
+	for (int i = 0; i < floating_docks; i++) {
+		auto *dock = new MainDock(QStringLiteral("dock %1").arg(i), main_window);
+		dock->setObjectName(QStringLiteral("dock%1").arg(i));
+		dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
+		dock->setWidget(new QWidget);
+		main_window->addDockWidget(Qt::LeftDockWidgetArea, dock);
+		docks.push_back(dock);
+	}
+	main_window->show();
+	QApplication::processEvents();
+	for (MainDock *dock : docks) {
+		dock->setFloating(true);
+		dock->show();
+	}
+	QApplication::processEvents();
+	quit_filter = new QuitClosesMainWindowFirst(main_window, qApp);
+	qApp->installEventFilter(quit_filter);
+	return 0;
+}
+
+static int quit_teardown(void **state)
+{
+	(void)state;
+	qApp->removeEventFilter(quit_filter);
+	delete quit_filter;
+	quit_filter = nullptr;
+	delete main_window;
+	main_window = nullptr;
+	docks.clear();
+	QApplication::processEvents();
+	return 0;
+}
+
+/* What Cmd+Q, logoff and QCoreApplication::quit() send. Returns whether the
+ * quit went through. */
+static bool send_quit(void)
+{
+	QEvent quit(QEvent::Quit);
+	QCoreApplication::sendEvent(qApp, &quit);
+	QApplication::processEvents();
+	return quit.isAccepted();
+}
+
+static int visible_docks(void)
+{
+	int n = 0;
+	for (MainDock *dock : docks) {
+		n += dock->isVisible() ? 1 : 0;
+	}
+	return n;
+}
+
+static void quit_closes_the_main_window_with_floating_main_docks(void **state)
+{
+	(void)state;
+	const bool accepted = send_quit();
+	int refused = 0;
+	for (MainDock *dock : docks) {
+		refused += dock->mainWasVisible ? 1 : 0;
+	}
+	if (!accepted || main_window->closeEvents != 1 || main_window->isVisible() || visible_docks() != 0) {
+		fprintf(stderr,
+			"quit accepted %d, main window close events %d (expected 1), main window visible %d, "
+			"docks still visible %d of %d, docks closed while the main window was visible %d\n",
+			accepted, main_window->closeEvents, main_window->isVisible(), visible_docks(), floating_docks,
+			refused);
+		fail();
+	}
+}
+
+static void quit_is_cancelled_when_the_main_window_refuses(void **state)
+{
+	(void)state;
+	/* The "outputs are active, exit anyway?" prompt answered with Cancel. */
+	main_window->accept = false;
+	const bool accepted = send_quit();
+	if (accepted || main_window->closeEvents != 1 || !main_window->isVisible() ||
+	    visible_docks() != floating_docks) {
+		fprintf(stderr,
+			"quit accepted %d (expected 0), main window close events %d (expected 1), "
+			"main window visible %d, docks visible %d of %d\n",
+			accepted, main_window->closeEvents, main_window->isVisible(), visible_docks(), floating_docks);
+		fail();
+	}
+}
+
+static void quit_with_a_hidden_main_window_closes_nothing_twice(void **state)
+{
+	(void)state;
+	/* Minimized to the tray: OBS hides the main window and its docks. */
+	main_window->hide();
+	for (MainDock *dock : docks) {
+		dock->hide();
+	}
+	QApplication::processEvents();
+	const bool accepted = send_quit();
+	if (!accepted || main_window->closeEvents != 0) {
+		fprintf(stderr, "quit accepted %d, main window close events %d (expected 0)\n", accepted,
+			main_window->closeEvents);
+		fail();
+	}
+}
+
 #ifdef _WIN32
 /* With no platform plugin, a release Qt on Windows shows a modal message box
  * before it exits when the process has no console window, and under ctest on
@@ -193,6 +357,12 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(shown_window_closes, setup, teardown),
 		cmocka_unit_test_setup_teardown(shown_window_can_refuse, setup, teardown),
 		cmocka_unit_test_setup_teardown(window_without_qwindow_closes, setup, teardown),
+		cmocka_unit_test_setup_teardown(quit_closes_the_main_window_with_floating_main_docks, quit_setup,
+						quit_teardown),
+		cmocka_unit_test_setup_teardown(quit_is_cancelled_when_the_main_window_refuses, quit_setup,
+						quit_teardown),
+		cmocka_unit_test_setup_teardown(quit_with_a_hidden_main_window_closes_nothing_twice, quit_setup,
+						quit_teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
