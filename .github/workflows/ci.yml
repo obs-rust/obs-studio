@@ -76,14 +76,18 @@ jobs:
       actions: write
       contents: read
 
-  # Probe on hosted infrastructure, using only immutable BASE code for PR routing.
+  # Probe using only immutable BASE code for PR routing. merge_group runs use the
+  # org's forge-quick admin runners (ephemeral, one job per container, 120 s,
+  # 256 MiB, 0.5 CPU, no Docker or LAN) so the decision never waits in the
+  # hosted queue; PR, fork and push runs stay hosted. Kill switch: clear
+  # vars.FORGE_QUICK_LABELS to send this job back to ubuntu-latest (#5376).
   select-mq-runner:
     name: Select Merge Queue Runner
     permissions:
       contents: read
       actions: read
     if: github.event_name != 'pull_request' || (vars.DELL_PR_ROUTING == 'on' && github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}
     timeout-minutes: 2
     outputs:
       heavy-labels: ${{ steps.select.outputs.heavy-labels }}
@@ -95,12 +99,16 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
           sparse-checkout: ci
+          # forge-quick's tmpfs workspace counts against its 256 MiB.
+          filter: blob:none
           persist-credentials: false
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         id: uv
         continue-on-error: true
         if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''
         with:
+          # forge-quick's tool cache holds this uv; no lookup, no install.
+          version: '0.13.7'
           save-cache: ${{ github.ref == 'refs/heads/master' }}
           enable-cache: false
       - name: Create Runner Probe App Token

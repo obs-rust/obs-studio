@@ -383,7 +383,8 @@ class CiScopeTest(unittest.TestCase):
             r"^  ([\w-]+):\n(.*?)(?=^  [\w-]+:|\Z)", text, re.MULTILINE | re.DOTALL
         ))
         probe = blocks["select-mq-runner"]
-        self.assertIn("runs-on: ubuntu-latest", probe)
+        # Hosted except merge_group with FORGE_QUICK_LABELS set (#5376).
+        self.assertIn("runs-on: ${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}", probe)
         self.assertIn("actions: read", probe)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", probe)
         self.assertIn("if: github.event_name != 'pull_request'", probe)
