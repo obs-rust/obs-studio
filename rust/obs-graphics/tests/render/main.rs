@@ -8,6 +8,7 @@ mod cubetexture_access;
 mod cubetexture_access_parity;
 mod depth_dispatch;
 mod depth_dispatch_parity;
+mod device_identity;
 mod device_load;
 mod device_load_parity;
 mod device_queries;
