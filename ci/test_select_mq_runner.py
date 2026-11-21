@@ -70,6 +70,23 @@ class HostedRunnerRoutingTest(unittest.TestCase):
         # The image's cached uv: no version lookup, no write to the root-owned tool cache.
         self.assertIn("          version: '0.13.7'\n", job)
 
+    # forge-quick pre-seeds these actions at these SHAs; anything else is
+    # downloaded inside the job's 256 MiB / 120 s (forge-ci/ci.yml RUN-004,
+    # ci_lint/data/forge_quick_allowlist.toml) (#5388).
+    FORGE_QUICK_ALLOWLIST = {
+        'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
+        'actions/create-github-app-token': 'f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc',
+        'astral-sh/setup-uv': '1db35dd8eee11c5894872e0b383ae6c406cf738d',
+    }
+
+    def test_queue_selector_uses_only_forge_quick_allowlisted_actions(self):
+        job = self.job('ci.yml', 'select-mq-runner')
+        uses = re.findall(r'^\s+(?:- )?uses: ([^@\s]+)@(\S+)', job, re.M)
+        self.assertEqual(sorted(action for action, _ in uses), sorted(self.FORGE_QUICK_ALLOWLIST))
+        for action, sha in uses:
+            with self.subTest(action=action):
+                self.assertEqual(sha, self.FORGE_QUICK_ALLOWLIST[action])
+
     def test_light_jobs_use_latest(self):
         for workflow, names in (
             ('build-project.yaml', ('check-event', 'ci-mode', 'rust-cross-proof')),
