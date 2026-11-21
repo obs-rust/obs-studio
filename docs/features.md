@@ -2450,6 +2450,12 @@ area.
   *All*, 2026-11-18. Issue
   [#4991](https://github.com/obs-rust/obs-studio/issues/4991), upstream
   [obsproject/obs-studio#14145](https://github.com/obsproject/obs-studio/issues/14145).
+- Cmd+Q, logoff and shutdown quit OBS when a main dock (Scenes, Sources,
+  Audio Mixer, Scene Transitions, Controls) floats; before, the quit could
+  be cancelled, and OBS then stayed open for the rest of the session, also
+  for File → Exit. *All*, 2026-11-21. Issue
+  [#5406](https://github.com/obs-rust/obs-studio/issues/5406), PR
+  [#5410](https://github.com/obs-rust/obs-studio/pull/5410).
 
 ### Scripting
 
