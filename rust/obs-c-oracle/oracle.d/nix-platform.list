@@ -1,1 +1,1 @@
-obs-nix-platform.inc|libobs/obs-nix-platform.c.h|libobs/build/libobs-nix.pch.h
+obs-nix-platform.inc|libobs/obs-nix-platform.c.h|#include "libobs/build/libobs-nix.pch.h"
