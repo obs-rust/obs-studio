@@ -17,9 +17,12 @@ pub unsafe extern "C" fn find_service(id: *const c_char) -> *const c_void {
     // SAFETY: the caller preserves the original C lookup preconditions. Each
     // index is below the logical count, and C projects its own native layout.
     unsafe {
-        let entries = (0..obs_service_find_count()).map(|index| {
+        let entries = (0..obs_service_find_count()).filter_map(|index| {
             let entry = obs_service_find_entry(index);
-            (CStr::from_ptr(obs_service_find_id(entry)).to_bytes(), entry)
+            if entry.is_null() {
+                return None;
+            }
+            Some((CStr::from_ptr(obs_service_find_id(entry)).to_bytes(), entry))
         });
         crate::service_find::find(CStr::from_ptr(id).to_bytes(), entries)
             .unwrap_or(core::ptr::null())
