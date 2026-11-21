@@ -5,7 +5,7 @@
 
 use obs_dock_layout::{Area, Cause, Rect};
 
-use crate::dock_layout::fixture::{MIN_W, bottom, full_record, started};
+use crate::dock_layout::fixture::{CENTRAL_MIN, MIN_W, SEP, bottom, full_record, left, started};
 
 /// The full-size blob restored into a 470 px tile: every dock clamped.
 fn clamped() -> obs_dock_layout::Snapshot {
@@ -186,4 +186,27 @@ fn a_dock_that_appears_during_the_restores_ends_them() {
     ));
     assert!(!model.observe(&more, Cause::Change).restore_again);
     assert!(!model.saves_restored_blob());
+}
+
+#[test]
+fn a_side_column_at_its_minimum_with_room_is_learned() {
+    // The user left the column as narrow as it goes, and the preview has
+    // room: that width is the user's, not a clamp. Seen with real Qt
+    // (test_dock_state_restart): the record never got the column's depth,
+    // so every start had "no sizes" and the record was ignored.
+    let column = [("scenes", 440), ("sources", 440)];
+    let (model, out) = started(None, "h1", &left(1600, 884, MIN_W, &column));
+    assert!(!out.restore_again);
+    assert!(!model.saves_restored_blob());
+    assert_eq!(model.sizes().depth.get(&Area::Left), Some(&MIN_W));
+}
+
+#[test]
+fn a_side_column_at_its_minimum_without_room_is_a_clamp() {
+    // The preview is at its minimum too: the window is too small.
+    let column = [("scenes", 440), ("sources", 440)];
+    let snap = left(MIN_W + SEP + CENTRAL_MIN, 884, MIN_W, &column);
+    let (model, _) = started(None, "h1", &snap);
+    assert!(model.saves_restored_blob());
+    assert_eq!(model.sizes().depth.get(&Area::Left), None);
 }
