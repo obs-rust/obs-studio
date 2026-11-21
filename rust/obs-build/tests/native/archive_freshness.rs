@@ -267,6 +267,248 @@ fn hybrid_archive_checks_depfile_inputs_without_expanding_vendor_crates() {
     }
 }
 
+/// #5323: a newer lockfile that adds a crate libobs-rust does not use leaves
+/// the archive fresh; a change to a package libobs-rust uses, or a lockfile
+/// with no stamp from a fresh check, is stale.
+#[test]
+fn hybrid_archive_checks_only_its_own_packages_in_a_newer_lockfile() {
+    let directory = tempfile::Builder::new()
+        .prefix("archive tree ")
+        .tempdir()
+        .unwrap();
+    let root = directory.path().join("tree");
+    let fixture = LockFixture::new(&root);
+    // An archive newer than the lockfile: fresh, and the stamp is saved.
+    fixture.write_lock(&lockfile(DEPS, "1.0.1", ""), false);
+    assert_fresh(fixture.check());
+    // The same lockfile, only touched.
+    fixture.write_lock(&lockfile(DEPS, "1.0.1", ""), true);
+    assert_fresh(fixture.check());
+    // A new workspace crate and its dependency: not this archive's packages.
+    fixture.write_lock(&lockfile(DEPS, "1.0.1", UNRELATED), true);
+    assert_fresh(fixture.check());
+    // A second serde for another crate: libobs-rust still uses 1.0.1.
+    let pinned = DEPS.replace("\"serde\"", "\"serde 1.0.1\"");
+    fixture.write_lock(&lockfile(&pinned, "1.0.1", SECOND_SERDE), true);
+    assert_fresh(fixture.check());
+    // A dependency of libobs-rust bumped with the build skipped.
+    fixture.write_lock(&lockfile(DEPS, "1.0.2", ""), true);
+    assert_stale(fixture.check(), "it changes the packages of libobs-rust");
+    // A local crate of libobs-rust now depends on another package.
+    let lock = lockfile(DEPS, "1.0.1", UNRELATED);
+    fixture.write_lock(
+        &lock.replace(
+            " \"pre-release-name\",\n",
+            " \"pre-release-name\",\n \"obs-dock-layout\",\n",
+        ),
+        true,
+    );
+    assert_stale(fixture.check(), "it changes the packages of libobs-rust");
+    // A lockfile that cannot be read.
+    fixture.write_lock("not a lockfile", true);
+    assert_stale(fixture.check(), "cannot be read");
+    // An archive with no stamp, or a stamp of another archive build.
+    fixture.write_lock(&lockfile(DEPS, "1.0.1", ""), false);
+    assert_fresh(fixture.check());
+    fixture.write_lock(&lockfile(DEPS, "1.0.1", ""), true);
+    set_modified(
+        &fixture.archive,
+        fixture.old + std::time::Duration::from_secs(1),
+    );
+    assert_stale(fixture.check(), "another build of the archive");
+    fs::remove_file(fixture.archive.with_extension("lock-closure")).unwrap();
+    assert_stale(fixture.check(), "no lockfile stamp");
+    assert!(!fixture.build.output.exists());
+}
+
+/// #5323: the check reads the repository's real `Cargo.lock`, so a format
+/// Cargo writes cannot turn every touched lockfile stale again.
+#[test]
+fn hybrid_archive_reads_the_repository_lockfile() {
+    let text = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../Cargo.lock"))
+        .unwrap()
+        .replace("\r\n", "\n");
+    let directory = tempfile::tempdir().unwrap();
+    let fixture = LockFixture::new(&directory.path().join("tree"));
+    fixture.write_lock(&text, false);
+    assert_fresh(fixture.check());
+    fixture.write_lock(&format!("{text}{UNRELATED}"), true);
+    assert_fresh(fixture.check());
+    // libobs-rust's own entry is part of its closure.
+    let entry = text
+        .split("[[package]]")
+        .find(|block| block.starts_with("\nname = \"libobs-rust\"\n"))
+        .unwrap();
+    fixture.write_lock(
+        &text.replace(
+            entry,
+            &entry.replace(
+                "dependencies = [\n",
+                "dependencies = [\n \"obs-dock-layout\",\n",
+            ),
+        ),
+        true,
+    );
+    assert_stale(fixture.check(), "cannot be read");
+    fixture.write_lock(
+        &format!("{text}{UNRELATED}").replace(
+            entry,
+            &entry.replace(
+                "dependencies = [\n",
+                "dependencies = [\n \"obs-dock-layout\",\n",
+            ),
+        ),
+        true,
+    );
+    assert_stale(fixture.check(), "it changes the packages of libobs-rust");
+}
+
+/// A libobs-rust archive with its depfile and two local crates (one whose
+/// package name is not its directory), all as old as the archive.
+struct LockFixture {
+    root: std::path::PathBuf,
+    archive: std::path::PathBuf,
+    build: NativeBuild,
+    old: std::time::SystemTime,
+}
+
+impl LockFixture {
+    fn new(root: &Path) -> Self {
+        let old = std::time::UNIX_EPOCH + std::time::Duration::from_secs(100);
+        let archive = root.join("liblibobs_rust.a");
+        let files = [
+            root.join("rust/libobs-rust/src/lib.rs"),
+            root.join("rust/libobs-rust/Cargo.toml"),
+            root.join("rust/obs-core/src/lib.rs"),
+            root.join("rust/obs-core/Cargo.toml"),
+        ];
+        for file in &files {
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(file, "tracked input").unwrap();
+        }
+        fs::write(
+            &files[1],
+            "[package]\nname = \"libobs-rust\" # the archive's crate\n",
+        )
+        .unwrap();
+        fs::write(&files[3], "[package]\nname = \"obs-core-pkg\"\n").unwrap();
+        fs::write(&archive, "archive").unwrap();
+        for file in files.iter().chain([&archive]) {
+            set_modified(file, old);
+        }
+        let escape = |path: &Path| {
+            path.to_string_lossy()
+                .replace('\\', "/")
+                .replace(' ', "\\ ")
+        };
+        fs::write(
+            archive.with_extension("d"),
+            format!(
+                "{}: {} {}\n",
+                escape(&archive),
+                escape(&files[0]),
+                escape(&files[2])
+            ),
+        )
+        .unwrap();
+        let build = NativeBuild {
+            profile: Default::default(),
+            host: obs_build::BUILD_HOST.into(),
+            target: obs_build::BUILD_TARGET.into(),
+            output: root.join("build"),
+        };
+        Self {
+            root: root.to_owned(),
+            archive,
+            build,
+            old,
+        }
+    }
+
+    /// Writes `text` as the lockfile, older or newer than the archive.
+    fn write_lock(&self, text: &str, newer: bool) {
+        let lock = self.root.join("Cargo.lock");
+        fs::write(&lock, text).unwrap();
+        let offset = std::time::Duration::from_secs(10);
+        set_modified(
+            &lock,
+            if newer {
+                self.old + offset
+            } else {
+                self.old - offset
+            },
+        );
+    }
+
+    fn check(&self) -> String {
+        obs_build::libobs::build_hybrid_with_options(
+            &self.build,
+            &self.root,
+            &obs_build::libobs::Options::default(),
+            &self.archive,
+        )
+        .unwrap_err()
+    }
+}
+
+const DEPS: &str = " \"obs-core-pkg\",\n \"serde\",\n";
+
+/// A crate libobs-rust does not use, and its registry dependency.
+const UNRELATED: &str = "\n[[package]]\nname = \"obs-dock-layout\"\nversion = \"0.1.0\"\n\
+    dependencies = [\n \"dock-layout-dep\",\n]\n\
+    \n[[package]]\nname = \"dock-layout-dep\"\nversion = \"1.0.9\"\n\
+    source = \"registry+https://github.com/rust-lang/crates.io-index\"\n";
+
+/// Another crate that locks a second `serde`. Cargo then writes the
+/// version into every `serde` entry.
+const SECOND_SERDE: &str = "\n[[package]]\nname = \"obs-frontend\"\nversion = \"0.1.0\"\n\
+    dependencies = [\n \"serde 1.0.9\",\n]\n\
+    \n[[package]]\nname = \"serde\"\nversion = \"1.0.9\"\n\
+    source = \"registry+https://github.com/rust-lang/crates.io-index\"\n";
+
+/// A small lockfile: libobs-rust with `libobs_deps`, a local crate, a
+/// pre-release and `serde`.
+fn lockfile(libobs_deps: &str, serde: &str, extra: &str) -> String {
+    format!(
+        "# This file is automatically @generated by Cargo.\n\
+         # It is not intended for manual editing.\n\
+         version = 4\n\
+         \n\
+         [[package]]\n\
+         name = \"libobs-rust\"\n\
+         version = \"0.1.0\"\n\
+         dependencies = [\n{libobs_deps}]\n\
+         \n\
+         [[package]]\n\
+         name = \"obs-core-pkg\"\n\
+         version = \"0.1.0\"\n\
+         dependencies = [\n \"pre-release-name\",\n]\n\
+         \n\
+         [[package]]\n\
+         name = \"pre-release-name\"\n\
+         version = \"2.0.0-beta.1\"\n\
+         source = \"registry+https://github.com/rust-lang/crates.io-index\"\n\
+         \n\
+         [[package]]\n\
+         name = \"serde\"\n\
+         version = \"{serde}\"\n\
+         source = \"registry+https://github.com/rust-lang/crates.io-index\"\n\
+         checksum = \"00\"\n\
+         {extra}"
+    )
+}
+
+fn assert_fresh(result: String) {
+    assert!(result.contains("source-sets.d"), "{result}");
+}
+
+fn assert_stale(result: String, detail: &str) {
+    assert!(result.contains("stale Rust archive"), "{result}");
+    assert!(result.contains("Cargo.lock"), "{result}");
+    assert!(result.contains(detail), "{result}");
+    assert!(result.contains("soldr cargo build"), "{result}");
+}
+
 fn set_modified(path: &Path, time: std::time::SystemTime) {
     fs::OpenOptions::new()
         .write(true)
