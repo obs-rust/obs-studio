@@ -94,11 +94,6 @@ mod libobs_stand_ins {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn obs_encoder_group_num_started() -> ! {
-        called("obs_encoder_group_num_started")
-    }
-
-    #[unsafe(no_mangle)]
     pub extern "C" fn obs_encoder_interleave_info() -> ! {
         called("obs_encoder_interleave_info")
     }

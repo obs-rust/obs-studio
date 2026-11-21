@@ -1,0 +1,4 @@
+# obs-encoder-group-num-started.c: output interleaving and obs_encoder_set_group
+# read a group's started-encoder count inside libobs. Declared in
+# obs-internal.h without EXPORT, so the shim stays hidden the same way.
+obs_encoder_group_num_started

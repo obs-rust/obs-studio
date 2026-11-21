@@ -37,9 +37,10 @@ BENCH = ROOT / "rust/obs-c-oracle/benches/port_comparison.rs"
 # The key-name store is absent: #5321 exports it from obs-hotkey (hidden in
 # libobs, defined by the workspace). The output name getter is absent as
 # well: #5302 exports it from obs-output, and the interleaver names its
-# output through a private seam too.
+# output through a private seam too. The encoder group started count is
+# absent: #5319 exports it from obs-output, and the oracle defines its
+# private adapters (oracle/encoder_group_num_started.c).
 SYMBOLS = (
-    "obs_encoder_group_num_started",
     "obs_encoder_interleave_info",
     "obs_hotkey_binding_fields",
     "obs_hotkey_identity_fields",

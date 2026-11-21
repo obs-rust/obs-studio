@@ -6,12 +6,17 @@
 //!
 //! Both sides run on a test output ([`Fixture`]) through the same stand-ins
 //! defined here: the accessors `obs_output_interleave_fields`,
-//! `obs_output_caption_track_fields`, `obs_encoder_interleave_info` and
-//! `obs_encoder_group_num_started`, the `obs-output.c` wrappers (`active`,
-//! the two first-encoder-index helpers, `add_caption`), the output's
-//! `encoded_packet`, its packet callbacks and the two name getters. The
-//! packet copy and release are the real ones obs-encoder exports, counted
-//! as the delay parity counts them. Each stand-in records its call,
+//! `obs_output_caption_track_fields` and `obs_encoder_interleave_info`, the
+//! `obs-output.c` wrappers (`active`, the two first-encoder-index helpers,
+//! `add_caption`), the output's `encoded_packet`, its packet callbacks and
+//! the two name getters. The packet copy and release are the real ones
+//! obs-encoder exports, counted as the delay parity counts them, and the
+//! group's started count is the real `obs_encoder_group_num_started` that
+//! obs-output exports: its adapters forward this fixture's groups to the
+//! group handlers here (installed per thread through
+//! `oracle_encoder_group_num_started_foreign`, which shares the one
+//! definition of each adapter with the count's own parity test). Each
+//! stand-in records its call,
 //! with whether `interleaved_mutex`, `pkt_callbacks_mutex` and the caption
 //! mutex were held, into the output it was given. `add_caption` and the
 //! packet callbacks change the packet (and the callbacks the packet time),
@@ -274,10 +279,11 @@ struct Encoder {
     name: CString,
 }
 
-/// An encoder group: its started count.
+/// An encoder group: its started count, and whether its mutex is held.
 struct Group {
     owner: *mut Fixture,
     num_started: u32,
+    locked: bool,
 }
 
 /// The encoders of a run.
@@ -425,6 +431,7 @@ impl Fixture {
             group: Box::new(Group {
                 owner: ptr::null_mut(),
                 num_started: 2,
+                locked: false,
             }),
             active: true,
             add_caption_result: true,
@@ -434,6 +441,7 @@ impl Fixture {
         let me: *mut Fixture = &raw mut *f;
         f.data = me.cast();
         f.group.owner = me;
+        install_group_handlers();
         for i in 0..setup.videos {
             f.video_encoders[i] = (&raw mut f.encoders[i]).cast();
         }
@@ -644,6 +652,18 @@ impl Drop for Fixture {
 
 unsafe extern "C" {
     fn os_gettime_ns() -> u64;
+    fn oracle_encoder_group_num_started_foreign(
+        lock: unsafe extern "C" fn(*mut c_void),
+        read: unsafe extern "C" fn(*const c_void) -> u32,
+        unlock: unsafe extern "C" fn(*mut c_void),
+    );
+}
+
+/// Send this thread's fixture groups, reached through the real
+/// `obs_encoder_group_num_started`, to the handlers below.
+fn install_group_handlers() {
+    // SAFETY: plain function pointers, kept per thread by the oracle.
+    unsafe { oracle_encoder_group_num_started_foreign(group_lock, group_read, group_unlock) };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -889,21 +909,46 @@ pub unsafe extern "C" fn obs_encoder_interleave_info(
     unsafe { (*encoder.cast::<Encoder>()).info }
 }
 
-/// `obs_encoder_group_num_started`, recorded.
+/// The group adapter `obs_encoder_group_num_started_lock`, over a fixture's
+/// group.
 ///
 /// # Safety
 ///
 /// `group` is a live fixture's group.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn obs_encoder_group_num_started(group: *mut c_void) -> u32 {
+unsafe extern "C" fn group_lock(group: *mut c_void) {
+    // SAFETY: caller contract.
+    let g = unsafe { &mut *group.cast::<Group>() };
+    assert!(!g.locked, "the group mutex is not nested");
+    g.locked = true;
+}
+
+/// The group adapter `obs_encoder_group_num_started_read`, recorded.
+///
+/// # Safety
+///
+/// `group` is a live fixture's group.
+unsafe extern "C" fn group_read(group: *const c_void) -> u32 {
     // SAFETY: caller contract; the owner is the fixture the step runs on.
     unsafe {
         let g = &*group.cast::<Group>();
+        assert!(g.locked, "the count is read under the group mutex");
         let o = &mut *g.owner;
         let locked = held(o.mutex);
         o.events.push(Event::NumStarted { group: 0, locked });
         g.num_started
     }
+}
+
+/// The group adapter `obs_encoder_group_num_started_unlock`.
+///
+/// # Safety
+///
+/// `group` is a live fixture's group.
+unsafe extern "C" fn group_unlock(group: *mut c_void) {
+    // SAFETY: caller contract.
+    let g = unsafe { &mut *group.cast::<Group>() };
+    assert!(g.locked, "the group mutex is held");
+    g.locked = false;
 }
 
 /// `obs_output_interleave_output_name`.
