@@ -47,6 +47,7 @@
 #include "libobs/obs-scene-ref-fields.c.h"
 #include "libobs/obs-scene-source-fields.c.h"
 #include "libobs/obs-scene.c.h"
+#include "libobs/obs-sceneitem-addref.c.h"
 #include "libobs/obs-sceneitem-defer-update-fields.c.h"
 #include "libobs/obs-shader-param-introspection-fields.c.h"
 #include "libobs/obs-source-async-compensation-fields.c.h"
