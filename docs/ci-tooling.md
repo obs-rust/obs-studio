@@ -1339,7 +1339,7 @@ job creates a short-lived installation token only for `merge_group` when both
 to fail; an absent App token falls back to the optional legacy
 `MQ_RUNNER_STATUS_TOKEN` secret (a PAT with the same read permissions).
 Both repository-level and organization-level runners are supported.
-The hosted `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
+The `select-mq-runner` job calls `GET /repos/{repo}/actions/runners` and
 `GET /orgs/{owner}/actions/runners` (owner is the repository prefix) before
 selecting labels; matching capacity across the available lists qualifies according
 to `MQ_RUNNER_MODE`. Its workflow token has **Actions: read** for the separate
@@ -1382,6 +1382,17 @@ Build and tests share the selected pool so local handoff remains valid.
 Event Data, CI Mode, Format, Fast Gate, Cross Compile,
 Qt, app builds, proof publication, queue cancellation and CI Gate use hosted
 runners. Empty outputs and probe/setup errors keep every heavy job hosted.
+
+On `merge_group` the selector job itself runs on the org's `forge-quick` admin
+runners when the repository variable `FORGE_QUICK_LABELS` holds their labels
+(`["self-hosted","forge-quick"]`), so a queue run's routing decision never waits
+in the hosted queue (#5376). forge-quick runs one job per ephemeral container
+with a 120-second wall clock, 256 MiB (its tmpfs workspace included), half a CPU,
+no Docker and no LAN; the job therefore checks out `ci/` blobless and pins
+`setup-uv` to the image's cached uv 0.13.7. PR, push and scheduled runs keep
+`ubuntu-latest`. Kill switch: delete the variable
+(`gh variable delete FORGE_QUICK_LABELS -R obs-rust/obs-studio`) and the next
+run selects on hosted again.
 
 #### Idle Dell capacity for member PRs (default off)
 
