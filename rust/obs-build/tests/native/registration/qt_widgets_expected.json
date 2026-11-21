@@ -35,7 +35,8 @@
     },
     "test_dock_state_restart": {
       "sources": [
-        "test/cmocka/test_dock_state_restart.cpp"
+        "test/cmocka/test_dock_state_restart.cpp",
+        "frontend/build/frontend.dock-layout+.hpp.cpp"
       ],
       "cpp_standard": "17",
       "requires": {
@@ -46,16 +47,20 @@
         ]
       },
       "includes": [
-        "frontend/utility"
+        "frontend"
       ],
       "libraries": [
+        "OBS::fallback-warning-test-frontend",
         "OBS::libobs",
         "Qt6::Widgets",
         "Qt6::Test",
         "OBS::native-test-cmocka"
       ],
       "watch_inputs": [
-        "frontend/utility/dock-proportions.hpp"
+        "frontend/build/frontend-dock-layout.pch.hpp",
+        "frontend/utility/DockLayout.cpp.hpp",
+        "frontend/utility/DockLayout.hpp",
+        "frontend/utility/obs-dock-layout.h"
       ]
     },
     "test_fallback_warning_dialog": {
