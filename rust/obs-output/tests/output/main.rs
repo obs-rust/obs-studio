@@ -96,6 +96,8 @@ mod output_caption;
 mod output_caption_parity;
 mod output_caption_queue;
 mod output_caption_queue_parity;
+mod output_caption_text1;
+mod output_caption_text1_parity;
 mod output_congestion;
 mod output_congestion_parity;
 mod output_flags;

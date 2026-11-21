@@ -46,6 +46,7 @@ pub mod output_can_pause;
 pub mod output_caption;
 pub mod output_caption_queue;
 pub mod output_caption_text;
+pub mod output_caption_text1;
 pub mod output_congestion;
 pub mod output_delay;
 pub mod output_flags;

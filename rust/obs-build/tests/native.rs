@@ -405,6 +405,8 @@ mod canonical_nvenc_host_and_glyph_tests_are_registered;
 mod canonical_object_queries_is_registered;
 #[path = "native/registration/canonical_object_validity_query_is_registered.rs"]
 mod canonical_object_validity_query_is_registered;
+#[path = "native/registration/canonical_output_caption_text1_swap_is_registered.rs"]
+mod canonical_output_caption_text1_swap_is_registered;
 #[path = "native/registration/canonical_output_flags_is_registered.rs"]
 mod canonical_output_flags_is_registered;
 #[path = "native/registration/canonical_output_get_last_error_swap_is_registered.rs"]
