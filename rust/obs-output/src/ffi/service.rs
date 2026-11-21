@@ -3,9 +3,10 @@
 //! (`libobs/cmake/rust-exports.d/obs-output-service.txt`).
 //!
 //! `struct obs_service` stays private to C. A shim reaches the plugin's
-//! callback table through the hidden `obs_service_get_info_table()` that
-//! `obs-service.c.h` keeps next to the struct layout, and the plugin's data
-//! through the hidden `obs_service_get_plugin_data()` beside it. [`ObsServiceInfo`] mirrors the
+//! callback table through the hidden `obs_service_get_info_table()` and the
+//! plugin's data through the hidden `obs_service_get_plugin_data()` beside
+//! it (both Rust now, [`super::service_info_accessors`], over a C field
+//! adapter that keeps the struct layout). [`ObsServiceInfo`] mirrors the
 //! public plugin ABI `struct obs_service_info` (`obs-service.h`) field for
 //! field; only the callbacks the getters call are read.
 //!
