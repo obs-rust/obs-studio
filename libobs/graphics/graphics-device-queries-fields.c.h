@@ -66,3 +66,15 @@ gs_shader_t *obs_graphics_device_queries_pixel_shader(graphics_t *graphics)
 {
 	return graphics->exports.device_get_pixel_shader(graphics->device);
 }
+
+void *obs_graphics_device_queries_object(graphics_t *graphics);
+void *obs_graphics_device_queries_object(graphics_t *graphics)
+{
+	return graphics->exports.device_get_device_obj(graphics->device);
+}
+
+const char *obs_graphics_device_queries_name(graphics_t *graphics);
+const char *obs_graphics_device_queries_name(graphics_t *graphics)
+{
+	return graphics->exports.device_get_name();
+}

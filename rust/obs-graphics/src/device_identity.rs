@@ -23,6 +23,10 @@ pub trait Host {
     fn dispatch(&mut self, entry: Entry) -> Self::Value;
 }
 
-pub fn identity<H: Host>(_host: &mut H, _entry: Entry) -> H::Value {
-    todo!("device identity Rust swap")
+pub fn identity<H: Host>(host: &mut H, entry: Entry) -> H::Value {
+    if !host.has_context() {
+        host.debug(entry);
+        return H::Value::default();
+    }
+    host.dispatch(entry)
 }

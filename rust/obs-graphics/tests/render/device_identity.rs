@@ -41,12 +41,17 @@ fn same(actual: Option<&RefCell<String>>, expected: Option<&RefCell<String>>) {
     }
 }
 fn diagnostic(host: &Fixture<'_>, entry: Entry, count: usize) {
+    let function = match entry {
+        Entry::Object => "gs_get_device_obj",
+        Entry::Name => "gs_get_device_name",
+    };
+    assert_eq!(entry.name(), function);
     assert_eq!(host.logs.len(), count);
     assert_eq!(
         host.logs.last(),
         Some(&(
             400,
-            format!("{}: called while not in a graphics context", entry.name())
+            format!("{function}: called while not in a graphics context")
         ))
     );
 }
