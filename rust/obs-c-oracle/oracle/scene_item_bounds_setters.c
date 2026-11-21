@@ -418,3 +418,52 @@ unsigned oracle_scene_bounds_alignment_probe(alignment_setter original, alignmen
 		abort();
 	return result;
 }
+
+/* Deferral calls the same transform adapter. Reuse its recorder so the
+ * amalgamated category has one definition and one native fixture layout.
+ * Every operation compares the whole item and callback trace, while the
+ * caller owns a nonrecursive mutex (begin/end must not acquire it). */
+typedef void (*defer_operation)(obs_sceneitem_t *);
+unsigned oracle_scene_bounds_defer_probe(long initial, unsigned flags, const unsigned char *ops, size_t count,
+					 defer_operation c_begin, defer_operation c_end, defer_operation begin,
+					 defer_operation end);
+
+unsigned oracle_scene_bounds_defer_probe(long initial, unsigned flags, const unsigned char *ops, size_t count,
+					 defer_operation c_begin, defer_operation c_end, defer_operation begin,
+					 defer_operation end)
+{
+	struct obs_scene scene = {0};
+	if (pthread_mutex_init(&scene.video_mutex, NULL))
+		abort();
+	scene.is_group = (flags & 2) != 0;
+	struct obs_scene *parent = (flags & 1) ? &scene : NULL;
+	struct bounds_item expected, actual;
+	bounds_item_init(&expected, parent, 0);
+	expected.item.align = 37;
+	os_atomic_store_long(&expected.item.defer_update, initial);
+	os_atomic_store_bool(&expected.item.update_transform, (flags & 4) != 0);
+	memcpy(&actual, &expected, sizeof(actual));
+	pthread_mutex_lock(&scene.video_mutex);
+	unsigned result = 0;
+	for (size_t i = 0; i < count; i++) {
+		expected.count = actual.count = 0;
+		memset(expected.events, 0, sizeof(expected.events));
+		memset(actual.events, 0, sizeof(actual.events));
+		if (ops[i]) {
+			c_begin(&expected.item);
+			begin(&actual.item);
+		} else {
+			c_end(&expected.item);
+			end(&actual.item);
+		}
+		if (memcmp(&expected.item, &actual.item, sizeof(expected.item)) || expected.count != actual.count ||
+		    memcmp(expected.events, actual.events, sizeof(expected.events))) {
+			result = (unsigned)i + 1;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&scene.video_mutex);
+	if (pthread_mutex_destroy(&scene.video_mutex))
+		abort();
+	return result;
+}
