@@ -160,9 +160,10 @@ static void stinger_update(void *data, obs_data_t *settings)
 		obs_source_set_muted(s->matte_source, true);
 	}
 
-	struct stinger_monitoring monitoring = stinger_monitoring_migration(
+	struct stinger_monitoring monitoring = stinger_monitoring_load(
 		obs_data_has_user_value(settings, "enable_monitoring"),
-		obs_data_get_bool(settings, "enable_monitoring"), obs_data_get_int(settings, "audio_monitoring"));
+		obs_data_get_bool(settings, "enable_monitoring"), obs_data_get_bool(settings, "monitor_only"),
+		obs_data_get_int(settings, "audio_monitoring"));
 	s->monitoring = monitoring.enabled;
 	obs_source_set_monitoring_enabled(s->media_source, s->monitoring);
 	obs_source_set_muted(s->media_source, monitoring.mute);
@@ -684,6 +685,16 @@ static bool track_matte_layout_modified(obs_properties_t *ppts, obs_property_t *
 	return true;
 }
 
+/* Monitor Only (mute output) applies only to a monitored clip (#5391). */
+static bool monitoring_enabled_modified(obs_properties_t *ppts, obs_property_t *p, obs_data_t *s)
+{
+	obs_property_t *monitor_only = obs_properties_get(ppts, "monitor_only");
+	obs_property_set_visible(monitor_only, obs_data_get_bool(s, "enable_monitoring"));
+
+	UNUSED_PARAMETER(p);
+	return true;
+}
+
 static bool track_matte_enabled_modified(obs_properties_t *ppts, obs_property_t *p, obs_data_t *s)
 {
 	bool track_matte_enabled = obs_data_get_bool(s, "track_matte_enabled");
@@ -761,7 +772,10 @@ static obs_properties_t *stinger_properties(void *data)
 	dstr_free(&filter);
 
 	// audio output settings
-	obs_properties_add_bool(ppts, "enable_monitoring", obs_module_text("AudioMonitoring"));
+	obs_property_t *monitoring =
+		obs_properties_add_bool(ppts, "enable_monitoring", obs_module_text("AudioMonitoring"));
+	obs_property_set_modified_callback(monitoring, monitoring_enabled_modified);
+	obs_properties_add_bool(ppts, "monitor_only", obs_module_text("AudioMonitoring.MonitorOnly"));
 
 	// audio fade settings
 	obs_property_t *audio_fade_style = obs_properties_add_list(

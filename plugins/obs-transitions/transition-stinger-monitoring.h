@@ -66,3 +66,23 @@ static inline struct stinger_monitoring stinger_monitoring_migration(bool has_en
 
 	return plan;
 }
+
+/* The monitoring to load a Stinger transition with, given its "monitor_only"
+ * setting too (obs-rust/obs-studio#5391, upstream obsproject/obs-studio#14144).
+ * 33.0 dropped Monitor Only: a monitored source is also output, and a
+ * transition has no mixer entry to mute. With "enable_monitoring" and
+ * "monitor_only" both on, the clip is monitored and muted, as a migrated 32.x
+ * Monitor Only transition is. "monitor_only" means nothing while monitoring
+ * is off, and a transition without "enable_monitoring" is migrated as
+ * above. */
+static inline struct stinger_monitoring stinger_monitoring_load(bool has_enable_monitoring, bool enable_monitoring,
+								bool monitor_only, long long audio_monitoring)
+{
+	struct stinger_monitoring plan =
+		stinger_monitoring_migration(has_enable_monitoring, enable_monitoring, audio_monitoring);
+
+	if (has_enable_monitoring)
+		plan.mute = plan.enabled && monitor_only;
+
+	return plan;
+}
