@@ -2063,12 +2063,6 @@ static void obs_sceneitem_destroy(obs_sceneitem_t *item)
 	}
 }
 
-void obs_sceneitem_addref(obs_sceneitem_t *item)
-{
-	if (item)
-		os_atomic_inc_long(&item->ref);
-}
-
 void obs_sceneitem_release(obs_sceneitem_t *item)
 {
 	if (!item)
