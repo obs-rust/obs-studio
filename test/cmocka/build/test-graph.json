@@ -6884,6 +6884,37 @@
         "SIMDe::SIMDe"
       ]
     },
+    "test_hotkey_dispatch_rust": {
+      "sources": [
+        "test/cmocka/test_hotkey_dispatch.c",
+        "test/cmocka/hotkey-dispatch-record-support.c"
+      ],
+      "pch": "libobs/build/libobs.pch.h",
+      "unity_groups": {
+        "dispatch": [
+          "test/cmocka/test_hotkey_dispatch.c",
+          "test/cmocka/hotkey-dispatch-record-support.c"
+        ]
+      },
+      "definitions": [
+        "HOTKEY_DISPATCH_EXTERNAL"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_hotkey_edit_backtab": {
       "sources": [
         "test/cmocka/test_hotkey_edit_backtab.cpp",
@@ -25194,6 +25225,13 @@
         "${target}"
       ],
       "target": "test_hotkey_dispatch"
+    },
+    "test_hotkey_dispatch_rust": {
+      "target": "test_hotkey_dispatch_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_hotkey_edit_backtab": {
       "target": "test_hotkey_edit_backtab",

@@ -27,6 +27,9 @@ pub trait Dispatch {
 /// hotkey reaches a call only on a delivered path, so the no-router branch
 /// never touches it.
 pub fn dispatch<D: Dispatch>(core: &mut D, hotkey: D::Hotkey, pressed: bool) {
-    // RED stub: delivers nothing.
-    let _ = (core, hotkey, pressed);
+    if !core.rerouting() {
+        core.call(hotkey, pressed);
+    } else if core.has_router() {
+        core.route(hotkey, pressed);
+    }
 }
