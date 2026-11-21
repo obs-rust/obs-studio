@@ -107,6 +107,11 @@ codegen-units = 256
 [profile.release.package.obs-graphics]
 codegen-units = 256
 
+# Standalone video-io fixtures must not pull unrelated remux and context
+# runtime adapters through one optimized media archive member (Refs #5331).
+[profile.release.package.obs-media-io]
+codegen-units = 256
+
 # obs-media-io's video_fourcc parity test checks every u32 against the C
 # oracle; optimized, it takes seconds instead of minutes in `cargo test`.
 [profile.dev.package.obs-media-io]
