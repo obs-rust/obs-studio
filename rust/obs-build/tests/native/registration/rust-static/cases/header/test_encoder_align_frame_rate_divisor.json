@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "targets": {
+    "test_encoder_align_frame_rate_divisor_rust": {
+      "sources": [
+        "test/cmocka/test_encoder_align_frame_rate_divisor_rust.c"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "OBS::libobs",
+        "SIMDe::SIMDe"
+      ],
+      "includes": [
+        ".",
+        "libobs"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC",
+      "compile_options_if_supported": [
+        "-ffunction-sections",
+        "-fdata-sections"
+      ],
+      "conditional_link_options": [
+        {
+          "name": "-Wl,--gc-sections",
+          "requires": {
+            "all": [
+              "UNIX",
+              {
+                "not": "OS_MACOS"
+              }
+            ]
+          }
+        },
+        {
+          "name": "-Wl,-dead_strip",
+          "requires": "OS_MACOS"
+        },
+        {
+          "name": "/OPT:REF",
+          "requires": "MSVC"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "test_encoder_align_frame_rate_divisor_rust": {
+      "target": "test_encoder_align_frame_rate_divisor_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    }
+  }
+}

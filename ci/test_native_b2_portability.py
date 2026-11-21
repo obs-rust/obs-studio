@@ -77,12 +77,15 @@ test_video_scaler_direct
 
 def stubbed_archive_consumers(graph):
     # These old support tables describe no-call fixtures with an aborting blog.
-    # Live getter characterization links the real logger instead, so it must not
-    # receive those stubs. Its real adapter and logging are checked separately.
+    # Select their declared log stubs: live characterizations can now obtain the
+    # real logger through shared support without listing its source directly.
+    log_stubs = {"test/cmocka/source-getter-log-link-stub.c",
+                 "test/cmocka/scene-getter-log-link-stub.c"}
     return {name for name, target in graph["targets"].items()
             if "libobs_rust-static" in target.get("libraries", [])
             and "OBS::libobs" not in target.get("libraries", [])
-            and "libobs/util/base-variadic.c.h" not in target.get("sources", [])}
+            and "libobs/util/base-variadic.c.h" not in target.get("sources", [])
+            and log_stubs.intersection(target.get("sources", []))}
 
 
 class NativeB2Portability(unittest.TestCase):

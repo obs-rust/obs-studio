@@ -1,5 +1,6 @@
 //! C ABI, one module per C file.
 
+pub mod encoder_align_frame_rate_divisor;
 pub mod encoder_audio_buffers;
 pub mod encoder_audio_getters;
 pub mod encoder_audio_start;
