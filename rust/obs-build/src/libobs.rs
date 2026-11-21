@@ -1,5 +1,6 @@
 //! The native libobs graph, shared by bundled obs-sys and the application build.
 mod archive_path;
+mod lockfile;
 mod source_plan;
 
 use crate::{NativeBuild, SharedLibrary};
@@ -104,7 +105,8 @@ pub fn build_hybrid_with_options(
 /// manifest of every local crate the depfile references, the lockfile, the
 /// toolchain pin, `.cargo` and the hotkey header. A crate is never walked just
 /// because one of its files is listed (#5323): a vendored header must not make
-/// its crate's build script an archive input.
+/// its crate's build script an archive input. A newer lockfile counts only
+/// when it changes the packages of libobs-rust (#5323, see `check_lockfile`).
 /// This is an mtime guard, not a content attestation: preserve source timestamps
 /// honestly and retain the depfile when supplying an external archive.
 fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
@@ -160,7 +162,6 @@ fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
     }
     for input in [
         "Cargo.toml",
-        "Cargo.lock",
         "rust-toolchain.toml",
         ".cargo",
         "libobs/obs-hotkeys.h",
@@ -170,7 +171,8 @@ fn check_rust_archive(root: &Path, archive: &Path) -> Result<(), String> {
             check_rust_input(&root, &input, archive, modified)?;
         }
     }
-    Ok(())
+    // Last: it saves the lockfile stamp only for an archive that is fresh.
+    check_lockfile(&root, archive, modified)
 }
 
 // Make depfiles escape whitespace and backslashes. Preserve ordinary Windows
@@ -215,15 +217,66 @@ fn check_rust_input(
             check_rust_input(root, &entry.path(), archive, modified)?;
         }
     } else if metadata.modified().map_err(|error| error.to_string())? > modified {
-        return Err(format!(
-            "stale Rust archive {}: newer input {}; rebuild from {} with \
-             soldr cargo build --locked --release -p libobs-rust before linking hybrid libobs",
-            archive.display(),
-            archive_path::portable_input(input.strip_prefix(root).unwrap_or(input)),
-            root.display(),
-        ));
+        return Err(stale_archive(root, input, archive, ""));
     }
     Ok(())
+}
+
+/// A newer `Cargo.lock` is stale only when it changes the packages the
+/// archive was built from: adding or updating a crate the archive does not
+/// use leaves the archive as Cargo correctly kept it (#5323). An archive newer
+/// than the lockfile saves its closure in a stamp for the next check; see
+/// `lockfile`.
+fn check_lockfile(
+    root: &Path,
+    archive: &Path,
+    modified: std::time::SystemTime,
+) -> Result<(), String> {
+    let lock = root.join("Cargo.lock");
+    if !lock.try_exists().map_err(|error| error.to_string())? {
+        return Ok(());
+    }
+    let newer = fs::metadata(&lock)
+        .and_then(|metadata| metadata.modified())
+        .map_err(|error| format!("read Rust input {}: {error}", lock.display()))?
+        > modified;
+    let closure = fs::read_to_string(root.join("rust/libobs-rust/Cargo.toml"))
+        .ok()
+        .and_then(|manifest| lockfile::package_name(&manifest))
+        .zip(fs::read_to_string(&lock).ok())
+        .and_then(|(name, text)| lockfile::closure(&text, &name));
+    let stamp = lockfile::stamp_path(archive);
+    if !newer {
+        // Best effort: a read-only external archive keeps the mtime rule.
+        match &closure {
+            Some(closure) => {
+                let _ = fs::write(&stamp, lockfile::stamp(modified, closure));
+            }
+            None => {
+                let _ = fs::remove_file(&stamp);
+            }
+        }
+        return Ok(());
+    }
+    let detail = match (&closure, fs::read_to_string(&stamp)) {
+        (None, _) => "its libobs-rust packages cannot be read",
+        (Some(_), Err(_)) => "no lockfile stamp for this archive",
+        (Some(closure), Ok(text)) => match lockfile::stamp_matches(&text, modified, closure) {
+            Ok(()) => return Ok(()),
+            Err(detail) => detail,
+        },
+    };
+    Err(stale_archive(root, &lock, archive, &format!(" ({detail})")))
+}
+
+fn stale_archive(root: &Path, input: &Path, archive: &Path, detail: &str) -> String {
+    format!(
+        "stale Rust archive {}: newer input {}{detail}; rebuild from {} with \
+         soldr cargo build --locked --release -p libobs-rust before linking hybrid libobs",
+        archive.display(),
+        archive_path::portable_input(input.strip_prefix(root).unwrap_or(input)),
+        root.display(),
+    )
 }
 
 struct Plan {
