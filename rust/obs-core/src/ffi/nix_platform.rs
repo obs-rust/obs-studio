@@ -4,25 +4,28 @@
 //! Rust setter below: Corrosion always builds this archive with the release profile.
 #![cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
 
+use crate::platform::nix_platform::{PlatformState, checked_platform};
+use core::ffi::c_uint;
+
+static mut STATE: PlatformState = PlatformState::new();
+
+/// State seam behind the C setter; Rust debug builds also reject INVALID.
+///
+/// # Safety
+/// The caller must serialize writes and reads of the selected platform.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn obs_nix_platform_set(platform: c_uint) {
+    // SAFETY: the caller excludes conflicting accesses to this field. Raw
+    // field access avoids borrowing the independently accessed display.
+    unsafe { (*(&raw mut STATE)).platform = checked_platform(platform) };
+}
+
 // Keep the Unix export marker discoverable by the ABI inventory; the file's
 // host boundary above also excludes macOS, where these APIs do not exist.
 #[cfg(unix)]
 mod unix {
-    use crate::platform::nix_platform::{PlatformState, checked_platform};
+    use super::STATE;
     use core::ffi::{c_uint, c_void};
-
-    static mut STATE: PlatformState = PlatformState::new();
-
-    /// State seam behind the C setter; Rust debug builds also reject INVALID.
-    ///
-    /// # Safety
-    /// The caller must serialize writes and reads of the selected platform.
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn obs_nix_platform_set(platform: c_uint) {
-        // SAFETY: the caller excludes conflicting accesses to this field. Raw
-        // field access avoids borrowing the independently accessed display.
-        unsafe { (*(&raw mut STATE)).platform = checked_platform(platform) };
-    }
 
     /// Read the selected platform.
     ///
