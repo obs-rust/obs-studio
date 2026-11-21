@@ -12,10 +12,10 @@ class OBSDock : public QDockWidget {
 	Q_OBJECT
 
 public:
-	inline OBSDock(QWidget *parent = nullptr) : QDockWidget(parent) { KeepFloatingDockShown(this); }
+	inline OBSDock(QWidget *parent = nullptr) : QDockWidget(parent) { SetUpDockWindow(this); }
 	inline OBSDock(const QString &title, QWidget *parent = nullptr) : QDockWidget(title, parent)
 	{
-		KeepFloatingDockShown(this);
+		SetUpDockWindow(this);
 	}
 
 	virtual void closeEvent(QCloseEvent *event);
