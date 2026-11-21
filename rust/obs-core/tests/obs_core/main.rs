@@ -86,6 +86,7 @@ mod global_getters_parity;
 mod hotkeys_background_status;
 mod hotkeys_background_status_parity;
 mod latest_input_type_id;
+mod latest_input_type_id_parity;
 mod module_disable_query;
 mod module_disable_query_parity;
 mod module_failure_info;
