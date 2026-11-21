@@ -266,11 +266,6 @@ void obs_context_data_setname_ht(struct obs_context_data *context, const char *n
 	pthread_mutex_unlock(context->mutex);
 }
 
-profiler_name_store_t *obs_get_profiler_name_store(void)
-{
-	return obs->name_store;
-}
-
 void *obs_obj_get_data(void *obj)
 {
 	struct obs_context_data *context = obj;

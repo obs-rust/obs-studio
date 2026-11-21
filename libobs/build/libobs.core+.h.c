@@ -4,6 +4,7 @@
 
 #include "libobs/obs-audio-info-queries-fields.c.h"
 #include "libobs/obs-base-effect-fields.c.h"
+#include "libobs/obs-context-profiler-name-store.c.h"
 #include "libobs/obs-context-runtime.c.h"
 #include "libobs/obs-core-cmdline-fields.c.h"
 #include "libobs/obs-core-frame-interval-fields.c.h"
