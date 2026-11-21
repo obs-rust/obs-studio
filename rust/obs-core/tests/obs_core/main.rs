@@ -101,6 +101,7 @@ mod global_getters;
 mod global_getters_parity;
 mod hotkeys_background_status;
 mod hotkeys_background_status_parity;
+mod latest_input_type_id;
 mod load_sources;
 mod load_sources_parity;
 mod module_disable_query;
