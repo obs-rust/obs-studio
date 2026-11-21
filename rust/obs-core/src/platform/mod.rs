@@ -1,5 +1,7 @@
 //! Host conventions of the C that the safe cores follow.
 
+pub mod nix_platform;
+
 /// Whether `util_mul_div64` (`util/util_uint64.h`) is exact 128-bit math
 /// (`_umul128`, `_udiv128`), as on MSVC x64, instead of the wrapping
 /// `uint64_t` formula every other host compiles.

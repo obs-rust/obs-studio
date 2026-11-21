@@ -180,7 +180,7 @@ pub mod object_queries;
 pub mod object_ref;
 pub mod object_validity_query;
 pub mod output_protocol_registry;
-mod platform;
+pub mod platform;
 pub mod private_data;
 pub mod raw_audio_remove;
 pub mod set_locale;
