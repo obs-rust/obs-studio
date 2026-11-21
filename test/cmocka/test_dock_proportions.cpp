@@ -5,9 +5,10 @@
  * its minimum, and widening it again shared the width out equally, so a
  * layout the user had sized by hand came back with every dock the same width.
  *
- * Builds a QMainWindow with such a row of docks, plus the helper OBSBasic
- * installs (frontend/utility/dock-proportions.hpp), on Qt's offscreen
- * platform. */
+ * Builds a QMainWindow with such a row of docks, plus the adapter OBSBasic
+ * installs (frontend/utility/DockLayout, with the frontend's Rust model,
+ * obs-rust/obs-studio#5230), on Qt's offscreen platform. The user sizes docks
+ * with a real separator drag: only that changes the sizes the model keeps. */
 
 #include <QApplication>
 #include <QDockWidget>
@@ -15,7 +16,9 @@
 #include <QMainWindow>
 #include <QTest>
 
-#include "dock-proportions.hpp"
+#include "frontend/utility/DockLayout.hpp"
+
+#include <string>
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -28,7 +31,7 @@ extern "C" {
 
 /* Waits until every dock of every window keeps its geometry over three
  * event-loop passes in a row, for at most 3 s. A resize lays the docks out
- * in later events, and DockProportions puts the shares back in a queued call
+ * in later events, and DockLayout puts the sizes back in a queued call
  * after that; a fixed wait ends too early in a slow build (an ASan build
  * with full malloc stacks runs this test 4 times slower, #3366). */
 static void settle()
@@ -54,7 +57,7 @@ static const QList<int> hand_sized = {720, 224, 256, 200, 200};
 
 struct Fixture {
 	QMainWindow *window = nullptr;
-	DockProportions *proportions = nullptr;
+	DockLayout *layout = nullptr;
 	QList<QDockWidget *> docks;
 };
 
@@ -63,7 +66,7 @@ static int setup(void **state)
 	auto *f = new Fixture;
 	f->window = new QMainWindow;
 	f->window->setCentralWidget(new QLabel(QStringLiteral("preview")));
-	f->proportions = new DockProportions(f->window);
+	f->layout = new DockLayout(f->window);
 	for (int i = 0; i < hand_sized.size(); i++) {
 		auto *dock = new QDockWidget(QString::number(i));
 		dock->setObjectName(QStringLiteral("dock%1").arg(i));
@@ -80,8 +83,25 @@ static int setup(void **state)
 	settle();
 	f->window->resizeDocks(f->docks, hand_sized, Qt::Horizontal);
 	settle();
+	/* The layout OBSBasic sets up, as at a first start or Reset Docks. */
+	f->layout->Start(nullptr, f->window->saveState());
+	settle();
 	*state = f;
 	return 0;
+}
+
+/* The user drags the separator that starts at `x` (between two docks of the
+ * bottom row, or the edge of the side column) by `dx`, in several moves with
+ * the events of each processed: Qt resizes the docks while it moves. */
+static void drag_separator(QMainWindow *window, QPoint at, int dx)
+{
+	QTest::mousePress(window->windowHandle(), Qt::LeftButton, Qt::NoModifier, at);
+	for (int step = 1; step <= 5; step++) {
+		QTest::mouseMove(window->windowHandle(), at + QPoint(dx * step / 5, 0));
+		QTest::qWait(20);
+	}
+	QTest::mouseRelease(window->windowHandle(), Qt::LeftButton, Qt::NoModifier, at + QPoint(dx, 0));
+	settle();
 }
 
 static int teardown(void **state)
@@ -174,10 +194,11 @@ static void dragged_separator_is_kept(void **state)
 {
 	auto *f = static_cast<Fixture *>(*state);
 	/* The user re-sizes the docks by hand after the first layout. */
-	const QList<int> dragged = {400, 400, 300, 200, 200};
-	f->window->resizeDocks(f->docks, dragged, Qt::Horizontal);
-	settle();
+	QDockWidget *first = f->docks.first();
+	drag_separator(f->window, QPoint(first->x() + first->width() + 2, first->y() + first->height() / 2), -300);
 	const QList<int> before = widths(f);
+	print_widths("dragged", before);
+	assert_true(before[0] < hand_sized[0] - 200);
 
 	f->window->resize(700, 900);
 	settle();
@@ -206,6 +227,7 @@ static void unclamped_resize_is_untouched(void **state)
 struct ColumnFixture {
 	QMainWindow *window = nullptr;
 	QList<QDockWidget *> column;
+	DockLayout *layout = nullptr;
 };
 
 static const int column_width = 280;
@@ -218,7 +240,7 @@ static int setup_column(void **state)
 	/* As OBSBasic does with its side docks set to full height. */
 	f->window->setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
 	f->window->setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
-	new DockProportions(f->window);
+	f->layout = new DockLayout(f->window);
 	for (int i = 0; i < 2; i++) {
 		auto *dock = new QDockWidget(QString::number(i));
 		dock->setObjectName(QStringLiteral("side%1").arg(i));
@@ -245,6 +267,8 @@ static int setup_column(void **state)
 	f->window->show();
 	settle();
 	f->window->resizeDocks({f->column.first()}, {column_width}, Qt::Horizontal);
+	settle();
+	f->layout->Start(nullptr, f->window->saveState());
 	settle();
 	*state = f;
 	return 0;
@@ -308,8 +332,8 @@ static void dragged_column_width_is_kept(void **state)
 {
 	auto *f = static_cast<ColumnFixture *>(*state);
 	/* The user drags the column's edge after the first layout. */
-	f->window->resizeDocks({f->column.first()}, {400}, Qt::Horizontal);
-	settle();
+	QDockWidget *top = f->column.first();
+	drag_separator(f->window, QPoint(top->x() + top->width() + 2, top->y() + top->height() / 2), 120);
 	const int dragged = f->column.first()->width();
 	assert_true(dragged > column_width + 50);
 
@@ -323,10 +347,11 @@ static void dragged_column_width_is_kept(void **state)
 /* The state the app writes to its ini must not be a clamped one: a session
  * that is narrow when it saves would otherwise come back cramped at full
  * width on the next start (obs-rust/obs-studio#2225). */
-static QList<int> restored_widths(const QByteArray &state)
+static QList<int> restored_widths(const QByteArray &state, const std::string &sizes)
 {
 	QMainWindow window;
 	window.setCentralWidget(new QLabel(QStringLiteral("preview")));
+	DockLayout layout(&window);
 	QList<QDockWidget *> docks;
 	for (int i = 0; i < hand_sized.size(); i++) {
 		auto *dock = new QDockWidget(QString::number(i));
@@ -340,8 +365,9 @@ static QList<int> restored_widths(const QByteArray &state)
 		docks.append(dock);
 	}
 	window.resize(1600, 900);
-	assert_true(window.restoreState(state));
 	window.show();
+	assert_true(window.restoreState(state));
+	layout.Start(sizes.c_str(), state);
 	settle();
 
 	QList<int> result;
@@ -364,7 +390,8 @@ static void clamped_layout_is_not_the_saved_state(void **state)
 		assert_true(width <= dock_min_width + 10);
 	}
 
-	const QList<int> after = restored_widths(f->proportions->StateToSave());
+	const QByteArray saved = f->layout->StateToSave();
+	const QList<int> after = restored_widths(saved, f->layout->SizesRecord(saved));
 	print_widths("saved while narrow, restored at 1600", after);
 	assert_same_shares(before, after);
 }
@@ -379,14 +406,14 @@ static void restored_layout_survives_a_narrow_first_session(void **state)
 	const QList<int> before = widths(f);
 	print_widths("hand sized", before);
 	/* What the app wrote to its ini from a non-clamped session. */
-	const QByteArray saved = f->proportions->StateToSave();
+	const QByteArray saved = f->layout->StateToSave();
+	const std::string sizes = f->layout->SizesRecord(saved);
 
 	/* The next start: that layout restored into a window narrower than the
 	 * docks' minimum widths. */
 	QMainWindow window;
 	window.setCentralWidget(new QLabel(QStringLiteral("preview")));
-	auto *proportions = new DockProportions(&window);
-	proportions->SetRestoredState(saved);
+	auto *layout = new DockLayout(&window);
 	QList<QDockWidget *> docks;
 	for (int i = 0; i < hand_sized.size(); i++) {
 		auto *dock = new QDockWidget(QString::number(i));
@@ -400,8 +427,9 @@ static void restored_layout_survives_a_narrow_first_session(void **state)
 		docks.append(dock);
 	}
 	window.resize(700, 900);
-	assert_true(window.restoreState(saved));
 	window.show();
+	assert_true(window.restoreState(saved));
+	layout->Start(sizes.c_str(), saved);
 	settle();
 
 	QList<int> narrow;
@@ -414,13 +442,20 @@ static void restored_layout_survives_a_narrow_first_session(void **state)
 		assert_true(width <= dock_min_width + 10);
 	}
 
-	const QList<int> after = restored_widths(proportions->StateToSave());
+	const QByteArray again = layout->StateToSave();
+	const QList<int> after = restored_widths(again, layout->SizesRecord(again));
 	print_widths("saved from the narrow start, restored at 1600", after);
 	assert_same_shares(before, after);
 }
 
 int main(int argc, char **argv)
 {
+#ifndef OBS_FRONTEND_RUST
+	(void)argc;
+	(void)argv;
+	fprintf(stderr, "test_dock_proportions needs the frontend's Rust (obs_frontend-static)\n");
+	return 1;
+#else
 	qputenv("QT_QPA_PLATFORM", "offscreen");
 	QApplication app(argc, argv);
 
@@ -437,4 +472,5 @@ int main(int argc, char **argv)
 		cmocka_unit_test_setup_teardown(restored_layout_survives_a_narrow_first_session, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
+#endif
 }

@@ -25,7 +25,7 @@
 #include <oauth/Auth.hpp>
 #include <utility/BasicOutputHandler.hpp>
 #include <utility/close-top-level.hpp>
-#include <utility/dock-proportions.hpp>
+#include <utility/DockLayout.hpp>
 #include <utility/missing-source-types.h>
 #include <utility/OBSCanvas.hpp>
 #include <utility/PreviewProgramSizeObserver.hpp>
@@ -327,14 +327,13 @@ public:
 	void SetDisplayAffinity(QWindow *window);
 
 	void saveAll();
-	/* The dock layout to persist: the last one seen with no dock at its
-	 * minimum, so a save from a narrow window does not write the clamp
-	 * (obs-rust/obs-studio#2225). */
+	/* The dock layout to persist (obs-rust/obs-studio#5230): the live
+	 * layout, or the restored one while it has no known sizes and the user
+	 * changed nothing. */
 	QByteArray DockStateToSave() const;
-	/* Record the layout a restore just loaded, so a start that comes up
-	 * clamped on a smaller display saves that layout instead of the clamp
-	 * (obs-rust/obs-studio#2225). */
-	void DockStateRestored(const QByteArray &state);
+	/* A restore just loaded `state`; `sizes` is the BasicWindow/DockSizes
+	 * saved with it (nullptr: none, as for a service or reset layout). */
+	void DockStateRestored(const QByteArray &state, const char *sizes = nullptr);
 	bool shouldPromptForClose();
 	/* A quit that nobody can answer a dialog for (SIGTERM): the next close
 	 * goes ahead without the exit confirmation. */
@@ -467,7 +466,7 @@ public slots:
 private:
 	QPointer<QDockWidget> statsDock;
 	QByteArray startingDockLayout;
-	DockProportions *dockProportions = nullptr;
+	DockLayout *dockLayout = nullptr;
 	QStringList extraDockNames;
 	QList<std::shared_ptr<QDockWidget>> extraDocks;
 

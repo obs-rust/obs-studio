@@ -1190,7 +1190,6 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["targets"].get("test_hotkey_capture_mnemonic").expect("canonical graph omits test_hotkey_capture_mnemonic"),
         "test_undo_stack_enable": graph["targets"].get("test_undo_stack_enable").expect("canonical graph omits test_undo_stack_enable"),
         "test_volume_meter_ticker": graph["targets"].get("test_volume_meter_ticker").expect("canonical graph omits test_volume_meter_ticker"),
-        "test_dock_proportions": graph["targets"].get("test_dock_proportions").expect("canonical graph omits test_dock_proportions"),
         "test_close_top_level": graph["targets"].get("test_close_top_level").expect("canonical graph omits test_close_top_level"),
         "test_settings_track_rows": graph["targets"].get("test_settings_track_rows").expect("canonical graph omits test_settings_track_rows"),
         "test_replay_buffer_estimate": graph["targets"].get("test_replay_buffer_estimate").expect("canonical graph omits test_replay_buffer_estimate"),
@@ -1203,7 +1202,6 @@ fn canonical_remux_queue_runs_unchanged() {
         "test_hotkey_capture_mnemonic": graph["tests"]["test_hotkey_capture_mnemonic"],
         "test_undo_stack_enable": graph["tests"]["test_undo_stack_enable"],
         "test_volume_meter_ticker": graph["tests"]["test_volume_meter_ticker"],
-        "test_dock_proportions": graph["tests"]["test_dock_proportions"],
         "test_close_top_level": graph["tests"]["test_close_top_level"],
         "test_settings_track_rows": graph["tests"]["test_settings_track_rows"],
         "test_replay_buffer_estimate": graph["tests"]["test_replay_buffer_estimate"],
@@ -1296,14 +1294,12 @@ fn canonical_remux_queue_runs_unchanged() {
         expected_names.insert("test_undo_stack_enable");
         if qt_test_available {
             expected_names.insert("test_hotkey_capture_mnemonic");
-            expected_names.insert("test_dock_proportions");
         }
         expected_names.insert("test_volume_meter_ticker");
         expected_names.insert("test_replay_buffer_estimate");
     }
     assert_eq!(names, expected_names);
     if linux && qt_test_available {
-        assert_dock_proportions_properties(tests);
         let mnemonic = tests
             .iter()
             .find(|test| test["name"] == "test_hotkey_capture_mnemonic")
@@ -4356,27 +4352,6 @@ fn bounded(mut command: std::process::Command) -> std::process::Output {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
     child.wait_with_output().unwrap()
-}
-
-#[cfg(feature = "libobs-integration")]
-fn assert_dock_proportions_properties(tests: &[serde_json::Value]) {
-    let dock = tests
-        .iter()
-        .find(|test| test["name"] == "test_dock_proportions")
-        .unwrap();
-    let properties = dock["properties"].as_array().unwrap();
-    assert!(
-        properties
-            .iter()
-            .any(|property| property["name"] == "TIMEOUT"
-                && property["value"].as_f64() == Some(120.0))
-    );
-    assert!(
-        properties
-            .iter()
-            .any(|property| property["name"] == "RESOURCE_LOCK"
-                && property["value"] == serde_json::json!(["timing"]))
-    );
 }
 
 /// Optional glyph dependencies must never break another host's Tier 2 configure.

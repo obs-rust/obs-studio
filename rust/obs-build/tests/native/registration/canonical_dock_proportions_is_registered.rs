@@ -1,6 +1,8 @@
 use super::*;
 
-/// #1390: the original nine dock cases need Linux, Widgets and Qt Test.
+/// #1390: the original nine dock cases need Linux, Widgets and Qt Test. Since
+/// #5230 they test the adapter (frontend/utility/DockLayout) with the
+/// frontend's Rust model, so they link its owner interface and libobs.
 #[test]
 fn canonical_dock_proportions_is_registered() {
     use obs_build::validation::graph::Graph;
@@ -11,11 +13,14 @@ fn canonical_dock_proportions_is_registered() {
         .targets
         .get("test_dock_proportions")
         .expect("canonical graph omits test_dock_proportions");
-    assert_eq!(target.sources.len(), 1);
+    assert_eq!(target.sources.len(), 2);
     assert!(
         matches!(&target.sources[0], obs_build::validation::graph::Source::Path(path) if path == "test/cmocka/test_dock_proportions.cpp")
     );
-    assert_eq!(target.includes, ["frontend/utility"]);
+    assert!(
+        matches!(&target.sources[1], obs_build::validation::graph::Source::Path(path) if path == "frontend/build/frontend.dock-layout+.hpp.cpp")
+    );
+    assert_eq!(target.includes, ["frontend"]);
     assert_eq!(
         target
             .libraries
@@ -25,11 +30,22 @@ fn canonical_dock_proportions_is_registered() {
                 _ => panic!("dock libraries must be unconditional"),
             })
             .collect::<Vec<_>>(),
-        ["Qt6::Widgets", "Qt6::Test", "OBS::native-test-cmocka"]
+        [
+            "OBS::fallback-warning-test-frontend",
+            "OBS::libobs",
+            "Qt6::Widgets",
+            "Qt6::Test",
+            "OBS::native-test-cmocka"
+        ]
     );
     assert_eq!(
         target.watch_inputs,
-        ["frontend/utility/dock-proportions.hpp"]
+        [
+            "frontend/build/frontend-dock-layout.pch.hpp",
+            "frontend/utility/DockLayout.cpp.hpp",
+            "frontend/utility/DockLayout.hpp",
+            "frontend/utility/obs-dock-layout.h"
+        ]
     );
     let test = &graph.tests["test_dock_proportions"];
     assert_eq!(test.timeout_seconds, Some(120));
@@ -44,6 +60,8 @@ fn canonical_dock_proportions_is_registered() {
                     ("HAVE_QT6_CORE".into(), false),
                     ("HAVE_QT6_WIDGETS".into(), widgets),
                     ("HAVE_QT6_TEST".into(), qt_test),
+                    ("HAVE_QT_WIDGETS_TEST_OWNER".into(), widgets),
+                    ("HAVE_QT_WIDGETS_TESTLIB_OWNER".into(), qt_test),
                 ]
                 .into();
                 let selected = graph.select(&facts).unwrap();

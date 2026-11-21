@@ -1,6 +1,7 @@
-/* #3740: a user can deliberately leave a dock at its minimum width.
- * Exercise the production dock-state selector, Qt's layout serialization and
- * the same config C API / base64 / safe-save / reopen path as OBSBasic. */
+/* #3740, #5230: the dock layout across window changes and restarts.
+ * Exercise the production adapter (frontend/utility/DockLayout) with the
+ * frontend's Rust model, Qt's layout serialization and the same config C API
+ * / base64 / safe-save / reopen path as OBSBasic. */
 #include <QApplication>
 #include <QDockWidget>
 #include <QLabel>
@@ -9,8 +10,12 @@
 #include <QTemporaryDir>
 #include <QTest>
 
-#include "dock-proportions.hpp"
+#include "frontend/utility/DockLayout.hpp"
 #include <util/config-file.h>
+
+#include <cstdio>
+#include <map>
+#include <string>
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -38,9 +43,48 @@ static void settle(QMainWindow &window)
 	assert_true(settled);
 }
 
+/* BasicWindow/DockSizes as the last save wrote it for each DockState blob:
+ * the ini holds both keys, and the next start reads them together. */
+static std::map<QByteArray, std::string> sizes_saved_with;
+
+static const char *saved_sizes(const QByteArray &state)
+{
+	const auto it = sizes_saved_with.find(state);
+	return it == sizes_saved_with.end() ? nullptr : it->second.c_str();
+}
+
+/* Real config_save_safe closes the file and renames the temporary file. Read
+ * it back with a fresh config object, as the next process does. A blob saved
+ * without sizes (upstream OBS, plain Qt) gets none on the next start. */
+static QByteArray persist(const QByteArray &state, const std::string &sizes = {})
+{
+	QTemporaryDir dir(QStringLiteral("dock-restart-XXXXXX"));
+	assert_true(dir.isValid());
+	const QByteArray file = (dir.path() + QStringLiteral("/user.ini")).toUtf8();
+	config_t *config = nullptr;
+	assert_int_equal(config_open(&config, file.constData(), CONFIG_OPEN_ALWAYS), CONFIG_SUCCESS);
+	config_set_string(config, "BasicWindow", "DockState", state.toBase64().constData());
+	if (!sizes.empty()) {
+		config_set_string(config, "BasicWindow", "DockSizes", sizes.c_str());
+	}
+	assert_int_equal(config_save_safe(config, "tmp", nullptr), CONFIG_SUCCESS);
+	config_close(config);
+	assert_int_equal(config_open(&config, file.constData(), CONFIG_OPEN_EXISTING), CONFIG_SUCCESS);
+	const QByteArray reopened = QByteArray::fromBase64(config_get_string(config, "BasicWindow", "DockState"));
+	const char *record = config_get_string(config, "BasicWindow", "DockSizes");
+	if (record) {
+		sizes_saved_with[reopened] = record;
+	} else {
+		sizes_saved_with.erase(reopened);
+	}
+	config_close(config);
+	assert_true(reopened == state);
+	return reopened;
+}
+
 struct Window {
 	QMainWindow window;
-	DockProportions proportions{&window};
+	DockLayout layout{&window};
 	QList<QDockWidget *> docks;
 	/* What Reset Docks restores: OBSBasic saves it before the user's
 	 * layout is restored (startingDockLayout). */
@@ -70,6 +114,13 @@ struct Window {
 		settle(window);
 	}
 
+	/* OBSBasic::saveAll: DockState and DockSizes. */
+	QByteArray save()
+	{
+		const QByteArray state = layout.StateToSave();
+		return persist(state, layout.SizesRecord(state));
+	}
+
 	QList<QSize> sizes() const
 	{
 		QList<QSize> result;
@@ -82,7 +133,7 @@ struct Window {
 	void restore(const QByteArray &state)
 	{
 		assert_true(window.restoreState(state));
-		proportions.SetRestoredState(state);
+		layout.Start(saved_sizes(state), state);
 	}
 
 	/* Drag the actual QMainWindow separator to make Controls as narrow as
@@ -112,25 +163,6 @@ struct Window {
 	}
 };
 
-/* Real config_save_safe closes the file and renames the temporary file. Read
- * it back with a fresh config object, as the next process does. */
-static QByteArray persist(const QByteArray &state)
-{
-	QTemporaryDir dir(QStringLiteral("dock-restart-XXXXXX"));
-	assert_true(dir.isValid());
-	const QByteArray file = (dir.path() + QStringLiteral("/user.ini")).toUtf8();
-	config_t *config = nullptr;
-	assert_int_equal(config_open(&config, file.constData(), CONFIG_OPEN_ALWAYS), CONFIG_SUCCESS);
-	config_set_string(config, "BasicWindow", "DockState", state.toBase64().constData());
-	assert_int_equal(config_save_safe(config, "tmp", nullptr), CONFIG_SUCCESS);
-	config_close(config);
-	assert_int_equal(config_open(&config, file.constData(), CONFIG_OPEN_EXISTING), CONFIG_SUCCESS);
-	const QByteArray reopened = QByteArray::fromBase64(config_get_string(config, "BasicWindow", "DockState"));
-	config_close(config);
-	assert_true(reopened == state);
-	return reopened;
-}
-
 static void assert_sizes(const QList<QSize> &expected, const QList<QSize> &actual)
 {
 	assert_int_equal(expected.size(), actual.size());
@@ -152,11 +184,11 @@ static void changed_layout_at_minimum_survives_restart(void **)
 		first.window.resizeDocks(first.docks, {500, 200, 400, 200, 276}, Qt::Horizontal);
 		settle(first.window);
 		// Establish the older layout that the regression kept saving.
-		first.restore(persist(first.proportions.StateToSave()));
+		first.restore(first.save());
 		first.narrow_controls();
 		first.taller_docks();
 		expected = first.sizes();
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	QList<QSize> actual;
 	{
@@ -168,23 +200,35 @@ static void changed_layout_at_minimum_survives_restart(void **)
 	assert_sizes(expected, actual);
 }
 
+/* A separator click in a narrow window resizes nothing: the next start at
+ * full size shows the layout the user sized, not the clamp. */
 static void separator_click_does_not_save_a_clamped_layout(void **)
 {
-	QByteArray expected, actual;
+	QByteArray state;
+	QList<QSize> expected;
 	{
 		Window first;
 		first.show();
 		first.window.resizeDocks(first.docks, {500, 200, 400, 200, 276}, Qt::Horizontal);
 		settle(first.window);
-		expected = persist(first.proportions.StateToSave());
+		first.restore(first.save());
+		settle(first.window);
+		expected = first.sizes();
 		first.window.resize(700, 900);
 		settle(first.window);
 		const QPoint separator(first.docks.last()->x() - 3, first.docks.last()->y() + 40);
 		QTest::mouseClick(first.window.windowHandle(), Qt::LeftButton, Qt::NoModifier, separator);
 		settle(first.window);
-		actual = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
-	assert_true(actual == expected);
+	QList<QSize> actual;
+	{
+		Window restarted;
+		restarted.restore(state);
+		restarted.show();
+		actual = restarted.sizes();
+	}
+	assert_sizes(expected, actual);
 }
 
 static void changed_layout_after_clamped_start_survives_restart(void **)
@@ -195,7 +239,7 @@ static void changed_layout_after_clamped_start_survives_restart(void **)
 		original.show();
 		original.window.resizeDocks(original.docks, {500, 200, 400, 200, 276}, Qt::Horizontal);
 		settle(original.window);
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	QList<QSize> expected;
 	{
@@ -204,12 +248,12 @@ static void changed_layout_after_clamped_start_survives_restart(void **)
 		first.restore(state);
 		first.show();
 		// No user edit: a clamped first session must preserve #2225's state.
-		assert_true(persist(first.proportions.StateToSave()) == state);
+		assert_true(first.save() == state);
 		first.window.resize(1600, 900);
 		settle(first.window);
 		first.narrow_controls();
 		expected = first.sizes();
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	QList<QSize> actual;
 	{
@@ -237,7 +281,7 @@ static void layout_survives_window_manager_resize_after_restore(void **)
 		settle(original.window);
 		original.taller_docks();
 		expected = original.sizes();
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	QList<QSize> tiled;
 	{
@@ -249,7 +293,7 @@ static void layout_survives_window_manager_resize_after_restore(void **)
 		first.window.resize(1600, 900);
 		settle(first.window);
 		tiled = first.sizes();
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	for (qsizetype i = 0; i < tiled.size(); ++i) {
 		print_message("dock %d after the tile resize: %dx%d\n", int(i), tiled[i].width(), tiled[i].height());
@@ -279,7 +323,7 @@ static void layout_survives_several_window_manager_resizes(void **)
 		settle(original.window);
 		original.taller_docks();
 		expected = original.sizes();
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	QList<QSize> full;
 	{
@@ -293,7 +337,7 @@ static void layout_survives_several_window_manager_resizes(void **)
 		first.window.resize(1600, 900); // the terminal is hidden
 		settle(first.window);
 		full = first.sizes();
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	print_message("in the session, after the last resize:\n");
 	assert_sizes(expected, full);
@@ -324,7 +368,7 @@ static void layout_survives_a_session_at_a_smaller_size(void **)
 		settle(original.window);
 		original.taller_docks();
 		expected = original.sizes();
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	{
 		Window first;
@@ -337,7 +381,7 @@ static void layout_survives_a_session_at_a_smaller_size(void **)
 		for (QSize size : first.sizes()) {
 			print_message("dock in session %dx%d\n", size.width(), size.height());
 		}
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	QList<QSize> actual;
 	{
@@ -359,7 +403,7 @@ static void hidden_dock_stays_hidden_after_a_window_resize(void **)
 	{
 		Window original;
 		original.show();
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	{
 		Window first;
@@ -374,7 +418,7 @@ static void hidden_dock_stays_hidden_after_a_window_resize(void **)
 		settle(first.window);
 		print_message("hidden dock after the window resize: visible=%d\n", first.docks[1]->isVisible());
 		assert_false(first.docks[1]->isVisible());
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	{
 		Window restarted;
@@ -393,7 +437,7 @@ static void moved_and_floated_docks_stay_after_a_window_resize(void **)
 	{
 		Window original;
 		original.show();
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	{
 		Window first;
@@ -411,7 +455,7 @@ static void moved_and_floated_docks_stay_after_a_window_resize(void **)
 			      int(first.window.dockWidgetArea(first.docks[2])));
 		assert_true(first.docks[0]->isFloating());
 		assert_int_equal(first.window.dockWidgetArea(first.docks[2]), Qt::LeftDockWidgetArea);
-		state = persist(first.proportions.StateToSave());
+		state = first.save();
 	}
 	{
 		Window restarted;
@@ -435,7 +479,7 @@ static QByteArray arranged_layout()
 	original.window.resizeDocks({original.docks[0], original.docks[1], original.docks[3], original.docks[4]},
 				    {500, 300, 300, 200}, Qt::Horizontal);
 	settle(original.window);
-	return persist(original.proportions.StateToSave());
+	return original.save();
 }
 
 /* #5230: on a tiling window manager a dock change and a window resize often
@@ -456,7 +500,7 @@ static void floated_dock_stays_when_the_window_resizes_at_the_same_time(void **)
 		settle(first.window);
 		print_message("floated dock after the resize: floating=%d\n", first.docks[0]->isFloating());
 		assert_true(first.docks[0]->isFloating());
-		const QByteArray saved = persist(first.proportions.StateToSave());
+		const QByteArray saved = first.save();
 		Window restarted;
 		restarted.restore(saved);
 		restarted.show();
@@ -484,7 +528,7 @@ static void reset_docks_stays_when_the_window_resizes_at_the_same_time(void **)
 		print_message("dock 2 area after reset and resize: %d\n",
 			      int(first.window.dockWidgetArea(first.docks[2])));
 		assert_int_equal(first.window.dockWidgetArea(first.docks[2]), Qt::BottomDockWidgetArea);
-		const QByteArray saved = persist(first.proportions.StateToSave());
+		const QByteArray saved = first.save();
 		Window restarted;
 		restarted.restore(saved);
 		restarted.show();
@@ -593,31 +637,31 @@ struct Session {
 	void reset_docks()
 	{
 		w.window.restoreState(w.startingLayout);
-		w.proportions.SetRestoredState(QByteArray());
+		w.layout.Start(nullptr, w.window.saveState());
 		settle(w.window);
 	}
 
-	/* OBSBasic::saveAll writes what the helper selects. */
-	QByteArray quit() { return persist(w.proportions.StateToSave()); }
+	/* OBSBasic::saveAll writes what the adapter selects. */
+	QByteArray quit() { return w.save(); }
 };
 
-struct DockLayout {
+struct Shown {
 	Qt::DockWidgetArea area;
 	bool floating;
 	bool visible;
 	QSize size;
 };
 
-static QList<DockLayout> capture(const Window &w)
+static QList<Shown> capture(const Window &w)
 {
-	QList<DockLayout> result;
+	QList<Shown> result;
 	for (auto *dock : w.docks) {
 		result.append({w.window.dockWidgetArea(dock), dock->isFloating(), dock->isVisible(), dock->size()});
 	}
 	return result;
 }
 
-static void print_layout(const char *what, const QList<DockLayout> &layout)
+static void print_layout(const char *what, const QList<Shown> &layout)
 {
 	for (qsizetype i = 0; i < layout.size(); ++i) {
 		print_message("%s dock %d: area=%d floating=%d visible=%d %dx%d\n", what, int(i), int(layout[i].area),
@@ -627,7 +671,7 @@ static void print_layout(const char *what, const QList<DockLayout> &layout)
 
 /* Same placement and visibility; sizes within 2 px for docks on screen,
  * unless the case compares placement only. */
-static void assert_layout(const QList<DockLayout> &expected, const QList<DockLayout> &actual, bool sizes = true)
+static void assert_layout(const QList<Shown> &expected, const QList<Shown> &actual, bool sizes = true)
 {
 	print_layout("expected", expected);
 	print_layout("actual", actual);
@@ -646,7 +690,7 @@ static void assert_layout(const QList<DockLayout> &expected, const QList<DockLay
 }
 
 /* The next start under the same window manager: the layout the user gets. */
-static QList<DockLayout> restart(Wm wm, const QByteArray &saved)
+static QList<Shown> restart(Wm wm, const QByteArray &saved)
 {
 	Session next(wm);
 	next.start(saved);
@@ -655,7 +699,7 @@ static QList<DockLayout> restart(Wm wm, const QByteArray &saved)
 
 /* A saved layout as a floating window manager shows it at full size: the
  * same reference window for every profile. */
-static QList<DockLayout> arranged_at_full_size(const QByteArray &state)
+static QList<Shown> arranged_at_full_size(const QByteArray &state)
 {
 	Session reference(Wm::floating);
 	reference.start(state);
@@ -666,14 +710,14 @@ static QList<DockLayout> arranged_at_full_size(const QByteArray &state)
  * the same window manager, and what quit saved. Each profile must give what
  * the user expects, and both must save the same layout (W2). */
 struct Outcome {
-	QList<DockLayout> expected;
-	QList<DockLayout> restarted;
+	QList<Shown> expected;
+	QList<Shown> restarted;
 	QByteArray saved;
 };
 
 static void run_both(Outcome (*run)(Wm), bool sizes = true)
 {
-	QList<DockLayout> saved[2];
+	QList<Shown> saved[2];
 	for (Wm wm : {Wm::floating, Wm::tiling}) {
 		print_message("== %s window manager\n", wm_name(wm));
 		const Outcome outcome = run(wm);
@@ -704,7 +748,7 @@ static Outcome e2_narrow_then_wide(Wm wm)
 {
 	const QByteArray state = arranged_layout();
 	QByteArray saved;
-	QList<DockLayout> in_session;
+	QList<Shown> in_session;
 	{
 		Session session(wm);
 		session.start(state);
@@ -718,7 +762,7 @@ static Outcome e2_narrow_then_wide(Wm wm)
 		in_session = capture(session.w);
 		saved = session.quit();
 	}
-	const QList<DockLayout> expected = arranged_at_full_size(state);
+	const QList<Shown> expected = arranged_at_full_size(state);
 	print_message("in the session, wide again:\n");
 	assert_layout(expected, in_session);
 	return {expected, restart(wm, saved), saved};
@@ -750,7 +794,7 @@ static Outcome e3_quit_narrow(Wm wm)
 static Outcome e9_float_a_dock(Wm wm)
 {
 	QByteArray saved;
-	QList<DockLayout> expected;
+	QList<Shown> expected;
 	{
 		Session session(wm);
 		session.start(arranged_layout());
@@ -765,7 +809,7 @@ static Outcome e9_float_a_dock(Wm wm)
 static Outcome e10_dock_at_minimum(Wm wm)
 {
 	QByteArray saved;
-	QList<DockLayout> expected;
+	QList<Shown> expected;
 	{
 		Session session(wm);
 		session.start(arranged_layout());
@@ -780,7 +824,7 @@ static Outcome e10_dock_at_minimum(Wm wm)
 static Outcome e11_all_docks_hidden(Wm wm)
 {
 	QByteArray saved;
-	QList<DockLayout> expected;
+	QList<Shown> expected;
 	{
 		Session session(wm);
 		session.start(arranged_layout());
@@ -907,7 +951,7 @@ static void e14_plugin_dock_after_restore(void **)
 		plugin->setWidget(new QLabel(QStringLiteral("Contents")));
 		original.window.addDockWidget(Qt::LeftDockWidgetArea, plugin);
 		original.show();
-		state = persist(original.proportions.StateToSave());
+		state = original.save();
 	}
 	Qt::DockWidgetArea in_session[2], restarted[2];
 	for (Wm wm : {Wm::floating, Wm::tiling}) {
@@ -951,6 +995,128 @@ static void e14_plugin_dock_after_restore(void **)
 	}
 }
 
+/* A reference: the arranged layout at full size under a floating window
+ * manager, after `change` made the user's change. */
+static QList<Shown> arranged_then(void (*change)(Session &))
+{
+	Session reference(Wm::floating);
+	reference.start(arranged_layout());
+	change(reference);
+	settle(reference.w.window);
+	return capture(reference.w);
+}
+
+static void move_controls_to_top(Session &session)
+{
+	session.w.window.addDockWidget(Qt::TopDockWidgetArea, session.w.docks[4]);
+	settle(session.w.window);
+}
+
+/* P2 (E5): the window is small when the user moves a dock, and OBS quits
+ * while it is small. The move is the user's change: it is saved. */
+static Outcome e5_move_a_dock_small(Wm wm)
+{
+	QByteArray saved;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		session.window_change({900, 700});
+		move_controls_to_top(session);
+		saved = session.quit();
+	}
+	return {arranged_then(move_controls_to_top), restart(wm, saved), saved};
+}
+
+/* P4 (E6): the user drags a separator, the window shrinks, the user moves a
+ * dock, OBS quits small. The move and the dragged height are both kept. */
+static Outcome e6_drag_shrink_move(Wm wm)
+{
+	QByteArray saved;
+	int dragged = 0;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		session.window_change(full_size);
+		session.w.taller_docks();
+		dragged = session.w.docks[0]->height();
+		session.window_change({900, 700});
+		move_controls_to_top(session);
+		saved = session.quit();
+	}
+	const QList<Shown> restarted = restart(wm, saved);
+	print_message("dragged height %d, after restart %d\n", dragged, restarted[0].size.height());
+	assert_in_range(restarted[0].size.height(), dragged - 2, dragged + 2);
+	return {arranged_then(move_controls_to_top), restarted, saved};
+}
+
+/* P5 (E7): Reset Docks in a small window, then quit. The reset layout is
+ * saved, not the layout of the start. */
+static Outcome e7_reset_docks_small(Wm wm)
+{
+	QByteArray saved;
+	QByteArray reset;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		session.window_change({900, 700});
+		session.reset_docks();
+		reset = session.w.startingLayout;
+		saved = session.quit();
+	}
+	return {arranged_at_full_size(reset), restart(wm, saved), saved};
+}
+
+/* P6 (E8): the user moves a floating dock, then the window changes size.
+ * The floating dock stays where the user put it, now and after a restart
+ * (X11, Windows, macOS: Wayland gives a window no position, E21). */
+static void e8_move_a_floating_dock(void **)
+{
+	for (Wm wm : {Wm::floating, Wm::tiling}) {
+		print_message("== %s window manager\n", wm_name(wm));
+		QByteArray saved;
+		QPoint placed;
+		{
+			Session session(wm);
+			session.start(arranged_layout());
+			session.float_dock(0);
+			/* Fully on screen: a restore keeps a floating dock on the
+			 * screen (Qt), and the screens of the test hosts differ. */
+			session.w.docks[0]->move(QPoint(120, 140));
+			settle(session.w.window);
+			placed = session.w.docks[0]->pos();
+			session.window_change({1200, 800});
+			print_message("floating dock at %d,%d, after the window change %d,%d\n", placed.x(), placed.y(),
+				      session.w.docks[0]->x(), session.w.docks[0]->y());
+			assert_true(session.w.docks[0]->isFloating());
+			assert_true(session.w.docks[0]->pos() == placed);
+			saved = session.quit();
+		}
+		Session next(wm);
+		next.start(saved);
+		print_message("after restart %d,%d\n", next.w.docks[0]->x(), next.w.docks[0]->y());
+		assert_true(next.w.docks[0]->isFloating());
+		assert_true(next.w.docks[0]->pos() == placed);
+	}
+}
+
+/* P7: floating a dock retiles the window at once under a tiling window
+ * manager. The row keeps its shares in the half tile, and the layout saved
+ * is the one a floating window manager saves (run_both compares them), not
+ * the row as squeezed into the half tile. */
+static Outcome p7_float_a_dock_sizes(Wm wm)
+{
+	QByteArray saved;
+	QList<Shown> expected;
+	{
+		Session session(wm);
+		session.start(arranged_layout());
+		session.float_dock(0);
+		expected = capture(session.w);
+		saved = session.quit();
+	}
+	return {expected, restart(wm, saved), saved};
+}
+
 static void e1_unchanged_layout_both(void **)
 {
 	run_both(e1_unchanged_layout);
@@ -991,8 +1157,36 @@ static void e25_upstream_round_trip_both(void **)
 	run_both(e25_upstream_round_trip);
 }
 
+static void e5_move_a_dock_small_both(void **)
+{
+	run_both(e5_move_a_dock_small, false);
+}
+
+static void e6_drag_shrink_move_both(void **)
+{
+	run_both(e6_drag_shrink_move, false);
+}
+
+static void e7_reset_docks_small_both(void **)
+{
+	run_both(e7_reset_docks_small, false);
+}
+
+static void p7_float_a_dock_sizes_both(void **)
+{
+	run_both(p7_float_a_dock_sizes);
+}
+
 int main(int argc, char **argv)
 {
+#ifndef OBS_FRONTEND_RUST
+	/* Without the frontend's Rust the adapter is upstream OBS: these cases
+	 * would test nothing of #5230. */
+	(void)argc;
+	(void)argv;
+	fprintf(stderr, "test_dock_state_restart needs the frontend's Rust (obs_frontend-static)\n");
+	return 1;
+#else
 	QApplication app(argc, argv);
 	const CMUnitTest tests[] = {
 		cmocka_unit_test(changed_layout_at_minimum_survives_restart),
@@ -1015,6 +1209,12 @@ int main(int argc, char **argv)
 		cmocka_unit_test(e14_plugin_dock_after_restore),
 		cmocka_unit_test(e23_quit_hidden_both),
 		cmocka_unit_test(e25_upstream_round_trip_both),
+		cmocka_unit_test(e5_move_a_dock_small_both),
+		cmocka_unit_test(e6_drag_shrink_move_both),
+		cmocka_unit_test(e7_reset_docks_small_both),
+		cmocka_unit_test(e8_move_a_floating_dock),
+		cmocka_unit_test(p7_float_a_dock_sizes_both),
 	};
 	return cmocka_run_group_tests(tests, nullptr, nullptr);
+#endif
 }

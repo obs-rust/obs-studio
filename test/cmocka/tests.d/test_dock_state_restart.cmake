@@ -4,3 +4,7 @@
 if(OS_LINUX AND (NOT DEFINED ENABLE_UI OR ENABLE_UI) AND (NOT DEFINED ENABLE_FRONTEND OR ENABLE_FRONTEND))
   find_package(Qt6 QUIET COMPONENTS Widgets Test)
 endif()
+# The adapter's decisions are the frontend's Rust: the target links the same
+# owner interface as the fallback warning (OBS::fallback-warning-test-frontend,
+# test_fallback_warning_queue.cmake), which defines OBS_FRONTEND_RUST and links
+# obs_frontend-static; without it the test fails (#5230).

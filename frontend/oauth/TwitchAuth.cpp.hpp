@@ -277,8 +277,10 @@ void TwitchAuth::LoadUI()
 	} else {
 		const char *dockStateStr = config_get_string(main->Config(), service(), "DockState");
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
-		main->restoreState(dockState);
-		main->DockStateRestored(dockState);
+		/* A service layout has no known dock sizes (obs-rust/obs-studio#5230). */
+		if (main->restoreState(dockState)) {
+			main->DockStateRestored(dockState);
+		}
 	}
 
 	TryLoadSecondaryUIPanes();
@@ -404,8 +406,10 @@ void TwitchAuth::LoadSecondaryUIPanes()
 		QByteArray dockState = QByteArray::fromBase64(QByteArray(dockStateStr));
 
 		if (main->isVisible() || !main->isMaximized()) {
-			main->restoreState(dockState);
-			main->DockStateRestored(dockState);
+			/* A service layout has no known dock sizes (obs-rust/obs-studio#5230). */
+			if (main->restoreState(dockState)) {
+				main->DockStateRestored(dockState);
+			}
 		}
 	}
 }
