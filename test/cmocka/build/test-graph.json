@@ -15995,6 +15995,27 @@
         }
       ]
     },
+    "test_service_find_rust": {
+      "sources": [
+        "test/cmocka/test_service_find.c",
+        "test/cmocka/service-find-registry-adapter.c"
+      ],
+      "libraries": [
+        "libobs_rust-static",
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "definitions": [
+        "SERVICE_FIND_EXTERNAL"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
+    },
     "test_service_getters": {
       "sources": [
         "test/cmocka/test_service_getters.c"
@@ -28220,6 +28241,13 @@
       "command": [
         "${target}"
       ]
+    },
+    "test_service_find_rust": {
+      "target": "test_service_find_rust",
+      "command": [
+        "${target}"
+      ],
+      "requires": "HAVE_LIBOBS_RUST_STATIC"
     },
     "test_service_getters": {
       "target": "test_service_getters",

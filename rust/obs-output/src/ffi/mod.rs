@@ -80,6 +80,7 @@ mod output_type_lookup;
 pub mod output_video_checks;
 pub mod service;
 pub mod service_context_getters;
+pub mod service_find;
 pub mod service_module_lookup;
 pub mod service_state;
 pub mod service_weak_acquire;
