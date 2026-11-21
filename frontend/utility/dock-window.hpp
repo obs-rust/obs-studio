@@ -106,10 +106,17 @@ inline void LayOutAfterFloatingMove(QDockWidget *dock)
  * before and keeps its floating state for the next start. */
 inline bool CloseRedocksMainDock(QDockWidget *dock, QCloseEvent *event, bool closing)
 {
-	(void)dock;
-	(void)event;
-	(void)closing;
-	return false;
+	QWidget *main = dock->parentWidget();
+	if ((dock->features() & QDockWidget::DockWidgetClosable) || !dock->isFloating() || closing || !main ||
+	    !main->isVisible()) {
+		return false;
+	}
+
+	event->ignore();
+	/* Not inside the close event: setFloating() recreates the dock's
+	 * window. */
+	QMetaObject::invokeMethod(dock, [dock]() { dock->setFloating(false); }, Qt::QueuedConnection);
+	return true;
 }
 
 /* The close key (Cmd+W on macOS, Ctrl+W or Ctrl+F4 elsewhere) closes a
@@ -118,8 +125,21 @@ inline bool CloseRedocksMainDock(QDockWidget *dock, QCloseEvent *event, bool clo
  * does nothing and an OBS hotkey on it still works. */
 inline QShortcut *AddFloatingDockCloseKey(QDockWidget *dock)
 {
-	(void)dock;
-	return nullptr;
+	/* An OBSDock gets the key when it is made and again in AddDockWidget().
+	 * Two shortcuts on one key are ambiguous, and Qt then activates neither. */
+	static const QString name = QStringLiteral("floatingDockCloseKey");
+	if (auto *key = dock->findChild<QShortcut *>(name, Qt::FindDirectChildrenOnly)) {
+		return key;
+	}
+
+	auto *key = new QShortcut(dock);
+	key->setObjectName(name);
+	key->setKeys(QKeySequence::Close);
+	key->setContext(Qt::WindowShortcut);
+	key->setEnabled(dock->isFloating());
+	QObject::connect(dock, &QDockWidget::topLevelChanged, key, &QShortcut::setEnabled);
+	QObject::connect(key, &QShortcut::activated, dock, [dock]() { dock->close(); });
+	return key;
 }
 
 /* Everything OBS sets up on the window of a dock. Call it before the dock first

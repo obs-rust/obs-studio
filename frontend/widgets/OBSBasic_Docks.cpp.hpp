@@ -155,7 +155,7 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
 			QDockWidget::DockWidgetFloatable);
 
-	/* A plugin's own QDockWidget too (obs-rust/obs-studio#5409, #5416). */
+	/* A plugin's own QDockWidget too (obs-rust/obs-studio#5409, #5416, #5408). */
 	SetUpDockWindow(dock);
 	setupDockAction(dock);
 	dock->setFeatures(features);
