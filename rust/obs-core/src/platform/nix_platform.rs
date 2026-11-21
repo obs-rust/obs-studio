@@ -6,8 +6,8 @@ use core::ffi::{c_uint, c_void};
 /// Access to the process-wide instance must be externally serialized, as in C.
 #[derive(Debug)]
 pub struct PlatformState {
-    platform: c_uint,
-    display: *mut c_void,
+    pub(crate) platform: c_uint,
+    pub(crate) display: *mut c_void,
 }
 
 impl Default for PlatformState {
@@ -26,20 +26,24 @@ impl PlatformState {
     }
 
     pub fn platform(&self) -> c_uint {
-        todo!()
+        self.platform
     }
 
     pub fn set_platform(&mut self, platform: c_uint) {
-        let _ = platform;
-        todo!()
+        self.platform = checked_platform(platform);
     }
 
     pub fn display(&self) -> *mut c_void {
-        todo!()
+        self.display
     }
 
     pub fn set_display(&mut self, display: *mut c_void) {
-        let _ = display;
-        todo!()
+        self.display = display;
     }
+}
+
+/// Preserve C's debug-only INVALID assertion; other bit patterns pass through.
+pub(crate) fn checked_platform(platform: c_uint) -> c_uint {
+    debug_assert_ne!(platform, 0);
+    platform
 }

@@ -1,0 +1,4 @@
+obs_get_nix_platform unix
+obs_get_nix_platform_display unix
+obs_set_nix_platform unix
+obs_set_nix_platform_display unix
