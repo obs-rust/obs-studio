@@ -7,9 +7,9 @@ Usage:
 `OBSBasic::saveAll()` used to write whatever `QMainWindow::saveState()`
 returned, so a session that was narrower than the docks' minimums saved every
 dock at its minimum and the next start restored that clamp at full width.
-#2727 fixed the global writer (`BasicWindow/DockState`) by having the
-`DockProportions` helper hand out the last layout it saw with no dock at its
-minimum, `OBSBasic::DockStateToSave()`.
+#2727 fixed the global writer (`BasicWindow/DockState`) with
+`OBSBasic::DockStateToSave()`; since #5230 the `DockLayout` adapter decides
+what it returns, and the sizes the user wants go to `BasicWindow/DockSizes`.
 
 The browser auth panels write and restore a whole main-window snapshot of
 their own (`<service>/DockState`) from `Auth::Save()`, which runs inside
@@ -46,7 +46,7 @@ LIVE_SAVE = re.compile(r"(?:main|this|App\(\))->saveState\(\)")
 # A restored dock snapshot, and the call that records it as the baseline a
 # clamped start saves instead.
 RESTORE = re.compile(r"\brestoreState\(dockState\)")
-RECORDED = re.compile(r"\bDockStateRestored\(dockState\)")
+RECORDED = re.compile(r"\bDockStateRestored\(dockState\b")
 
 
 class DockStateWritersTest(unittest.TestCase):

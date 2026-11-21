@@ -199,9 +199,9 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	startingDockLayout = saveState();
 
-	/* Docks keep their relative sizes when the window narrows and widens
-	 * again (obs-rust/obs-studio#2225). */
-	dockProportions = new DockProportions(this);
+	/* Docks keep the sizes the user gave them when the window changes
+	 * (obs-rust/obs-studio#2225, #3740, #5230). */
+	dockLayout = new DockLayout(this);
 
 	statsDock = new OBSDock();
 	statsDock->setObjectName(QStringLiteral("statsDock"));
@@ -1097,9 +1097,10 @@ void OBSBasic::OBSInit()
 		if (!restoreState(dockState)) {
 			on_resetDocks_triggered(true);
 		} else {
-			/* A window smaller than this layout shows it clamped;
-			 * keep the layout itself as what a save writes. */
-			DockStateRestored(dockState);
+			/* The sizes the user gave the docks, saved with this
+			 * layout (obs-rust/obs-studio#5230). */
+			DockStateRestored(dockState,
+					  config_get_string(App()->GetUserConfig(), "BasicWindow", "DockSizes"));
 		}
 	}
 
@@ -1745,15 +1746,13 @@ config_t *OBSBasic::Config() const
 
 QByteArray OBSBasic::DockStateToSave() const
 {
-	/* A save from a narrow window must not persist the clamped layout:
-	 * the helper keeps the last unclamped one (obs-rust/obs-studio#2225). */
-	return dockProportions ? dockProportions->StateToSave() : saveState();
+	return dockLayout ? dockLayout->StateToSave() : saveState();
 }
 
-void OBSBasic::DockStateRestored(const QByteArray &state)
+void OBSBasic::DockStateRestored(const QByteArray &state, const char *sizes)
 {
-	if (dockProportions) {
-		dockProportions->SetRestoredState(state);
+	if (dockLayout) {
+		dockLayout->Start(sizes, state);
 	}
 }
 
@@ -1768,11 +1767,16 @@ void OBSBasic::saveAll()
 		Auth::Save();
 		SaveProjectNow();
 
-		/* A save from a narrow window must not persist the clamped
-		 * layout: the accessor returns the last unclamped one
-		 * (obs-rust/obs-studio#2225). */
+		/* The layout and the sizes the user gave its docks
+		 * (obs-rust/obs-studio#5230). */
 		const QByteArray dockState = DockStateToSave();
 		config_set_string(App()->GetUserConfig(), "BasicWindow", "DockState", dockState.toBase64().constData());
+		const std::string dockSizes = dockLayout ? dockLayout->SizesRecord(dockState) : std::string();
+		if (dockSizes.empty()) {
+			config_remove_value(App()->GetUserConfig(), "BasicWindow", "DockSizes");
+		} else {
+			config_set_string(App()->GetUserConfig(), "BasicWindow", "DockSizes", dockSizes.c_str());
+		}
 
 #ifdef BROWSER_AVAILABLE
 		if (cef) {

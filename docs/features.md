@@ -2384,34 +2384,30 @@ area.
   [#2064](https://github.com/obs-rust/obs-studio/issues/2064), PR
   [#2080](https://github.com/obs-rust/obs-studio/pull/2080).
 
-- Narrowing the main window and widening it again keeps the docks' relative
-  sizes: docks side by side no longer come back all the same width after the
-  window squeezed them to their minimum, and the Scenes/Sources column gets
-  its width back instead of the preview taking all of it. A layout is also
-  no longer saved while the window is too narrow to show it: quitting then
-  used to bring the docks back all the same width on the next start. The
-  chat dock of a signed-in Twitch, Restream or YouTube account saves and
-  restores the same clamp-safe layout, instead of its own copy taken from the
-  live window. A start on a display too small for the saved layout also keeps
-  that layout: the docks are squeezed for the session, and the next save
-  writes the layout from the ini instead of the squeeze. Deliberate separator
-  drags still save the new widths and heights when a dock is at its minimum,
-  so restarting does not revert to an older arrangement (#3740). A tiling
-  window manager (Hyprland) that resizes the window to its tile right after
-  the start no longer evens out the docks: until the user changes a dock,
-  the saved layout is restored again at each new window size, and a quit
-  writes that layout, not the one squeezed into a smaller window (for
-  example after leaving full screen). Hiding, moving, floating or adding a
-  dock counts as a change and is kept (#3740), also when the window manager
-  resizes the window at the same time, and Reset Docks stays reset (#5230).
-  *All*,
-  2026-10-24 (column: pending merge). Issue
-  [#2225](https://github.com/obs-rust/obs-studio/issues/2225), PRs
+- The docks keep the sizes you gave them. OBS saves the width of each dock
+  in its row and the depth of each dock area (`BasicWindow/DockSizes`, next
+  to the layout in `BasicWindow/DockState`). Only you change them: drag a
+  separator, or move, float, hide, show or tab a dock. A window change does
+  not change them: when the window narrows, a tiling window manager (for
+  example Hyprland) retiles it, or a floated dock takes half the tile, the
+  docks keep their shares of the row, and the Scenes/Sources column keeps its
+  width while the preview has room. A quit from a small window saves the
+  layout you set, not the squeezed one. A start with no saved sizes (the
+  first start after the update, a layout from upstream OBS, Reset Docks, a
+  Twitch, Restream or YouTube layout) shows the saved layout again at each
+  window change until the window shows it in full or you change a dock.
+  Upstream OBS reads the same `DockState`. *All*, pending merge. Issues
+  [#2225](https://github.com/obs-rust/obs-studio/issues/2225),
+  [#3740](https://github.com/obs-rust/obs-studio/issues/3740),
+  [#5230](https://github.com/obs-rust/obs-studio/issues/5230), PRs
   [#2727](https://github.com/obs-rust/obs-studio/pull/2727),
   [#2731](https://github.com/obs-rust/obs-studio/pull/2731),
   [#2743](https://github.com/obs-rust/obs-studio/pull/2743),
   [#3796](https://github.com/obs-rust/obs-studio/pull/3796),
-  [#4841](https://github.com/obs-rust/obs-studio/pull/4841).
+  [#4841](https://github.com/obs-rust/obs-studio/pull/4841),
+  [#5245](https://github.com/obs-rust/obs-studio/pull/5245),
+  [#5362](https://github.com/obs-rust/obs-studio/pull/5362),
+  [#5411](https://github.com/obs-rust/obs-studio/pull/5411).
 
 - Importing a profile from a folder path that ends in a slash (as the
   macOS folder dialog returns it) creates the profile in a folder of its
