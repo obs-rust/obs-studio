@@ -32,8 +32,8 @@ fn read(path: &Path) -> Result<Value, String> {
 /// characterizations relinked in place by their swap (#5187), or the
 /// `_rust` twin of one that keeps testing its original C source (the canvas
 /// video-info validity and mix-clearing swaps, #5310 and #5326, the hotkey
-/// background status notification, #5303, and the hotkey background-state
-/// query, #5259).
+/// background status notification, #5303, the hotkey background-state
+/// query, #5259, and the hotkey dispatch, #5329).
 const UNSUFFIXED: [&str; 2] = ["hotkey-control", "core-relinked"];
 
 struct Entries {

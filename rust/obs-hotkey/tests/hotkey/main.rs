@@ -26,6 +26,8 @@ mod cocoa_keys;
 mod cocoa_keys_parity;
 mod combination_background_id;
 mod combination_background_id_parity;
+mod dispatch;
+mod dispatch_parity;
 mod enumeration;
 mod enumeration_parity;
 mod hotkey_name_map;
@@ -91,11 +93,15 @@ mod windows_keys;
 mod windows_keys_parity;
 
 /// Cargo-test stand-ins for the two hidden seams of the ported binding press
-/// count (`obs-hotkey-binding-press`): `obs_hotkey_binding_count_fields()` and
-/// `obs_hotkey_dispatch()`, which more than one test module drives. Only one
-/// definition can exist in the binary, so the module that owns the fake
-/// libobs world of the running test installs its hooks here, per thread; the
-/// seams read them. `binding_press_parity` and `press_parity` both do.
+/// count (`obs-hotkey-binding-press`): `obs_hotkey_binding_count_fields()`
+/// and the delivery of `obs_hotkey_dispatch()`, which more than one test
+/// module drives. Only one definition can exist in the binary, so the module
+/// that owns the fake libobs world of the running test installs its hooks
+/// here, per thread; the seams read them. `binding_press_parity` and
+/// `press_parity` both do. The dispatch itself is the real Rust one
+/// (`obs_hotkey::ffi::dispatch`); outside a dispatch probe its adapters in
+/// the dispatch oracle (`hotkey_dispatch.c`) see rerouting off and forward
+/// the callback call to [`deliver`](binding_press_hooks), this thread's hook.
 pub mod binding_press_hooks {
     use std::cell::RefCell;
 
@@ -115,12 +121,23 @@ pub mod binding_press_hooks {
         static HOOKS: RefCell<Option<Hooks>> = const { RefCell::new(None) };
     }
 
+    unsafe extern "C" {
+        fn oracle_hotkey_dispatch_fallback(
+            fallback: Option<unsafe extern "C" fn(*mut obs_hotkey_t, bool)>,
+        );
+    }
+
     pub fn install(hooks: Hooks) {
         HOOKS.with(|h| *h.borrow_mut() = Some(hooks));
+        // SAFETY: sets this thread's fallback; `deliver` reads this thread's
+        // hooks.
+        unsafe { oracle_hotkey_dispatch_fallback(Some(deliver)) };
     }
 
     pub fn clear() {
         HOOKS.with(|h| *h.borrow_mut() = None);
+        // SAFETY: clears this thread's fallback.
+        unsafe { oracle_hotkey_dispatch_fallback(None) };
     }
 
     fn hooks() -> Hooks {
@@ -139,13 +156,13 @@ pub mod binding_press_hooks {
         (hooks().accessor)(binding)
     }
 
-    /// The dispatch (`obs-hotkey.c.h`): records it in the installed world.
+    /// The delivered call of the real dispatch: records it in the installed
+    /// world.
     ///
     /// # Safety
     ///
     /// `hotkey` points at a live fake hotkey of the installed world.
-    #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn obs_hotkey_dispatch(hotkey: *mut obs_hotkey_t, pressed: bool) {
+    unsafe extern "C" fn deliver(hotkey: *mut obs_hotkey_t, pressed: bool) {
         (hooks().dispatch)(hotkey, pressed)
     }
 }
