@@ -54,6 +54,22 @@ class HostedRunnerRoutingTest(unittest.TestCase):
                 self.assert_runner('build-project.yaml', name,
                     "${{ inputs.mq-heavy-labels != '' && fromJSON(inputs.mq-heavy-labels) || 'ubuntu-latest' }}")
 
+    def test_queue_selector_uses_forge_quick_with_kill_switch(self):
+        # Only merge_group selection leaves the hosted queue (#5376); an empty
+        # FORGE_QUICK_LABELS is the kill switch back to ubuntu-latest.
+        self.assert_runner('ci.yml', 'select-mq-runner',
+            "${{ github.event_name == 'merge_group' && vars.FORGE_QUICK_LABELS != '' && "
+            "fromJSON(vars.FORGE_QUICK_LABELS) || 'ubuntu-latest' }}")
+        job = self.job('ci.yml', 'select-mq-runner')
+        # forge-quick: 120 s wall clock, 256 MiB including the tmpfs workspace.
+        self.assertIn('    timeout-minutes: 2\n', job)
+        self.assertNotIn('container:', job)
+        self.assertNotIn('services:', job)
+        # Blobless: a full depth-1 tree would not fit the cgroup's tmpfs.
+        self.assertIn('          filter: blob:none\n', job)
+        # The image's cached uv: no version lookup, no write to the root-owned tool cache.
+        self.assertIn("          version: '0.13.7'\n", job)
+
     def test_light_jobs_use_latest(self):
         for workflow, names in (
             ('build-project.yaml', ('check-event', 'ci-mode', 'rust-cross-proof')),
