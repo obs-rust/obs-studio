@@ -15811,6 +15811,27 @@
       ],
       "requires": "OS_LINUX"
     },
+    "test_sceneitem_addref": {
+      "sources": [
+        "test/cmocka/test_sceneitem_addref.c"
+      ],
+      "includes": [
+        "."
+      ],
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_sceneitem_alignment_setter": {
       "sources": [
         "test/cmocka/test_sceneitem_alignment_setter.c"
@@ -28223,6 +28244,9 @@
           "-screen 0 1280x1024x24 -noreset"
         ]
       ]
+    },
+    "test_sceneitem_addref": {
+      "target": "test_sceneitem_addref"
     },
     "test_sceneitem_alignment_setter": {
       "target": "test_sceneitem_alignment_setter",
