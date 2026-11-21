@@ -1458,7 +1458,8 @@
         "OBS::native-test-cmocka"
       ],
       "watch_inputs": [
-        "frontend/utility/close-top-level.hpp"
+        "frontend/utility/close-top-level.hpp",
+        "frontend/utility/dock-window.hpp"
       ],
       "cpp_standard": "17"
     },

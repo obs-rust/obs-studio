@@ -16,7 +16,13 @@
  * an application quit closes the top-level windows in no fixed order, the
  * floating main dock (not closable) refused while the main window was
  * visible, and Qt cancelled the quit. The quit cases below check that
- * QuitClosesMainWindowFirst closes the main window first. */
+ * QuitClosesMainWindowFirst closes the main window first.
+ *
+ * On macOS a floating dock disappeared whenever another app was in front
+ * (obs-rust/obs-studio#5409): Qt hides a tool window while the application is
+ * inactive unless it has Qt::WA_MacAlwaysShowToolWindow.
+ * floating_dock_stays_shown_while_inactive checks that KeepFloatingDockShown()
+ * (frontend/utility/dock-window.hpp) sets it on a dock that then floats. */
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -39,6 +45,7 @@ extern "C" {
 }
 
 #include "close-top-level.hpp"
+#include "dock-window.hpp"
 
 class Window : public QWidget {
 public:
@@ -306,6 +313,33 @@ static void quit_with_a_hidden_main_window_closes_nothing_twice(void **state)
 	}
 }
 
+static void floating_dock_stays_shown_while_inactive(void **state)
+{
+	(void)state;
+	auto *main = new QMainWindow;
+	main->setCentralWidget(new QWidget);
+	auto *dock = new QDockWidget(QStringLiteral("Scenes"), main);
+	dock->setObjectName(QStringLiteral("scenesDock"));
+	dock->setWidget(new QWidget);
+	KeepFloatingDockShown(dock);
+	main->addDockWidget(Qt::LeftDockWidgetArea, dock);
+	main->show();
+	QApplication::processEvents();
+	dock->setFloating(true);
+	dock->show();
+	QApplication::processEvents();
+
+	const bool floating = dock->isFloating();
+	const bool tool = dock->isWindow() && (dock->windowFlags() & Qt::Tool) == Qt::Tool;
+	const bool shown = dock->testAttribute(Qt::WA_MacAlwaysShowToolWindow);
+	delete main;
+	if (!floating || !tool || !shown) {
+		fprintf(stderr, "floating %d, tool window %d, WA_MacAlwaysShowToolWindow %d (expected 1 1 1)\n",
+			floating, tool, shown);
+		fail();
+	}
+}
+
 #ifdef _WIN32
 /* With no platform plugin, a release Qt on Windows shows a modal message box
  * before it exits when the process has no console window, and under ctest on
@@ -363,6 +397,7 @@ int main(int argc, char **argv)
 						quit_teardown),
 		cmocka_unit_test_setup_teardown(quit_with_a_hidden_main_window_closes_nothing_twice, quit_setup,
 						quit_teardown),
+		cmocka_unit_test(floating_dock_stays_shown_while_inactive),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
