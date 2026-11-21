@@ -2463,6 +2463,13 @@ area.
   kept its floating position outside the window until Reset Docks. *macOS*,
   2026-11-21. Issue
   [#5416](https://github.com/obs-rust/obs-studio/issues/5416).
+- Closing the window of a floating main dock (Scenes, Sources, Audio Mixer,
+  Scene Transitions, Controls) puts the dock back into the main window; before,
+  the dock stayed open and OBS showed "You just closed a dockable window". The
+  close key (Cmd+W on macOS, Ctrl+W or Ctrl+F4 elsewhere) closes the focused
+  floating dock: a main dock goes back, other docks hide. In the main window
+  the key does nothing. *All*, 2026-11-22. Issue
+  [#5408](https://github.com/obs-rust/obs-studio/issues/5408).
 
 ### Scripting
 
