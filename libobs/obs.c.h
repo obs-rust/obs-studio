@@ -2948,17 +2948,25 @@ bool obs_wait_for_destroy_queue(void)
 {
 	struct task_wait_info info = {0};
 
-	/* allow video and audio threads time to release objects. Without them
-	 * (no video reset) sources are still destroyed by the destruction
-	 * thread, so that queue is waited for regardless. */
-	if (obs->video.thread_initialized && obs->audio.audio) {
+	/* allow video and audio threads time to release objects. Each thread
+	 * is waited for when it runs: video without audio still ticks sources
+	 * and holds references on them while it does. Without either thread
+	 * sources are still destroyed by the destruction thread, so that queue
+	 * is waited for regardless. */
+	const bool wait_video = obs->video.thread_initialized;
+	const bool wait_audio = obs->audio.audio != NULL;
+	if (wait_video || wait_audio) {
 		if (os_event_init(&info.event, OS_EVENT_TYPE_AUTO) != 0)
 			blog(LOG_WARNING, "obs_wait_for_destroy_queue: Failed to create the wait event, "
 					  "polling instead");
-		obs_queue_task(OBS_TASK_GRAPHICS, task_wait_callback, &info, false);
-		task_wait_for_callback(&info);
-		obs_queue_task(OBS_TASK_AUDIO, task_wait_callback, &info, false);
-		task_wait_for_callback(&info);
+		if (wait_video) {
+			obs_queue_task(OBS_TASK_GRAPHICS, task_wait_callback, &info, false);
+			task_wait_for_callback(&info);
+		}
+		if (wait_audio) {
+			obs_queue_task(OBS_TASK_AUDIO, task_wait_callback, &info, false);
+			task_wait_for_callback(&info);
+		}
 		os_event_destroy(info.event);
 	}
 
