@@ -51,6 +51,7 @@ class HotkeyRegistrationExtractionTest(unittest.TestCase):
                         EXTRACTED,
                         "libobs/obs-hotkey-background-state.c.h",
                         "libobs/obs-hotkey-combination-background-id.c.h",
+                        "libobs/obs-hotkey-dispatch.c.h",
                         ORIGINAL,
                     ],
                     groups,

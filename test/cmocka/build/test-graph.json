@@ -6118,6 +6118,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6173,6 +6174,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6278,6 +6280,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6333,6 +6336,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6473,6 +6477,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6528,6 +6533,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6679,6 +6685,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6738,6 +6745,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -6858,6 +6866,24 @@
         "OBS::native-test-cmocka"
       ]
     },
+    "test_hotkey_dispatch": {
+      "libraries": [
+        "OBS::libobs",
+        "OBS::caption",
+        "Uthash::Uthash",
+        "OBS::native-test-cmocka",
+        {
+          "name": "OBS::w32-pthreads",
+          "requires": "OS_WINDOWS"
+        }
+      ],
+      "sources": [
+        "test/cmocka/test_hotkey_dispatch.c"
+      ],
+      "header_libraries": [
+        "SIMDe::SIMDe"
+      ]
+    },
     "test_hotkey_edit_backtab": {
       "sources": [
         "test/cmocka/test_hotkey_edit_backtab.cpp",
@@ -6892,6 +6918,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -6948,6 +6975,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7121,6 +7149,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7176,6 +7205,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7307,6 +7337,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7366,6 +7397,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7437,6 +7469,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7496,6 +7529,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -7581,6 +7615,7 @@
         "libobs/obs-hotkey-background-control-fields.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -7639,6 +7674,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister_entry": [
@@ -12600,6 +12636,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -12677,6 +12714,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -21617,6 +21655,7 @@
         "libobs/obs-hotkey-unregister.c.h",
         "libobs/obs-hotkey-background-state.c.h",
         "libobs/obs-hotkey-combination-background-id.c.h",
+        "libobs/obs-hotkey-dispatch.c.h",
         "libobs/obs-hotkey.c.h",
         "libobs/obs-hotkey-unregister-entry-fields.c.h",
         "libobs/obs-hotkey-inject-entry-fields.c.h",
@@ -21687,6 +21726,7 @@
           "libobs/obs-hotkey-register.c.h",
           "libobs/obs-hotkey-background-state.c.h",
           "libobs/obs-hotkey-combination-background-id.c.h",
+          "libobs/obs-hotkey-dispatch.c.h",
           "libobs/obs-hotkey.c.h"
         ],
         "hotkey_unregister": [
@@ -25148,6 +25188,12 @@
           "-a"
         ]
       ]
+    },
+    "test_hotkey_dispatch": {
+      "command": [
+        "${target}"
+      ],
+      "target": "test_hotkey_dispatch"
     },
     "test_hotkey_edit_backtab": {
       "target": "test_hotkey_edit_backtab",
