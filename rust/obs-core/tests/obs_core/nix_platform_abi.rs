@@ -34,7 +34,7 @@ fn public_abi_defaults_and_borrowed_pointer() {
         obs_set_nix_platform_display(display);
         assert_eq!(obs_get_nix_platform_display(), display);
         for platform in [2, 1, u32::MAX, 17, 1] {
-            obs_set_nix_platform(platform);
+            obs_nix_platform_set(platform);
             assert_eq!(obs_get_nix_platform(), platform);
             assert_eq!(obs_get_nix_platform_display(), display);
         }

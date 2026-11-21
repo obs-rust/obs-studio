@@ -4,4 +4,4 @@
 #include <assert.h>
 #include <stddef.h>
 
-#include "libobs/obs-nix-platform.h"
+#include "libobs/obs-nix-platform-rust.h"

@@ -14,6 +14,7 @@
 
 /* obs-nix-platform.c */
 #include "obs-nix-platform.h"
+#include "libobs/obs-nix-platform-rust.h"
 
 #include <assert.h>
 

@@ -1,5 +1,7 @@
 //! Public Linux/BSD platform state. There is deliberately no synchronization.
 //! The application must serialize setters against every other access, as in C.
+//! The public C setter retains its C-build assertion and forwards to the hidden
+//! Rust setter below: Corrosion always builds this archive with the release profile.
 #![cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
 
 // Keep the Unix export marker discoverable by the ABI inventory; the file's
@@ -11,12 +13,12 @@ mod unix {
 
     static mut STATE: PlatformState = PlatformState::new();
 
-    /// Select a platform; INVALID asserts only in debug builds.
+    /// State seam behind the C setter; Rust debug builds also reject INVALID.
     ///
     /// # Safety
     /// The caller must serialize writes and reads of the selected platform.
     #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn obs_set_nix_platform(platform: c_uint) {
+    pub unsafe extern "C" fn obs_nix_platform_set(platform: c_uint) {
         // SAFETY: the caller excludes conflicting accesses to this field. Raw
         // field access avoids borrowing the independently accessed display.
         unsafe { (*(&raw mut STATE)).platform = checked_platform(platform) };

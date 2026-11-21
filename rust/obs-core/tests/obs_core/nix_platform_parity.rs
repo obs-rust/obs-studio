@@ -67,7 +67,7 @@ fn operation_sequences_match_original_c() {
                     oracle_obs_set_nix_platform_display(core::ptr::null_mut());
                     #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
                     {
-                        obs_set_nix_platform(1);
+                        obs_nix_platform_set(1);
                         obs_set_nix_platform_display(core::ptr::null_mut());
                     }
                     for (set_platform, value) in [
@@ -90,7 +90,7 @@ fn operation_sequences_match_original_c() {
                                 target_os = "freebsd",
                                 target_os = "openbsd"
                             ))]
-                            obs_set_nix_platform(value);
+                            obs_nix_platform_set(value);
                         } else {
                             let display = displays[(value % 3) as usize];
                             state.set_display(display);

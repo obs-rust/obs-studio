@@ -1,0 +1,2 @@
+# The public C setter owns the C build's debug assertion and forwards here.
+obs_nix_platform_set
