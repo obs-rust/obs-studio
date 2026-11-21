@@ -92,7 +92,7 @@ jobs:
     outputs:
       heavy-labels: ${{ steps.select.outputs.heavy-labels }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         id: checkout
         continue-on-error: true
         if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''
@@ -102,7 +102,7 @@ jobs:
           # forge-quick's tmpfs workspace counts against its 256 MiB.
           filter: blob:none
           persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         id: uv
         continue-on-error: true
         if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != ''
@@ -113,7 +113,7 @@ jobs:
           enable-cache: false
       - name: Create Runner Probe App Token
         id: mq-probe-app
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         continue-on-error: true
         if: (github.event_name == 'merge_group' || github.event_name == 'pull_request') && vars.MQ_RUNNER_LABELS != '' && vars.MQ_PROBE_APP_ID != ''
         with:
