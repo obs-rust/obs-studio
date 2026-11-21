@@ -155,8 +155,8 @@ void OBSBasic::AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool ex
 		     : (QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
 			QDockWidget::DockWidgetFloatable);
 
-	/* A plugin's own QDockWidget too (obs-rust/obs-studio#5409). */
-	KeepFloatingDockShown(dock);
+	/* A plugin's own QDockWidget too (obs-rust/obs-studio#5409, #5416). */
+	SetUpDockWindow(dock);
 	setupDockAction(dock);
 	dock->setFeatures(features);
 	addDockWidget(area, dock);
@@ -217,7 +217,7 @@ bool OBSBasic::IsDockObjectNameUsed(const QString &name)
 
 void OBSBasic::AddCustomDockWidget(QDockWidget *dock)
 {
-	KeepFloatingDockShown(dock);
+	SetUpDockWindow(dock);
 
 	// Prevent the object name from being changed
 	connect(dock, &QObject::objectNameChanged, this, &OBSBasic::RepairCustomExtraDockName);
