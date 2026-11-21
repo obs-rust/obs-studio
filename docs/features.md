@@ -2452,6 +2452,11 @@ area.
   for File → Exit. *All*, 2026-11-21. Issue
   [#5406](https://github.com/obs-rust/obs-studio/issues/5406), PR
   [#5410](https://github.com/obs-rust/obs-studio/pull/5410).
+- On macOS a floating dock (for example Scenes or Stats on a second display)
+  stays visible while another app is in front; before, it disappeared until
+  OBS was active again. *macOS*, 2026-11-21. Issue
+  [#5409](https://github.com/obs-rust/obs-studio/issues/5409), PR
+  [#5412](https://github.com/obs-rust/obs-studio/pull/5412).
 
 ### Scripting
 
