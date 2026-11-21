@@ -1,5 +1,5 @@
 //! Re-exec isolates the process-global ABI state from the rest of Core.
-#![cfg(any(target_os = "linux", target_os = "freebsd"))]
+#![cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
 #![allow(unsafe_code)]
 use obs_core::ffi::nix_platform::*;
 

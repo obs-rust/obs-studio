@@ -2,7 +2,7 @@
 #![allow(unsafe_code)]
 use core::ffi::{c_uint, c_void};
 use obs_c_oracle as _;
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
 use obs_core::ffi::nix_platform::*;
 use obs_core::platform::nix_platform::PlatformState;
 use proptest::prelude::*;
@@ -40,7 +40,7 @@ fn operation_sequences_match_original_c() {
     unsafe {
         assert_eq!(oracle_obs_get_nix_platform(), 1);
         assert!(oracle_obs_get_nix_platform_display().is_null());
-        #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+        #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
         {
             assert_eq!(obs_get_nix_platform(), 1);
             assert!(obs_get_nix_platform_display().is_null());
@@ -65,7 +65,7 @@ fn operation_sequences_match_original_c() {
                 unsafe {
                     oracle_obs_set_nix_platform(1);
                     oracle_obs_set_nix_platform_display(core::ptr::null_mut());
-                    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+                    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
                     {
                         obs_set_nix_platform(1);
                         obs_set_nix_platform_display(core::ptr::null_mut());
@@ -85,18 +85,30 @@ fn operation_sequences_match_original_c() {
                             let value = value.max(1); // INVALID is a debug assertion, tested separately.
                             state.set_platform(value);
                             oracle_obs_set_nix_platform(value);
-                            #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+                            #[cfg(any(
+                                target_os = "linux",
+                                target_os = "freebsd",
+                                target_os = "openbsd"
+                            ))]
                             obs_set_nix_platform(value);
                         } else {
                             let display = displays[(value % 3) as usize];
                             state.set_display(display);
                             oracle_obs_set_nix_platform_display(display);
-                            #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+                            #[cfg(any(
+                                target_os = "linux",
+                                target_os = "freebsd",
+                                target_os = "openbsd"
+                            ))]
                             obs_set_nix_platform_display(display);
                         }
                         prop_assert_eq!(state.platform(), oracle_obs_get_nix_platform());
                         prop_assert_eq!(state.display(), oracle_obs_get_nix_platform_display());
-                        #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "freebsd",
+                            target_os = "openbsd"
+                        ))]
                         {
                             prop_assert_eq!(obs_get_nix_platform(), oracle_obs_get_nix_platform());
                             prop_assert_eq!(
@@ -106,7 +118,7 @@ fn operation_sequences_match_original_c() {
                         }
                     }
                     oracle_obs_set_nix_platform_display(core::ptr::null_mut());
-                    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+                    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
                     obs_set_nix_platform_display(core::ptr::null_mut());
                 }
                 prop_assert_eq!(bytes, [7, 9]);

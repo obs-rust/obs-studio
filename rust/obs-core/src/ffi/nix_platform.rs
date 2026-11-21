@@ -1,6 +1,6 @@
 //! Public Linux/BSD platform state. There is deliberately no synchronization.
 //! The application must serialize setters against every other access, as in C.
-#![cfg(any(target_os = "linux", target_os = "freebsd"))]
+#![cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
 
 // Keep the Unix export marker discoverable by the ABI inventory; the file's
 // host boundary above also excludes macOS, where these APIs do not exist.
